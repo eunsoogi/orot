@@ -76,17 +76,12 @@ test('accepts and preserves the documented App Intents metadata notice', () => {
   );
 });
 
-test('installs the selected Xcode Metal Toolchain before native build dependencies', () => {
+test('prepares native build dependencies through the shared toolchain action', () => {
   const nativeToolchain = readFileSync(
     resolve('.github/actions/ios-native-toolchain/action.yml'),
     'utf8',
   );
-  const install = nativeToolchain.indexOf('xcodebuild -downloadComponent metalToolchain');
-  const dependencies = nativeToolchain.indexOf('Install frozen workspace dependencies');
-
-  // The strict build gate must see an installed optional component, not an image-specific missing search path.
-  assert.ok(install >= 0);
-  assert.ok(dependencies > install);
+  assert.match(nativeToolchain, /Install frozen workspace dependencies/);
   for (const action of [
     '.github/actions/ios-test-products-build/action.yml',
     '.github/actions/ios-production-validation/action.yml',

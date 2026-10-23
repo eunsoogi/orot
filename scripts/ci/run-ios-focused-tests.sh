@@ -18,6 +18,11 @@ case "$mode" in
   backup | local-model | speech-journey | fixture-isolation | recording-persistence | state-persistence)
     scripts/ci/run-command.sh ios-focus-tests "$directory/tests.log" -- node "scripts/ci/run-ios-$mode-tests.mjs" "$test_run" "$owner_file" "$directory/$mode"
     ;;
+  authentication)
+    # Run both protected queries in the same suite so neither assertion becomes an optional single-case focus.
+    scripts/ci/run-command.sh ios-focus-tests "$directory/tests.log" -- node scripts/ci/run-ios-tests.mjs "$profile" "$test_run" "$owner_file" "$directory/results.xcresult"
+    node scripts/ci/ios-test-results.mjs "$profile" "$directory/results.xcresult" "$directory/results.json"
+    ;;
   fixture)
     set -- "$profile" "$test_run" "$owner_file" "$directory/fixtures"
     if [[ -n "$test_id" ]]; then set -- "$@" "$test_id"; fi

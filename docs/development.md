@@ -89,12 +89,14 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
-두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 수동 `authentication` 집중 suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켜세요. 아래 명령은 두 사례를 모두 실행하며, prompted 사례에서 일치하는 얼굴을 입력해야 합니다. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
+두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 `authentication` suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켜세요. 아래 명령은 두 사례를 모두 실행하며, prompted 사례에서 일치하는 얼굴을 입력해야 합니다. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
 
 ```sh
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core build/ios-core-keychain-auth.xcresult build/ios-core-keychain-auth-results.json
 ```
+
+이 suite는 `e2e-selected.yml`에서도 `focus_profile=ios/core`, `focus_scenario_file=apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m`, `focus_scenario_name=group/authentication`으로 전체 사례를 선택할 수 있습니다. 이 경로는 선택한 Xcode runner의 `simctl` 명령과 Simulator 앱 구성을 기록하지만 Face ID enrollment나 matching 입력을 대신하지 않습니다.
 
 이 집중 suite는 Face ID 등록과 Simulator UI 입력이 필요하므로 112개 release 관측 목록에는 포함하지 않습니다. 해당 task가 소유한 Simulator만 사용하고 owner 파일을 통해 정리하세요. 테스트는 합성 데이터만 저장합니다.
 
@@ -122,7 +124,7 @@ Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQ
 
 전체 CI는 Core 목록에 포함된 원래 Hermes 연결 사례를 실행하며, 같은 사례를 별도 UI 준비 단계에서 반복하거나 Device Hub를 추가로 실행하지 않습니다. 연결 사례의 성공은 접근성 준비 완료를 뜻하지 않습니다. UI 검증은 실제 버튼·스크롤 영역·키보드와 시스템 창의 관측 조건을 기다립니다. 합성 Calendar·HealthKit 자료나 계정 응답을 사용한 결과는 실제 개인 자료·계정·물리 기기의 검증과 구분합니다. Apple 모델 준비 실패, 인식 실패와 UI 입력·복귀 실패도 별도로 기록합니다. 기존 집중 진단 경로의 별도 연결 준비 결과는 전체 실행과 구분합니다.
 
-iOS 선택 검증은 독립된 `E2E Test - Selected` workflow(`e2e-selected.yml`)의 `focus_profile=ios/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 선택 결과는 자체 검사로 보고하며 보호된 전체 검증을 충족하지 않습니다.
+iOS 선택 검증은 독립된 `E2E Test - Selected` workflow(`e2e-selected.yml`)의 `focus_profile=ios/<profile>`, `focus_scenario_file=<exact test-source path>`, `focus_scenario_name=<exact test or complete group>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 선택 결과는 자체 검사로 보고하며 보호된 전체 검증을 충족하지 않습니다.
 
 전체 release dispatch는 Debug 27개, Release 76개, Speech 9개로 총 112개의 서로 다른 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. Ready PR은 변경 영향으로 선택한 cohort만 실행합니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. Ready PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
 

@@ -1,12 +1,8 @@
 name: Prepare pinned native build tools
-description: Install the selected Xcode Metal Toolchain and the pinned JavaScript and Ruby tools on each native build host.
+description: Install the pinned JavaScript and Ruby tools on each native build host.
 runs:
   using: composite
   steps:
-    # Recent hosted Xcode images may omit this optional component while ld still adds its Simulator Swift search path.
-    - name: Install the selected Xcode Metal Toolchain
-      shell: bash
-      run: scripts/ci/run-command.sh ios-metal-toolchain artifacts/ios-focus/metal-toolchain.log -- node scripts/ci/fail-on-warning.mjs -- xcodebuild -downloadComponent metalToolchain
     # The calling workflow exposes host bootstrap immediately after checkout.
     - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
       with:
