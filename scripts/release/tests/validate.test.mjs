@@ -46,16 +46,37 @@ test('requires the root and iOS version sources, main, and candidate SHA to agre
   assert.match(sourceMismatch.errors.join(' '), /workflow candidate SHA/);
 });
 
-test('accepts static-check pushes alongside explicit full iOS dispatch', () => {
+test('accepts static-check pushes alongside the nightly full E2E schedule', () => {
   const context = validContext({
     ciRuns: validContext().ciRuns.map((run) => ({
       ...run,
-      event: run.path === '.github/workflows/e2e-test.yml' ? 'workflow_dispatch' : 'push',
+      event: run.path === '.github/workflows/e2e-test.yml' ? 'schedule' : 'push',
     })),
   });
   const result = validateCandidate(context);
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
+});
+
+test('requires the nightly E2E receipt for the exact release target after main advances', () => {
+  const nextMainSha = 'b'.repeat(40);
+  const previousRuns = validContext().ciRuns.map((run) => ({
+    ...run,
+    head_sha:
+      run.path === '.github/workflows/e2e-test.yml' ? sourceSha : nextMainSha,
+  }));
+  const currentRuns = latestMainValidationRuns(nextMainSha, previousRuns);
+  const context = validContext({
+    sha: nextMainSha,
+    sourceSha: nextMainSha,
+    currentMainSha: nextMainSha,
+    ciRuns: currentRuns,
+  });
+  const result = validateCandidate(context);
+
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /scheduled main E2E receipt/);
+  assert.match(result.errors.join(' '), /nightly run on this commit/);
 });
 
 test('requires exactly one successful trusted workflow run for the exact main commit', () => {
@@ -112,7 +133,7 @@ test('requires each required branch-protection job exactly once and completed su
     assert.equal(result.valid, false);
     assert.equal(result.publicationAllowed, false);
   }
-  assert.equal(REQUIRED_CI_JOBS.length, 22);
+  assert.equal(REQUIRED_CI_JOBS.length, 16);
 });
 
 test('a newer failed dispatch run supersedes an older successful push run', () => {

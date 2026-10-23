@@ -7,6 +7,7 @@ import {
 import { compareVersions, isReleaseVersion } from './version-tags.mjs';
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
+const MAIN_E2E_WORKFLOW_PATH = '.github/workflows/e2e-test.yml';
 
 export { REQUIRED_CI_JOBS };
 
@@ -36,7 +37,9 @@ export function validateCandidate(context) {
   )
     errors.push('source commit must be the full workflow candidate SHA');
   if (context.currentMainSha?.toLowerCase() !== context.sourceSha?.toLowerCase())
-    errors.push('main advanced or no longer points to the workflow candidate');
+    errors.push(
+      'main advanced during release verification; rerun Release from the current main SHA after its nightly E2E validation succeeds',
+    );
 
   // Only supported events from the exact trusted main workflow may attest its required checks.
   const ciRuns = context.ciRuns ?? [];
@@ -50,7 +53,11 @@ export function validateCandidate(context) {
   for (const path of TRUSTED_CI_WORKFLOW_PATHS) {
     const matches = ciRuns.filter((run) => run.path === path);
     if (matches.length !== 1) {
-      errors.push(`trusted main validation workflow did not run exactly once: ${path}`);
+      if (path === MAIN_E2E_WORKFLOW_PATH && matches.length === 0)
+        errors.push(
+          'scheduled main E2E receipt is missing for the exact release target SHA; wait for the nightly run on this commit',
+        );
+      else errors.push(`trusted main validation workflow did not run exactly once: ${path}`);
       continue;
     }
     const [run] = matches;
@@ -62,9 +69,14 @@ export function validateCandidate(context) {
       run.status !== 'completed' ||
       run.conclusion !== 'success'
     ) {
-      errors.push(
-        `trusted main validation workflow did not complete successfully for the exact source commit: ${path}`,
-      );
+      if (path === MAIN_E2E_WORKFLOW_PATH)
+        errors.push(
+          'scheduled main E2E receipt did not complete successfully for the exact release target SHA',
+        );
+      else
+        errors.push(
+          `trusted main validation workflow did not complete successfully for the exact source commit: ${path}`,
+        );
     }
   }
 

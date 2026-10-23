@@ -10,16 +10,6 @@ import { iosValidationTierForEvent } from '../ios-validation-tier.mjs';
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 
-function evaluateWorkflowExpression(expression, context) {
-  const source = expression
-    .replace(/^\$\{\{\s*|\s*\}\}$/g, '')
-    .replace(/(?:github|inputs|needs)(?:\.[a-z_]+)+/g, (path) => {
-      const value = path.split('.').reduce((current, key) => current?.[key], context);
-      return typeof value === 'boolean' ? String(value) : JSON.stringify(value ?? '');
-    });
-  return Function(`"use strict"; return (${source});`)();
-}
-
 const mainRef = 'refs/heads/main';
 const pullRequest = {
   action: 'synchronize',
@@ -33,7 +23,7 @@ test('event tiers distinguish PR, main impact, Full, diagnostics, and unknown ev
   assert.equal(iosValidationTierForEvent('pull_request', 'refs/pull/216/merge'), 'pr');
   assert.equal(iosValidationTierForEvent('push', mainRef), 'main-impact');
   assert.equal(iosValidationTierForEvent('schedule', mainRef), 'full');
-  assert.equal(iosValidationTierForEvent('workflow_dispatch', mainRef), 'full');
+  assert.equal(iosValidationTierForEvent('workflow_dispatch', mainRef), 'diagnostic');
   assert.equal(iosValidationTierForEvent('workflow_dispatch', 'refs/heads/feature'), 'diagnostic');
   assert.equal(iosValidationTierForEvent('repository_dispatch', mainRef), 'unclassified');
 });
@@ -51,10 +41,10 @@ test('selection keeps tier provenance even when path impact selects every PR coh
   assert.deepEqual(selection.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
 });
 
-test('scheduled and main-dispatch selections are Full; off-main dispatch is diagnostic', () => {
+test('only a scheduled main selection is Full; manual dispatch stays diagnostic', () => {
   const schedule = selectChecksForEvent('schedule', {}, () => '', null, mainRef);
-  const releaseCandidate = selectChecksForEvent('workflow_dispatch', {}, () => '', null, mainRef);
-  const diagnostic = selectChecksForEvent(
+  const manual = selectChecksForEvent('workflow_dispatch', {}, () => '', null, mainRef);
+  const offMainManual = selectChecksForEvent(
     'workflow_dispatch',
     {},
     () => '',
@@ -62,13 +52,11 @@ test('scheduled and main-dispatch selections are Full; off-main dispatch is diag
     'refs/heads/feature',
   );
 
-  for (const selection of [schedule, releaseCandidate]) {
-    assert.equal(selection.validation_tier, 'full');
-    assert.deepEqual(selection.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
-    assert.equal(selection.ios_oauth, true);
-  }
-  assert.equal(diagnostic.validation_tier, 'diagnostic');
-  assert.deepEqual(diagnostic.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
+  assert.equal(schedule.validation_tier, 'full');
+  assert.deepEqual(schedule.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
+  assert.equal(schedule.ios_oauth, true);
+  assert.equal(manual.validation_tier, 'diagnostic');
+  assert.equal(offMainManual.validation_tier, 'diagnostic');
 });
 
 test('an explicitly validated candidate dispatch gets its own complete Full tier', () => {
@@ -111,14 +99,15 @@ test('main pushes are impact-based and unknown events never claim a known tier',
   );
 });
 
-test('the E2E workflow schedules a weekly Full run on main and threads tier into completeness', () => {
+test('the E2E workflow schedules daily Full validation on main and threads tier into completeness', () => {
   const workflow = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
   const completeness = yaml.load(
     readFileSync('.github/workflows/ios-test-completeness.yml', 'utf8'),
   );
 
+  assert.deepEqual(Object.keys(workflow.on), ['schedule']);
   assert.equal(workflow.on.schedule.length, 1);
-  assert.equal(workflow.on.schedule[0].cron, '0 18 * * 0');
+  assert.equal(workflow.on.schedule[0].cron, '0 18 * * *');
   assert.equal(
     workflow.jobs.selection.outputs.validation_tier,
     '${{ steps.select.outputs.validation_tier }}',
@@ -130,71 +119,25 @@ test('the E2E workflow schedules a weekly Full run on main and threads tier into
   assert.equal(completeness.on.workflow_call.inputs.validation_tier.required, true);
 });
 
-test('the candidate workflow input is optional and its protected statuses are isolated', () => {
+test('scheduled Full validation retains OAuth, Production and provider authentication coverage', () => {
   const workflow = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
-  const selectionAction = yaml.load(
-    readFileSync('.github/actions/ios-e2e-selection/action.yml', 'utf8'),
-  );
   const receiptAction = yaml.load(
     readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
   );
-  const candidateContext = {
-    github: { event_name: 'workflow_dispatch', ref: 'refs/heads/feature' },
-    inputs: { candidate_pr_number: '217' },
-    needs: { selection: { outputs: { non_protected_contexts: 'false' } } },
-  };
-
-  assert.deepEqual(workflow.on.workflow_dispatch.inputs.candidate_pr_number, {
-    description: 'Run complete validation for this open Draft pull request head.',
-    required: false,
-    type: 'string',
-    default: '',
-  });
-  assert.match(workflow.jobs.required_statuses.name, /Candidate/);
-  assert.match(workflow.jobs.ios_simulator_build.name, /Candidate/);
-  assert.match(workflow.jobs.selection.name, /Candidate/);
-  assert.equal(workflow.permissions['pull-requests'], 'read');
-  const candidateVerification = selectionAction.runs.steps.find(
-    ({ id }) => id === 'verify_candidate',
-  );
-  const selected = selectionAction.runs.steps.find(({ id }) => id === 'select');
-  assert.equal(candidateVerification.if, "inputs.candidate_pr_number != ''");
-  assert.ok(
-    selectionAction.runs.steps.indexOf(candidateVerification) <
-      selectionAction.runs.steps.indexOf(selected),
-  );
-  assert.equal(
-    selected.env.OROT_IOS_CANDIDATE_HEAD_SHA,
-    '${{ steps.verify_candidate.outputs.candidate_head_sha }}',
-  );
-  for (const output of ['candidate_pr_number', 'candidate_head_ref', 'candidate_head_sha'])
-    assert.equal(
-      selectionAction.outputs[output].value,
-      '${{ steps.verify_candidate.outputs.' + output + ' }}',
-    );
-  const candidateJobNames = [
-    'selection',
-    'reuse_ready_evidence',
-    'plan',
-    'production_validation',
-    'oauth_products',
-    'oauth_execution',
-    'debug_products',
-    'release_products',
-    'debug_execution',
-    'release_execution',
-    'completeness',
-  ].map((name) => evaluateWorkflowExpression(workflow.jobs[name].name, candidateContext));
-  assert.ok(candidateJobNames.every((name) => name.startsWith('Candidate /')));
-  assert.equal(new Set(candidateJobNames).size, candidateJobNames.length);
-  assert.equal(
-    evaluateWorkflowExpression(workflow.jobs.ios_simulator_build.name, candidateContext),
-    'Candidate / Receipt',
-  );
-  assert.equal(
-    evaluateWorkflowExpression(workflow.jobs.required_statuses.name, candidateContext),
-    'Candidate',
-  );
+  const authTests = [
+    'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
+    'OrotUITests/ProviderSelectionUITests/testExplicitSelectionAndKeychainRestoreNeverChooseAnAutomaticFallback',
+    'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
+  ];
+  const providerSelection = selectChecksForEvent('schedule', {}, () => '', null, mainRef);
+  assert.equal(providerSelection.validation_tier, 'full');
+  assert.ok(providerSelection.ios_test_cohorts.includes('provider-selection'));
+  assert.equal(workflow.jobs.production_validation.needs, 'plan');
+  assert.equal(workflow.jobs.oauth_products.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
+  assert.equal(workflow.jobs.oauth_execution.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
+  assert.equal(workflow.jobs.debug_products.if, "${{ needs.plan.outputs.has_debug == 'true' }}");
+  assert.equal(workflow.jobs.release_products.if, "${{ needs.plan.outputs.has_release == 'true' }}");
+  assert.equal(workflow.jobs.completeness.with.validation_tier, '${{ needs.selection.outputs.validation_tier }}');
   assert.ok(
     receiptAction.runs.steps.some(
       ({ name }) => name === 'Read the separate OAuth execution receipt',
@@ -205,4 +148,6 @@ test('the candidate workflow input is optional and its protected statuses are is
       ({ name }) => name === 'Verify production receipt at this run and head',
     ),
   );
+  const inventory = readFileSync('scripts/ci/ios-test-inventory.mjs', 'utf8');
+  for (const identifier of authTests) assert.ok(inventory.includes(identifier));
 });

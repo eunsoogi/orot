@@ -2,13 +2,13 @@ import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 
 const TIERS = new Set(['pr', 'main-impact', 'full', 'candidate', 'diagnostic', 'unclassified']);
 
-/** The caller passes a candidate number only after live PR identity verification; breadth never promotes a tier. */
+/** Full is reserved for the nightly main schedule; manual runs stay diagnostic even on main. */
 export function iosValidationTierForEvent(eventName, ref, candidatePrNumber = '') {
   if (eventName === 'pull_request') return 'pr';
   if (eventName === 'push' && ref === 'refs/heads/main') return 'main-impact';
   if (eventName === 'workflow_dispatch') {
     if (typeof candidatePrNumber === 'string' && candidatePrNumber !== '') return 'candidate';
-    return ref === 'refs/heads/main' ? 'full' : 'diagnostic';
+    return 'diagnostic';
   }
   if (eventName === 'schedule' && ref === 'refs/heads/main') return 'full';
   return 'unclassified';

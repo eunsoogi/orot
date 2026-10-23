@@ -6,7 +6,7 @@ import {
   TRUSTED_CI_WORKFLOW_PATHS,
 } from '../ci-required-jobs.mjs';
 
-test('release gate mirrors all 22 required main branch-protection contexts', () => {
+test('release gate separates 16 protected checks from the trusted nightly E2E run', () => {
   const expected = {
     '.github/workflows/code-quality.yml': [
       'Maintained file inventory',
@@ -25,19 +25,15 @@ test('release gate mirrors all 22 required main branch-protection contexts', () 
     ],
     '.github/workflows/unit-test.yml': ['TypeScript typecheck', 'Unit and component tests'],
     '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
-    '.github/workflows/e2e-test.yml': [
-      'Validate / Build',
-      'Validate / UI',
-      'Validate / Storage',
-      'Validate / Provider',
-      'Validate / Speech',
-      'Validate / Questions',
-    ],
   };
 
   assert.deepEqual(REQUIRED_CI_JOBS_BY_WORKFLOW, expected);
-  assert.deepEqual(TRUSTED_CI_WORKFLOW_PATHS, Object.keys(expected));
+  assert.deepEqual(TRUSTED_CI_WORKFLOW_PATHS, [
+    ...Object.keys(expected),
+    '.github/workflows/e2e-test.yml',
+  ]);
   assert.deepEqual(REQUIRED_CI_JOBS, Object.values(expected).flat());
-  assert.equal(REQUIRED_CI_JOBS.length, 22);
+  assert.equal(REQUIRED_CI_JOBS.length, 16);
+  assert.equal(REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'], undefined);
   assert.equal(new Set(REQUIRED_CI_JOBS).size, REQUIRED_CI_JOBS.length);
 });

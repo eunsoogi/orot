@@ -1,4 +1,8 @@
-import { REQUIRED_CI_JOBS, REQUIRED_CI_JOBS_BY_WORKFLOW } from '../ci-required-jobs.mjs';
+import {
+  REQUIRED_CI_JOBS,
+  REQUIRED_CI_JOBS_BY_WORKFLOW,
+  TRUSTED_CI_WORKFLOW_PATHS,
+} from '../ci-required-jobs.mjs';
 
 export const sourceSha = 'a'.repeat(40);
 const jobWorkflowPath = Object.fromEntries(
@@ -8,10 +12,10 @@ const jobWorkflowPath = Object.fromEntries(
 );
 
 export function validContext(overrides = {}) {
-  const ciRuns = Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW).map((path, index) => ({
+  const ciRuns = TRUSTED_CI_WORKFLOW_PATHS.map((path, index) => ({
     id: 1234 + index,
     path,
-    event: path === '.github/workflows/e2e-test.yml' ? 'workflow_dispatch' : 'push',
+    event: path === '.github/workflows/e2e-test.yml' ? 'schedule' : 'push',
     head_branch: 'main',
     head_sha: sourceSha,
     status: 'completed',

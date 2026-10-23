@@ -1,25 +1,13 @@
 name: E2E Test
 on:
-  # PRs and main pushes select impact; weekly and main-dispatch runs provide Full evidence.
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
-  push: { branches: [main] }
-  workflow_dispatch:
-    inputs:
-      candidate_pr_number:
-        description: 'Run complete validation for this open Draft pull request head.'
-        required: false
-        type: string
-        default: ''
+  # Run the complete regression inventory on main every day at 03:00 KST.
   schedule:
-    - cron: '0 18 * * 0'
+    - cron: '0 18 * * *'
 permissions:
   contents: read
-  pull-requests: read
 concurrency:
-  # The selected entry shares this allocation window; the dedicated manager cancels stale PR runs.
+  # Nightly full validation shares the account-wide Mac reservation and never cancels an active run.
   group: ios-ci-macos-${{ github.repository }}
-  # Preserve ready-head validations when metadata or diagnostic runs are queued.
   queue: max
   cancel-in-progress: false
 jobs:

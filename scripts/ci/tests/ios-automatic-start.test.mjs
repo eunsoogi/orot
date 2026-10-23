@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 
 const require = createRequire(import.meta.url);
@@ -19,20 +19,16 @@ for (const name of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml']) {
 }
 
 // GitHub parses these event bytes; separate assertions cover whether the jobs allocate Mac runners.
-test('full E2E listens to ready PR events, main pushes and release dispatch', () => {
+test('full E2E listens only to the daily main schedule', () => {
   const e2e = read('e2e-test.yml');
-  assert.deepEqual(e2e.on.pull_request.types, [
-    'opened',
-    'synchronize',
-    'reopened',
-    'ready_for_review',
-    'converted_to_draft',
-    'edited',
-  ]);
-  assert.equal(e2e.on.pull_request.branches, undefined);
-  assert.deepEqual(e2e.on.push, { branches: ['main'] });
-  assert.deepEqual(Object.keys(e2e.on.workflow_dispatch.inputs), ['candidate_pr_number']);
-  assert.equal(e2e.on.workflow_dispatch.inputs.candidate_pr_number.required, false);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
+  assert.equal(e2e.permissions['pull-requests'], undefined);
+  assert.deepEqual(e2e.concurrency, {
+    group: 'ios-ci-macos-${{ github.repository }}',
+    queue: 'max',
+    'cancel-in-progress': false,
+  });
 });
 
 // Follow reusable CI workflows too: adding an environment below the caller would silently restore a deployment approval gate.
@@ -70,9 +66,18 @@ test('full E2E retains all validation dependencies and skips only unselected con
   assert.equal(full.on.workflow_call, undefined);
 });
 
-test('focused diagnostics remain a separate automatic manual workflow without deployment approval', () => {
+test('focused E2E has no public entry point while its reusable workflow remains internally valid', () => {
+  assert.equal(existsSync('.github/workflows/e2e-selected.yml'), false);
+  const callers = readdirSync('.github/workflows')
+    .filter((name) => name.endsWith('.yml'))
+    .flatMap((name) =>
+      Object.entries(read(name).jobs).filter(([, job]) => job.uses === './.github/workflows/ios-focused.yml'),
+    );
+  assert.deepEqual(callers, []);
+
   const focus = read('ios-focused.yml');
-  assertAutomaticGraph('e2e-selected.yml');
+  assert.deepEqual(Object.keys(focus.on), ['workflow_call']);
+  assertAutomaticGraph('ios-focused.yml');
   assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.selection['continue-on-error'], undefined);
   assert.equal(focus.jobs.products.needs, 'selection');
