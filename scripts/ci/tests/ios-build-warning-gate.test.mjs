@@ -76,6 +76,28 @@ test('accepts and preserves the documented App Intents metadata notice', () => {
   );
 });
 
+test('installs the selected Xcode Metal Toolchain before native build dependencies', () => {
+  const nativeToolchain = readFileSync(
+    resolve('.github/actions/ios-native-toolchain/action.yml'),
+    'utf8',
+  );
+  const install = nativeToolchain.indexOf('xcodebuild -downloadComponent metalToolchain');
+  const dependencies = nativeToolchain.indexOf('Install frozen workspace dependencies');
+
+  // The strict build gate must see an installed optional component, not an image-specific missing search path.
+  assert.ok(install >= 0);
+  assert.ok(dependencies > install);
+  for (const action of [
+    '.github/actions/ios-test-products-build/action.yml',
+    '.github/actions/ios-production-validation/action.yml',
+  ]) {
+    assert.match(
+      readFileSync(resolve(action), 'utf8'),
+      /\.\/\.github\/actions\/ios-native-toolchain/,
+    );
+  }
+});
+
 test('keeps copied and changed App Intents warnings blocking', () => {
   const lines = [
     'warning: Metadata extraction skipped, no AppIntents.framework dependency found',
