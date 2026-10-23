@@ -55,10 +55,7 @@ test('selects the newest permitted main run and keeps the latest scheduled E2E a
 });
 
 test('release evidence accepts scheduled E2E on main and excludes pushes, dispatches and diagnostics', () => {
-  assert.equal(
-    isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'schedule'),
-    true,
-  );
+  assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'schedule'), true);
   assert.equal(
     isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'workflow_dispatch'),
     false,

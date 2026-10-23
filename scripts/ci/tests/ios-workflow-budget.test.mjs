@@ -79,9 +79,10 @@ test('the finite feature plan permits independent parallel jobs without repeatin
   const ids = jobs.completeness.needs.filter((id) => id !== 'plan');
   const cohorts = cohortJobs(jobs);
   const weight = (id) => cohorts.filter(([, job]) => job.callerId === id).length || 1;
+  // The serialized authentication job adds one dependency after cohort execution completes.
   assert.equal(
     ids.reduce((sum, id) => sum + weight(id), 0),
-    plan.length + 6,
+    plan.length + 7,
   );
   assert.equal(maximumConcurrentJobWeight(jobs, ids, weight), plan.length + 2);
   assert.deepEqual([...jobs.completeness.needs].sort(), ['plan', ...ids].sort());

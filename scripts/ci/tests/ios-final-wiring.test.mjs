@@ -11,58 +11,11 @@ const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const workflow = (path) => yaml.load(readFileSync(path, 'utf8'));
 
-function protectedLeaves(path, parents = [], inputs = {}) {
-  return Object.values(workflow(path).jobs).flatMap((job) => {
-    const name = (job.name ?? '').replace(/\$\{\{ inputs\.profile \}\}/g, inputs.profile ?? '');
-    const names = [...parents, name];
-    if (job.uses) return protectedLeaves(job.uses.replace(/^\.\//, ''), names, job.with ?? {});
-    assert.equal(job['runs-on'], 'ubuntu-24.04');
-    assert.equal(job.if, 'always()');
-    assert.equal(job['continue-on-error'], undefined);
-    // GitHub expands the single status job into five separately named checks.
-    // Preserve exact-name comparison after that expansion, including duplicate detection.
-    const checks = job.strategy?.matrix?.include?.map(({ check }) => check) ??
-      job.strategy?.matrix?.check ?? [null];
-    return checks.map((check) =>
-      names.join(' / ').replace(/\$\{\{ matrix\.check \}\}/g, check ?? ''),
-    );
-  });
-}
-
-test('five Linux integration domain leaves retain the exact required context names', () => {
+test('nightly E2E receipt is outside the PR required-check namespace', () => {
   const e2e = workflow('.github/workflows/e2e-test.yml');
-  const required = e2e.jobs.required_statuses;
-  const protectedNameExpression =
-    /\$\{\{\s*github\.event_name == 'workflow_dispatch' && inputs\.candidate_pr_number != '' && 'Candidate' \|\| needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred' \|\| 'Validate'\s*\}\}/;
-  assert.match(required.name, protectedNameExpression);
-  const readyName = required.name.replace(protectedNameExpression, 'Validate');
-  const deferredName = required.name.replace(protectedNameExpression, 'Deferred');
-  const candidateName = required.name.replace(protectedNameExpression, 'Candidate');
-  const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [readyName]);
-  const expected = REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'];
-  assert.deepEqual(actual.sort(), expected.filter((name) => name !== 'Validate / Build').sort());
-  assert.equal(deferredName, 'Deferred');
-  assert.equal(candidateName, 'Candidate');
-  const buildNameExpression =
-    /\$\{\{\s*github\.event_name == 'workflow_dispatch' && inputs\.candidate_pr_number != '' && 'Candidate \/ Receipt' \|\| needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred \/ Build' \|\| 'Validate \/ Build'\s*\}\}/;
-  assert.match(e2e.jobs.ios_simulator_build.name, buildNameExpression);
-  assert.equal(
-    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Validate / Build'),
-    'Validate / Build',
-  );
-  assert.equal(
-    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Deferred / Build'),
-    'Deferred / Build',
-  );
-  assert.equal(
-    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Candidate / Receipt'),
-    'Candidate / Receipt',
-  );
-  assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
-  assert.equal(e2e.jobs.plan.needs, 'selection');
+  assert.equal(REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'], undefined);
   assert.equal(e2e.jobs.completeness.uses, './.github/workflows/ios-test-completeness.yml');
-  assert.equal(e2e.jobs.selection['runs-on'], 'ubuntu-24.04');
-  assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
+  assert.ok(e2e.jobs.completeness.needs.includes('authentication'));
 });
 
 function resolveDefaultJobName(name) {
@@ -72,7 +25,7 @@ function resolveDefaultJobName(name) {
   );
 }
 
-test('full and focused visible job names use one consistent role and target', () => {
+test('scheduled cohort jobs use one consistent role and target', () => {
   const root = workflow('.github/workflows/e2e-test.yml');
   assert.equal(root.name, 'E2E Test');
   assert.equal(
@@ -82,8 +35,9 @@ test('full and focused visible job names use one consistent role and target', ()
   );
   const entry = root.jobs;
   const full = Object.fromEntries(
-    Object.entries(entry).filter(([id]) =>
-      [...entry.completeness.needs, 'completeness'].includes(id),
+    Object.entries(entry).filter(
+      ([id]) =>
+        id !== 'authentication' && [...entry.completeness.needs, 'completeness'].includes(id),
     ),
   );
   const names = [];
@@ -123,20 +77,6 @@ test('full and focused visible job names use one consistent role and target', ()
     assert.equal(visible.match(/E2E/g)?.length, 1);
     assert.doesNotMatch(name, /\$\{\{|[()\d]/);
   }
-  const selected = workflow('.github/workflows/e2e-selected.yml').jobs.selected;
-  const focused = workflow(selected.uses.replace(/^\.\//, '')).jobs;
-  assert.deepEqual(
-    Object.values(focused)
-      .map((job) => selected.name + ' / ' + job.name)
-      .sort(),
-    [
-      'iOS / Plan / Select',
-      'iOS / Build / ${{ needs.selection.outputs.configuration }}',
-      'iOS / Test',
-      'iOS / Test / Selection',
-      'iOS / Validate / Complete',
-    ].sort(),
-  );
 });
 
 test('full integration execution preserves 112 observations and every registered provider case', () => {

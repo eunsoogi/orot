@@ -66,14 +66,16 @@ test('full E2E retains all validation dependencies and skips only unselected con
   assert.equal(full.on.workflow_call, undefined);
 });
 
-test('focused E2E has no public entry point while its reusable workflow remains internally valid', () => {
+test('focused E2E runs only as the nightly authentication suite', () => {
   assert.equal(existsSync('.github/workflows/e2e-selected.yml'), false);
   const callers = readdirSync('.github/workflows')
     .filter((name) => name.endsWith('.yml'))
     .flatMap((name) =>
-      Object.entries(read(name).jobs).filter(([, job]) => job.uses === './.github/workflows/ios-focused.yml'),
+      Object.entries(read(name).jobs)
+        .filter(([, job]) => job.uses === './.github/workflows/ios-focused.yml')
+        .map(([job]) => [name, job]),
     );
-  assert.deepEqual(callers, []);
+  assert.deepEqual(callers, [['e2e-test.yml', 'authentication']]);
 
   const focus = read('ios-focused.yml');
   assert.deepEqual(Object.keys(focus.on), ['workflow_call']);

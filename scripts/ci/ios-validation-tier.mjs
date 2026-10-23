@@ -2,7 +2,7 @@ import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 
 const TIERS = new Set(['pr', 'main-impact', 'full', 'candidate', 'diagnostic', 'unclassified']);
 
-/** Full is reserved for the nightly main schedule; manual runs stay diagnostic even on main. */
+/** Full is reserved for the nightly main schedule; manual and candidate events use non-Full tiers. */
 export function iosValidationTierForEvent(eventName, ref, candidatePrNumber = '') {
   if (eventName === 'pull_request') return 'pr';
   if (eventName === 'push' && ref === 'refs/heads/main') return 'main-impact';

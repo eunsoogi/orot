@@ -133,11 +133,13 @@ test('reuses PR 217 evidence when Actions returns the captured skipped reuse job
   assert.equal(found.jobs.find(({ id }) => id === 120333925801).conclusion, 'skipped');
 });
 
-test('skipped job payload expressions stay aligned with the workflow identities', () => {
+test('nightly workflow status names do not expose removed Candidate or Deferred contexts', () => {
   const workflow = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
 
-  for (const expression of Object.values(READY_JOB_NAME_EXPRESSIONS))
-    assert.ok(workflow.includes(`name: \${{ ${expression} }}`), expression);
+  assert.match(workflow, /^ {4}name: Plan \/ Coverage$/m);
+  assert.match(workflow, /^ {4}name: Validate \/ Build$/m);
+  assert.match(workflow, /^ {4}name: Validate$/m);
+  assert.doesNotMatch(workflow, /Candidate|Deferred/);
 });
 
 test('recognizes captured skipped coverage and completion names for an empty Ready selection', async () => {

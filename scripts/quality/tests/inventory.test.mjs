@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
-import { classifyPath } from '../inventory.mjs';
+import { buildInventory, classifyPath } from '../inventory.mjs';
 
 test('does not treat inherited object names as explicit policy entries', () => {
   for (const path of [
@@ -53,4 +56,18 @@ test('classifies the pinned Metro WorkerFarm patch with Release bundle validatio
   assert.match(metroPatch.reason, /version-pinned third-party diff/i);
   assert.match(metroPatch.validation, /Metro WorkerFarm color-environment regression/);
   assert.match(metroPatch.validation, /clean Release app compilation/);
+});
+
+test('ignores tracked paths that are deleted from the working tree', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'orot-quality-inventory-'));
+  try {
+    await writeFile(join(root, 'present.yml'), 'name: present\n');
+    const inventory = await buildInventory({
+      trackedPaths: ['removed.yml', 'present.yml'],
+      root,
+    });
+    assert.deepEqual(inventory, [{ path: 'present.yml', kind: 'surface', surface: 'yaml' }]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -1,10 +1,7 @@
 import { resolve } from 'node:path';
 import { createQualityTools, filesFor } from './process.mjs';
 
-const actionlintQueueWorkflows = new Set([
-  '.github/workflows/e2e-test.yml',
-  '.github/workflows/e2e-selected.yml',
-]);
+const actionlintQueueWorkflows = new Set(['.github/workflows/e2e-test.yml']);
 const actionlintQueueDiagnostic = 'unexpected key "queue" for "concurrency" section';
 
 /** Keep all workflows linted while isolating the pinned parser's unsupported queue-key warning. */

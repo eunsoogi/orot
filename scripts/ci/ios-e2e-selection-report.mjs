@@ -83,7 +83,7 @@ export function writeSelectionReport(selection, eventName, payload, fullValidati
   mkdirSync('artifacts', { recursive: true });
   writeFileSync('artifacts/ios-e2e-selection.json', JSON.stringify(report, null, 2) + '\n');
   if (!process.env.GITHUB_STEP_SUMMARY) return;
-  // Off-main manual runs keep a complete cohort selection for diagnosis without protected iOS jobs.
+  // Non-Full event tiers keep the complete selection for diagnosis without authorizing Mac jobs.
   const disposition = fullValidationDeferred
     ? 'deferred until the pull request is ready for review'
     : selection.validation_tier === 'candidate'

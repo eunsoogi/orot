@@ -62,8 +62,7 @@ test('requires the nightly E2E receipt for the exact release target after main a
   const nextMainSha = 'b'.repeat(40);
   const previousRuns = validContext().ciRuns.map((run) => ({
     ...run,
-    head_sha:
-      run.path === '.github/workflows/e2e-test.yml' ? sourceSha : nextMainSha,
+    head_sha: run.path === '.github/workflows/e2e-test.yml' ? sourceSha : nextMainSha,
   }));
   const currentRuns = latestMainValidationRuns(nextMainSha, previousRuns);
   const context = validContext({

@@ -1,10 +1,5 @@
-name: Validate candidate PR and select E2E paths
-description: Verify an optional Draft PR candidate and preserve the exact selection decision.
-inputs:
-  candidate_pr_number:
-    description: Open Draft PR to validate at its exact checked-out head.
-    required: false
-    default: ''
+name: Select iOS E2E paths
+description: Select changed-path cohorts and preserve the exact selection decision.
 outputs:
   selection_complete:
     description: Whether changed-path selection completed.
@@ -30,32 +25,11 @@ outputs:
   ios_tests:
     description: Whether the changed paths require iOS tests.
     value: ${{ steps.select.outputs.ios_tests }}
-  candidate_pr_number:
-    description: Verified same-repository Draft PR number for a candidate run.
-    value: ${{ steps.verify_candidate.outputs.candidate_pr_number }}
-  candidate_head_ref:
-    description: Verified candidate PR head branch.
-    value: ${{ steps.verify_candidate.outputs.candidate_head_ref }}
-  candidate_head_sha:
-    description: Verified candidate PR head SHA.
-    value: ${{ steps.verify_candidate.outputs.candidate_head_sha }}
 runs:
   using: composite
   steps:
-    # Check the live PR before coverage planning can make any macOS work eligible.
-    - id: verify_candidate
-      if: inputs.candidate_pr_number != ''
-      shell: bash
-      env:
-        OROT_CANDIDATE_PR_NUMBER: ${{ inputs.candidate_pr_number }}
-        GITHUB_TOKEN: ${{ github.token }}
-      run: node scripts/ci/ios-candidate-dispatch.mjs
     - id: select
       shell: bash
-      env:
-        OROT_IOS_CANDIDATE_PR_NUMBER: ${{ steps.verify_candidate.outputs.candidate_pr_number }}
-        OROT_IOS_CANDIDATE_HEAD_REF: ${{ steps.verify_candidate.outputs.candidate_head_ref }}
-        OROT_IOS_CANDIDATE_HEAD_SHA: ${{ steps.verify_candidate.outputs.candidate_head_sha }}
       run: node scripts/ci/select-changed-paths.mjs
     - name: Preserve the event decision and selected inventory
       if: steps.select.outcome == 'success'

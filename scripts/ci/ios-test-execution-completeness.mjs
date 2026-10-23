@@ -34,6 +34,9 @@ export function validateIosTestExecutionResults(
     release_products: hasRelease ? 'success' : 'skipped',
     debug_execution: hasDebug ? 'success' : 'skipped',
     release_execution: hasRelease ? 'success' : 'skipped',
+    // Full scope includes the same-run protected Keychain tests after the cohort executors.
+    authentication:
+      validationTier === 'full' || validationTier === 'candidate' ? 'success' : 'skipped',
   };
   if (!results || typeof results !== 'object' || Array.isArray(results))
     throw new Error('Integration completeness requires a workflow job result object');

@@ -131,13 +131,26 @@ test('scheduled Full validation retains OAuth, Production and provider authentic
   ];
   const providerSelection = selectChecksForEvent('schedule', {}, () => '', null, mainRef);
   assert.equal(providerSelection.validation_tier, 'full');
-  assert.ok(providerSelection.ios_test_cohorts.includes('provider-selection'));
+  // The provider-selection execution profile is represented by the maintained `selection` cohort.
+  assert.ok(providerSelection.ios_test_cohorts.includes('selection'));
   assert.equal(workflow.jobs.production_validation.needs, 'plan');
-  assert.equal(workflow.jobs.oauth_products.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
-  assert.equal(workflow.jobs.oauth_execution.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
+  assert.equal(
+    workflow.jobs.oauth_products.if,
+    "${{ needs.plan.outputs.oauth_required == 'true' }}",
+  );
+  assert.equal(
+    workflow.jobs.oauth_execution.if,
+    "${{ needs.plan.outputs.oauth_required == 'true' }}",
+  );
   assert.equal(workflow.jobs.debug_products.if, "${{ needs.plan.outputs.has_debug == 'true' }}");
-  assert.equal(workflow.jobs.release_products.if, "${{ needs.plan.outputs.has_release == 'true' }}");
-  assert.equal(workflow.jobs.completeness.with.validation_tier, '${{ needs.selection.outputs.validation_tier }}');
+  assert.equal(
+    workflow.jobs.release_products.if,
+    "${{ needs.plan.outputs.has_release == 'true' }}",
+  );
+  assert.equal(
+    workflow.jobs.completeness.with.validation_tier,
+    '${{ needs.selection.outputs.validation_tier }}',
+  );
   assert.ok(
     receiptAction.runs.steps.some(
       ({ name }) => name === 'Read the separate OAuth execution receipt',

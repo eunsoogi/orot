@@ -10,6 +10,20 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 const sha = 'a'.repeat(40);
 const context = { GITHUB_SHA: sha, GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '1' };
+const ownerUdid = '11111111-2222-3333-4444-555555555555';
+
+function biometricLog(authorizationInputs = 1) {
+  return [
+    `FACE_ID_OWNER_APP_LAUNCHED udid=${ownerUdid} output=pid`,
+    `FACE_ID_ACTION_BEGIN action=enroll udid=${ownerUdid}`,
+    `FACE_ID_ACTION_SENT action=enroll udid=${ownerUdid}`,
+    ...Array.from({ length: authorizationInputs }, (_, index) => [
+      `FACE_ID_ACTION_BEGIN action=authorize udid=${ownerUdid}`,
+      `FACE_ID_AUTHORIZATION_INPUT_SENT count=${index + 1} udid=${ownerUdid}`,
+    ]).flat(),
+    `FACE_ID_TEST_RESULT exit=0 authorization_inputs=${authorizationInputs} udid=${ownerUdid}`,
+  ].join('\n');
+}
 const inputs = ['core', 'backup', 'local-model'].map((profile) => {
   const identifier = iosTestInventory(profile, profile === 'core' ? 'integration' : 'all')[0];
   const [target, name] = identifier.split('/');
@@ -32,6 +46,11 @@ inputs.push([
   'ios/core',
   'scripts/ci/recording-persistence-test-phases.mjs',
   'group/recording-persistence',
+]);
+inputs.push([
+  'ios/core',
+  'apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m',
+  'group/authentication',
 ]);
 inputs.push(
   [
@@ -87,6 +106,12 @@ function fixture(input, mutate = () => {}, environment = context, mutateFiles = 
           : 'results.json';
     if (path.includes('/')) mkdirSync(join(directory, path.split('/')[0]));
     writeFileSync(join(directory, path), JSON.stringify(report));
+    if (selection.mode === 'authentication') {
+      mkdirSync(join(directory, 'results.xcresult/Data'), { recursive: true });
+      writeFileSync(join(directory, 'results.xcresult/Info.plist'), 'synthetic result bundle');
+      writeFileSync(join(directory, 'simulator-owner.json'), JSON.stringify({ udid: ownerUdid }));
+      writeFileSync(join(directory, 'biometric-controls.log'), biometricLog());
+    }
     for (const cohort of focusedIosTestCohorts(selection)) {
       const destination = join(directory, 'cohorts', `ios-cohort-report-${cohort}-1234-1`);
       mkdirSync(destination, { recursive: true });
@@ -180,4 +205,27 @@ test('focus aggregation rejects stale context, incompatible products and incompl
   ])
     assert.notEqual(fixture(inputs[3], mutate).status, 0);
   assert.notEqual(fixture(inputs[3], undefined, { ...context, GITHUB_SHA: '' }).status, 0);
+});
+
+test('nightly Keychain evidence rejects missing result bundles and incomplete Face ID inputs', () => {
+  const authenticationInput = inputs.find((input) => input[2] === 'group/authentication');
+  const missingAuthorization = biometricLog().replace(
+    /FACE_ID_AUTHORIZATION_INPUT_SENT[^\n]+\n?/,
+    '',
+  );
+  const mismatchedAuthorizationCount = biometricLog(2).replace('count=2', 'count=1');
+  const wrongOwner = biometricLog().replace(
+    `udid=${ownerUdid}`,
+    'udid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+  );
+  for (const mutateFiles of [
+    (directory) => rmSync(join(directory, 'results.xcresult'), { recursive: true }),
+    (directory) => writeFileSync(join(directory, 'biometric-controls.log'), missingAuthorization),
+    (directory) =>
+      writeFileSync(join(directory, 'biometric-controls.log'), mismatchedAuthorizationCount),
+    (directory) => writeFileSync(join(directory, 'biometric-controls.log'), wrongOwner),
+  ]) {
+    const result = fixture(authenticationInput, undefined, context, mutateFiles);
+    assert.notEqual(result.status, 0);
+  }
 });

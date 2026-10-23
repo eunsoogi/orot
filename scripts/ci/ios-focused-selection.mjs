@@ -169,26 +169,6 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
   };
 }
 
-/** A PR selector must bind the workflow's actual branch/SHA, never silently substitute a different checkout. */
-export function verifyFocusedIosPullRequest(context, number, pullRequest) {
-  if (
-    typeof number !== 'string' ||
-    !/^[1-9]\d*$/.test(number) ||
-    !Number.isSafeInteger(Number(number))
-  )
-    throw new Error('iOS focus PR number must be a positive integer');
-  if (
-    pullRequest?.number !== Number(number) ||
-    pullRequest.state !== 'open' ||
-    pullRequest.head?.repo?.full_name !== context.repository ||
-    pullRequest.head?.sha !== context.sha ||
-    pullRequest.head?.ref !== context.ref
-  )
-    throw new Error(
-      'iOS focus must run the selected open PR head in its own repository and branch',
-    );
-}
-
 /** Complete fixture selections share the full plan's independent jobs, never an oversized aggregate VM. */
 export function focusedIosTestCohorts(selection) {
   if (selection.profile !== 'fixtures' || selection.mode !== 'fixture' || selection.identifier)

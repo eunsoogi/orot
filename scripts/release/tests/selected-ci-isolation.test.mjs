@@ -20,9 +20,9 @@ function diagnostic(conclusion) {
   };
 }
 
-// Exercise the production release consumers, including newer diagnostics on the identical SHA.
+// Historical selected-workflow runs cannot replace the scheduled main E2E receipt for the same SHA.
 for (const conclusion of ['success', 'failure', 'skipped', 'cancelled']) {
-  test(`selected ${conclusion} cannot replace passing full evidence or satisfy a focused-only candidate`, () => {
+  test(`selected ${conclusion} run cannot satisfy scheduled main E2E evidence`, () => {
     const context = validContext();
     const collect = (runs) =>
       collectJobsForMainValidation(sourceSha, runs, (id) => {
@@ -47,7 +47,7 @@ for (const conclusion of ['success', 'failure', 'skipped', 'cancelled']) {
     assert.equal(missing.valid, false);
     assert.match(
       missing.errors.join('\n'),
-      /trusted main validation workflow did not run exactly once: .*e2e-test.yml/,
+      /scheduled main E2E receipt is missing for the exact release target SHA/,
     );
   });
 }

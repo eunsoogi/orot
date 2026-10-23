@@ -53,11 +53,12 @@ function runManualDispatch(
   }
 }
 
-test('CLI writes a full-verification selection for manual GitHub Actions runs', () => {
+test('CLI labels an unconfigured manual event as diagnostic without scheduling protected E2E', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-ci-paths-output-'));
   const outputPath = join(directory, 'output');
   try {
-    const { result, report } = runManualDispatch(outputPath);
+    // Direct CLI use cannot enable manual E2E because the public workflow has no manual trigger.
+    const { result, report, summary } = runManualDispatch(outputPath, 'refs/heads/main', true);
     assert.equal(result.status, 0, result.stderr);
     const outputs = Object.fromEntries(
       readFileSync(outputPath, 'utf8')
@@ -67,14 +68,15 @@ test('CLI writes a full-verification selection for manual GitHub Actions runs', 
     );
     assert.equal(outputs.all, 'true');
     assert.equal(outputs.reason, 'manual-full-inventory-selection');
-    assert.equal(outputs.validation_tier, 'full');
+    assert.equal(outputs.validation_tier, 'diagnostic');
     assert.equal(outputs.selection_complete, 'true');
     assert.equal(
       CHECK_KEYS.every((key) => outputs[key] === 'true'),
       true,
     );
     assert.equal(report.schemaVersion, 2);
-    assert.equal(report.validationTier, 'full');
+    assert.equal(report.validationTier, 'diagnostic');
+    assert.match(summary, /diagnostic selection only; protected iOS validation is not scheduled/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

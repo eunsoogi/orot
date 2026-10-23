@@ -3,18 +3,16 @@ name: Focused integration
 on:
   workflow_call:
     inputs:
-      pr_number: { required: false, type: string, default: '' }
       profile: { required: true, type: string }
       scenario_file: { required: true, type: string }
       scenario_name: { required: true, type: string }
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
-  # Updating the selected PR invalidates its previous diagnostic, without satisfying the full gate.
-  group: focused-ios-${{ inputs.pr_number || github.run_id }}-scenario
+  # Keep the authentication result scoped to its scheduled workflow run.
+  group: focused-ios-${{ github.run_id }}-scenario
   cancel-in-progress: true
 
 env:
@@ -48,12 +46,10 @@ jobs:
       - name: Bind the actual head and exact selection before Mac allocation
         id: selection
         env:
-          GH_TOKEN: ${{ github.token }}
           PROFILE: ${{ inputs.profile }}
           SOURCE_FILE: ${{ inputs.scenario_file }}
           TEST_ID: ${{ inputs.scenario_name }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-        run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER"
+        run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID"
   products:
     name: Build / ${{ needs.selection.outputs.configuration }}
     needs: selection

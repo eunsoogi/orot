@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { IOS_TEST_COHORT_NAMES, iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 const context = { sourceSha: 'a'.repeat(40), runId: '123', attempt: '1' };
 const artifact = (cohort) => `ios-cohort-report-${cohort}-${context.runId}-${context.attempt}`;
@@ -68,7 +69,44 @@ function reports(t, selectedCohorts = IOS_TEST_COHORT_NAMES) {
     ];
     writeFileSync(join(attachments, 'manifest.json'), JSON.stringify(manifest));
   }
-  return { root, attachments };
+  let authentication = null;
+  if (JSON.stringify(selectedCohorts) === JSON.stringify(IOS_TEST_COHORT_NAMES)) {
+    authentication = root + '-authentication';
+    t.after(() => rmSync(authentication, { recursive: true, force: true }));
+    const udid = '11111111-2222-3333-4444-555555555555';
+    const tests = iosTestInventory('core', 'authentication');
+    mkdirSync(join(authentication, 'product-artifact'), { recursive: true });
+    mkdirSync(join(authentication, 'results.xcresult/Data'), { recursive: true });
+    writeFileSync(
+      join(authentication, 'product-artifact/manifest.json'),
+      JSON.stringify({
+        context: {
+          ...context,
+          spec: { configuration: 'Release', compatibleExecutions: ['core'] },
+        },
+      }),
+    );
+    writeFileSync(join(authentication, 'simulator-owner.json'), JSON.stringify({ udid }));
+    writeFileSync(join(authentication, 'results.xcresult/Info.plist'), 'synthetic result bundle');
+    writeFileSync(
+      join(authentication, 'results.json'),
+      JSON.stringify({
+        observations: tests.map((identifier) => ({ identifier, result: 'Passed', duration: 1 })),
+      }),
+    );
+    writeFileSync(
+      join(authentication, 'biometric-controls.log'),
+      [
+        `FACE_ID_OWNER_APP_LAUNCHED udid=${udid}`,
+        `FACE_ID_ACTION_BEGIN action=enroll udid=${udid}`,
+        `FACE_ID_ACTION_SENT action=enroll udid=${udid}`,
+        `FACE_ID_ACTION_BEGIN action=authorize udid=${udid}`,
+        `FACE_ID_AUTHORIZATION_INPUT_SENT count=1 udid=${udid}`,
+        `FACE_ID_TEST_RESULT exit=0 authorization_inputs=1 udid=${udid}`,
+      ].join('\n'),
+    );
+  }
+  return { root, attachments, authentication };
 }
 
 function run(
@@ -77,7 +115,8 @@ function run(
   validationTier = 'full',
   oauthRequired = true,
 ) {
-  return spawnSync(process.execPath, ['scripts/ci/ios-test-plan-results.mjs', root], {
+  const args = ['scripts/ci/ios-test-plan-results.mjs', root];
+  return spawnSync(process.execPath, args, {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -87,6 +126,9 @@ function run(
       OROT_IOS_TEST_COHORTS: JSON.stringify(selectedCohorts),
       OROT_IOS_VALIDATION_TIER: validationTier,
       OROT_IOS_OAUTH_TESTS: String(oauthRequired),
+      OROT_IOS_AUTHENTICATION_EVIDENCE: existsSync(root + '-authentication')
+        ? root + '-authentication'
+        : '',
     },
   });
 }
@@ -100,6 +142,8 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   assert.equal(result.schemaVersion, 2);
   assert.equal(result.validationTier, 'full');
   assert.equal(result.oauthRequired, true);
+  assert.equal(result.authenticationObservations.length, 2);
+  assert.equal(result.authenticationEvidence.biometricAuthorizationInputs, 1);
   assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 112);
   assert.deepEqual(result.selectedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.executedCohorts, IOS_TEST_COHORT_NAMES);
@@ -175,9 +219,10 @@ for (const failure of [
   'repeated-case',
   'failed-case',
   'missing-speech',
+  'missing-authentication',
 ])
   test('full aggregation rejects ' + failure, (t) => {
-    const { root, attachments } = reports(t);
+    const { root, attachments, authentication } = reports(t);
     const reportPath = join(root, artifact('core-integration'), 'results.json');
     const report = JSON.parse(readFileSync(reportPath, 'utf8'));
     if (failure === 'missing-job') rmSync(join(root, artifact('health')), { recursive: true });
@@ -187,6 +232,7 @@ for (const failure of [
       report.tasks[0].observations[1] = report.tasks[0].observations[0];
     if (failure === 'failed-case') report.tasks[0].observations[0].result = 'Failed';
     if (failure === 'missing-speech') rmSync(join(attachments, 'manifest.json'));
+    if (failure === 'missing-authentication') rmSync(authentication, { recursive: true });
     writeFileSync(reportPath, JSON.stringify(report));
     assert.notEqual(run(root).status, 0);
     assert.equal(existsSync(join(root, 'complete.json')), false);

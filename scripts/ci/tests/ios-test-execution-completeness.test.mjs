@@ -3,7 +3,7 @@ import test from 'node:test';
 import { IOS_TEST_COHORT_NAMES, iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { validateIosTestExecutionResults } from '../ios-test-execution-completeness.mjs';
 
-function resultsFor(selectedCohorts, oauthRequired) {
+function resultsFor(selectedCohorts, oauthRequired, validationTier = 'pr') {
   const plan = iosTestExecutionPlan(selectedCohorts);
   const debug = plan.some((entry) => entry.configuration === 'Debug');
   const release = plan.some((entry) => entry.configuration === 'Release');
@@ -17,11 +17,14 @@ function resultsFor(selectedCohorts, oauthRequired) {
     release_products: { result: release ? 'success' : 'skipped' },
     debug_execution: { result: debug ? 'success' : 'skipped' },
     release_execution: { result: release ? 'success' : 'skipped' },
+    authentication: {
+      result: ['full', 'candidate'].includes(validationTier) ? 'success' : 'skipped',
+    },
   };
 }
 
 test('full release dispatch requires every producer and executor, including separate OAuth', () => {
-  const results = resultsFor(IOS_TEST_COHORT_NAMES, true);
+  const results = resultsFor(IOS_TEST_COHORT_NAMES, true, 'full');
 
   const complete = validateIosTestExecutionResults(results, IOS_TEST_COHORT_NAMES, true, 'full');
   assert.deepEqual(complete.selectedCohorts, IOS_TEST_COHORT_NAMES);
@@ -29,7 +32,7 @@ test('full release dispatch requires every producer and executor, including sepa
 });
 
 test('candidate validation also requires every cohort, OAuth, and producer result', () => {
-  const results = resultsFor(IOS_TEST_COHORT_NAMES, true);
+  const results = resultsFor(IOS_TEST_COHORT_NAMES, true, 'candidate');
   const complete = validateIosTestExecutionResults(
     results,
     IOS_TEST_COHORT_NAMES,
@@ -45,7 +48,7 @@ test('candidate validation also requires every cohort, OAuth, and producer resul
   assert.throws(
     () =>
       validateIosTestExecutionResults(
-        resultsFor(IOS_TEST_COHORT_NAMES, false),
+        resultsFor(IOS_TEST_COHORT_NAMES, false, 'candidate'),
         IOS_TEST_COHORT_NAMES,
         false,
         'candidate',
@@ -115,15 +118,31 @@ test('invalid selections, inconsistent OAuth and unexpected job results are reje
 
 test('Full requires the exact complete cohort inventory and the separate OAuth execution', () => {
   const selected = ['core-ui'];
-  const partial = resultsFor(selected, true);
+  const partial = resultsFor(selected, true, 'full');
   assert.throws(
     () => validateIosTestExecutionResults(partial, selected, true, 'full'),
     /Full validation requires the canonical complete cohort inventory/,
   );
 
-  const missingOAuth = resultsFor(IOS_TEST_COHORT_NAMES, false);
+  const missingOAuth = resultsFor(IOS_TEST_COHORT_NAMES, false, 'full');
   assert.throws(
     () => validateIosTestExecutionResults(missingOAuth, IOS_TEST_COHORT_NAMES, false, 'full'),
     /Full validation requires OAuth/,
   );
+});
+
+test('Full and Candidate require the serialized Keychain authentication job to succeed', () => {
+  for (const validationTier of ['full', 'candidate']) {
+    const selected = IOS_TEST_COHORT_NAMES;
+    for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+      const current = resultsFor(selected, true, validationTier);
+      if (result === undefined) delete current.authentication;
+      else current.authentication.result = result;
+
+      assert.throws(
+        () => validateIosTestExecutionResults(current, selected, true, validationTier),
+        /authentication expected success/,
+      );
+    }
+  }
 });
