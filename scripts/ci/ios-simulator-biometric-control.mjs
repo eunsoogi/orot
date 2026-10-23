@@ -6,14 +6,18 @@ import { iosTestConfig, iosXcodeDeveloperDirectory } from './ios-test-config.mjs
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { runDeviceHubFaceIdAction } from './ios-simulator-biometric-menu.mjs';
 
-/** Launch the product on the verified owner so Device Hub can expose its screen for menu input. */
-export function launchFaceIdOwnerApp(owner, { execFile = execFileSync } = {}) {
+/** Launch on the verified owner, then reactivate Device Hub to surface its screen. */
+export function launchFaceIdOwnerApp(owner, { execFile = execFileSync, deviceHubPath } = {}) {
   if (typeof owner?.udid !== 'string' || !/^[a-f0-9-]{36}$/i.test(owner.udid))
     throw new Error('Face ID app launch requires the verified owner Simulator UDID');
-  return execFile('xcrun', ['simctl', 'launch', owner.udid, 'com.orot.mobile'], {
+  if (typeof deviceHubPath !== 'string' || !isAbsolute(deviceHubPath))
+    throw new Error('Face ID app launch requires the selected Xcode Device Hub path');
+  const output = execFile('xcrun', ['simctl', 'launch', owner.udid, 'com.orot.mobile'], {
     encoding: 'utf8',
     timeout: 10_000,
-  }).trim();
+  });
+  execFile('open', ['-a', deviceHubPath], { encoding: 'utf8', timeout: 10_000 });
+  return output.trim();
 }
 
 /** Keep sending documented authorization input while XCTest runs; the tests prove the Keychain result. */
@@ -160,8 +164,8 @@ async function runAuthenticationSelection(profile, testRun, ownerPath, directory
     }
   };
 
-  // This workflow boots the owner with simctl; launching Orot gives Device Hub its per-device screen.
-  const appLaunchOutput = launchFaceIdOwnerApp(owner);
+  // Launch first, then reactivate Device Hub so the next menu action can find this owner's screen.
+  const appLaunchOutput = launchFaceIdOwnerApp(owner, { deviceHubPath });
   appendControlLog(
     controlLog,
     `FACE_ID_OWNER_APP_LAUNCHED udid=${owner.udid} output=${appLaunchOutput.replace(/\s+/g, ' ')}`,

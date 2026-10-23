@@ -12,22 +12,32 @@ import {
 
 test('Face ID setup launches the product app on its exact owned Simulator', () => {
   const owner = { udid: 'AB275C8A-0339-4668-9FA2-C9D37DD15CA6' };
-  let invocation;
+  const deviceHubPath = '/Applications/Xcode_27.1.app/Contents/Applications/DeviceHub.app';
+  const invocations = [];
   const output = launchFaceIdOwnerApp(owner, {
+    deviceHubPath,
     execFile(command, args, options) {
-      invocation = { command, args, options };
-      return 'com.orot.mobile: 26108';
+      invocations.push({ command, args, options });
+      return command === 'xcrun' ? 'com.orot.mobile: 26108' : '';
     },
   });
 
-  assert.deepEqual(invocation, {
-    command: 'xcrun',
-    args: ['simctl', 'launch', owner.udid, 'com.orot.mobile'],
-    options: { encoding: 'utf8', timeout: 10_000 },
-  });
+  assert.deepEqual(invocations, [
+    {
+      command: 'xcrun',
+      args: ['simctl', 'launch', owner.udid, 'com.orot.mobile'],
+      options: { encoding: 'utf8', timeout: 10_000 },
+    },
+    {
+      command: 'open',
+      args: ['-a', deviceHubPath],
+      options: { encoding: 'utf8', timeout: 10_000 },
+    },
+  ]);
   assert.equal(output, 'com.orot.mobile: 26108');
   assert.throws(
-    () => launchFaceIdOwnerApp({ udid: 'booted' }, { execFile: () => 'unreachable' }),
+    () =>
+      launchFaceIdOwnerApp({ udid: 'booted' }, { deviceHubPath, execFile: () => 'unreachable' }),
     /verified owner Simulator UDID/,
   );
 });
@@ -42,6 +52,7 @@ test('Device Hub Face ID actions require the exact owner window and documented m
   assert.match(script, /menu item "Face ID"/);
   assert.match(script, /menu item "Enrolled"/);
   assert.match(script, /menu item "Authorized with Face ID"/);
+  assert.match(script, /available window titles:/);
   assert.doesNotMatch(script, /simctl\s+biometric|private API/i);
 });
 

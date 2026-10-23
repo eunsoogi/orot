@@ -7,9 +7,10 @@ export function deviceHubFaceIdScript() {
   set simulatorName to item 2 of argv
   tell application "System Events"
     set deviceHub to first application process whose bundle identifier is "com.apple.dt.Devices"
+    set windowTitles to name of every window of deviceHub
     set ownedWindows to every window of deviceHub whose name contains simulatorName
     if (count of ownedWindows) is not 1 then
-      error "Expected one Device Hub window for the owner Simulator"
+      error "Expected one Device Hub window for the owner Simulator; available window titles: " & (windowTitles as text)
     end if
     set frontmost of deviceHub to true
     tell menu bar 1 of deviceHub
