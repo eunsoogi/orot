@@ -1,10 +1,20 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iosTestConfig, iosXcodeDeveloperDirectory } from './ios-test-config.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { runDeviceHubFaceIdAction } from './ios-simulator-biometric-menu.mjs';
+
+/** Launch the product on the verified owner so Device Hub can expose its screen for menu input. */
+export function launchFaceIdOwnerApp(owner, { execFile = execFileSync } = {}) {
+  if (typeof owner?.udid !== 'string' || !/^[a-f0-9-]{36}$/i.test(owner.udid))
+    throw new Error('Face ID app launch requires the verified owner Simulator UDID');
+  return execFile('xcrun', ['simctl', 'launch', owner.udid, 'com.orot.mobile'], {
+    encoding: 'utf8',
+    timeout: 10_000,
+  }).trim();
+}
 
 /** Keep sending documented authorization input while XCTest runs; the tests prove the Keychain result. */
 export async function runWithFaceIdAuthorizationInput({
@@ -149,6 +159,13 @@ async function runAuthenticationSelection(profile, testRun, ownerPath, directory
       throw error;
     }
   };
+
+  // This workflow boots the owner with simctl; launching Orot gives Device Hub its per-device screen.
+  const appLaunchOutput = launchFaceIdOwnerApp(owner);
+  appendControlLog(
+    controlLog,
+    `FACE_ID_OWNER_APP_LAUNCHED udid=${owner.udid} output=${appLaunchOutput.replace(/\s+/g, ' ')}`,
+  );
 
   // The simulator was created for this run, so its Face ID enrollment starts disabled.
   await runAction('enroll');
