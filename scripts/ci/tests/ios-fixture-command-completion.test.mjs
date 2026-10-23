@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import test from 'node:test';
 import { commandFixture } from './fixtures/ios-fixture-command.mjs';
 
@@ -59,6 +60,24 @@ test('nonzero privacy status or lost ownership stops before launch and cleanup m
       assert.match(value.result.message, message);
       assert.equal(value.calls.filter((args) => args[1] === 'privacy').length, 1);
       assert.ok(!value.calls.some((args) => ['launch', 'terminate'].includes(args[1])));
+    } finally {
+      value.dispose();
+    }
+  }
+});
+
+test('receipt stays unconsumed when fresh ownership or boot verification fails at completion', () => {
+  for (const [options, message] of [
+    [{ loseOwnershipAtReceipt: true }, /iOS simulator ownership mismatch/],
+    [{ loseBootAtReceipt: true }, /Fixture destination stopped before its receipt/],
+  ]) {
+    const value = commandFixture(options);
+    try {
+      assert.equal(value.outcome.status, 1);
+      assert.match(value.result.message, message);
+      assert.equal(existsSync(value.receiptPath), true);
+      assert.equal(value.calls.filter((args) => args[1] === 'launch').length, 1);
+      assert.ok(!value.calls.some((args) => args[1] === 'terminate'));
     } finally {
       value.dispose();
     }

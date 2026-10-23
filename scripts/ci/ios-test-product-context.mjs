@@ -12,7 +12,7 @@ function repositoryEnvironment(env) {
 }
 
 export function buildInputDigest(root, env = process.env) {
-  // Hash committed app, package, and dependency-patch inputs before generated setup rewrites metadata.
+  // Hash app, package, and dependency-patch inputs before generated setup rewrites metadata.
   const gitEnv = repositoryEnvironment(env);
   const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], {
     encoding: 'utf8',

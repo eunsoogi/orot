@@ -78,6 +78,18 @@ for (const status of [0, 65]) {
         samples.map((sample) => sample.stage),
         ['before', 'after'],
       );
+      const finalSample = samples.find((sample) => sample.stage === 'after');
+      const processSamples = result.calls.filter((call) => call.name === 'ps');
+      // Preserve final process output and timing on failure; successful XCTest needs no extra host scan.
+      if (status === 0) {
+        assert.equal(processSamples.length, 0);
+        assert.match(finalSample.observations.processes.unavailable, /test success/);
+        assert.equal(finalSample.commandElapsedMs.processes, null);
+      } else {
+        assert.equal(processSamples.length, 1);
+        assert.match(finalSample.observations.processes, /fixture app diagnostic/);
+        assert.ok(finalSample.commandElapsedMs.processes > 0);
+      }
       assert.match(
         result.outcome.stdout,
         new RegExp(`IOS_TEST_STAGE elapsed_ms=\\d+ exit=${status}`),

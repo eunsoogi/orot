@@ -168,14 +168,15 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
                 capture(app, "recording-transcript-error-light-live")
             }
         }
-        // Reveal the redesigned export choices without opening the native share sheet.
-        XCTAssertTrue(reveal(app, "recording-export-audio").isHittable)
+        // Use a wider measured step for this tall control while retaining full-frame and hit-testing checks.
+        let exportAudio = reveal(app, "recording-export-audio", maximumScrollFraction: 0.7)
+        XCTAssertTrue(exportAudio.isHittable)
         capture(app, "recording-export-panel-\(suffix)")
     }
 
     @MainActor
-    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false) -> XCUIElement {
-        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop)
+    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45) -> XCUIElement {
+        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop, maximumScrollFraction: maximumScrollFraction)
     }
 
     @MainActor

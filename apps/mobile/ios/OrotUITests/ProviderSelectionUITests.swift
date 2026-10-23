@@ -203,11 +203,12 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
 
     @MainActor
     private func message(_ app: XCUIApplication, _ text: String, role: XCUIElement.ElementType? = nil) throws {
-        DebugUITestConditions.dismissWarningToast(app)
         // Use the observed native role for slow post-consent status text; unspecified messages retain the broad role fallback.
+        // After native consent, the app AX window can be transient; find the required result before the optional toast check.
         let target = app.descendants(matching: role ?? .any)
             .matching(NSPredicate(format: "label == %@", text)).firstMatch
         XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
+        DebugUITestConditions.dismissWarningToast(app)
         if let role {
             XCTAssertEqual(target.elementType, role)
         }
