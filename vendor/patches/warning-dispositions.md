@@ -251,3 +251,18 @@ The strict review of PR head `f3d676dd` found that the focused runner awaited it
 | Focused controller and selection tests | `node --test scripts/ci/tests/ios-focused-selection.test.mjs scripts/ci/tests/ios-simulator-biometric-capabilities.test.mjs scripts/ci/tests/ios-simulator-biometric-control.test.mjs scripts/ci/tests/ios-focused-execution.test.mjs scripts/ci/tests/ios-test-ui-preparation-selection.test.mjs` | Passed 32/32. |
 | Repository and policy checks | Frozen install, quality setup and inventory, lint, format, typecheck, unit tests, CI/release/quality policy tests, canonical LOC, and `git diff --check` | Passed. The inventory covered 2,132 maintained files; policy tests passed 594/594; 154 current paths were within the 250-line limit. |
 | Hosted authentication and native validation | No new hosted authentication run; automatic Draft E2E does not execute native Build, Test, or Validate jobs | No new hosted result is claimed for this correction. The prior focused hosted run stopped before either protected XCTest, so Keychain authentication remains unproved. No physical device was used. |
+
+## Exact-head hosted validation at `2253bdba` (2026-10-23)
+
+Ready-triggered E2E run [39958869181](https://github.com/eunsoogi/orot/actions/runs/39958869181), attempt 1, used PR head `2253bdba26d3b94d8d7d39f2d5f324c71e39fe53`, base `5a75dd299cd1a352914fa5ae7580da90fa7f0ee5`, and merge/source SHA `697749bdfa54d4949b7b20f7d3eeb12ba551ae6b`. The selection artifact records all 24 native cohorts and OAuth with no deferred full validation. All four Build jobs, the OAuth test, all 24 cohort jobs, and all seven Validate jobs passed. The 24 cohort reports contain 112 observations; every observation passed. The build manifests identify Xcode 27.1 build `27A9275`, SDK 27.1, and iOS 27.0 Simulator.
+
+| Build profile | Warning-gate result from the hosted artifacts |
+| --- | --- |
+| Debug | App/test product: `occurrences=0 accepted=0 blocking=0`. CocoaPods: all three documented script-phase notices accepted, zero blocking. |
+| Release | App/test product: `occurrences=0 accepted=0 blocking=0`. CocoaPods: all three documented script-phase notices accepted, zero blocking. |
+| Production | One App Intents metadata notice accepted, zero blocking. CocoaPods: all three documented script-phase notices accepted, zero blocking. |
+| OAuth | Package and Simulator builds each reported `occurrences=0 accepted=0 blocking=0`. The hosted OAuth test passed. |
+
+The exact-head Policy Check [39958301783](https://github.com/eunsoogi/orot/actions/runs/39958301783), Code Quality [39958301807](https://github.com/eunsoogi/orot/actions/runs/39958301807), and Unit Test [39958301716](https://github.com/eunsoogi/orot/actions/runs/39958301716) also passed at PR head `2253bdba`. These results cover the source candidate at that head; the subsequent evidence-only Markdown update does not change executable source, dependencies, configuration, fixtures, generated inputs, or the hosted environment.
+
+The 24 automatic cohorts do not include the separate manual `authentication` suite. The focused hosted route [39951100599](https://github.com/eunsoogi/orot/actions/runs/39951100599) stopped before XCTest because no Device Hub window was available, so neither protected Keychain assertion ran there. The earlier no-UI query at `374e8e3` returned `OSStatus 0` and synthetic data instead of `errSecInteractionNotAllowed` and nil. The protected Keychain behavior remains unproved; the user's physical-device waiver does not waive those assertions. No physical device was used.
