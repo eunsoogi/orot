@@ -94,7 +94,7 @@ test('does not recognize a header prefix that begins mid-line after startup data
   const overlongLine = Buffer.concat([
     Buffer.from('x'),
     falseHeader,
-    Buffer.alloc(4096 - falseHeader.length - 1, 0x61),
+    Buffer.alloc(4097 - falseHeader.length - 1, 0x61),
   ]);
   const events = Buffer.from('2026-10-24 12:00:00.000 Df Orot[123:456] Scene ready\n');
   let ready = false;
@@ -106,7 +106,7 @@ test('does not recognize a header prefix that begins mid-line after startup data
     onStartupOutputTruncated: () => (startupOutputTruncated = true),
   });
 
-  assert.equal(overlongLine.length, 4096);
+  assert.equal(overlongLine.length, 4097);
   parse(overlongLine);
   parse(Buffer.from('\n'));
 
