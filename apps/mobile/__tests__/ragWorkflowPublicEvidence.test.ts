@@ -10,33 +10,23 @@ import { createEuropePmcMedicalEvidenceService } from '../src/externalMedicalEvi
 import { createExternalConversationEvidence } from '../src/aiFeatures/integration/externalConversationEvidence';
 import { ragConversationTask } from '../src/ragConversation/task';
 import { RAG_CONVERSATION_BUDGET } from '../src/ragConversation/budget';
+import {
+  createEuropePmcMockTransport,
+  syntheticEuropePmcPayload,
+} from '../e2e/europePmcMockTransport';
+import { RAG_WORKFLOW_PUBLIC_QUERY } from '../e2e/appleModelMockFixtures';
 
-/** Synthetic responses isolate the documented abstract filter; the native success case still uses live Europe PMC. */
+/** Both JS and native success paths use provider-shaped HTTP fixtures and shipping evidence validation. */
 async function runPublicFixture(forceMissingAbstract = false) {
   let requestedQuery: string | null = null;
+  const transport = createEuropePmcMockTransport(
+    RAG_WORKFLOW_PUBLIC_QUERY,
+    syntheticEuropePmcPayload(forceMissingAbstract),
+  );
   const service = createEuropePmcMedicalEvidenceService({
-    fetcher: async url => {
+    fetcher: async (url, init) => {
       requestedQuery = new URL(url).searchParams.get('query');
-      const abstractFilter = requestedQuery?.includes('HAS_ABSTRACT:y');
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          resultList: {
-            result: Array.from({ length: 5 }, (_, index) => ({
-              id: String(100 + index),
-              source: 'MED',
-              title: 'Synthetic sleep literature ' + index,
-              firstPublicationDate: '2025-01-01',
-              // Model the observed fifth result without an abstract for an unfiltered query.
-              abstractText:
-                index === 4 && (forceMissingAbstract || !abstractFilter)
-                  ? undefined
-                  : 'Synthetic public abstract for workflow verification.',
-            })),
-          },
-        }),
-      };
+      return transport.fetcher(url, init);
     },
   });
   const external = createExternalConversationEvidence(service, {
@@ -115,6 +105,7 @@ async function runPublicFixture(forceMissingAbstract = false) {
     revalidateEvidence: async references =>
       references.every(reference => external.validates(reference)),
   });
+  transport.assertComplete();
   return { result, modelCalls, batch, requestedQuery };
 }
 
