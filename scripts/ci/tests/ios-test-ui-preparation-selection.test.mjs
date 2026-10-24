@@ -23,6 +23,7 @@ test('full cohort plans and focused selections agree on UI preparation for every
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
     'calendar-consent',
     'calendar-appointments',
     'health-observations',

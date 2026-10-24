@@ -56,6 +56,7 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
     'calendar-consent',
     'calendar-appointments',
     'provider',
@@ -95,6 +96,7 @@ test('a full plan schedules all 112 release observations and OAuth when selected
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
     'calendar-consent',
     'calendar-appointments',
     'provider',
@@ -106,14 +108,14 @@ test('a full plan schedules all 112 release observations and OAuth when selected
   ];
   const { plan, outputs } = run(t, cohorts, true);
 
-  assert.equal(plan.selectedCohorts.length, 26);
+  assert.equal(plan.selectedCohorts.length, 27);
   assert.equal(plan.notSelectedCohorts.length, 0);
   assert.equal(plan.uniqueTestCases, 112);
   assert.equal(plan.scheduledTestObservations, 112);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 5);
-  assert.equal(JSON.parse(outputs.release_cohorts).length, 21);
+  assert.equal(JSON.parse(outputs.release_cohorts).length, 22);
   assert.equal(outputs.has_debug, 'true');
   assert.equal(outputs.has_release, 'true');
   assert.equal(outputs.oauth_required, 'true');

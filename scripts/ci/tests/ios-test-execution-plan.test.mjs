@@ -35,7 +35,7 @@ test('core UI navigation and recording evidence have separate jobs without split
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 26);
+  assert.equal(plan.length, 27);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 5);
   const actual = plan.flatMap((job) =>
@@ -48,11 +48,17 @@ test('independent feature suites have distinct jobs and preserve all registered 
   assert.deepEqual(actual.slice().sort(), original.slice().sort());
 });
 
-test('Questions partitions complete stateful cases into four independently scheduled jobs', () => {
+test('Questions partitions complete stateful cases into five independently scheduled jobs', () => {
   const jobs = iosTestExecutionPlan().filter((job) => job.cohort.startsWith('questions-'));
   assert.deepEqual(
     jobs.map((job) => job.cohort),
-    ['questions-review', 'questions-conversation', 'questions-accessibility', 'questions-summary'],
+    [
+      'questions-review',
+      'questions-conversation',
+      'questions-accessibility',
+      'questions-summary',
+      'questions-literature',
+    ],
   );
   const identifiers = jobs.flatMap((job) =>
     iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),

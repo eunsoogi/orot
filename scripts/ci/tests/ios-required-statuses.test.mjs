@@ -102,6 +102,7 @@ test('affected domains require successful complete selected execution and unrela
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
   ])
     for (const result of ['failure', 'cancelled', 'skipped', ''])
       assert.notEqual(
@@ -117,6 +118,7 @@ test('affected domains require successful complete selected execution and unrela
         'questions-conversation',
         'questions-accessibility',
         'questions-summary',
+        'questions-literature',
       ],
       invalid: true,
     }).status,

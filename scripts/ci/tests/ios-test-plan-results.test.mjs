@@ -161,6 +161,7 @@ test('selected aggregation accepts exactly the affected reports and records ever
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
   ];
   const { root } = reports(t, selected);
   const outcome = run(root, selected, 'pr', false);

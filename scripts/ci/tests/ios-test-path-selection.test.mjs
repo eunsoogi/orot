@@ -35,6 +35,7 @@ test('recording source selects its full stateful group while a question helper s
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
     'provider',
   ]);
   assert.equal(questions.ios_build, false);
@@ -123,6 +124,7 @@ test('main pushes select affected cohorts from before and after SHAs and fail sa
     'questions-conversation',
     'questions-accessibility',
     'questions-summary',
+    'questions-literature',
     'provider',
   ]);
   assert.equal(selected.ios_tests, true);
