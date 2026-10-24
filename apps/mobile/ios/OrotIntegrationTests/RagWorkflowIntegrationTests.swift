@@ -31,7 +31,8 @@ final class RagWorkflowIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(request.path, "/europepmc/webservices/rest/search")
         let query = try XCTUnwrap(request.queryItems)
         XCTAssertEqual(query.count, 4)
-        XCTAssertEqual(query.first { $0.name == "query" }?.value, "(sleep duration adults) AND HAS_ABSTRACT:y")
+        // URLSearchParams uses form encoding for spaces; Foundation queryItems preserves its plus signs.
+        XCTAssertEqual(query.first { $0.name == "query" }?.value?.replacingOccurrences(of: "+", with: " "), "(sleep duration adults) AND HAS_ABSTRACT:y")
         let publications = try XCTUnwrap(result["publications"] as? [[String: Any]])
         XCTAssertEqual(publications.count, 5)
         let publication = try XCTUnwrap(publications.first)
