@@ -15,7 +15,7 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
   );
   assert.equal(expected.length, 3);
   const full = iosTestExecutionPlan();
-  assert.equal(full.length, 25);
+  assert.equal(full.length, 26);
   const selected = iosTestExecutionPlan(cohorts);
   assert.equal(selected.length, 2);
   for (const cohort of cohorts)

@@ -160,3 +160,20 @@ test('Questions cancellation still fails completeness after all method reports p
     );
   }
 });
+
+// Successful method receipts cannot turn a failed or cancelled enclosing Health workflow into a pass.
+test('Health leaves require the selected Debug execution and producer to complete successfully', () => {
+  const selected = ['health-observations', 'health-recovery'];
+  const successful = resultsFor(selected, false);
+  assert.doesNotThrow(() => validateIosTestExecutionResults(successful, selected, false, 'pr'));
+  for (const job of ['debug_products', 'debug_execution'])
+    for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+      const results = structuredClone(successful);
+      if (result === undefined) delete results[job];
+      else results[job].result = result;
+      assert.throws(
+        () => validateIosTestExecutionResults(results, selected, false, 'pr'),
+        new RegExp(job + ' expected success'),
+      );
+    }
+});

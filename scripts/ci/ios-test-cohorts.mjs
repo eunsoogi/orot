@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
+import { healthCohorts } from './ios-health-cohorts.mjs';
 
 // Each recording leaf retains the same fixture/reset contract while owning independent complete methods.
 const recordingFixture = { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 };
@@ -135,7 +136,7 @@ const cohorts = {
     ],
   },
   provider: { profiles: ['provider-data'], minutes: 20 },
-  health: { profiles: ['health-import'], minutes: 20 },
+  ...healthCohorts,
   microphone: { profiles: ['microphone'], minutes: 20 },
   selection: { profiles: ['provider-selection'], minutes: 20 },
 };

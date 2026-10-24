@@ -198,3 +198,16 @@ test('every recording leaf retains all original protected domain failure boundar
     }
   }
 });
+
+// Health's method split must keep each original domain sensitive to either independent leaf failing.
+test('every Health leaf retains the original UI and Provider failure boundaries', () => {
+  for (const cohort of ['health-observations', 'health-recovery'])
+    for (const check of ['UI', 'Provider']) {
+      assert.equal(
+        evaluate(check, { selected: true, result: 'success', cohorts: [cohort] }).status,
+        0,
+      );
+      for (const result of ['failure', 'cancelled', 'skipped', ''])
+        assert.notEqual(evaluate(check, { selected: true, result, cohorts: [cohort] }).status, 0);
+    }
+});

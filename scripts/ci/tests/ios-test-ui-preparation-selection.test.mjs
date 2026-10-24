@@ -25,7 +25,8 @@ test('full cohort plans and focused selections agree on UI preparation for every
     'questions-summary',
     'calendar-consent',
     'calendar-appointments',
-    'health',
+    'health-observations',
+    'health-recovery',
     'microphone',
     'selection',
     'speech',
@@ -75,7 +76,7 @@ test('full cohort plans and focused selections agree on UI preparation for every
   );
   assert.deepEqual(speechFocus.identifiers, speechJourney.identifiers);
   assert.equal(speechFocus.prepareUi, iosTestTaskNeedsUiPreparation(speechJourney));
-  for (const cohort of ['health', 'microphone', 'selection']) {
+  for (const cohort of ['health-observations', 'health-recovery', 'microphone', 'selection']) {
     const [task] = iosTestCohortTasks(cohort);
     const [identifier] = task.identifiers;
     const [target, classAndMethod] = identifier.split('/');
