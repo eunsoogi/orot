@@ -8,7 +8,7 @@ import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
 // Public-command fixtures verify ownership and telemetry without touching a real Simulator.
-function fixture(change = {}, commandFailure = false) {
+function fixture(change = {}, commandFailure = false, observeInventory = false) {
   const root = mkdtempSync(join(tmpdir(), 'orot-simulator-inventory-'));
   const config = iosTestConfig('speech');
   const owner = { ...config, name: 'owned-speech-fixture', udid: 'owned-udid' };
@@ -39,7 +39,10 @@ console.log(${JSON.stringify(JSON.stringify(snapshot))});
     { mode: 0o755 },
   );
   const module = pathToFileURL(resolve('scripts/ci/ios-test-simulator.mjs')).href;
-  const code = `import {verifyIosTestSimulator} from ${JSON.stringify(module)}; console.log(JSON.stringify(verifyIosTestSimulator(${JSON.stringify(owner)}, 'speech')));`;
+  const expression = observeInventory
+    ? `const observation=[]; let device; let error; try { device=verifyIosTestSimulator(${JSON.stringify(owner)}, 'speech', {onInventory: value=>observation.push(value)}); } catch (value) { error=value.message; } console.log(JSON.stringify({device, observation, error}));`
+    : `console.log(JSON.stringify(verifyIosTestSimulator(${JSON.stringify(owner)}, 'speech')));`;
+  const code = `import {verifyIosTestSimulator} from ${JSON.stringify(module)}; ${expression}`;
   const outcome = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {
     encoding: 'utf8',
     env: { ...process.env, PATH: root + ':' + process.env.PATH },
@@ -92,6 +95,24 @@ test('unavailable or changed runtime and foreign device identity remain rejected
     } finally {
       value.dispose();
     }
+  }
+});
+
+test('reports only the selected runtime and owned destination before rejecting a mismatch', () => {
+  const value = fixture({ device: { name: 'another-owner', state: 'Shutdown' } }, false, true);
+  try {
+    const result = JSON.parse(value.outcome.stdout);
+    assert.equal(result.device, undefined);
+    assert.equal(value.outcome.status, 0);
+    assert.match(result.error, /ownership mismatch/);
+    assert.equal(result.observation.length, 1);
+    assert.equal(result.observation[0].runtime.identifier, iosTestConfig('speech').runtime);
+    assert.equal(result.observation[0].device.udid, value.device.udid);
+    assert.equal(result.observation[0].device.name, 'another-owner');
+    assert.equal(result.observation[0].device.state, 'Shutdown');
+    assert.ok(Date.parse(result.observation[0].observedAt));
+  } finally {
+    value.dispose();
   }
 });
 

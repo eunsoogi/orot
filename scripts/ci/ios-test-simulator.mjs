@@ -109,16 +109,37 @@ function inventory(owner, devices) {
 export function verifyIosTestSimulator(
   owner,
   profile,
-  { timeout, killSignal, stdio, diagnosticPath } = {},
+  { timeout, killSignal, stdio, diagnosticPath, onInventory } = {},
 ) {
   const config = verifyIosSimulatorOwnerContract(owner, profile);
   // One fresh public inventory contains both boundaries. Never cache it across mutations.
   const snapshot = JSON.parse(
     runIosSimulatorCommand(['list', '-j'], { timeout, killSignal, stdio }),
   );
+  const observedRuntime = snapshot.runtimes.find((item) => item.identifier === config.runtime);
   const runtime = snapshot.runtimes.find(
     (item) => item.identifier === config.runtime && item.isAvailable,
   );
+  const candidate = snapshot.devices[config.runtime]?.find((item) => item.udid === owner.udid);
+  try {
+    onInventory?.({
+      observedAt: new Date().toISOString(),
+      runtime: {
+        identifier: observedRuntime?.identifier ?? null,
+        buildversion: observedRuntime?.buildversion ?? null,
+        approvedBuild: config.runtimeBuild ?? null,
+        isAvailable: observedRuntime?.isAvailable === true,
+      },
+      device: candidate && {
+        udid: candidate.udid,
+        name: candidate.name,
+        deviceTypeIdentifier: candidate.deviceTypeIdentifier,
+        state: candidate.state,
+      },
+    });
+  } catch {
+    // A diagnostic observer cannot change the result of the ownership check.
+  }
   if (!runtime || (config.runtimeBuild && runtime.buildversion !== config.runtimeBuild))
     throw new Error('Approved integration test runtime is unavailable');
   const device = inventory(owner, snapshot.devices);
