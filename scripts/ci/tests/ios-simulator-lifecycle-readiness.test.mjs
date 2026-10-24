@@ -44,6 +44,81 @@ test('recognizes a coalesced startup header before bounding event bytes', () => 
   assert.equal(Buffer.concat(captured).toString('utf8'), events);
 });
 
+test('preserves a multibyte event split across the readiness transition', () => {
+  const events = Buffer.from(
+    '2026-10-24 12:00:00.000 Df Orot[123:456] Scene 한국어 lifecycle event\n',
+  );
+  const koreanOffset = events.indexOf(Buffer.from('한'));
+  const splitOffset = koreanOffset + 1;
+  let ready = false;
+  const captured = [];
+  const parse = createIosSimulatorLifecycleStreamParser({
+    onEvents: (chunk) => captured.push(Buffer.from(chunk)),
+    onReady: () => (ready = true),
+    onStartupOutputTruncated: () => assert.fail('startup data should not be truncated'),
+  });
+
+  assert.ok(koreanOffset >= 0);
+  parse(Buffer.concat([Buffer.from(streamHeader), events.subarray(0, splitOffset)]));
+  parse(events.subarray(splitOffset));
+
+  assert.equal(ready, true);
+  assert.deepEqual(Buffer.concat(captured), events);
+});
+
+test('recognizes a header split across startup chunks and preserves CRLF events', () => {
+  const headerPrefix = Buffer.from('Filtering the log data using (true)\nTimestamp               ');
+  const headerSuffix = Buffer.from('Ty Process[PID:TID]\r');
+  const events = Buffer.from('2026-10-24 12:00:00.000 Df Orot[123:456] Scene ready\r\n');
+  let ready = false;
+  const captured = [];
+  const parse = createIosSimulatorLifecycleStreamParser({
+    onEvents: (chunk) => captured.push(Buffer.from(chunk)),
+    onReady: () => (ready = true),
+    onStartupOutputTruncated: () => assert.fail('split startup should remain bounded'),
+  });
+
+  parse(headerPrefix);
+  assert.equal(ready, false);
+  parse(headerSuffix);
+  assert.equal(ready, false);
+  parse(Buffer.from('\n'));
+  assert.equal(ready, true);
+  parse(events);
+
+  assert.deepEqual(Buffer.concat(captured), events);
+});
+
+test('does not recognize a header prefix that begins mid-line after startup data exceeds its bound', () => {
+  const falseHeader = Buffer.from('Timestamp Ty Process[PID:TID]');
+  const overlongLine = Buffer.concat([
+    Buffer.from('x'),
+    falseHeader,
+    Buffer.alloc(4096 - falseHeader.length - 1, 0x61),
+  ]);
+  const events = Buffer.from('2026-10-24 12:00:00.000 Df Orot[123:456] Scene ready\n');
+  let ready = false;
+  let startupOutputTruncated = false;
+  const captured = [];
+  const parse = createIosSimulatorLifecycleStreamParser({
+    onEvents: (chunk) => captured.push(Buffer.from(chunk)),
+    onReady: () => (ready = true),
+    onStartupOutputTruncated: () => (startupOutputTruncated = true),
+  });
+
+  assert.equal(overlongLine.length, 4096);
+  parse(overlongLine);
+  parse(Buffer.from('\n'));
+
+  assert.equal(ready, false);
+  assert.equal(startupOutputTruncated, true);
+
+  parse(Buffer.concat([Buffer.from(streamHeader.split('\n')[1] + '\n'), events]));
+
+  assert.equal(ready, true);
+  assert.deepEqual(Buffer.concat(captured), events);
+});
+
 async function collect(program, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-lifecycle-readiness-'));
   const path = join(directory, 'lifecycle.log');
