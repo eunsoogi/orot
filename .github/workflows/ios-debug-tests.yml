@@ -36,9 +36,10 @@ jobs:
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
         with: { cohort: provider }
-  health:
-    name: Health
-    if: ${{ contains(fromJSON(inputs.cohorts), 'health') }}
+  # Each Health leaf repeats the full owned preparation and cleanup with intact independent methods.
+  health_observations:
+    name: Health observations
+    if: ${{ contains(fromJSON(inputs.cohorts), 'health-observations') }}
     runs-on: xcode-27
     timeout-minutes: 20
     steps:
@@ -49,7 +50,7 @@ jobs:
         with: { log_directory: artifacts/ios-cohort }
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
-          cohort: health
+          cohort: health-observations
           profile: health-import
           artifact_name: ios-test-debug-products
           archive_digest: ${{ inputs.archive_digest }}
@@ -57,7 +58,29 @@ jobs:
       - name: Preserve setup diagnostics
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: health }
+        with: { cohort: health-observations }
+  health_recovery:
+    name: Health recovery
+    if: ${{ contains(fromJSON(inputs.cohorts), 'health-recovery') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: health-recovery
+          profile: health-import
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: health-recovery }
   microphone:
     name: Microphone
     if: ${{ contains(fromJSON(inputs.cohorts), 'microphone') }}

@@ -35,9 +35,9 @@ test('core UI navigation and recording evidence have separate jobs without split
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 25);
+  assert.equal(plan.length, 26);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
-  assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
+  assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 5);
   const actual = plan.flatMap((job) =>
     iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
   );

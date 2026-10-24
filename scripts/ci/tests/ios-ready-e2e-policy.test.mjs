@@ -33,7 +33,10 @@ test('selected reusable workflow jobs are gated by their cohort and configuratio
   );
 
   for (const [file, expected] of [
-    ['ios-debug-tests.yml', ['provider', 'health', 'microphone', 'selection']],
+    [
+      'ios-debug-tests.yml',
+      ['provider', 'health_observations', 'health_recovery', 'microphone', 'selection'],
+    ],
     [
       'ios-release-tests.yml',
       [
