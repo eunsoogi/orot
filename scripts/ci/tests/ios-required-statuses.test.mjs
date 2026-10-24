@@ -97,7 +97,12 @@ test('affected domains require successful complete selected execution and unrela
     0,
   );
 
-  for (const cohort of ['questions-review', 'questions-conversation', 'questions-summary'])
+  for (const cohort of [
+    'questions-review',
+    'questions-conversation',
+    'questions-accessibility',
+    'questions-summary',
+  ])
     for (const result of ['failure', 'cancelled', 'skipped', ''])
       assert.notEqual(
         evaluate('Questions', { selected: true, result, cohorts: [cohort] }).status,
@@ -107,7 +112,12 @@ test('affected domains require successful complete selected execution and unrela
     evaluate('Provider', {
       selected: true,
       result: 'success',
-      cohorts: ['questions-review', 'questions-conversation', 'questions-summary'],
+      cohorts: [
+        'questions-review',
+        'questions-conversation',
+        'questions-accessibility',
+        'questions-summary',
+      ],
       invalid: true,
     }).status,
     0,

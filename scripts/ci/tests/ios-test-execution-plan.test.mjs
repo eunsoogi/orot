@@ -35,7 +35,7 @@ test('core UI navigation and recording evidence have separate jobs without split
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 24);
+  assert.equal(plan.length, 25);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
   const actual = plan.flatMap((job) =>
@@ -48,11 +48,11 @@ test('independent feature suites have distinct jobs and preserve all registered 
   assert.deepEqual(actual.slice().sort(), original.slice().sort());
 });
 
-test('Questions partitions complete stateful cases into three independently scheduled jobs', () => {
+test('Questions partitions complete stateful cases into four independently scheduled jobs', () => {
   const jobs = iosTestExecutionPlan().filter((job) => job.cohort.startsWith('questions-'));
   assert.deepEqual(
     jobs.map((job) => job.cohort),
-    ['questions-review', 'questions-conversation', 'questions-summary'],
+    ['questions-review', 'questions-conversation', 'questions-accessibility', 'questions-summary'],
   );
   const identifiers = jobs.flatMap((job) =>
     iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
@@ -66,17 +66,9 @@ test('Questions partitions complete stateful cases into three independently sche
     const tasks = iosTestCohortTasks(job.cohort);
     assert.equal(tasks.length, 1);
     assert.equal(tasks[0].mode, 'fixture');
-    // Relaunch, saved state, appearance and consent assertions stay inside their original XCTest methods.
-    const classes = new Set(tasks[0].identifiers.map((identifier) => identifier.split('/')[1]));
-    for (const name of classes)
-      assert.equal(
-        jobs.filter((candidate) =>
-          iosTestCohortTasks(candidate.cohort)[0].identifiers.some(
-            (identifier) => identifier.split('/')[1] === name,
-          ),
-        ).length,
-        1,
-      );
+    // Classes may span jobs, but each original method retains its full reset and cleanup boundary.
+    assert.equal(job.minutes, 20);
+    assert.equal(tasks[0].suite, 'questions');
   }
 });
 

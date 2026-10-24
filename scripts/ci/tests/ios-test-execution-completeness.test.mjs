@@ -146,3 +146,17 @@ test('Full and Candidate require the serialized Keychain authentication job to s
     }
   }
 });
+
+// A passing XCTest report cannot override the enclosing job's hard-limit cancellation.
+test('Questions cancellation still fails completeness after all method reports passed', () => {
+  const selected = ['questions-conversation', 'questions-accessibility'];
+  for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+    const results = resultsFor(selected, false);
+    if (result === undefined) delete results.release_execution;
+    else results.release_execution.result = result;
+    assert.throws(
+      () => validateIosTestExecutionResults(results, selected, false, 'pr'),
+      /release_execution expected success/,
+    );
+  }
+});

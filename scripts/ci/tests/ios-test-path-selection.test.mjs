@@ -33,6 +33,7 @@ test('recording source selects its full stateful group while a question helper s
     'core-integration',
     'questions-review',
     'questions-conversation',
+    'questions-accessibility',
     'questions-summary',
     'provider',
   ]);
@@ -120,6 +121,7 @@ test('main pushes select affected cohorts from before and after SHAs and fail sa
     'core-integration',
     'questions-review',
     'questions-conversation',
+    'questions-accessibility',
     'questions-summary',
     'provider',
   ]);

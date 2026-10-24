@@ -4,6 +4,7 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 
 // Each recording leaf retains the same fixture/reset contract while owning independent complete methods.
 const recordingFixture = { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 };
+const questionFixture = { profiles: ['fixtures'], suites: ['questions'], minutes: 20 };
 
 const cohorts = {
   release: { profiles: ['core', 'fixtures', 'backup', 'local-model'], minutes: 200 },
@@ -93,23 +94,26 @@ const cohorts = {
     ],
   },
   'recordings-playback': { ...recordingFixture, classes: ['RecordingPlaybackUITests'] },
-  questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 20 },
+  questions: questionFixture,
   'questions-review': {
-    profiles: ['fixtures'],
-    suites: ['questions'],
-    minutes: 20,
+    ...questionFixture,
     classes: ['NextVisitReviewUITests', 'VisitQuestionConsentUITests'],
   },
   'questions-conversation': {
-    profiles: ['fixtures'],
-    suites: ['questions'],
-    minutes: 20,
-    classes: ['KeyboardSafeAreaUITests'],
+    ...questionFixture,
+    // Keep the composer/appearance journey intact with its own preparation and artifact budget.
+    cases: ['KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances'],
+  },
+  'questions-accessibility': {
+    ...questionFixture,
+    // These standalone methods retain keyboard, large-text, gesture and cleanup boundaries.
+    cases: [
+      'KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
+      'KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
+    ],
   },
   'questions-summary': {
-    profiles: ['fixtures'],
-    suites: ['questions'],
-    minutes: 20,
+    ...questionFixture,
     classes: ['SummaryAndLiteratureUITests'],
   },
   calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 20 },

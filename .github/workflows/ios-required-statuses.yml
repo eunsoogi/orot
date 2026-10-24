@@ -22,15 +22,15 @@ jobs:
       matrix:
         include:
           - check: UI
-            cohorts: '["core-integration","core-ui","recording-evidence","navigation-features","navigation-routes","navigation-accessibility","navigation-imports","recordings-controls","recordings-review","recordings-playback","questions-review","questions-conversation","questions-summary","calendar-consent","calendar-appointments","provider","health","microphone","selection"]'
+            cohorts: '["core-integration","core-ui","recording-evidence","navigation-features","navigation-routes","navigation-accessibility","navigation-imports","recordings-controls","recordings-review","recordings-playback","questions-review","questions-conversation","questions-accessibility","questions-summary","calendar-consent","calendar-appointments","provider","health","microphone","selection"]'
           - check: Storage
             cohorts: '["persistence","isolation","backup","local-model","recordings-controls","recordings-review","recordings-playback"]'
           - check: Provider
-            cohorts: '["provider","selection","local-model","questions-review","questions-conversation","questions-summary","calendar-consent","calendar-appointments","health"]'
+            cohorts: '["provider","selection","local-model","questions-review","questions-conversation","questions-accessibility","questions-summary","calendar-consent","calendar-appointments","health"]'
           - check: Speech
             cohorts: '["speech","microphone","recordings-controls","recordings-review","recordings-playback"]'
           - check: Questions
-            cohorts: '["questions-review","questions-conversation","questions-summary","provider","calendar-consent","calendar-appointments"]'
+            cohorts: '["questions-review","questions-conversation","questions-accessibility","questions-summary","provider","calendar-consent","calendar-appointments"]'
     steps:
       - name: Require this domain's selected cohorts to succeed
         env:
