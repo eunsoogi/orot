@@ -45,6 +45,10 @@ for (const suite of ['integration', 'ui']) {
         runs[0].args.filter((arg) => arg.startsWith('-only-testing:')),
         iosTestInventory('speech', suite).map((id) => '-only-testing:' + id),
       );
+      const streams = result.calls.filter(
+        (call) => call.name === 'xcrun' && call.args[4] === 'stream',
+      );
+      assert.equal(streams.length, suite === 'ui' ? 1 : 0);
     } finally {
       rmSync(result.directory, { recursive: true, force: true });
     }
@@ -58,6 +62,28 @@ for (const status of [0, 65]) {
       assert.equal(result.outcome.status, status, result.outcome.stderr);
       const runs = result.calls.filter((call) => call.name === 'xcodebuild');
       assert.equal(runs.length, 1);
+      const streams = result.calls.filter(
+        ({ name, args }) => name === 'xcrun' && args[1] === 'spawn' && args[4] === 'stream',
+      );
+      assert.equal(streams.length, 1);
+      assert.equal(streams[0].args[2], 'fixture-udid');
+      assert.ok(!streams[0].args.includes('--private'));
+      const predicate = streams[0].args[streams[0].args.indexOf('--predicate') + 1];
+      assert.ok(
+        ['testmanagerd', 'FrontBoard', 'RunningBoard'].every((name) => predicate.includes(name)),
+      );
+      assert.doesNotMatch(predicate, /health|clipboard|OROT_AUTH_DIAGNOSTIC/i);
+      const lifecycleLog = readFileSync(result.result + '.lifecycle.log', 'utf8');
+      const lifecycleReceipt = JSON.parse(
+        readFileSync(result.result + '.lifecycle.log.json', 'utf8'),
+      );
+      assert.match(lifecycleLog, /TEST_RUNNER_OROT_IOS_TEST_INVOCATION=/);
+      assert.equal(lifecycleReceipt.source.invocationId, runs[0].invocation);
+      assert.equal(lifecycleReceipt.source.udid, 'fixture-udid');
+      assert.equal(lifecycleReceipt.testExitCode, status);
+      assert.equal(lifecycleReceipt.dataState, 'captured');
+      assert.equal(lifecycleReceipt.truncated, false);
+      assert.equal(lifecycleReceipt.stopConfirmed, true);
       assert.equal(runs[0].args[0], 'test-without-building');
       // A slow case remains running; only its outcome or the owning job's cancellation ends it.
       assert.equal(runs[0].args[runs[0].args.indexOf('-test-timeouts-enabled') + 1], 'NO');
@@ -94,6 +120,21 @@ for (const status of [0, 65]) {
         result.outcome.stdout,
         new RegExp(`IOS_TEST_STAGE elapsed_ms=\\d+ exit=${status}`),
       );
+    } finally {
+      rmSync(result.directory, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const status of [0, 65]) {
+  test(`an unavailable lifecycle stream cannot replace the first XCTest exit ${status}`, () => {
+    const result = fixture(status, 'core', 'all', undefined, {}, 'capture', 'error');
+    try {
+      assert.equal(result.outcome.status, status, result.outcome.stderr);
+      const receipt = JSON.parse(readFileSync(result.result + '.lifecycle.log.json', 'utf8'));
+      assert.equal(receipt.testExitCode, status);
+      assert.equal(receipt.state, 'unavailable');
+      assert.match(receipt.error ?? receipt.stderrTail, /lifecycle stream unavailable/);
     } finally {
       rmSync(result.directory, { recursive: true, force: true });
     }

@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { backupTests, iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { startIosSimulatorLifecycleDiagnostics } from './ios-simulator-lifecycle-diagnostics.mjs';
 import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 import { readIosTestObservations, verifyIosTestResults } from './ios-test-results.mjs';
 import {
@@ -60,6 +62,7 @@ const attempted = new Set();
 const started = Date.now();
 let current;
 let lastMode;
+let fixtureCleanupState = 'not-needed';
 
 async function cleanup(passed) {
   if (!current?.setupComplete) return;
@@ -75,7 +78,9 @@ async function cleanup(passed) {
       'IOS_FIXTURE_CLEANUP_VERIFIED ' +
         JSON.stringify({ identifier, profile, mode, device: owner.udid, ...result }),
     );
+    fixtureCleanupState = 'completed';
   } catch (error) {
+    fixtureCleanupState = 'failed';
     failures.push({ identifier, stage: 'cleanup', error: String(error) });
     throw error;
   } finally {
@@ -84,64 +89,90 @@ async function cleanup(passed) {
 }
 
 const bundle = join(directory, 'session.xcresult');
-const session = await executeIosFixtureSession({
-  identifiers: expected,
-  command: [
-    'scripts/ci/run-command.sh',
-    'fixture-session',
-    join(directory, 'session.log'),
-    '--',
-    process.execPath,
-    'scripts/ci/run-ios-tests.mjs',
+const invocationId = randomUUID();
+const stopLifecycle = await startIosSimulatorLifecycleDiagnostics(
+  owner.udid,
+  bundle + '.lifecycle.log',
+  {
+    invocationId,
     profile,
-    runFile,
-    ownerFile,
-    bundle,
-    ...expected,
-  ],
-  async handle({ identifier, stage, passed }) {
-    if (stage === 'complete') {
-      if (!passed && current?.setupComplete)
-        failures.push({ identifier, stage: 'test', error: 'Original XCTest case failed' });
-      await cleanup(passed);
-      return;
-    }
-    attempted.add(identifier);
-    const mode = iosFixtureResetMode(profile, identifier);
-    current = { identifier, mode, setupComplete: false };
-    const setupStarted = Date.now();
-    try {
-      // The runner is shared; every case still waits for its original explicit host reset before setup/body executes.
-      if (mode === 'scoped') {
-        if (lastMode !== 'scoped') ensureIosFixtureInstalled(profile, owner, app);
-        const reset = await runIosFixtureCommand(profile, owner, 'reset');
-        writeFileSync(
-          join(directory, `reset-${attempted.size}.json`),
-          JSON.stringify({ identifier, ...reset }, null, 2) + '\n',
-        );
-      } else resetIosTestFixtureContainer(profile, owner, app);
-      lastMode = mode;
-      current.setupComplete = true;
-      console.log(
-        'IOS_FIXTURE_SETUP ' +
-          JSON.stringify({ identifier, mode, elapsedMs: Date.now() - setupStarted }),
-      );
-    } catch (error) {
-      failures.push({
-        identifier,
-        stage: 'setup',
-        error: String(error),
-        cleanup: 'deferred-to-owned-device-cleanup',
-      });
-      throw error;
-    }
+    tests: expected,
+    sourceSha: process.env.GITHUB_SHA,
+    runId: process.env.GITHUB_RUN_ID,
+    attempt: process.env.GITHUB_RUN_ATTEMPT,
   },
-});
-// An interrupted case may never deliver didFinish. Clean only a completed preparation and preserve the original process failure.
+);
+let session;
 try {
-  await cleanup(false);
-} catch (error) {
-  console.error('IOS_FIXTURE_CLEANUP_FAILED ' + String(error));
+  session = await executeIosFixtureSession({
+    identifiers: expected,
+    environment: {
+      TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE: '1',
+      TEST_RUNNER_OROT_IOS_TEST_INVOCATION: invocationId,
+    },
+    command: [
+      'scripts/ci/run-command.sh',
+      'fixture-session',
+      join(directory, 'session.log'),
+      '--',
+      process.execPath,
+      'scripts/ci/run-ios-tests.mjs',
+      profile,
+      runFile,
+      ownerFile,
+      bundle,
+      ...expected,
+    ],
+    async handle({ identifier, stage, passed }) {
+      if (stage === 'complete') {
+        if (!passed && current?.setupComplete)
+          failures.push({ identifier, stage: 'test', error: 'Original XCTest case failed' });
+        await cleanup(passed);
+        return;
+      }
+      attempted.add(identifier);
+      const mode = iosFixtureResetMode(profile, identifier);
+      current = { identifier, mode, setupComplete: false };
+      const setupStarted = Date.now();
+      try {
+        // The runner is shared; every case still waits for its original explicit host reset before setup/body executes.
+        if (mode === 'scoped') {
+          if (lastMode !== 'scoped') ensureIosFixtureInstalled(profile, owner, app);
+          const reset = await runIosFixtureCommand(profile, owner, 'reset');
+          writeFileSync(
+            join(directory, `reset-${attempted.size}.json`),
+            JSON.stringify({ identifier, ...reset }, null, 2) + '\n',
+          );
+        } else resetIosTestFixtureContainer(profile, owner, app);
+        lastMode = mode;
+        current.setupComplete = true;
+        console.log(
+          'IOS_FIXTURE_SETUP ' +
+            JSON.stringify({ identifier, mode, elapsedMs: Date.now() - setupStarted }),
+        );
+      } catch (error) {
+        failures.push({
+          identifier,
+          stage: 'setup',
+          error: String(error),
+          cleanup: 'deferred-to-owned-device-cleanup',
+        });
+        throw error;
+      }
+    },
+  });
+} finally {
+  // An interrupted case may never deliver didFinish; collect its original fixture cleanup before stopping the owned stream.
+  try {
+    await cleanup(false);
+  } catch (error) {
+    console.error('IOS_FIXTURE_CLEANUP_FAILED ' + String(error));
+  }
+  try {
+    await stopLifecycle({ testRunnerExitCode: session?.status ?? null, fixtureCleanupState });
+  } catch (error) {
+    console.error('IOS_SIMULATOR_LIFECYCLE_DIAGNOSTIC_UNAVAILABLE ' + String(error));
+  }
 }
 let rawObservations = [];
 let resultVerificationError;
