@@ -27,6 +27,7 @@ export function fixture(
   selected,
   environment = {},
   authStream = 'capture',
+  lifecycleStream = 'capture',
 ) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-test-runner-'));
   const spec = iosTestConfig(profile);
@@ -41,7 +42,7 @@ export function fixture(
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 const name = require('node:path').basename(process.argv[1]);
-const auth = ${JSON.stringify(auth)}, mode = ${JSON.stringify(authStream)};
+const auth = ${JSON.stringify(auth)}, mode = ${JSON.stringify(authStream)}, lifecycleMode = ${JSON.stringify(lifecycleStream)};
 const gate = ${JSON.stringify(join(directory, 'xcode-started'))};
 const entered = ${JSON.stringify(join(directory, 'collector-entered'))};
 const output = ${JSON.stringify(result + '.auth.jsonl')};
@@ -54,7 +55,7 @@ const waitFor = (ready, done) => {
   setTimeout(check, 10);
  }; check();
 };
-if (auth && name === 'xcrun' && args.includes('stream')) {
+if (auth && name === 'xcrun' && args.some((arg) => arg.includes('OROT_AUTH_DIAGNOSTIC'))) {
  fs.writeFileSync(entered, 'collector entered');
  if (mode !== 'capture') setInterval(() => {}, 1000);
  else waitFor(() => fs.existsSync(gate), () => {
@@ -62,6 +63,12 @@ if (auth && name === 'xcrun' && args.includes('stream')) {
   process.stdout.write(${JSON.stringify('OROT_AUTH_DIAGNOSTIC ' + JSON.stringify(authFixtureRecord) + '\n')});
   setInterval(() => {}, 1000);
  });
+} else if (name === 'xcrun' && args[1] === 'spawn' && args[4] === 'stream') {
+ recordCall();
+ if (lifecycleMode === 'error') { process.stderr.write('lifecycle stream unavailable'); process.exit(1); }
+ process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n');
+ process.on('SIGTERM', () => process.exit(143));
+ setInterval(() => {}, 1000);
 } else if (name === 'xcodebuild') {
  recordCall();
  if (!auth) process.exit(${status});

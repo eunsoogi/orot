@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fixture as runnerFixture } from './fixtures/ios-test-runner.mjs';
 import { fixture } from './fixtures/ios-test-fixture-driver.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
@@ -55,6 +55,15 @@ for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-sele
     try {
       assert.equal(value.outcome.status, 0, value.outcome.stderr);
       assert.equal(value.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+      const lifecycleLog = readFileSync(
+        join(value.output, 'session.xcresult.lifecycle.log'),
+        'utf8',
+      );
+      const lifecycleReceipt = JSON.parse(
+        readFileSync(join(value.output, 'session.xcresult.lifecycle.log.json'), 'utf8'),
+      );
+      assert.match(lifecycleLog, /FIXTURE_CLEANUP_COMPLETED/);
+      assert.equal(lifecycleReceipt.fixtureCleanupState, 'completed');
       const fresh = profile === 'fixtures' ? 1 : identifiers.length;
       assert.equal(value.calls.filter((call) => call.args[1] === 'keychain').length, fresh);
       assert.equal(value.calls.filter((call) => call.args[1] === 'uninstall').length, fresh);

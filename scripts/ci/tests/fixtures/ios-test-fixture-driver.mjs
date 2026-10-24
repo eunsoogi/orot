@@ -39,6 +39,7 @@ export function fixture({
           iosTestInventory('fixtures', 'calendar').at(-1),
         ]);
   const trace = join(value.root, 'calls.jsonl');
+  const cleanupMarker = join(value.root, 'fixture-cleanup-completed');
   writeFileSync(trace, '');
   const installed = join(value.root, 'installed.flag');
   const container = join(value.root, 'data');
@@ -57,7 +58,7 @@ if(name==='xcodebuild'){
  const result=args[args.indexOf('-resultBundlePath')+1]; fs.mkdirSync(result);
  const session=process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION;
  let previousToken;
- const request=(stage,identifier,passed)=>new Promise((resolve,reject)=>{const token=${replayToken}&&stage==='complete'?previousToken:require('node:crypto').randomUUID();previousToken=token;const [target,cls,method]=identifier.split('/');let input='';const socket=require('node:net').connect(Number(process.env.TEST_RUNNER_OROT_IOS_FIXTURE_PORT),'127.0.0.1',()=>socket.write(JSON.stringify({session,token,name:'-['+(${qualifiedName}?target+'.':'')+cls+' '+method+']',stage:${JSON.stringify(invalidRequest)}&&stage==='prepare'?'unexpected':stage,passed})+'\\n'));socket.on('data',x=>input+=x);socket.on('error',reject);socket.on('end',()=>{try{resolve(JSON.parse(input).ok);}catch(error){reject(error);}});});
+  const request=(stage,identifier,passed)=>new Promise((resolve,reject)=>{const token=${replayToken}&&stage==='complete'?previousToken:require('node:crypto').randomUUID();previousToken=token;const [target,cls,method]=identifier.split('/');let input='';const socket=require('node:net').connect(Number(process.env.TEST_RUNNER_OROT_IOS_FIXTURE_PORT),'127.0.0.1',()=>socket.write(JSON.stringify({session,token,name:'-['+(${qualifiedName}?target+'.':'')+cls+' '+method+']',stage:${JSON.stringify(invalidRequest)}&&stage==='prepare'?'unexpected':stage,passed})+'\\n'));socket.on('data',x=>input+=x);socket.on('error',reject);socket.on('end',()=>{try{resolve(JSON.parse(input).ok);}catch(error){reject(error);}});});
  let failed=false;const observations=[];
  for(const identifier of (${reverse}?selected.slice().reverse():selected)){
   if(failed){observations.push({identifier,result:'Skipped'});continue;}
@@ -65,6 +66,7 @@ if(name==='xcodebuild'){
   const passed=ready&&!(${failFirst}&&identifier===${JSON.stringify(identifiers[0])});
   observations.push({identifier,result:passed?'Passed':'Failed'});
   const clean=!session||await request('complete',identifier,passed);
+  if(session&&clean){fs.writeFileSync(${JSON.stringify(cleanupMarker)},'done');await new Promise(resolve=>setTimeout(resolve,30));}
   failed=!passed||!clean;
  }
  fs.writeFileSync(path.join(result,'observations.json'),JSON.stringify(observations));
@@ -73,6 +75,10 @@ if(name==='xcodebuild'){
  })().catch(error=>{console.error(error);process.exit(65);});return;
 }
 if(name!=='xcrun'){console.log('synthetic resource sample');process.exit(0);}
+if(args[0]==='simctl'&&args[1]==='spawn'&&args[4]==='stream'){
+ const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(cleanupMarker)})){process.stdout.write('FIXTURE_CLEANUP_COMPLETED\\n');}},2);
+ process.on('SIGTERM',()=>{clearInterval(timer);process.exit(143);});return;
+}
 if(args[0]==='xcresulttool'){
  if(args[1]==='export'){fs.mkdirSync(args[args.indexOf('--output-path')+1],{recursive:true});process.exit(0);}
  const result=args[args.indexOf('--path')+1];const observations=JSON.parse(fs.readFileSync(path.join(result,'observations.json'),'utf8'));

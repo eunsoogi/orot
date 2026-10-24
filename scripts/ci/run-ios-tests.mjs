@@ -8,6 +8,7 @@ import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
+import { startIosSimulatorLifecycleDiagnosticsForUiTests } from './ios-simulator-lifecycle-runner.mjs';
 import { authDiagnosticTest, startIosAuthDiagnostics } from './ios-auth-diagnostics.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
@@ -157,45 +158,57 @@ const stopAuthDiagnostics =
   profile === 'provider-selection' && tests.includes(authDiagnosticTest)
     ? startIosAuthDiagnostics(owner.udid, resolve(results) + '.auth.jsonl')
     : async () => {};
+const invocationId = process.env.TEST_RUNNER_OROT_IOS_TEST_INVOCATION ?? randomUUID();
+const stopLifecycleDiagnostics = await startIosSimulatorLifecycleDiagnosticsForUiTests({
+  udid: owner.udid,
+  path: resolve(results) + '.lifecycle.log',
+  invocationId,
+  profile,
+  tests,
+  uiTarget: spec.uiTarget,
+});
 const started = Date.now();
 let testStageSucceeded = false;
-const outcome = spawn(
-  'xcodebuild',
-  [
-    'test-without-building',
-    '-xctestrun',
-    resolve(runFile),
-    '-destination',
-    'platform=iOS Simulator,id=' + owner.udid,
-    '-resultBundlePath',
-    resolve(results),
-    '-parallel-testing-enabled',
-    'NO',
-    '-maximum-concurrent-test-simulator-destinations',
-    '1',
-    '-disableAutomaticPackageResolution',
-    // Case duration is not an assertion; the owning job retains cancellation authority.
-    '-test-timeouts-enabled',
-    'NO',
-    // Xcode's verbose simctl diagnose stalled for its full 600-second collection
-    // budget after a failed assertion. Preserve xcresult/screenshots and collect
-    // a bounded app log below; product recognition cancellation remains unchanged.
-    '-collect-test-diagnostics',
-    'never',
-    ...tests.map((test) => '-only-testing:' + test),
-  ],
-  {
-    stdio: 'inherit',
-    // Xcode forwards this public prefix to the runner, including its automatic restart after a crash.
-    env: { ...process.env, TEST_RUNNER_OROT_IOS_TEST_INVOCATION: randomUUID() },
-  },
-);
+let testExitCode = null;
 try {
+  const outcome = spawn(
+    'xcodebuild',
+    [
+      'test-without-building',
+      '-xctestrun',
+      resolve(runFile),
+      '-destination',
+      'platform=iOS Simulator,id=' + owner.udid,
+      '-resultBundlePath',
+      resolve(results),
+      '-parallel-testing-enabled',
+      'NO',
+      '-maximum-concurrent-test-simulator-destinations',
+      '1',
+      '-disableAutomaticPackageResolution',
+      // Case duration is not an assertion; the owning job retains cancellation authority.
+      '-test-timeouts-enabled',
+      'NO',
+      // Xcode's verbose simctl diagnose stalled for its full 600-second collection
+      // budget after a failed assertion. Preserve xcresult/screenshots and collect
+      // bounded diagnostics; product recognition cancellation remains unchanged.
+      '-collect-test-diagnostics',
+      'never',
+      ...tests.map((test) => '-only-testing:' + test),
+    ],
+    {
+      stdio: 'inherit',
+      // Xcode forwards this public prefix to the runner, including its automatic restart after a crash.
+      env: { ...process.env, TEST_RUNNER_OROT_IOS_TEST_INVOCATION: invocationId },
+    },
+  );
   const status = await new Promise((resolveStatus, reject) => {
     outcome.once('error', reject);
     outcome.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
+  testExitCode = status;
   testStageSucceeded = status === 0;
+  await stopLifecycleDiagnostics({ testExitCode: status });
   await stopDiagnostics();
   await stopAuthDiagnostics();
   if (status !== 0) {
@@ -228,6 +241,7 @@ try {
   console.log(`IOS_TEST_STAGE elapsed_ms=${Date.now() - started} exit=${status}`);
   process.exitCode = status;
 } finally {
+  await stopLifecycleDiagnostics({ testExitCode });
   await stopDiagnostics();
   await stopAuthDiagnostics();
   // Xcode success needs no extra host process scan; keep the final process snapshot when it fails.

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 
 /** One loopback connection binds each XCTest boundary to host preparation; host exit closes the waiting client. */
-export async function executeIosFixtureSession({ identifiers, command, handle }) {
+export async function executeIosFixtureSession({ identifiers, command, handle, environment = {} }) {
   // The runner's lifecycle barrier uses XCUIApplication; app-hosted integration targets must not enter this session.
   if (
     !identifiers.length ||
@@ -137,6 +137,8 @@ export async function executeIosFixtureSession({ identifiers, command, handle })
       detached: true,
       env: {
         ...process.env,
+        // Forward invocation-scoped diagnostics; the session transport identity remains authoritative.
+        ...environment,
         TEST_RUNNER_OROT_IOS_FIXTURE_SESSION: session,
         TEST_RUNNER_OROT_IOS_FIXTURE_PORT: String(server.address().port),
       },
