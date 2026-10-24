@@ -153,7 +153,7 @@ export async function runDomainTestOperation(
     case 'rag-workflow': {
       const { runRagWorkflowProbe } =
         require('./ragWorkflowProbe') as typeof import('./ragWorkflowProbe');
-      // Public-query authorization and real Europe PMC retrieval remain owned by the probe; shipping workflow budgets are unchanged.
+      // The probe keeps shipping authorization, mapping and workflow budgets; only provider HTTP responses are synthetic.
       return {
         ...(await withMockAppleModel(appleModelMockScript(operation), () =>
           runRagWorkflowProbe(() => {}, new AbortController().signal),

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import vm from 'node:vm';
-import ts from 'typescript';
+import { environment } from './probe-test-environment.mjs';
 
 const mobile = new URL('../../../apps/mobile/', import.meta.url);
 const deferred = () => {
@@ -15,48 +14,6 @@ const deferred = () => {
 };
 const turn = () => new Promise(setImmediate);
 
-// Evaluate the actual probe module with controlled services and clock; no network or model runs here.
-function environment(source, dependencies = {}) {
-  let now = 0,
-    sequence = 0;
-  const timers = new Map();
-  const exports = {};
-  const output = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
-  vm.runInNewContext(output, {
-    exports,
-    module: { exports },
-    AbortController,
-    Error,
-    console: { log() {} },
-    Date: { now: () => now },
-    setTimeout(callback, delay) {
-      const id = ++sequence;
-      timers.set(id, { callback, at: now + delay });
-      return id;
-    },
-    clearTimeout(id) {
-      timers.delete(id);
-    },
-    require(name) {
-      assert.ok(Object.hasOwn(dependencies, name), 'Unexpected probe dependency: ' + name);
-      return dependencies[name];
-    },
-  });
-  return {
-    exports,
-    advance(milliseconds) {
-      now += milliseconds;
-      for (const [id, timer] of [...timers]) {
-        if (timer.at <= now) {
-          timers.delete(id);
-          timer.callback();
-        }
-      }
-    },
-  };
-}
 const source = (file) => readFileSync(new URL(file, mobile), 'utf8');
 
 test('controlled source modules reject dependencies that were not supplied', () => {
@@ -154,6 +111,11 @@ function ragFixture(availability = 'available') {
   }).exports.RAG_CONVERSATION_BUDGET;
   const clock = environment(source('e2e/ragWorkflowProbe.ts'), {
     './appleModelMockFixtures': fixture,
+    // This suite observes workflow scheduling; provider transport has its own behavioral tests.
+    './europePmcMockTransport': {
+      createEuropePmcMockTransport: () => ({ assertComplete() {} }),
+      SYNTHETIC_RETRIEVAL_TIME: '2026-10-07T03:00:00.000Z',
+    },
     '../src/ragConversation/budget': { RAG_CONVERSATION_BUDGET: budget },
     '@orot/provider-apple': {
       AppleFoundationModelsProvider: class {

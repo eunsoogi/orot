@@ -8,11 +8,16 @@ import { createExternalConversationEvidence } from '../src/aiFeatures/integratio
 import { runRagConversationTurn } from '../src/ragConversation/service';
 import type { RagConversationOutcome } from '../src/ragConversation/service';
 import { RAG_WORKFLOW_PUBLIC_QUERY } from './appleModelMockFixtures';
+import {
+  createEuropePmcMockTransport,
+  SYNTHETIC_RETRIEVAL_TIME,
+} from './europePmcMockTransport';
 
 const question = `This is a synthetic general-literature question, with no personal health records. Search Europe PMC using the exact query "${RAG_WORKFLOW_PUBLIC_QUERY}". Summarize what the returned publications say about adult sleep duration, cite their supplied evidence IDs and publication dates, and explain the limits of this search sample. Do not give individual medical advice.`;
 
 export interface RagWorkflowProbeResult {
   readonly availability: string;
+  readonly literatureExecution: 'mock';
   readonly terminal: string;
   readonly retrieval: 'observed' | 'notobserved';
   readonly consent: readonly { query: string; decision: string }[];
@@ -29,7 +34,7 @@ export interface RagWorkflowProbeResult {
   readonly parentAborted: boolean;
 }
 
-/** Executes the shipping RAG chain with real network calls and the native model bridge and an empty personal library. */
+/** Executes the shipping RAG chain and native model bridge with test-only HTTP fixtures and an empty personal library. */
 export async function runRagWorkflowProbe(
   onPhase: (phase: string) => void,
   parentSignal: AbortSignal,
@@ -93,11 +98,13 @@ export async function runRagWorkflowProbe(
       }
     },
   };
+  const transport = createEuropePmcMockTransport(RAG_WORKFLOW_PUBLIC_QUERY);
   const service = createEuropePmcMedicalEvidenceService({
+    now: () => new Date(SYNTHETIC_RETRIEVAL_TIME),
     async fetcher(url, init) {
       onPhase('europe-pmc-request');
       requests.push(url);
-      const response = await fetch(url, init);
+      const response = await transport.fetcher(url, init);
       responses.push({ status: response.status, ok: response.ok });
       return response;
     },
@@ -173,6 +180,7 @@ export async function runRagWorkflowProbe(
         { signal: controller.signal },
       );
       terminal = controller.signal.aborted ? 'cancelled' : outcome.status;
+      transport.assertComplete();
     }
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
@@ -183,6 +191,7 @@ export async function runRagWorkflowProbe(
   onPhase(terminal);
   return {
     availability,
+    literatureExecution: 'mock',
     terminal,
     retrieval: requests.length ? 'observed' : 'notobserved',
     consent: [...consent],
