@@ -21,6 +21,7 @@ const names = [
   ['questions-conversation', 'Questions / Conversation'],
   ['questions-accessibility', 'Questions / Accessibility'],
   ['questions-summary', 'Questions / Summary'],
+  ['questions-literature', 'Questions / Literature'],
   ['calendar-consent', 'Calendar / Consent'],
   ['calendar-appointments', 'Calendar / Appointments'],
   ['provider', 'Provider'],

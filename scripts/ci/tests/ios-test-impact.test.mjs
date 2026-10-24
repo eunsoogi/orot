@@ -41,6 +41,7 @@ test('visit-question source changes select its provider and question suites only
       'questions-conversation',
       'questions-accessibility',
       'questions-summary',
+      'questions-literature',
       'provider',
     ]),
   );
@@ -74,6 +75,7 @@ test('native test files map to the cohort that owns their original assertions', 
       'questions-conversation',
       'questions-accessibility',
       'questions-summary',
+      'questions-literature',
     ]),
   );
 });
@@ -168,10 +170,11 @@ test('domain E2E helpers are focused while shared test drivers keep the full inv
       'questions-conversation',
       'questions-accessibility',
       'questions-summary',
+      'questions-literature',
     ]),
   );
   assert.equal(shared.reason, 'shared-test-driver');
-  assert.equal(shared.cohorts.length, 26);
+  assert.equal(shared.cohorts.length, 27);
 });
 
 test('unknown application and shared package changes select all dependent suites', () => {
@@ -179,9 +182,9 @@ test('unknown application and shared package changes select all dependent suites
   const shared = iosTestImpactForPath('packages/model-runtime/src/session.ts');
 
   assert.equal(unknown.reason, 'unknown-application-impact');
-  assert.equal(unknown.cohorts.length, 26);
+  assert.equal(unknown.cohorts.length, 27);
   assert.equal(shared.reason, 'shared-package');
-  assert.equal(shared.cohorts.length, 26);
+  assert.equal(shared.cohorts.length, 27);
 });
 
 test('new or unclassified native and E2E test files fail safe to the full suite', () => {
@@ -192,7 +195,7 @@ test('new or unclassified native and E2E test files fail safe to the full suite'
   ]) {
     const impact = iosTestImpactForPath(path);
 
-    assert.equal(impact.cohorts.length, 26, path);
+    assert.equal(impact.cohorts.length, 27, path);
     assert.ok(impact.reason.startsWith('unknown-'), path);
   }
 });
@@ -201,5 +204,5 @@ test('provider-openai package changes also select the separate OAuth suite', () 
   const impact = iosTestImpactForPath('packages/provider-openai/Sources/OAuth/Session.swift');
 
   assert.equal(impact.oauth, true);
-  assert.equal(impact.cohorts.length, 26);
+  assert.equal(impact.cohorts.length, 27);
 });

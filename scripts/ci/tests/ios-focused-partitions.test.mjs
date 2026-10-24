@@ -11,9 +11,9 @@ test('focused aggregate groups retain their exact original methods across indepe
   for (const [group, count] of [
     ['navigation', 4],
     ['calendar', 2],
-    ['questions', 4],
+    ['questions', 5],
     ['recordings', 3],
-    ['all', 13],
+    ['all', 14],
   ]) {
     const selection = selectFocusedIosTests(
       'ios/fixtures',

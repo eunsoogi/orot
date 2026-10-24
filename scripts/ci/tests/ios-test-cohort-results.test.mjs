@@ -127,3 +127,46 @@ test('CLI rejects a previous attempt and preserves the identity of its own compl
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+// A standalone job must finalize its sole observation; entry or partial logs cannot certify it.
+for (const cohort of ['questions-summary', 'questions-literature']) {
+  test(`${cohort} requires its own complete successful first-attempt result`, () => {
+    assert.equal(verifyIosTestCohortResults(report(cohort), cohort, context).length, 1);
+    for (const mutate of [
+      (value) => {
+        value.passed = false;
+      },
+      (value) => {
+        value.sourceSha = 'b'.repeat(40);
+      },
+      (value) => {
+        value.runId = '100';
+      },
+      (value) => {
+        value.attempt = '2';
+      },
+      (value) => {
+        value.tasks = [];
+      },
+      (value) => {
+        value.tasks[0].status = 'cancelled';
+      },
+      (value) => {
+        value.tasks[0].observations = [];
+      },
+      (value) => {
+        value.tasks[0].observations.push(value.tasks[0].observations[0]);
+      },
+      (value) => {
+        value.tasks[0].observations[0].result = 'Failed';
+      },
+      (value) => {
+        value.tasks[0].observations[0].result = 'Skipped';
+      },
+    ]) {
+      const value = report(cohort);
+      mutate(value);
+      assert.throws(() => verifyIosTestCohortResults(value, cohort, context));
+    }
+  });
+}
