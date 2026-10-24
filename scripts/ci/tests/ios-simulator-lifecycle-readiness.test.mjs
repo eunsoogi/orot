@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { startIosSimulatorLifecycleDiagnostics } from '../ios-simulator-lifecycle-diagnostics.mjs';
+import { createIosSimulatorLifecycleStreamParser } from '../ios-simulator-lifecycle-stream-parser.mjs';
 import { fixture } from './fixtures/ios-test-runner.mjs';
 
 const source = {
@@ -17,6 +18,31 @@ const source = {
 };
 const streamHeader =
   'Filtering the log data using (true)\nTimestamp               Ty Process[PID:TID]\n';
+
+test('recognizes a coalesced startup header before bounding event bytes', () => {
+  const events =
+    Array.from(
+      { length: 80 },
+      (_, index) =>
+        `2026-10-24 12:00:00.000 Df Orot[123:456] Scene update lifecycle event ${String(index).padStart(2, '0')}`,
+    ).join('\n') + '\n';
+  const input = Buffer.from(streamHeader + events);
+  let ready = false;
+  let startupOutputTruncated = false;
+  const captured = [];
+  const parse = createIosSimulatorLifecycleStreamParser({
+    onEvents: (chunk) => captured.push(Buffer.from(chunk)),
+    onReady: () => (ready = true),
+    onStartupOutputTruncated: () => (startupOutputTruncated = true),
+  });
+
+  assert.ok(input.length > 4096);
+  parse(input);
+
+  assert.equal(ready, true);
+  assert.equal(startupOutputTruncated, false);
+  assert.equal(Buffer.concat(captured).toString('utf8'), events);
+});
 
 async function collect(program, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-lifecycle-readiness-'));

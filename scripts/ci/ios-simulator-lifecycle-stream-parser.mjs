@@ -14,15 +14,17 @@ export function createIosSimulatorLifecycleStreamParser({
       return;
     }
     startupOutput += Buffer.from(chunk).toString('utf8');
-    if (startupOutput.length > maxStartupOutputChars) {
-      startupOutput = startupOutput.slice(-maxStartupOutputChars);
-      onStartupOutputTruncated();
-    }
     const lines = startupOutput.split('\n');
     const headerIndex = lines.findIndex((line) =>
       /^Timestamp\s+Ty Process\[PID:TID\]/.test(line.replace(/\r$/, '')),
     );
-    if (headerIndex < 0 || headerIndex === lines.length - 1) return;
+    if (headerIndex < 0 || headerIndex === lines.length - 1) {
+      if (startupOutput.length > maxStartupOutputChars) {
+        startupOutput = startupOutput.slice(-maxStartupOutputChars);
+        onStartupOutputTruncated();
+      }
+      return;
+    }
     streamReady = true;
     onReady();
     const eventText = lines.slice(headerIndex + 1).join('\n');
