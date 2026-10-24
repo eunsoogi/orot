@@ -21,6 +21,7 @@ test('full cohort plans and focused selections agree on UI preparation for every
     'recordings-playback',
     'questions-review',
     'questions-conversation',
+    'questions-accessibility',
     'questions-summary',
     'calendar-consent',
     'calendar-appointments',

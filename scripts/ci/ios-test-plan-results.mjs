@@ -95,7 +95,7 @@ const receipt = {
   observations,
 };
 if (authentication) {
-  // Keep the two biometric cases separate from the unchanged 24-cohort observation inventory.
+  // Keep the two biometric cases separate from the 25-cohort observation inventory.
   receipt.authenticationObservations = authentication.authenticationObservations;
   receipt.authenticationEvidence = authentication.authenticationEvidence;
 }

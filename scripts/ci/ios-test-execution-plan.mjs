@@ -19,6 +19,7 @@ const names = [
   ['recordings-playback', 'Recordings / Playback'],
   ['questions-review', 'Questions / Review'],
   ['questions-conversation', 'Questions / Conversation'],
+  ['questions-accessibility', 'Questions / Accessibility'],
   ['questions-summary', 'Questions / Summary'],
   ['calendar-consent', 'Calendar / Consent'],
   ['calendar-appointments', 'Calendar / Appointments'],

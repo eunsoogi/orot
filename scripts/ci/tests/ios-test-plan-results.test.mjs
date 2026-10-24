@@ -156,7 +156,12 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
 });
 
 test('selected aggregation accepts exactly the affected reports and records every skipped cohort', (t) => {
-  const selected = ['questions-review', 'questions-conversation', 'questions-summary'];
+  const selected = [
+    'questions-review',
+    'questions-conversation',
+    'questions-accessibility',
+    'questions-summary',
+  ];
   const { root } = reports(t, selected);
   const outcome = run(root, selected, 'pr', false);
 
@@ -218,22 +223,27 @@ for (const failure of [
   'stale-head',
   'repeated-case',
   'failed-case',
+  'skipped-case',
+  'cancelled-task',
   'missing-speech',
   'missing-authentication',
 ])
   test('full aggregation rejects ' + failure, (t) => {
     const { root, attachments, authentication } = reports(t);
-    const reportPath = join(root, artifact('core-integration'), 'results.json');
+    const reportPath = join(root, artifact('questions-accessibility'), 'results.json');
     const report = JSON.parse(readFileSync(reportPath, 'utf8'));
-    if (failure === 'missing-job') rmSync(join(root, artifact('health')), { recursive: true });
+    if (failure === 'missing-job')
+      rmSync(join(root, artifact('questions-accessibility')), { recursive: true });
     if (failure === 'unexpected-job') mkdirSync(join(root, 'old-results'));
     if (failure === 'stale-head') report.sourceSha = 'b'.repeat(40);
     if (failure === 'repeated-case')
       report.tasks[0].observations[1] = report.tasks[0].observations[0];
     if (failure === 'failed-case') report.tasks[0].observations[0].result = 'Failed';
+    if (failure === 'skipped-case') report.tasks[0].observations[0].result = 'Skipped';
+    if (failure === 'cancelled-task') report.tasks[0].status = 'cancelled';
     if (failure === 'missing-speech') rmSync(join(attachments, 'manifest.json'));
     if (failure === 'missing-authentication') rmSync(authentication, { recursive: true });
-    writeFileSync(reportPath, JSON.stringify(report));
+    if (failure !== 'missing-job') writeFileSync(reportPath, JSON.stringify(report));
     assert.notEqual(run(root).status, 0);
     assert.equal(existsSync(join(root, 'complete.json')), false);
   });
