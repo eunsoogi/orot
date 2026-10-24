@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { verifyBackupOwner } from './ios-test-backup-state-diagnostics.mjs';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
@@ -21,17 +21,28 @@ const directory = resolve(output);
 const products = dirname(resolve(runFile));
 const app = join(products, 'Release-iphonesimulator/Orot.app');
 const spec = iosTestConfig('backup');
+const source = {
+  runId: process.env.GITHUB_RUN_ID ?? null,
+  attempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+  sourceSha: process.env.GITHUB_SHA ?? null,
+};
 const runData = JSON.parse(
   execFileSync('plutil', ['-convert', 'json', '-o', '-', runFile], { encoding: 'utf8' }),
 );
 verifyTestRunContract(runData, spec);
 if (!existsSync(app)) throw new Error('Backup Release application product is missing');
-function verifyOwner() {
-  if (verifyIosTestSimulator(owner, 'backup').state !== 'Booted')
-    throw new Error('Backup execution requires its booted dedicated destination');
+let lastLifecycleReceiptPath;
+function verifyOwner(phase) {
+  return verifyBackupOwner({
+    owner,
+    phase,
+    source,
+    diagnosticPath: join(directory, 'backup-state-failures.jsonl'),
+    lifecycleReceiptPath: lastLifecycleReceiptPath,
+  });
 }
-verifyOwner();
 mkdirSync(directory, { recursive: true });
+verifyOwner('runner-start');
 let phase = 0;
 const observations = [];
 const transfer = [];
@@ -84,9 +95,10 @@ const results = await executeBackupPhases({
     resetIosTestFixtureContainer('backup', owner, app, { preserveKeychain });
   },
   run(identifier, recordingID) {
-    verifyOwner();
     const name = String(++phase).padStart(2, '0');
+    verifyOwner('xctest:' + identifier);
     const resultBundle = join(directory, name + '.xcresult');
+    lastLifecycleReceiptPath = resultBundle + '.lifecycle.log.json';
     let selectedRunFile = runFile;
     if (recordingID) {
       // An execution-local copy changes only the synthetic input; portable paths still resolve from the verified product directory.
@@ -150,7 +162,7 @@ const results = await executeBackupPhases({
     return readBackupAttachment(attachments, identifier, mode, owner.udid);
   },
   snapshot(recordingID) {
-    verifyOwner();
+    verifyOwner('snapshot');
     const snapshot = snapshotTools.snapshotInstalledApp(owner.udid, recordingID);
     if (!snapshot.copiedPaths.includes('Library/orot-secure.db'))
       throw new Error('Snapshot database missing');
@@ -158,7 +170,7 @@ const results = await executeBackupPhases({
     return snapshot;
   },
   restore(snapshot, recordingID) {
-    verifyOwner();
+    verifyOwner('restore');
     const restored = snapshotTools.restoreInstalledApp(
       owner.udid,
       snapshot.snapshotRoot,
