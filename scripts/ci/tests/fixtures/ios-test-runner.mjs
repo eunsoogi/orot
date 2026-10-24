@@ -3,7 +3,21 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { iosTestConfig } from '../../ios-test-config.mjs';
+import { iosTestInventory } from '../../ios-test-inventory.mjs';
 import { authDiagnosticTest } from '../../ios-auth-diagnostics.mjs';
+
+export const authStreamCalls = (calls) =>
+  calls.filter(
+    ({ name, args }) => name === 'xcrun' && args.at(-1)?.includes('OROT_AUTH_DIAGNOSTIC'),
+  );
+export const lifecycleStreamCalls = (calls) =>
+  calls.filter(
+    ({ name, args }) =>
+      name === 'xcrun' &&
+      args[1] === 'spawn' &&
+      args[4] === 'stream' &&
+      !args.at(-1)?.includes('OROT_AUTH_DIAGNOSTIC'),
+  );
 
 export const authFixtureRecord = {
   event: 'start-return',
@@ -35,9 +49,19 @@ export function fixture(
   const calls = join(directory, 'calls.jsonl');
   const result = join(directory, 'result.xcresult');
   const auth = profile === 'provider-selection' && selected?.[0] === authDiagnosticTest;
-  // The synthetic Xcode command releases stream startup, then waits for a persisted record.
-  // This models an executed case independently of sibling process scheduling; held mode
-  // separately exercise unavailable diagnostics without waiting for a capture that cannot occur.
+  const requestedTests =
+    selected ??
+    (profile === 'core'
+      ? [
+          'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
+        ]
+      : []);
+  const fixtureTests = requestedTests.length ? requestedTests : iosTestInventory(profile, suite);
+  const lifecycleExpected =
+    (environment.TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE ??
+      process.env.TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE) !== '1' &&
+    fixtureTests.some((test) => test.startsWith(spec.uiTarget + '/'));
+  // Synthetic XCTest waits for collector output so scheduler load cannot race test completion.
   const program = `#!${process.execPath}
 const fs = require('node:fs');
 const args = process.argv.slice(2);
@@ -45,13 +69,14 @@ const name = require('node:path').basename(process.argv[1]);
 const auth = ${JSON.stringify(auth)}, mode = ${JSON.stringify(authStream)}, lifecycleMode = ${JSON.stringify(lifecycleStream)};
 const gate = ${JSON.stringify(join(directory, 'xcode-started'))};
 const entered = ${JSON.stringify(join(directory, 'collector-entered'))};
+const lifecycleReady = ${JSON.stringify(join(directory, 'lifecycle-ready'))};
 const output = ${JSON.stringify(result + '.auth.jsonl')};
 const recordCall = () => fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args,invocation:process.env.TEST_RUNNER_OROT_IOS_TEST_INVOCATION})+'\\n');
 const waitFor = (ready, done) => {
  const deadline = performance.now() + 10000;
  const check = () => {
   if (ready()) return done();
-  if (performance.now() >= deadline) throw new Error('Synthetic auth handshake timed out');
+  if (performance.now() >= deadline) throw new Error('Synthetic diagnostic handshake timed out');
   setTimeout(check, 10);
  }; check();
 };
@@ -65,17 +90,27 @@ if (auth && name === 'xcrun' && args.some((arg) => arg.includes('OROT_AUTH_DIAGN
  });
 } else if (name === 'xcrun' && args[1] === 'spawn' && args[4] === 'stream') {
  recordCall();
- if (lifecycleMode === 'error') { process.stderr.write('lifecycle stream unavailable'); process.exit(1); }
- process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n');
- process.on('SIGTERM', () => process.exit(143));
- setInterval(() => {}, 1000);
+ if (lifecycleMode === 'error') {
+  process.once('exit', () => fs.writeFileSync(lifecycleReady, 'failed'));
+  process.stderr.write('lifecycle stream unavailable', () => { process.exitCode = 1; });
+ } else {
+  process.on('SIGTERM', () => process.exit(143));
+  process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n', () => fs.writeFileSync(lifecycleReady, 'captured'));
+  setInterval(() => {}, 1000);
+ }
 } else if (name === 'xcodebuild') {
  recordCall();
- if (!auth) process.exit(${status});
+ if (!auth) {
+  const finish = () => process.exit(${status});
+  if (${JSON.stringify(lifecycleExpected)}) waitFor(() => fs.existsSync(lifecycleReady), finish);
+  else finish();
+  return;
+ }
  fs.writeFileSync(gate, 'Xcode started');
- waitFor(() => mode === 'held'
-  ? fs.existsSync(entered)
-  : fs.existsSync(output) && fs.readFileSync(output, 'utf8').includes('start-return'),
+ waitFor(() =>
+  (!${JSON.stringify(lifecycleExpected)} || fs.existsSync(lifecycleReady)) && (mode === 'held'
+   ? fs.existsSync(entered)
+   : fs.existsSync(output) && fs.readFileSync(output, 'utf8').includes('start-return')),
   () => process.exit(${status}));
 } else {
  recordCall();
@@ -97,12 +132,7 @@ else console.log('fixture app diagnostic');
       runFile,
       ownerFile,
       result,
-      ...(selected ??
-        (profile === 'core'
-          ? [
-              'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
-            ]
-          : [])),
+      ...requestedTests,
     ],
     {
       encoding: 'utf8',

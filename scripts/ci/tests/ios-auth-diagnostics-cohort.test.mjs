@@ -6,6 +6,7 @@ import test from 'node:test';
 import { iosTestCohort, iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
+import { authStreamCalls, lifecycleStreamCalls } from './fixtures/ios-test-runner.mjs';
 
 test(
   'the actual cohort and fixture drivers preserve auth diagnostics after the first Selection failure',
@@ -94,8 +95,10 @@ if(name==='xcodebuild') {
 } else if(name==='open') process.exit(0);
 else if(name!=='xcrun') console.log('synthetic resource sample');
 else if(args[0]==='xcresulttool'&&args.some(argument=>argument.includes('ui-preparation'))) console.log(${JSON.stringify(JSON.stringify(hostReport))});
-else if(args.includes('stream')) {
+else if(args.at(-1)?.includes('OROT_AUTH_DIAGNOSTIC')) {
  process.stdout.write(${JSON.stringify('OROT_AUTH_DIAGNOSTIC ' + JSON.stringify(record) + '\n')});setInterval(()=>{},1000);
+} else if(args.includes('stream')) {
+ process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n');setInterval(()=>{},1000);
 } else if(args[1]==='list') console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else if(args[1]==='get_app_container') {
  if(args[3].endsWith('.xctrunner')||fs.existsSync(${JSON.stringify(installed)}))console.log(${JSON.stringify(value.products)});
@@ -150,7 +153,8 @@ else console.log('synthetic owned fixture operation');
       assert.deepEqual(result.notRun, task.identifiers.slice(1));
       const calls = readFileSync(callsPath, 'utf8').trim().split('\n').map(JSON.parse);
       assert.equal(calls.filter((call) => call.name === 'xcodebuild').length, 2);
-      assert.equal(calls.filter((call) => call.args.includes('stream')).length, 1);
+      assert.equal(authStreamCalls(calls).length, 1);
+      assert.equal(lifecycleStreamCalls(calls).length, 1);
       assert.equal(existsSync(installed), false);
     } finally {
       value.dispose();

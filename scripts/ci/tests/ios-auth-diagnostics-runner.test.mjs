@@ -3,7 +3,12 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { posix } from 'node:path';
 import test from 'node:test';
-import { authFixtureRecord, fixture } from './fixtures/ios-test-runner.mjs';
+import {
+  authFixtureRecord,
+  authStreamCalls,
+  fixture,
+  lifecycleStreamCalls,
+} from './fixtures/ios-test-runner.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
 const identifier =
@@ -29,8 +34,9 @@ for (const status of [0, 65]) {
           .map(JSON.parse),
         [authFixtureRecord],
       );
-      const streams = result.calls.filter((call) => call.args.includes('stream'));
+      const streams = authStreamCalls(result.calls);
       assert.equal(streams.length, 1);
+      assert.equal(lifecycleStreamCalls(result.calls).length, 1);
       assert.equal(streams[0].args[2], 'fixture-udid');
       assert.equal(
         streams[0].args.at(-1),
@@ -55,7 +61,8 @@ for (const status of [0, 65]) {
       assert.equal(metadata.accepted, 0);
       assert.equal(readFileSync(result.result + '.auth.jsonl', 'utf8'), '');
       assert.match(result.outcome.stderr, /IOS_AUTH_DIAGNOSTIC_UNAVAILABLE/);
-      assert.equal(result.calls.filter((call) => call.args.includes('stream')).length, 0);
+      assert.equal(authStreamCalls(result.calls).length, 0);
+      assert.equal(lifecycleStreamCalls(result.calls).length, 1);
       assert.equal(result.calls.filter((call) => call.name === 'xcodebuild').length, 1);
       assert.equal(metadata.signal, 'SIGTERM');
       assert.equal(metadata.stopRequested, true);
@@ -76,7 +83,7 @@ test('a missing synthetic auth capture fails its bounded handshake', { timeout: 
       'The inner handshake must end before the CLI guard',
     );
     assert.equal(result.outcome.status, 1, result.outcome.stderr);
-    assert.match(result.outcome.stderr, /Synthetic auth handshake timed out/);
+    assert.match(result.outcome.stderr, /Synthetic diagnostic handshake timed out/);
     assert.ok(performance.now() - started < 15000);
     const metadata = JSON.parse(readFileSync(result.result + '.auth.jsonl.json', 'utf8'));
     assert.equal(metadata.complete, false);
@@ -93,7 +100,8 @@ test('ordinary cases do not start the Selection auth collector', () => {
   try {
     assert.equal(result.outcome.status, 0, result.outcome.stderr);
     assert.ok(!existsSync(result.result + '.auth.jsonl'));
-    assert.equal(result.calls.filter((call) => call.args.includes('stream')).length, 0);
+    assert.equal(authStreamCalls(result.calls).length, 0);
+    assert.equal(lifecycleStreamCalls(result.calls).length, 1);
   } finally {
     rmSync(result.directory, { recursive: true, force: true });
   }
