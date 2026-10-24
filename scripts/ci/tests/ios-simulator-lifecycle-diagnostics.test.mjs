@@ -14,6 +14,8 @@ const source = {
   runId: '42',
   attempt: '2',
 };
+const streamHeader =
+  'Filtering the log data using (true)\nTimestamp               Ty Process[PID:TID]\n';
 
 async function stream(program, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-lifecycle-stream-'));
@@ -49,7 +51,9 @@ async function stream(program, options = {}) {
 }
 
 test('streams only owned Simulator lifecycle logs and writes an invocation-bound receipt', async () => {
-  const value = await stream("process.stdout.write('launch event\\n');setInterval(()=>{},1000)");
+  const value = await stream(
+    `process.stdout.write(${JSON.stringify(streamHeader + 'launch event\n')});setInterval(()=>{},1000)`,
+  );
   try {
     await value.outputReady;
     const record = await value.stop({ testExitCode: 65 });
@@ -79,7 +83,7 @@ test('streams only owned Simulator lifecycle logs and writes an invocation-bound
 
 test('caps storage and retains the newest lifecycle events', async () => {
   const value = await stream(
-    "process.stdout.write('x'.repeat(512));setTimeout(()=>process.stdout.write('LATEST_LAUNCH_FAILURE'),20);setInterval(()=>{},1000)",
+    `process.stdout.write(${JSON.stringify(streamHeader)});process.stdout.write('x'.repeat(512));setTimeout(()=>process.stdout.write('LATEST_LAUNCH_FAILURE'),20);setInterval(()=>{},1000)`,
     { maxBytes: 64 },
   );
   try {
@@ -100,7 +104,9 @@ test('caps storage and retains the newest lifecycle events', async () => {
 });
 
 test('records no events without describing the launch as healthy', async () => {
-  const value = await stream('setInterval(()=>{},1000)');
+  const value = await stream(
+    `process.stdout.write(${JSON.stringify(streamHeader)});setInterval(()=>{},1000)`,
+  );
   try {
     const record = await value.stop({ testExitCode: 0 });
     assert.equal(record.dataState, 'no-events');
@@ -134,7 +140,7 @@ test('records collector startup failure while retaining the original test exit',
 
 test('stops only its own child and records forced termination', async () => {
   const value = await stream(
-    "process.on('SIGTERM',()=>{});process.stdout.write('READY_TO_IGNORE_SIGTERM\\n');setInterval(()=>{},1000)",
+    `process.on('SIGTERM',()=>{});process.stdout.write(${JSON.stringify(streamHeader + 'READY_TO_IGNORE_SIGTERM\n')});setInterval(()=>{},1000)`,
     {
       stopGraceMs: 25,
     },
@@ -152,7 +158,9 @@ test('stops only its own child and records forced termination', async () => {
 });
 
 test('preserves an existing log when writing the bounded collection fails', async () => {
-  const value = await stream("process.stdout.write('event');setInterval(()=>{},1000)");
+  const value = await stream(
+    `process.stdout.write(${JSON.stringify(streamHeader + 'event')});setInterval(()=>{},1000)`,
+  );
   try {
     await value.outputReady;
     writeFileSync(value.path, 'original evidence');

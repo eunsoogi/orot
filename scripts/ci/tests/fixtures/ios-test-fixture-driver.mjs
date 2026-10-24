@@ -76,6 +76,7 @@ if(name==='xcodebuild'){
 }
 if(name!=='xcrun'){console.log('synthetic resource sample');process.exit(0);}
 if(args[0]==='simctl'&&args[1]==='spawn'&&args[4]==='stream'){
+ process.stdout.write('Filtering the log data using (fixture)\\nTimestamp               Ty Process[PID:TID]\\n');
  const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(cleanupMarker)})){process.stdout.write('FIXTURE_CLEANUP_COMPLETED\\n');}},2);
  process.on('SIGTERM',()=>{clearInterval(timer);process.exit(143);});return;
 }

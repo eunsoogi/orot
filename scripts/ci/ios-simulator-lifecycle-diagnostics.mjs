@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import { createIosSimulatorLifecycleStreamParser } from './ios-simulator-lifecycle-stream-parser.mjs';
 
 const maxProductionBytes = 8 * 1024 * 1024;
 const maxRuntime = '90m';
@@ -75,12 +76,18 @@ export async function startIosSimulatorLifecycleDiagnostics(
     truncated: false,
     dataState: 'no-events',
     state: 'starting',
+    streamReady: false,
+    startupConfirmed: false,
   };
   let child;
   let position = 0;
   let accepting = true;
   let closed = false;
+  let startReturned = false;
+  let readinessSettled = false;
+  let resolveReadiness;
   let finishClose;
+  const readiness = new Promise((resolve) => (resolveReadiness = resolve));
   const completion = new Promise((resolve) => (finishClose = resolve));
   const header = Buffer.from(
     [
@@ -92,7 +99,7 @@ export async function startIosSimulatorLifecycleDiagnostics(
       '',
     ].join('\n'),
   );
-  const capture = (chunk) => {
+  const captureEvents = (chunk) => {
     if (!accepting) return;
     const bytes = Buffer.from(chunk);
     record.observedBytes += bytes.length;
@@ -109,6 +116,24 @@ export async function startIosSimulatorLifecycleDiagnostics(
     position = (position + bytes.length) % maxBytes;
     record.capturedBytes = Math.min(record.observedBytes, maxBytes);
   };
+  const settleReadiness = (value) => {
+    if (readinessSettled) return;
+    readinessSettled = true;
+    resolveReadiness(value);
+  };
+  const capture = createIosSimulatorLifecycleStreamParser({
+    onEvents: (chunk) => accepting && captureEvents(chunk),
+    onReady: () => {
+      record.streamReady = true;
+      record.streamReadyAt = new Date().toISOString();
+      if (!startReturned) {
+        record.startupConfirmed = true;
+        record.state = 'streaming';
+        settleReadiness(true);
+      }
+    },
+    onStartupOutputTruncated: () => (record.startupOutputTruncated = true),
+  });
 
   try {
     child = spawnProcess(
@@ -131,7 +156,7 @@ export async function startIosSimulatorLifecycleDiagnostics(
       { stdio: ['ignore', 'pipe', 'pipe'] },
     );
     record.pid = child.pid ?? null;
-    child.stdout?.on('data', capture);
+    child.stdout?.on('data', (chunk) => accepting && capture(chunk));
     child.stderr?.on('data', (chunk) => {
       record.stderrBytes += Buffer.byteLength(chunk);
       record.stderrTail = (record.stderrTail + Buffer.from(chunk).toString()).slice(-2048);
@@ -139,6 +164,7 @@ export async function startIosSimulatorLifecycleDiagnostics(
     child.once('error', (error) => {
       record.error = String(error);
       record.state = 'unavailable';
+      settleReadiness(false);
     });
     child.once('close', (code, signal) => {
       closed = true;
@@ -146,22 +172,19 @@ export async function startIosSimulatorLifecycleDiagnostics(
       record.exitCode = code;
       record.signal = signal;
       if (!record.stopRequested) record.state = 'ended-before-test-result';
+      settleReadiness(false);
       finishClose();
     });
+    child.once('spawn', () => (record.spawnConfirmed = true));
     await new Promise((resolve) => {
       const timer = setTimeout(() => resolve(false), startGraceMs);
-      child.once('spawn', () => {
+      readiness.then((value) => {
         clearTimeout(timer);
-        record.spawnConfirmed = true;
-        record.state = 'streaming';
-        resolve(true);
-      });
-      child.once('error', () => {
-        clearTimeout(timer);
-        resolve(false);
+        resolve(value);
       });
     });
-    if (!record.spawnConfirmed && !record.error) record.state = 'start-unconfirmed';
+    startReturned = true;
+    if (!record.startupConfirmed && !record.error && !closed) record.state = 'start-unconfirmed';
   } catch (error) {
     record.error = String(error);
     record.state = 'unavailable';
@@ -198,7 +221,7 @@ export async function startIosSimulatorLifecycleDiagnostics(
       else if (record.error || record.unexpectedExit || (record.exitCode !== 0 && !expectedSignal))
         record.state = 'unavailable';
       else if (!record.spawnConfirmed) record.state = 'unavailable';
-      else if (!record.error && record.state !== 'ended-before-test-result')
+      else if (record.startupConfirmed && record.state !== 'ended-before-test-result')
         record.state = 'stopped';
       try {
         const data = record.truncated

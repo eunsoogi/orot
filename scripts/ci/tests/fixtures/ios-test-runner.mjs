@@ -61,7 +61,6 @@ export function fixture(
     (environment.TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE ??
       process.env.TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE) !== '1' &&
     fixtureTests.some((test) => test.startsWith(spec.uiTarget + '/'));
-  // Synthetic XCTest waits for collector output so scheduler load cannot race test completion.
   const program = `#!${process.execPath}
 const fs = require('node:fs');
 const args = process.argv.slice(2);
@@ -70,6 +69,9 @@ const auth = ${JSON.stringify(auth)}, mode = ${JSON.stringify(authStream)}, life
 const gate = ${JSON.stringify(join(directory, 'xcode-started'))};
 const entered = ${JSON.stringify(join(directory, 'collector-entered'))};
 const lifecycleReady = ${JSON.stringify(join(directory, 'lifecycle-ready'))};
+const lifecycleEvent = ${JSON.stringify(join(directory, 'lifecycle-event'))};
+const xcodeBeforeReady = ${JSON.stringify(join(directory, 'xcode-before-lifecycle-ready'))};
+const xcodeBeforeEvent = ${JSON.stringify(join(directory, 'xcode-before-lifecycle-event'))};
 const output = ${JSON.stringify(result + '.auth.jsonl')};
 const recordCall = () => fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args,invocation:process.env.TEST_RUNNER_OROT_IOS_TEST_INVOCATION})+'\\n');
 const waitFor = (ready, done) => {
@@ -95,15 +97,28 @@ if (auth && name === 'xcrun' && args.some((arg) => arg.includes('OROT_AUTH_DIAGN
   process.stderr.write('lifecycle stream unavailable', () => { process.exitCode = 1; });
  } else {
   process.on('SIGTERM', () => process.exit(143));
-  process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n', () => fs.writeFileSync(lifecycleReady, 'captured'));
+  const header = 'Filtering the log data using (fixture)\\nTimestamp               Ty Process[PID:TID]\\n';
+  const markReady = () => process.stdout.write(header, () => fs.writeFileSync(lifecycleReady, 'ready'));
+  const markEvent = () => process.stdout.write('SIMULATOR_LIFECYCLE_EVENT\\n', () => fs.writeFileSync(lifecycleEvent, 'captured'));
+  if (lifecycleMode === 'delayed') {
+   setTimeout(markReady, 80);
+   setTimeout(markEvent, 5000);
+  } else {
+   process.stdout.write(header + 'SIMULATOR_LIFECYCLE_EVENT\\n', () => {
+    fs.writeFileSync(lifecycleReady, 'ready');
+    fs.writeFileSync(lifecycleEvent, 'captured');
+   });
+  }
   setInterval(() => {}, 1000);
  }
 } else if (name === 'xcodebuild') {
  recordCall();
  if (!auth) {
-  const finish = () => process.exit(${status});
-  if (${JSON.stringify(lifecycleExpected)}) waitFor(() => fs.existsSync(lifecycleReady), finish);
-  else finish();
+  if (${JSON.stringify(lifecycleExpected)}) {
+   fs.writeFileSync(xcodeBeforeReady, String(!fs.existsSync(lifecycleReady)));
+   fs.writeFileSync(xcodeBeforeEvent, String(!fs.existsSync(lifecycleEvent)));
+  }
+  process.exit(${status});
   return;
  }
  fs.writeFileSync(gate, 'Xcode started');
