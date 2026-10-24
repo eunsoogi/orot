@@ -50,26 +50,39 @@ test('native empty ndjson completion metadata is a valid empty result', () => {
   assert.equal(result.end, '2026-10-24 04:58:30+0000');
 });
 
-test('native event ndjson and completion metadata retain the CoreSimulator process identity', () => {
+test('native event ndjson accepts CoreSimulator executable basenames and completion metadata', () => {
+  const eventRecords = [
+    {
+      timestamp: observedAt,
+      processImagePath:
+        '/Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/XPCServices/com.apple.CoreSimulator.CoreSimulatorService.xpc/Contents/MacOS/com.apple.CoreSimulator.CoreSimulatorService',
+      eventMessage: `Shutdown ${udid}`,
+    },
+    {
+      timestamp: observedAt,
+      processImagePath:
+        '/Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/Resources/bin/CoreSimulatorService',
+      eventMessage: `Booted ${udid}`,
+    },
+  ];
   const result = collectBackupHostLifecycle({
     udid,
     observedAt,
     runCommand() {
       return [
-        JSON.stringify({
-          timestamp: observedAt,
-          processImagePath:
-            '/Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/Resources/bin/CoreSimulatorService',
-          eventMessage: `Shutdown ${udid}`,
-        }),
-        JSON.stringify({ count: 1, finished: 1 }),
+        ...eventRecords.map((record) => JSON.stringify(record)),
+        JSON.stringify({ count: eventRecords.length, finished: 1 }),
       ].join('\n');
     },
   });
   assert.equal(result.status, 'captured');
-  assert.equal(result.events.length, 1);
-  assert.equal(result.events[0].process, 'CoreSimulatorService');
+  assert.equal(result.events.length, 2);
+  assert.deepEqual(
+    result.events.map(({ process }) => process),
+    ['com.apple.CoreSimulator.CoreSimulatorService', 'CoreSimulatorService'],
+  );
   assert.equal(JSON.stringify(result).includes('processImagePath'), false);
+  assert.equal(JSON.stringify(result).includes('/Library/Developer/PrivateFrameworks'), false);
 });
 
 test('host-log timeout is unavailable and command output is omitted', () => {

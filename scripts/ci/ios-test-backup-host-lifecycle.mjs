@@ -5,6 +5,13 @@ import { iosPreparationFailure } from './ios-test-preparation-diagnostics.mjs';
 const maxHostLogBytes = 256 * 1024;
 const maxHostLogEvents = 64;
 const hostLogLookbackMs = 60_000;
+const allowedSimulatorProcessNames = new Set([
+  'CoreSimulatorService',
+  'com.apple.CoreSimulator.CoreSimulatorService',
+]);
+const simulatorProcessPredicate = [...allowedSimulatorProcessNames]
+  .map((process) => `process == "${process}"`)
+  .join(' OR ');
 
 function unavailable(reason) {
   return { status: 'unavailable', reason, privacy: 'platform-default-redaction' };
@@ -35,12 +42,10 @@ function formatUtcLogTimestamp(timestampMs) {
 }
 
 function simulatorProcess(event) {
-  const allowed = ['CoreSimulatorService', 'com.apple.CoreSimulator.CoreSimulatorService'];
-  if (allowed.includes(event.process)) return event.process;
-  // Validate the native JSON path but keep that path out of the persisted receipt.
-  return basename(event.processImagePath ?? '') === 'CoreSimulatorService'
-    ? 'CoreSimulatorService'
-    : null;
+  if (allowedSimulatorProcessNames.has(event.process)) return event.process;
+  // Native ndjson may report the process label or executable basename; keep both checks exact.
+  const imageName = basename(event.processImagePath ?? '');
+  return allowedSimulatorProcessNames.has(imageName) ? imageName : null;
 }
 
 // NDJSON appends a count/finished object; it reports stream completion, not a log event.
@@ -64,7 +69,7 @@ export function collectBackupHostLifecycle({ udid, observedAt, runCommand = exec
   if (!Number.isFinite(endMs)) return unavailable('invalid-observation-time');
   const end = formatUtcLogTimestamp(endMs);
   const start = formatUtcLogTimestamp(endMs - hostLogLookbackMs);
-  const predicate = `(process == "CoreSimulatorService" OR process == "com.apple.CoreSimulator.CoreSimulatorService") AND eventMessage CONTAINS[c] "${udid}"`;
+  const predicate = `(${simulatorProcessPredicate}) AND eventMessage CONTAINS[c] "${udid}"`;
   let output;
   try {
     output = runCommand(
