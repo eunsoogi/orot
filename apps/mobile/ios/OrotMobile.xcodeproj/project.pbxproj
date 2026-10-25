@@ -118,6 +118,11 @@
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
 		A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarTestModule.m */; };
+		A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000001 /* AppointmentReminderModule.swift */; };
+		A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000002 /* AppointmentReminderModule.m */; };
+		A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000003 /* AppointmentReminderNotifications.swift */; };
+		A67F00000000000000000004 /* AppointmentReminderDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000004 /* AppointmentReminderDelivery.swift */; };
+		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -321,6 +326,11 @@
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
 		B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarTestModule.swift; path = OrotMobile/SyntheticCalendarTestModule.swift; sourceTree = "<group>"; };
 		B66F00000000000000000002 /* SyntheticCalendarTestModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarTestModule.m; path = OrotMobile/SyntheticCalendarTestModule.m; sourceTree = "<group>"; };
+		B67F00000000000000000001 /* AppointmentReminderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderModule.swift; path = OrotMobile/AppointmentReminderModule.swift; sourceTree = "<group>"; };
+		B67F00000000000000000002 /* AppointmentReminderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppointmentReminderModule.m; path = OrotMobile/AppointmentReminderModule.m; sourceTree = "<group>"; };
+		B67F00000000000000000003 /* AppointmentReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderNotifications.swift; path = OrotMobile/AppointmentReminderNotifications.swift; sourceTree = "<group>"; };
+		B67F00000000000000000004 /* AppointmentReminderDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderDelivery.swift; path = OrotMobile/AppointmentReminderDelivery.swift; sourceTree = "<group>"; };
+		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
 		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
@@ -479,6 +489,10 @@
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
 				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
+				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
+				B67F00000000000000000002 /* AppointmentReminderModule.m */,
+				B67F00000000000000000003 /* AppointmentReminderNotifications.swift */,
+				B67F00000000000000000004 /* AppointmentReminderDelivery.swift */,
 				B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */,
 				F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
@@ -572,6 +586,7 @@
 				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
 				E17A00000000000000000014 /* MedicationDoseCursorTests.swift */,
+				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */,
@@ -1007,6 +1022,10 @@
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
 				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
+				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
+				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
+				A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */,
+				A67F00000000000000000004 /* AppointmentReminderDelivery.swift in Sources */,
 				5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */,
 				2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
@@ -1096,6 +1115,7 @@
 				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
 				E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */,
+				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */,
