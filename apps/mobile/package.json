@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@langchain/core": "1.2.14",
     "@op-engineering/op-sqlite": "18.2.5",
     "@orot/agent-memory": "workspace:*",
     "@orot/agent-runtime": "workspace:*",
