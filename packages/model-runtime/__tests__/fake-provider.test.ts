@@ -17,7 +17,11 @@ describe('InMemoryFakeLanguageModelProvider', () => {
     const request = textRequest('Summarize this visit.');
     const expected = {
       ok: true,
-      value: { text: 'Fake response: Summarize this visit.', toolCalls: [], finishReason: 'complete' },
+      value: {
+        text: 'Fake response: Summarize this visit.',
+        toolCalls: [],
+        finishReason: 'complete',
+      },
     };
 
     await expect(provider.generate(request)).resolves.toEqual(expected);
@@ -57,7 +61,12 @@ describe('InMemoryFakeLanguageModelProvider', () => {
       },
     });
     const audioRequest: LanguageModelRequest = {
-      messages: [{ role: 'user', content: [{ type: 'audio', data: new Uint8Array([1]), mediaType: 'audio/wav' }] }],
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'audio', data: new Uint8Array([1]), mediaType: 'audio/wav' }],
+        },
+      ],
     };
     const toolRequest: LanguageModelRequest = {
       ...textRequest('Use lookup.'),
@@ -98,7 +107,9 @@ describe('InMemoryFakeLanguageModelProvider', () => {
       { type: 'completed', response },
     ]);
 
-    const nonStreaming = new InMemoryFakeLanguageModelProvider({ capabilities: { streaming: false } });
+    const nonStreaming = new InMemoryFakeLanguageModelProvider({
+      capabilities: { streaming: false },
+    });
     const results = [];
     for await (const result of nonStreaming.stream(textRequest('start'))) results.push(result);
     expect(results).toMatchObject([{ ok: false, error: { code: 'unsupported_capability' } }]);
@@ -108,6 +119,9 @@ describe('InMemoryFakeLanguageModelProvider', () => {
     const error = { code: 'rate_limited', message: 'Try again later.', retryable: true } as const;
     const provider = new InMemoryFakeLanguageModelProvider({ error });
 
-    await expect(provider.generate(textRequest('Try again.'))).resolves.toEqual({ ok: false, error });
+    await expect(provider.generate(textRequest('Try again.'))).resolves.toEqual({
+      ok: false,
+      error,
+    });
   });
 });

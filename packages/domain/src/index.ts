@@ -1,13 +1,25 @@
 export {
   ProvenanceOriginSchema,
+  ProvenanceSourceSchema,
   ProvenanceSchema,
   RecordIdSchema,
   RecordMetadataSchema,
+  ImportedRecordMetadataSchema,
+  ObservationIntervalSchema,
   ReviewStateSchema,
   TimestampSchema,
   compareTimestamps,
 } from './common';
-export type { Provenance, RecordId, RecordMetadata, ReviewState, Timestamp } from './common';
+export type {
+  Provenance,
+  ProvenanceSource,
+  RecordId,
+  RecordMetadata,
+  ImportedRecordMetadata,
+  ObservationInterval,
+  ReviewState,
+  Timestamp,
+} from './common';
 export {
   EncounterSchema,
   EvidenceSpanSchema,
@@ -25,6 +37,7 @@ export type {
   EvidenceSpanLocator,
   HealthObservation,
   ObservationValue,
+  QuantitySourceRepresentation,
   SourceContentHash,
   SourceRecord,
   SymptomEntry,
@@ -46,18 +59,23 @@ export type {
 } from './symptoms';
 export {
   CurrentMedicationConfirmationSchema,
+  DoseObservationStatusSchema,
   DoseEventSchema,
+  MedicationDefinitionSchema,
   MedicationAssertionSchema,
   PrescriptionAssertionSchema,
 } from './medications';
 export type {
   CurrentMedicationConfirmation,
+  DoseObservationStatus,
   DoseEvent,
+  MedicationDefinition,
   MedicationAssertion,
   PrescriptionAssertion,
 } from './medications';
 export {
   AppointmentCreateInputSchema,
+  CalendarAppointmentSnapshotSchema,
   AppointmentSchema,
   AppointmentStatusSchema,
   AppointmentUpdateInputSchema,
@@ -65,12 +83,21 @@ export {
   createAppointment,
   updateAppointment,
   VisitBriefSchema,
-  VisitQuestionSchema,
 } from './visits';
+export { VisitQuestionSchema, VisitQuestionCreateSchema } from './visitQuestions';
 export type {
+  CalendarAppointmentSnapshot,
   Appointment,
   AppointmentStatus,
   AppointmentUpdateInput,
   VisitBrief,
-  VisitQuestion,
 } from './visits';
+export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
+export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
+export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
+export {
+  createTranscriptCorrection,
+  TranscriptAudioRangeSchema,
+  TranscriptEvidenceSegmentSchema,
+} from './transcripts';
+export type { TranscriptAudioRange, TranscriptEvidenceSegment } from './transcripts';

@@ -1,11 +1,11 @@
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
   keyboardAvoider: { flex: 1 },
   container: {
     gap: 12,
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 64 : 20,
+    paddingTop: 20,
     backgroundColor: '#f7f8fa',
     minHeight: '100%',
   },

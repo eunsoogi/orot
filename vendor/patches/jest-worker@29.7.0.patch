@@ -1,0 +1,14 @@
+diff --git a/build/workers/ChildProcessWorker.js b/build/workers/ChildProcessWorker.js
+index 6a9d1f369ba05a7891793baf29d48b6e49946ff6..bd23204bd5164262137935fc5860d977958b0283 100644
+--- a/build/workers/ChildProcessWorker.js
++++ b/build/workers/ChildProcessWorker.js
+@@ -111,7 +111,8 @@ class ChildProcessWorker extends _WorkerAbstract.default {
+       this._child.kill('SIGKILL');
+     }
+     this.state = _types.WorkerStates.STARTING;
+-    const forceColor = _supportsColor().stdout
++    // A worker inherits NO_COLOR; do not add a conflicting override of that preference.
++    const forceColor = _supportsColor().stdout && !('NO_COLOR' in process.env)
+       ? {
+           FORCE_COLOR: '1'
+         }

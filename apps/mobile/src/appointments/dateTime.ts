@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export interface LocalAppointmentDateTime {
   date: string;
   time: string;
@@ -27,14 +29,26 @@ function timeZoneParts(value: Date, timeZone: string): Record<string, number> {
 function offsetAt(utcMilliseconds: number, timeZone: string): number {
   const parts = timeZoneParts(new Date(utcMilliseconds), timeZone);
   return (
-    Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) -
-    utcMilliseconds
+    Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      parts.second,
+    ) - utcMilliseconds
   );
 }
 
 function matchesLocalInput(
   parts: Record<string, number>,
-  expected: { year: number; month: number; day: number; hour: number; minute: number },
+  expected: {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+    minute: number;
+  },
 ): boolean {
   return (
     parts.year === expected.year &&
@@ -80,7 +94,8 @@ export function toAppointmentTimestamp(
   const wallMilliseconds = Date.UTC(year, month - 1, day, hour, minute);
   const firstGuess = wallMilliseconds - offsetAt(wallMilliseconds, timeZone);
   const instant = wallMilliseconds - offsetAt(firstGuess, timeZone);
-  if (!matchesLocalInput(timeZoneParts(new Date(instant), timeZone), expected)) return null;
+  if (!matchesLocalInput(timeZoneParts(new Date(instant), timeZone), expected))
+    return null;
   return new Date(instant).toISOString();
 }
 
@@ -89,7 +104,8 @@ export function toLocalAppointmentDateTime(
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): LocalAppointmentDateTime {
   const value = new Date(timestamp);
-  if (!Number.isFinite(value.getTime())) throw new Error('Appointment time is invalid.');
+  if (!Number.isFinite(value.getTime()))
+    throw new Error(t('appointments.errors.invalidTime'));
   const parts = timeZoneParts(value, timeZone);
   return {
     date: [parts.year, pad(parts.month), pad(parts.day)].join('-'),
@@ -103,8 +119,14 @@ export function toAppointmentTimestampForEdit(
   timeText: string,
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): string | null {
-  const originalLocalTime = toLocalAppointmentDateTime(originalTimestamp, timeZone);
-  if (dateText.trim() === originalLocalTime.date && timeText.trim() === originalLocalTime.time) {
+  const originalLocalTime = toLocalAppointmentDateTime(
+    originalTimestamp,
+    timeZone,
+  );
+  if (
+    dateText.trim() === originalLocalTime.date &&
+    timeText.trim() === originalLocalTime.time
+  ) {
     return originalTimestamp;
   }
   return toAppointmentTimestamp(dateText, timeText, timeZone);

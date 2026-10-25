@@ -1,0 +1,128 @@
+name: Unit Test
+
+on:
+  pull_request:
+    # Publish the protected type and unit contexts for stacked PR heads as well.
+    # Drafts validate source events too; status-only transitions must not replace their checks.
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Keep cancellation scoped to this workflow so parallel check sets do not cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  TZ: UTC
+  EXPECTED_NODE_VERSION: '22.23.2'
+  EXPECTED_PNPM_VERSION: '12.3.4'
+
+jobs:
+  # Keep typecheck and unit results separate; policy contracts run in Policy Check.
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    outputs:
+      selection_complete: ${{ steps.select.outputs.selection_complete }}
+      typecheck: ${{ steps.select.outputs.typecheck }}
+      unit_tests: ${{ steps.select.outputs.unit_tests }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.3.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      # Keep selector errors in a required check before dependency installation.
+      - name: Select checks for changed paths
+        id: select
+        run: node scripts/ci/select-changed-paths.mjs
+
+      - name: Cache pnpm lockfile verification
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
+
+      - name: Install frozen workspace dependencies
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        run: scripts/ci/run-command.sh install artifacts/typecheck/install.log -- pnpm install --frozen-lockfile
+
+      - name: Type check workspace
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        run: scripts/ci/run-command.sh typecheck artifacts/typecheck/typecheck.log -- pnpm typecheck
+
+      - name: Upload typecheck logs
+        if: ${{ always() && steps.select.outputs.typecheck == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-typecheck-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/typecheck/
+          if-no-files-found: error
+          retention-days: 14
+
+  unit_tests:
+    name: Unit and component tests
+    needs: typecheck
+    # A selector failure must not turn this dependent required check into a skip.
+    if: ${{ always() && !cancelled() && (needs.typecheck.outputs.selection_complete != 'true' || needs.typecheck.outputs.unit_tests == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.3.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
+
+      - name: Install frozen workspace dependencies
+        run: scripts/ci/run-command.sh install artifacts/unit/install.log -- pnpm install --frozen-lockfile
+
+      - name: Run unit and component tests
+        run: scripts/ci/run-test-suite.sh unit artifacts/unit
+
+      - name: Upload unit test logs and results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-unit-component-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/unit/
+          if-no-files-found: error
+          retention-days: 14

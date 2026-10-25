@@ -24,6 +24,7 @@ export interface SymptomJournalOptions {
   createId?: () => string;
 }
 
+/** Requires Web Crypto; missing secure randomness fails rather than falling back to predictable IDs. */
 function createSecureSymptomId(): string {
   const source = (globalThis as unknown as {
     crypto?: { getRandomValues?: (target: Uint8Array) => Uint8Array };
@@ -44,6 +45,7 @@ export function createSymptomJournalRepository(
   return {
     list: filter => storage.list(filter),
     async create(draft) {
+      // Recording and ingestion capture journal entry time; the user supplies onset separately.
       const timestamp = now();
       const input: CreateSymptomEntryInput = {
         id: createId(),

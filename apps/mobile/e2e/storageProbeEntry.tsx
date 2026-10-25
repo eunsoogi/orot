@@ -1,33 +1,49 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { AppRegistry, NativeModules, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import App from '../App';
 import { name as appName } from '../app.json';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import type { StorageProbeMode } from '../src/storage/e2eProbe';
 
 function getStorageProbeMode(): StorageProbeMode | null {
-  const settingsManager = (NativeModules as unknown as {
-    SettingsManager?: {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    };
-  }).SettingsManager;
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
   const value =
     settingsManager?.settings?.OROT_STORAGE_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_STORAGE_PROBE;
-  if (value === 'fresh' || value === 'restart' || value === 'legacy') return value;
+  if (value === 'fresh' || value === 'restart' || value === 'legacy')
+    return value;
   return null;
 }
 
 function StorageProbe({ mode }: { mode: StorageProbeMode }) {
+  const settingsManager = NativeModules.SettingsManager;
+  const fixtureIdentifier =
+    settingsManager?.settings?.OROT_TEST_STORAGE_FIXTURE ??
+    settingsManager?.getConstants?.().settings?.OROT_TEST_STORAGE_FIXTURE;
   const [result, setResult] = useState<{
     status: 'running' | 'success' | 'failure';
     message?: string;
   }>({ status: 'running' });
 
   useEffect(() => {
-    runStorageProbe(mode).then(
+    runStorageProbe(
+      mode,
+      typeof fixtureIdentifier === 'string' ? fixtureIdentifier : undefined,
+    ).then(
       () => setResult({ status: 'success' }),
       error => {
         const message = error instanceof Error ? error.message : String(error);
@@ -35,7 +51,7 @@ function StorageProbe({ mode }: { mode: StorageProbeMode }) {
         setResult({ status: 'failure', message });
       },
     );
-  }, [mode]);
+  }, [mode, fixtureIdentifier]);
 
   const label = result.message
     ? 'Storage probe failure: ' + result.message

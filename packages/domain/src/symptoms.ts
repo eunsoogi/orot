@@ -58,6 +58,7 @@ export const SymptomEntryFilterSchema = z.strictObject({
 
 export type SymptomEntryFilter = z.infer<typeof SymptomEntryFilterSchema>;
 
+/** Onset is the effective time; creation records a user report without clinician review or diagnosis. */
 export function createSymptomEntry(input: CreateSymptomEntryInput): SymptomEntry {
   const parsed = CreateSymptomEntryInputSchema.parse(input);
   return SymptomEntrySchema.parse({
@@ -98,6 +99,7 @@ export function editSymptomEntry(
 
 export function resolveSymptomEntry(entry: SymptomEntry, resolvedAt: string): SymptomEntry {
   const current = SymptomEntrySchema.parse(entry);
+  // Resolution is historical: a second call must never replace its original timestamp.
   if (current.status === 'resolved') throw new Error('A resolved symptom cannot be resolved again.');
   return SymptomEntrySchema.parse({ ...current, status: 'resolved', resolvedAt });
 }

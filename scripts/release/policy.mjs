@@ -1,175 +1,127 @@
-export const REQUIRED_CI_JOBS = [
-  'Quality',
-  'iOS Simulator Build',
-  'Detox iOS E2E',
-];
+import {
+  isAcceptedCiWorkflowEvent,
+  REQUIRED_CI_JOB_WORKFLOW_PATH,
+  REQUIRED_CI_JOBS,
+  TRUSTED_CI_WORKFLOW_PATHS,
+} from './ci-required-jobs.mjs';
+import { compareVersions, isReleaseVersion } from './version-tags.mjs';
 
-const EXPECTED_EVIDENCE = {
-  simulatorE2E: 42,
-  evaluation: 41,
-  deletion: 34,
-  telemetry: 40,
-};
-const PLACEHOLDER = /\b(?:tbd|todo|placeholder|example\.com|insert (?:link|url|evidence))\b/i;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
+const MAIN_E2E_WORKFLOW_PATH = '.github/workflows/e2e-test.yml';
 
-export function parseEvidenceCommentUrl(value, repo, issueNumber) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    const match = url.pathname.match(new RegExp(`^/${repo}/issues/${issueNumber}$`));
-    const comment = url.hash.match(/^#issuecomment-(\d+)$/);
-    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match || !comment) return null;
-    return { commentId: Number(comment[1]) };
-  } catch {
-    return null;
-  }
+export { REQUIRED_CI_JOBS };
+
+// A matching tag alone does not make a draft or prerelease a completed publication.
+export function isPublishedReleaseForTag(release, tag) {
+  return Boolean(
+    release && release.tag_name === tag && release.draft === false && release.prerelease === false,
+  );
 }
 
-export function parsePullRequestUrl(value, repo) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    const match = url.pathname.match(new RegExp(`^/${repo}/pull/(\\d+)$`));
-    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match) return null;
-    return { number: Number(match[1]) };
-  } catch {
-    return null;
-  }
-}
-
-function isRecord(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function validateReadiness(readiness, context, errors) {
-  if (!isRecord(readiness)) {
-    errors.push('release readiness evidence must be a JSON object');
-    return;
-  }
-  if (readiness.schemaVersion !== 1) errors.push('readiness schemaVersion must be 1');
-  if (readiness.version !== context.version) errors.push('readiness version does not match the candidate');
-  if (readiness.sourceCommit !== context.sourceSha) errors.push('readiness sourceCommit does not match the candidate');
-  if (readiness.ciRunUrl !== context.ciRun?.html_url) errors.push('readiness must link the verified CI run');
-
-  if (!isRecord(readiness.evidence)) {
-    errors.push('readiness evidence links are missing');
-  } else {
-    for (const [name, issueNumber] of Object.entries(EXPECTED_EVIDENCE)) {
-      const reference = readiness.evidence[name];
-      const actual = context.evidenceComments?.[name];
-      if (!isRecord(reference) || typeof reference.url !== 'string' || !actual) {
-        errors.push(`readiness evidence for issue #${issueNumber} is missing`);
-        continue;
-      }
-      if (reference.url !== actual.html_url || !actual.html_url?.endsWith(`#issuecomment-${actual.id}`)) {
-        errors.push(`readiness evidence for issue #${issueNumber} must link its actual comment`);
-      }
-      if (actual.issueNumber !== issueNumber || !actual.closed) {
-        errors.push(`required issue #${issueNumber} is not closed with recorded evidence`);
-      }
-      if (typeof actual.body !== 'string') {
-        errors.push(`evidence comment for issue #${issueNumber} is empty, stale, or a placeholder`);
-        continue;
-      }
-      const body = actual.body.toLowerCase();
-      if (!body.includes(context.sourceSha.toLowerCase()) || PLACEHOLDER.test(actual.body)) {
-        errors.push(`evidence comment for issue #${issueNumber} is empty, stale, or a placeholder`);
-      }
-      if (name === 'simulatorE2E') {
-        if (!body.includes('ios simulator')) {
-          errors.push('simulator E2E evidence must identify iOS Simulator as its test platform');
-        }
-        if (!/\bios\s+\d+(?:\.\d+){0,2}\b/.test(body) || !/\bscenarios?\b/.test(body)) {
-          errors.push('simulator E2E evidence must record the Simulator OS and exercised scenarios');
-        }
-        if (typeof context.ciRun?.html_url !== 'string' || !body.includes(context.ciRun.html_url.toLowerCase())) {
-          errors.push('simulator E2E evidence must reference the actual CI run for this source commit');
-        }
-        if (!/\b(?:test[- ]only|fake|mock(?:ed)?)\b/.test(body) || !/\b(?:adapter|boundary)\b/.test(body)) {
-          errors.push('simulator E2E evidence must identify its test-only fake external-provider boundary');
-        }
-        if (!/\b(?:oauth|real provider|actual provider|chatgpt)\b/.test(body) || !/\bconfig(?:uration)?\b/.test(body) || !/\b(?:result|outcome|blocker|blocked|unavailable|passed|failed|verified)\b/.test(body)) {
-          errors.push('simulator E2E evidence must record the real provider-auth result or blocker');
-        }
-      }
-    }
-  }
-
-  if (!Array.isArray(readiness.knownLimitations) || readiness.knownLimitations.length < 1 || readiness.knownLimitations.some((item) => typeof item !== 'string' || !item.trim() || PLACEHOLDER.test(item))) {
-    errors.push('readiness must list known limitations or explicitly state that none remain');
-  } else {
-    const limitationText = readiness.knownLimitations.join(' ').toLowerCase();
-    for (const capability of ['physical-device', 'healthkit', 'microphone', 'speech']) {
-      if (!limitationText.includes(capability)) {
-        errors.push(`known limitations must explicitly identify unverified ${capability} behavior`);
-      }
-    }
-    if (!/unverified|not verified|not tested|not validated/.test(limitationText)) {
-      errors.push('known limitations must state that the listed device capabilities remain unverified');
-    }
-  }
-
-  const approval = readiness.candidateApproval;
-  const actual = context.candidateApproval;
-  if (!isRecord(approval) || !actual) {
-    errors.push('an actual candidate approval review is required');
-    return;
-  }
-  if (approval.pullRequestUrl !== actual.pull.html_url || approval.reviewId !== actual.review.id) {
-    errors.push('candidate approval must reference the actual merged pull request and review');
-  }
-  if (actual.pull.merged !== true || actual.pull.base?.ref !== 'main' || actual.pull.merge_commit_sha !== context.sourceSha) {
-    errors.push('candidate approval pull request must merge this source commit into main');
-  }
-  if (actual.review.state !== 'APPROVED' || actual.review.commit_id !== actual.pull.head?.sha || actual.review.user?.login === actual.pull.user?.login) {
-    errors.push('candidate approval must be a non-author approval of the final pull request head');
-  }
-  if (approval.reviewerLogin !== actual.review.user?.login || approval.approvedAt !== actual.review.submitted_at) {
-    errors.push('candidate approval reviewer and timestamp do not match GitHub review data');
-  }
-}
-
+// Require one passing instance of every protected context; duplicate or partial evidence fails closed.
 export function validateCandidate(context) {
   const errors = [];
-  const blockers = [];
-  const mode = context.mode;
 
-  if (!['dry-run', 'publish'].includes(mode)) errors.push('mode must be dry-run or publish');
-  if (context.version !== '0.1.0') errors.push('only version 0.1.0 is admitted by this workflow');
-  if (context.packageVersion !== context.version) errors.push('package version does not match the requested release version');
-  if (context.tag !== `v${context.version}`) errors.push('tag does not match the requested release version');
+  if (!['dry-run', 'publish'].includes(context.mode))
+    errors.push('mode must be dry-run or publish');
+  if (!isReleaseVersion(context.version))
+    errors.push('version must be MAJOR.MINOR.PATCH without a v prefix');
+  if (context.applicationVersion !== context.version)
+    errors.push('input version does not match the root and iOS application version');
+  if (context.tag !== context.version)
+    errors.push('release tag must exactly match the input version');
   if (context.ref !== 'refs/heads/main') errors.push('release workflow must run from main');
-  if (!FULL_SHA.test(context.sourceSha ?? '') || context.sourceSha !== context.sha) errors.push('source commit must be the full current workflow commit SHA');
-  if (!context.mainContainsSource) errors.push('source commit is not present on main');
+  if (
+    !FULL_SHA.test(context.sourceSha ?? '') ||
+    context.sha?.toLowerCase() !== context.sourceSha?.toLowerCase()
+  )
+    errors.push('source commit must be the full workflow candidate SHA');
+  if (context.currentMainSha?.toLowerCase() !== context.sourceSha?.toLowerCase())
+    errors.push(
+      'main advanced during release verification; rerun Release from the current main SHA after its nightly E2E validation succeeds',
+    );
 
-  const run = context.ciRun;
-  if (!run || String(run.id) !== String(context.ciRunId) || run.path !== '.github/workflows/ci.yml' || run.event !== 'push' || run.head_branch !== 'main' || run.head_sha !== context.sourceSha || run.status !== 'completed' || run.conclusion !== 'success') {
-    errors.push('CI run must be a successful main push run for this exact source commit');
+  // Only supported events from the exact trusted main workflow may attest its required checks.
+  const ciRuns = context.ciRuns ?? [];
+  const trustedPaths = new Set(TRUSTED_CI_WORKFLOW_PATHS);
+  const runByPath = new Map();
+  for (const run of ciRuns) {
+    if (!trustedPaths.has(run.path))
+      errors.push(`main CI evidence contains an untrusted workflow path: ${run.path}`);
   }
-  for (const name of REQUIRED_CI_JOBS) {
-    const matches = (context.ciJobs ?? []).filter((job) => job.name === name);
-    if (matches.length !== 1 || matches[0].status !== 'completed' || matches[0].conclusion !== 'success') {
-      errors.push(`required CI job did not pass exactly once: ${name}`);
+
+  for (const path of TRUSTED_CI_WORKFLOW_PATHS) {
+    const matches = ciRuns.filter((run) => run.path === path);
+    if (matches.length !== 1) {
+      if (path === MAIN_E2E_WORKFLOW_PATH && matches.length === 0)
+        errors.push(
+          'scheduled main E2E receipt is missing for the exact release target SHA; wait for the nightly run on this commit',
+        );
+      else errors.push(`trusted main validation workflow did not run exactly once: ${path}`);
+      continue;
+    }
+    const [run] = matches;
+    runByPath.set(path, run);
+    if (
+      !isAcceptedCiWorkflowEvent(path, run.event) ||
+      run.head_branch !== 'main' ||
+      run.head_sha?.toLowerCase() !== context.sourceSha?.toLowerCase() ||
+      run.status !== 'completed' ||
+      run.conclusion !== 'success'
+    ) {
+      if (path === MAIN_E2E_WORKFLOW_PATH)
+        errors.push(
+          'scheduled main E2E receipt did not complete successfully for the exact release target SHA',
+        );
+      else
+        errors.push(
+          `trusted main validation workflow did not complete successfully for the exact source commit: ${path}`,
+        );
     }
   }
 
-  if (context.tagTargetSha && context.tagTargetSha !== context.sourceSha) {
-    errors.push('existing release tag points to a different commit and will not be moved');
-  }
-  if (context.releaseExists) {
-    if (mode === 'publish') errors.push('a GitHub Release for this tag already exists; refusing to overwrite or duplicate it');
-    else blockers.push('a GitHub Release already exists for this tag');
+  for (const name of REQUIRED_CI_JOBS) {
+    const matches = (context.ciJobs ?? []).filter((job) => job.name === name);
+    const expectedPath = REQUIRED_CI_JOB_WORKFLOW_PATH[name];
+    const expectedRun = runByPath.get(expectedPath);
+    if (
+      matches.length !== 1 ||
+      matches[0].workflow_path !== expectedPath ||
+      matches[0].workflow_run_id !== expectedRun?.id ||
+      matches[0].status !== 'completed' ||
+      matches[0].conclusion !== 'success'
+    ) {
+      errors.push(
+        `required main check did not pass exactly once with its expected workflow path and selected run (${expectedPath}): ${name}`,
+      );
+    }
   }
 
-  if (!context.readiness) {
-    if (mode === 'publish') errors.push('publish requires complete release readiness evidence');
-    else blockers.push('release readiness evidence is missing; this dry run cannot authorize publication');
-  } else {
-    validateReadiness(context.readiness, context, errors);
+  if (context.previousTag) {
+    if (!FULL_SHA.test(context.previousTag.sha ?? ''))
+      errors.push('previous version tag has an invalid target SHA');
+    if (!isReleaseVersion(context.previousTag.version))
+      errors.push('previous version tag is invalid');
+    else if (compareVersions(context.previousTag.version, context.version) >= 0)
+      errors.push('previous version tag must be older than the input version');
   }
+
+  if (
+    context.tagTargetSha &&
+    context.tagTargetSha.toLowerCase() !== context.sourceSha?.toLowerCase()
+  )
+    errors.push('existing release tag points to a different commit and will not be moved');
+  if (
+    context.release &&
+    (!context.tagTargetSha || !isPublishedReleaseForTag(context.release, context.tag))
+  )
+    errors.push('an existing release is not published on the expected immutable tag');
 
   const valid = errors.length === 0;
-  const publicationAllowed = valid && blockers.length === 0 && Boolean(context.readiness);
-  return { valid, publicationAllowed, errors, blockers };
+  return {
+    valid,
+    publicationAllowed: valid,
+    action: context.release ? 'already-published' : 'publish',
+    errors,
+  };
 }

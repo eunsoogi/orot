@@ -1,0 +1,206 @@
+import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import type {
+  EvidenceBatch,
+  EvidenceReference,
+  MultiAgentRunResult,
+} from '@orot/agent-runtime';
+import type { EvidenceChunk } from '@orot/rag';
+import { runRagConversationTurn } from '../service';
+import type { GroundedRagAnswer } from '../task';
+
+jest.mock('@orot/agent-runtime', () => ({ runMultiAgentWorkflow: jest.fn() }));
+
+const baseReference: EvidenceReference = {
+  sourceKind: 'personal_record',
+  sourceId: 'record-1',
+  sourceRevision: '1',
+  evidenceId: 'evidence-1',
+  evidenceRevision: '1',
+  locator: { kind: 'structured_record', recordId: 'record-1' },
+  effectiveTime: null,
+  reviewState: 'reviewed',
+};
+
+function snapshot(reference: EvidenceReference) {
+  const chunk = {
+    id: 'chunk-1',
+    text: 'blood pressure evidence',
+    metadata: {
+      sourceId: reference.sourceId,
+      evidenceId: reference.evidenceId,
+    },
+  } as EvidenceChunk;
+  const batch: EvidenceBatch = {
+    items: [{ ...reference, content: 'Blood pressure was recorded.' }],
+    coverage: [
+      {
+        sourceKind: 'personal_record',
+        searchedSourceIds: [reference.sourceId],
+        gaps: [],
+        truncated: false,
+        resultLimit: 8,
+        returnedCount: 1,
+      },
+    ],
+    conflicts: [],
+  };
+  return { batch, chunks: [chunk] };
+}
+
+function result(
+  reference: EvidenceReference,
+  answer: string,
+): MultiAgentRunResult<GroundedRagAnswer> {
+  return {
+    status: 'result',
+    value: { answer },
+    citations: [reference],
+    coverage: [],
+    checkpoint: {} as never,
+  };
+}
+
+test('loads a fresh snapshot for each turn and passes only E5-selected evidence to #117', async () => {
+  const first = { ...baseReference };
+  const second = {
+    ...baseReference,
+    evidenceRevision: '2',
+    sourceRevision: '2',
+  };
+  const loadCurrentEvidence = jest
+    .fn()
+    .mockResolvedValueOnce(snapshot(first))
+    .mockResolvedValueOnce(snapshot(second));
+  const search = jest.fn(
+    async (_query: string, chunks: readonly EvidenceChunk[]) => [
+      { chunk: chunks[0], score: 1, lexicalRank: 1, vectorRank: 1 },
+    ],
+  );
+  const consent = { authorize: jest.fn(async () => 'authorized' as const) };
+  const workflow = { consent } as never;
+  jest
+    .mocked(runMultiAgentWorkflow)
+    .mockResolvedValueOnce(result(first, '첫 답변'))
+    .mockResolvedValueOnce(result(second, '두 번째 답변'));
+
+  const run = (question: string) =>
+    runRagConversationTurn({
+      question,
+      previousMessages: [],
+      loadCurrentEvidence,
+      rag: { search } as never,
+      workflow,
+    });
+  const firstOutcome = await run('혈압 기록은?');
+  const secondOutcome = await run('더 최근 기록은?');
+
+  expect(firstOutcome).toMatchObject({
+    status: 'answer',
+    answer: '첫 답변\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.',
+  });
+  expect(secondOutcome).toMatchObject({
+    status: 'answer',
+    answer: '두 번째 답변\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.',
+  });
+  expect(loadCurrentEvidence).toHaveBeenCalledTimes(2);
+  expect(search).toHaveBeenCalledTimes(2);
+  expect(jest.mocked(runMultiAgentWorkflow).mock.calls[1][0].consent).toBe(
+    consent,
+  );
+  expect(
+    jest.mocked(runMultiAgentWorkflow).mock.calls[0][0].initialEvidence.items[0]
+      .evidenceRevision,
+  ).toBe('1');
+  expect(
+    jest.mocked(runMultiAgentWorkflow).mock.calls[1][0].initialEvidence.items[0]
+      .evidenceRevision,
+  ).toBe('2');
+});
+
+test('forwards safe progress and task-stream observers to the workflow', async () => {
+  jest.mocked(runMultiAgentWorkflow).mockClear();
+  const current = snapshot(baseReference);
+  const onProgress = jest.fn();
+  const onTaskStreamEvent = jest.fn();
+  const search = jest.fn(async () => [
+    { chunk: current.chunks[0], score: 1, lexicalRank: 1, vectorRank: 1 },
+  ]);
+  jest
+    .mocked(runMultiAgentWorkflow)
+    .mockResolvedValueOnce(result(baseReference, '근거 기반 답변'));
+
+  await runRagConversationTurn(
+    {
+      question: '기록을 요약해 줘',
+      previousMessages: [],
+      loadCurrentEvidence: async () => current,
+      rag: { search } as never,
+      workflow: {
+        consent: { authorize: jest.fn(async () => 'authorized') },
+      } as never,
+    },
+    { onProgress, onTaskStreamEvent },
+  );
+
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
+  expect(jest.mocked(runMultiAgentWorkflow).mock.calls[0]?.[1]).toEqual({
+    onProgress,
+    onTaskStreamEvent,
+  });
+});
+
+test('lets the model continue a source-independent exchange when retrieval finds no current evidence', async () => {
+  jest.mocked(runMultiAgentWorkflow).mockClear();
+  jest.mocked(runMultiAgentWorkflow).mockResolvedValueOnce({
+    status: 'result',
+    value: { answer: '천만에요!', answerKind: 'conversation' },
+    citations: [],
+    coverage: [],
+    checkpoint: {} as never,
+  });
+  const loadCurrentEvidence = jest.fn(async () => snapshot(baseReference));
+  const outcome = await runRagConversationTurn({
+    question: '고마워',
+    previousMessages: [{ role: 'assistant', content: 'old model claim' }],
+    loadCurrentEvidence,
+    rag: { search: jest.fn(async () => []) } as never,
+    workflow: {} as never,
+  });
+  expect(outcome).toEqual({
+    status: 'answer',
+    answer: '천만에요!',
+    citations: [],
+  });
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
+});
+
+test('allows literature-only research and makes limited-search attribution visible', async () => {
+  const external = {
+    ...baseReference,
+    sourceKind: 'external_medical' as const,
+    sourceId: 'europe-pmc',
+  };
+  jest.mocked(runMultiAgentWorkflow).mockClear();
+  jest
+    .mocked(runMultiAgentWorkflow)
+    .mockResolvedValueOnce(result(external, '문헌 답변'));
+  const outcome = await runRagConversationTurn({
+    question: '수면 관련 문헌은?',
+    previousMessages: [],
+    loadCurrentEvidence: async () => ({
+      batch: { items: [], coverage: [], conflicts: [] },
+      chunks: [],
+    }),
+    rag: {
+      search: jest.fn(async () => {
+        throw new Error('No local embedding needed');
+      }),
+    } as never,
+    workflow: { tools: [{ sourceKind: 'external_medical' }] } as never,
+  });
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
+  expect(outcome).toMatchObject({
+    status: 'answer',
+    answer: expect.stringContaining('일부 검색 결과'),
+  });
+});

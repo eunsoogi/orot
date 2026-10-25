@@ -16,7 +16,9 @@ function createMemoryRepositories() {
   async function execute(query: string, parameters: SqlValue[] = []) {
     if (query.includes('FROM appointments ORDER BY id ASC')) {
       return {
-        rows: [...rows.values()].map(appointment => ({ payload_json: JSON.stringify(appointment) })),
+        rows: [...rows.values()].map((appointment) => ({
+          payload_json: JSON.stringify(appointment),
+        })),
       };
     }
     if (query.includes('FROM appointments WHERE id = ? LIMIT 1')) {
@@ -37,7 +39,7 @@ function createMemoryRepositories() {
     async transaction(operation: (transaction: SqlTransaction) => Promise<void>) {
       const prior = transactionQueue;
       let release!: () => void;
-      transactionQueue = new Promise<void>(resolve => {
+      transactionQueue = new Promise<void>((resolve) => {
         release = resolve;
       });
       await prior;
@@ -52,6 +54,74 @@ function createMemoryRepositories() {
 }
 
 describe('appointment persistence adapter', () => {
+  it('persists and reconfirms only a user-selected Calendar event snapshot', async () => {
+    const { rows, records, executor } = createMemoryRepositories();
+    const appointments = createAppointmentRepository(records, executor, {
+      clock: () => '2026-02-03T09:00:00Z',
+      createId: () => 'calendar-1',
+    });
+    const recurrenceRule = {
+      frequency: 'monthly' as const,
+      interval: 1,
+      firstDayOfTheWeek: 1,
+      daysOfTheWeek: [{ dayOfTheWeek: 2, weekNumber: 1 }],
+      daysOfTheMonth: null,
+      monthsOfTheYear: null,
+      weeksOfTheYear: null,
+      daysOfTheYear: null,
+      setPositions: null,
+      end: { kind: 'date' as const, date: '2028-01-01T00:00:00Z' },
+    };
+    const selected = {
+      calendarEventIdentifier: 'selected-event-1',
+      effectiveAt: '2027-06-02T00:00:00Z',
+      endsAt: '2027-06-02T01:00:00Z',
+      calendarEventSnapshot: {
+        title: 'Outpatient visit',
+        timeZoneIdentifier: 'Asia/Seoul',
+        isAllDay: false,
+        occurrenceDate: '2027-06-02T00:00:00Z',
+        isDetached: false,
+        recurrenceRules: [recurrenceRule],
+      },
+    };
+
+    const appointment = await appointments.confirmCalendarEvent(selected);
+
+    expect(rows.size).toBe(1);
+    expect(await appointments.list()).toEqual([appointment]);
+    expect(appointment).toMatchObject({
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      calendarEventIdentifier: 'selected-event-1',
+      calendarEventSnapshot: selected.calendarEventSnapshot,
+    });
+
+    const changed = await appointments.reconfirmCalendarEvent(appointment.id, {
+      ...selected,
+      calendarEventIdentifier: 'selected-event-1-rescheduled',
+      effectiveAt: '2027-06-03T00:00:00Z',
+      endsAt: '2027-06-03T01:00:00Z',
+      calendarEventSnapshot: {
+        ...selected.calendarEventSnapshot,
+        title: 'Outpatient visit moved',
+        isAllDay: true,
+        isDetached: true,
+      },
+    });
+
+    expect(changed.status).toBe('rescheduled');
+    expect(changed.calendarEventIdentifier).toBe('selected-event-1-rescheduled');
+    expect(changed.calendarEventSnapshot).toMatchObject({
+      title: 'Outpatient visit moved',
+      timeZoneIdentifier: 'Asia/Seoul',
+      isAllDay: true,
+      isDetached: true,
+      recurrenceRules: [recurrenceRule],
+    });
+    expect(rows.size).toBe(1);
+    expect(await appointments.list()).toEqual([changed]);
+  });
+
   it('creates, edits, orders, and cancels records through the shared appointment contract', async () => {
     const { rows, records, executor } = createMemoryRepositories();
     let now = '2026-02-03T09:00:00Z';
@@ -71,7 +141,7 @@ describe('appointment persistence adapter', () => {
       clinicLabel: 'Cardiology',
     });
     expect(later.provenance).toEqual({ origin: 'user_reported', sourceRecordIds: [] });
-    expect((await appointments.list()).map(item => item.id)).toEqual(['manual-2', 'manual-1']);
+    expect((await appointments.list()).map((item) => item.id)).toEqual(['manual-2', 'manual-1']);
 
     now = '2026-02-03T10:00:00Z';
     const updated = await appointments.update(earlier.id, {

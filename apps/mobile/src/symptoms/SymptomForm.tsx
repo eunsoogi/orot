@@ -13,28 +13,12 @@ import SymptomCreateFields from './SymptomCreateFields';
 import styles from './SymptomForm.styles';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import type { NewSymptomDraft, SymptomEdit } from './types';
-
-const FORM_INPUT_ACCESSORY_IDS = {
-  description: 'symptom-form-description',
-  onsetDate: 'symptom-form-onset-date',
-  onsetTime: 'symptom-form-onset-time',
-  resolvedDate: 'symptom-form-resolved-date',
-  resolvedTime: 'symptom-form-resolved-time',
-  bodySite: 'symptom-form-body-site',
-  severity: 'symptom-form-severity',
-};
-const FORM_KEYBOARD_FIELDS = Object.entries(FORM_INPUT_ACCESSORY_IDS).map(
-  ([testSuffix, nativeID]) => ({ nativeID, testSuffix }),
-);
-
-type FormInputKey = keyof typeof FORM_INPUT_ACCESSORY_IDS;
-
-function formInputAccessoryID(field: FormInputKey): string | undefined {
-  return Platform.OS === 'ios' ? FORM_INPUT_ACCESSORY_IDS[field] : undefined;
-}
+import { FORM_KEYBOARD_FIELDS, formInputAccessoryID } from './symptomFormKeyboard';
 
 type SymptomFormProps = {
   onCancel: () => void;
+  onDraftChange?: () => void;
+  onSavingChange?: (saving: boolean) => void;
   onCreate: (draft: NewSymptomDraft) => Promise<void> | void;
   onUpdate: (id: string, changes: SymptomEdit) => Promise<void> | void;
 } & ({ mode: 'create'; entry?: never } | { mode: 'edit'; entry: SymptomEntry });
@@ -43,6 +27,8 @@ export default function SymptomForm({
   mode,
   entry,
   onCancel,
+  onDraftChange,
+  onSavingChange,
   onCreate,
   onUpdate,
 }: SymptomFormProps) {
@@ -58,6 +44,10 @@ export default function SymptomForm({
   const [status, setStatus] = useState<SymptomEntry['status'] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  function change<T>(setter: (value: T) => void) {
+    return (value: T) => { setter(value); onDraftChange?.(); };
+  }
 
   async function save() {
     setError('');
@@ -80,6 +70,7 @@ export default function SymptomForm({
     }
 
     setSaving(true);
+    onSavingChange?.(true);
     try {
       const trimmedBodySite = bodySite.trim();
       if (mode === 'edit') {
@@ -125,6 +116,7 @@ export default function SymptomForm({
       );
     } finally {
       setSaving(false);
+      onSavingChange?.(false);
     }
   }
 
@@ -136,7 +128,7 @@ export default function SymptomForm({
       <TextInput
         accessibilityLabel="Symptom description"
         multiline
-        onChangeText={setDescription}
+        onChangeText={change(setDescription)}
         placeholder="Describe what you feel"
         inputAccessoryViewID={formInputAccessoryID('description')}
         style={[styles.input, styles.description]}
@@ -155,17 +147,17 @@ export default function SymptomForm({
           onsetTime={onsetTime}
           resolvedDate={resolvedDate}
           resolvedTime={resolvedTime}
-          setOnsetDate={setOnsetDate}
-          setOnsetTime={setOnsetTime}
-          setResolvedDate={setResolvedDate}
-          setResolvedTime={setResolvedTime}
-          setStatus={setStatus}
+          setOnsetDate={change(setOnsetDate)}
+          setOnsetTime={change(setOnsetTime)}
+          setResolvedDate={change(setResolvedDate)}
+          setResolvedTime={change(setResolvedTime)}
+          setStatus={change(setStatus)}
           status={status}
         />
       ) : null}
       <TextInput
         accessibilityLabel="Optional body site"
-        onChangeText={setBodySite}
+        onChangeText={change(setBodySite)}
         inputAccessoryViewID={formInputAccessoryID('bodySite')}
         placeholder="Body area (optional)"
         style={styles.input}
@@ -175,7 +167,7 @@ export default function SymptomForm({
       <TextInput
         accessibilityLabel="Optional severity from zero to ten"
         keyboardType="number-pad"
-        onChangeText={setSeverity}
+        onChangeText={change(setSeverity)}
         inputAccessoryViewID={formInputAccessoryID('severity')}
         placeholder="Severity (optional, 0–10)"
         style={styles.input}

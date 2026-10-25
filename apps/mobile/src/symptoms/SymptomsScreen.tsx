@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
+import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import SymptomEntryCard from './SymptomEntryCard';
 import SymptomFilters from './SymptomFilters';
 import SymptomForm from './SymptomForm';
@@ -19,6 +21,7 @@ interface SymptomsScreenProps {
   filter?: SymptomFilter;
   loadError?: string;
   loading?: boolean;
+  canWrite?: boolean;
   onBack: () => void;
   onRetry: () => Promise<void> | void;
   onFilterChange: (filter: SymptomFilter) => Promise<void> | void;
@@ -32,6 +35,7 @@ export default function SymptomsScreen({
   filter = {},
   loadError = '',
   loading = false,
+  canWrite = true,
   onBack,
   onRetry,
   onFilterChange,
@@ -42,13 +46,29 @@ export default function SymptomsScreen({
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<SymptomEntry | null>(null);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [inputRevision, setInputRevision] = useState(0);
+  const navigationInset = useNavigationContentInset();
+  const hasSharedNavigation = useNavigationLeaveStateRegistration({
+    canLeave: !saving,
+    hasUnsavedChanges: creating || editing !== null,
+    hasOngoingOperation: saving,
+    isRecording: false,
+    revision: Number(creating) + Number(editing !== null) + Number(saving),
+    inputRevision,
+  });
+  // New typing invalidates a pending discard confirmation from the shared toolbar.
+  const draftChanged = () => setInputRevision(value => value + 1);
 
   async function resolve(entry: SymptomEntry) {
     setError('');
+    setSaving(true);
     try {
       await onResolve(entry.id);
     } catch {
       setError('The symptom could not be marked resolved. Try again.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -59,6 +79,8 @@ export default function SymptomsScreen({
           entry={entry}
           key={entry.id}
           mode="edit"
+          onDraftChange={draftChanged}
+          onSavingChange={setSaving}
           onCancel={() => setEditing(null)}
           onCreate={onCreate}
           onUpdate={async (id, changes) => {
@@ -70,6 +92,7 @@ export default function SymptomsScreen({
     }
     return (
       <SymptomEntryCard
+        disabled={saving || creating || editing !== null}
         entry={entry}
         key={entry.id}
         onEdit={() => setEditing(entry)}
@@ -82,11 +105,12 @@ export default function SymptomsScreen({
 
   return (
     <KeyboardAvoidingView
+      enabled={!hasSharedNavigation}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.keyboardAvoider}
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, navigationInset]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         testID="symptoms-scroll"
@@ -99,7 +123,9 @@ export default function SymptomsScreen({
           >
             Symptoms
           </Text>
-          <Button onPress={onBack} testID="symptoms-back" title="Back" />
+          {!hasSharedNavigation ? (
+            <Button onPress={onBack} testID="symptoms-back" title="Back" />
+          ) : null}
         </View>
         <Text style={styles.message}>
           Record what you notice in your own words.
@@ -112,7 +138,9 @@ export default function SymptomsScreen({
             {error}
           </Text>
         ) : null}
-        <SymptomFilters filter={filter} onFilterChange={onFilterChange} />
+        {/* Filtering an edited row out must not silently discard its draft. */}
+        <SymptomFilters disabled={creating || editing !== null || saving}
+          filter={filter} onFilterChange={onFilterChange} />
         {loadError ? (
           <>
             <Text accessibilityRole="alert" testID="symptoms-load-error">
@@ -138,6 +166,8 @@ export default function SymptomsScreen({
           <SymptomForm
             key="new-symptom"
             mode="create"
+            onDraftChange={draftChanged}
+            onSavingChange={setSaving}
             onCancel={() => setCreating(false)}
             onCreate={async draft => {
               await onCreate(draft);
@@ -147,6 +177,7 @@ export default function SymptomsScreen({
           />
         ) : !editing ? (
           <Button
+            disabled={loading || !canWrite || saving}
             onPress={() => setCreating(true)}
             testID="symptom-add"
             title="Add symptom"

@@ -21,6 +21,38 @@ describe('source content hashes and evidence locators', () => {
     expect(SourceContentHashSchema.safeParse('sha256:' + 'a'.repeat(63)).success).toBe(false);
   });
 
+  it('accepts an audio recording as a source kind', () => {
+    const source = SourceRecordSchema.parse({
+      ...metadata('audio-source-1'),
+      sourceKind: 'audio_recording',
+    });
+
+    expect(source.sourceKind).toBe('audio_recording');
+  });
+
+  it('stores a measured duration only on audio recording sources', () => {
+    const audio = SourceRecordSchema.parse({
+      ...metadata('audio-duration-1'),
+      sourceKind: 'audio_recording',
+      recordingDurationMs: 12500,
+    });
+
+    expect(audio.recordingDurationMs).toBe(12500);
+    expect(
+      SourceRecordSchema.safeParse({
+        ...audio,
+        recordingDurationMs: -1,
+      }).success,
+    ).toBe(false);
+    expect(
+      SourceRecordSchema.safeParse({
+        ...metadata('note-duration-1'),
+        sourceKind: 'user_note',
+        recordingDurationMs: 12500,
+      }).success,
+    ).toBe(false);
+  });
+
   it('accepts audio, text, and document ranges with explicit coordinates', () => {
     const locators = [
       { kind: 'audio_time_range', startMs: 0, endMs: 1250 },
@@ -28,7 +60,7 @@ describe('source content hashes and evidence locators', () => {
       { kind: 'document_range', pageNumber: 2, startOffset: 4, endOffset: 12 },
     ];
 
-    locators.forEach(locator => {
+    locators.forEach((locator) => {
       expect(EvidenceSpanLocatorSchema.safeParse(locator).success).toBe(true);
     });
   });

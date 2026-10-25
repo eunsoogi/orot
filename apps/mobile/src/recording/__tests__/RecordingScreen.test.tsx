@@ -1,0 +1,182 @@
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import RecordingScreen from '../RecordingScreen';
+import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
+import {
+  completed,
+  createService,
+  savedSource,
+} from '../recordingScreenSupport';
+
+jest.mock('../nativeRecordingBridge', () => ({
+  nativeRecordingBridge: {},
+  isSyntheticRecordingProbeAvailable: jest.fn(() => false),
+  prepareSyntheticRecordingProbe: jest.fn(),
+  simulateRecordingInterruption: jest.fn(),
+}));
+
+test('records and stops from the microphone control with an icon pause action', async () => {
+  const { service } = createService();
+  const transcriptService: TranscriptEvidenceService = {
+    load: jest.fn(async () => null),
+    transcribe: jest.fn(async () => []),
+    correct: jest.fn(),
+    play: jest.fn(),
+  };
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      service={service}
+      transcriptService={transcriptService}
+    />,
+  );
+  expect(await screen.findByTestId('recording-status')).toHaveTextContent(
+    '녹음하지 않음',
+  );
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  expect(screen.getByTestId('recording-microphone-control')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  expect(service.start).toHaveBeenCalledWith(true);
+  expect(await screen.findByTestId('recording-status')).toHaveTextContent(
+    '녹음 중',
+  );
+  expect(screen.getByLabelText('녹음 일시 정지')).toBeTruthy();
+  expect(screen.queryByText('일시 정지')).toBeNull();
+
+  await fireEvent.press(screen.getByTestId('recording-pause'));
+  expect(await screen.findByTestId('recording-status')).toHaveTextContent(
+    '일시 정지됨',
+  );
+  expect(screen.getByLabelText('녹음 재개')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('recording-resume'));
+  expect(await screen.findByTestId('recording-status')).toHaveTextContent(
+    '녹음 중',
+  );
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+
+  expect(service.saveSource).toHaveBeenCalledWith(completed);
+  expect(await screen.findByTestId('recording-result')).toBeTruthy();
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
+  expect(screen.queryByText(new RegExp(completed.id))).toBeNull();
+  expect(screen.getByTestId('recording-saved-duration')).toHaveTextContent(
+    /00:12/,
+  );
+  expect(screen.getByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+});
+
+test('keeps an interrupted recording paused until the user resumes it', async () => {
+  const { service, emit } = createService();
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await act(async () => {
+    emit({
+      status: 'interrupted',
+      id: completed.id,
+      durationMs: 5_000,
+      consentAcknowledged: true,
+    });
+  });
+
+  expect(await screen.findByTestId('recording-status')).toHaveTextContent(
+    '오디오가 중단되어 녹음이 일시 정지됨',
+  );
+  expect(screen.queryByTestId('recording-back')).toBeNull();
+  expect(service.resume).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('recording-resume'));
+  expect(service.resume).toHaveBeenCalledTimes(1);
+});
+
+test('offers metadata retry after audio has already been saved locally', async () => {
+  const { service } = createService();
+  (service.saveSource as jest.Mock)
+    .mockRejectedValueOnce(new Error('local database unavailable'))
+    .mockResolvedValueOnce(savedSource);
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  expect(await screen.findByText(/기록 연결을 다시 저장한 뒤/)).toBeTruthy();
+
+  await fireEvent.press(screen.getByTestId('recording-retry-save'));
+  expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+  expect(service.saveSource).toHaveBeenCalledTimes(2);
+});
+
+test('keeps a protected recording retryable after remount until metadata linking succeeds', async () => {
+  const { service } = createService();
+  (service.saveSource as jest.Mock)
+    .mockRejectedValueOnce(new Error('local database unavailable'))
+    .mockResolvedValueOnce(savedSource);
+  const view = await render(
+    <RecordingScreen onBack={jest.fn()} service={service} />,
+  );
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+
+  expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
+  expect(screen.queryByTestId('recording-back')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+
+  await view.unmount();
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
+  expect(screen.queryByTestId('recording-back')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+
+  await fireEvent.press(screen.getByTestId('recording-retry-save'));
+  expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+  expect(screen.getByTestId('recording-back')).toBeTruthy();
+  expect(service.saveSource).toHaveBeenNthCalledWith(2, completed);
+});
+
+test('preserves the previous completion when a later start fails', async () => {
+  const { service } = createService();
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  expect(await screen.findByTestId('recording-result')).toBeTruthy();
+
+  (service.start as jest.Mock).mockRejectedValueOnce(
+    new Error('new start failed'),
+  );
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+
+  expect(await screen.findByTestId('recording-result')).toBeTruthy();
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
+  expect(screen.getByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+});
+
+test('withholds source linking when the completed file protection is unverified', async () => {
+  const { service } = createService();
+  service.stop = jest.fn(async () => ({
+    ...completed,
+    fileProtection: 'unverified' as const,
+  }));
+  (service.saveSource as jest.Mock).mockRejectedValue({
+    code: 'RECORDING_FILE_PROTECTION_FAILED',
+  });
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+
+  expect(
+    await screen.findByText(
+      /파일 보호 또는 기기 백업 포함 여부를 확인하지 못해 기록 연결을 보류했어요/,
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('recording-retry-save')).toBeNull();
+});

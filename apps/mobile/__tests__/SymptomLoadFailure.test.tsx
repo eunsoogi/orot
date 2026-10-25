@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SymptomEntrySchema } from '@orot/storage';
 import type { SymptomEntry } from '@orot/storage';
-import App from '../App';
+import { SymptomsRoute } from '../src/symptoms/SymptomsRoute';
 import type { SymptomJournalRepository } from '../src/symptoms/localRepository';
+
+jest.mock('react-native-safe-area-context', () =>
+  require('react-native-safe-area-context/jest/mock').default);
 
 function symptom(id: string, status: 'active' | 'resolved' = 'active') {
   return SymptomEntrySchema.parse({
@@ -35,9 +38,8 @@ it('shows an initial list error and lets the user retry successfully', async () 
   const list = jest.fn(async () => [entry]);
   list.mockRejectedValueOnce(new Error('Database unavailable.'));
   const journal = repository(list, entry);
-  await render(<App loadSymptoms={async () => journal} />);
+  await render(<SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />);
 
-  await fireEvent.press(screen.getByTestId('symptoms-open'));
 
   expect(await screen.findByTestId('symptoms-load-error')).toHaveTextContent(
     'Symptoms could not be loaded. Try again.',
@@ -56,9 +58,8 @@ it('hides stale results after a filtered list error and retries the selected fil
     .mockRejectedValueOnce(new Error('Database unavailable.'))
     .mockResolvedValueOnce([resolved]);
   const journal = repository(list, active);
-  await render(<App loadSymptoms={async () => journal} />);
+  await render(<SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />);
 
-  await fireEvent.press(screen.getByTestId('symptoms-open'));
   expect(await screen.findByTestId('symptom-stale-active-status')).toHaveTextContent('Active');
   await fireEvent.press(screen.getByTestId('symptom-filter-resolved'));
 

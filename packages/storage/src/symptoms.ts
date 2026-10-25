@@ -23,6 +23,7 @@ function validateUserEntered(entry: SymptomEntry): void {
   }
 }
 
+/** Edits and resolution retain identity, onset, recording/ingestion times, provenance, and review state. */
 function assertHistoryPreserved(previous: SymptomEntry, next: SymptomEntry): void {
   if (
     previous.id !== next.id ||
@@ -47,6 +48,7 @@ async function readAll(executor: SqlExecutor): Promise<SymptomEntry[]> {
   return result.rows.map(row => decodeStoredRecord('symptom_entry', row.payload_json));
 }
 
+/** Uses the existing symptom record shape and table; resolution is a one-way historical transition. */
 export function createSymptomRepository(database: SqlDatabase): SymptomRepository {
   return {
     async create(input) {

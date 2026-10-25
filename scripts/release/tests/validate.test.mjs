@@ -1,189 +1,226 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateCandidate } from '../policy.mjs';
+import test from 'node:test';
+import { latestMainValidationRuns } from '../ci.mjs';
+import { validateCandidate, REQUIRED_CI_JOBS } from '../policy.mjs';
 import { buildReleaseRequest } from '../release-request.mjs';
+import { sourceSha, validContext } from './fixtures.mjs';
 
-const sourceSha = 'a'.repeat(40);
-const ciRun = {
-  id: 1234,
-  path: '.github/workflows/ci.yml',
-  event: 'push',
-  head_branch: 'main',
-  head_sha: sourceSha,
-  status: 'completed',
-  conclusion: 'success',
-  html_url: 'https://github.com/eunsoogi/orot/actions/runs/1234',
-};
-const ciJobs = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E']
-  .map((name) => ({ name, status: 'completed', conclusion: 'success' }));
-const evidenceNames = ['simulatorE2E', 'evaluation', 'deletion', 'telemetry'];
-const evidenceIssues = { simulatorE2E: 42, evaluation: 41, deletion: 34, telemetry: 40 };
-const evidenceComments = Object.fromEntries(evidenceNames.map((name) => {
-  const issueNumber = evidenceIssues[name];
-  const id = issueNumber * 100;
-  return [name, {
-    id,
-    html_url: `https://github.com/eunsoogi/orot/issues/${issueNumber}#issuecomment-${id}`,
-    issueNumber,
-    closed: true,
-    body: name === 'simulatorE2E'
-      ? `iOS Simulator on iOS 27.0; scenarios: local retrieval and graph resume. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider/auth adapter. Real provider OAuth configuration: ChatGPT plan; result: passed in Simulator. Unverified hardware capabilities are recorded in known limitations.`
-      : `Verified for source commit ${sourceSha}. Recorded outcome for ${name}.`,
-  }];
-}));
-const approvalPull = {
-  html_url: 'https://github.com/eunsoogi/orot/pull/99',
-  merged: true,
-  merge_commit_sha: sourceSha,
-  base: { ref: 'main' },
-  head: { sha: 'b'.repeat(40) },
-  user: { login: 'author' },
-};
-const approvalReview = {
-  id: 991,
-  state: 'APPROVED',
-  commit_id: approvalPull.head.sha,
-  user: { login: 'reviewer' },
-  submitted_at: '2026-10-02T00:00:00Z',
-};
-const readiness = {
-  schemaVersion: 1,
-  version: '0.1.0',
-  sourceCommit: sourceSha,
-  ciRunUrl: ciRun.html_url,
-  evidence: Object.fromEntries(evidenceNames.map((name) => [name, { url: evidenceComments[name].html_url }])),
-  knownLimitations: [
-    'Physical-device behavior, including HealthKit, microphone and speech, remains unverified because 0.1.0 validation uses iOS Simulator only.',
-    'CI produces no signed distribution artifact.',
-  ],
-  candidateApproval: {
-    pullRequestUrl: approvalPull.html_url,
-    reviewId: approvalReview.id,
-    reviewerLogin: approvalReview.user.login,
-    approvedAt: approvalReview.submitted_at,
-  },
-};
-
-test('release creation sends false flags as JSON booleans', () => {
-  const request = buildReleaseRequest({ version: '0.1.0', sourceSha, notes: 'release notes' });
-  assert.equal(request.tag_name, 'v0.1.0');
-  assert.equal(request.target_commitish, sourceSha);
-  assert.equal(typeof request.draft, 'boolean');
-  assert.equal(request.draft, false);
-  assert.equal(typeof request.prerelease, 'boolean');
-  assert.equal(request.prerelease, false);
-});
-
-function context(overrides = {}) {
-  return {
-    mode: 'publish',
-    version: '0.1.0',
-    packageVersion: '0.1.0',
-    tag: 'v0.1.0',
-    ref: 'refs/heads/main',
-    sha: sourceSha,
-    sourceSha,
-    mainContainsSource: true,
-    ciRunId: 1234,
-    ciRun,
-    ciJobs,
-    tagTargetSha: null,
-    releaseExists: false,
-    readiness,
-    evidenceComments,
-    candidateApproval: { pull: approvalPull, review: approvalReview },
-    ...overrides,
-  };
-}
-
-test('accepts a complete release candidate tied to main, successful CI, evidence, and approval', () => {
-  const result = validateCandidate(context());
+test('accepts the exact stable application version and source tag', () => {
+  const result = validateCandidate(validContext());
   assert.equal(result.valid, true);
   assert.equal(result.publicationAllowed, true);
+  assert.equal(result.action, 'publish');
   assert.deepEqual(result.errors, []);
 });
 
-test('dry run without readiness evidence completes as blocked and never authorizes publication', () => {
-  const result = validateCandidate(context({ mode: 'dry-run', readiness: null }));
+test('creates an exact-version tag without a v prefix', () => {
+  const request = buildReleaseRequest({ version: '0.1.0', sourceSha, notes: 'release notes' });
+  assert.equal(request.tag_name, '0.1.0');
+  assert.equal(request.target_commitish, sourceSha);
+  assert.equal(request.name, 'Orot 0.1.0');
+  assert.equal(request.draft, false);
+  assert.equal(request.prerelease, false);
+});
+
+test('rejects version strings outside the version-PR contract', () => {
+  for (const version of ['v0.1.0', '0.1', '01.1.0', '0.1.0-rc.1', '0.1.0+build']) {
+    const result = validateCandidate(
+      validContext({ version, tag: version, applicationVersion: version }),
+    );
+    assert.equal(result.valid, false, version);
+    assert.match(result.errors.join(' '), /MAJOR\.MINOR\.PATCH/);
+  }
+});
+
+test('requires the root and iOS version sources, main, and candidate SHA to agree', () => {
+  const mismatch = validateCandidate(validContext({ applicationVersion: '0.0.1' }));
+  assert.match(mismatch.errors.join(' '), /application version/);
+
+  const staleMain = validateCandidate(validContext({ currentMainSha: 'b'.repeat(40) }));
+  assert.match(staleMain.errors.join(' '), /main advanced/);
+
+  const wrongRef = validateCandidate(validContext({ ref: 'refs/heads/release' }));
+  assert.match(wrongRef.errors.join(' '), /must run from main/);
+
+  const sourceMismatch = validateCandidate(validContext({ sha: 'c'.repeat(40) }));
+  assert.match(sourceMismatch.errors.join(' '), /workflow candidate SHA/);
+});
+
+test('accepts static-check pushes alongside the nightly full E2E schedule', () => {
+  const context = validContext({
+    ciRuns: validContext().ciRuns.map((run) => ({
+      ...run,
+      event: run.path === '.github/workflows/e2e-test.yml' ? 'schedule' : 'push',
+    })),
+  });
+  const result = validateCandidate(context);
   assert.equal(result.valid, true);
-  assert.equal(result.publicationAllowed, false);
-  assert.match(result.blockers.join(' '), /readiness evidence is missing/);
+  assert.deepEqual(result.errors, []);
 });
 
-test('publish fails closed when readiness evidence is missing or contains placeholders', () => {
-  const missing = validateCandidate(context({ readiness: null }));
-  assert.equal(missing.valid, false);
-  assert.match(missing.errors.join(' '), /readiness evidence/);
+test('requires the nightly E2E receipt for the exact release target after main advances', () => {
+  const nextMainSha = 'b'.repeat(40);
+  const previousRuns = validContext().ciRuns.map((run) => ({
+    ...run,
+    head_sha: run.path === '.github/workflows/e2e-test.yml' ? sourceSha : nextMainSha,
+  }));
+  const currentRuns = latestMainValidationRuns(nextMainSha, previousRuns);
+  const context = validContext({
+    sha: nextMainSha,
+    sourceSha: nextMainSha,
+    currentMainSha: nextMainSha,
+    ciRuns: currentRuns,
+  });
+  const result = validateCandidate(context);
 
-  const placeholder = structuredClone(readiness);
-  placeholder.evidence.simulatorE2E.url = 'https://example.com/TODO';
-  const stale = validateCandidate(context({ readiness: placeholder }));
-  assert.equal(stale.valid, false);
-  assert.equal(stale.publicationAllowed, false);
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /scheduled main E2E receipt/);
+  assert.match(result.errors.join(' '), /nightly run on this commit/);
 });
 
-test('simulator evidence must cite the successful CI run and separate real auth from its fake CI boundary', () => {
-  for (const body of [
-    `iOS Simulator on iOS 27.0; scenarios: local retrieval. Source commit ${sourceSha}. CI uses a test-only fake provider adapter. Real provider OAuth configuration and result recorded.`,
-    `iOS Simulator on iOS 27.0; scenarios: local retrieval. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. Real provider OAuth configuration and result recorded.`,
-    `iOS Simulator on iOS 27.0; scenarios: local retrieval. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider adapter.`,
-  ]) {
-    const comments = structuredClone(evidenceComments);
-    comments.simulatorE2E.body = body;
-    const result = validateCandidate(context({ evidenceComments: comments }));
+test('requires exactly one successful trusted workflow run for the exact main commit', () => {
+  const runs = validContext().ciRuns;
+  const invalidRunSets = [
+    runs.slice(1),
+    [...runs, runs[0]],
+    runs.map((run, index) => (index === 0 ? { ...run, status: 'in_progress' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, conclusion: 'failure' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, event: 'pull_request' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, head_branch: 'release' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, head_sha: 'b'.repeat(40) } : run)),
+    runs.map((run, index) =>
+      index === 0 ? { ...run, path: '.github/workflows/untrusted.yml' } : run,
+    ),
+  ];
+  for (const ciRuns of invalidRunSets) {
+    const result = validateCandidate(validContext({ ciRuns }));
     assert.equal(result.valid, false);
     assert.equal(result.publicationAllowed, false);
   }
 });
 
-test('release readiness names unverified physical-device capabilities even though no device run is required', () => {
-  const incompleteLimitations = validateCandidate(context({ readiness: {
-    ...readiness,
-    knownLimitations: ['No signed distribution artifact is produced by CI.'],
-  } }));
-  assert.equal(incompleteLimitations.valid, false);
-  assert.equal(incompleteLimitations.publicationAllowed, false);
-  assert.match(incompleteLimitations.errors.join(' '), /unverified physical-device behavior/);
+test('rejects a required job attributed to the wrong trusted workflow path', () => {
+  const ciJobs = validContext().ciJobs.map((job, index) =>
+    index === 0 ? { ...job, workflow_path: '.github/workflows/unit-test.yml' } : job,
+  );
+  const result = validateCandidate(validContext({ ciJobs }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /expected workflow path/);
 });
 
-test('rejects a bad version and a source commit mismatch', () => {
-  const badVersion = validateCandidate(context({ version: '0.1.1', tag: 'v0.1.1' }));
-  assert.equal(badVersion.valid, false);
-  assert.match(badVersion.errors.join(' '), /only version 0\.1\.0/);
-
-  const badSource = validateCandidate(context({ sourceSha: 'c'.repeat(40) }));
-  assert.equal(badSource.valid, false);
-  assert.equal(badSource.publicationAllowed, false);
+test('requires each job result to belong to its selected workflow run', () => {
+  const ciJobs = validContext().ciJobs.map((job, index) =>
+    index === 0 ? { ...job, workflow_run_id: 9999 } : job,
+  );
+  const result = validateCandidate(validContext({ ciJobs }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /expected workflow path and selected run/);
 });
 
-test('rejects failed, skipped, missing, or duplicate required CI jobs', () => {
+test('requires each required branch-protection job exactly once and completed successfully', () => {
   for (const jobs of [
-    ciJobs.map((job, index) => index === 0 ? { ...job, conclusion: 'failure' } : job),
-    ciJobs.map((job, index) => index === 1 ? { ...job, conclusion: 'skipped' } : job),
-    ciJobs.map((job, index) => index === 2 ? { ...job, conclusion: 'failure' } : job),
-    ciJobs.slice(1),
-    [...ciJobs, ciJobs[0]],
+    validContext().ciJobs.map((job, index) =>
+      index === 0 ? { ...job, conclusion: 'failure' } : job,
+    ),
+    validContext().ciJobs.map((job, index) =>
+      index === 1 ? { ...job, conclusion: 'skipped' } : job,
+    ),
+    validContext().ciJobs.slice(1),
+    [...validContext().ciJobs, validContext().ciJobs[0]],
   ]) {
-    const result = validateCandidate(context({ ciJobs: jobs }));
+    const result = validateCandidate(validContext({ ciJobs: jobs }));
     assert.equal(result.valid, false);
     assert.equal(result.publicationAllowed, false);
   }
+  assert.equal(REQUIRED_CI_JOBS.length, 16);
 });
 
-test('refuses to move a tag or repeat an existing publication', () => {
-  const movedTag = validateCandidate(context({ tagTargetSha: 'd'.repeat(40) }));
-  assert.equal(movedTag.valid, false);
+test('a newer failed dispatch run supersedes an older successful push run', () => {
+  const goodRuns = validContext().ciRuns;
+  const path = '.github/workflows/code-quality.yml';
+  const previousPush = { ...goodRuns[0], id: 10, created_at: '2026-10-10T10:00:00Z' };
+  const failedDispatch = {
+    ...goodRuns[0],
+    id: 11,
+    event: 'workflow_dispatch',
+    status: 'completed',
+    conclusion: 'failure',
+    created_at: '2026-10-10T11:00:00Z',
+  };
+  const selected = latestMainValidationRuns(sourceSha, [
+    ...goodRuns.slice(1),
+    previousPush,
+    failedDispatch,
+  ]);
+  assert.equal(selected.find((run) => run.path === path)?.id, 11);
+  const result = validateCandidate(validContext({ ciRuns: selected }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /complete successfully/);
+});
+
+test('a newer queued run supersedes an older run that started later', () => {
+  const goodRuns = validContext().ciRuns;
+  const previousPush = {
+    ...goodRuns[0],
+    id: 10,
+    created_at: '2026-10-10T10:00:00Z',
+    run_started_at: '2026-10-10T10:30:00Z',
+  };
+  const queuedDispatch = {
+    ...goodRuns[0],
+    id: 11,
+    event: 'workflow_dispatch',
+    status: 'queued',
+    conclusion: null,
+    created_at: '2026-10-10T10:15:00Z',
+    run_started_at: null,
+  };
+  const selected = latestMainValidationRuns(sourceSha, [
+    ...goodRuns.slice(1),
+    previousPush,
+    queuedDispatch,
+  ]);
+
+  assert.equal(selected.find((run) => run.path === '.github/workflows/code-quality.yml')?.id, 11);
+
+  const result = validateCandidate(validContext({ ciRuns: selected }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /did not complete successfully/);
+});
+
+test('refuses to move a version tag and rejects a release without its matching tag', () => {
+  const movedTag = validateCandidate(validContext({ tagTargetSha: 'd'.repeat(40) }));
   assert.match(movedTag.errors.join(' '), /will not be moved/);
 
-  const repeatedPublish = validateCandidate(context({ releaseExists: true }));
-  assert.equal(repeatedPublish.valid, false);
-  assert.match(repeatedPublish.errors.join(' '), /already exists/);
+  const untaggedRelease = validateCandidate(
+    validContext({ release: { tag_name: '0.1.0' }, tagTargetSha: null }),
+  );
+  assert.match(untaggedRelease.errors.join(' '), /expected immutable tag/);
 });
 
-test('requires approval of the exact final candidate and current pull request head', () => {
-  const staleApproval = validateCandidate(context({
-    candidateApproval: { pull: approvalPull, review: { ...approvalReview, commit_id: 'e'.repeat(40) } },
-  }));
-  assert.equal(staleApproval.valid, false);
-  assert.match(staleApproval.errors.join(' '), /non-author approval/);
+test('treats an existing release on the exact immutable tag and source as an idempotent rerun', () => {
+  const result = validateCandidate(
+    validContext({
+      tagTargetSha: sourceSha,
+      release: {
+        tag_name: '0.1.0',
+        html_url: 'https://github.com/eunsoogi/orot/releases/tag/0.1.0',
+        draft: false,
+        prerelease: false,
+      },
+    }),
+  );
+  assert.equal(result.valid, true);
+  assert.equal(result.action, 'already-published');
+});
+
+test('does not treat a draft or prerelease on the exact tag as a published release', () => {
+  for (const release of [
+    { tag_name: '0.1.0', draft: true, prerelease: false },
+    { tag_name: '0.1.0', draft: false, prerelease: true },
+  ]) {
+    const result = validateCandidate(validContext({ tagTargetSha: sourceSha, release }));
+    assert.equal(result.valid, false);
+    assert.match(result.errors.join(' '), /not published/);
+  }
 });

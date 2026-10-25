@@ -1,0 +1,345 @@
+diff --git a/Libraries/AppDelegate/RCTUIConfiguratorProtocol.h b/Libraries/AppDelegate/RCTUIConfiguratorProtocol.h
+index 9e76c5b54d820afff70093fd6001b880d2d5a306..2417e1362125b70db72d4de460598e99eb23a725 100644
+--- a/Libraries/AppDelegate/RCTUIConfiguratorProtocol.h
++++ b/Libraries/AppDelegate/RCTUIConfiguratorProtocol.h
+@@ -37,7 +37,10 @@ NS_ASSUME_NONNULL_BEGIN
+  *
+  * @parameter: rootView - The root view to customize.
+  */
+-- (void)customizeRootView:(RCTRootView *)rootView;
++// Preserve the selector and parameter type for existing delegates while carrying
++// the legacy root type's deprecation through its compatibility hook.
++- (void)customizeRootView:(RCTRootView *)rootView
++    __attribute__((deprecated("This compatibility hook uses the legacy RCTRootView API.")));
+ 
+ /**
+  * It creates the RootViewController.
+diff --git a/Libraries/Core/Devtools/loadBundleFromServer.js b/Libraries/Core/Devtools/loadBundleFromServer.js
+index eb5555d60f7ac6fad9401bdfb11b1fa13f21f236..3d79f91c7e86e3d589692fdaa29383e6d5f69604 100644
+--- a/Libraries/Core/Devtools/loadBundleFromServer.js
++++ b/Libraries/Core/Devtools/loadBundleFromServer.js
+@@ -186,8 +186,9 @@ export default function loadBundleFromServer(
+       if (global.globalEvalWithSourceUrl) {
+         global.globalEvalWithSourceUrl(body, requestUrl);
+       } else {
++        // Match the native evaluator's global scope; Hermes does not support lexical eval.
+         // eslint-disable-next-line no-eval
+-        eval(body);
++        (0, eval)(body);
+       }
+       global.__BUNDLE_LOADER_REPORTER__?.onSuccess(requestUrl);
+     })
+diff --git a/package.json b/package.json
+index d2e544a3d9975834fd381b4d5ce4d8fc98889f16..2a9a905175dca6b62d0a232f648bc313df2f559c 100644
+--- a/package.json
++++ b/package.json
+@@ -59,6 +59,7 @@
+       "types": null,
+       "default": "./src/unstable-internals-do-not-use.js"
+     },
++    "./src/private/featureflags/ReactNativeFeatureFlags": "./src/private/featureflags/ReactNativeFeatureFlags.js",
+     "./src/fb_internal/*": "./src/fb_internal/*",
+     "./package.json": "./package.json"
+   },
+@@ -95,6 +96,9 @@
+     "ReactCommon",
+     "README.md",
+     "scripts/replace-rncore-version.js",
++    "scripts/orot-prebuilt-headers.cjs",
++    "scripts/orot-textual-headers.json",
++    "scripts/orot-hermes-globals.js",
+     "scripts/bundle.js",
+     "scripts/cocoapods",
+     "scripts/codegen",
+diff --git a/scripts/cocoapods/new_architecture.rb b/scripts/cocoapods/new_architecture.rb
+index e4353427a977d0a34c5cc381b74296f968460d72..e261d8d21624b2608e718309808e43a76721ac7b 100644
+--- a/scripts/cocoapods/new_architecture.rb
++++ b/scripts/cocoapods/new_architecture.rb
+@@ -168,7 +168,8 @@ class NewArchitectureHelper
+             .map{ |t| t.user_project }
+             .uniq{ |p| p.path }
+             .map{ |p| p.path }
+-        excluded_info_plist = ["/Pods", "Tests", "metainternal", ".bundle", "build/", "DerivedData/", ".xcframework", ".framework", "watchkitapp", "today-extention"]
++        # Compiled app bundles contain binary plists and are never editable source manifests.
++        excluded_info_plist = ["/Pods", "Tests", "metainternal", ".bundle", ".app/", "build/", "DerivedData/", ".xcframework", ".framework", "watchkitapp", "today-extention"]
+         projectPaths.each do |projectPath|
+             projectFolderPath = File.dirname(projectPath)
+             infoPlistFiles = `find #{projectFolderPath} -name "Info.plist"`
+diff --git a/scripts/orot-hermes-globals.js b/scripts/orot-hermes-globals.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..df457185802f03152ef1738f95bc539e9c963b1e
+--- /dev/null
++++ b/scripts/orot-hermes-globals.js
+@@ -0,0 +1,8 @@
++// Compiler declarations only: Hermes and React Native InitializeCore provide these
++// at runtime (setUpXHR, setUpTimers, native scheduler and Fabric bindings).
++// Do not declare browser-only or unresolved DevTools names to conceal real errors.
++var Promise, console, performance;
++var setTimeout, clearTimeout, setImmediate, clearImmediate;
++var requestAnimationFrame, cancelAnimationFrame, requestIdleCallback, cancelIdleCallback;
++var Blob, FileReader, FormData, URL, URLSearchParams, XMLHttpRequest, fetch;
++var nativeFabricUIManager;
+diff --git a/scripts/orot-prebuilt-headers.cjs b/scripts/orot-prebuilt-headers.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..2b0f9e244c8d1a1fa3ee432e83884d43bb7d1986
+--- /dev/null
++++ b/scripts/orot-prebuilt-headers.cjs
+@@ -0,0 +1,107 @@
++'use strict';
++
++// RN 0.87.1's published binary artifacts need the same declaration repairs after
++// installation and each Debug/Release swap. Compiled binaries remain untouched.
++const fs = require('node:fs');
++const path = require('node:path');
++const textualHeaders = require('./orot-textual-headers.json');
++
++function replaceDeclaration(text, before, after, label) {
++  if (text.includes(after)) return text;
++  if (text.split(before).length !== 2) {
++    throw new Error(`Unexpected React 0.87.1 header declaration: ${label}`);
++  }
++  return text.replace(before, after);
++}
++
++function repairFile(file, replacements) {
++  const original = fs.readFileSync(file, 'utf8');
++  let result = original;
++  for (const [before, after] of replacements) {
++    result = replaceDeclaration(result, before, after, file);
++  }
++  if (result !== original) writeRepairedFile(file, result);
++}
++
++function writeRepairedFile(file, contents) {
++  // CocoaPods marks copied public headers read-only. Replace our sandbox copy
++  // atomically, retaining its mode and leaving any downloaded/cache inode alone.
++  const stat = fs.lstatSync(file);
++  if (!stat.isFile()) throw new Error(`Expected a regular sandbox header: ${file}`);
++  const temporary = `${file}.orot-${process.pid}`;
++  fs.writeFileSync(temporary, contents, {flag: 'wx', mode: stat.mode & 0o777});
++  fs.renameSync(temporary, file);
++}
++
++function repairFramework(frameworkRoot) {
++  if (require('../package.json').version !== '0.87.1') {
++    throw new Error('Reassess the prebuilt declaration repairs when upgrading React Native');
++  }
++  let slices = 0;
++  for (const entry of fs.readdirSync(frameworkRoot, {withFileTypes: true})) {
++    const framework = path.join(frameworkRoot, entry.name, 'React.framework');
++    if (!entry.isDirectory() || !fs.existsSync(framework)) continue;
++    slices += 1;
++    const headers = path.join(framework, 'Headers');
++    const map = path.join(framework, 'Modules/module.modulemap');
++    const original = fs.readFileSync(map, 'utf8');
++    let result = original;
++    // These shipped headers were already outside the umbrella. Textual entries
++    // preserve explicit Objective-C/C++ includes without exporting them to Swift.
++    for (const name of textualHeaders) {
++      if (!fs.existsSync(path.join(headers, name))) throw new Error(`Missing React header: ${name}`);
++      const declaration = `  textual header "${name}"\n`;
++      if (!result.includes(declaration)) {
++        if (!result.includes('  export *\n')) throw new Error('Unexpected React module map');
++        result = result.replace('  export *\n', declaration + '  export *\n');
++      }
++    }
++    if (result !== original) writeRepairedFile(map, result);
++
++    // Explicit unspecified annotations preserve the original Swift IUO contract;
++    // they do not assert a new nonnull guarantee for callback providers.
++    repairFile(path.join(headers, 'RCTHTTPRequestHandler.h'), [
++      ['NSURLSessionConfigurationProvider /*provider*/', 'NSURLSessionConfigurationProvider _Null_unspecified /*provider*/'],
++      ['NSURLRequest *request', 'NSURLRequest *_Null_unspecified request'],
++      ['RCTHTTPRequestInterceptor /*interceptor*/', 'RCTHTTPRequestInterceptor _Null_unspecified /*interceptor*/'],
++    ]);
++    repairFile(path.join(headers, 'RCTMultipartDataTask.h'), [
++      ['NSDictionary *headers', 'NSDictionary *_Null_unspecified headers'],
++      ['NSData *content', 'NSData *_Null_unspecified content'],
++      ['NSError *error', 'NSError *_Null_unspecified error'],
++      ['NSURLRequest *request', 'NSURLRequest *_Null_unspecified request'],
++      ['RCTMultipartDataTaskRequestInterceptor /*interceptor*/', 'RCTMultipartDataTaskRequestInterceptor _Null_unspecified /*interceptor*/'],
++      ['(instancetype)initWithURL:(NSURL *)url', '(instancetype _Null_unspecified)initWithURL:(NSURL *_Null_unspecified)url'],
++      ['(RCTMultipartDataTaskCallback)partHandler', '(RCTMultipartDataTaskCallback _Null_unspecified)partHandler'],
++      ['(RCTMultipartProgressCallback)progressHandler', '(RCTMultipartProgressCallback _Null_unspecified)progressHandler'],
++    ]);
++    repairFile(path.join(headers, 'RCTWebSocketModule.h'), [
++      ['typedef SRWebSocket * (^SRWebSocketProvider)', 'typedef SRWebSocket *_Null_unspecified (^SRWebSocketProvider)'],
++    ]);
++    // NSObject's equality contract accepts nil; the override must agree.
++    repairFile(path.join(headers, 'RCTReactTaggedView.h'), [
++      ['- (BOOL)isEqual:(id)other;', '- (BOOL)isEqual:(nullable id)other;'],
++    ]);
++  }
++  if (slices === 0) throw new Error('No React framework slices were found');
++}
++
++function repairPrebuilt(podRoot) {
++  repairFramework(path.join(podRoot, 'React.xcframework'));
++  // The public selector and parameter type stay unchanged. Its declaration must
++  // carry the same deprecation as the legacy RCTRootView in that signature.
++  repairFile(path.join(podRoot, 'Headers/React_RCTAppDelegate/RCTUIConfiguratorProtocol.h'), [
++    ['- (void)customizeRootView:(RCTRootView *)rootView;', '- (void)customizeRootView:(RCTRootView *)rootView\n    __attribute__((deprecated("This compatibility hook uses the legacy RCTRootView API.")));'],
++  ]);
++  // Attribute only the three legacy overloads already documented as deprecated.
++  // The new overloads and inline implementation/ABI remain unchanged.
++  repairFile(path.join(podRoot, 'Headers/react/renderer/mounting/ShadowViewMutation.h'), [
++    ['  static ShadowViewMutation InsertMutation(const ShadowView &parentShadowView', '  [[deprecated("Pass parentTag instead of parentShadowView.")]]\n  static ShadowViewMutation InsertMutation(const ShadowView &parentShadowView'],
++    ['  static ShadowViewMutation RemoveMutation(const ShadowView &parentShadowView', '  [[deprecated("Pass parentTag instead of parentShadowView.")]]\n  static ShadowViewMutation RemoveMutation(const ShadowView &parentShadowView'],
++    ['  static ShadowViewMutation\n  UpdateMutation(ShadowView oldChildShadowView, ShadowView newChildShadowView, const ShadowView &parentShadowView)', '  [[deprecated("Pass parentTag instead of parentShadowView.")]]\n  static ShadowViewMutation\n  UpdateMutation(ShadowView oldChildShadowView, ShadowView newChildShadowView, const ShadowView &parentShadowView)'],
++  ]);
++}
++
++module.exports = {repairFramework, repairPrebuilt};
++
++if (require.main === module) repairPrebuilt(process.argv[2]);
+diff --git a/scripts/orot-textual-headers.json b/scripts/orot-textual-headers.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..0509c188af4c75b6dedac14f75aaca9b31f25a53
+--- /dev/null
++++ b/scripts/orot-textual-headers.json
+@@ -0,0 +1,87 @@
++[
++  "AppleEventBeat.h",
++  "NSDataBigString.h",
++  "NSTextStorage+FontScaling.h",
++  "PlatformRunLoopObserver.h",
++  "RCTAccessibilityManager+Internal.h",
++  "RCTActivityIndicatorViewComponentView.h",
++  "RCTAppDelegate.h",
++  "RCTAppSetupUtils.h",
++  "RCTBackgroundImageUtils.h",
++  "RCTBoxShadow.h",
++  "RCTBridge+Inspector.h",
++  "RCTBridgeProxy+Cxx.h",
++  "RCTComponentViewClassDescriptor.h",
++  "RCTComponentViewDescriptor.h",
++  "RCTConversions.h",
++  "RCTConvert+CoreLocation.h",
++  "RCTConvert+Text.h",
++  "RCTConvert+Transform.h",
++  "RCTCxxBridgeDelegate.h",
++  "RCTCxxInspectorPackagerConnectionDelegate.h",
++  "RCTCxxInspectorWebSocketAdapter.h",
++  "RCTCxxUtils.h",
++  "RCTDebuggingOverlayComponentView.h",
++  "RCTDefaultReactNativeFactoryDelegate.h",
++  "RCTDependencyProvider.h",
++  "RCTEnhancedScrollView.h",
++  "RCTFabricComponentsPlugins.h",
++  "RCTFabricSurface.h",
++  "RCTFollyConvert.h",
++  "RCTFont+Private.h",
++  "RCTFrameTimingsObserver.h",
++  "RCTGradientUtils.h",
++  "RCTIdentifierPool.h",
++  "RCTImageComponentView.h",
++  "RCTImageLoaderWithAttributionProtocol.h",
++  "RCTImageResponseObserverProxy.h",
++  "RCTImageURLLoaderWithAttribution.h",
++  "RCTInputAccessoryComponentView.h",
++  "RCTJSRuntimeConfiguratorProtocol.h",
++  "RCTJscSafeUrl+Internal.h",
++  "RCTLegacyViewManagerInteropComponentView.h",
++  "RCTLegacyViewManagerInteropCoordinatorAdapter.h",
++  "RCTLinearGradient.h",
++  "RCTMessageThread.h",
++  "RCTModalHostViewComponentView.h",
++  "RCTMountingManagerDelegate.h",
++  "RCTMountingTransactionObserverCoordinator.h",
++  "RCTMountingTransactionObserving.h",
++  "RCTNetworking+Internal.h",
++  "RCTParagraphComponentAccessibilityProvider.h",
++  "RCTParagraphComponentView.h",
++  "RCTPrimitives.h",
++  "RCTPullToRefreshViewComponentView.h",
++  "RCTRadialGradient.h",
++  "RCTReactNativeFactory.h",
++  "RCTRedBox+Internal.h",
++  "RCTRedBox2AnsiParser+Internal.h",
++  "RCTRedBox2Controller+Internal.h",
++  "RCTRedBox2ErrorParser+Internal.h",
++  "RCTRedBoxController+Internal.h",
++  "RCTRedBoxHMRClient+Internal.h",
++  "RCTRootComponentView.h",
++  "RCTRootViewFactory.h",
++  "RCTSafeAreaViewComponentView.h",
++  "RCTScheduler.h",
++  "RCTScrollViewComponentView.h",
++  "RCTShadowView+Layout.h",
++  "RCTSurfacePresenterBridgeAdapter.h",
++  "RCTSurfaceRegistry.h",
++  "RCTSurfaceView+Internal.h",
++  "RCTSwitchComponentView.h",
++  "RCTTextInputComponentView.h",
++  "RCTTextInputNativeCommands.h",
++  "RCTTextInputUtils.h",
++  "RCTTouchableComponentViewProtocol.h",
++  "RCTUIConfiguratorProtocol.h",
++  "RCTUnimplementedNativeComponentView.h",
++  "RCTUnimplementedViewComponentView.h",
++  "RCTVirtualViewComponentView.h",
++  "RCTVirtualViewContainerState.h",
++  "RCTVirtualViewMode.h",
++  "RCTVirtualViewProtocol.h",
++  "RCTVirtualViewRenderState.h",
++  "UIView+ComponentViewProtocol.h",
++  "UIView+Private.h"
++]
+diff --git a/scripts/react-native-xcode.sh b/scripts/react-native-xcode.sh
+index f54a970f0318595f126779ae03621e446922b2d4..a7cbe3abf0aa0476024254f1d49ba91579acdf59 100755
+--- a/scripts/react-native-xcode.sh
++++ b/scripts/react-native-xcode.sh
+@@ -171,13 +171,14 @@ else
+   EXTRA_ARGS+=("--config-cmd" "'$NODE_BINARY' $NODE_ARGS '$REACT_NATIVE_DIR/cli.js' config")
+ fi
+ 
++# Metro keys its transform cache by source and configuration. Explicit resets
++# remain available through EXTRA_PACKAGER_ARGS when diagnosing cache issues.
+ # shellcheck disable=SC2086
+ "$NODE_BINARY" $NODE_ARGS "$CLI_PATH" $BUNDLE_COMMAND \
+   $CONFIG_ARG \
+   --entry-file "$ENTRY_FILE" \
+   --platform "$BUNDLE_PLATFORM" \
+   --dev $DEV \
+-  --reset-cache \
+   --bundle-output "$BUNDLE_FILE" \
+   --assets-dest "$DEST" \
+   "${EXTRA_ARGS[@]}" \
+@@ -196,7 +197,9 @@ else
+   if [[ $EMIT_SOURCEMAP == true ]]; then
+     EXTRA_COMPILER_ARGS="$EXTRA_COMPILER_ARGS -output-source-map"
+   fi
+-  "$HERMES_CLI_PATH" -emit-binary -max-diagnostic-width=80 $EXTRA_COMPILER_ARGS -out "$DEST/$BUNDLE_NAME.jsbundle" "$BUNDLE_FILE"
++  "$HERMES_CLI_PATH" -emit-binary -max-diagnostic-width=80 $EXTRA_COMPILER_ARGS \
++    -include-globals="$REACT_NATIVE_DIR/scripts/orot-hermes-globals.js" \
++    -out "$DEST/$BUNDLE_NAME.jsbundle" "$BUNDLE_FILE"
+   if [[ $EMIT_SOURCEMAP == true ]]; then
+     HBC_SOURCEMAP_FILE="$DEST/$BUNDLE_NAME.jsbundle.map"
+     "$NODE_BINARY" "$COMPOSE_SOURCEMAP_PATH" "$PACKAGER_SOURCEMAP_FILE" "$HBC_SOURCEMAP_FILE" -o "$SOURCEMAP_FILE"
+diff --git a/scripts/replace-rncore-version.js b/scripts/replace-rncore-version.js
+index 0d0e93da8927997f0c6c863b63060dcd0bf87198..4b653ec782fdd5d817309e79358c3e27d2b97f34 100644
+--- a/scripts/replace-rncore-version.js
++++ b/scripts/replace-rncore-version.js
+@@ -103,6 +103,9 @@ function replaceRNCoreConfiguration(
+       );
+     }
+ 
++    // Reapply the pinned declaration repairs before publishing the new slice.
++    require('./orot-prebuilt-headers.cjs').repairFramework(xcfwPath);
++
+     // Replace only the compiled framework. Headers/ is flattened from
+     // ReactNativeHeaders by the podspec prepare_command, and the prebuild
+     // compose job emits one set of those headers for both configurations, so a
+diff --git a/sdks/hermes-engine/hermes-engine.podspec b/sdks/hermes-engine/hermes-engine.podspec
+index 53c64b3c897737c381d8b5ba196bf14bcc0b7af1..0580be68caa701b3c44f8a49eb75955b4faf54bc 100644
+--- a/sdks/hermes-engine/hermes-engine.podspec
++++ b/sdks/hermes-engine/hermes-engine.podspec
+@@ -90,6 +90,8 @@ Pod::Spec.new do |spec|
+     if source_type == HermesEngineSourceType::DOWNLOAD_PREBUILD_RELEASE_TARBALL
+       spec.script_phase = {
+         :name => "[Hermes] Replace Hermes for the right configuration, if needed",
++        # Configuration is checked inside the script on every build.
++        :always_out_of_date => "1",
+         :execution_position => :before_compile,
+         :script => <<-EOS
+         . "$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh"

@@ -6,9 +6,10 @@ type SymptomEntryCardProps = {
   entry: SymptomEntry;
   onEdit: () => void;
   onResolve: () => void;
+  disabled?: boolean;
 };
 
-export default function SymptomEntryCard({ entry, onEdit, onResolve }: SymptomEntryCardProps) {
+export default function SymptomEntryCard({ entry, onEdit, onResolve, disabled }: SymptomEntryCardProps) {
   const onset = toLocalSymptomDateTime(entry.effectiveAt);
   const resolved = entry.resolvedAt ? toLocalSymptomDateTime(entry.resolvedAt) : null;
 
@@ -28,9 +29,9 @@ export default function SymptomEntryCard({ entry, onEdit, onResolve }: SymptomEn
       ) : null}
       {resolved ? <Text>Resolved {resolved.date} at {resolved.time}</Text> : null}
       <View style={styles.actions}>
-        <Button onPress={onEdit} testID={`symptom-edit-${entry.id}`} title="Edit symptom" />
+        <Button disabled={disabled} onPress={onEdit} testID={`symptom-edit-${entry.id}`} title="Edit symptom" />
         {entry.status === 'active' ? (
-          <Button onPress={onResolve} testID={`symptom-resolve-${entry.id}`} title="Mark resolved" />
+          <Button disabled={disabled} onPress={onResolve} testID={`symptom-resolve-${entry.id}`} title="Mark resolved" />
         ) : null}
       </View>
     </View>

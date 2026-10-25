@@ -5,6 +5,7 @@ function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
+/** Interprets device-local wall time, rejects calendar rollover, and returns a UTC ISO instant. */
 export function toSymptomTimestamp(dateText: string, timeText: string): string | null {
   const dateParts = DATE_PATTERN.exec(dateText.trim());
   const timeParts = TIME_PATTERN.exec(timeText.trim());

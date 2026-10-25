@@ -1,0 +1,235 @@
+import type { JsonValue } from '@orot/model-runtime';
+import { t } from '../../i18n';
+import { hasUnsupportedQuestionFacts } from './questionFactValidation';
+import {
+  asQuestionObject as asObject,
+  hasOnlyQuestionKeys as hasOnlyKeys,
+  readKoreanQuestionText as readNonEmptyKoreanText,
+} from './questionShape';
+import type {
+  VisitQuestionEvidenceItem,
+  VisitQuestionResponderInput,
+  VisitQuestionTaskResult,
+  VisitQuestionTaskValidation,
+  VisitQuestionCandidate,
+} from './taskContract';
+
+const REQUESTED_DATE_PATTERNS = [
+  /(?<!\d)(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?(?!\d)/gu,
+  /(?<!\d)(?:19|20)\d{2}\s*년\s*(?:0?[1-9]|1[0-2])\s*월(?:\s*(?:0?[1-9]|[12]\d|3[01])\s*일)?/gu,
+];
+// Cover the distinct Korean imperative endings used by noun and verb action stems.
+const MEDICATION_INSTRUCTION =
+  /(?:약|약물|용량|복용|투약|처방|치료).{0,20}(?:중단|시작|변경|조절|증량|감량|늘리|줄이|바꾸|끊|복용하지|투여하지|먹지)(?:하세요|하십시오|으세요|세요|으십시오|해야 합니다|해야 해요|해야 한다|해야 돼요|하셔야|셔야|으셔야|하시기 바랍니다|하지 마세요|마세요)/u;
+const DIAGNOSTIC_CLAIM =
+  /(?:고혈압|당뇨(?:병)?|고지혈증|심부전|[가-힣]{1,10}(?:병|증|염|암|질환)|진단).{0,16}(?:이므로|이라서|라서|때문에|로 보입니다|로 판단|이라고 할 수|입니다|이에요|일 수 있)/u;
+
+function clarification(
+  message: string,
+): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
+  // Keep only validated Korean clarification copy on the task-result path.
+  return { status: 'valid', value: { status: 'needs_clarification', message } };
+}
+
+/** Suppresses explicit diagnosis claims and medication or treatment instructions in provider-authored copy. */
+export function hasUnsafeClinicalAdvice(message: string): boolean {
+  return MEDICATION_INSTRUCTION.test(message) || DIAGNOSTIC_CLAIM.test(message);
+}
+
+export function appointmentDateFromContext(
+  context: JsonValue | undefined,
+): string | undefined {
+  const value = asObject(context);
+  return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
+}
+
+function dateFactsInText(text: string): string[] {
+  return REQUESTED_DATE_PATTERNS.flatMap(pattern =>
+    [...text.matchAll(pattern)].map(([date]) => date),
+  );
+}
+
+function supportedClarificationContext(
+  input: VisitQuestionResponderInput,
+): string {
+  // Coverage gaps identify missing target dates, but never authorize measurement values.
+  return [
+    appointmentDateFromContext(input.context),
+    ...input.evidence.coverage.flatMap(coverage =>
+      coverage.gaps.flatMap(dateFactsInText),
+    ),
+  ]
+    .filter((value): value is string => value !== undefined)
+    .join(' ');
+}
+
+/** Validates generated fields and preserves only evidence-safe clarification copy as a task result. */
+export function validateVisitQuestionTaskResult(
+  value: JsonValue,
+  input: VisitQuestionResponderInput,
+): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
+  const result = asObject(value);
+  if (!result)
+    return { status: 'invalid', reason: 'The response must be an object.' };
+
+  if (result.status === 'needs_clarification') {
+    if (!hasOnlyKeys(result, ['status', 'message'])) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification response has extra fields.',
+      };
+    }
+    const message = readNonEmptyKoreanText(result.message, 400);
+    if (!message) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification request is invalid.',
+      };
+    }
+    if (
+      hasUnsupportedQuestionFacts(
+        message,
+        input.evidence.items,
+        supportedClarificationContext(input),
+      )
+    ) {
+      return clarification(
+        t('visitQuestions.validation.unverifiedDateOrValue'),
+      );
+    }
+    if (hasUnsafeClinicalAdvice(message)) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification contains unsafe clinical advice.',
+      };
+    }
+    return clarification(message);
+  }
+
+  if (
+    result.status !== 'suggestions' ||
+    !hasOnlyKeys(result, ['status', 'questions'])
+  ) {
+    return {
+      status: 'invalid',
+      reason: 'The response status is not supported.',
+    };
+  }
+  if (input.evidence.conflicts.length > 0) {
+    return clarification(t('visitQuestions.validation.conflictingRecords'));
+  }
+  if (input.evidence.items.length === 0) {
+    return clarification(t('visitQuestions.validation.noEvidence'));
+  }
+  if (
+    !Array.isArray(result.questions) ||
+    result.questions.length < 3 ||
+    result.questions.length > 5
+  ) {
+    return {
+      status: 'invalid',
+      reason: 'A visit requires three to five question candidates.',
+    };
+  }
+
+  const evidenceById = new Map(
+    input.evidence.items.map(item => [item.evidenceId, item]),
+  );
+  const questions: VisitQuestionCandidate[] = [];
+  // Inspect the whole list before offering a bounded correction: a bad number cannot hide
+  // another question's invalid citation or unsafe clinical copy.
+  let missingQuestionMark = false;
+  let unsupportedFacts = false;
+  for (const rawQuestion of result.questions) {
+    const question = asObject(rawQuestion);
+    if (
+      !question ||
+      !hasOnlyKeys(question, [
+        'questionText',
+        'rationale',
+        'priority',
+        'evidenceIds',
+      ])
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'A question contains unsupported fields.',
+      };
+    }
+    const questionText = readNonEmptyKoreanText(question.questionText, 300);
+    const rationale = readNonEmptyKoreanText(question.rationale, 400);
+    if (!questionText) {
+      return {
+        status: 'invalid',
+        reason: 'A question text is invalid.',
+      };
+    }
+    // Keep the validator strict; the task contract may request one bounded regeneration.
+    if (!questionText.endsWith('?')) missingQuestionMark = true;
+    if (
+      !rationale ||
+      (question.priority !== 'routine' && question.priority !== 'important')
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'A rationale or priority is invalid.',
+      };
+    }
+    if (
+      !Array.isArray(question.evidenceIds) ||
+      question.evidenceIds.length < 1 ||
+      question.evidenceIds.length > 3 ||
+      question.evidenceIds.some(id => typeof id !== 'string') ||
+      new Set(question.evidenceIds).size !== question.evidenceIds.length
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'A question must cite one to three unique evidence IDs.',
+      };
+    }
+    const citations = question.evidenceIds.map(id =>
+      evidenceById.get(id as string),
+    );
+    if (citations.some(citation => citation === undefined)) {
+      return {
+        status: 'invalid',
+        reason: 'A question cited evidence outside the current result set.',
+      };
+    }
+    const exactCitations = citations as VisitQuestionEvidenceItem[];
+    if (hasUnsafeClinicalAdvice(`${questionText} ${rationale}`)) {
+      return {
+        status: 'invalid',
+        reason: 'A visit question contains unsafe clinical advice.',
+      };
+    }
+    if (
+      hasUnsupportedQuestionFacts(
+        `${questionText} ${rationale}`,
+        exactCitations,
+        appointmentDateFromContext(input.context),
+      )
+    ) {
+      unsupportedFacts = true;
+    }
+    questions.push({
+      questionText,
+      rationale,
+      priority: question.priority,
+      citations: exactCitations,
+    });
+  }
+  if (unsupportedFacts) {
+    return {
+      status: 'invalid',
+      reason: 'A visit question contains an unsupported date or numeric value.',
+    };
+  }
+  if (missingQuestionMark) {
+    return {
+      status: 'invalid',
+      reason: 'A visit question must end with a question mark.',
+    };
+  }
+  return { status: 'valid', value: { status: 'suggestions', questions } };
+}

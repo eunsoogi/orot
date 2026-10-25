@@ -4,12 +4,12 @@ import {
   createAppointment as createDomainAppointment,
   updateAppointment as updateDomainAppointment,
 } from '@orot/domain';
-import type { Appointment, AppointmentUpdateInput } from '@orot/domain';
-import {
-  decodeStoredRecord,
-  readStoredRecord,
-  updateStoredRecord,
-} from './recordPersistence';
+import type {
+  Appointment,
+  AppointmentUpdateInput,
+  CalendarAppointmentSnapshot,
+} from '@orot/domain';
+import { decodeStoredRecord, readStoredRecord, updateStoredRecord } from './recordPersistence';
 import type { RecordRepository } from './repository';
 import type { SqlDatabase } from './sql';
 
@@ -19,11 +19,20 @@ export interface ManualAppointmentInput {
   note?: string;
 }
 
+export interface CalendarAppointmentInput {
+  calendarEventIdentifier: string;
+  effectiveAt: string;
+  endsAt: string;
+  calendarEventSnapshot: CalendarAppointmentSnapshot;
+}
+
 export type AppointmentChanges = AppointmentUpdateInput;
 
 export interface AppointmentRepository {
   list(): Promise<Appointment[]>;
   create(input: ManualAppointmentInput): Promise<Appointment>;
+  confirmCalendarEvent(input: CalendarAppointmentInput): Promise<Appointment>;
+  reconfirmCalendarEvent(id: string, input: CalendarAppointmentInput): Promise<Appointment>;
   update(id: string, changes: AppointmentChanges): Promise<Appointment>;
   cancel(id: string): Promise<Appointment>;
 }
@@ -38,13 +47,12 @@ function newAppointmentId(): string {
 }
 
 async function listStoredAppointments(database: SqlDatabase): Promise<Appointment[]> {
-  const result = await database.execute(
-    'SELECT payload_json FROM appointments ORDER BY id ASC',
-  );
+  const result = await database.execute('SELECT payload_json FROM appointments ORDER BY id ASC');
   return result.rows
-    .map(row => decodeStoredRecord('appointment', row.payload_json))
-    .sort((left, right) =>
-      compareTimestamps(left.effectiveAt, right.effectiveAt) || left.id.localeCompare(right.id),
+    .map((row) => decodeStoredRecord('appointment', row.payload_json))
+    .sort(
+      (left, right) =>
+        compareTimestamps(left.effectiveAt, right.effectiveAt) || left.id.localeCompare(right.id),
     );
 }
 
@@ -74,9 +82,46 @@ export function createAppointmentRepository(
       await records.put('appointment', appointment);
       return appointment;
     },
+    async confirmCalendarEvent(input) {
+      const now = clock();
+      const appointment = createDomainAppointment({
+        id: createId(),
+        effectiveAt: input.effectiveAt,
+        endsAt: input.endsAt,
+        recordedAt: now,
+        ingestedAt: now,
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+        calendarEventIdentifier: input.calendarEventIdentifier,
+        calendarEventSnapshot: input.calendarEventSnapshot,
+      });
+      await records.put('appointment', appointment);
+      return appointment;
+    },
+    async reconfirmCalendarEvent(id, input) {
+      let updated!: Appointment;
+      await database.transaction(async (transaction) => {
+        const appointment = await readStoredRecord(transaction, 'appointment', id);
+        if (!appointment) throw new Error('Appointment not found.');
+        updated = updateDomainAppointment(
+          appointment,
+          {
+            effectiveAt: input.effectiveAt,
+            endsAt: input.endsAt,
+            calendarEventIdentifier: input.calendarEventIdentifier,
+            calendarEventSnapshot: input.calendarEventSnapshot,
+          },
+          clock(),
+        );
+        if (!(await updateStoredRecord(transaction, 'appointment', updated))) {
+          throw new Error('Appointment not found.');
+        }
+      });
+      return updated;
+    },
     async update(id, changes) {
       let updated!: Appointment;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         const appointment = await readStoredRecord(transaction, 'appointment', id);
         if (!appointment) throw new Error('Appointment not found.');
         updated = updateDomainAppointment(appointment, changes, clock());
@@ -88,7 +133,7 @@ export function createAppointmentRepository(
     },
     async cancel(id) {
       let cancelled!: Appointment;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         const appointment = await readStoredRecord(transaction, 'appointment', id);
         if (!appointment) throw new Error('Appointment not found.');
         cancelled = cancelDomainAppointment(appointment, clock());

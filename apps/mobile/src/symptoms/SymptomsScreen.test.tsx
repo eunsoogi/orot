@@ -4,6 +4,9 @@ import type { ComponentProps } from 'react';
 import SymptomsScreen from './SymptomsScreen';
 import { toSymptomTimestamp } from './dateTime';
 
+jest.mock('react-native-safe-area-context', () =>
+  require('react-native-safe-area-context/jest/mock').default);
+
 const recordedAt = '2026-05-01T12:00:00Z';
 
 function sampleSymptom() {

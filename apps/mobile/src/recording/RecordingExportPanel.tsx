@@ -1,0 +1,222 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
+import { AppSymbol } from '../layout/AppSymbol';
+import { appColors } from '../layout/appColors';
+import { t } from '../i18n';
+import {
+  transcriptEvidenceService,
+  type TranscriptEvidenceService,
+  type TranscriptRecordingView,
+} from '../transcription/transcriptEvidenceService';
+import {
+  EmptyRecordingTranscriptError,
+  formatTranscriptExport,
+  recordingExportService,
+  type RecordingExportService,
+} from './recordingExportService';
+import RecordingExportOption from './RecordingExportOption';
+import { recordingExportPanelStyles as styles } from './RecordingExportPanel.styles';
+
+interface RecordingExportPanelProps {
+  recordingSourceId: string;
+  transcriptService?: TranscriptEvidenceService;
+  exportService?: RecordingExportService;
+  onBusyChange?: (busy: boolean) => void;
+  actionsDisabled?: boolean;
+}
+
+type ExportError =
+  'load' | 'missingAudio' | 'emptyTranscript' | 'cleanup' | 'share';
+
+function exportErrorLabel(error: ExportError): string {
+  switch (error) {
+    case 'load':
+      return t('recording.export.error.load');
+    case 'missingAudio':
+      return t('recording.export.error.missingAudio');
+    case 'emptyTranscript':
+      return t('recording.export.error.emptyTranscript');
+    case 'cleanup':
+      return t('recording.export.error.cleanup');
+    case 'share':
+      return t('recording.export.error.share');
+  }
+}
+
+function shareError(error: unknown): ExportError {
+  const code = (error as { code?: unknown } | null)?.code;
+  // Cleanup failures keep the native export slot occupied, so both paths need the same recovery guidance.
+  if (code === 'RECORDING_EXPORT_CLEANUP_FAILED') return 'cleanup';
+  return code === 'RECORDING_EXPORT_SOURCE_MISSING' ? 'missingAudio' : 'share';
+}
+
+export default function RecordingExportPanel({
+  recordingSourceId,
+  transcriptService = transcriptEvidenceService,
+  exportService = recordingExportService,
+  onBusyChange,
+  actionsDisabled = false,
+}: RecordingExportPanelProps) {
+  const [view, setView] = useState<TranscriptRecordingView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<ExportError | null>(null);
+  const [status, setStatus] = useState<'completed' | 'cancelled' | null>(null);
+  const selectionRevision = useRef(0);
+  const previousSourceId = useRef(recordingSourceId);
+
+  function updateBusy(value: boolean): void {
+    setBusy(value);
+    // Native backdrop dismissal can also deliver a touch to the library. Keep its source controls disabled until this request settles.
+    onBusyChange?.(value);
+  }
+
+  useLayoutEffect(() => {
+    if (previousSourceId.current === recordingSourceId) return;
+    previousSourceId.current = recordingSourceId;
+    // Native sharing can outlive a row selection. Clear feedback before paint and
+    // ignore that share's late result.
+    selectionRevision.current += 1;
+    setError(null);
+    setStatus(null);
+  }, [recordingSourceId]);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setView(null);
+    setError(null);
+    transcriptService
+      .load(recordingSourceId)
+      .then(
+        next => {
+          if (active) setView(next);
+        },
+        () => {
+          if (active) setError('load');
+        },
+      )
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [recordingSourceId, transcriptService]);
+
+  async function shareAudio(): Promise<void> {
+    if (busy || actionsDisabled) return;
+    // Audio export reads the saved file directly and must stay available if transcript lookup fails.
+    const requestRevision = selectionRevision.current;
+    updateBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const result = await exportService.shareAudio(recordingSourceId);
+      if (requestRevision === selectionRevision.current) {
+        setStatus(result);
+      }
+    } catch (reason) {
+      if (requestRevision === selectionRevision.current) {
+        setError(shareError(reason));
+      }
+    } finally {
+      updateBusy(false);
+    }
+  }
+
+  async function shareTranscript(): Promise<void> {
+    if (busy || actionsDisabled) return;
+    const requestRevision = selectionRevision.current;
+    updateBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const current = await transcriptService.load(recordingSourceId);
+      if (requestRevision !== selectionRevision.current) return;
+      if (!current) {
+        setError('emptyTranscript');
+        return;
+      }
+      setView(current);
+      const text = formatTranscriptExport(current);
+      const result = await exportService.shareTranscript(text);
+      if (requestRevision === selectionRevision.current) {
+        setStatus(result);
+      }
+    } catch (reason) {
+      if (requestRevision === selectionRevision.current) {
+        setError(
+          reason instanceof EmptyRecordingTranscriptError
+            ? 'emptyTranscript'
+            : shareError(reason),
+        );
+      }
+    } finally {
+      updateBusy(false);
+    }
+  }
+
+  // Keep the button callback synchronous; these actions report their own share errors in the panel.
+  function handleShareAudioPress(): void {
+    shareAudio();
+  }
+
+  function handleShareTranscriptPress(): void {
+    shareTranscript();
+  }
+
+  const hasTranscript = Boolean(view?.segments.length);
+  return (
+    <View style={styles.panel} testID="recording-export-panel">
+      <Text accessibilityRole="header" style={styles.title}>
+        {t('recording.export.title')}
+      </Text>
+      <Text style={styles.subtitle}>{t('recording.export.description')}</Text>
+      {/* Native sharing can wait for user input; keep each result inside its matching share card. */}
+      <RecordingExportOption
+        kind="audio"
+        title={t('recording.export.audio')}
+        description={t('recording.export.audioDescription')}
+        hint={t('recording.export.audioHint')}
+        disabled={busy || actionsDisabled}
+        onPress={handleShareAudioPress}
+        testID="recording-export-audio"
+      />
+      {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
+      <RecordingExportOption
+        kind="transcript"
+        title={t('recording.export.transcript')}
+        description={t('recording.export.transcriptDescription')}
+        hint={t('recording.export.transcriptHint')}
+        disabled={busy || actionsDisabled || loading}
+        onPress={handleShareTranscriptPress}
+        testID="recording-export-transcript"
+      />
+      <View style={styles.privacyNote} testID="recording-export-privacy-note">
+        <AppSymbol name="info.circle" size={20} color={appColors.secondary} />
+        <Text style={styles.privacyCopy}>
+          {t('recording.export.privacyNote')}
+        </Text>
+      </View>
+      {!loading && !hasTranscript && !error ? (
+        <Text>{t('recording.export.emptyTranscript')}</Text>
+      ) : null}
+      {error ? (
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="recording-export-error"
+        >
+          {exportErrorLabel(error)}
+        </Text>
+      ) : null}
+      {status ? (
+        <Text testID="recording-export-status">
+          {t(`recording.export.status.${status}`)}
+        </Text>
+      ) : null}
+    </View>
+  );
+}

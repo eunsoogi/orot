@@ -40,11 +40,13 @@ function filterInputAccessoryID(field: FilterInputKey): string | undefined {
 }
 
 interface SymptomFiltersProps {
+  disabled?: boolean;
   filter?: SymptomFilter;
   onFilterChange: (filter: SymptomFilter) => Promise<void> | void;
 }
 
 export default function SymptomFilters({
+  disabled = false,
   filter = {},
   onFilterChange,
 }: SymptomFiltersProps) {
@@ -121,6 +123,7 @@ export default function SymptomFilters({
         <View style={styles.row}>
           {(['all', 'active', 'resolved'] as StatusFilter[]).map(status => (
             <Pressable
+              disabled={disabled}
               accessibilityRole="radio"
               accessibilityState={{ selected: statusFilter === status }}
               key={status}
@@ -147,6 +150,7 @@ export default function SymptomFilters({
         <Text style={styles.sectionTitle}>Filter by onset time</Text>
         <View style={styles.row}>
           <TextInput
+            editable={!disabled}
             accessibilityLabel="From onset date"
             inputAccessoryViewID={filterInputAccessoryID('fromDate')}
             onChangeText={setFromDate}
@@ -156,6 +160,7 @@ export default function SymptomFilters({
             value={fromDate}
           />
           <TextInput
+            editable={!disabled}
             accessibilityLabel="From onset time"
             inputAccessoryViewID={filterInputAccessoryID('fromTime')}
             onChangeText={setFromTime}
@@ -167,6 +172,7 @@ export default function SymptomFilters({
         </View>
         <View style={styles.row}>
           <TextInput
+            editable={!disabled}
             accessibilityLabel="Through onset date"
             inputAccessoryViewID={filterInputAccessoryID('throughDate')}
             onChangeText={setThroughDate}
@@ -176,6 +182,7 @@ export default function SymptomFilters({
             value={throughDate}
           />
           <TextInput
+            editable={!disabled}
             accessibilityLabel="Through onset time"
             inputAccessoryViewID={filterInputAccessoryID('throughTime')}
             onChangeText={setThroughTime}
@@ -189,6 +196,7 @@ export default function SymptomFilters({
           Range endpoints include the entered local times.
         </Text>
         <Button
+          disabled={disabled}
           onPress={() => {
             applyFilters();
           }}
@@ -196,6 +204,7 @@ export default function SymptomFilters({
           title="Apply time range"
         />
         <Button
+          disabled={disabled}
           onPress={() => {
             clearTimeRange();
           }}
@@ -209,6 +218,7 @@ export default function SymptomFilters({
             {
               label: 'Apply time range',
               testID: 'symptom-filter-keyboard-apply',
+              disabled,
               onPress: () => {
                 Keyboard.dismiss();
                 applyFilters();

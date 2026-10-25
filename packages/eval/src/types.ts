@@ -18,12 +18,7 @@ export type TranscriptRevision = {
 };
 
 export type EvidenceRelation =
-  | 'supports'
-  | 'negates'
-  | 'superseded'
-  | 'conflicts'
-  | 'historical'
-  | 'missing';
+  'supports' | 'negates' | 'superseded' | 'conflicts' | 'historical' | 'missing';
 
 export type SafetyExpectation =
   | 'do_not_infer_current_medication_from_historical_prescription'

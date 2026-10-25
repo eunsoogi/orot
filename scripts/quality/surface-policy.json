@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "surfaces": {
+    "javascript": {
+      "extensions": [".js", ".jsx", ".mjs", ".cjs"],
+      "platform": "linux",
+      "lint": "eslint",
+      "format": "prettier"
+    },
+    "typescript": {
+      "extensions": [".ts", ".tsx"],
+      "platform": "linux",
+      "lint": "workspace-eslint",
+      "format": "prettier"
+    },
+    "swift": {
+      "extensions": [".swift"],
+      "platform": "linux",
+      "lint": "swiftformat",
+      "format": "swiftformat"
+    },
+    "objective-c": {
+      "extensions": [".m", ".mm", ".h", ".hpp", ".cc", ".cpp", ".c"],
+      "platform": "linux",
+      "lint": "clang-format",
+      "format": "clang-format"
+    },
+    "shell": {
+      "extensions": [".sh", ".bash", ".zsh", ".command"],
+      "platform": "linux",
+      "lint": "shellcheck",
+      "format": "shfmt"
+    },
+    "ruby": {
+      "extensions": [".rb"],
+      "platform": "linux",
+      "lint": "rubocop",
+      "format": "rubocop"
+    },
+    "yaml": {
+      "extensions": [".yaml", ".yml"],
+      "platform": "linux",
+      "lint": "prettier-parser",
+      "format": "prettier",
+      "additionalLint": "actionlint-workflows"
+    },
+    "json": {
+      "extensions": [".json", ".jsonc"],
+      "platform": "linux",
+      "lint": "prettier-parser",
+      "format": "prettier"
+    },
+    "xml": {
+      "extensions": [".xml", ".plist", ".entitlements", ".storyboard", ".xcprivacy", ".svg"],
+      "platform": "linux",
+      "lint": "prettier-parser",
+      "format": "prettier"
+    },
+    "properties": {
+      "extensions": [".properties"],
+      "platform": "linux",
+      "lint": "prettier-parser",
+      "format": "prettier"
+    }
+  },
+  "specialFiles": {
+    "ruby": ["apps/mobile/ios/Podfile", "scripts/quality/Gemfile"],
+    "shell": ["apps/mobile/ios/.xcode.env"],
+    "json": ["apps/mobile/.watchmanconfig"]
+  },
+  "projectMetadataSuffixes": {
+    ".pbxproj": {
+      "reason": "Xcode serializes project structure in OpenStep property-list form; formatting this generated metadata creates broad churn.",
+      "validation": "plutil -lint and the required xcodebuild jobs parse the project."
+    },
+    ".xcscheme": {
+      "reason": "Shared Xcode schemes are serialized build/test metadata rather than source code.",
+      "validation": "The required xcodebuild jobs resolve and execute the named schemes."
+    },
+    ".xcworkspacedata": {
+      "reason": "Xcode owns the workspace membership serialization.",
+      "validation": "The required xcodebuild workspace build parses this file."
+    }
+  },
+  "excludedPaths": {
+    "vendor/patches/@op-engineering__op-sqlite@18.2.5.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, SQLCipher native regressions and clean iOS compilation."
+    },
+    "vendor/patches/@react-native__codegen@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, Codegen empty-State regression and clean iOS compilation."
+    },
+    "vendor/patches/react-native@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff, including prebuilt-header repair code.",
+      "validation": "Frozen pnpm installation, header-repair tests, artifact integrity and clean Debug/Release builds."
+    },
+    "vendor/patches/react-native-keychain@10.0.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native Keychain regressions and clean iOS compilation."
+    },
+    "vendor/patches/react-native-safe-area-context@5.10.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native layout regression and clean iOS compilation."
+    },
+    "vendor/patches/react-native-screens@4.27.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native navigation regression and clean iOS compilation."
+    },
+    "vendor/patches/metro-runtime@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, development-loader behavior tests and Hermes compilation."
+    },
+    "vendor/patches/metro@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, Metro WorkerFarm color-environment regression and clean Release app compilation."
+    },
+    "vendor/patches/p-queue@6.6.2.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, p-queue Hermes timer regression and clean Release app compilation."
+    },
+    "vendor/patches/jest-worker@29.7.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation and actual child-process color environment tests."
+    },
+    "vendor/patches/react-devtools-core@6.1.5.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, shipped iterator/storage behavior, dead-code reference audit and Hermes compilation."
+    },
+    "vendor/patches/fast-text-encoding@1.0.6.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, UTF-8 behavior with and without Buffer, and Hermes compilation."
+    },
+    "vendor/patches/@react-navigation__native@7.5.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, native navigation regression and Hermes compilation."
+    },
+    "vendor/patches/@react-navigation__elements@2.9.44.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, native layout regression and Hermes compilation."
+    },
+    "pnpm-lock.yaml": {
+      "reason": "Generated dependency-resolution data; its serialized order is owned by pnpm.",
+      "validation": "pnpm install --frozen-lockfile"
+    },
+    "apps/mobile/ios/Podfile.lock": {
+      "reason": "Generated dependency-resolution data; its serialized order is owned by CocoaPods.",
+      "validation": "pod install --deployment and the required iOS build"
+    },
+    "apps/mobile/ios/OrotMobile.xcworkspace/xcshareddata/swiftpm/Package.resolved": {
+      "reason": "Swift Package Manager resolution snapshot, not hand-authored source.",
+      "validation": "The required xcodebuild job resolves the workspace packages."
+    },
+    "packages/provider-openai/Package.resolved": {
+      "reason": "Swift Package Manager resolution snapshot, not hand-authored source.",
+      "validation": "swift test --package-path packages/provider-openai"
+    },
+    "packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved": {
+      "reason": "Swift Package Manager resolution snapshot, not hand-authored source.",
+      "validation": "E2E / Build / OAuth resolves the standalone package; E2E / Validate / Build requires its separate execution receipt."
+    },
+    "scripts/quality/Gemfile.lock": {
+      "reason": "Generated Ruby gem resolution data, pinned by Bundler rather than a formatter.",
+      "validation": "bundle check --gemfile scripts/quality/Gemfile"
+    },
+    "apps/mobile/.env": {
+      "reason": "Local environment/secret configuration is not committed source and must not be read.",
+      "validation": "CI injects its environment explicitly; local values remain outside the quality scan."
+    }
+  },
+  "nonCodeExtensions": {
+    ".md": "Human-authored documentation, outside the maintained-code lint/format scope.",
+    ".png": "Binary image asset; text formatters cannot parse pixels.",
+    ".jpg": "Binary image asset; text formatters cannot parse pixels.",
+    ".jpeg": "Binary image asset; text formatters cannot parse pixels.",
+    ".jar": "Binary dependency or wrapper artifact, not source text.",
+    ".keystore": "Binary signing material, not source text."
+  },
+  "nonCodePathRules": [
+    {
+      "prefix": "artifacts/quality/",
+      "extensions": [".log"],
+      "reason": "Generated logs written by the CI quality command wrapper, not maintained source."
+    }
+  ],
+  "nonCodeBasenames": {
+    ".gitignore": "Git path-selection configuration has no language formatter.",
+    ".gitattributes": "Git attributes are line-oriented repository metadata, not source code.",
+    ".nvmrc": "Single-version runtime selector; setup-node reads and validates it directly.",
+    ".editorconfig": "Editor defaults consumed directly by language tools and editors.",
+    ".swiftformat": "SwiftFormat's own configuration, consumed directly by SwiftFormat.",
+    ".clang-format": "clang-format's own configuration, consumed directly by clang-format.",
+    "LICENSE": "License terms are legal text rather than maintained executable code."
+  }
+}

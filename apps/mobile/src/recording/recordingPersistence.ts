@@ -1,0 +1,67 @@
+import type { RecordMap, RecordRepository } from '@orot/storage';
+import type { CompletedRecording } from './recordingTypes';
+
+type RecordingRepositoryLoader = () => Promise<RecordRepository>;
+type SourceRecord = RecordMap['source_record'];
+
+async function loadLocalRepository(): Promise<RecordRepository> {
+  const { openLocalStorage } = await import('../storage/secureDatabase');
+  return openLocalStorage();
+}
+
+export async function saveRecordingSource(
+  recording: CompletedRecording,
+  loadRepository: RecordingRepositoryLoader = loadLocalRepository,
+  now: () => Date = () => new Date(),
+): Promise<SourceRecord> {
+  // The native bridge must explicitly confirm backup inclusion before linking a source record.
+  if (
+    recording.fileProtection !== 'complete' ||
+    recording.excludedFromBackup !== false
+  ) {
+    const error = new Error(
+      'The recording file protection or backup eligibility could not be verified.',
+    ) as Error & {
+      code?: string;
+    };
+    error.code = 'RECORDING_FILE_PROTECTION_FAILED';
+    throw error;
+  }
+
+  const repository = await loadRepository();
+  const existing = await repository.get('source_record', recording.id);
+  if (existing) {
+    if (
+      existing.sourceKind === 'audio_recording' &&
+      existing.effectiveAt === recording.startedAt &&
+      existing.recordedAt === recording.completedAt
+    ) {
+      if (existing.recordingDurationMs === recording.durationMs)
+        return existing;
+      if (existing.recordingDurationMs === undefined) {
+        // A metadata-link retry may add the duration measured by the native file recorder.
+        const upgraded = {
+          ...existing,
+          recordingDurationMs: recording.durationMs,
+        };
+        await repository.put('source_record', upgraded);
+        return upgraded;
+      }
+    }
+    throw new Error('The recording source identifier is already in use.');
+  }
+
+  const source: SourceRecord = {
+    id: recording.id,
+    effectiveAt: recording.startedAt,
+    recordedAt: recording.completedAt,
+    ingestedAt: now().toISOString(),
+    provenance: { origin: 'user_reported', sourceRecordIds: [] },
+    reviewState: { status: 'unreviewed' },
+    sourceKind: 'audio_recording',
+    title: '상담 녹음',
+    recordingDurationMs: recording.durationMs,
+  };
+  await repository.put('source_record', source);
+  return source;
+}

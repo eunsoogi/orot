@@ -1,0 +1,127 @@
+name: Debug integration tests
+on:
+  workflow_call:
+    inputs:
+      archive_digest: { required: true, type: string }
+      manifest_digest: { required: true, type: string }
+      cohorts: { required: true, type: string }
+permissions: { contents: read }
+env:
+  CI: 'true'
+  TZ: UTC
+  # Pin the named bundle because the hosted image default can change between releases.
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+  EXPECTED_NODE_VERSION: '22.23.2'
+jobs:
+  # Cohort conditions avoid Mac allocations while each selected job retains its complete stateful driver.
+  provider:
+    name: Provider
+    if: ${{ contains(fromJSON(inputs.cohorts), 'provider') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: provider
+          profile: provider-data
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: provider }
+  # Each Health leaf repeats the full owned preparation and cleanup with intact independent methods.
+  health_observations:
+    name: Health observations
+    if: ${{ contains(fromJSON(inputs.cohorts), 'health-observations') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: health-observations
+          profile: health-import
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: health-observations }
+  health_recovery:
+    name: Health recovery
+    if: ${{ contains(fromJSON(inputs.cohorts), 'health-recovery') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: health-recovery
+          profile: health-import
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: health-recovery }
+  microphone:
+    name: Microphone
+    if: ${{ contains(fromJSON(inputs.cohorts), 'microphone') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: microphone
+          profile: microphone
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: microphone }
+  selection:
+    name: Selection
+    if: ${{ contains(fromJSON(inputs.cohorts), 'selection') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: selection
+          profile: provider-selection
+          artifact_name: ios-test-debug-products
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: selection }

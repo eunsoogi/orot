@@ -1,0 +1,40 @@
+name: Select iOS E2E paths
+description: Select changed-path cohorts and preserve the exact selection decision.
+outputs:
+  selection_complete:
+    description: Whether changed-path selection completed.
+    value: ${{ steps.select.outputs.selection_complete }}
+  full_validation_deferred:
+    description: Whether a draft PR defers Full validation.
+    value: ${{ steps.select.outputs.full_validation_deferred }}
+  validation_tier:
+    description: The validation tier assigned to this event.
+    value: ${{ steps.select.outputs.validation_tier }}
+  ios_test_cohorts:
+    description: The selected iOS test cohorts.
+    value: ${{ steps.select.outputs.ios_test_cohorts }}
+  ios_oauth:
+    description: Whether OAuth validation was selected.
+    value: ${{ steps.select.outputs.ios_oauth }}
+  metadata_only_edit:
+    description: Whether the event changes PR metadata only.
+    value: ${{ steps.select.outputs.metadata_only_edit }}
+  ios_build:
+    description: Whether the changed paths require an iOS build.
+    value: ${{ steps.select.outputs.ios_build }}
+  ios_tests:
+    description: Whether the changed paths require iOS tests.
+    value: ${{ steps.select.outputs.ios_tests }}
+runs:
+  using: composite
+  steps:
+    - id: select
+      shell: bash
+      run: node scripts/ci/select-changed-paths.mjs
+    - name: Preserve the event decision and selected inventory
+      if: steps.select.outcome == 'success'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: ios-e2e-selection-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/ios-e2e-selection.json
+        if-no-files-found: error
