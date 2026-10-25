@@ -40,6 +40,8 @@ export interface AgentMemoryToolPolicy {
 }
 
 export interface AgentMemoryHit {
+  /** Service results include this durable key; optional for existing caller-constructed hits. */
+  readonly memoryKey?: string;
   readonly id: string;
   readonly text: string;
   readonly score: number;
