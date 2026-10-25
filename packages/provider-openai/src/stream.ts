@@ -13,6 +13,7 @@ import { toProviderError } from './errors';
 import type { ChatGPTPlanProviderOptions } from './provider';
 import type { ChatGPTPlanNativeEvent, ChatGPTPlanNativeToolCall } from './native-contract';
 import { prepareRequest } from './request-mapper';
+import { nativeResponse } from './usage';
 
 export function createChatGPTPlanStream(
   options: ChatGPTPlanProviderOptions,
@@ -115,6 +116,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
       const toolCalls = normalizeToolCalls(event.toolCalls ?? []);
       if (!toolCalls || !this.streamedCallsMatch(toolCalls))
         return this.finish(malformedResponse(), true);
+      const response = nativeResponse(event, toolCalls);
       const continuationItems = event.continuationItems;
       if (toolCalls.length && continuationItems?.length) {
         for (const toolCall of toolCalls)
@@ -124,11 +126,6 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
         for (const callID of this.prepared.consumedCallIDs)
           this.continuationsByCallID.delete(callID);
       }
-      const response: LanguageModelResponse = {
-        text: event.text,
-        toolCalls,
-        finishReason: toolCalls.length ? 'tool_calls' : 'complete',
-      };
       const missingCalls = toolCalls.filter((toolCall) => !this.streamedToolCalls.has(toolCall.id));
       if (missingCalls.length) {
         this.pendingToolCalls = missingCalls;

@@ -115,6 +115,12 @@ export interface LanguageModelResponse {
   readonly toolCalls: readonly ToolCall[];
   readonly structuredOutput?: JsonValue;
   readonly finishReason: LanguageModelFinishReason;
+  /** Provider-reported counts only. Absence means unavailable, never zero or an estimate. */
+  readonly usage?: {
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly totalTokens: number;
+  };
 }
 
 export type LanguageModelStreamEvent =

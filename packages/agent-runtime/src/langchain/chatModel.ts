@@ -120,6 +120,12 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
       throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
     if (!result.ok) throw new NativeChatModelError(result.error);
     const response = result.value;
+    const usage = response.usage ?? undefined;
+    if (usage !== undefined && ![
+      usage.inputTokens, usage.outputTokens, usage.totalTokens,
+    ].every((count) => Number.isSafeInteger(count) && count >= 0)) {
+      throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
+    }
     const [converted] = toLangChainMessages([
       { role: 'assistant', content: response.text, toolCalls: response.toolCalls },
     ]);
@@ -128,7 +134,12 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
       content: converted.content,
       tool_calls: converted.tool_calls,
       response_metadata: { finish_reason: response.finishReason },
-      // The current native response contract carries no usage. Do not infer token counts.
+      // Preserve provider totals verbatim. A missing usage object is not a zero-token response.
+      ...(usage === undefined ? {} : { usage_metadata: {
+        input_tokens: usage.inputTokens,
+        output_tokens: usage.outputTokens,
+        total_tokens: usage.totalTokens,
+      } }),
     });
     return { generations: [{ text: response.text, message }] };
   }

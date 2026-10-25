@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
@@ -57,22 +58,65 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     }
 }
 
+/// Counts are copied from terminal provider usage, never from local tokenization or text length.
+public struct ChatGPTResponsesUsage: Equatable, Sendable {
+    public let inputTokens: Int
+    public let outputTokens: Int
+    public let totalTokens: Int
+
+    public init(inputTokens: Int, outputTokens: Int, totalTokens: Int) {
+        self.inputTokens = inputTokens
+        self.outputTokens = outputTokens
+        self.totalTokens = totalTokens
+    }
+
+    /// The React Native bridge admits only the closed numeric shape, not provider diagnostics.
+    public var nativePayload: [String: Int] {
+        ["inputTokens": inputTokens, "outputTokens": outputTokens, "totalTokens": totalTokens]
+    }
+
+    static func decode(_ value: Any?) throws -> Self? {
+        guard let value, !(value is NSNull) else { return nil }
+        guard let object = value as? [String: Any] else { throw ChatGPTResponsesError.malformedEvent }
+        return try Self(
+            inputTokens: count(object["input_tokens"]),
+            outputTokens: count(object["output_tokens"]),
+            totalTokens: count(object["total_tokens"]),
+        )
+    }
+
+    private static func count(_ value: Any?) throws -> Int {
+        // JSON booleans also bridge as NSNumber. Reject them and anything unsafe in JavaScript.
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else {
+            throw ChatGPTResponsesError.malformedEvent
+        }
+        let count = number.doubleValue
+        guard count.isFinite, count >= 0, count <= 9007199254740991, count.rounded() == count else {
+            throw ChatGPTResponsesError.malformedEvent
+        }
+        return Int(count)
+    }
+}
+
 public struct ChatGPTResponsesResult: Equatable, Sendable {
     public let text: String
     public let toolCalls: [ChatGPTResponsesFunctionCall]
     public let continuationItems: [String]
     public let webSearch: ChatGPTPublicWebSearchResult?
+    public let usage: ChatGPTResponsesUsage?
 
     public init(
         text: String,
         toolCalls: [ChatGPTResponsesFunctionCall] = [],
         continuationItems: [String] = [],
         webSearch: ChatGPTPublicWebSearchResult? = nil,
+        usage: ChatGPTResponsesUsage? = nil,
     ) {
         self.text = text
         self.toolCalls = toolCalls
         self.continuationItems = continuationItems
         self.webSearch = webSearch
+        self.usage = usage
     }
 }
 
