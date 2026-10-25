@@ -156,7 +156,9 @@ enum FormUITestConditions {
     private static func unobstructedScrollFrame(_ scroll: CGRect, target: CGRect?, in app: XCUIApplication) -> CGRect {
         var usable = scroll
         for control in navigationControlFrames(app) where control.intersects(scroll) {
-            if let target, control.maxX <= target.minX || control.minX >= target.maxX { continue }
+            if let target, control.maxX <= target.minX || control.minX >= target.maxX {
+                continue
+            }
             usable.size.height = max(0, min(usable.maxY, control.minY) - usable.minY)
         }
         return usable

@@ -106,7 +106,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
             "scrollAXValue=\(String(describing: scroll.value)), contentOffset=not-observed",
             "inputYWithinScroll=\(String(describing: inputFrame.map { $0.minY - scrollFrame.minY }))",
             "navigationBar=\(String(describing: barFrame))",
-            "alerts=\(app.alerts.allElementsBoundByIndex.map { $0.label })",
+            "alerts=\(app.alerts.allElementsBoundByIndex.map(\.label))",
         ].joined(separator: "; ")
         XCTContext.runActivity(named: "Journal severity focus \(phase): \(observations)") { _ in }
     }
@@ -120,14 +120,14 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         }
         let keyboard = app.keyboards.firstMatch
         let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true"))
-            .allElementsBoundByIndex.map { $0.identifier }
+            .allElementsBoundByIndex.map(\.identifier)
         let observations = [
             "input: \(geometry(input))",
             "keyboard: \(geometry(keyboard))",
             "back: \(geometry(app.buttons["navigation-back"]))",
             "home: \(geometry(app.buttons["navigation-home"]))",
             "journalVisible=\(UITestConditions.element(app, "symptoms-title").exists)",
-            "alerts=\(app.alerts.allElementsBoundByIndex.map { $0.label })",
+            "alerts=\(app.alerts.allElementsBoundByIndex.map(\.label))",
             "focusedIdentifiers=\(focused)",
         ].joined(separator: "; ")
         XCTContext.runActivity(named: "Journal cursor tap \(phase): \(observations)") { activity in
