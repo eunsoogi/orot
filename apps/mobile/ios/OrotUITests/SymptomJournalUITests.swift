@@ -101,7 +101,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let observations = [
             "application=\(applicationFrame), scroll=\(scrollFrame)",
             "keyboard=\(String(describing: keyboardFrame)), reservedKeyboard=\(String(describing: reservation))",
-            "actualViewport=\(String(describing: actual?.viewport)), effectiveViewport=\(String(describing: effective?.viewport))",
+            "keyboardViewport=\(String(describing: actual?.viewport)), keyboardReservationViewport=\(String(describing: effective?.viewport))",
             "input=\(String(describing: inputFrame)), focused=\(focused), hittable=\(input.exists && input.isHittable)",
             "scrollAXValue=\(String(describing: scroll.value)), contentOffset=not-observed",
             "inputYWithinScroll=\(String(describing: inputFrame.map { $0.minY - scrollFrame.minY }))",

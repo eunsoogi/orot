@@ -18,7 +18,7 @@ enum FormUITestConditions {
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -30,11 +30,14 @@ enum FormUITestConditions {
             let keyboardFrame = keyboard.exists ? keyboard.frame : nil
             let targetFrame = target.exists ? target.frame : nil
             lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
-            let usableScroll = unobstructedScrollFrame(scrollFrame, target: targetFrame, in: app)
+            let unobstructed = unobstructedScrollFrame(scrollFrame, target: targetFrame, in: app)
+            // Keyboard dismissal can move the bar down. Keep the observed focused region until the existing refocus tap.
+            let usableScroll = focusedViewport.map { unobstructed.intersection($0) } ?? unobstructed
             guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: usableScroll, keyboard: keyboardFrame, reservedKeyboard: focusedKeyboardFrame) else {
                 XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
                 return nil
             }
+            lastObservation += ", usableViewport=\(geometry.viewport), focusedViewport=\(String(describing: focusedViewport))"
             if let targetFrame, geometry.contains(targetFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
                 // Reuse this exact successful observation if focus later clips the AX frame.
                 return targetFrame
@@ -187,8 +190,8 @@ enum FormUITestConditions {
                 XCTFail("The focused input has no finite occlusion boundary")
                 return nil
             }
-            // Dragging can dismiss the keyboard. Keep its observed space until refocus; a clipped slice cannot finish the reveal.
-            guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, focusedKeyboardFrame: reservation, referenceSize: referenceSize, observeFocusGesture: observeFocusGesture) != nil else { return nil }
+            // Preserve keyboard and floating-control boundaries through the same reveal/refocus, without another gesture cycle.
+            guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, focusedKeyboardFrame: reservation, focusedViewport: geometry.viewport, referenceSize: referenceSize, observeFocusGesture: observeFocusGesture) != nil else { return nil }
             observeFocusGesture?("before-refocus-tap", reservation)
             input.tap()
             observeFocusGesture?("after-refocus-tap", reservation)
