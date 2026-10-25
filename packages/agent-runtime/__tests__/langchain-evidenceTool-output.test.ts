@@ -41,15 +41,13 @@ describe('LangChain evidence output validation', () => {
 
   it('enforces half-open time scope before freshness', async () => {
     const { tool, context, request } = fixture();
-    jest
-      .mocked(context.reserveSearch)
-      .mockReturnValue({
-        ...request,
-        allowedScope: {
-          ...request.allowedScope,
-          timeRange: { fromInclusive: '2026-01-01T00:00:00Z', toExclusive: '2026-02-01T00:00:00Z' },
-        },
-      });
+    jest.mocked(context.reserveSearch).mockReturnValue({
+      ...request,
+      allowedScope: {
+        ...request.allowedScope,
+        timeRange: { fromInclusive: '2026-01-01T00:00:00Z', toExclusive: '2026-02-01T00:00:00Z' },
+      },
+    });
     expect(JSON.parse(await tool.invoke({ query: 'sleep' }))).toEqual({ status: 'invalid_output' });
     expect(context.revalidateEvidence).not.toHaveBeenCalled();
   });
