@@ -1,10 +1,13 @@
 import type { Embedder, RecallOptions } from 'rememori';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import { LocalAgentMemory } from './localAgentMemory';
+import { namespacedStorage } from './namespacedStorage';
 
 export interface CreateAgentMemoryOptions {
   readonly embedder: Embedder;
   readonly storage: AgentMemoryStorageAdapter;
+  /** Trusted application scope. Omission selects existing, unnamespaced records. */
+  readonly namespace?: readonly string[];
 }
 
 export interface AgentMemorySourceRemovalResult {
@@ -13,6 +16,9 @@ export interface AgentMemorySourceRemovalResult {
 }
 
 export interface AgentMemoryService {
+  /** Reads the current durable mapping without relying on a prior process's Rememori ID. */
+  getByKey(memoryKey: string): Promise<Omit<AgentMemoryHit, 'score'> | null>;
+  forgetByKey(memoryKey: string): Promise<boolean>;
   remember(input: AgentMemoryInput): Promise<string>;
   update(input: AgentMemoryInput): Promise<string>;
   recall(
@@ -35,7 +41,10 @@ export interface AgentMemoryService {
 export async function createAgentMemory(
   options: CreateAgentMemoryOptions,
 ): Promise<AgentMemoryService> {
-  const service = new LocalAgentMemory(options.embedder, options.storage);
+  const service = new LocalAgentMemory(
+    options.embedder,
+    namespacedStorage(options.storage, options.namespace),
+  );
   await service.open();
   return service;
 }

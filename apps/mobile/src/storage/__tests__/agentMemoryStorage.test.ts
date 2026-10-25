@@ -1,4 +1,5 @@
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
+import { createAgentMemory } from '@orot/agent-memory';
 import type {
   SqlDatabase,
   SqlResult,
@@ -85,6 +86,61 @@ function record(id: string, sourceId: string): PersistedMemoryRecord {
 }
 
 describe('SQLCipher agent-memory transcript invalidation', () => {
+  it('round-trips legacy and scoped keys through stored JSON across service and adapter restarts', async () => {
+    const database = new TranscriptMemoryDatabase();
+    const legacy = record('legacy-key', 'source-1');
+    const originalJson = JSON.stringify({ ...legacy, vector: [1] });
+    database.records.set(legacy.id, originalJson);
+    const embedder = {
+      embed: async (texts: string[]) => texts.map(() => new Float32Array([1])),
+    };
+    const open = (namespace?: readonly string[]) =>
+      createAgentMemory({
+        embedder,
+        storage: new SqlCipherAgentMemoryStorage(database),
+        namespace,
+      });
+    const first = await open();
+    await expect(first.getByKey('legacy-key')).resolves.toMatchObject({
+      id: legacy.id,
+      createdAt: legacy.createdAt,
+      provenance: legacy.meta.provenance,
+    });
+    expect(database.records.get(legacy.id)).toBe(originalJson);
+    await first.close();
+
+    const input = {
+      memoryKey: 'legacy-key',
+      text: '새로운 알림',
+      kind: 'preference' as const,
+      provenance: {
+        sourceIds: ['source-1'],
+        reviewState: 'user_confirmed' as const,
+      },
+    };
+    const scoped = await open(['reviewed']);
+    const scopedId = await scoped.remember(input);
+    await scoped.close();
+    const second = await open();
+    const correctedId = await second.update(input);
+    await second.close();
+    const third = await open();
+    await expect(third.getByKey('legacy-key')).resolves.toMatchObject({
+      id: correctedId,
+      createdAt: legacy.createdAt,
+      provenance: input.provenance,
+    });
+    await expect(third.forgetByKey('legacy-key')).resolves.toBe(true);
+    await third.close();
+    const reopenedScoped = await open(['reviewed']);
+    await expect(reopenedScoped.getByKey('legacy-key')).resolves.toMatchObject({
+      id: scopedId,
+    });
+    await expect(reopenedScoped.forgetByKey('legacy-key')).resolves.toBe(true);
+    await reopenedScoped.close();
+    expect(database.records.size).toBe(0);
+  });
+
   it('removes persisted memories tied to a superseded transcript revision', async () => {
     const database = new TranscriptMemoryDatabase();
     const oldRevision = 'recording-1:segment:0:r1';
