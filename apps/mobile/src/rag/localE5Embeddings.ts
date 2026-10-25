@@ -39,7 +39,12 @@ export class LocalE5Embeddings implements EmbeddingsInterface {
   ): Promise<number[][]> {
     // Leave errors (including AbortError), batching and progress with the shared
     // runner. Copy only at the API boundary to return LangChain's mutable arrays.
-    const result = await runLocalEmbeddingJob(this.backend, input, role, options);
+    const result = await runLocalEmbeddingJob(
+      this.backend,
+      input,
+      role,
+      options,
+    );
     return result.vectors.map(vector => Array.from(vector));
   }
 }

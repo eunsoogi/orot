@@ -123,12 +123,15 @@ describe('LocalE5Embeddings', () => {
     ['wrong dimensions', [1]],
     ['non-finite values', unitVector().map(() => Number.NaN)],
     ['non-unit vectors', unitVector().map(value => value * 2)],
-  ])('rejects %s rather than exposing invalid vectors', async (_name, vector) => {
-    const backend = createBackend(async () => [vector as number[]]);
-    await expect(
-      new LocalE5Embeddings(backend).embedQuery('질문'),
-    ).rejects.toMatchObject({ code: 'provider_unavailable' });
-  });
+  ])(
+    'rejects %s rather than exposing invalid vectors',
+    async (_name, vector) => {
+      const backend = createBackend(async () => [vector as number[]]);
+      await expect(
+        new LocalE5Embeddings(backend).embedQuery('질문'),
+      ).rejects.toMatchObject({ code: 'provider_unavailable' });
+    },
+  );
 
   it('rejects incomplete native batches', async () => {
     const backend = createBackend(async () => [unitVector()]);
@@ -167,7 +170,9 @@ describe('LocalE5Embeddings', () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      new LocalE5Embeddings(backend).embedQuery('질문', { signal: controller.signal }),
+      new LocalE5Embeddings(backend).embedQuery('질문', {
+        signal: controller.signal,
+      }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(backend.prepare).not.toHaveBeenCalled();
     expect(backend.cancel).not.toHaveBeenCalled();
