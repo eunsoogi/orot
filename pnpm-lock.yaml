@@ -143,6 +143,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@langchain/core':
+        specifier: 1.2.14
+        version: 1.2.14(ws@7.5.13)
       '@op-engineering/op-sqlite':
         specifier: 18.2.5
         version: 18.2.5(patch_hash=4fc537009ee7bf3930954300cc65f24bac75e03511bbd280c44fae2de33f58e5)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
