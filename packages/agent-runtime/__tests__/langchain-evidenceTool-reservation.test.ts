@@ -3,6 +3,39 @@ import type { EvidenceSearchReservation } from '../src/langchain/evidenceTool';
 import { fixture } from './langchain-evidenceTool-fixtures';
 
 describe('LangChain trusted reservation lifecycle', () => {
+  it.each(['search', 'freshness'] as const)(
+    'cancellation wins after %s observer settlement',
+    async (stage) => {
+      const { tool, controller, domain, batch } = fixture();
+      if (stage === 'search')
+        jest
+          .mocked(domain.search)
+          .mockResolvedValue({
+            ...batch,
+            items: [],
+            coverage: batch.coverage.map((coverage) => ({ ...coverage, returnedCount: 0 })),
+          });
+      const signal = controller.signal;
+      const remove = signal.removeEventListener.bind(signal);
+      let settled = 0;
+      // Reservation settles first. Queue abort after the selected observer detaches but
+      // before the awaiting adapter continuation can publish the successful value.
+      const spy = jest.spyOn(signal, 'removeEventListener').mockImplementation((...args) => {
+        remove(...args);
+        settled += 1;
+        if (settled === (stage === 'search' ? 2 : 3)) queueMicrotask(() => controller.abort());
+      });
+      try {
+        expect(JSON.parse(await tool.invoke({ query: 'sleep' }))).toEqual({
+          status: 'cancelled',
+          providerStop: 'not_started',
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+
   it('awaits durable reservation before domain dispatch', async () => {
     const { tool, context, domain, request } = fixture();
     let release!: (value: EvidenceSearchReservation) => void;

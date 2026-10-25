@@ -178,7 +178,8 @@ export function createLangChainEvidenceTool(
           }),
           context.signal,
         );
-        if (observed.kind === 'cancelled') return failure('cancelled');
+        // The observer detaches on settlement; cancellation can win before this continuation runs.
+        if (observed.kind === 'cancelled' || context.signal.aborted) return failure('cancelled');
         if (observed.kind === 'error') return failure('unavailable');
         const batch = observed.value;
         // External adapters retain their separate query-consent port and run it before networking.
@@ -198,7 +199,7 @@ export function createLangChainEvidenceTool(
                 ),
                 context.signal,
               );
-        if (fresh.kind === 'cancelled') return failure('cancelled');
+        if (fresh.kind === 'cancelled' || context.signal.aborted) return failure('cancelled');
         if (fresh.kind !== 'value' || !fresh.value) return failure('stale_evidence');
         return canonicalJson({ status: 'result', batch });
       } catch {
