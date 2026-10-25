@@ -1,5 +1,6 @@
 import { BaseRetriever } from '@langchain/core/retrievers';
 import type { BaseRetrieverInput } from '@langchain/core/retrievers';
+import { ensureConfig } from '@langchain/core/runnables';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Document } from '@langchain/core/documents';
 import {
@@ -55,12 +56,15 @@ export class LocalLexicalRetriever extends BaseRetriever<EvidenceChunkMetadata> 
     boundedCount(input.candidateLimit ?? 20);
   }
 
-  override invoke(query: string, options?: RunnableConfig) {
+  override async invoke(query: string, options?: RunnableConfig) {
     // BaseRetriever 1.2 does not pass RunnableConfig to _getRelevantDocuments.
-    // Bind a separate instance per invocation so concurrent abort signals cannot leak.
+    // Normalize first so deadlines and inherited cancellation reach lexical storage.
+    // Forward the same config: its timeout has been consumed into the effective signal.
+    const config = ensureConfig(options);
+    // Keep each invocation's signal separate when callers share a retriever instance.
     const scoped = new LocalLexicalRetriever(this.input);
-    scoped.signal = options?.signal;
-    return scoped.invokeWithCallbacks(query, options);
+    scoped.signal = config.signal;
+    return scoped.invokeWithCallbacks(query, config);
   }
 
   private invokeWithCallbacks(query: string, options?: RunnableConfig) {
