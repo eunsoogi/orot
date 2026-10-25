@@ -18,6 +18,18 @@ export function iosTestConfig(profile) {
     preprocessorFlags: '$(inherited) OROT_TESTS=1',
     testability: 'YES',
   };
+  if (profile === 'duo') {
+    // Duo requires a newer runtime than ordinary iPhones, not a newer build SDK.
+    // Keep this opt-in destination out of the existing hosted cohorts.
+    return {
+      ...common,
+      profile,
+      configuration: 'Release',
+      runtime: 'com.apple.CoreSimulator.SimRuntime.iOS-27-1',
+      runtimeBuild: null,
+      device: 'com.apple.CoreSimulator.SimDeviceType.iPhone-Duo',
+    };
+  }
   if (['core', 'backup', 'fixtures', 'local-model'].includes(profile)) {
     return {
       ...common,
@@ -62,12 +74,20 @@ export function iosTestBuildSpec(profile) {
   );
   return {
     ...build,
-    productProfile: execution.configuration === 'Release' ? 'ios-test-release' : 'ios-test-debug',
+    // An opt-in Duo product must not change existing artifact compatibility or hosted scheduling.
+    productProfile:
+      profile === 'duo'
+        ? 'ios-test-duo'
+        : execution.configuration === 'Release'
+          ? 'ios-test-release'
+          : 'ios-test-debug',
     signing: { allowed: 'YES', identity: '-', team: 'OROTSIM000' },
     compatibleExecutions:
-      execution.configuration === 'Release'
-        ? ['core', 'speech', 'backup', 'fixtures', 'local-model']
-        : ['provider-data', 'health-import', 'microphone', 'provider-selection'],
+      profile === 'duo'
+        ? ['duo']
+        : execution.configuration === 'Release'
+          ? ['core', 'speech', 'backup', 'fixtures', 'local-model']
+          : ['provider-data', 'health-import', 'microphone', 'provider-selection'],
   };
 }
 
