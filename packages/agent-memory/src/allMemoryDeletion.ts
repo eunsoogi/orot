@@ -1,4 +1,3 @@
-import type { Memory } from 'rememori';
 import type { AgentMemoryStorageAdapter } from './types';
 import { provenanceFrom } from './validation';
 
@@ -7,10 +6,9 @@ export interface AllMemoryDeletionBatch {
   readonly referenceIds: readonly string[];
 }
 
-/** Deletes through Rememori and fences source plus memory-row IDs in one adapter batch. */
+/** Deletes all durable namespaces and fences source plus row IDs in the caller's atomic batch. */
 export async function forgetAllPersistedRecords(
   storage: AgentMemoryStorageAdapter,
-  engine: Memory,
   localRecordIds: readonly string[],
 ): Promise<AllMemoryDeletionBatch> {
   const normalizedRecordIds = localRecordIds.map((recordId) => recordId.trim());
@@ -28,7 +26,8 @@ export async function forgetAllPersistedRecords(
 
   let memoriesDeleted = 0;
   for (const record of records) {
-    if (await engine.forget(record.id)) memoriesDeleted += 1;
+    await storage.tombstone(record.id);
+    memoriesDeleted += 1;
   }
   for (const referenceId of referencesToFence) await storage.markSourceRemoved(referenceId);
   return { memoriesDeleted, referenceIds: [...referencesToFence] };
