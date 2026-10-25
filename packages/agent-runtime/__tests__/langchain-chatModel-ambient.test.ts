@@ -36,13 +36,23 @@ describe('native chat ambient telemetry boundary', () => {
         expect(JSON.stringify(recorder.events)).toContain('SYNTHETIC_PRIVATE_QUESTION');
         expect(JSON.stringify(recorder.events)).toContain('SYNTHETIC_PRIVATE_ANSWER');
         recorder.events = [];
-        const model = new NativeChatModel(new InMemoryFakeLanguageModelProvider({ response: {
-          text: 'SYNTHETIC_PRIVATE_ANSWER', toolCalls: [], finishReason: 'complete',
-          usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
-        } }));
+        const model = new NativeChatModel(
+          new InMemoryFakeLanguageModelProvider({
+            response: {
+              text: 'SYNTHETIC_PRIVATE_ANSWER',
+              toolCalls: [],
+              finishReason: 'complete',
+              usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
+            },
+          }),
+        );
         const response = await model.invoke('SYNTHETIC_PRIVATE_QUESTION');
         expect(response.content).toBe('SYNTHETIC_PRIVATE_ANSWER');
-        expect(response.usage_metadata).toEqual({ input_tokens: 12, output_tokens: 4, total_tokens: 16 });
+        expect(response.usage_metadata).toEqual({
+          input_tokens: 12,
+          output_tokens: 4,
+          total_tokens: 16,
+        });
         expect(recorder.events).toEqual([]);
       } finally {
         setContextVariable(key, undefined);

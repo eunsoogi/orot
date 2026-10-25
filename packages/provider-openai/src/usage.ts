@@ -21,11 +21,15 @@ function nativeUsage(value: unknown): Pick<LanguageModelResponse, 'usage'> {
     throw Object.assign(new Error('Malformed native token usage.'), { kind: 'malformed_response' });
   const usage = value as Record<string, unknown>;
   const counts = [usage.inputTokens, usage.outputTokens, usage.totalTokens];
-  if (!counts.every((count) => typeof count === 'number' && Number.isSafeInteger(count) && count >= 0))
+  if (
+    !counts.every((count) => typeof count === 'number' && Number.isSafeInteger(count) && count >= 0)
+  )
     throw Object.assign(new Error('Malformed native token usage.'), { kind: 'malformed_response' });
-  return { usage: {
-    inputTokens: usage.inputTokens as number,
-    outputTokens: usage.outputTokens as number,
-    totalTokens: usage.totalTokens as number,
-  } };
+  return {
+    usage: {
+      inputTokens: usage.inputTokens as number,
+      outputTokens: usage.outputTokens as number,
+      totalTokens: usage.totalTokens as number,
+    },
+  };
 }

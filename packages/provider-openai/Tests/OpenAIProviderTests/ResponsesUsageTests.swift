@@ -40,7 +40,7 @@ final class ResponsesUsageTests: XCTestCase {
             ["input_tokens": "4", "output_tokens": 2, "total_tokens": 6],
             ["input_tokens": -1, "output_tokens": 2, "total_tokens": 1],
             ["input_tokens": 1.5, "output_tokens": 2, "total_tokens": 3.5],
-            ["input_tokens": 9007199254740992, "output_tokens": 0, "total_tokens": 9007199254740992],
+            ["input_tokens": 9_007_199_254_740_992, "output_tokens": 0, "total_tokens": 9_007_199_254_740_992],
         ]
         for value in invalid {
             var normalizer = ResponsesEventNormalizer(requestID: "synthetic-invalid-usage")
@@ -63,7 +63,9 @@ final class ResponsesUsageTests: XCTestCase {
 
     private func completion(_ usage: Any?) throws -> ResponsesSSEFrame {
         var response: [String: Any] = ["status": "completed", "output_text": "", "output": []]
-        if let usage { response["usage"] = usage }
+        if let usage {
+            response["usage"] = usage
+        }
         let data = try JSONSerialization.data(withJSONObject: ["type": "response.completed", "response": response])
         return ResponsesSSEFrame(event: "response.completed", data: String(decoding: data, as: UTF8.self))
     }

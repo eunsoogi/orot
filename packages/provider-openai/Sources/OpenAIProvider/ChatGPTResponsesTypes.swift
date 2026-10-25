@@ -1,5 +1,5 @@
-import Foundation
 import CoreFoundation
+import Foundation
 
 public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
@@ -91,7 +91,7 @@ public struct ChatGPTResponsesUsage: Equatable, Sendable {
             throw ChatGPTResponsesError.malformedEvent
         }
         let count = number.doubleValue
-        guard count.isFinite, count >= 0, count <= 9007199254740991, count.rounded() == count else {
+        guard count.isFinite, count >= 0, count <= 9_007_199_254_740_991, count.rounded() == count else {
             throw ChatGPTResponsesError.malformedEvent
         }
         return Int(count)

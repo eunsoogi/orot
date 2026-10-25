@@ -19,7 +19,10 @@ function fixture() {
 describe('chat model native bridge wiring', () => {
   it('dispatches exactly one native generation per invocation without using native streaming', async () => {
     const { native, model } = fixture();
-    await expect(model.invoke('Question')).resolves.toMatchObject({ content: 'Native answer' });
+    const response = await model.invoke('Question');
+    expect(response.content).toBe('Native answer');
+    // Apple currently reports no usage; a successful response must not manufacture token counts.
+    expect(response.usage_metadata).toBeUndefined();
     expect(native.generate).toHaveBeenCalledTimes(1);
     expect(native.generate).toHaveBeenCalledWith(
       { messages: [{ role: 'user', content: 'Question' }] },

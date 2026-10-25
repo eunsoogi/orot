@@ -213,7 +213,8 @@ function isUsage(value: unknown): boolean {
   if (typeof value !== 'object' || Array.isArray(value)) return false;
   const usage = value as Record<string, unknown>;
   return [usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
-    count => typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
+    count =>
+      typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
   );
 }
 

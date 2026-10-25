@@ -121,9 +121,14 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     if (!result.ok) throw new NativeChatModelError(result.error);
     const response = result.value;
     const usage = response.usage ?? undefined;
-    if (usage !== undefined && ![
-      usage.inputTokens, usage.outputTokens, usage.totalTokens,
-    ].every((count) => Number.isSafeInteger(count) && count >= 0)) {
+    if (
+      usage !== undefined &&
+      (typeof usage !== 'object' ||
+        Array.isArray(usage) ||
+        ![usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
+          (count) => Number.isSafeInteger(count) && count >= 0,
+        ))
+    ) {
       throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
     }
     const [converted] = toLangChainMessages([
@@ -135,11 +140,15 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
       tool_calls: converted.tool_calls,
       response_metadata: { finish_reason: response.finishReason },
       // Preserve provider totals verbatim. A missing usage object is not a zero-token response.
-      ...(usage === undefined ? {} : { usage_metadata: {
-        input_tokens: usage.inputTokens,
-        output_tokens: usage.outputTokens,
-        total_tokens: usage.totalTokens,
-      } }),
+      ...(usage === undefined
+        ? {}
+        : {
+            usage_metadata: {
+              input_tokens: usage.inputTokens,
+              output_tokens: usage.outputTokens,
+              total_tokens: usage.totalTokens,
+            },
+          }),
     });
     return { generations: [{ text: response.text, message }] };
   }
