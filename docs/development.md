@@ -68,6 +68,21 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
+`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 기존 `TestHostConnectionTests/testHostLaunches` 한 사례입니다. 이 실행은 네이티브 호스트 시작만 확인하며 Duo 화면 전체의 검증을 대신하지 않습니다.
+
+로컬 Duo 검증도 다른 작업과 겹치지 않는 제품 경로와 새 소유권 파일을 사용합니다. 실행 전후의 `simctl list -j` 결과를 별도로 보존해 소유 기기 외의 UDID·기기 유형·런타임·상태가 유지되는지 비교하세요. 준비는 선택한 런타임이 없으면 실패하며 다른 런타임으로 대체하거나 설치하지 않습니다. 검증 중 오류가 나더라도 마지막 cleanup은 실행해 기록된 소유 기기만 종료하고 삭제하세요.
+
+```sh
+node scripts/ci/build-ios-tests.mjs duo build/integration-tests-duo
+node scripts/ci/ios-test-simulator.mjs prepare duo build/ios-duo-owner.json
+node scripts/ci/ios-test-simulator.mjs verify duo build/ios-duo-owner.json
+node scripts/ci/run-ios-tests.mjs duo build/integration-tests-duo/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-duo-owner.json build/ios-duo-launch.xcresult
+node scripts/ci/ios-test-results.mjs duo build/ios-duo-launch.xcresult build/ios-duo-launch-results.json
+node scripts/ci/ios-test-simulator.mjs cleanup duo build/ios-duo-owner.json
+```
+
+실제 검증에서는 소유권 파일의 UDID를 지정한 `xcodebuild -showBuildSettings` 결과의 SDK·구성·architecture와 공개 runtime inventory의 식별자·build를 함께 읽어 확인합니다. 프로필 설정이나 단위 테스트만으로 런타임 준비·실행·종료가 확인됐다고 판단하지 않습니다.
+
 CI의 CocoaPods 의존성 준비, `OrotTests` 제품, Production 앱, OAuth 패키지 및 Simulator 빌드는 `scripts/ci/fail-on-warning.mjs`를 거칩니다. 이 도구는 `warning:`, `WARN`, CocoaPods `[!]`, `DVTAssertions: Warning` 기록을 원문 그대로 전달하고, 자식 명령이 0으로 끝나도 발견된 경고로 실패합니다. 현재 저장소는 `AppIntent`와 `AppShortcut`을 선언하지 않습니다. Xcode 27의 `appintentsmetadataprocessor`가 내는 정확한 `Metadata extraction skipped, no AppIntents.framework dependency found` 문구는 문서화된 도구 알림으로 분류해 허용합니다. CocoaPods 설치에서는 고정된 `React-Core-prebuilt`, `ReactNativeDependencies`, `hermes-engine` podspec의 스크립트 단계 알림 세 문구도 각각 정확히 한 번씩 모두 나타날 때만 허용합니다. 이 단계들은 Debug와 Release에 맞는 사전 빌드 아카이브를 선택합니다. 하나라도 빠지거나 중복되거나 문구가 바뀌면, 또는 다른 CocoaPods 알림이나 경고가 나타나면 명령은 실패합니다. 허용된 알림도 로그에 그대로 남으며, 게이트 결과는 전체·허용·차단 경고 수를 따로 기록합니다. 자식 명령의 실패 코드는 유지하며, 취소 신호를 자식에게 전달한 뒤 종료를 기다립니다. 근거와 원시 로그는 [경고 처리 기록](../vendor/patches/warning-dispositions.md)에 있습니다.
 
 `pnpm lint`는 모바일 앱과 패키지 및 저장소 루트의 ESLint 실행에 모두 `--max-warnings 0`을 지정해 경고를 로컬 품질 검사와 CI에서 실패로 처리합니다.
