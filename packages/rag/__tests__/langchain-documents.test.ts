@@ -1,7 +1,7 @@
 import { Document } from '@langchain/core/documents';
 import { chunkEvidenceSpan, chunkStructuredRecord, chunkTranscriptSegment } from '../src/chunking';
 import type { ChunkEvidenceLocator, EvidenceChunk } from '../src/chunking';
-import { documentToEvidenceChunk, evidenceChunkToDocument } from '../src/langchain/documents';
+import { documentToEvidenceChunk, evidenceChunkToDocument } from '../src';
 import {
   correctedTranscript,
   currentObservation,
