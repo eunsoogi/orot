@@ -1,5 +1,5 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessageChunk, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { AIMessage, AIMessageChunk, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { LanguageModelProvider, ProviderErrorCode } from '@orot/model-runtime';
 import { NativeChatModel, NativeChatModelError } from '../src/langchain/chatModel';
@@ -32,7 +32,8 @@ describe('native chat invocation', () => {
     const input = [new SystemMessage('Instructions'), new HumanMessage('Question')];
     for (let count = 1; count <= 2; count++) {
       const response = await model.invoke(input);
-      expect(response).toBeInstanceOf(AIMessageChunk);
+      expect(response).toBeInstanceOf(AIMessage);
+      expect(response).not.toBeInstanceOf(AIMessageChunk);
       expect(response.content).toBe('Answer');
       expect(response.response_metadata.finish_reason).toBe('complete');
       expect(generate).toHaveBeenCalledTimes(count);
@@ -46,6 +47,32 @@ describe('native chat invocation', () => {
     expect(provider.capabilities).toEqual(capabilities);
     expect(model.bindTools).toBeUndefined();
     expect(() => model.withStructuredOutput({ type: 'object' })).toThrow();
+  });
+
+  it('reuses a completed answer in follow-up history with one request per turn', async () => {
+    const { model, generate } = fixture();
+    const human = new HumanMessage('Question');
+    const answer = await model.invoke([human]);
+    const followup = new HumanMessage('Follow up');
+    await expect(model.invoke([human, answer, followup])).resolves.toMatchObject({
+      content: 'Answer',
+    });
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[1][0]).toEqual({
+      messages: [
+        { role: 'user', content: 'Question' },
+        { role: 'assistant', content: 'Answer' },
+        { role: 'user', content: 'Follow up' },
+      ],
+    });
+  });
+
+  it('rejects genuinely partial message chunks before dispatch', async () => {
+    const { model, generate } = fixture();
+    await expect(model.invoke([new AIMessageChunk('Partial answer')])).rejects.toMatchObject({
+      name: 'MessageConversionError',
+    });
+    expect(generate).not.toHaveBeenCalled();
   });
 
   it('supports standard prompt values and preserves normalized returned tool calls', async () => {

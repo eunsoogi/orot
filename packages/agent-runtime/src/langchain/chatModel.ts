@@ -2,12 +2,7 @@ import {
   BaseChatModel,
   type BaseChatModelCallOptions,
 } from '@langchain/core/language_models/chat_models';
-import {
-  AIMessage,
-  AIMessageChunk,
-  type BaseMessage,
-  type BaseMessageLike,
-} from '@langchain/core/messages';
+import { AIMessage, type BaseMessage, type BaseMessageLike } from '@langchain/core/messages';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { LanguageModelProvider, ProviderError, ProviderErrorCode } from '@orot/model-runtime';
@@ -135,7 +130,8 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
       { role: 'assistant', content: response.text, toolCalls: response.toolCalls },
     ]);
     if (!AIMessage.isInstance(converted)) throw new Error('Expected an assistant response.');
-    const message = new AIMessageChunk({
+    // Complete replies must be reusable as history; partial chunks remain rejected on input.
+    const message = new AIMessage({
       content: converted.content,
       tool_calls: converted.tool_calls,
       response_metadata: { finish_reason: response.finishReason },
