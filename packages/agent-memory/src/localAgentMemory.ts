@@ -2,15 +2,10 @@ import { Memory } from 'rememori';
 import type { Embedder, RecallOptions } from 'rememori';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
+import { writeMemory } from './memoryWrites';
+import { readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
-import {
-  isAgentMemoryKind,
-  isProvenance,
-  metadataFrom,
-  provenanceFrom,
-  samePayload,
-  validateInput,
-} from './validation';
+import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
 
 export class LocalAgentMemory implements AgentMemoryService {
   private engine: Memory | null = null;
@@ -22,12 +17,29 @@ export class LocalAgentMemory implements AgentMemoryService {
   constructor(
     private readonly embedder: Embedder,
     private readonly storage: AgentMemoryStorageAdapter,
+    private readonly globalStorage: AgentMemoryStorageAdapter = storage,
   ) {}
 
   async open(): Promise<void> {
     this.removedSourceIds = new Set(await this.storage.listRemovedSourceIds());
     this.invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
     this.engine = await this.openEngine();
+  }
+
+  getByKey(memoryKey: string): Promise<Omit<AgentMemoryHit, 'score'> | null> {
+    return this.enqueue(() => readMemoryByKey(this.storage, memoryKey));
+  }
+
+  forgetByKey(memoryKey: string): Promise<boolean> {
+    return this.enqueue(async () => {
+      const records = await recordsForKey(this.storage, memoryKey);
+      if (!records.length) return false;
+      return this.runBatch(async () => {
+        const engine = await this.getEngine();
+        for (const record of records) await engine.forget(record.id);
+        return true;
+      });
+    });
   }
 
   remember(input: AgentMemoryInput): Promise<string> {
@@ -45,19 +57,30 @@ export class LocalAgentMemory implements AgentMemoryService {
     return this.enqueue(async () => {
       if (!query.trim()) throw new Error('A non-empty memory query is required.');
       // Transcript corrections can arrive while this memory engine remains open.
-      const invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
+      const invalidatedSourceIds = new Set([
+        ...(await this.storage.listInvalidatedSourceIds()),
+        ...(await this.storage.listRemovedSourceIds()),
+      ]);
       await this.refreshEngineForInvalidatedSources(invalidatedSourceIds);
       const hits = await (await this.getEngine()).recall(query, { ...options, graph: false });
       return hits.flatMap((hit) => {
         const metadata = metadataFrom(hit.meta);
-        if (!metadata || !isAgentMemoryKind(metadata.kind) || !isProvenance(metadata.provenance)) {
+        if (
+          typeof metadata.memoryKey !== 'string' ||
+          !isAgentMemoryKind(metadata.kind) ||
+          !isProvenance(metadata.provenance)
+        ) {
           return [];
         }
-        if (metadata.provenance.sourceIds.some((sourceId) => invalidatedSourceIds.has(sourceId))) {
+        if (
+          invalidatedSourceIds.has(hit.id) ||
+          metadata.provenance.sourceIds.some((sourceId) => invalidatedSourceIds.has(sourceId))
+        ) {
           return [];
         }
         return [
           {
+            memoryKey: metadata.memoryKey,
             id: hit.id,
             text: hit.text,
             score: hit.score,
@@ -99,8 +122,10 @@ export class LocalAgentMemory implements AgentMemoryService {
   forgetAll(localRecordIds: readonly string[] = []): Promise<number> {
     return this.enqueue(async () => {
       const result = await this.runBatch(async () =>
-        forgetAllPersistedRecords(this.storage, await this.getEngine(), localRecordIds),
+        forgetAllPersistedRecords(this.globalStorage, localRecordIds),
       );
+      // Global deletion bypasses the scoped index; rebuild it from the authoritative store.
+      this.engine = null;
       for (const referenceId of result.referenceIds) this.removedSourceIds.add(referenceId);
       return result.memoriesDeleted;
     });
@@ -149,47 +174,14 @@ export class LocalAgentMemory implements AgentMemoryService {
     }, true);
   }
 
-  private async write(input: AgentMemoryInput): Promise<string> {
-    const normalized = validateInput(input);
-    const invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
-    const invalidatedSourceId = normalized.provenance.sourceIds.find((sourceId) =>
-      invalidatedSourceIds.has(sourceId),
+  private write(input: AgentMemoryInput): Promise<string> {
+    return writeMemory(
+      input,
+      this.storage,
+      this.removedSourceIds,
+      () => this.getEngine(),
+      (operation) => this.runBatch(operation),
     );
-    if (invalidatedSourceId)
-      throw new Error('Memory cannot reference a superseded transcript revision.');
-    const removedSourceId = normalized.provenance.sourceIds.find((sourceId) =>
-      this.removedSourceIds.has(sourceId),
-    );
-    if (removedSourceId)
-      throw new Error('Memory cannot reference a source being or already removed.');
-    const records = await this.storage.listRecords();
-    const matches = records.filter(
-      (record) => metadataFrom(record.meta).memoryKey === normalized.memoryKey,
-    );
-    const current = [...matches].sort((left, right) => right.createdAt - left.createdAt)[0];
-    const identical = current && samePayload(current, normalized);
-
-    if (identical && matches.length === 1) return current.id;
-    return this.runBatch(async () => {
-      const engine = await this.getEngine();
-      if (identical) {
-        for (const duplicate of matches)
-          if (duplicate.id !== current.id) await engine.forget(duplicate.id);
-        return current.id;
-      }
-      const id = await engine.remember(normalized.text, {
-        tags: [normalized.kind],
-        importance: normalized.importance,
-        entities: [],
-        meta: {
-          memoryKey: normalized.memoryKey,
-          kind: normalized.kind,
-          provenance: normalized.provenance,
-        },
-      });
-      for (const record of matches) await engine.forget(record.id);
-      return id;
-    });
   }
 
   private async runBatch<T>(operation: () => Promise<T>): Promise<T> {
