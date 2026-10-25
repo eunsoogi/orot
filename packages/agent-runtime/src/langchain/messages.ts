@@ -103,7 +103,12 @@ export function toNativeMessages(messages: readonly BaseMessage[]): NativeMessag
   const metadata: MessageMetadata[] = [];
   const converted = messages.map((message): LanguageModelMessage => {
     if (BaseMessageChunk.isInstance(message)) return reject('Message chunks are unsupported.');
-    if (message.additional_kwargs.function_call || message.additional_kwargs.tool_calls)
+    // Normalized calls are authoritative; LangChain may retain their provider payload alongside them.
+    if (
+      message.additional_kwargs.function_call ||
+      (message.additional_kwargs.tool_calls &&
+        (!AIMessage.isInstance(message) || !message.tool_calls?.length))
+    )
       return reject('Legacy tool calls are unsupported; use normalized tool_calls.');
     const content = textContent(message.content);
     const role = message.type;
