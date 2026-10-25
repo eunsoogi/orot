@@ -14,6 +14,8 @@ export type {
 } from './chunking';
 export { buildPersistedEvidenceChunks } from './persistedRecords';
 export type { PersistedEvidenceReader } from './persistedRecords';
+// Expose conversion at the package boundary while retaining evidence IDs and citation metadata.
+export { documentToEvidenceChunk, evidenceChunkToDocument } from './langchain/documents';
 // Local embedding exports keep E5 batching, index persistence, and cosine search in the RAG boundary.
 export {
   LOCAL_EMBEDDING_IDENTITY,
