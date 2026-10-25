@@ -12,7 +12,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         replace(app, "symptom-onset-date", "2025-04-02")
         replace(app, "symptom-onset-time", "09:30")
         tap(app, "symptom-status-active")
-        replace(app, "symptom-severity", "6")
+        replace(app, "symptom-severity", "6", observeFocusGesture: true)
         accessory(app, "symptom-keyboard-save-severity")
         visible(app, "Synthetic intermittent tingling")
         visible(app, "Your severity: 6/10")
@@ -28,7 +28,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let originalOnset = UITestConditions.text(onset)
         XCTAssertEqual(originalOnset, "2025-04-02 at 09:30 (local time)")
         tap(app, "symptom-edit-" + entryID)
-        replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true)
+        replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true)
         accessory(app, "symptom-keyboard-save-description")
         UITestConditions.value(UITestConditions.element(app, cardID + "-description"),
                                equals: "Synthetic tingling after lunch\nUsually in the afternoon")
@@ -73,10 +73,69 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func replace(_ app: XCUIApplication, _ identifier: String, _ value: String, multiline: Bool = false) {
+    private func replace(_ app: XCUIApplication, _ identifier: String, _ value: String, multiline: Bool = false, observeCursorTap: Bool = false, observeFocusGesture: Bool = false) {
         let input = multiline ? app.textViews[identifier] : app.textFields[identifier]
         XCTAssertTrue(UITestConditions.exists(input))
-        FormUITestConditions.replace(input, with: value, in: app, scrollID: "symptoms-scroll")
+        FormUITestConditions.replace(input, with: value, in: app, scrollID: "symptoms-scroll", observeCursorTap: observeCursorTap ? { phase in
+            self.observeJournalCursorTap(app, input: input, phase: phase)
+        } : nil, observeFocusGesture: observeFocusGesture ? { phase, reservation in
+            self.observeJournalFocusGesture(app, input: input, phase: phase, reservation: reservation)
+        } : nil)
+    }
+
+    /// AX reads are sequential observations around the unchanged severity gestures, not an atomic layout snapshot.
+    @MainActor
+    private func observeJournalFocusGesture(_ app: XCUIApplication, input: XCUIElement, phase: String, reservation: CGRect?) {
+        let scroll = UITestConditions.element(app, "symptoms-scroll")
+        let keyboard = app.keyboards.firstMatch
+        let applicationFrame = app.frame
+        let scrollFrame = scroll.frame
+        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        let inputFrame = input.exists ? input.frame : nil
+        let actual = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame)
+        let effective = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame, reservedKeyboard: reservation)
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", input.identifier)).count > 0
+        let bar = UITestConditions.element(app, "navigation-action-bar-overlay")
+        let barFrame = bar.exists ? bar.frame : nil
+        // This observer reads AX state without a UIKit contentOffset bridge; do not relabel an AX value or relative frame as that offset.
+        let observations = [
+            "application=\(applicationFrame), scroll=\(scrollFrame)",
+            "keyboard=\(String(describing: keyboardFrame)), reservedKeyboard=\(String(describing: reservation))",
+            "actualViewport=\(String(describing: actual?.viewport)), effectiveViewport=\(String(describing: effective?.viewport))",
+            "input=\(String(describing: inputFrame)), focused=\(focused), hittable=\(input.exists && input.isHittable)",
+            "scrollAXValue=\(String(describing: scroll.value)), contentOffset=not-observed",
+            "inputYWithinScroll=\(String(describing: inputFrame.map { $0.minY - scrollFrame.minY }))",
+            "navigationBar=\(String(describing: barFrame))",
+            "alerts=\(app.alerts.allElementsBoundByIndex.map { $0.label })",
+        ].joined(separator: "; ")
+        XCTContext.runActivity(named: "Journal severity focus \(phase): \(observations)") { _ in }
+    }
+
+    /// Diagnose focus loss at the unchanged edit cursor tap; geometry and screenshots are observations, not new pass conditions.
+    @MainActor
+    private func observeJournalCursorTap(_ app: XCUIApplication, input: XCUIElement, phase: String) {
+        func geometry(_ element: XCUIElement) -> String {
+            let exists = element.exists
+            return "exists=\(exists), frame=\(exists ? String(describing: element.frame) : "absent"), hittable=\(exists && element.isHittable)"
+        }
+        let keyboard = app.keyboards.firstMatch
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true"))
+            .allElementsBoundByIndex.map { $0.identifier }
+        let observations = [
+            "input: \(geometry(input))",
+            "keyboard: \(geometry(keyboard))",
+            "back: \(geometry(app.buttons["navigation-back"]))",
+            "home: \(geometry(app.buttons["navigation-home"]))",
+            "journalVisible=\(UITestConditions.element(app, "symptoms-title").exists)",
+            "alerts=\(app.alerts.allElementsBoundByIndex.map { $0.label })",
+            "focusedIdentifiers=\(focused)",
+        ].joined(separator: "; ")
+        XCTContext.runActivity(named: "Journal cursor tap \(phase): \(observations)") { activity in
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "journal-cursor-tap-\(phase)"
+            screenshot.lifetime = .keepAlways
+            activity.add(screenshot)
+        }
     }
 
     @MainActor
