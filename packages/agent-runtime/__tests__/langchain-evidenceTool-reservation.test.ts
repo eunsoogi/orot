@@ -8,13 +8,11 @@ describe('LangChain trusted reservation lifecycle', () => {
     async (stage) => {
       const { tool, controller, domain, batch } = fixture();
       if (stage === 'search')
-        jest
-          .mocked(domain.search)
-          .mockResolvedValue({
-            ...batch,
-            items: [],
-            coverage: batch.coverage.map((coverage) => ({ ...coverage, returnedCount: 0 })),
-          });
+        jest.mocked(domain.search).mockResolvedValue({
+          ...batch,
+          items: [],
+          coverage: batch.coverage.map((coverage) => ({ ...coverage, returnedCount: 0 })),
+        });
       const signal = controller.signal;
       const remove = signal.removeEventListener.bind(signal);
       let settled = 0;
