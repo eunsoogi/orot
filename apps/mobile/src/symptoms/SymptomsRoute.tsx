@@ -3,7 +3,10 @@ import SymptomsScreen from './SymptomsScreen';
 import { useSymptomJournal } from './useSymptomJournal';
 
 /** Loads the existing journal inside the app's guarded Records navigation. */
-export function SymptomsRoute({ loadSymptoms, onBack }: {
+export function SymptomsRoute({
+  loadSymptoms,
+  onBack,
+}: {
   readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly onBack: () => void;
 }) {

@@ -26,35 +26,39 @@ export const CreateSymptomEntryInputSchema = z.discriminatedUnion('status', [
 
 export type CreateSymptomEntryInput = z.infer<typeof CreateSymptomEntryInputSchema>;
 
-export const EditSymptomEntryInputSchema = z.strictObject({
-  description: NonEmptyTextSchema.optional(),
-  bodySite: NonEmptyTextSchema.nullable().optional(),
-  severity: SeveritySchema.nullable().optional(),
-}).superRefine((changes, context) => {
-  if (Object.values(changes).every(value => value === undefined)) {
-    context.addIssue({ code: 'custom', message: 'Provide at least one symptom change.' });
-  }
-});
+export const EditSymptomEntryInputSchema = z
+  .strictObject({
+    description: NonEmptyTextSchema.optional(),
+    bodySite: NonEmptyTextSchema.nullable().optional(),
+    severity: SeveritySchema.nullable().optional(),
+  })
+  .superRefine((changes, context) => {
+    if (Object.values(changes).every((value) => value === undefined)) {
+      context.addIssue({ code: 'custom', message: 'Provide at least one symptom change.' });
+    }
+  });
 
 export type EditSymptomEntryInput = z.infer<typeof EditSymptomEntryInputSchema>;
 
-export const SymptomEntryFilterSchema = z.strictObject({
-  status: SymptomEntryStatusSchema.optional(),
-  fromOnsetAt: TimestampSchema.optional(),
-  throughOnsetAt: TimestampSchema.optional(),
-}).superRefine((filter, context) => {
-  if (
-    filter.fromOnsetAt &&
-    filter.throughOnsetAt &&
-    compareTimestamps(filter.fromOnsetAt, filter.throughOnsetAt) > 0
-  ) {
-    context.addIssue({
-      code: 'custom',
-      path: ['throughOnsetAt'],
-      message: 'The end of an onset range must not precede its start.',
-    });
-  }
-});
+export const SymptomEntryFilterSchema = z
+  .strictObject({
+    status: SymptomEntryStatusSchema.optional(),
+    fromOnsetAt: TimestampSchema.optional(),
+    throughOnsetAt: TimestampSchema.optional(),
+  })
+  .superRefine((filter, context) => {
+    if (
+      filter.fromOnsetAt &&
+      filter.throughOnsetAt &&
+      compareTimestamps(filter.fromOnsetAt, filter.throughOnsetAt) > 0
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['throughOnsetAt'],
+        message: 'The end of an onset range must not precede its start.',
+      });
+    }
+  });
 
 export type SymptomEntryFilter = z.infer<typeof SymptomEntryFilterSchema>;
 
@@ -100,7 +104,8 @@ export function editSymptomEntry(
 export function resolveSymptomEntry(entry: SymptomEntry, resolvedAt: string): SymptomEntry {
   const current = SymptomEntrySchema.parse(entry);
   // Resolution is historical: a second call must never replace its original timestamp.
-  if (current.status === 'resolved') throw new Error('A resolved symptom cannot be resolved again.');
+  if (current.status === 'resolved')
+    throw new Error('A resolved symptom cannot be resolved again.');
   return SymptomEntrySchema.parse({ ...current, status: 'resolved', resolvedAt });
 }
 
@@ -110,21 +115,24 @@ export function filterSymptomEntries(
 ): SymptomEntry[] {
   const parsedFilter = SymptomEntryFilterSchema.parse(filter);
   return entries
-    .map(entry => SymptomEntrySchema.parse(entry))
-    .filter(entry => {
+    .map((entry) => SymptomEntrySchema.parse(entry))
+    .filter((entry) => {
       if (parsedFilter.status && entry.status !== parsedFilter.status) return false;
       if (
         parsedFilter.fromOnsetAt &&
         compareTimestamps(entry.effectiveAt, parsedFilter.fromOnsetAt) < 0
-      ) return false;
+      )
+        return false;
       if (
         parsedFilter.throughOnsetAt &&
         compareTimestamps(entry.effectiveAt, parsedFilter.throughOnsetAt) > 0
-      ) return false;
+      )
+        return false;
       return true;
     })
-    .sort((left, right) =>
-      compareTimestamps(right.effectiveAt, left.effectiveAt) || left.id.localeCompare(right.id),
+    .sort(
+      (left, right) =>
+        compareTimestamps(right.effectiveAt, left.effectiveAt) || left.id.localeCompare(right.id),
     );
 }
 

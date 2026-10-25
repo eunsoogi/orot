@@ -31,7 +31,10 @@ function createDatabase(path = ':memory:'): SqlDatabase {
   const connection = new DatabaseSync(path);
   const execute = async (query: string, parameters: SqlValue[] = []): Promise<SqlResult> => {
     const statement = connection.prepare(query);
-    if (query.trim().toUpperCase().startsWith('SELECT') || /^PRAGMA [A-Z_]+$/.test(query.trim().toUpperCase())) {
+    if (
+      query.trim().toUpperCase().startsWith('SELECT') ||
+      /^PRAGMA [A-Z_]+$/.test(query.trim().toUpperCase())
+    ) {
       return { rows: statement.all(...parameters) };
     }
     return { rows: [], rowsAffected: statement.run(...parameters).changes };
@@ -53,7 +56,11 @@ function createDatabase(path = ':memory:'): SqlDatabase {
   };
 }
 
-function symptom(id: string, onsetAt: string, status: 'active' | 'resolved' = 'active'): SymptomEntry {
+function symptom(
+  id: string,
+  onsetAt: string,
+  status: 'active' | 'resolved' = 'active',
+): SymptomEntry {
   return SymptomEntrySchema.parse({
     id,
     effectiveAt: onsetAt,
@@ -84,8 +91,13 @@ describe('encrypted symptom repository', () => {
     });
     await database.execute(
       'INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
-      [clinicianEntry.id, clinicianEntry.effectiveAt, clinicianEntry.recordedAt,
-        clinicianEntry.ingestedAt, JSON.stringify(clinicianEntry)],
+      [
+        clinicianEntry.id,
+        clinicianEntry.effectiveAt,
+        clinicianEntry.recordedAt,
+        clinicianEntry.ingestedAt,
+        JSON.stringify(clinicianEntry),
+      ],
     );
     await repository.create(journalEntry);
 
@@ -108,7 +120,10 @@ describe('encrypted symptom repository', () => {
     const repository = createSymptomRepository(reopenedDatabase);
     const reopened = await repository.get(created.id);
     expect(reopened).toEqual(created);
-    const edited = SymptomEntrySchema.parse({ ...reopened, description: 'Tingling after exercise' });
+    const edited = SymptomEntrySchema.parse({
+      ...reopened,
+      description: 'Tingling after exercise',
+    });
     expect(await repository.update(edited)).toEqual(edited);
     expect(await repository.resolve(created.id, '2026-05-01T14:00:00Z')).toMatchObject({
       effectiveAt: created.effectiveAt,
@@ -120,13 +135,16 @@ describe('encrypted symptom repository', () => {
     await expect(repository.resolve(created.id, '2026-05-01T15:00:00Z')).rejects.toThrow(
       'A resolved symptom cannot be resolved again.',
     );
-    expect(await repository.list({
-      status: 'resolved',
-      fromOnsetAt: '2026-04-19T23:30:00Z',
-      throughOnsetAt: '2026-04-19T23:30:00Z',
-    })).toMatchObject([{ id: 'symptom-1', status: 'resolved' }]);
-    expect((await reopenedDatabase.execute('PRAGMA user_version')).rows[0]?.user_version)
-      .toBe(CURRENT_SCHEMA_VERSION);
+    expect(
+      await repository.list({
+        status: 'resolved',
+        fromOnsetAt: '2026-04-19T23:30:00Z',
+        throughOnsetAt: '2026-04-19T23:30:00Z',
+      }),
+    ).toMatchObject([{ id: 'symptom-1', status: 'resolved' }]);
+    expect((await reopenedDatabase.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(
+      CURRENT_SCHEMA_VERSION,
+    );
     await reopenedDatabase.closeAsync?.();
     rmSync(directory, { recursive: true, force: true });
   });
@@ -145,36 +163,48 @@ describe('encrypted symptom repository', () => {
       'Symptom history and provenance cannot be rewritten.',
     );
     expect(await repository.get(created.id)).toEqual(created);
-    await expect(repository.create(SymptomEntrySchema.parse({
-      ...created,
-      id: 'clinician-symptom',
-      provenance: { origin: 'clinician_recorded', sourceRecordIds: [] },
-    }))).rejects.toThrow('Journal symptoms must remain user-entered and unreviewed.');
+    await expect(
+      repository.create(
+        SymptomEntrySchema.parse({
+          ...created,
+          id: 'clinician-symptom',
+          provenance: { origin: 'clinician_recorded', sourceRecordIds: [] },
+        }),
+      ),
+    ).rejects.toThrow('Journal symptoms must remain user-entered and unreviewed.');
     await database.closeAsync?.();
   });
 
   it('reads legacy entries without a status and filters timestamp offsets precisely', async () => {
     const database = createDatabase();
     await runMigrations(database);
-    const legacy = { ...symptom('legacy', '2026-01-01T02:00:00+02:00') } as
-      Record<string, unknown>;
+    const legacy = { ...symptom('legacy', '2026-01-01T02:00:00+02:00') } as Record<string, unknown>;
     delete legacy.status;
     await database.execute(
       'INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
-      [legacy.id as string, legacy.effectiveAt as string, legacy.recordedAt as string,
-        legacy.ingestedAt as string, JSON.stringify(legacy)],
+      [
+        legacy.id as string,
+        legacy.effectiveAt as string,
+        legacy.recordedAt as string,
+        legacy.ingestedAt as string,
+        JSON.stringify(legacy),
+      ],
     );
     await repositoryWith(database).create(symptom('after', '2026-01-01T00:00:00.000000001Z'));
 
-    expect(await repositoryWith(database).list({
-      fromOnsetAt: '2026-01-01T00:00:00Z',
-      throughOnsetAt: '2026-01-01T00:00:00Z',
-      status: 'active',
-    })).toMatchObject([{ id: 'legacy', status: 'active' }]);
-    await expect(repositoryWith(database).list({
-      fromOnsetAt: '2026-01-02T00:00:00Z',
-      throughOnsetAt: '2026-01-01T00:00:00Z',
-    })).rejects.toThrow();
+    expect(
+      await repositoryWith(database).list({
+        fromOnsetAt: '2026-01-01T00:00:00Z',
+        throughOnsetAt: '2026-01-01T00:00:00Z',
+        status: 'active',
+      }),
+    ).toMatchObject([{ id: 'legacy', status: 'active' }]);
+    await expect(
+      repositoryWith(database).list({
+        fromOnsetAt: '2026-01-02T00:00:00Z',
+        throughOnsetAt: '2026-01-01T00:00:00Z',
+      }),
+    ).rejects.toThrow();
     await database.closeAsync?.();
   });
 });

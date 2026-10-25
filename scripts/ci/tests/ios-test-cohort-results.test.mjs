@@ -31,7 +31,7 @@ test('Linux aggregation retains all first-attempt observations from each compati
   for (const [cohort, count] of [
     ['release', 77],
     ['release-core', 54],
-    ['release-ui', 22],
+    ['release-ui', 23],
     ['speech', 9],
     ['debug', 27],
   ])

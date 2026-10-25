@@ -44,6 +44,7 @@ test('overview selection preserves sparse health concepts despite dense unrelate
       });
     }
     await repository.put('symptom_entry', {
+      status: 'active',
       ...metadata,
       id: 'symptom',
       description: 'Synthetic symptom',

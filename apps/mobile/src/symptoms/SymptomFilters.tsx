@@ -141,8 +141,8 @@ export default function SymptomFilters({
                 {status === 'all'
                   ? 'All'
                   : status === 'active'
-                  ? 'Active'
-                  : 'Resolved'}
+                    ? 'Active'
+                    : 'Resolved'}
               </Text>
             </Pressable>
           ))}

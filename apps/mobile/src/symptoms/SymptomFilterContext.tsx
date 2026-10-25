@@ -11,5 +11,9 @@ export const SymptomFilterContext = createContext<{
 export function SymptomFilterProvider({ children }: { children: ReactNode }) {
   const [filter, setFilter] = useState<SymptomEntryFilter>({});
   const value = useMemo(() => ({ filter, setFilter }), [filter]);
-  return <SymptomFilterContext.Provider value={value}>{children}</SymptomFilterContext.Provider>;
+  return (
+    <SymptomFilterContext.Provider value={value}>
+      {children}
+    </SymptomFilterContext.Provider>
+  );
 }

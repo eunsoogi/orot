@@ -170,7 +170,9 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'symptoms':
-      return <SymptomsRoute loadSymptoms={loadSymptoms} onBack={actions.onBack} />;
+      return (
+        <SymptomsRoute loadSymptoms={loadSymptoms} onBack={actions.onBack} />
+      );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;
     case 'recording-review':

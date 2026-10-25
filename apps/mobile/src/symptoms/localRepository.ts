@@ -26,14 +26,19 @@ export interface SymptomJournalOptions {
 
 /** Requires Web Crypto; missing secure randomness fails rather than falling back to predictable IDs. */
 function createSecureSymptomId(): string {
-  const source = (globalThis as unknown as {
-    crypto?: { getRandomValues?: (target: Uint8Array) => Uint8Array };
-  }).crypto;
+  const source = (
+    globalThis as unknown as {
+      crypto?: { getRandomValues?: (target: Uint8Array) => Uint8Array };
+    }
+  ).crypto;
   if (!source || typeof source.getRandomValues !== 'function') {
     throw new Error('A secure random source is unavailable.');
   }
   const bytes = source.getRandomValues(new Uint8Array(16));
-  return 'symptom-' + Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+  return (
+    'symptom-' +
+    Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('')
+  );
 }
 
 export function createSymptomJournalRepository(
@@ -68,5 +73,7 @@ export function createSymptomJournalRepository(
 
 export async function openLocalSymptomJournal(): Promise<SymptomJournalRepository> {
   const secureDatabase = require('../storage/secureDatabase');
-  return createSymptomJournalRepository(await secureDatabase.openLocalSymptomRepository());
+  return createSymptomJournalRepository(
+    await secureDatabase.openLocalSymptomRepository(),
+  );
 }

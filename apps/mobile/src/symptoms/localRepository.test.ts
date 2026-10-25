@@ -24,7 +24,7 @@ describe('local symptom journal adapter', () => {
     const entry = sampleEntry();
     let current: SymptomEntry | null = entry;
     const storage = {
-      list: jest.fn(async () => current ? [current] : []),
+      list: jest.fn(async () => (current ? [current] : [])),
       create: jest.fn(async (value: SymptomEntry) => {
         current = value;
         return value;
@@ -36,7 +36,11 @@ describe('local symptom journal adapter', () => {
       }),
       resolve: jest.fn(async (_id: string, resolvedAt: string) => {
         if (!current) return null;
-        current = SymptomEntrySchema.parse({ ...current, status: 'resolved', resolvedAt });
+        current = SymptomEntrySchema.parse({
+          ...current,
+          status: 'resolved',
+          resolvedAt,
+        });
         return current;
       }),
     } as SymptomRepository;
@@ -50,15 +54,17 @@ describe('local symptom journal adapter', () => {
       description: 'Synthetic tingling',
       status: 'active',
     });
-    expect(storage.create).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'symptom-1',
-      effectiveAt: onsetAt,
-      recordedAt,
-      ingestedAt: recordedAt,
-      provenance: { origin: 'user_reported', sourceRecordIds: [] },
-      reviewState: { status: 'unreviewed' },
-      status: 'active',
-    }));
+    expect(storage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'symptom-1',
+        effectiveAt: onsetAt,
+        recordedAt,
+        ingestedAt: recordedAt,
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+        status: 'active',
+      }),
+    );
 
     const updated = await journal.update(created.id, {
       description: 'Synthetic tingling after exercise',
@@ -76,6 +82,9 @@ describe('local symptom journal adapter', () => {
 
     await journal.resolve(created.id);
     expect(storage.resolve).toHaveBeenCalledWith('symptom-1', recordedAt);
-    expect(current).toMatchObject({ status: 'resolved', resolvedAt: recordedAt });
+    expect(current).toMatchObject({
+      status: 'resolved',
+      resolvedAt: recordedAt,
+    });
   });
 });

@@ -4,8 +4,10 @@ import type { SymptomEntry } from '@orot/storage';
 import { SymptomsRoute } from '../src/symptoms/SymptomsRoute';
 import type { SymptomJournalRepository } from '../src/symptoms/localRepository';
 
-jest.mock('react-native-safe-area-context', () =>
-  require('react-native-safe-area-context/jest/mock').default);
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 
 function symptom(id: string, status: 'active' | 'resolved' = 'active') {
   return SymptomEntrySchema.parse({
@@ -38,29 +40,35 @@ it('shows an initial list error and lets the user retry successfully', async () 
   const list = jest.fn(async () => [entry]);
   list.mockRejectedValueOnce(new Error('Database unavailable.'));
   const journal = repository(list, entry);
-  await render(<SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />);
-
+  await render(
+    <SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />,
+  );
 
   expect(await screen.findByTestId('symptoms-load-error')).toHaveTextContent(
     'Symptoms could not be loaded. Try again.',
   );
   await fireEvent.press(screen.getByTestId('symptoms-retry-list'));
-  expect(await screen.findByTestId('symptom-initial-retry-description')).toHaveTextContent(
-    entry.description,
-  );
+  expect(
+    await screen.findByTestId('symptom-initial-retry-description'),
+  ).toHaveTextContent(entry.description);
 });
 
 it('hides stale results after a filtered list error and retries the selected filter', async () => {
   const active = symptom('stale-active');
   const resolved = symptom('recovered-resolved', 'resolved');
-  const list = jest.fn()
+  const list = jest
+    .fn()
     .mockResolvedValueOnce([active])
     .mockRejectedValueOnce(new Error('Database unavailable.'))
     .mockResolvedValueOnce([resolved]);
   const journal = repository(list, active);
-  await render(<SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />);
+  await render(
+    <SymptomsRoute loadSymptoms={async () => journal} onBack={jest.fn()} />,
+  );
 
-  expect(await screen.findByTestId('symptom-stale-active-status')).toHaveTextContent('Active');
+  expect(
+    await screen.findByTestId('symptom-stale-active-status'),
+  ).toHaveTextContent('Active');
   await fireEvent.press(screen.getByTestId('symptom-filter-resolved'));
 
   expect(await screen.findByTestId('symptoms-load-error')).toHaveTextContent(
@@ -69,9 +77,9 @@ it('hides stale results after a filtered list error and retries the selected fil
   expect(screen.queryByTestId('symptom-stale-active')).toBeNull();
   await fireEvent.press(screen.getByTestId('symptoms-retry-list'));
 
-  expect(await screen.findByTestId('symptom-recovered-resolved-status')).toHaveTextContent(
-    'Resolved',
-  );
+  expect(
+    await screen.findByTestId('symptom-recovered-resolved-status'),
+  ).toHaveTextContent('Resolved');
   expect(list).toHaveBeenNthCalledWith(2, { status: 'resolved' });
   expect(list).toHaveBeenNthCalledWith(3, { status: 'resolved' });
 });

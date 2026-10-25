@@ -139,8 +139,11 @@ export default function SymptomsScreen({
           </Text>
         ) : null}
         {/* Filtering an edited row out must not silently discard its draft. */}
-        <SymptomFilters disabled={creating || editing !== null || saving}
-          filter={filter} onFilterChange={onFilterChange} />
+        <SymptomFilters
+          disabled={creating || editing !== null || saving}
+          filter={filter}
+          onFilterChange={onFilterChange}
+        />
         {loadError ? (
           <>
             <Text accessibilityRole="alert" testID="symptoms-load-error">

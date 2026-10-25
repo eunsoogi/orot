@@ -1,6 +1,11 @@
 import { compareTimestamps, SymptomEntryFilterSchema, SymptomEntrySchema } from '@orot/domain';
 import type { SymptomEntry, SymptomEntryFilter } from '@orot/domain';
-import { decodeStoredRecord, insertStoredRecord, readStoredRecord, updateStoredRecord } from './recordPersistence';
+import {
+  decodeStoredRecord,
+  insertStoredRecord,
+  readStoredRecord,
+  updateStoredRecord,
+} from './recordPersistence';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
 export type SymptomQuery = SymptomEntryFilter;
@@ -45,7 +50,7 @@ function assertHistoryPreserved(previous: SymptomEntry, next: SymptomEntry): voi
 
 async function readAll(executor: SqlExecutor): Promise<SymptomEntry[]> {
   const result = await executor.execute('SELECT payload_json FROM symptom_entries');
-  return result.rows.map(row => decodeStoredRecord('symptom_entry', row.payload_json));
+  return result.rows.map((row) => decodeStoredRecord('symptom_entry', row.payload_json));
 }
 
 /** Uses the existing symptom record shape and table; resolution is a one-way historical transition. */
@@ -55,20 +60,22 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
       if (!Object.hasOwn(input, 'status')) throw new Error('A symptom status is required.');
       const entry = SymptomEntrySchema.parse(input);
       validateUserEntered(entry);
-      await database.transaction(transaction => insertStoredRecord(transaction, 'symptom_entry', entry));
+      await database.transaction((transaction) =>
+        insertStoredRecord(transaction, 'symptom_entry', entry),
+      );
       return entry;
     },
-    get: id => readStoredRecord(database, 'symptom_entry', id),
+    get: (id) => readStoredRecord(database, 'symptom_entry', id),
     async update(input) {
       if (!Object.hasOwn(input, 'status')) throw new Error('A symptom status is required.');
       const entry = SymptomEntrySchema.parse(input);
       let updated: SymptomEntry | null = null;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         const previous = await readStoredRecord(transaction, 'symptom_entry', entry.id);
         if (!previous) return;
         validateUserEntered(entry);
         assertHistoryPreserved(previous, entry);
-        if (!await updateStoredRecord(transaction, 'symptom_entry', entry)) {
+        if (!(await updateStoredRecord(transaction, 'symptom_entry', entry))) {
           throw new Error('The symptom entry could not be updated.');
         }
         updated = entry;
@@ -77,7 +84,7 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
     },
     async resolve(id, resolvedAt) {
       let resolved: SymptomEntry | null = null;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         const previous = await readStoredRecord(transaction, 'symptom_entry', id);
         if (!previous) return;
         validateUserEntered(previous);
@@ -86,7 +93,7 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
         }
         const entry = SymptomEntrySchema.parse({ ...previous, status: 'resolved', resolvedAt });
         assertHistoryPreserved(previous, entry);
-        if (!await updateStoredRecord(transaction, 'symptom_entry', entry)) {
+        if (!(await updateStoredRecord(transaction, 'symptom_entry', entry))) {
           throw new Error('The symptom entry could not be resolved.');
         }
         resolved = entry;
@@ -97,11 +104,12 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
       const query = validateQuery(input);
       const entries = await readAll(database);
       return entries
-        .filter(entry => {
+        .filter((entry) => {
           if (
             entry.provenance.origin !== 'user_reported' ||
             entry.reviewState.status !== 'unreviewed'
-          ) return false;
+          )
+            return false;
           if (query.status && entry.status !== query.status) return false;
           if (query.fromOnsetAt && compareTimestamps(entry.effectiveAt, query.fromOnsetAt) < 0) {
             return false;
@@ -109,11 +117,14 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
           if (
             query.throughOnsetAt &&
             compareTimestamps(entry.effectiveAt, query.throughOnsetAt) > 0
-          ) return false;
+          )
+            return false;
           return true;
         })
-        .sort((left, right) =>
-          compareTimestamps(right.effectiveAt, left.effectiveAt) || left.id.localeCompare(right.id),
+        .sort(
+          (left, right) =>
+            compareTimestamps(right.effectiveAt, left.effectiveAt) ||
+            left.id.localeCompare(right.id),
         );
     },
   };

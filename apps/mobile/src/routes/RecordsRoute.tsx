@@ -64,7 +64,11 @@ export function RecordsRoute({
         testID="symptoms-open"
       >
         <View style={styles.healthIcon}>
-          <AppSymbol name="square.and.pencil" size={28} color={appColors.primaryText} />
+          <AppSymbol
+            name="square.and.pencil"
+            size={28}
+            color={appColors.primaryText}
+          />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardTitle}>{t('symptoms.title')}</Text>

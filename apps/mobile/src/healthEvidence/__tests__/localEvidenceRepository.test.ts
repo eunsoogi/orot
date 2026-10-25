@@ -26,6 +26,7 @@ function sourceRecord(id: string, suffix: string) {
 
 function symptomEntry(id: string, sourceId: string) {
   return {
+    status: 'active' as const,
     id,
     effectiveAt: timestamp,
     recordedAt: timestamp,

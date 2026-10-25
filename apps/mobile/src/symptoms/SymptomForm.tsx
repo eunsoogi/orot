@@ -13,7 +13,10 @@ import SymptomCreateFields from './SymptomCreateFields';
 import styles from './SymptomForm.styles';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import type { NewSymptomDraft, SymptomEdit } from './types';
-import { FORM_KEYBOARD_FIELDS, formInputAccessoryID } from './symptomFormKeyboard';
+import {
+  FORM_KEYBOARD_FIELDS,
+  formInputAccessoryID,
+} from './symptomFormKeyboard';
 
 type SymptomFormProps = {
   onCancel: () => void;
@@ -46,7 +49,10 @@ export default function SymptomForm({
   const [error, setError] = useState('');
 
   function change<T>(setter: (value: T) => void) {
-    return (value: T) => { setter(value); onDraftChange?.(); };
+    return (value: T) => {
+      setter(value);
+      onDraftChange?.();
+    };
   }
 
   async function save() {

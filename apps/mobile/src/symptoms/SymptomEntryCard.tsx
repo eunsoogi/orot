@@ -9,29 +9,57 @@ type SymptomEntryCardProps = {
   disabled?: boolean;
 };
 
-export default function SymptomEntryCard({ entry, onEdit, onResolve, disabled }: SymptomEntryCardProps) {
+export default function SymptomEntryCard({
+  entry,
+  onEdit,
+  onResolve,
+  disabled,
+}: SymptomEntryCardProps) {
   const onset = toLocalSymptomDateTime(entry.effectiveAt);
-  const resolved = entry.resolvedAt ? toLocalSymptomDateTime(entry.resolvedAt) : null;
+  const resolved = entry.resolvedAt
+    ? toLocalSymptomDateTime(entry.resolvedAt)
+    : null;
 
   return (
     <View style={styles.card} testID={`symptom-${entry.id}`}>
-      <Text style={styles.description} testID={`symptom-${entry.id}-description`}>
+      <Text
+        style={styles.description}
+        testID={`symptom-${entry.id}-description`}
+      >
         {entry.description}
       </Text>
-      <Text testID={`symptom-${entry.id}-onset`}>{onset.date} at {onset.time} (local time)</Text>
+      <Text testID={`symptom-${entry.id}-onset`}>
+        {onset.date} at {onset.time} (local time)
+      </Text>
       <Text testID={`symptom-${entry.id}-status`}>
         {entry.status === 'active' ? 'Active' : 'Resolved'}
       </Text>
       <Text>User-entered · not clinician-confirmed</Text>
       {entry.bodySite ? <Text>{entry.bodySite}</Text> : null}
       {entry.severity !== undefined ? (
-        <Text testID={`symptom-${entry.id}-severity`}>Your severity: {entry.severity}/10</Text>
+        <Text testID={`symptom-${entry.id}-severity`}>
+          Your severity: {entry.severity}/10
+        </Text>
       ) : null}
-      {resolved ? <Text>Resolved {resolved.date} at {resolved.time}</Text> : null}
+      {resolved ? (
+        <Text>
+          Resolved {resolved.date} at {resolved.time}
+        </Text>
+      ) : null}
       <View style={styles.actions}>
-        <Button disabled={disabled} onPress={onEdit} testID={`symptom-edit-${entry.id}`} title="Edit symptom" />
+        <Button
+          disabled={disabled}
+          onPress={onEdit}
+          testID={`symptom-edit-${entry.id}`}
+          title="Edit symptom"
+        />
         {entry.status === 'active' ? (
-          <Button disabled={disabled} onPress={onResolve} testID={`symptom-resolve-${entry.id}`} title="Mark resolved" />
+          <Button
+            disabled={disabled}
+            onPress={onResolve}
+            testID={`symptom-resolve-${entry.id}`}
+            title="Mark resolved"
+          />
         ) : null}
       </View>
     </View>

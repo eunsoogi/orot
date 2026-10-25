@@ -10,9 +10,9 @@ const FORM_INPUT_ACCESSORY_IDS = {
   bodySite: 'symptom-form-body-site',
   severity: 'symptom-form-severity',
 };
-export const FORM_KEYBOARD_FIELDS = Object.entries(FORM_INPUT_ACCESSORY_IDS).map(
-  ([testSuffix, nativeID]) => ({ nativeID, testSuffix }),
-);
+export const FORM_KEYBOARD_FIELDS = Object.entries(
+  FORM_INPUT_ACCESSORY_IDS,
+).map(([testSuffix, nativeID]) => ({ nativeID, testSuffix }));
 
 type FormInputKey = keyof typeof FORM_INPUT_ACCESSORY_IDS;
 
