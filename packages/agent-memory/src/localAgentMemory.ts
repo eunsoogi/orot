@@ -17,6 +17,7 @@ export class LocalAgentMemory implements AgentMemoryService {
   constructor(
     private readonly embedder: Embedder,
     private readonly storage: AgentMemoryStorageAdapter,
+    private readonly globalStorage: AgentMemoryStorageAdapter = storage,
   ) {}
 
   async open(): Promise<void> {
@@ -56,7 +57,10 @@ export class LocalAgentMemory implements AgentMemoryService {
     return this.enqueue(async () => {
       if (!query.trim()) throw new Error('A non-empty memory query is required.');
       // Transcript corrections can arrive while this memory engine remains open.
-      const invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
+      const invalidatedSourceIds = new Set([
+        ...(await this.storage.listInvalidatedSourceIds()),
+        ...(await this.storage.listRemovedSourceIds()),
+      ]);
       await this.refreshEngineForInvalidatedSources(invalidatedSourceIds);
       const hits = await (await this.getEngine()).recall(query, { ...options, graph: false });
       return hits.flatMap((hit) => {
@@ -68,7 +72,10 @@ export class LocalAgentMemory implements AgentMemoryService {
         ) {
           return [];
         }
-        if (metadata.provenance.sourceIds.some((sourceId) => invalidatedSourceIds.has(sourceId))) {
+        if (
+          invalidatedSourceIds.has(hit.id) ||
+          metadata.provenance.sourceIds.some((sourceId) => invalidatedSourceIds.has(sourceId))
+        ) {
           return [];
         }
         return [
@@ -115,8 +122,10 @@ export class LocalAgentMemory implements AgentMemoryService {
   forgetAll(localRecordIds: readonly string[] = []): Promise<number> {
     return this.enqueue(async () => {
       const result = await this.runBatch(async () =>
-        forgetAllPersistedRecords(this.storage, await this.getEngine(), localRecordIds),
+        forgetAllPersistedRecords(this.globalStorage, localRecordIds),
       );
+      // Global deletion bypasses the scoped index; rebuild it from the authoritative store.
+      this.engine = null;
       for (const referenceId of result.referenceIds) this.removedSourceIds.add(referenceId);
       return result.memoriesDeleted;
     });

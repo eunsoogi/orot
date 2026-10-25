@@ -44,6 +44,7 @@ export async function createAgentMemory(
   const service = new LocalAgentMemory(
     options.embedder,
     namespacedStorage(options.storage, options.namespace),
+    options.storage,
   );
   await service.open();
   return service;
