@@ -1,6 +1,8 @@
 import { MemorySaver } from '@langchain/langgraph/web';
 import { providerSuccess, type LanguageModelRequest } from '@orot/model-runtime';
 import { createEuropePmcEvidenceSearchTool } from '../src';
+import { referencesFromBatch } from '../src/multiAgent/evidence';
+import { fixture as localToolFixture } from './langchain-evidenceTool-fixtures';
 import {
   makeProvider,
   publication,
@@ -75,4 +77,63 @@ export function standardSearchFixture(native: boolean, delegated = false) {
     },
   };
   return { saver, config, authorize, search, searchDomain, requests, provider, tool, options };
+}
+
+// Time filtering belongs to local evidence; Europe PMC deliberately rejects bounded scopes.
+export function boundedSearchFixture(native: boolean) {
+  const { domain, batch } = localToolFixture();
+  const timeRange = { toExclusive: '2026-01-01', fromInclusive: '2025-01-01' };
+  const evidence = {
+    ...batch,
+    items: batch.items.map((item) => ({ ...item, effectiveTime: '2025-02-10' })),
+    coverage: batch.coverage.map((coverage) => ({
+      ...coverage,
+      requestedTimeRange: timeRange,
+      coveredTimeRange: timeRange,
+    })),
+  };
+  const search = jest.fn(async () => evidence);
+  const tool = { ...domain, search };
+  const outputs = [
+    JSON.stringify({ type: 'request_evidence', need: 'missing_coverage' }),
+    JSON.stringify({ toolId: tool.id, sourceKind: tool.sourceKind, input: { query: 'synthetic' } }),
+    JSON.stringify({
+      type: 'result',
+      value: { summary: 'Bounded result.' },
+      citations: referencesFromBatch(evidence),
+    }),
+  ];
+  const requests: LanguageModelRequest[] = [];
+  const base = makeProvider([]).provider;
+  const provider = {
+    ...base,
+    capabilities: { ...base.capabilities, toolCalling: native },
+    generate: jest.fn(async (request: LanguageModelRequest) => {
+      requests.push(request);
+      return native && requests.length === 1
+        ? providerSuccess({
+            text: '',
+            toolCalls: [{ id: 'bounded-search', name: tool.id, arguments: { query: 'synthetic' } }],
+            finishReason: 'tool_calls' as const,
+          })
+        : providerSuccess({
+            text: native ? outputs[2]! : outputs[requests.length - 1]!,
+            toolCalls: [],
+            finishReason: 'complete' as const,
+          });
+    }),
+  };
+  const options = workflowOptions(provider, tool);
+  return {
+    timeRange,
+    search,
+    requests,
+    options: {
+      ...options,
+      execution: {
+        ...options.execution,
+        allowedScope: { sourceKinds: [tool.sourceKind], timeRange },
+      },
+    },
+  };
 }

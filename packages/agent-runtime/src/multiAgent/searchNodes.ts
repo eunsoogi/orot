@@ -1,5 +1,5 @@
 import { hasBlockingCoverage } from './coveragePolicy';
-import type { EvidenceBatch } from './contracts';
+import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
 import { canceled, completeState, reportProgress, stop } from './runtimeContext';
@@ -85,8 +85,8 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     const next = referencesFromBatch(batch);
     // The standard transport sorts object keys. Compare projected references canonically
     // so locator key order cannot make an already-seen source revision appear new.
-    const priorKeys = new Set(prior.map(canonicalJson));
-    const hasDuplicate = next.some((reference) => priorKeys.has(canonicalJson(reference)));
+    const priorKeys = new Set(prior.map(serializedReferenceKey));
+    const hasDuplicate = next.some((reference) => priorKeys.has(serializedReferenceKey(reference)));
     if (
       invalid ||
       batch.items.some((item) => item.sourceKind !== tool.sourceKind) ||
@@ -125,7 +125,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         // The full batch was size/scope/freshness checked and remains in currentEvidence.
         // Rebuilt tasks can expose facts once; callback identity and coverage remain intact.
         result: JSON.parse(
-          canonicalJson(
+          JSON.stringify(
             options.task.nativeToolResultMode === 'evidence_references'
               ? {
                   contentLocation: 'current_task_messages',
@@ -184,6 +184,12 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
     executeSearch,
   };
+}
+
+/** Identity ignores object key order and JSON-omitted optional properties, while
+ * retaining all projected provenance fields and the order of locator arrays. */
+function serializedReferenceKey(reference: EvidenceReference): string {
+  return canonicalJson(JSON.parse(JSON.stringify(reference)));
 }
 
 async function evidenceIsFresh<TResult>(

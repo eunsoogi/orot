@@ -54,7 +54,26 @@ export async function invokePreparedEvidenceSearch<TResult>(
   const pending = state.pendingOperation;
   const input = context.researchInput;
   if (pending?.kind !== 'tool' || !input) return { status: 'stale_evidence' };
-  const standardTool = createLangChainEvidenceTool(tool, {
+  let searchedBatch: EvidenceBatch | undefined;
+  const invocationTool: EvidenceSearchTool = {
+    id: tool.id,
+    description: tool.description,
+    sourceKind: tool.sourceKind,
+    execution: tool.execution,
+    inputSchema: tool.inputSchema,
+    additionalModelCalls: tool.additionalModelCalls,
+    // Preserve the domain receiver even when a service implements methods on its prototype.
+    parseInput: (value) => tool.parseInput(value),
+    search: async (request) => {
+      const outcome = await tool.search(request);
+      if ('status' in outcome) return outcome;
+      // Optional undefined fields are absent in JSON. Retain insertion order for
+      // existing range/reference comparisons and checkpoint restoration after validation.
+      searchedBatch = JSON.parse(JSON.stringify(outcome)) as EvidenceBatch;
+      return searchedBatch;
+    },
+  };
+  const standardTool = createLangChainEvidenceTool(invocationTool, {
     signal: context.signal,
     timedOut: context.timedOut,
     reserveSearch: () => ({
@@ -70,5 +89,9 @@ export async function invokePreparedEvidenceSearch<TResult>(
   });
   // Plain arguments keep native message conversion at its existing boundary. No graph
   // runnable config enters this private invocation, so query/evidence callbacks stay disabled.
-  return JSON.parse(await standardTool.invoke(input)) as PreparedSearchResult;
+  const result = JSON.parse(await standardTool.invoke(input)) as PreparedSearchResult;
+  // Only a successful standard invocation releases the exact JSON data it validated.
+  // Its canonical transport ordering must not rewrite the graph's domain representation.
+  if (result.status !== 'result') return result;
+  return searchedBatch ? { status: 'result', batch: searchedBatch } : { status: 'invalid_output' };
 }
