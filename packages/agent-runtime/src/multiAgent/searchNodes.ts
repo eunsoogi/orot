@@ -1,12 +1,12 @@
 import { hasBlockingCoverage } from './coveragePolicy';
-import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
-import { referencesFromBatch, sameReference, validateEvidenceBatch } from './evidence';
+import type { EvidenceBatch } from './contracts';
+import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
 import { canceled, completeState, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
-import { prepareEvidenceSearch } from './prepareEvidenceSearch';
+import { invokePreparedEvidenceSearch, prepareEvidenceSearch } from './prepareEvidenceSearch';
 import { toolProviderStop } from './evidenceToolModelBudget';
 
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
@@ -35,17 +35,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     let batch: EvidenceBatch;
     try {
       const searched = await observeUntilAbort(
-        tool.search({
-          operationRunId: options.execution.operationRunId,
-          operationKey: state.pendingOperation.operationKey,
-          input: context.researchInput,
-          allowedScope: options.execution.allowedScope,
-          // Successive tool results share one evidence budget; do not ask an
-          // adapter for rows that the workflow cannot retain.
-          resultLimit: state.budget.maxEvidenceItems - state.evidenceReferences.length,
-          maxPayloadBytes: state.budget.maxPayloadBytes,
-          signal: context.signal,
-        }),
+        invokePreparedEvidenceSearch(context, state, tool),
         context.signal,
       );
       if (searched.kind === 'cancelled') {
@@ -56,15 +46,21 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         stop(context, 'The allowlisted evidence search failed.', 'unavailable');
         return completeState();
       }
-      if (requiresExternalConsent(searched.value)) {
+      if (searched.value.status === 'cancelled') {
+        canceled(context, searched.value.providerStop ?? toolProviderStop(tool));
+        return completeState();
+      }
+      if (searched.value.status !== 'result') {
         stop(
           context,
-          'User approval is required before the external evidence query can run.',
-          'consent_required',
+          searched.value.status === 'consent_required'
+            ? 'User approval is required before the external evidence query can run.'
+            : 'The allowlisted evidence search did not produce valid current evidence.',
+          searched.value.status === 'invalid_input' ? 'invalid_output' : searched.value.status,
         );
         return completeState();
       }
-      batch = searched.value;
+      batch = searched.value.batch;
     } catch {
       if (context.signal.aborted) canceled(context, toolProviderStop(tool));
       else stop(context, 'The allowlisted evidence search failed.', 'unavailable');
@@ -87,6 +83,10 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     }
     const prior = referencesFromBatch(context.currentEvidence);
     const next = referencesFromBatch(batch);
+    // The standard transport sorts object keys. Compare projected references canonically
+    // so locator key order cannot make an already-seen source revision appear new.
+    const priorKeys = new Set(prior.map(canonicalJson));
+    const hasDuplicate = next.some((reference) => priorKeys.has(canonicalJson(reference)));
     if (
       invalid ||
       batch.items.some((item) => item.sourceKind !== tool.sourceKind) ||
@@ -112,7 +112,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         coverage: [...context.currentEvidence.coverage, ...batch.coverage],
         conflicts: [...context.currentEvidence.conflicts, ...batch.conflicts],
       };
-      if (next.some((reference) => prior.some((existing) => sameReference(existing, reference)))) {
+      if (hasDuplicate) {
         stop(context, 'The tool returned duplicate evidence.', 'invalid_output');
         return completeState();
       }
@@ -144,10 +144,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         pendingOperation: undefined,
       };
     }
-    if (
-      next.length === 0 ||
-      next.some((reference) => prior.some((existing) => sameReference(existing, reference)))
-    ) {
+    if (next.length === 0 || hasDuplicate) {
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The search did not add new evidence at a newer source revision.',
@@ -187,12 +184,6 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
     executeSearch,
   };
-}
-
-function requiresExternalConsent(
-  outcome: EvidenceSearchOutcome,
-): outcome is { readonly status: 'consent_required' } {
-  return 'status' in outcome && outcome.status === 'consent_required';
 }
 
 async function evidenceIsFresh<TResult>(

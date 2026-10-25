@@ -2,6 +2,15 @@ import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canReserveToolModelCall } from './evidenceToolModelBudget';
+import { createLangChainEvidenceTool } from '../langchain/evidenceTool';
+import type { EvidenceSearchReservation } from '../langchain/evidenceTool';
+import type { EvidenceBatch, EvidenceSearchTool, ProviderStopObservation } from './contracts';
+
+type PreparedSearchResult =
+  | { readonly status: 'result'; readonly batch: EvidenceBatch }
+  | (Extract<EvidenceSearchReservation, { status: string }> & {
+      readonly providerStop?: ProviderStopObservation;
+    });
 
 /** Persist the full declared cost before entering the read-only adapter. A crash
  * during its delegated request stays an uncertain pending tool operation and cannot replay. */
@@ -33,4 +42,33 @@ export function prepareEvidenceSearch<TResult>(
       operationKey: operationKey('tool', state.toolCalls + 1),
     },
   };
+}
+
+/** Invoke with host-only capabilities. The graph already checkpointed the shared cost;
+ * consuming that reservation must not spend another tool or delegated-model slot. */
+export async function invokePreparedEvidenceSearch<TResult>(
+  context: RuntimeContext<TResult>,
+  state: WorkflowState,
+  tool: EvidenceSearchTool,
+): Promise<PreparedSearchResult> {
+  const pending = state.pendingOperation;
+  const input = context.researchInput;
+  if (pending?.kind !== 'tool' || !input) return { status: 'stale_evidence' };
+  const standardTool = createLangChainEvidenceTool(tool, {
+    signal: context.signal,
+    timedOut: context.timedOut,
+    reserveSearch: () => ({
+      operationRunId: context.options.execution.operationRunId,
+      operationKey: pending.operationKey,
+      allowedScope: context.options.execution.allowedScope,
+      // Successive results consume the same evidence capacity, including existing references.
+      resultLimit: state.budget.maxEvidenceItems - state.evidenceReferences.length,
+      maxPayloadBytes: state.budget.maxPayloadBytes,
+    }),
+    revalidateEvidence: (references, signal) =>
+      context.options.revalidateEvidence(references, signal),
+  });
+  // Plain arguments keep native message conversion at its existing boundary. No graph
+  // runnable config enters this private invocation, so query/evidence callbacks stay disabled.
+  return JSON.parse(await standardTool.invoke(input)) as PreparedSearchResult;
 }
