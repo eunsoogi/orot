@@ -113,3 +113,31 @@ test('moves the upper action below the current usable-region boundary', () => {
   const layout: NavigationRootLayout = resolveNavigationRootLayout(expanded);
   expect(layout).toEqual(expect.objectContaining({ railTopInset: 132 }));
 });
+
+test('keeps bottom navigation when the full rail cannot fit below reserved regions', () => {
+  const shortWindow = snapshot({
+    windowBounds: { x: 0, y: 0, width: 1000, height: 400 },
+    safeAreaInsets: { top: 40, right: 0, bottom: 30, left: 0 },
+    reservedRegions: [
+      {
+        id: 'display-division',
+        kind: 'division',
+        frame: { x: 450, y: 0, width: 40, height: 400 },
+        margins: noMargins,
+        isActive: true,
+      },
+      {
+        id: 'top-indicator',
+        kind: 'occlusion',
+        frame: { x: 760, y: 0, width: 100, height: 120 },
+        margins: noMargins,
+        isActive: true,
+      },
+    ],
+  });
+
+  expect(resolveNavigationRootLayout(shortWindow)).toEqual({
+    placement: 'bottom',
+    reservedRightWidth: 0,
+  });
+});

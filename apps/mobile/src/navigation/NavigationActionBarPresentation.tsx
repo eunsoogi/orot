@@ -24,6 +24,7 @@ import {
   NAVIGATION_ACTION_TOP_PADDING,
 } from './navigationLayout';
 import {
+  fitsNavigationRootRail,
   NAVIGATION_ROOT_RAIL_GUTTER,
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
@@ -56,20 +57,34 @@ export function NavigationActionBarPresentation({
   surface: Surface = NavigationGlassSurface,
 }: NavigationActionBarPresentationProps) {
   const layout = useContext(NavigationRootLayoutContext);
-  const rightLayout = layout.placement === 'right' ? layout : undefined;
+  const candidateRightLayout =
+    layout.placement === 'right' ? layout : undefined;
+  const candidateRailHeight = candidateRightLayout
+    ? Math.max(0, candidateRightLayout.windowHeight - keyboardHeight)
+    : 0;
+  const candidateRailBottomInset =
+    candidateRightLayout && keyboardHeight > 0
+      ? NAVIGATION_ROOT_RAIL_GUTTER
+      : candidateRightLayout?.railBottomInset;
+  const hasRootTabs = actions.some(action => action.rootTab);
+  // The keyboard can shorten a rail after geometry resolution. Keep the fixed
+  // root stack in bottom flow when it no longer fits.
+  const rightLayout =
+    candidateRightLayout &&
+    (!hasRootTabs ||
+      fitsNavigationRootRail(
+        candidateRailHeight,
+        candidateRightLayout.railTopInset,
+        candidateRailBottomInset ?? 0,
+      ))
+      ? candidateRightLayout
+      : undefined;
   const isRightRail = rightLayout !== undefined;
   const laneActions = rightLayout
     ? actions.filter(action => action.id !== 'primary')
     : actions;
-  const railHeight = rightLayout
-    ? Math.max(0, rightLayout.windowHeight - keyboardHeight)
-    : 0;
-  const railBottomInset =
-    rightLayout && keyboardHeight > 0
-      ? NAVIGATION_ROOT_RAIL_GUTTER
-      : rightLayout
-        ? rightLayout.railBottomInset
-        : undefined;
+  const railHeight = isRightRail ? candidateRailHeight : 0;
+  const railBottomInset = isRightRail ? candidateRailBottomInset : undefined;
   const railFrameStyle = rightLayout
     ? {
         bottom: 0,

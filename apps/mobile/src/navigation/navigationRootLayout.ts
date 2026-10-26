@@ -4,6 +4,25 @@ import type { NavigationGeometrySnapshot } from './navigationGeometry';
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
 export const NAVIGATION_MINIMUM_COLUMN_WIDTH = 320;
+// Keep aligned with NavigationRootGlassBar.railHeight: five 52pt controls and four 4pt gaps.
+export const NAVIGATION_ROOT_RAIL_HEIGHT = 5 * 52 + 4 * 4;
+
+/** Checks the fixed native root-tab stack against its full usable vertical segment. */
+export function fitsNavigationRootRail(
+  availableHeight: number,
+  topInset: number,
+  bottomInset: number,
+): boolean {
+  return (
+    Number.isFinite(availableHeight) &&
+    availableHeight >= 0 &&
+    Number.isFinite(topInset) &&
+    topInset >= 0 &&
+    Number.isFinite(bottomInset) &&
+    bottomInset >= 0 &&
+    availableHeight - topInset - bottomInset >= NAVIGATION_ROOT_RAIL_HEIGHT
+  );
+}
 
 export interface BottomNavigationRootLayout {
   readonly placement: 'bottom';
@@ -95,15 +114,27 @@ export function resolveNavigationRootLayout(
 
     const railBoundary = Math.max(geometry.safeAreaFrame.y, topRailRegion.y);
     const windowBottom = geometry.windowBounds.y + geometry.windowBounds.height;
+    const railTopInset =
+      railBoundary - geometry.windowBounds.y + NAVIGATION_ROOT_RAIL_GUTTER;
+    const railBottomInset =
+      windowBottom - usableBottom + NAVIGATION_ROOT_RAIL_GUTTER;
+    if (
+      !fitsNavigationRootRail(
+        geometry.windowBounds.height,
+        railTopInset,
+        railBottomInset,
+      )
+    ) {
+      continue;
+    }
+
     return {
       placement: 'right',
       reservedRightWidth,
       contentWidth: geometry.windowBounds.width - reservedRightWidth,
       windowHeight: geometry.windowBounds.height,
-      railTopInset:
-        railBoundary - geometry.windowBounds.y + NAVIGATION_ROOT_RAIL_GUTTER,
-      railBottomInset:
-        windowBottom - usableBottom + NAVIGATION_ROOT_RAIL_GUTTER,
+      railTopInset,
+      railBottomInset,
       railRightInset,
       systemBottomInset: windowBottom - usableBottom,
     };
