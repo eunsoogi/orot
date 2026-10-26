@@ -8,6 +8,7 @@ import {
   validateEncounterCandidates,
 } from './validation';
 import { withCheckpointThreadLock } from '../multiAgent/workflowCheckpoint';
+import { EncounterPrivateCallbacks } from './privateCallbacks';
 
 const State = Annotation.Root({
   sourceId: Annotation<string>(),
@@ -26,7 +27,11 @@ export async function runEncounterProcessingGraph(
   const signal = options.signal ?? new AbortController().signal;
   if (!options.threadId.trim() || !options.sourceId.trim()) return { status: 'unavailable' };
   const threadId = 'encounter:' + encodeURIComponent(options.threadId);
-  const config = { configurable: { thread_id: threadId }, durability: 'sync' as const };
+  const config = {
+    configurable: { thread_id: threadId },
+    durability: 'sync' as const,
+    callbacks: new EncounterPrivateCallbacks(),
+  };
   const locked = await withCheckpointThreadLock(
     threadId,
     signal,

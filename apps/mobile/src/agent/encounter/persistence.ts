@@ -183,7 +183,11 @@ export async function persistEncounterApproval(
     }
     await writer.putSyncCheckpoint({
       key: receiptKey,
-      value: JSON.stringify({ approval: approvedValue, recordIds }),
+      value: JSON.stringify({
+        sourceId: pending.sourceId,
+        approval: approvedValue,
+        recordIds,
+      }),
       updatedAt: reviewedAt,
     });
     // Cancellation before commit rolls back evidence, records and the replay receipt as one unit.

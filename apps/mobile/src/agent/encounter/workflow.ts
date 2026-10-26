@@ -3,13 +3,15 @@ import {
   encounterCanonical,
   requireEncounterActive,
   runEncounterProcessingGraph,
+  SqliteCheckpointSaver,
 } from '@orot/agent-runtime';
 import type {
   EncounterApproval,
   EncounterGraphPort,
 } from '@orot/agent-runtime';
 import { openLocalStorage } from '../../storage/secureDatabase';
-import { openLocalWorkflowCheckpointSaver } from '../localCheckpointSaver';
+import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
+import { createLangGraphCheckpointStorage } from '@orot/storage';
 import { currentEncounterTranscript } from './transcript';
 import { persistEncounterApproval } from './persistence';
 import { encounterConflicts } from './conflicts';
@@ -67,7 +69,11 @@ export async function runLocalEncounterProcessing(input: {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   return runEncounterProcessingGraph({
     ...input,
-    checkpointer: await openLocalWorkflowCheckpointSaver(),
+    checkpointer: new SqliteCheckpointSaver(
+      createLangGraphCheckpointStorage(await openLocalAgentMemoryDatabase(), {
+        sourceRecordId: input.sourceId,
+      }),
+    ),
     store: input.model.store,
     port: createEncounterGraphPort(await openLocalStorage(), input.model),
   });

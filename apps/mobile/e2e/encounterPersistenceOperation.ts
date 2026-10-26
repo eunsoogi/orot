@@ -1,8 +1,5 @@
 import { encounterCanonical } from '@orot/agent-runtime';
-import {
-  openLocalStorage,
-  openLocalAgentMemoryDatabase,
-} from '../src/storage/secureDatabase';
+import { openLocalStorage } from '../src/storage/secureDatabase';
 import { openLocalWorkflowCheckpointSaver } from '../src/agent/localCheckpointSaver';
 import { runLocalEncounterProcessing } from '../src/agent/encounter/workflow';
 import {
@@ -140,21 +137,18 @@ export async function runEncounterPersistenceOperation(
   };
   if (mode === 'absence') {
     // Only the exact fixture's rows and checkpoint are removed; all unrelated native persistence fixtures survive.
-    for (const id of result.recordIds)
-      await repository.delete('health_observation', id);
-    for (const span of evidence)
-      await repository.delete('evidence_span', span.id);
-    await repository.delete('transcript_segment', sourceId + ':segment:r1');
-    await repository.delete('source_record', sourceId);
-    await (
+    await repository.sourceRecords.delete(sourceId);
+    const checkpoint = await (
       await openLocalWorkflowCheckpointSaver()
-    ).deleteThread('encounter:' + encodeURIComponent(threadId));
-    const database = await openLocalAgentMemoryDatabase();
-    await database.execute(
-      'DELETE FROM healthkit_sync_checkpoints WHERE checkpoint_key = ?',
-      ['encounter-approval:' + encodeURIComponent(threadId)],
+    ).getTuple({
+      configurable: { thread_id: 'encounter:' + encodeURIComponent(threadId) },
+    });
+    const approvalReceipt = await repository.getSyncCheckpoint(
+      'encounter-approval:' + encodeURIComponent(threadId),
     );
     if (
+      checkpoint ||
+      approvalReceipt ||
       (await repository.get('source_record', sourceId)) ||
       (await repository.evidenceSpans.listForSourceRecord(sourceId)).length ||
       (
@@ -166,6 +160,7 @@ export async function runEncounterPersistenceOperation(
       throw new Error(
         'Task-owned encounter cleanup did not remove its stored fixtures.',
       );
+    return { ...receipt, cleanupVerified: true };
   }
   return receipt;
 }

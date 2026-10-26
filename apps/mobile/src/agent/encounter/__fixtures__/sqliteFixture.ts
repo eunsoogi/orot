@@ -22,6 +22,10 @@ import {
 } from '../syntheticFixture';
 
 jest.mock('../../polyfills', () => ({}));
+jest.mock('../../execution/consentFingerprint', () => ({
+  fingerprintConsentSnapshot: async (text: string) =>
+    require('node:crypto').createHash('sha256').update(text).digest('hex'),
+}));
 jest.mock('../../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
 }));
@@ -57,7 +61,9 @@ export function sqliteEncounterFixture() {
         sourceId,
         approval,
         checkpointer: new SqliteCheckpointSaver(
-          createLangGraphCheckpointStorage(handle.database),
+          createLangGraphCheckpointStorage(handle.database, {
+            sourceRecordId: sourceId,
+          }),
         ),
         port: createEncounterGraphPort(repository(), synthetic.model),
       }),
@@ -87,5 +93,5 @@ export function sqliteEncounterFixture() {
     handle.close();
     handle = openSqliteTestDatabase(file);
   };
-  return { repository, run, pending, reopen };
+  return { repository, run, pending, reopen, database: () => handle.database };
 }

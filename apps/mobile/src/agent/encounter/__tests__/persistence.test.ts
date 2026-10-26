@@ -1,14 +1,16 @@
-import { persistEncounterApproval } from '../persistence';
 import {
   approvalFor,
   sourceId,
   threadId,
   time,
   sqliteEncounterFixture,
-} from './sqliteFixture';
+} from '../__fixtures__/sqliteFixture';
+import { persistEncounterApproval } from '../persistence';
+import { createLangGraphCheckpointStorage } from '@orot/storage';
 
 describe('Encounter canonical SQLite integration', () => {
-  const { repository, run, pending, reopen } = sqliteEncounterFixture();
+  const { repository, run, pending, reopen, database } =
+    sqliteEncounterFixture();
   it('reopens a real file, restores exact pending identity, applies edited approval and reopens saved evidence', async () => {
     const savedPending = await pending();
     expect(await repository().list('health_observation')).toEqual([]);
@@ -190,5 +192,45 @@ describe('Encounter canonical SQLite integration', () => {
       'unavailable',
     );
     expect(await repository().list('evidence_span')).toEqual([]);
+  });
+
+  it('erases source-linked checkpoints and approval receipts and fences late checkpoint writes', async () => {
+    const savedPending = await pending();
+    expect((await run(false, approvalFor(savedPending)).result).status).toBe(
+      'saved',
+    );
+    const receiptKey = 'encounter-approval:' + encodeURIComponent(threadId);
+    expect(await repository().getSyncCheckpoint(receiptKey)).not.toBeNull();
+    await repository().putSyncCheckpoint({
+      key: 'foreign-cursor',
+      value: 'non-json cursor',
+      updatedAt: time,
+    });
+    const storage = createLangGraphCheckpointStorage(database(), {
+      sourceRecordId: sourceId,
+    });
+    const graphThread = 'encounter:' + encodeURIComponent(threadId);
+    expect((await storage.listCheckpoints(graphThread)).length).toBeGreaterThan(
+      0,
+    );
+    await repository().sourceRecords.delete(sourceId);
+    expect(await storage.listCheckpoints(graphThread)).toEqual([]);
+    expect(await repository().getSyncCheckpoint(receiptKey)).toBeNull();
+    expect(
+      (await repository().getSyncCheckpoint('foreign-cursor'))?.value,
+    ).toBe('non-json cursor');
+    await expect(
+      storage.saveWrites(graphThread, '', 'late-checkpoint', [
+        {
+          taskId: 'late-task',
+          index: 0,
+          channel: 'pending',
+          type: 'json',
+          value: new Uint8Array([1]),
+          replaceExisting: false,
+        },
+      ]),
+    ).rejects.toThrow('source was removed');
+    expect(await storage.listCheckpoints(graphThread)).toEqual([]);
   });
 });

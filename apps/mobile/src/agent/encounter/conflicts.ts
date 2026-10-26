@@ -4,6 +4,7 @@ import type {
   EncounterConflict,
 } from '@orot/agent-runtime';
 import type { RecordWriter } from '@orot/storage';
+import { fingerprintConsentSnapshot } from '../execution/consentFingerprint';
 
 /** Conflicting facts remain separate records; confirming a new statement never overwrites existing medication history. */
 export async function encounterConflicts(
@@ -35,7 +36,8 @@ export async function encounterConflicts(
           recordId: record.id,
           description:
             'A prior encounter statement differs; retain both until reviewed.',
-          version: encounterCanonical(record),
+          // Reuse the local CryptoKit fingerprint boundary; copying a conflicting record would retain another source's health text.
+          version: await fingerprintConsentSnapshot(encounterCanonical(record)),
         });
     }
     if (candidate.kind === 'medication') {
@@ -50,7 +52,9 @@ export async function encounterConflicts(
             recordId: record.id,
             description:
               'Medication instructions differ from an existing assertion.',
-            version: encounterCanonical(record),
+            version: await fingerprintConsentSnapshot(
+              encounterCanonical(record),
+            ),
           });
       }
     }
