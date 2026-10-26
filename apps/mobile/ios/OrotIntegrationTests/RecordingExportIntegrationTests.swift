@@ -79,7 +79,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
         let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        XCTAssertEqual(item.frame(in: foreignWindow), .null)
+        XCTAssertNil(item.frame(in: foreignWindow))
 
         let presented = expectation(description: "The default activity belongs to its initiating window")
         anchor.present(activity, animated: false) { confirmed in
@@ -101,7 +101,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
         // A late UIKit geometry request must not reuse a detached source, even while the item itself is retained.
         root.view.removeFromSuperview()
-        XCTAssertEqual(item.frame(in: window), .null)
+        XCTAssertNil(item.frame(in: window))
     }
 
     @MainActor
