@@ -56,7 +56,9 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
     /// These existing cohort methods run in separate real processes, preserving the graph's encrypted checkpoint and domain records.
     private func verifyEncounterRecords(_ phase: String) async throws {
         let result = try await encounterOperation(phase)
-        if phase == "absence" { XCTAssertEqual(result["cleanupVerified"] as? Bool, true) }
+        if phase == "absence" {
+            XCTAssertEqual(result["cleanupVerified"] as? Bool, true)
+        }
         XCTAssertEqual(result["status"] as? String, "saved")
         XCTAssertEqual(result["modelCalls"] as? Int, 0)
         let records = try XCTUnwrap(result["records"] as? [[String: Any]])
