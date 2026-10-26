@@ -4,6 +4,7 @@ import {
   MedicalDocumentImportError,
   medicalDocumentFileDeletion,
   medicalDocumentNativeBridge,
+  markMedicalDocumentPersisted,
 } from './medicalDocumentNativeBridge';
 import type {
   MedicalDocumentFileDeletion,
@@ -155,7 +156,7 @@ export function createMedicalDocumentImportService(
         document.contentHash,
       );
       if (existing) {
-        await discardOriginal(files, document.id);
+        await preserveDuplicateOriginal(files, existing, document);
         return 'duplicate';
       }
 
@@ -174,6 +175,7 @@ export function createMedicalDocumentImportService(
           await writer.put('source_record', source);
           for (const span of spans) await writer.put('evidence_span', span);
         });
+        markMedicalDocumentPersisted(document.id);
         return 'saved';
       } catch (error) {
         let duplicate: SourceRecord | null;
@@ -185,7 +187,7 @@ export function createMedicalDocumentImportService(
           throw error;
         }
         if (duplicate) {
-          await discardOriginal(files, document.id);
+          await preserveDuplicateOriginal(files, duplicate, document);
           return 'duplicate';
         }
         // Keep the staged original available so the review can retry or cancel this save.
@@ -196,6 +198,35 @@ export function createMedicalDocumentImportService(
       await discardOriginal(files, document.id);
     },
   };
+}
+
+/** Restores a missing retained file before removing a newly selected duplicate. */
+async function preserveDuplicateOriginal(
+  files: MedicalDocumentFileDeletion,
+  retainedSource: SourceRecord,
+  document: StagedMedicalDocument,
+): Promise<void> {
+  // The content-hash index is shared across source kinds; only documents own these originals.
+  if (retainedSource.sourceKind !== 'medical_document') {
+    throw new MedicalDocumentImportError('IMPORT_FAILED');
+  }
+
+  // A restored database may retain provenance after its excluded original file is absent.
+  try {
+    await files.ensureOriginal(
+      retainedSource.id,
+      document.id,
+      document.contentHash,
+    );
+  } catch {
+    throw new MedicalDocumentImportError('IMPORT_FAILED');
+  }
+
+  // Keep a recovered canonical file protected until reconciliation reads its database row.
+  markMedicalDocumentPersisted(retainedSource.id);
+  if (retainedSource.id !== document.id) {
+    await discardOriginal(files, document.id);
+  }
 }
 
 async function discardOriginal(

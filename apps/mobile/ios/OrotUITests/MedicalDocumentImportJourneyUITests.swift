@@ -42,6 +42,33 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testDuplicateImportKeepsSavedOriginalAndProvenance() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        launch(app, fixture: "text-pdf")
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+
+        tap(app, "records-import-medical-document")
+        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
+        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        tap(app, "medical-document-save")
+        XCTAssertTrue(node(app, "medical-document-source-0").waitForAppearance(), app.debugDescription)
+
+        tap(app, "records-import-medical-document")
+        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
+        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        tap(app, "medical-document-save")
+
+        let duplicateStatus = node(app, "medical-document-import-status")
+        XCTAssertTrue(duplicateStatus.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(duplicateStatus).contains("같은 문서가 이미 저장되어 있어요."))
+        XCTAssertTrue(node(app, "medical-document-source-0").exists)
+        tap(app, "medical-document-source-0")
+        assertSavedSource(app)
+        capture(app, "medical-document-source-after-duplicate-import")
+    }
+
+    @MainActor
     func testScannedPdfIsRejectedWithoutSavingSource() throws {
         let app = XCUIApplication()
         defer { app.terminate() }

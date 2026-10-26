@@ -17,12 +17,13 @@ jest.mock('../rag/localE5RagService', () => ({
 }));
 
 jest.mock('../medicalDocuments/medicalDocumentNativeBridge', () => ({
+  getProtectedMedicalDocumentSourceIds: jest.fn(async () => []),
   medicalDocumentFileDeletion: {
     reconcile: jest.fn().mockResolvedValue(undefined),
-    stage: jest.fn(),
-    restore: jest.fn(),
-    commit: jest.fn(),
-    discard: jest.fn(),
+    stage: jest.fn().mockResolvedValue(undefined),
+    restore: jest.fn().mockResolvedValue(undefined),
+    commit: jest.fn().mockResolvedValue(undefined),
+    discard: jest.fn().mockResolvedValue(undefined),
   },
 }));
 

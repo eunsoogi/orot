@@ -67,6 +67,25 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
         }
     }
 
+    /// A restored database can retain provenance after its excluded original file is absent.
+    @objc(ensureMedicalDocumentOriginal:stagedSourceID:expectedContentHash:resolver:rejecter:)
+    public func ensureMedicalDocumentOriginal(
+        _ retainedSourceID: String,
+        stagedSourceID: String,
+        expectedContentHash: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        perform(resolve: resolve, reject: reject) {
+            try self.fileStore.ensureOriginal(
+                retainedSourceID: retainedSourceID,
+                stagedSourceID: stagedSourceID,
+                expectedContentHash: expectedContentHash,
+            )
+            return NSNull()
+        }
+    }
+
     @objc(reconcileMedicalDocumentFiles:resolver:rejecter:)
     public func reconcileMedicalDocumentFiles(
         _ sourceIDs: [String],
@@ -144,14 +163,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
         guard ext == "pdf" || ext == "txt" else {
             throw MedicalDocumentExtractionFailure.unsupportedDocument
         }
-        let didStartAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        let data = try Data(contentsOf: url)
+        let data = try MedicalDocumentScopedFileReader.read(at: url)
         let extraction = try MedicalDocumentTextExtractor.extract(data: data, fileExtension: ext)
         let identifier = UUID().uuidString.lowercased()
         try fileStore.store(data: data, identifier: identifier, fileExtension: ext)
@@ -192,7 +204,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
                 reject("FILE_PROTECTION_UNAVAILABLE", "Protected document storage is unavailable.", nil)
             case .cleanupFailed:
                 reject("CLEANUP_FAILED", "The document file could not be safely removed.", nil)
-            case .directoryUnavailable, .invalidIdentifier:
+            case .directoryUnavailable, .invalidIdentifier, .originalUnavailable:
                 reject("IMPORT_FAILED", "The document file operation could not be completed.", nil)
             }
         } else {

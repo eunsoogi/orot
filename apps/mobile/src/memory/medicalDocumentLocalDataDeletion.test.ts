@@ -1,5 +1,6 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository, SqlExecutor } from '@orot/storage';
+import { getProtectedMedicalDocumentSourceIds } from '../medicalDocuments/medicalDocumentNativeBridge';
 import {
   openLocalAgentMemoryDatabase,
   openLocalStorage,
@@ -14,6 +15,9 @@ jest.mock('../storage/secureDatabase', () => ({
 jest.mock('../rag/localE5RagService', () => ({
   createLocalE5RagService: jest.fn(),
 }));
+jest.mock('../medicalDocuments/medicalDocumentNativeBridge', () => ({
+  getProtectedMedicalDocumentSourceIds: jest.fn(async () => []),
+}));
 
 const sourceIDs = [
   'synthetic-medical-document-1',
@@ -21,6 +25,10 @@ const sourceIDs = [
 ];
 
 function setup() {
+  jest
+    .mocked(getProtectedMedicalDocumentSourceIds)
+    .mockReset()
+    .mockResolvedValue([]);
   const events: string[] = [];
   const transaction = {} as SqlExecutor;
   const deletionReferences = [...sourceIDs];
@@ -52,6 +60,7 @@ function setup() {
     commit: jest.fn(async (id: string) => {
       events.push(`document-commit:${id}`);
     }),
+    ensureOriginal: jest.fn().mockResolvedValue(undefined),
     discard: jest.fn(),
   };
   const deleteAllLocalData = jest.fn(
@@ -101,6 +110,32 @@ function setup() {
 }
 
 describe('medical document file lifecycle during local data deletion', () => {
+  it('stages protected active sources missing from the saved-source snapshot', async () => {
+    const context = setup();
+    const activeDocumentID = 'synthetic-active-medical-document';
+    jest
+      .mocked(getProtectedMedicalDocumentSourceIds)
+      .mockResolvedValue([activeDocumentID]);
+
+    await expect(
+      removeAllLocalDataWithMemory(context.memory, {
+        audioDeletion: context.audioDeletion,
+        medicalDocumentDeletion: context.medicalDocumentDeletion,
+      }),
+    ).resolves.toMatchObject({ medicalDocumentCleanupPending: false });
+
+    expect(context.medicalDocumentDeletion.reconcile).toHaveBeenCalledWith([
+      ...sourceIDs,
+      activeDocumentID,
+    ]);
+    expect(context.medicalDocumentDeletion.stage).toHaveBeenCalledWith(
+      activeDocumentID,
+    );
+    expect(context.medicalDocumentDeletion.commit).toHaveBeenCalledWith(
+      activeDocumentID,
+    );
+  });
+
   it('keeps staged originals hidden when cleanup must retry after the database commit', async () => {
     const context = setup();
     context.medicalDocumentDeletion.commit.mockRejectedValueOnce(

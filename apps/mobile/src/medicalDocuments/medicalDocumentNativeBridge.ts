@@ -38,12 +38,22 @@ export interface MedicalDocumentFileDeletion {
   stage(sourceId: string): Promise<void>;
   restore(sourceId: string): Promise<void>;
   commit(sourceId: string): Promise<void>;
+  ensureOriginal(
+    retainedSourceId: string,
+    stagedSourceId: string,
+    expectedContentHash: string,
+  ): Promise<void>;
   discard(sourceId: string): Promise<void>;
 }
 
 interface MedicalDocumentNativeModule {
   pickMedicalDocument(): Promise<StagedMedicalDocument | null>;
   discardMedicalDocument(sourceId: string): Promise<void>;
+  ensureMedicalDocumentOriginal(
+    retainedSourceId: string,
+    stagedSourceId: string,
+    expectedContentHash: string,
+  ): Promise<void>;
   reconcileMedicalDocumentFiles(sourceIds: string[]): Promise<void>;
   stageMedicalDocumentDeletion(sourceId: string): Promise<void>;
   restoreMedicalDocumentDeletion(sourceId: string): Promise<void>;
@@ -60,6 +70,37 @@ const nativeCodes = new Set<MedicalDocumentImportErrorCode>([
   'NATIVE_UNAVAILABLE',
   'IMPORT_FAILED',
 ]);
+
+// Keep selected and newly persisted originals until a repository-backed reconcile confirms their IDs.
+const activeStagedDocumentIds = new Set<string>();
+const persistedAwaitingReconciliationIds = new Set<string>();
+let fileOperationTail: Promise<void> = Promise.resolve();
+
+function serializeFileOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = fileOperationTail.then(operation);
+  fileOperationTail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+export async function getProtectedMedicalDocumentSourceIds(): Promise<
+  string[]
+> {
+  await fileOperationTail;
+  return [
+    ...new Set([
+      ...activeStagedDocumentIds,
+      ...persistedAwaitingReconciliationIds,
+    ]),
+  ];
+}
+
+export function markMedicalDocumentPersisted(sourceId: string): void {
+  activeStagedDocumentIds.delete(sourceId);
+  persistedAwaitingReconciliationIds.add(sourceId);
+}
 
 function normalizeError(error: unknown): MedicalDocumentImportError {
   const code =
@@ -92,20 +133,63 @@ async function callNative<T>(
 }
 
 export const medicalDocumentNativeBridge = {
-  pick: () => callNative(module => module.pickMedicalDocument()),
+  pick: () =>
+    serializeFileOperation(async () => {
+      const document = await callNative(module => module.pickMedicalDocument());
+      if (document) activeStagedDocumentIds.add(document.id);
+      return document;
+    }),
   discard: (sourceId: string) =>
-    callNative(module => module.discardMedicalDocument(sourceId)),
+    serializeFileOperation(async () => {
+      await callNative(module => module.discardMedicalDocument(sourceId));
+      activeStagedDocumentIds.delete(sourceId);
+      persistedAwaitingReconciliationIds.delete(sourceId);
+    }),
 };
 
 export const medicalDocumentFileDeletion: MedicalDocumentFileDeletion = {
   reconcile: sourceIds =>
-    callNative(module => module.reconcileMedicalDocumentFiles([...sourceIds])),
+    serializeFileOperation(async () => {
+      const persistedIds = new Set(sourceIds);
+      await callNative(module =>
+        module.reconcileMedicalDocumentFiles([
+          ...new Set([
+            ...persistedIds,
+            ...activeStagedDocumentIds,
+            ...persistedAwaitingReconciliationIds,
+          ]),
+        ]),
+      );
+      for (const sourceId of persistedIds) {
+        activeStagedDocumentIds.delete(sourceId);
+        persistedAwaitingReconciliationIds.delete(sourceId);
+      }
+    }),
   stage: sourceId =>
-    callNative(module => module.stageMedicalDocumentDeletion(sourceId)),
+    serializeFileOperation(() =>
+      callNative(module => module.stageMedicalDocumentDeletion(sourceId)),
+    ),
   restore: sourceId =>
-    callNative(module => module.restoreMedicalDocumentDeletion(sourceId)),
+    serializeFileOperation(() =>
+      callNative(module => module.restoreMedicalDocumentDeletion(sourceId)),
+    ),
   commit: sourceId =>
-    callNative(module => module.commitMedicalDocumentDeletion(sourceId)),
-  discard: sourceId =>
-    callNative(module => module.discardMedicalDocument(sourceId)),
+    serializeFileOperation(async () => {
+      await callNative(module =>
+        module.commitMedicalDocumentDeletion(sourceId),
+      );
+      activeStagedDocumentIds.delete(sourceId);
+      persistedAwaitingReconciliationIds.delete(sourceId);
+    }),
+  ensureOriginal: (retainedSourceId, stagedSourceId, expectedContentHash) =>
+    serializeFileOperation(() =>
+      callNative(module =>
+        module.ensureMedicalDocumentOriginal(
+          retainedSourceId,
+          stagedSourceId,
+          expectedContentHash,
+        ),
+      ),
+    ),
+  discard: sourceId => medicalDocumentNativeBridge.discard(sourceId),
 };

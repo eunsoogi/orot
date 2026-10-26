@@ -57,6 +57,119 @@ final class MedicalDocumentImportTests: XCTestCase {
         }
     }
 
+    func testCoordinatedSourceReadReturnsSelectedFileBytes() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("medical-document-coordinated-read-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent("provider-note.txt")
+        let bytes = Data("Synthetic provider-backed note".utf8)
+        try bytes.write(to: url)
+
+        XCTAssertEqual(try MedicalDocumentCoordinatedFileReader.read(at: url), bytes)
+    }
+
+    func testCoordinatedSourceReadUsesProviderAccessorURL() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("medical-document-accessor-read-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let selectedURL = root.appendingPathComponent("selected-name.txt")
+        let accessorURL = root.appendingPathComponent("materialized-name.txt")
+        let selectedBytes = Data("Synthetic selected URL".utf8)
+        let accessorBytes = Data("Synthetic coordinated accessor".utf8)
+        try selectedBytes.write(to: selectedURL)
+        try accessorBytes.write(to: accessorURL)
+
+        let bytes = try MedicalDocumentCoordinatedFileReader.read(
+            at: selectedURL,
+            coordinator: RedirectingFileCoordinator(accessorURL: accessorURL),
+        )
+
+        XCTAssertEqual(bytes, accessorBytes)
+    }
+
+    func testCoordinatedSourceReadRejectsCoordinatorAndAccessorFailures() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("medical-document-coordinated-failure-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let selectedURL = root.appendingPathComponent("selected-name.txt")
+        let missingAccessorURL = root.appendingPathComponent("missing-materialized-file.txt")
+
+        XCTAssertThrowsError(
+            try MedicalDocumentCoordinatedFileReader.read(
+                at: selectedURL,
+                coordinator: RejectingFileCoordinator(),
+            ),
+        )
+        XCTAssertThrowsError(
+            try MedicalDocumentCoordinatedFileReader.read(
+                at: selectedURL,
+                coordinator: NoAccessorFileCoordinator(),
+            ),
+        )
+        XCTAssertThrowsError(
+            try MedicalDocumentCoordinatedFileReader.read(
+                at: selectedURL,
+                coordinator: RedirectingFileCoordinator(accessorURL: missingAccessorURL),
+            ),
+        )
+    }
+
+    func testSecurityScopedReadBalancesAccessAroundCoordinatedSnapshot() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("medical-document-scope-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent("SyntheticProviderDocument.txt")
+        let bytes = Data("Synthetic provider document".utf8)
+        try bytes.write(to: url)
+        var isActive = false
+        var didCoordinate = false
+        var startCount = 0
+        var stopCount = 0
+        let access = MedicalDocumentSecurityScopeAccess(
+            start: { _ in
+                startCount += 1
+                isActive = true
+                return true
+            },
+            stop: { _ in
+                stopCount += 1
+                isActive = false
+            },
+        )
+        let coordinator = RedirectingFileCoordinator(
+            accessorURL: url,
+            onCoordinate: {
+                didCoordinate = true
+                XCTAssertTrue(isActive)
+            },
+        )
+
+        XCTAssertEqual(try MedicalDocumentScopedFileReader.read(at: url, access: access, coordinator: coordinator), bytes)
+        XCTAssertTrue(didCoordinate)
+        XCTAssertFalse(isActive)
+        XCTAssertEqual(startCount, 1)
+        XCTAssertEqual(stopCount, 1)
+        didCoordinate = false
+        let deniedAccess = MedicalDocumentSecurityScopeAccess(
+            start: { _ in false },
+            stop: { _ in XCTFail("Denied file access must not be stopped.") },
+        )
+        XCTAssertThrowsError(
+            try MedicalDocumentScopedFileReader.read(at: url, access: deniedAccess, coordinator: coordinator),
+        )
+        XCTAssertFalse(didCoordinate)
+        XCTAssertThrowsError(
+            try MedicalDocumentScopedFileReader.read(at: url, access: access, coordinator: RejectingFileCoordinator()),
+        )
+        XCTAssertFalse(isActive)
+        XCTAssertEqual(startCount, 2)
+        XCTAssertEqual(stopCount, 2)
+    }
+
     func testProtectedOriginalSupportsRestoreCommitAndOrphanReconciliation() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("medical-document-test-\(UUID().uuidString)", isDirectory: true)
@@ -113,4 +226,24 @@ final class MedicalDocumentImportTests: XCTestCase {
             image.draw(in: bounds)
         }
     }
+}
+
+private struct RedirectingFileCoordinator: MedicalDocumentFileCoordination {
+    let accessorURL: URL
+    var onCoordinate: (() -> Void)?
+
+    func coordinateRead(at _: URL, accessor: (URL) -> Void) throws {
+        onCoordinate?()
+        accessor(accessorURL)
+    }
+}
+
+private struct RejectingFileCoordinator: MedicalDocumentFileCoordination {
+    func coordinateRead(at _: URL, accessor _: (URL) -> Void) throws {
+        throw CocoaError(.fileReadNoPermission)
+    }
+}
+
+private struct NoAccessorFileCoordinator: MedicalDocumentFileCoordination {
+    func coordinateRead(at _: URL, accessor _: (URL) -> Void) throws {}
 }

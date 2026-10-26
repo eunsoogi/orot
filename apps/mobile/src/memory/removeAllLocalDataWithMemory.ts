@@ -1,6 +1,7 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
 import {
+  getProtectedMedicalDocumentSourceIds,
   medicalDocumentFileDeletion,
   type MedicalDocumentFileDeletion,
 } from '../medicalDocuments/medicalDocumentNativeBridge';
@@ -56,15 +57,22 @@ export async function removeAllLocalDataWithMemory(
     .map(source => source.id);
   const stagedRecordingIds: string[] = [];
   const stagedDocumentIds: string[] = [];
+  let documentFileSourceIds = documentSourceIds;
 
   try {
     await audioDeletion.reconcile(recordingSourceIds);
-    await documentDeletion.reconcile(documentSourceIds);
+    documentFileSourceIds = [
+      ...new Set([
+        ...documentSourceIds,
+        ...(await getProtectedMedicalDocumentSourceIds()),
+      ]),
+    ];
+    await documentDeletion.reconcile(documentFileSourceIds);
     for (const sourceId of recordingSourceIds) {
       await audioDeletion.stage(sourceId);
       stagedRecordingIds.push(sourceId);
     }
-    for (const sourceId of documentSourceIds) {
+    for (const sourceId of documentFileSourceIds) {
       await documentDeletion.stage(sourceId);
       stagedDocumentIds.push(sourceId);
     }

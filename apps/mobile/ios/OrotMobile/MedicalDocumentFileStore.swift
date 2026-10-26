@@ -5,13 +5,15 @@ enum MedicalDocumentFileStoreFailure: Error {
     case invalidIdentifier
     case fileProtectionUnavailable
     case cleanupFailed
+    case originalUnavailable
 }
 
 /// Keeps imported originals under UUID-only names with device-lock protection and no backup copy.
 struct MedicalDocumentFileStore {
     private static let supportedExtensions: Set<String> = ["pdf", "txt"]
     private static let pendingPrefix = ".pending-delete-"
-    private let fileManager: FileManager
+    static let recoveryPrefix = ".recovery-"
+    let fileManager: FileManager
     private let rootOverride: URL?
 
     init(fileManager: FileManager = .default, rootDirectory: URL? = nil) {
@@ -118,13 +120,15 @@ struct MedicalDocumentFileStore {
                 } else {
                     try remove(entry)
                 }
+            } else if entry.lastPathComponent.hasPrefix(Self.recoveryPrefix) {
+                try remove(entry)
             } else if let (id, _) = permanentIdentity(entry), !retained.contains(id) {
                 try remove(entry)
             }
         }
     }
 
-    private func fileURL(_ identifier: String, _ fileExtension: String) throws -> URL {
+    func fileURL(_ identifier: String, _ fileExtension: String) throws -> URL {
         try directory().appendingPathComponent("\(identifier).\(fileExtension)")
     }
 
@@ -132,7 +136,7 @@ struct MedicalDocumentFileStore {
         try directory().appendingPathComponent("\(Self.pendingPrefix)\(identifier).\(fileExtension)")
     }
 
-    private func directory() throws -> URL {
+    func directory() throws -> URL {
         let url: URL
         if let rootOverride {
             url = rootOverride
@@ -158,7 +162,7 @@ struct MedicalDocumentFileStore {
         }
     }
 
-    private func protect(_ url: URL) throws {
+    func protect(_ url: URL) throws {
         do {
             try fileManager.setAttributes(
                 [.protectionKey: FileProtectionType.complete],
@@ -182,7 +186,7 @@ struct MedicalDocumentFileStore {
         }
     }
 
-    private func permanentFiles(for id: String) throws -> [URL] {
+    func permanentFiles(for id: String) throws -> [URL] {
         try Self.supportedExtensions
             .map { try fileURL(id, $0) }
             .filter { fileManager.fileExists(atPath: $0.path) }
@@ -194,7 +198,7 @@ struct MedicalDocumentFileStore {
             .filter { fileManager.fileExists(atPath: $0.path) }
     }
 
-    private func normalizedIdentifier(_ value: String) throws -> String {
+    func normalizedIdentifier(_ value: String) throws -> String {
         guard let id = UUID(uuidString: value) else {
             throw MedicalDocumentFileStoreFailure.invalidIdentifier
         }

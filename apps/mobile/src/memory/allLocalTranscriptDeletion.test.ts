@@ -79,6 +79,7 @@ describe('all-local transcript deletion', () => {
           stage: jest.fn().mockResolvedValue(undefined),
           restore: jest.fn().mockResolvedValue(undefined),
           commit: jest.fn().mockResolvedValue(undefined),
+          ensureOriginal: jest.fn().mockResolvedValue(undefined),
           discard: jest.fn().mockResolvedValue(undefined),
         },
       });

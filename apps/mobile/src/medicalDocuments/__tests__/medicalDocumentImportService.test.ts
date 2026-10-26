@@ -62,6 +62,7 @@ function setup(overrides: Partial<MedicalDocumentImportDependencies> = {}) {
     stage: jest.fn().mockResolvedValue(undefined),
     restore: jest.fn().mockResolvedValue(undefined),
     commit: jest.fn().mockResolvedValue(undefined),
+    ensureOriginal: jest.fn().mockResolvedValue(undefined),
     discard: jest.fn().mockResolvedValue(undefined),
   };
   const service = createMedicalDocumentImportService({
@@ -127,6 +128,10 @@ test('does not create a second source row for the same document bytes', async ()
   jest.mocked(repository.sourceRecords.findByContentHash).mockResolvedValue({
     id: '44444444-4444-4444-8444-444444444444',
     contentHash: document.contentHash,
+    ingestedAt: '2026-10-01T10:00:00.000Z',
+    provenance: { origin: 'imported', sourceRecordIds: [] },
+    reviewState: { status: 'unreviewed' },
+    sourceKind: 'medical_document',
   } as HashedSourceRecord);
 
   await expect(service.saveDocument(document)).resolves.toBe('duplicate');
