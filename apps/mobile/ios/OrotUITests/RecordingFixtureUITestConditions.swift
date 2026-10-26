@@ -24,9 +24,10 @@ enum RecordingFixtureUITestConditions {
         app.launch()
     }
 
-    static func reveal(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45) -> XCUIElement {
+    /// Read-only stages before editor activation can omit the global keyboard snapshot while retaining measured scrolling.
+    static func reveal(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45, keyboardMayBeVisible: Bool = true) -> XCUIElement {
         let target = UITestConditions.element(app, identifier)
-        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: towardTop, maximumScrollFraction: maximumScrollFraction)
+        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: towardTop, maximumScrollFraction: maximumScrollFraction, keyboardMayBeVisible: keyboardMayBeVisible)
         return target
     }
 
