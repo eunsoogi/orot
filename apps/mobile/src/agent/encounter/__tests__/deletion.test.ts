@@ -6,6 +6,8 @@ import {
   sqliteEncounterFixture,
 } from '../__fixtures__/sqliteFixture';
 import { createLangGraphCheckpointStorage } from '@orot/storage';
+import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage';
+import { persistEncounterApproval } from '../persistence';
 import {
   runEncounterProcessingGraph,
   SqliteCheckpointSaver,
@@ -101,5 +103,47 @@ describe('Encounter source deletion privacy', () => {
       'unavailable',
     );
     expect(await repository().get('source_record', sourceId)).not.toBeNull();
+  });
+
+  it('erases pending payloads and refuses approval and checkpoint writes after logical removal', async () => {
+    const current = await pending();
+    const memoryStorage = new SqlCipherAgentMemoryStorage(database());
+    await memoryStorage.markSourceRemoved(sourceId);
+    expect(await repository().get('source_record', sourceId)).not.toBeNull();
+    const storage = createLangGraphCheckpointStorage(database(), {
+      sourceRecordId: sourceId,
+    });
+    const graphThread = 'encounter:' + encodeURIComponent(threadId);
+    expect(await storage.listCheckpoints(graphThread)).toEqual([]);
+    await expect(
+      persistEncounterApproval(
+        repository(),
+        current,
+        approvalFor(current),
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow('source was removed');
+    await expect(
+      storage.saveWrites(graphThread, '', 'late', [
+        {
+          taskId: 'late',
+          index: 0,
+          channel: 'pending',
+          type: 'json',
+          value: new Uint8Array([1]),
+          replaceExisting: false,
+        },
+      ]),
+    ).rejects.toThrow('source was removed');
+    expect(await repository().list('health_observation')).toEqual([]);
+    expect(await repository().list('evidence_span')).toEqual([]);
+    expect(
+      await repository().getSyncCheckpoint(
+        'encounter-approval:' + encodeURIComponent(threadId),
+      ),
+    ).toBeNull();
+    expect((await run(false, approvalFor(current)).result).status).toBe(
+      'unavailable',
+    );
   });
 });

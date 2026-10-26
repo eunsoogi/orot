@@ -2,6 +2,7 @@ import { TranscriptEvidenceSegmentSchema } from '@orot/domain';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { EncounterTranscript } from '@orot/agent-runtime';
 import type { RecordWriter, SqlExecutor } from '@orot/storage';
+import { requireLiveCheckpointSource } from '@orot/storage';
 
 /** Corrections are append-only: choose the latest revision per stable segment, never concatenate old text. */
 export function currentEncounterTranscript(
@@ -39,6 +40,7 @@ export async function readEncounterTranscript(
   sql: SqlExecutor,
   sourceId: string,
 ) {
+  await requireLiveCheckpointSource(sql, sourceId);
   const source = await writer.get('source_record', sourceId);
   if (!source || source.sourceKind !== 'audio_recording')
     throw new Error('Recording source unavailable.');

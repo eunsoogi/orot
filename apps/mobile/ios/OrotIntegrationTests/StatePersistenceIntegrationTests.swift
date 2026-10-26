@@ -58,6 +58,7 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         let result = try await encounterOperation(phase)
         if phase == "absence" {
             XCTAssertEqual(result["cleanupVerified"] as? Bool, true)
+            XCTAssertEqual(result["logicalRemovalVerified"] as? Bool, true)
         }
         XCTAssertEqual(result["status"] as? String, "saved")
         XCTAssertEqual(result["modelCalls"] as? Int, 0)

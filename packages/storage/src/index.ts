@@ -32,6 +32,7 @@ export type { StaleTranscriptArtifact, TranscriptEvidenceRepository } from './tr
 export { createAppointmentRepository } from './appointments';
 export type { Appointment } from '@orot/domain';
 export { createLangGraphCheckpointStorage } from './checkpointStorage';
+export { requireLiveCheckpointSource } from './sourceLinkedCheckpoints';
 export type {
   CheckpointBundle,
   LangGraphCheckpointStorage,

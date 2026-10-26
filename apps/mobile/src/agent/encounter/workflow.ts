@@ -12,7 +12,8 @@ import type {
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { createLangGraphCheckpointStorage } from '@orot/storage';
-import { currentEncounterTranscript } from './transcript';
+import { readEncounterTranscript } from './transcript';
+import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 import { persistEncounterApproval } from './persistence';
 import { encounterConflicts } from './conflicts';
 import { extractEncounterCandidates } from './extraction';
@@ -26,13 +27,11 @@ export function createEncounterGraphPort(
 ): EncounterGraphPort {
   const load: EncounterGraphPort['load'] = async (sourceId, signal) => {
     requireEncounterActive(signal);
-    const source = await repository.get('source_record', sourceId);
-    if (!source || source.sourceKind !== 'audio_recording')
-      throw new Error('Recording unavailable.');
-    const transcript = currentEncounterTranscript(
-      sourceId,
-      await repository.transcripts.listForRecording(sourceId),
-    );
+    const transcript = await repository.transaction(async (writer, sql) => {
+      if (!sql)
+        throw new Error('Encounter loading requires canonical storage.');
+      return readEncounterTranscript(writer, sql, sourceId);
+    });
     requireEncounterActive(signal);
     return transcript;
   };
@@ -67,10 +66,13 @@ export async function runLocalEncounterProcessing(input: {
   approval?: EncounterApproval;
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
+  const database = await openLocalAgentMemoryDatabase();
+  // Open the existing marker owner before installing source-linked checkpoint cleanup triggers.
+  await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds();
   return runEncounterProcessingGraph({
     ...input,
     checkpointer: new SqliteCheckpointSaver(
-      createLangGraphCheckpointStorage(await openLocalAgentMemoryDatabase(), {
+      createLangGraphCheckpointStorage(database, {
         sourceRecordId: input.sourceId,
       }),
     ),

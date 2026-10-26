@@ -1,5 +1,9 @@
 import { encounterCanonical } from '@orot/agent-runtime';
-import { openLocalStorage } from '../src/storage/secureDatabase';
+import {
+  openLocalStorage,
+  openLocalAgentMemoryDatabase,
+} from '../src/storage/secureDatabase';
+import { SqlCipherAgentMemoryStorage } from '../src/storage/agentMemoryStorage';
 import { openLocalWorkflowCheckpointSaver } from '../src/agent/localCheckpointSaver';
 import { runLocalEncounterProcessing } from '../src/agent/encounter/workflow';
 import {
@@ -137,6 +141,24 @@ export async function runEncounterPersistenceOperation(
   };
   if (mode === 'absence') {
     // Only the exact fixture's rows and checkpoint are removed; all unrelated native persistence fixtures survive.
+    await new SqlCipherAgentMemoryStorage(
+      await openLocalAgentMemoryDatabase(),
+    ).markSourceRemoved(sourceId);
+    const logicalCheckpoint = await (
+      await openLocalWorkflowCheckpointSaver()
+    ).getTuple({
+      configurable: { thread_id: 'encounter:' + encodeURIComponent(threadId) },
+    });
+    if (
+      !(await repository.get('source_record', sourceId)) ||
+      logicalCheckpoint ||
+      (await repository.getSyncCheckpoint(
+        'encounter-approval:' + encodeURIComponent(threadId),
+      ))
+    )
+      throw new Error(
+        'Logical source removal did not erase pending and approval payloads before physical deletion.',
+      );
     await repository.sourceRecords.delete(sourceId);
     const checkpoint = await (
       await openLocalWorkflowCheckpointSaver()
@@ -160,7 +182,7 @@ export async function runEncounterPersistenceOperation(
       throw new Error(
         'Task-owned encounter cleanup did not remove its stored fixtures.',
       );
-    return { ...receipt, cleanupVerified: true };
+    return { ...receipt, cleanupVerified: true, logicalRemovalVerified: true };
   }
   return receipt;
 }

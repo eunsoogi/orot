@@ -16,6 +16,7 @@ import {
 import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createEncounterGraphPort } from '../workflow';
+import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage';
 import {
   seedSyntheticEncounter,
   syntheticEncounterModel,
@@ -82,6 +83,9 @@ export function sqliteEncounterFixture() {
     file = join(directory, 'records.sqlite');
     handle = openSqliteTestDatabase(file);
     await runMigrations(handle.database);
+    await new SqlCipherAgentMemoryStorage(
+      handle.database,
+    ).listRemovedSourceIds();
     await seedSyntheticEncounter(repository(), sourceId);
   });
   afterEach(() => {
