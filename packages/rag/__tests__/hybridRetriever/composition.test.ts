@@ -224,17 +224,24 @@ describe('standard hybrid retriever composition', () => {
     expect(vectorInvoke).not.toHaveBeenCalled();
   });
 
-  it('rejects invalid counts, weights, pages and filters before invoking children', async () => {
+  it('validates search requests while accepting larger caller-selected pages', async () => {
     const page = [chunk('a')];
     for (const limit of [0, 501, NaN, 1.5]) expect(() => setup(page, [], [], { limit })).toThrow();
     expect(() => setup(page, [], [], { ranking: { lexicalWeight: 0, vectorWeight: 0 } })).toThrow();
-    expect(() =>
-      setup(
-        Array.from({ length: 501 }, (_, i) => chunk(String(i))),
-        [],
-        [],
-      ),
-    ).toThrow();
+    const largePage = Array.from({ length: 501 }, (_, i) => chunk(String(i)));
+    const large = setup(largePage, [document(largePage[500])], [document(largePage[0])], {
+      limit: 2,
+    });
+    expect(await large.retriever.invoke('query')).toEqual([
+      document(largePage[0]),
+      document(largePage[500]),
+    ]);
+    expect((await large.retriever.searchHits('query')).map((hit) => hit.chunk)).toEqual([
+      largePage[0],
+      largePage[500],
+    ]);
+    expect(large.input.createLexicalRetriever).toHaveBeenCalledTimes(2);
+    expect(large.input.createVectorRetriever).toHaveBeenCalledTimes(2);
     const { retriever } = setup(page, [], [], { filters: { timeRange: { start: 'invalid' } } });
     await expect(retriever.invoke('query')).rejects.toThrow();
     await expect(setup([page[0], page[0]], [], []).retriever.invoke('query')).rejects.toThrow();

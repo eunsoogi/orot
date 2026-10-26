@@ -11,24 +11,25 @@ enum FormUITestConditions {
     /// AX can mark a keyboard-covered control hittable; require measured viewport containment before a tap.
     /// Journal callers also exclude floating navigation buttons; noninteractive text must prove rendered visibility separately.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
         let scroll = UITestConditions.element(app, scrollID)
-        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding, observeFocusGesture: observeFocusGesture)
+        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding, keyboardMayBeVisible: keyboardMayBeVisible, observeFocusGesture: observeFocusGesture)
     }
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         let journalScroll = scroll.identifier == "symptoms-scroll"
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
         for attempt in 0 ... 16 {
-            let keyboard = app.keyboards.firstMatch
+            // Read-only stages can skip this global AX snapshot when no action can present a keyboard.
+            let keyboard = keyboardMayBeVisible ? app.keyboards.firstMatch : nil
             // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
             let applicationFrame = app.frame
             let scrollFrame = scroll.frame
-            let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+            let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil
             let targetFrame = target.exists ? target.frame : nil
             lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
             let controls = journalScroll ? navigationControlFrames(app) : nil

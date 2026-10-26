@@ -4,7 +4,7 @@ import { ensureConfig, type RunnableConfig } from '@langchain/core/runnables';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import type { EvidenceChunk, EvidenceChunkMetadata } from '../chunking';
 import { evidenceChunkToDocument, documentToEvidenceChunk } from '../langchain/documents';
-import type { HybridSearchRankingConfig } from '../hybridRetrieval';
+import type { HybridEvidenceSearchHit, HybridSearchRankingConfig } from '../hybridRetrieval';
 import { LocalEmbeddingJobError } from '../localEmbeddings';
 import { filterEvidenceChunks, type EvidenceSearchFilters } from '../retrievalFilters';
 import {
@@ -59,12 +59,6 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     super(input);
     boundedCount(input.limit ?? 5);
     resolveRanking(input.ranking);
-    if (input.chunks.length > 500) {
-      throw new LocalEmbeddingJobError(
-        'invalid_request',
-        'Hybrid candidate pages may contain at most 500 chunks.',
-      );
-    }
   }
 
   private invocationScope() {
@@ -81,6 +75,16 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     scoped.config = ensureConfig(options);
     scoped.allowCallerStream = this.allowCallerStream;
     return scoped.retrieveForCaller(query);
+  }
+
+  /** Preserve app ranking fields without adding retrieval scores to citation metadata. */
+  async searchHits(
+    query: string,
+    options?: RunnableConfig,
+  ): Promise<readonly HybridEvidenceSearchHit[]> {
+    const scoped = this.invocationScope();
+    scoped.config = ensureConfig(options);
+    return scoped.retrieveHits(query);
   }
 
   // Clear every incoming observer before the framework installs its direct-consumer handler.
@@ -182,6 +186,11 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
   }
 
   override async _getRelevantDocuments(query: string) {
+    return (await this.retrieveHits(query)).map((hit) => evidenceChunkToDocument(hit.chunk));
+  }
+
+  // Both public result shapes share the same snapshots, deletion fences and ranked candidates.
+  private async retrieveHits(query: string): Promise<HybridEvidenceSearchHit[]> {
     abortIfNeeded(this.config?.signal);
     // Snapshot before asynchronous child/storage calls; caller mutations cannot mix revisions.
     const chunks = filterEvidenceChunks(
@@ -214,8 +223,6 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     // A deletion may commit while a child is retrieving. Fence again before returning citations.
     const retained = await eligibleHybridChunks(searchable, this.input.removalReader);
     abortIfNeeded(this.config?.signal);
-    return fuseDocuments(retained, lexical, vector, ranking, candidateLimit, limit).map((hit) =>
-      evidenceChunkToDocument(hit.chunk),
-    );
+    return fuseDocuments(retained, lexical, vector, ranking, candidateLimit, limit);
   }
 }
