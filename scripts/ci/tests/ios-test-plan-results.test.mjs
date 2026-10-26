@@ -138,13 +138,13 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   const outcome = run(root);
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
-  assert.equal(result.observations.length, 127);
+  assert.equal(result.observations.length, 130);
   assert.equal(result.schemaVersion, 2);
   assert.equal(result.validationTier, 'full');
   assert.equal(result.oauthRequired, true);
   assert.equal(result.authenticationObservations.length, 2);
   assert.equal(result.authenticationEvidence.biometricAuthorizationInputs, 1);
-  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 127);
+  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 130);
   assert.deepEqual(result.selectedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.executedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.notSelectedCohorts, []);

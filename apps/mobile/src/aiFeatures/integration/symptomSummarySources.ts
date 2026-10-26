@@ -24,6 +24,11 @@ import {
   healthContextContent,
   registerHealthContextEvidence,
 } from './healthContextEvidence';
+import {
+  manualHistorySummaryReviewEvidence,
+  readSavedManualHistorySource,
+  savedManualHistorySource,
+} from './manualHistoryEvidence';
 
 /** Persist storage identities, never turn-local e1/s1 aliases that can refer to different rows after restart. */
 export async function captureSymptomSummarySources(
@@ -63,16 +68,18 @@ export async function captureSymptomSummarySources(
             id: entry.record.id,
             revision: fingerprint(entry.record),
           }))
-        : [
-            {
-              kind: 'reviewed_memory',
-              id: read.document.record.id,
-              revision: fingerprint({
-                text: read.document.record.text,
-                meta: read.document.record.meta,
-              }),
-            },
-          ];
+        : read.document.sourceKind === 'manual_history'
+          ? [savedManualHistorySource(read.document.evidence)]
+          : [
+              {
+                kind: 'reviewed_memory',
+                id: read.document.record.id,
+                revision: fingerprint({
+                  text: read.document.record.text,
+                  meta: read.document.record.meta,
+                }),
+              },
+            ];
     sources.push({ reference: original, records });
     mapping.set(JSON.stringify(ref), original);
   }
@@ -152,6 +159,8 @@ export async function restoreSymptomSummary(
             document: { sourceKind: 'reviewed_memory', record: memory },
           };
         }
+        if (descriptor.kind === 'manual_history')
+          return readSavedManualHistorySource(descriptor, data.manualHistory);
         const record = await data.repository.readRecord(
           descriptor.kind,
           descriptor.id,
@@ -192,6 +201,16 @@ export async function restoreSymptomSummary(
             records: sourceRead.document.records.map(healthOverviewFacts),
           }),
       });
+    if (
+      sourceRead.status === 'available' &&
+      sourceRead.document.sourceKind === 'manual_history'
+    )
+      reviewEvidence.push(
+        manualHistorySummaryReviewEvidence(
+          source.reference,
+          sourceRead.document.evidence,
+        ),
+      );
     const current = registry.add({
       reference: source.reference,
       content: '',

@@ -1,4 +1,6 @@
 import type { SqlDatabase } from '@orot/storage';
+import { createManualHistoryRepository } from '@orot/storage';
+import type { ManualHistoryRepository } from '@orot/storage';
 import type { EvidenceChunk } from '@orot/rag';
 import {
   findEvidenceIdentifiers,
@@ -6,6 +8,8 @@ import {
 } from './evidenceCandidates';
 import type { LocalEvidenceCandidates } from './evidenceCandidates';
 import type { EvidenceCandidateScope } from './evidenceCandidateScope';
+import { readManualHistoryCandidates } from './manualHistoryCandidates';
+import type { ManualHistoryCandidateSelection } from './manualHistoryCandidates';
 import {
   readCurrentEvidenceChunks,
   readSelectedStaleArtifacts,
@@ -18,6 +22,12 @@ import {
 
 export interface LocalEvidenceData {
   readonly readHealthContext?: HealthContextReader;
+  readonly manualHistory: ManualHistoryRepository;
+  readManualHistoryCandidates(
+    query: string,
+    signal?: AbortSignal,
+    scope?: EvidenceCandidateScope,
+  ): Promise<ManualHistoryCandidateSelection>;
   readCandidates(
     query: string,
     signal?: AbortSignal,
@@ -43,6 +53,7 @@ export function createLocalEvidenceData(
 ): LocalEvidenceData {
   let prepared: Promise<void> | undefined;
   const readHealthContext = createHealthContextReader(database);
+  const manualHistory = createManualHistoryRepository(database);
   const prepare = () => {
     // SQL ranking may sort private values. Keep temporary query state off plaintext disk.
     prepared ??= database
@@ -55,6 +66,9 @@ export function createLocalEvidenceData(
     return prepared;
   };
   return {
+    manualHistory,
+    readManualHistoryCandidates: (query, signal, scope) =>
+      readManualHistoryCandidates(manualHistory, query, signal, scope),
     async readHealthContext(window, topics, signal, trace) {
       await prepare();
       return readHealthContext(window, topics, signal, trace);

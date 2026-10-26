@@ -9,6 +9,7 @@ export const maintainedNativeTestOwners = new Map([
     ['core-ui', 'health', 'navigation-imports'],
   ],
   ['apps/mobile/ios/orotuitests/storagemigrationuitests.swift', ['calendar-appointments']],
+  ['apps/mobile/ios/orotuitests/manualhistoryuitests.swift', ['calendar-appointments']],
   [
     'apps/mobile/ios/orotintegrationtests/navigationlayoutintegrationtests.swift',
     ['core-integration'],

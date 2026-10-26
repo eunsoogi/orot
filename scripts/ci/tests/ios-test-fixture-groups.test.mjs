@@ -11,10 +11,31 @@ test('all four hosted fixture groups partition all maintained UI cases including
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [9, 7, 8, 10],
+    [9, 7, 8, 13],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 34);
+  assert.equal(original.length, 37);
+  const manualHistory = [
+    'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
+    'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
+    'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
+  ];
+  assert.deepEqual(
+    original.filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
+    manualHistory,
+  );
+  assert.deepEqual(
+    iosTestInventory('fixtures', 'calendar').filter((identifier) =>
+      identifier.startsWith('OrotUITests/ManualHistoryUITests/'),
+    ),
+    manualHistory,
+  );
+  assert.deepEqual(
+    iosTestCohortTasks('calendar-appointments')
+      .flatMap(({ identifiers }) => identifiers)
+      .filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
+    manualHistory,
+  );
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);
 });

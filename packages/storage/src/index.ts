@@ -47,6 +47,12 @@ export type {
 } from './appointments';
 export { createSymptomRepository } from './symptoms';
 export type { SymptomQuery, SymptomRepository } from './symptoms';
+export { createManualHistoryRepository } from './manualHistory';
+export type {
+  ManualHistoryRepository,
+  ManualHistoryRepositoryOptions,
+  NewManualHistoryEntry,
+} from './manualHistory';
 export {
   CreateSymptomEntryInputSchema,
   EditSymptomEntryInputSchema,

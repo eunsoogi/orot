@@ -180,6 +180,17 @@ export async function findEvidenceIdentifiers(
     if (identifiers.size > 1024)
       throw new Error('Selected text contains too many local identifiers.');
   }
+  const manualHistory = await database.execute(
+    'SELECT id FROM manual_history_entries WHERE instr(?, id) > 0 LIMIT 1025',
+    [text],
+  );
+  for (const row of manualHistory.rows) {
+    if (typeof row.id !== 'string')
+      throw new Error('Invalid local evidence identifier.');
+    identifiers.add(row.id);
+  }
+  if (identifiers.size > 1024)
+    throw new Error('Selected text contains too many local identifiers.');
   checkHealthEvidenceAbort(signal);
   return [...identifiers];
 }

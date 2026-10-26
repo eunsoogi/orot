@@ -23,6 +23,7 @@ import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
 import { HealthRecordsRoute } from './HealthRecordsRoute';
+import { ManualHistoryRoute } from './ManualHistoryRoute';
 import type { AppNavigationRoute } from './appNavigationRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
@@ -129,6 +130,7 @@ export function AppRouteContent({
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
+            onOpenManualHistory={() => actions.push('manual-history')}
           />
         );
       case 'schedule':
@@ -209,6 +211,8 @@ export function AppRouteContent({
           onSelectionChange={onHealthRecordDetailSelectionChange}
         />
       );
+    case 'manual-history':
+      return <ManualHistoryRoute onBack={actions.onBack} />;
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

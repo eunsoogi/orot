@@ -27,3 +27,26 @@ test('an unregistered adapter lookalike retains the unknown helper fallback', ()
     iosTestImpactForPath('apps/mobile/e2e/unregisteredProbe.ts').cohorts,
   );
 });
+
+test('integrated native inventory retains manual history, standard adapters, geometry and reminders', () => {
+  const manual = [
+    'testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
+    'testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
+    'testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
+  ].map((method) => 'OrotUITests/ManualHistoryUITests/' + method);
+  const calendar = iosTestCohortTasks('calendar-appointments').flatMap((task) => task.identifiers);
+  for (const identifier of manual)
+    assert.equal(calendar.filter((value) => value === identifier).length, 1);
+  const full = ['release', 'debug', 'speech'].flatMap((cohort) =>
+    iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
+  );
+  assert.equal(full.length, 130);
+  assert.equal(new Set(full).size, 130);
+  for (const identifier of [
+    ...manual,
+    'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
+    'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+    'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
+  ])
+    assert.equal(full.filter((value) => value === identifier).length, 1);
+});
