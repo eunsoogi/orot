@@ -101,12 +101,14 @@ struct ResponsesEventNormalizer {
             // search results can never seed a later private or public conversation.
             let continuationItems = try (webSearch.enabled ? [] : output.map(Self.serialize))
             let publicResult = try webSearch.result(output)
+            let usage = try ChatGPTResponsesUsage.decode(response["usage"])
             completed = true
             return .completed(ChatGPTResponsesResult(
                 text: finalText,
                 toolCalls: functionCalls,
                 continuationItems: continuationItems,
                 webSearch: publicResult,
+                usage: usage,
             ))
         case "response.incomplete":
             let response = object["response"] as? [String: Any]

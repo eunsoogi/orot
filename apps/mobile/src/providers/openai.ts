@@ -20,6 +20,7 @@ import type {
   ChatGPTPlanPublicWebRequest,
   ChatGPTPlanWebSearchResult,
 } from '@orot/provider-openai';
+import type { LanguageModelResponse } from '@orot/model-runtime';
 
 const EVENT_NAME = 'OpenAIProviderEvent';
 
@@ -57,6 +58,7 @@ type NativeOpenAIProviderPacket =
       readonly toolCalls?: readonly ChatGPTPlanNativeToolCall[];
       readonly continuationItems?: readonly string[];
       readonly webSearch?: ChatGPTPlanWebSearchResult;
+      readonly usage?: LanguageModelResponse['usage'];
     }
   | { readonly type: 'failed'; readonly error: ChatGPTPlanNativeError };
 
@@ -191,7 +193,8 @@ function isPacket(value: unknown): value is NativeOpenAIProviderPacket {
           packet.toolCalls.every(isToolCall))) &&
       (packet.continuationItems === undefined ||
         (Array.isArray(packet.continuationItems) &&
-          packet.continuationItems.every(item => typeof item === 'string')))
+          packet.continuationItems.every(item => typeof item === 'string'))) &&
+      isUsage(packet.usage)
     );
   }
   if (
@@ -202,6 +205,17 @@ function isPacket(value: unknown): value is NativeOpenAIProviderPacket {
     return false;
   const error = packet.error as Record<string, unknown>;
   return typeof error.kind === 'string' || typeof error.code === 'string';
+}
+
+/** Validate all reported counts before crossing the untyped native event boundary. */
+function isUsage(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== 'object' || Array.isArray(value)) return false;
+  const usage = value as Record<string, unknown>;
+  return [usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
+    count =>
+      typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
+  );
 }
 
 function isToolCall(value: unknown): value is ChatGPTPlanNativeToolCall {
