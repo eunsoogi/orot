@@ -149,6 +149,8 @@ async function* convertNativeStream(
         throw internalError();
       }
     }
+    // Providers may finish async iterator cleanup after yielding their terminal event.
+    if (options.signal?.aborted) throw cancelled();
     if (!completed || typeof completed.text !== 'string' || !Array.isArray(completed.toolCalls))
       throw internalError();
     if (

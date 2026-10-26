@@ -45,12 +45,41 @@ describe('LangChain telemetry callback adapter', () => {
     const handleCustomEvent = jest.fn();
     const sink = createCallbackTelemetrySink({
       enabled: true,
-      callbacks: [handleCustomEvent],
+      callbacks: [{ handleCustomEvent }],
     });
+
+    sink.record(event);
+    expect(handleCustomEvent).toHaveBeenCalledTimes(1);
+    expect(handleCustomEvent).toHaveBeenCalledWith(
+      OROT_TELEMETRY_EVENT_NAME,
+      event,
+      expect.any(String),
+    );
 
     sink.record({ ...event, prompt: 'SENTINEL_PROMPT' } as TelemetryEvent);
 
-    expect(handleCustomEvent).not.toHaveBeenCalled();
+    expect(handleCustomEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('isolates each handler from mutations to another handler copy', () => {
+    const received: unknown[] = [];
+    const mutatingHandler = {
+      handleCustomEvent: (_name: string, data: unknown) => {
+        (data as Record<string, unknown>).prompt = 'SENTINEL_INJECTED_PROMPT';
+      },
+    };
+    const observingHandler = {
+      handleCustomEvent: (_name: string, data: unknown) => received.push(data),
+    };
+    const sink = createCallbackTelemetrySink({
+      enabled: true,
+      callbacks: [mutatingHandler, observingHandler],
+    });
+
+    sink.record(event);
+
+    expect(received).toEqual([event]);
+    expect(JSON.stringify(received)).not.toContain('SENTINEL_INJECTED_PROMPT');
   });
 
   it('continues after callback failures without logging their diagnostics', async () => {

@@ -25,8 +25,9 @@ export function createCallbackTelemetrySink(options: CallbackTelemetryOptions = 
           try {
             if ('ignoreCustomEvent' in handler && handler.ignoreCustomEvent) continue;
             // Direct delivery avoids CallbackManager's caller-provided tags and metadata.
+            // Each handler gets its own copy so mutations cannot affect later deliveries.
             Promise.resolve(
-              handler.handleCustomEvent?.(OROT_TELEMETRY_EVENT_NAME, event, runId),
+              handler.handleCustomEvent?.(OROT_TELEMETRY_EVENT_NAME, { ...event }, runId),
             ).catch(() => undefined);
           } catch {
             // External handlers are best-effort and cannot alter the model call.
