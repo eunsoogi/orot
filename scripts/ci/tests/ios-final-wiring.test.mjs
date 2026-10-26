@@ -79,14 +79,14 @@ test('scheduled cohort jobs use one consistent role and target', () => {
   }
 });
 
-test('full integration execution preserves 126 observations and every registered provider case', () => {
+test('full integration execution preserves 127 observations and every registered provider case', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Release 90 + Debug 27 + Speech 9 retain each release case and the added regressions.
-  assert.equal(scheduled.length, 126);
+  // Release 90 + Debug 28 + Speech 9 retain each release case and the added regressions.
+  assert.equal(scheduled.length, 127);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 126);
+  assert.equal(identifiers.size, 127);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
@@ -103,6 +103,7 @@ test('full integration execution preserves 126 observations and every registered
     'AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
     'ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
     'ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
+    'StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
     'MedicationDoseCursorTests/testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
     'MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
     'HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',

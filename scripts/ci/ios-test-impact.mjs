@@ -41,6 +41,7 @@ function full(reason, oauth = true) {
 
 function e2eImpact(path) {
   const file = path.split('/').at(-1).toLowerCase();
+  if (file.startsWith('standardadapters')) return impact(['provider'], 'standard-adapter-probe');
   if (
     [
       'capabilitytestentry.tsx',
