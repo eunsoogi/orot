@@ -112,8 +112,8 @@ patchedDependencies:
   '@react-navigation/native@7.5.0': 2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195
   fast-text-encoding@1.0.6: 7517f8f9187fc79a318d339494e64ef41dd1d6466933232cdc956cb66a30464a
   jest-worker@29.7.0: c2a8bdb0d3a5f009bc3f3f65de42f1913cd15f78961b0e32d37a756384a22a73
-  metro@0.87.1: aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501
   metro-runtime@0.87.1: e6084e7e0ec8d8eb8dc80f72ef580d26bf52c53ae73cf63a9561ccce8618cd91
+  metro@0.87.1: aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501
   p-queue@6.6.2: 4103539d89883652925f16f1ef9d51cb26dcbeb5f91260b7c74306825cf797ab
   react-devtools-core@6.1.5: 507fd59c9c5622da9da545c9f2fbe2b54d8f380de5670571f2318bf9633331c7
   react-native-keychain@10.0.0: 3fd21227153d92dc6442fa244a42399df430a1ae34f3e37163698eb0dcafa722
@@ -264,6 +264,9 @@ importers:
       '@langchain/core':
         specifier: 1.2.14
         version: 1.2.14(ws@7.5.13)
+      '@langchain/langgraph':
+        specifier: 1.4.18
+        version: 1.4.18(@langchain/core@1.2.14(ws@7.5.13))(react@19.2.3)(zod@4.6.5)
       '@orot/model-runtime':
         specifier: workspace:*
         version: link:../model-runtime

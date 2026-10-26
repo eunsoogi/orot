@@ -38,6 +38,8 @@
             switch ChatGPTPlanFixtureState.shared.scenario {
             case .completed:
                 deliverSSE([ChatGPTPlanFixtureEvents.delta("안녕"), ChatGPTPlanFixtureEvents.delta("하세요"), ChatGPTPlanFixtureEvents.completed("안녕하세요")], finish: true)
+            case .adapterCompleted:
+                deliverSSE([ChatGPTPlanFixtureEvents.delta("안녕"), ChatGPTPlanFixtureEvents.delta("하세요"), ChatGPTPlanFixtureEvents.adapterCompleted], finish: true)
             case .usageLimit:
                 deliverSSE([ChatGPTPlanFixtureEvents.delta("일부"), ChatGPTPlanFixtureEvents.failure], finish: true)
             case .cancellable:

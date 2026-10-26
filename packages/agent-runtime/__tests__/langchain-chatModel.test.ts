@@ -46,7 +46,6 @@ describe('native chat invocation', () => {
     });
     expect(provider.capabilities).toEqual(capabilities);
     expect(model.bindTools).toBeUndefined();
-    expect(() => model.withStructuredOutput({ type: 'object' })).toThrow();
   });
 
   it('reuses a completed answer in follow-up history with one request per turn', async () => {

@@ -2,6 +2,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import UIKit
+import UserNotifications
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -25,6 +26,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 return true
             }
         #endif
+
+        // Capture local reminder taps before React starts, including cold launches.
+        // Registration alone never requests notification permission or starts AI work.
+        UNUserNotificationCenter.current().delegate = AppointmentReminderDelivery.shared
 
         let delegate = ReactNativeDelegate()
         let factory = RCTReactNativeFactory(delegate: delegate)

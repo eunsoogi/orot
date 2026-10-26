@@ -1,3 +1,5 @@
+import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
+import type { AiFeatureServices } from '../aiFeatures/integration/featureServices';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
@@ -21,6 +23,7 @@ import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
 import { HealthRecordsRoute } from './HealthRecordsRoute';
+import { ManualHistoryRoute } from './ManualHistoryRoute';
 import type { AppNavigationRoute } from './appNavigationRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
@@ -36,6 +39,7 @@ import type {
 export type { AppNavigationRoute } from './appNavigationRoute';
 
 interface AppRouteContentProps {
+  readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
@@ -73,6 +77,7 @@ interface AppRouteContentProps {
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
+  loadSavedVisitQuestions,
   loadSymptoms,
   actions,
   activeTab,
@@ -125,6 +130,7 @@ export function AppRouteContent({
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
+            onOpenManualHistory={() => actions.push('manual-history')}
           />
         );
       case 'schedule':
@@ -165,6 +171,13 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
+    case 'appointment-preparation':
+      return (
+        <AppointmentPreparationRoute
+          routeKey={actions.route.key}
+          loadSavedQuestions={loadSavedVisitQuestions}
+        />
+      );
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
@@ -198,6 +211,8 @@ export function AppRouteContent({
           onSelectionChange={onHealthRecordDetailSelectionChange}
         />
       );
+    case 'manual-history':
+      return <ManualHistoryRoute onBack={actions.onBack} />;
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

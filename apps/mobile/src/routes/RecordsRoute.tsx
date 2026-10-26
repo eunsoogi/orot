@@ -11,6 +11,7 @@ import {
 import { MedicalDocumentReview } from '../medicalDocuments/MedicalDocumentReview';
 import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocumentImport';
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
+import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 
 interface RecordsRouteProps {
   readonly onOpenSymptoms: () => void;
@@ -18,6 +19,7 @@ interface RecordsRouteProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly documentImportService?: MedicalDocumentImportService;
+  readonly onOpenManualHistory: () => void;
 }
 
 /** Keeps local sources discoverable and gates imported medical evidence on user review. */
@@ -27,6 +29,7 @@ export function RecordsRoute({
   onOpenRecording,
   onOpenHealthLibrary,
   documentImportService,
+  onOpenManualHistory,
 }: RecordsRouteProps) {
   const {
     activity,
@@ -132,6 +135,8 @@ export function RecordsRoute({
         </View>
         <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
       </Pressable>
+
+      <ManualHistoryAction onPress={onOpenManualHistory} />
 
       <Pressable
         accessibilityRole="button"

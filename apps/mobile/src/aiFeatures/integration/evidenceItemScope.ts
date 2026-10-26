@@ -5,6 +5,7 @@ export function scopedEvidenceItems(
   items: readonly EvidenceItem[],
   request: EvidenceSearchRequest,
   sourceKind: EvidenceItem['sourceKind'],
+  manualHistoryDate?: (item: EvidenceItem) => string | undefined,
 ) {
   return items.filter(item => {
     if (
@@ -15,10 +16,15 @@ export function scopedEvidenceItems(
       return false;
     const range = request.allowedScope.timeRange;
     if (!range) return true;
-    if (!item.effectiveTime) return false;
-    const value = Date.parse(item.effectiveTime);
     const from = Date.parse(range.fromInclusive);
     const to = Date.parse(range.toExclusive);
+    if (!item.effectiveTime) {
+      const date = manualHistoryDate?.(item);
+      if (!date) return false;
+      const start = Date.parse(`${date}T00:00:00.000Z`);
+      return start + 24 * 60 * 60 * 1000 > from && start < to;
+    }
+    const value = Date.parse(item.effectiveTime);
     return (
       Number.isFinite(value) &&
       Number.isFinite(from) &&

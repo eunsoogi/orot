@@ -51,6 +51,7 @@ test('opens saved medical document text and page provenance from Records', async
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
       documentImportService={service}
     />,
   );

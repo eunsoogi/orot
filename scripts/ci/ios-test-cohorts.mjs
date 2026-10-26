@@ -53,6 +53,7 @@ const cohorts = {
     cases: [
       'AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
       'AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+      'WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     ],
   },
   'navigation-routes': {
@@ -109,10 +110,12 @@ const cohorts = {
     minutes: 20,
     classes: [
       'AppointmentsUITests',
+      'AppointmentReminderJourneyUITests',
       'SymptomJournalUITests',
       'CalendarSelectionUITests',
       'HealthImportUITests',
       'StorageMigrationUITests',
+      'ManualHistoryUITests',
     ],
   },
   provider: { profiles: ['provider-data'], minutes: 20 },

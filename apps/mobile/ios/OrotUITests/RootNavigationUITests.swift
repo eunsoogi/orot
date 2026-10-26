@@ -52,6 +52,32 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testRightRailKeepsAccessibleRootAndContextualNavigation() throws {
+        let app = launch()
+        defer { app.terminate() }
+        let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        XCTAssertTrue(home.control.isSelected)
+        XCTAssertEqual(home.control.label, "홈 탭")
+        XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
+        XCTAssertGreaterThan(home.toolbar.frame.height, home.toolbar.frame.width)
+        XCTAssertGreaterThan(home.toolbar.frame.midX, app.frame.midX)
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control.isSelected)
+        tap(app, "records-new-recording")
+        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
+        let homeAction = try NavigationUITestConditions.navigationAction(app, "navigation-home")
+        XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
+        XCTAssertEqual(homeAction.control.frame.width, 48, accuracy: 0.5)
+        XCTAssertGreaterThan(homeAction.control.frame.midY, back.control.frame.midY)
+        XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
+        XCTAssertEqual(homeAction.control.label, "홈 화면으로 이동")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        capture(app, "accessible-right-navigation")
+    }
+
+    @MainActor
     func testLargeTextKeepsRootTabsAndRecordingActionsReachable() throws {
         let normal = launch()
         let normalTitleHeight = UITestConditions.element(normal, "welcome-title").frame.height

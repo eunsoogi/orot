@@ -81,6 +81,8 @@ export const CalendarAppointmentSnapshotSchema = z.strictObject({
 
 export const AppointmentSchema = RecordMetadataSchema.safeExtend({
   status: AppointmentStatusSchema,
+  // Absent on legacy records; only an actual new manual start edit changes authority.
+  startTimeAuthority: z.literal('manual').optional(),
   clinicLabel: NonEmptyTextSchema.optional(),
   note: NonEmptyTextSchema.optional(),
   reason: NonEmptyTextSchema.optional(),
@@ -184,6 +186,15 @@ export function updateAppointment(
 
   const parsedChanges = AppointmentUpdateInputSchema.parse(changes);
   const next = { ...appointment, ...parsedChanges };
+  // A confirmed Calendar snapshot restores its time; unrelated edits preserve authority.
+  if (parsedChanges.calendarEventSnapshot) {
+    delete next.startTimeAuthority;
+  } else if (
+    parsedChanges.effectiveAt &&
+    compareTimestamps(parsedChanges.effectiveAt, appointment.effectiveAt) !== 0
+  ) {
+    next.startTimeAuthority = 'manual';
+  }
   if (parsedChanges.note === null) delete next.note;
   if (parsedChanges.endsAt === null) delete next.endsAt;
   if (parsedChanges.calendarEventIdentifier === null) {

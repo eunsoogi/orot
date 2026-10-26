@@ -10,6 +10,7 @@ test('keeps existing record actions visible and offers medical document import',
   const onOpenSymptoms = jest.fn();
   const onOpenRecording = jest.fn();
   const onOpenHealthLibrary = jest.fn();
+  const onOpenManualHistory = jest.fn();
   const onOpenSavedRecordings = jest.fn();
   await render(
     <RecordsRoute
@@ -24,6 +25,7 @@ test('keeps existing record actions visible and offers medical document import',
         saveDocument: jest.fn(),
         discardDocument: jest.fn(),
       }}
+      onOpenManualHistory={onOpenManualHistory}
     />,
   );
 
@@ -44,8 +46,11 @@ test('keeps existing record actions visible and offers medical document import',
   expect(onOpenSymptoms).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
+  await fireEvent.press(screen.getByTestId('records-open-manual-history'));
   expect(onOpenRecording).toHaveBeenCalledTimes(1);
   expect(onOpenHealthLibrary).toHaveBeenCalledTimes(1);
+  expect(onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('과거 건강 기록', { exact: true })).toBeTruthy();
 });
 
 test('shows extracted text for review before saving medical evidence', async () => {
@@ -77,6 +82,7 @@ test('shows extracted text for review before saving medical evidence', async () 
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
       documentImportService={service}
     />,
   );
@@ -117,6 +123,7 @@ test('discards a reviewed document when the user cancels import', async () => {
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
       documentImportService={service}
     />,
   );
@@ -160,6 +167,7 @@ test('retries a failed save while keeping the selected document available', asyn
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
       documentImportService={service}
     />,
   );
@@ -211,6 +219,7 @@ test('lets the user cancel and clean up after a failed save', async () => {
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
       documentImportService={service}
     />,
   );

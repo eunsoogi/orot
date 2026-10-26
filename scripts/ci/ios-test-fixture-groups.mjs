@@ -4,6 +4,7 @@ export const iosFixtureGroups = Object.freeze({
     'AiFeatureNavigationUITests',
     'SafeAreaNavigationUITests',
     'RootNavigationUITests',
+    'WindowGeometryUITests',
     'PagedHealthRecordsUITests',
     'UnifiedImportUITests',
   ],
@@ -19,8 +20,10 @@ export const iosFixtureGroups = Object.freeze({
     'AppointmentConsentUITests',
     'StorageMigrationUITests',
     'AppointmentsUITests',
+    'AppointmentReminderJourneyUITests',
     'SymptomJournalUITests',
     'CalendarSelectionUITests',
+    'ManualHistoryUITests',
   ],
 });
 

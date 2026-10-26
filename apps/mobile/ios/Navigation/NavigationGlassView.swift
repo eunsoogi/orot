@@ -1,7 +1,7 @@
 import React
 import UIKit
 
-/// Keeps one native surface mounted while root tabs or independent contextual actions change.
+/// Keeps one native surface and its controls mounted while actions or measured placement change.
 final class NavigationGlassSurfaceView: UIView {
     @objc var actions: NSArray = [] {
         didSet {
@@ -12,12 +12,31 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var onAction: RCTBubblingEventBlock?
+    @objc var layoutMode: String = "bottom" {
+        didSet { updatePresentation() }
+    }
+
+    @objc var railTopInset: CGFloat = 0 {
+        didSet { updatePresentation() }
+    }
+
+    @objc var railBottomInset: CGFloat = 0 {
+        didSet { updatePresentation() }
+    }
+
+    @objc var railRightInset: CGFloat = 0 {
+        didSet { updatePresentation() }
+    }
+
     private let rootBar = NavigationRootGlassBar()
     private let innerActions = UIStackView()
     private let innerActionsSpacer = UIView()
     private var renderedActions: [NavigationActionDescriptor] = []
     private var contextualButtons: [String: UIButton] = [:]
     private var contextualButtonWidthConstraints: [String: NSLayoutConstraint] = [:]
+    private var contextualButtonFixedWidthConstraints: [String: NSLayoutConstraint] = [:]
+    private var bottomPlacementConstraints: [NSLayoutConstraint] = []
+    private var railPlacementConstraints: [NSLayoutConstraint] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -38,19 +57,36 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.alignment = .center
         innerActions.spacing = 12
         innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .vertical)
+        innerActionsSpacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         innerActions.addArrangedSubview(innerActionsSpacer)
         // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
         innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
-            NSLayoutConstraint.activate([
-                view.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-                view.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-                view.centerYAnchor.constraint(equalTo: centerYAnchor),
-                view.heightAnchor.constraint(equalToConstant: view === rootBar ? 60 : 48),
-            ])
         }
+        bottomPlacementConstraints = [
+            rootBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            rootBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            rootBar.centerYAnchor.constraint(equalTo: centerYAnchor),
+            rootBar.heightAnchor.constraint(equalToConstant: 60),
+            innerActions.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            innerActions.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            innerActions.centerYAnchor.constraint(equalTo: centerYAnchor),
+            innerActions.heightAnchor.constraint(equalToConstant: 48),
+        ]
+        railPlacementConstraints = [
+            rootBar.trailingAnchor.constraint(equalTo: trailingAnchor),
+            rootBar.widthAnchor.constraint(equalToConstant: NavigationRootGlassBar.exteriorWidth),
+            rootBar.heightAnchor.constraint(equalToConstant: NavigationRootGlassBar.railHeight),
+            rootBar.bottomAnchor.constraint(equalTo: bottomAnchor),
+            innerActions.leadingAnchor.constraint(equalTo: leadingAnchor),
+            innerActions.trailingAnchor.constraint(equalTo: trailingAnchor),
+            innerActions.topAnchor.constraint(equalTo: topAnchor),
+            innerActions.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ]
+        updatePresentation()
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
@@ -61,12 +97,12 @@ final class NavigationGlassSurfaceView: UIView {
         let dispatch: (String) -> Void = { [weak self] id in self?.onAction?(["id": id]) }
         // Selection updates retain the same indicator rather than fading recreated button backgrounds.
         if wasRoot, isRoot {
+            updatePresentation()
             rootBar.render(descriptors, animated: animated, onAction: dispatch)
             return
         }
         NavigationToolbarTransition.apply(to: self, animated: animated) {
-            self.rootBar.isHidden = !isRoot
-            self.innerActions.isHidden = isRoot
+            self.updatePresentation()
             if isRoot {
                 self.rootBar.render(descriptors, animated: false, onAction: dispatch)
             } else {
@@ -74,6 +110,28 @@ final class NavigationGlassSurfaceView: UIView {
             }
             self.layoutIfNeeded()
         }
+    }
+
+    /// Applies only the measured rail insets; the React Native host remains the source of window size.
+    private func updatePresentation() {
+        let usesRightRail = layoutMode == "right"
+        bottomPlacementConstraints.forEach { $0.isActive = !usesRightRail }
+        railPlacementConstraints.forEach { $0.isActive = usesRightRail }
+        railPlacementConstraints[0].constant = -railRightInset
+        railPlacementConstraints[3].constant = -railBottomInset
+        railPlacementConstraints[5].constant = -railRightInset
+        railPlacementConstraints[6].constant = railTopInset
+        railPlacementConstraints[7].constant = -railBottomInset
+        rootBar.setVerticalLayout(usesRightRail)
+        innerActions.axis = usesRightRail ? .vertical : .horizontal
+        innerActions.alignment = usesRightRail ? .fill : .center
+        for (id, button) in contextualButtons {
+            guard let action = renderedActions.first(where: { $0.id == id }) else { continue }
+            updateFixedWidth(for: action, button: button)
+        }
+        rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
+        innerActions.isHidden = rootBar.isHidden == false
+        setNeedsLayout()
     }
 
     /// Reconciles by stable action ID so state-only updates do not detach an active control.
@@ -87,6 +145,7 @@ final class NavigationGlassSurfaceView: UIView {
             innerActions.removeArrangedSubview(button)
             button.removeFromSuperview()
             contextualButtonWidthConstraints.removeValue(forKey: id)?.isActive = false
+            contextualButtonFixedWidthConstraints.removeValue(forKey: id)?.isActive = false
         }
 
         for action in descriptors {
@@ -99,6 +158,7 @@ final class NavigationGlassSurfaceView: UIView {
                 contextualButtons[action.id] = button
             }
             updateMinimumWidth(for: action, button: button)
+            updateFixedWidth(for: action, button: button)
         }
 
         var orderedViews: [UIView] = []
@@ -117,6 +177,22 @@ final class NavigationGlassSurfaceView: UIView {
                 innerActions.removeArrangedSubview(view)
             }
             innerActions.insertArrangedSubview(view, at: index)
+        }
+    }
+
+    /// Changes the compact Home width in place while Back remains 48pt in either layout.
+    private func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton) {
+        NavigationGlassButton.setUsesRightRail(layoutMode == "right", for: action, button: button)
+        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode == "right") else {
+            contextualButtonFixedWidthConstraints.removeValue(forKey: action.id)?.isActive = false
+            return
+        }
+        if let constraint = contextualButtonFixedWidthConstraints[action.id] {
+            constraint.constant = width
+        } else {
+            let constraint = button.widthAnchor.constraint(equalToConstant: width)
+            constraint.isActive = true
+            contextualButtonFixedWidthConstraints[action.id] = constraint
         }
     }
 

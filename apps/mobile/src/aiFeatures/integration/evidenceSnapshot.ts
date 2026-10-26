@@ -16,6 +16,9 @@ import {
 } from './memoryEvidence';
 import { buildPersonalEvidence } from './personalEvidence';
 import type { StaleEvidenceArtifact } from './localData';
+import type { ManualHistoryEvidence } from '@orot/domain';
+import type { ManualHistoryRepository } from '@orot/storage';
+import { buildManualHistoryEvidence } from './manualHistoryEvidence';
 
 export interface LocalEvidenceSnapshot {
   /** Internal typed rows for bounded overview projection; never serialized to a provider. */
@@ -45,6 +48,7 @@ export async function createLocalEvidenceSnapshot(input: {
   readonly inventory: HealthEvidenceInventory;
   readonly records: readonly LocalHealthEvidenceRecord[];
   readonly candidateRecords?: readonly LocalHealthEvidenceRecord[];
+  readonly manualHistoryCandidates?: readonly ManualHistoryEvidence[];
   readonly hasMoreCandidates?: boolean;
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
@@ -53,6 +57,7 @@ export async function createLocalEvidenceSnapshot(input: {
     readonly StaleEvidenceArtifact[]
   >;
   readonly repository: LocalHealthEvidenceRepository;
+  readonly manualHistory?: Pick<ManualHistoryRepository, 'getEvidence'>;
   readonly memoryRecords: readonly PersistedMemoryRecord[];
   readonly memoryStorage: Pick<AgentMemoryStorageAdapter, 'listRecords'>;
   readonly registry: LocalEvidenceReferenceRegistry;
@@ -60,13 +65,28 @@ export async function createLocalEvidenceSnapshot(input: {
   // Register both stores before serializing any content so cross-record IDs are redacted too.
   registerMemoryIdentifiers(input.memoryRecords, input.registry);
   const personal = buildPersonalEvidence(input);
+  const manualHistoryCandidates = input.manualHistoryCandidates ?? [];
+  if (manualHistoryCandidates.length > 0 && !input.manualHistory) {
+    throw new Error('Manual history freshness validation is unavailable.');
+  }
+  const manualHistory = input.manualHistory
+    ? buildManualHistoryEvidence({
+        candidates: manualHistoryCandidates,
+        repository: input.manualHistory,
+        registry: input.registry,
+      })
+    : { items: [], chunks: [] };
   const memory = await buildMemoryEvidence({
     records: input.memoryRecords,
     storage: input.memoryStorage,
     registry: input.registry,
   });
-  const items = [...personal.items, ...memory.items];
-  const chunks = [...personal.chunks, ...memory.chunks];
+  const items = [...personal.items, ...manualHistory.items, ...memory.items];
+  const chunks = [
+    ...personal.chunks,
+    ...manualHistory.chunks,
+    ...memory.chunks,
+  ];
   const memoryGaps =
     memory.excludedCount > 0
       ? ['일부 로컬 기억을 안전하게 확인할 수 없어 검색에서 제외했어요.']

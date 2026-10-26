@@ -9,11 +9,13 @@ import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
 import { healthkitSettingsKo } from './healthkitSettings';
 import { probeKo } from './probeKo';
+import { manualHistoryKo } from './manualHistory';
 
 export const ko = {
   'symptoms.title': '증상 일지',
   'symptoms.description': '직접 기록한 증상과 경과',
   ...probeKo,
+  ...manualHistoryKo,
   ...backupKo,
   'app.welcome.title': '오롯',
   'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',

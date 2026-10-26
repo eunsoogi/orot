@@ -9,6 +9,14 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  // Notification privacy, trigger identity and cold-start delivery remain native obligations.
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFractionalTimestampsNeverRoundDeliveryEarlierThanTheSelectedOffset',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
   'OrotIntegrationTests/SymptomAccessorySnapshotTests/testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs',
   'OrotIntegrationTests/SymptomAccessorySnapshotTests/testMissingAndDetachedTargetsRemainExplicit',
@@ -62,6 +70,7 @@ const providerTests = [
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
+  'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
   'OrotIntegrationTests/MedicationDoseCursorTests/testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
   'OrotIntegrationTests/MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
@@ -106,6 +115,7 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+  'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
   'OrotUITests/RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
@@ -130,8 +140,13 @@ export const fixtureTests = [
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
+  'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',
+  'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
   'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
+  'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
+  'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
+  'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
@@ -162,9 +177,13 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This profile proves native host launch only; Duo screen coverage has its own acceptance boundary.
+  // This profile covers host launch and the explicit geometry bridge check; broader Duo screen coverage has its own acceptance boundary.
   // Do not let an unknown Release profile fall through to the provider inventory.
-  if (profile === 'duo') return ['OrotUITests/TestHostConnectionTests/testHostLaunches'];
+  if (profile === 'duo')
+    return [
+      'OrotUITests/TestHostConnectionTests/testHostLaunches',
+      'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+    ];
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();

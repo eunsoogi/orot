@@ -1,3 +1,5 @@
+import { invokeProductionRequest } from '../langchain/production';
+import { NativeChatModelError } from '../langchain/chatModel';
 import type {
   LanguageModelProvider,
   LanguageModelRequest,
@@ -73,58 +75,48 @@ async function collectStream(
   signal: AbortSignal,
   onTextEvent?: (event: LanguageModelTextEvent) => void,
 ): Promise<ProviderCallOutcome> {
-  const iterator = provider.stream!(request, { signal })[Symbol.asyncIterator]();
-  const operation = (async () => {
-    let response: LanguageModelResponse | undefined;
-    while (true) {
-      const next = await iterator.next();
-      if (signal.aborted) return undefined;
-      if (next.done) break;
-      if (!next.value.ok) return { ok: false as const, errorCode: next.value.error.code };
-      if (next.value.value.type === 'text_delta' || next.value.value.type === 'text_snapshot') {
-        try {
-          onTextEvent?.(next.value.value);
-        } catch {
-          // A responder projection must not interrupt provider collection or validation.
-        }
+  let providerStop: ProviderStopObservation = 'underlying_call_unconfirmed';
+  const operation = invokeProductionRequest(
+    provider,
+    request,
+    signal,
+    true,
+    (text) => {
+      try {
+        onTextEvent?.({ type: 'text_snapshot', text });
+      } catch {
+        // Display projection cannot interrupt response validation.
       }
-      if (next.value.value.type === 'completed') {
-        response = next.value.value.response;
-        try {
-          // The normalized result may correct the last provider snapshot.
-          onTextEvent?.({
-            type: 'text_snapshot',
-            text: next.value.value.response.text,
-          });
-        } catch {
-          // Display projection failures cannot interrupt response validation.
-        }
-      }
-    }
-    return response
-      ? { ok: true as const, value: response }
-      : { ok: false as const, errorCode: 'internal_error' as const };
-  })();
-  const observed = await observeUntilAbort(operation, signal);
-  if (observed.kind === 'cancelled') {
-    let providerStop: ProviderStopObservation = 'underlying_call_unconfirmed';
-    try {
-      if (iterator.return) {
-        Promise.resolve(iterator.return()).catch(() => undefined);
-        providerStop = 'iterator_return_requested';
-      }
-    } catch {
-      providerStop = 'underlying_call_unconfirmed';
-    }
-    return { status: 'cancelled', providerStop };
-  }
-  if (observed.kind === 'error') {
-    return { status: 'unavailable', errorCode: 'internal_error' };
-  }
-  if (!observed.value?.ok) {
-    return { status: 'unavailable', errorCode: observed.value?.errorCode ?? 'internal_error' };
-  }
-  return { status: 'response', response: observed.value.value };
+    },
+    () => {
+      providerStop = 'iterator_return_requested';
+    },
+  );
+  const result = await observeAdapter(operation, signal);
+  return result.status === 'cancelled' ? { ...result, providerStop } : result;
+}
+
+/** Cancellation wins without claiming a provider stop that has not been observed. */
+async function observeAdapter(
+  operation: Promise<LanguageModelResponse>,
+  signal: AbortSignal,
+): Promise<ProviderCallOutcome> {
+  const observed = await observeUntilAbort(
+    operation.then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({
+        ok: false as const,
+        errorCode: error instanceof NativeChatModelError ? error.code : ('internal_error' as const),
+      }),
+    ),
+    signal,
+  );
+  if (observed.kind === 'cancelled')
+    return { status: 'cancelled', providerStop: 'underlying_call_unconfirmed' };
+  if (observed.kind === 'error') return { status: 'unavailable', errorCode: 'internal_error' };
+  return observed.value.ok
+    ? { status: 'response', response: observed.value.value }
+    : { status: 'unavailable', errorCode: observed.value.errorCode };
 }
 
 function recordTelemetry(
@@ -218,16 +210,7 @@ export async function callModel(
   const startedAt = Date.now();
   let result: ProviderCallOutcome;
   try {
-    const observed = await observeUntilAbort(provider.generate(request, { signal }), signal);
-    if (observed.kind === 'cancelled') {
-      result = { status: 'cancelled', providerStop: 'underlying_call_unconfirmed' };
-    } else if (observed.kind === 'error') {
-      result = { status: 'unavailable', errorCode: 'internal_error' };
-    } else if (!observed.value.ok) {
-      result = { status: 'unavailable', errorCode: observed.value.error.code };
-    } else {
-      result = { status: 'response', response: observed.value.value };
-    }
+    result = await observeAdapter(invokeProductionRequest(provider, request, signal), signal);
   } catch {
     result = { status: 'unavailable', errorCode: 'internal_error' };
   }
