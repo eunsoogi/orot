@@ -4,6 +4,7 @@ export type AppNavigationRoute =
   | 'home'
   | 'recording'
   | 'saved-recordings'
+  | 'symptoms'
   | 'recording-review'
   | 'unified-import'
   | 'health-records'
