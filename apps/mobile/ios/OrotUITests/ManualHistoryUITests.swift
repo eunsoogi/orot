@@ -126,11 +126,13 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
-        // Exercise the native rail controls and prove Home does not bypass the route's discard guard.
+        // Keep the native rail's VoiceOver names while proving Home does not bypass the route's discard guard.
         XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(back.toolbar.frame.midX, app.frame.midX)
         XCTAssertLessThan(back.control.frame.midY, home.control.frame.midY)
+        XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
+        XCTAssertEqual(home.control.label, "홈 화면으로 이동")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         let leavePrompt = app.alerts["저장하지 않은 내용이 있어요"]
         XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
