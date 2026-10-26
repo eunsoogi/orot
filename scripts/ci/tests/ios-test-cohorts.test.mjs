@@ -97,7 +97,7 @@ test('two Release destinations partition the original work exactly once and pres
   assert.deepEqual(partitioned.map(key).sort(), original.map(key).sort());
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [76, 31],
+    [75, 31],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',

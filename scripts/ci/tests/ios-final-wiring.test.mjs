@@ -79,14 +79,14 @@ test('scheduled cohort jobs use one consistent role and target', () => {
   }
 });
 
-test('full integration execution preserves 142 observations and every registered provider case', () => {
+test('full integration execution preserves 143 observations and every registered provider case', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Release 105 + Debug 28 + Speech 9 retain each release case and the added regressions.
-  assert.equal(scheduled.length, 142);
+  // Release 106 + Debug 28 + Speech 9 retain each release case and the added regressions.
+  assert.equal(scheduled.length, 143);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 142);
+  assert.equal(identifiers.size, 143);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',

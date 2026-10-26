@@ -32,7 +32,7 @@ const cohorts = {
     profiles: ['core'],
     suites: ['ui'],
     minutes: 20,
-    classes: ['RootNavigationUITests', 'HomeDuoUITests', 'TestHostConnectionTests'],
+    classes: ['RootNavigationUITests', 'TestHostConnectionTests'],
   },
   'recording-evidence': {
     profiles: ['core'],
@@ -63,6 +63,7 @@ const cohorts = {
     minutes: 20,
     cases: [
       'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
+      'HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

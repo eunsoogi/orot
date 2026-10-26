@@ -99,8 +99,9 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     fourSidedOcclusion,
     recordingShareDismissal,
   ]);
-  // Home runs in both independent host profiles while Duo expects its contextual navigation rail.
+  // Fixture-owned Home runs in ordinary iPhone and Duo profiles through their dedicated hosts.
   assert.ok(iPhoneFixtures.includes(homeSummary));
+  assert.ok(!coreTests.includes(homeSummary));
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(iPhoneFixtures.includes(fourSidedOcclusion));
   assert.ok(coreTests.includes(recordingShareDismissal));
