@@ -1,5 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
 export { createLanguageModelProviderGraph } from './modelProviderGraph';
+export { createProductionChatModel, invokeProductionRequest } from './langchain/production';
 export {
   createLocalRecordQueryService,
   LOCAL_MEMORY_MAX_RESULTS,

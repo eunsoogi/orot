@@ -93,6 +93,9 @@ export function createStructuredOutputRunnable<RunOutput extends Record<string, 
   config: StructuredOutputMethodOptions<boolean> | undefined,
   execute: StructuredOutputExecutor,
   createError: CreateStructuredOutputError,
+  resolveOptions: (
+    options: Partial<NativeChatModelCallOptions>,
+  ) => Partial<NativeChatModelCallOptions> = (options) => options,
 ): Runnable<
   BaseLanguageModelInput,
   RunOutput | { readonly raw: BaseMessage; readonly parsed: RunOutput },
@@ -100,6 +103,8 @@ export function createStructuredOutputRunnable<RunOutput extends Record<string, 
 > {
   const { plan, parse } = prepareStructuredOutput(capabilities, outputSchema, config, createError);
   return new PrivateStructuredOutputRunnable(async (input, options) => {
+    // Bound defaults must govern both native work and the later asynchronous parse boundary.
+    options = resolveOptions(options);
     const result = await execute(input, plan, options);
     if (result.finishReason !== 'complete' || result.hasToolCalls)
       throw new StructuredOutputError();
