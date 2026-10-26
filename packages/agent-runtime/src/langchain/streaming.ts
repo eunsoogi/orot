@@ -51,13 +51,6 @@ export class NativeStreamingChatModel extends NativeChatModel {
     );
   }
 
-  override async *_streamResponseChunks(
-    messages: BaseMessage[],
-    options: this['ParsedCallOptions'],
-  ): AsyncGenerator<ChatGenerationChunk> {
-    yield* convertNativeStream(this.provider, messages, options, this.streamMode);
-  }
-
   /** The base iterator starts LangChain callbacks before this adapter can suppress private data. */
   override async *_streamIterator(
     input: BaseLanguageModelInput,
@@ -69,7 +62,12 @@ export class NativeStreamingChatModel extends NativeChatModel {
     }
     const [, callOptions] = this._separateRunnableConfigFromCallOptionsCompat(options);
     const messages = BaseChatModel._convertInputToPromptValue(input).toChatMessages();
-    for await (const generationChunk of this._streamResponseChunks(messages, callOptions)) {
+    for await (const generationChunk of convertNativeStream(
+      this.provider,
+      messages,
+      callOptions,
+      this.streamMode,
+    )) {
       if (callOptions.signal?.aborted) throw cancelled();
       yield generationChunk.message as AIMessageChunk;
       // Check again before the next async-iterator read so an abort between chunks does not pull upstream.
@@ -127,7 +125,7 @@ async function* convertNativeStream(
   } catch (error) {
     if (options.signal?.aborted) throw cancelled();
     if (error instanceof NativeChatModelError) throw error;
-    if (error instanceof Error && error.name === 'AbortError') throw error;
+    if (error instanceof Error && error.name === 'AbortError') throw cancelled(); // Redact provider diagnostics.
     throw internalError();
   }
   if (!completed || typeof completed.text !== 'string' || !Array.isArray(completed.toolCalls))
@@ -155,13 +153,11 @@ function validateOptions(
   options: NativeChatModelCallOptions,
 ): void {
   const supported = new Set(
-    'signal timeout maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature'.split(
+    'signal maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature'.split(
       ' ',
     ),
   );
   if (Object.keys(options).some((key) => !supported.has(key)))
-    throw new NativeChatModelError(providerError('unsupported_capability'));
-  if (options.timeout !== undefined)
     throw new NativeChatModelError(providerError('unsupported_capability'));
   for (const control of ['maxOutputTokens', 'temperature'] as const) {
     if (options[control] !== undefined && !provider.capabilities.requestControls?.includes(control))
@@ -225,15 +221,20 @@ function validToolCall(value: unknown): value is ToolCall {
 }
 
 function callsMatch(streamed: readonly ToolCall[], completed: readonly ToolCall[]): boolean {
-  const matches = streamed.every((call, index) => {
-    const final = completed[index];
-    return (
-      call.id === final.id &&
-      call.name === final.name &&
-      JSON.stringify(call.arguments) === JSON.stringify(final.arguments)
-    );
-  });
-  return streamed.length === 0 || (streamed.length === completed.length && matches);
+  // Providers may publish calls only in the terminal response; streamed calls must reconcile exactly.
+  return (
+    streamed.length === 0 ||
+    (streamed.length === completed.length &&
+      streamed.every((call, index) => {
+        const final = completed[index];
+        return (
+          final !== undefined &&
+          call.id === final.id &&
+          call.name === final.name &&
+          JSON.stringify(call.arguments) === JSON.stringify(final.arguments)
+        );
+      }))
+  );
 }
 
 function providerError(code: ProviderError['code']): ProviderError {
