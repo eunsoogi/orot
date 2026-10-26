@@ -1,128 +1,7 @@
 import { openEncryptedStorage } from '../src';
 import { createManualHistoryRepository } from '../src/manualHistory';
 import { runMigrations } from '../src/migrations';
-import type { SqlDatabase, SqlResult, SqlTransaction, SqlValue } from '../src';
-
-declare const require: (specifier: string) => unknown;
-
-interface TestStatement {
-  all(...parameters: SqlValue[]): Array<Record<string, SqlValue>>;
-  run(...parameters: SqlValue[]): { changes: number };
-}
-
-interface TestConnection {
-  prepare(query: string): TestStatement;
-  exec(query: string): void;
-  close(): void;
-}
-
-interface DatabaseSyncConstructor {
-  new (path: string): TestConnection;
-}
-
-const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: DatabaseSyncConstructor };
-
-function createDatabase(): SqlDatabase {
-  const connection = new DatabaseSync(':memory:');
-  const execute = async (query: string, parameters: SqlValue[] = []): Promise<SqlResult> => {
-    const statement = connection.prepare(query);
-    if (/^(SELECT|PRAGMA)\b/i.test(query.trim())) return { rows: statement.all(...parameters) };
-    return { rows: [], rowsAffected: statement.run(...parameters).changes };
-  };
-  return {
-    execute,
-    async transaction(operation: (transaction: SqlTransaction) => Promise<void>) {
-      connection.exec('BEGIN IMMEDIATE');
-      const transaction: SqlTransaction = {
-        execute,
-        commit: () => ({ rows: [] }),
-        rollback: () => ({ rows: [] }),
-      };
-      try {
-        await operation(transaction);
-        connection.exec('COMMIT');
-      } catch (error) {
-        connection.exec('ROLLBACK');
-        throw error;
-      }
-    },
-    closeAsync: async () => connection.close(),
-  };
-}
-
-const recordedAt = '2026-09-15T10:20:00Z';
-const sampleRecord = {
-  id: 'synthetic-existing-record',
-  effectiveAt: recordedAt,
-  recordedAt,
-  ingestedAt: recordedAt,
-  provenance: { origin: 'user_reported', sourceRecordIds: [] },
-  reviewState: { status: 'unreviewed' },
-  sourceKind: 'user_note',
-  title: 'Synthetic existing record',
-};
-
-function createOptions(database: SqlDatabase) {
-  return {
-    name: 'orot-test.db',
-    keyStore: {
-      async getSecret() {
-        return 'ef'.repeat(32);
-      },
-      async setSecret() {},
-    },
-    randomBytes(target: Uint8Array) {
-      target.fill(1);
-    },
-    openDatabase() {
-      return database;
-    },
-  };
-}
-
-describe('manual history schema migration', () => {
-  it('upgrades v2 without changing records and stores unknown dates explicitly', async () => {
-    const database = createDatabase();
-    const repository = await openEncryptedStorage(createOptions(database));
-    await repository.put('source_record', sampleRecord);
-
-    await database.execute('DROP TABLE manual_history_entries');
-    await database.execute('PRAGMA user_version = 2');
-    await runMigrations(database);
-
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(3);
-    expect(await repository.get('source_record', sampleRecord.id)).toEqual(sampleRecord);
-    await database.execute(
-      'INSERT INTO manual_history_entries ' +
-        '(id, entry_kind, effective_date, date_known, recorded_at, ingested_at, supersedes_id, payload_json) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        'synthetic-unknown-date',
-        'note',
-        null,
-        0,
-        recordedAt,
-        recordedAt,
-        null,
-        JSON.stringify({ effectiveDate: { status: 'unknown' } }),
-      ],
-    );
-    const rows = await database.execute(
-      'SELECT effective_date, date_known FROM manual_history_entries WHERE id = ?',
-      ['synthetic-unknown-date'],
-    );
-    expect(rows.rows).toEqual([{ effective_date: null, date_known: 0 }]);
-    await expect(
-      database.execute(
-        'INSERT INTO manual_history_entries ' +
-          '(id, entry_kind, effective_date, date_known, recorded_at, ingested_at, supersedes_id, payload_json) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        ['synthetic-invalid-date', 'note', '2026-09-15', 0, recordedAt, recordedAt, null, '{}'],
-      ),
-    ).rejects.toThrow();
-    await database.closeAsync?.();
-  });
-});
+import { createDatabase, createOptions, recordedAt } from './manualHistoryTestSupport';
 
 describe('manual history repository', () => {
   it('stores unknown dates explicitly and returns user-reported RAG evidence', async () => {
@@ -143,7 +22,11 @@ describe('manual history repository', () => {
       ),
     ).toEqual({ rows: [{ effective_date: null, date_known: 0 }] });
     expect(
-      await records.manualHistory.list({ kind: 'note', dateStatus: 'unknown', search: 'synthetic' }),
+      await records.manualHistory.list({
+        kind: 'note',
+        dateStatus: 'unknown',
+        search: 'synthetic',
+      }),
     ).toEqual([entry]);
     expect(await records.manualHistory.getEvidence(entry.id)).toMatchObject({
       sourceEntryId: entry.id,
@@ -198,11 +81,16 @@ describe('manual history repository', () => {
         effectiveDateThrough: '2020-12-31',
       }),
     ).toEqual([corrected]);
+    expect(await records.manualHistory.list({ kind: 'diagnosis_history', limit: 1 })).toEqual([
+      corrected,
+    ]);
     const allVersions = await records.manualHistory.list({ includeSuperseded: true });
     expect(allVersions).toHaveLength(3);
     expect(allVersions).toEqual(expect.arrayContaining([procedure, original, corrected]));
     expect(await records.manualHistory.getEvidence(original.id)).toBeNull();
-    expect(await records.manualHistory.listEvidence({ search: 'current synthetic history' })).toMatchObject([
+    expect(
+      await records.manualHistory.listEvidence({ search: 'current synthetic history' }),
+    ).toMatchObject([
       {
         sourceEntryId: corrected.id,
         text: 'Current synthetic history\nCorrected synthetic details.',

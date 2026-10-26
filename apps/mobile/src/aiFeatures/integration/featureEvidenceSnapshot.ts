@@ -36,11 +36,13 @@ export async function loadFeatureMemorySnapshot(
       truncatedKinds: [],
     },
     records: [],
+    manualHistoryCandidates: [],
     persistedChunks: [],
     loadCurrentPersistedChunks: async () => [],
     staleArtifacts: [],
     loadCurrentStaleArtifacts: async () => [],
     repository: data.repository,
+    manualHistory: data.manualHistory,
     memoryRecords,
     memoryStorage: data.memoryStorage,
     registry,
@@ -58,6 +60,11 @@ export async function loadFeatureEvidenceSnapshot(
   if (signal.aborted)
     throw new Error('The local evidence request was cancelled.');
   const selection = await data.readCandidates(query, signal, scope);
+  const manualHistorySelection = await data.readManualHistoryCandidates(
+    query,
+    signal,
+    scope,
+  );
   const identities = selection.candidates.map(entry => ({
     kind: entry.kind,
     id: entry.record.id,
@@ -83,6 +90,7 @@ export async function loadFeatureEvidenceSnapshot(
   const records = [...selection.candidates, ...selection.dependencies];
   const identifiers = await data.findIdentifiers(
     JSON.stringify(records) +
+      JSON.stringify(manualHistorySelection.candidates) +
       JSON.stringify(
         memoryRecords.map(record => ({ text: record.text, meta: record.meta })),
       ),
@@ -97,11 +105,13 @@ export async function loadFeatureEvidenceSnapshot(
     records,
     candidateRecords: selection.candidates,
     hasMoreCandidates: selection.hasMoreCandidates,
+    manualHistoryCandidates: manualHistorySelection.candidates,
     persistedChunks,
     loadCurrentPersistedChunks: () => data.loadCurrentChunks(identities),
     staleArtifacts,
     loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(staleIdentities),
     repository: data.repository,
+    manualHistory: data.manualHistory,
     memoryRecords,
     memoryStorage: data.memoryStorage,
     registry,

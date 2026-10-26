@@ -1,12 +1,14 @@
-export type ManualHistoryKind =
-  | 'diagnosis_history'
-  | 'procedure'
-  | 'medication_context'
-  | 'note';
+export const MANUAL_HISTORY_KINDS = [
+  'diagnosis_history',
+  'procedure',
+  'medication_context',
+  'note',
+] as const;
+
+export type ManualHistoryKind = (typeof MANUAL_HISTORY_KINDS)[number];
 
 export type ManualHistoryDate =
-  | { status: 'known'; date: string }
-  | { status: 'unknown' };
+  { status: 'known'; date: string } | { status: 'unknown' };
 
 export interface ManualHistoryScreenRecord {
   id: string;
@@ -26,9 +28,22 @@ export type ManualHistoryScreenDraft = Pick<
   'kind' | 'title' | 'details' | 'effectiveDate'
 > & { correctionNote?: string };
 
+export interface ManualHistoryScreenFormDraft {
+  kind: ManualHistoryKind;
+  title: string;
+  details: string;
+  effectiveDateText: string;
+  dateUnknown: boolean;
+  correctionNote: string;
+}
+
 export interface ManualHistoryScreenRepository {
   list(): Promise<ManualHistoryScreenRecord[]>;
   create(input: ManualHistoryScreenDraft): Promise<ManualHistoryScreenRecord>;
-  correct(id: string, input: ManualHistoryScreenDraft): Promise<ManualHistoryScreenRecord>;
+  correct(
+    id: string,
+    input: ManualHistoryScreenDraft,
+  ): Promise<ManualHistoryScreenRecord>;
   history(id: string): Promise<ManualHistoryScreenRecord[]>;
+  delete(id: string): Promise<boolean>;
 }

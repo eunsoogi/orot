@@ -91,11 +91,10 @@ export const ManualHistoryCreateInputSchema = z
     }
   });
 
-export const ManualHistoryCorrectionInputSchema = z
-  .strictObject({
-    ...ManualHistoryContentSchema.shape,
-    correctionNote: NonEmptyTextSchema.optional(),
-  });
+export const ManualHistoryCorrectionInputSchema = z.strictObject({
+  ...ManualHistoryContentSchema.shape,
+  correctionNote: NonEmptyTextSchema.optional(),
+});
 
 export const ManualHistoryQuerySchema = z
   .strictObject({
@@ -104,6 +103,7 @@ export const ManualHistoryQuerySchema = z
     effectiveDateFrom: z.iso.date().optional(),
     effectiveDateThrough: z.iso.date().optional(),
     search: NonEmptyTextSchema.optional(),
+    limit: z.number().int().min(1).max(500).optional(),
     includeSuperseded: z.boolean().default(false),
   })
   .superRefine((query, context) => {

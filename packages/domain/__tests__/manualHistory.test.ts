@@ -60,7 +60,7 @@ describe('manual medical history', () => {
 
   it.each(['diagnosis_history', 'procedure', 'medication_context', 'note'] as const)(
     'supports the %s entry kind',
-    kind => {
+    (kind) => {
       expect(createEntry({ kind }).kind).toBe(kind);
     },
   );

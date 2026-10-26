@@ -6,7 +6,7 @@ import type { HealthContextScope } from '../healthEvidence/healthContext/scope';
 export interface SavedRecordSummarySource {
   readonly reference: EvidenceReference;
   readonly records: readonly {
-    readonly kind: RecordKind | 'reviewed_memory';
+    readonly kind: RecordKind | 'reviewed_memory' | 'manual_history';
     readonly id: string;
     readonly revision: string;
   }[];

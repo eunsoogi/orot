@@ -1,10 +1,24 @@
-import { openLocalStorage } from '../src/storage/secureDatabase';
+import {
+  openLocalAgentMemoryDatabase,
+  openLocalStorage,
+} from '../src/storage/secureDatabase';
+import { createLocalE5RagService } from '../src/rag/localE5RagService';
 import { openLocalManualHistoryRepository } from '../src/manualHistory/localRepository';
 import type { ManualHistoryScreenDraft } from '../src/manualHistory/types';
 
-jest.mock('../src/storage/secureDatabase', () => ({ openLocalStorage: jest.fn() }));
+jest.mock('../src/storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
+jest.mock('../src/rag/localE5RagService', () => ({
+  createLocalE5RagService: jest.fn(),
+}));
 
 const mockedOpenLocalStorage = jest.mocked(openLocalStorage);
+const mockedOpenLocalAgentMemoryDatabase = jest.mocked(
+  openLocalAgentMemoryDatabase,
+);
+const mockedCreateLocalE5RagService = jest.mocked(createLocalE5RagService);
 type LocalStorage = Awaited<ReturnType<typeof openLocalStorage>>;
 
 const originalEntry = {
@@ -40,13 +54,33 @@ const draft: ManualHistoryScreenDraft = {
 
 describe('openLocalManualHistoryRepository', () => {
   it('maps persisted records and forwards create, correction, and lineage calls', async () => {
+    const transaction = { execute: jest.fn() };
+    const database = {
+      async transaction(
+        operation: (value: typeof transaction) => Promise<void>,
+      ) {
+        await operation(transaction);
+      },
+    };
     const manualHistory = {
       list: jest.fn().mockResolvedValue([correctedEntry]),
       create: jest.fn().mockResolvedValue(originalEntry),
       correct: jest.fn().mockResolvedValue(correctedEntry),
       history: jest.fn().mockResolvedValue([originalEntry, correctedEntry]),
+      delete: jest.fn().mockResolvedValue(true),
     };
-    mockedOpenLocalStorage.mockResolvedValue({ manualHistory } as unknown as LocalStorage);
+    const deleteChunks = jest.fn().mockResolvedValue(undefined);
+    mockedOpenLocalStorage.mockResolvedValue({
+      manualHistory,
+    } as unknown as LocalStorage);
+    mockedOpenLocalAgentMemoryDatabase.mockResolvedValue(
+      database as unknown as Awaited<
+        ReturnType<typeof openLocalAgentMemoryDatabase>
+      >,
+    );
+    mockedCreateLocalE5RagService.mockReturnValue({
+      deleteChunks,
+    } as unknown as ReturnType<typeof createLocalE5RagService>);
 
     const repository = await openLocalManualHistoryRepository();
 
@@ -99,5 +133,62 @@ describe('openLocalManualHistoryRepository', () => {
       }),
     ]);
     expect(manualHistory.history).toHaveBeenCalledWith(correctedEntry.id);
+
+    await expect(repository.delete(correctedEntry.id)).resolves.toBe(true);
+    expect(manualHistory.history).toHaveBeenCalledWith(
+      correctedEntry.id,
+      transaction,
+    );
+    expect(manualHistory.delete).toHaveBeenCalledWith(
+      correctedEntry.id,
+      transaction,
+    );
+    expect(deleteChunks).toHaveBeenCalledWith(
+      [],
+      [originalEntry.id, correctedEntry.id],
+      transaction,
+    );
+  });
+
+  it('does not touch the evidence index when the requested entry is missing', async () => {
+    const transaction = { execute: jest.fn() };
+    const database = {
+      async transaction(
+        operation: (value: typeof transaction) => Promise<void>,
+      ) {
+        await operation(transaction);
+      },
+    };
+    const manualHistory = {
+      list: jest.fn(),
+      create: jest.fn(),
+      correct: jest.fn(),
+      history: jest
+        .fn()
+        .mockRejectedValue(new Error('Manual history entry not found.')),
+      delete: jest.fn(),
+    };
+    const deleteChunks = jest.fn();
+    mockedOpenLocalStorage.mockResolvedValue({
+      manualHistory,
+    } as unknown as LocalStorage);
+    mockedOpenLocalAgentMemoryDatabase.mockResolvedValue(
+      database as unknown as Awaited<
+        ReturnType<typeof openLocalAgentMemoryDatabase>
+      >,
+    );
+    mockedCreateLocalE5RagService.mockReturnValue({
+      deleteChunks,
+    } as unknown as ReturnType<typeof createLocalE5RagService>);
+
+    const repository = await openLocalManualHistoryRepository();
+
+    await expect(repository.delete('missing-entry')).resolves.toBe(false);
+    expect(manualHistory.history).toHaveBeenCalledWith(
+      'missing-entry',
+      transaction,
+    );
+    expect(manualHistory.delete).not.toHaveBeenCalled();
+    expect(deleteChunks).not.toHaveBeenCalled();
   });
 });

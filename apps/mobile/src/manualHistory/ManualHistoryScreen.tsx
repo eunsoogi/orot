@@ -1,46 +1,41 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
-import ManualHistoryEntryDetails from './ManualHistoryEntryDetails';
+import { t } from '../i18n';
+import { ManualHistoryEntryBrowser } from './ManualHistoryEntryBrowser';
 import ManualHistoryForm from './ManualHistoryForm';
-import type { ManualHistoryScreenDraft, ManualHistoryScreenRecord, ManualHistoryScreenRepository } from './types';
+import { useManualHistoryDraftState } from './useManualHistoryDraftState';
+import type {
+  ManualHistoryScreenDraft,
+  ManualHistoryScreenFormDraft,
+  ManualHistoryScreenRecord,
+  ManualHistoryScreenRepository,
+} from './types';
 
 interface ManualHistoryScreenProps {
   repository: ManualHistoryScreenRepository;
   onBack: () => void;
 }
 
-const KIND_LABELS: Record<ManualHistoryScreenRecord['kind'], string> = {
-  diagnosis_history: 'Diagnosis or history',
-  procedure: 'Procedure',
-  medication_context: 'Medication context',
-  note: 'Free-form note',
-};
-
-function entryStatus(entry: ManualHistoryScreenRecord): string {
-  const review = entry.reviewState.status === 'unreviewed'
-    ? 'Unreviewed'
-    : entry.reviewState.status === 'needs_review'
-      ? 'Needs review'
-      : 'Reviewed';
-  return 'User entered · ' + review;
-}
-
-function dateLabel(entry: ManualHistoryScreenRecord): string {
-  return entry.effectiveDate.status === 'known'
-    ? 'Effective date: ' + entry.effectiveDate.date
-    : 'Effective date unknown';
-}
-
-export default function ManualHistoryScreen({ repository, onBack }: ManualHistoryScreenProps) {
+/** Keeps unsaved form values by target so closing a form does not discard its draft. */
+export default function ManualHistoryScreen({
+  repository,
+  onBack,
+}: ManualHistoryScreenProps) {
   const [entries, setEntries] = useState<ManualHistoryScreenRecord[]>([]);
-  const [selectedEntry, setSelectedEntry] = useState<ManualHistoryScreenRecord | null>(null);
+  const [selectedEntry, setSelectedEntry] =
+    useState<ManualHistoryScreenRecord | null>(null);
   const [history, setHistory] = useState<ManualHistoryScreenRecord[]>([]);
-  const [formEntry, setFormEntry] = useState<ManualHistoryScreenRecord | null>(null);
+  const [formEntry, setFormEntry] = useState<ManualHistoryScreenRecord | null>(
+    null,
+  );
+  const [formKey, setFormKey] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const { clearDraft, getDraft, recordDraft } =
+    useManualHistoryDraftState(saving);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -48,7 +43,7 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
     try {
       setEntries(await repository.list());
     } catch {
-      setError('Medical history could not be loaded. Try again.');
+      setError(t('manualHistory.error.load'));
     } finally {
       setLoading(false);
     }
@@ -59,6 +54,7 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
   }, [reload]);
 
   function startNewEntry() {
+    setFormKey('new');
     setFormEntry(null);
     setError('');
     setNotice('');
@@ -66,6 +62,7 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
   }
 
   function startCorrection(entry: ManualHistoryScreenRecord) {
+    setFormKey('correction:' + entry.id);
     setFormEntry(entry);
     setError('');
     setNotice('');
@@ -78,7 +75,7 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
       setSelectedEntry(entry);
       setHistory(await repository.history(entry.id));
     } catch {
-      setError('Correction history could not be loaded. Try again.');
+      setError(t('manualHistory.error.history'));
     }
   }
 
@@ -92,14 +89,22 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
         ? await repository.correct(previous.id, input)
         : await repository.create(input);
     } catch {
-      setError('Medical history could not be saved. Try again.');
+      setError(t('manualHistory.error.save'));
       setSaving(false);
       return;
     }
 
     setFormOpen(false);
+    if (formKey) {
+      clearDraft(formKey);
+    }
+    setFormKey(null);
     setFormEntry(null);
-    setNotice(previous ? 'Correction saved. Earlier versions are preserved.' : 'Medical history saved.');
+    setNotice(
+      previous
+        ? t('manualHistory.notice.corrected')
+        : t('manualHistory.notice.saved'),
+    );
     if (previous) {
       setSelectedEntry(saved);
       setHistory([]);
@@ -109,74 +114,112 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
       try {
         setHistory(await repository.history(saved.id));
       } catch {
-        setError('Correction saved, but correction history could not be loaded. Reopen the entry to retry.');
+        setError(t('manualHistory.error.correctedHistory'));
       }
     }
     setSaving(false);
   }
 
-  const initialValue = formEntry
-    ? {
-        kind: formEntry.kind,
-        title: formEntry.title,
-        details: formEntry.details,
-        effectiveDate: formEntry.effectiveDate,
-      }
-    : undefined;
+  const saveFormDraft = useCallback(
+    (draft: ManualHistoryScreenFormDraft) => {
+      if (formKey) recordDraft(formKey, draft, formEntry);
+    },
+    [formEntry, formKey, recordDraft],
+  );
+
+  async function deleteEntry() {
+    if (!selectedEntry) return;
+    setSaving(true);
+    setError('');
+    try {
+      const deleted = await repository.delete(selectedEntry.id);
+      if (!deleted) throw new Error('The entry is no longer available.');
+      setSelectedEntry(null);
+      setHistory([]);
+      setNotice(t('manualHistory.notice.deleted'));
+      await reload();
+    } catch {
+      setError(t('manualHistory.error.delete'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const initialValue = formKey ? getDraft(formKey) : undefined;
+  const correctionInitialValue: ManualHistoryScreenFormDraft | undefined =
+    formEntry
+      ? {
+          kind: formEntry.kind,
+          title: formEntry.title,
+          details: formEntry.details,
+          effectiveDateText:
+            formEntry.effectiveDate.status === 'known'
+              ? formEntry.effectiveDate.date
+              : '',
+          dateUnknown: formEntry.effectiveDate.status === 'unknown',
+          correctionNote: '',
+        }
+      : undefined;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" testID="manual-history-scroll">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      testID="manual-history-scroll"
+    >
       <View style={styles.topBar}>
-        <Text accessibilityRole="header" style={styles.title} testID="manual-history-title">
-          Medical history
+        <Text
+          accessibilityRole="header"
+          style={styles.title}
+          testID="manual-history-title"
+        >
+          {t('manualHistory.title')}
         </Text>
-        <Button onPress={onBack} testID="manual-history-back" title="Back" />
-      </View>
-      <Text style={styles.message}>Keep important health history on this device.</Text>
-      <Text style={styles.provenanceNote}>Entries are user-entered and unreviewed.</Text>
-      {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
-      {error ? <Text accessibilityRole="alert" testID="manual-history-error">{error}</Text> : null}
-
-      {loading ? (
-        <Text testID="manual-history-loading">Loading medical history…</Text>
-      ) : error && entries.length === 0 ? (
-        <Button onPress={reload} testID="manual-history-retry" title="Try again" />
-      ) : entries.length === 0 ? (
-        <Text testID="manual-history-empty">No medical history entries yet.</Text>
-      ) : (
-        entries.map(entry => (
-          <View key={entry.id} style={styles.card} testID={'manual-history-entry-' + entry.id}>
-            <Text style={styles.entryTitle}>{entry.title}</Text>
-            <Text>{KIND_LABELS[entry.kind]}</Text>
-            <Text testID={'manual-history-date-' + entry.id}>{dateLabel(entry)}</Text>
-            <Text>{entryStatus(entry)}</Text>
-            <Button
-              onPress={() => openDetails(entry)}
-              testID={'manual-history-details-' + entry.id}
-              title="Details and correction history"
-            />
-          </View>
-        ))
-      )}
-
-      {selectedEntry ? (
-        <ManualHistoryEntryDetails
-          entry={selectedEntry}
-          history={history}
-          onClose={() => {
-            setSelectedEntry(null);
-            setHistory([]);
-          }}
-          onCorrect={() => startCorrection(selectedEntry)}
+        <Button
+          onPress={onBack}
+          testID="manual-history-back"
+          title={t('manualHistory.back')}
         />
+      </View>
+      <Text style={styles.message}>{t('manualHistory.subtitle')}</Text>
+      <Text style={styles.provenanceNote}>{t('manualHistory.provenance')}</Text>
+      {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" testID="manual-history-error">
+          {error}
+        </Text>
       ) : null}
+
+      <ManualHistoryEntryBrowser
+        deleting={saving}
+        entries={entries}
+        errorWithoutEntries={Boolean(error) && entries.length === 0}
+        history={history}
+        loading={loading}
+        onCloseDetails={() => {
+          setSelectedEntry(null);
+          setHistory([]);
+        }}
+        onCorrect={() => {
+          if (selectedEntry) startCorrection(selectedEntry);
+        }}
+        onDelete={deleteEntry}
+        onOpenDetails={openDetails}
+        onRetry={reload}
+        selectedEntry={selectedEntry}
+      />
       {!formOpen ? (
-        <Button onPress={startNewEntry} testID="manual-history-add" title="Add medical history" />
+        <Button
+          onPress={startNewEntry}
+          testID="manual-history-add"
+          title={t('manualHistory.add')}
+        />
       ) : (
         <ManualHistoryForm
-          initialValue={initialValue}
+          initialValue={initialValue ?? correctionInitialValue}
           isCorrection={formEntry !== null}
           onClose={() => setFormOpen(false)}
+          onDraftChange={saveFormDraft}
           onSave={saveEntry}
           saving={saving}
         />
@@ -186,11 +229,18 @@ export default function ManualHistoryScreen({ repository, onBack }: ManualHistor
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20, backgroundColor: '#f7f8fa', minHeight: '100%' },
-  topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  container: {
+    gap: 12,
+    padding: 20,
+    backgroundColor: '#f7f8fa',
+    minHeight: '100%',
+  },
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
   message: { color: '#45515f', fontSize: 15 },
   provenanceNote: { color: '#45515f', fontSize: 13 },
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  entryTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
 });

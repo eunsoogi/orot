@@ -1,26 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
-import type { ManualHistoryScreenDraft, ManualHistoryScreenRecord } from './types';
+import { t } from '../i18n';
+import type {
+  ManualHistoryScreenDraft,
+  ManualHistoryScreenRecord,
+} from './types';
+import { MANUAL_HISTORY_KINDS } from './types';
+import type { ManualHistoryScreenFormDraft } from './types';
 
 interface ManualHistoryFormProps {
-  initialValue?: ManualHistoryScreenDraft;
+  initialValue?: ManualHistoryScreenFormDraft;
   isCorrection: boolean;
   saving: boolean;
   onSave: (draft: ManualHistoryScreenDraft) => Promise<void>;
+  onDraftChange: (draft: ManualHistoryScreenFormDraft) => void;
   onClose: () => void;
 }
-
-const KIND_LABELS: Record<ManualHistoryScreenRecord['kind'], string> = {
-  diagnosis_history: 'Diagnosis or history',
-  procedure: 'Procedure',
-  medication_context: 'Medication context',
-  note: 'Free-form note',
-};
 
 function isIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(value + 'T00:00:00.000Z');
-  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+  return (
+    !Number.isNaN(parsed.valueOf()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }
 
 export default function ManualHistoryForm({
@@ -28,6 +31,7 @@ export default function ManualHistoryForm({
   isCorrection,
   saving,
   onSave,
+  onDraftChange,
   onClose,
 }: ManualHistoryFormProps) {
   const [kind, setKind] = useState<ManualHistoryScreenRecord['kind']>(
@@ -36,19 +40,42 @@ export default function ManualHistoryForm({
   const [title, setTitle] = useState(initialValue?.title ?? '');
   const [details, setDetails] = useState(initialValue?.details ?? '');
   const [effectiveDate, setEffectiveDate] = useState(
-    initialValue?.effectiveDate.status === 'known' ? initialValue.effectiveDate.date : '',
+    initialValue?.effectiveDateText ?? '',
   );
-  const [dateUnknown, setDateUnknown] = useState(initialValue?.effectiveDate.status === 'unknown');
-  const [correctionNote, setCorrectionNote] = useState('');
+  const [dateUnknown, setDateUnknown] = useState(
+    initialValue?.dateUnknown ?? false,
+  );
+  const [correctionNote, setCorrectionNote] = useState(
+    initialValue?.correctionNote ?? '',
+  );
   const [validationError, setValidationError] = useState('');
+
+  useEffect(() => {
+    onDraftChange({
+      kind,
+      title,
+      details,
+      effectiveDateText: effectiveDate,
+      dateUnknown,
+      correctionNote,
+    });
+  }, [
+    correctionNote,
+    dateUnknown,
+    details,
+    effectiveDate,
+    kind,
+    onDraftChange,
+    title,
+  ]);
 
   async function save() {
     if (!title.trim() || !details.trim()) {
-      setValidationError('Enter a title and details.');
+      setValidationError(t('manualHistory.form.validation.required'));
       return;
     }
     if (!dateUnknown && !isIsoDate(effectiveDate)) {
-      setValidationError('Enter a valid effective date or mark the date unknown.');
+      setValidationError(t('manualHistory.form.validation.date'));
       return;
     }
 
@@ -69,51 +96,61 @@ export default function ManualHistoryForm({
   return (
     <View style={styles.form}>
       <Text accessibilityRole="header" style={styles.sectionTitle}>
-        {isCorrection ? 'Correct medical history' : 'New medical history'}
+        {isCorrection
+          ? t('manualHistory.form.correctTitle')
+          : t('manualHistory.form.newTitle')}
       </Text>
-      <Text style={styles.fieldLabel}>Entry type</Text>
-      {(Object.keys(KIND_LABELS) as ManualHistoryScreenRecord['kind'][]).map(value => (
+      <Text style={styles.fieldLabel}>{t('manualHistory.form.kind')}</Text>
+      {MANUAL_HISTORY_KINDS.map(value => (
         <Button
           key={value}
           onPress={() => setKind(value)}
           testID={'manual-history-kind-' + value}
-          title={(kind === value ? 'Selected: ' : '') + KIND_LABELS[value]}
+          title={
+            (kind === value ? '✓ ' : '') +
+            t(
+              ('manualHistory.kind.' +
+                value) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
+            )
+          }
         />
       ))}
       <TextInput
-        accessibilityLabel="Title"
+        accessibilityLabel={t('manualHistory.form.titleLabel')}
         onChangeText={setTitle}
-        placeholder="Title"
+        placeholder={t('manualHistory.form.titlePlaceholder')}
         style={styles.input}
         testID="manual-history-title-input"
         value={title}
       />
       <TextInput
-        accessibilityLabel="Details"
+        accessibilityLabel={t('manualHistory.form.detailsLabel')}
         multiline
         onChangeText={setDetails}
-        placeholder="Details"
+        placeholder={t('manualHistory.form.detailsPlaceholder')}
         returnKeyType="done"
         submitBehavior="blurAndSubmit"
         style={[styles.input, styles.detailsInput]}
         testID="manual-history-details-input"
         value={details}
       />
-      <Text style={styles.fieldLabel}>Effective date</Text>
+      <Text style={styles.fieldLabel}>{t('manualHistory.form.dateLabel')}</Text>
       {!dateUnknown ? (
         <TextInput
-          accessibilityLabel="Effective date"
+          accessibilityLabel={t('manualHistory.form.dateLabel')}
           onChangeText={value => {
             setEffectiveDate(value);
             setDateUnknown(false);
           }}
-          placeholder="YYYY-MM-DD"
+          placeholder={t('manualHistory.form.datePlaceholder')}
           style={styles.input}
           testID="manual-history-effective-date-input"
           value={effectiveDate}
         />
       ) : (
-        <Text testID="manual-history-date-unknown-selected">Date is unknown</Text>
+        <Text testID="manual-history-date-unknown-selected">
+          {t('manualHistory.form.dateUnknownSelected')}
+        </Text>
       )}
       <Button
         onPress={() => {
@@ -121,20 +158,27 @@ export default function ManualHistoryForm({
           if (!dateUnknown) setEffectiveDate('');
         }}
         testID="manual-history-date-unknown"
-        title={dateUnknown ? 'Enter a known date' : 'Date is unknown'}
+        title={
+          dateUnknown
+            ? t('manualHistory.form.enterKnownDate')
+            : t('manualHistory.form.markDateUnknown')
+        }
       />
       {isCorrection ? (
         <TextInput
-          accessibilityLabel="Optional correction note"
+          accessibilityLabel={t('manualHistory.form.correctionNoteLabel')}
           onChangeText={setCorrectionNote}
-          placeholder="Optional correction note"
+          placeholder={t('manualHistory.form.correctionNotePlaceholder')}
           style={styles.input}
           testID="manual-history-correction-note-input"
           value={correctionNote}
         />
       ) : null}
       {validationError ? (
-        <Text accessibilityRole="alert" testID="manual-history-validation-error">
+        <Text
+          accessibilityRole="alert"
+          testID="manual-history-validation-error"
+        >
           {validationError}
         </Text>
       ) : null}
@@ -142,9 +186,20 @@ export default function ManualHistoryForm({
         disabled={saving}
         onPress={save}
         testID="manual-history-save"
-        title={saving ? 'Saving…' : isCorrection ? 'Save correction' : 'Save medical history'}
+        title={
+          saving
+            ? t('manualHistory.form.saving')
+            : isCorrection
+              ? t('manualHistory.form.saveCorrection')
+              : t('manualHistory.form.save')
+        }
       />
-      <Button disabled={saving} onPress={onClose} testID="manual-history-form-close" title="Close" />
+      <Button
+        disabled={saving}
+        onPress={onClose}
+        testID="manual-history-form-close"
+        title={t('manualHistory.form.close')}
+      />
     </View>
   );
 }
@@ -153,6 +208,11 @@ const styles = StyleSheet.create({
   form: { backgroundColor: 'white', borderRadius: 10, gap: 10, padding: 14 },
   sectionTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
   fieldLabel: { color: '#17212b', fontWeight: '600' },
-  input: { borderColor: '#a8b3bf', borderRadius: 8, borderWidth: 1, padding: 10 },
+  input: {
+    borderColor: '#a8b3bf',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 10,
+  },
   detailsInput: { minHeight: 72, textAlignVertical: 'top' },
 });

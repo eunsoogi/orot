@@ -58,7 +58,7 @@ describe('dose-event source-time migration', () => {
 
       expect(await repository.get('dose_event', existingDose.id)).toEqual(existingDose);
       expect(await repository.get('dose_event', importedDose.id)).toEqual(importedDose);
-      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(10);
+      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(11);
       expect(
         (
           await database.execute(

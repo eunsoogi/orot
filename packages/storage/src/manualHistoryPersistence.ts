@@ -3,7 +3,8 @@ import type { ManualHistoryEntry } from '@orot/domain';
 import type { SqlExecutor, SqlValue } from './sql';
 
 export function decodeManualHistoryRow(row: Record<string, SqlValue>): ManualHistoryEntry {
-  if (typeof row.payload_json !== 'string') throw new Error('A stored manual history entry is invalid.');
+  if (typeof row.payload_json !== 'string')
+    throw new Error('A stored manual history entry is invalid.');
   let payload: unknown;
   try {
     payload = JSON.parse(row.payload_json) as unknown;
@@ -19,7 +20,7 @@ export function decodeManualHistoryRow(row: Record<string, SqlValue>): ManualHis
   }
 
   const known = entry.effectiveDate.status === 'known';
-  const effectiveDate = known ? entry.effectiveDate.date : null;
+  const effectiveDate = entry.effectiveDate.status === 'known' ? entry.effectiveDate.date : null;
   if (
     row.id !== entry.id ||
     row.entry_kind !== entry.kind ||
@@ -50,7 +51,9 @@ export async function readSuccessor(
   executor: SqlExecutor,
   id: string,
 ): Promise<ManualHistoryEntry | null> {
-  const result = await executor.execute(SELECT_MANUAL_HISTORY + 'WHERE supersedes_id = ? LIMIT 2', [id]);
+  const result = await executor.execute(SELECT_MANUAL_HISTORY + 'WHERE supersedes_id = ? LIMIT 2', [
+    id,
+  ]);
   if (result.rows.length > 1) throw new Error('Manual history correction lineage is invalid.');
   return result.rows.length === 0 ? null : decodeManualHistoryRow(result.rows[0]);
 }
@@ -68,7 +71,7 @@ export async function insertManualHistoryEntry(
     [
       entry.id,
       entry.kind,
-      dateKnown ? entry.effectiveDate.date : null,
+      entry.effectiveDate.status === 'known' ? entry.effectiveDate.date : null,
       dateKnown ? 1 : 0,
       entry.recordedAt,
       entry.ingestedAt,
