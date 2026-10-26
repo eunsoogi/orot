@@ -9,10 +9,41 @@ jest.mock('../e2e/graphIntegrationProbe', () => ({
     .fn()
     .mockResolvedValue({ invocations: 20, streams: 20, duplicateNodes: 0 }),
 }));
+jest.mock('../e2e/storePersistenceProbe', () => ({
+  runStorePersistenceOperation: jest.fn(),
+}));
 
 import { runDomainTestOperation } from '../e2e/domainTestOperations';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import { runAgentMemoryProbe } from '../src/memory/agentMemoryProbe';
+import { runStorePersistenceOperation } from '../e2e/storePersistenceProbe';
+
+test('registered persistence operations return the observed Store receipt and propagate failures', async () => {
+  const parameters = {
+    fixtureIdentifier: 'test-memory-fixture',
+    storePersistence: true,
+  };
+  const observed = {
+    storeReceipt: { graphSearches: 2, createdAt: 123 },
+    synthetic: true,
+  };
+  jest
+    .mocked(runStorePersistenceOperation)
+    .mockResolvedValueOnce(observed as never);
+  await expect(
+    runDomainTestOperation('memory-create', parameters),
+  ).resolves.toBe(observed);
+  expect(runStorePersistenceOperation).toHaveBeenLastCalledWith(
+    'memory-create',
+    parameters.fixtureIdentifier,
+  );
+  jest
+    .mocked(runStorePersistenceOperation)
+    .mockRejectedValueOnce(new Error('Store assertion failed'));
+  await expect(
+    runDomainTestOperation('memory-restart', parameters),
+  ).rejects.toThrow('Store assertion failed');
+});
 
 test('routes encrypted storage and deletion operations to their existing assertion boundaries', async () => {
   await runDomainTestOperation('storage-create', {});
