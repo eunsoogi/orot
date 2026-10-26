@@ -1,8 +1,5 @@
 import { validateGenerationOptions } from './chatOptions';
-import {
-  BaseChatModel,
-  type BaseChatModelCallOptions,
-} from '@langchain/core/language_models/chat_models';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, type BaseMessage, type BaseMessageLike } from '@langchain/core/messages';
 import type {
   BaseLanguageModelInput,
@@ -13,11 +10,17 @@ import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type {
   LanguageModelProvider,
-  ProviderError,
   ProviderErrorCode,
   StructuredOutputFormat,
+  TelemetryOutcome,
 } from '@orot/model-runtime';
 import { toLangChainMessages, toNativeMessages } from './messages';
+import {
+  NativeChatModelError,
+  unsupportedNativeCallOption as unsupported,
+} from './chatModelSupport';
+import type { NativeChatModelCallOptions } from './chatModelSupport';
+import { createCallbackTelemetrySink } from './telemetryCallbacks';
 import {
   createStructuredOutputRunnable,
   withJsonSchemaInstruction,
@@ -27,31 +30,8 @@ import {
   type StructuredOutputSchema,
 } from './structuredOutput';
 
-export interface NativeChatModelCallOptions extends BaseChatModelCallOptions {
-  readonly maxOutputTokens?: number;
-  readonly temperature?: number;
-  readonly responseFormat?: StructuredOutputFormat;
-}
-
-/** Preserve the provider's closed error classification without exposing its diagnostic payload. */
-export class NativeChatModelError extends Error {
-  readonly code: ProviderErrorCode;
-  readonly retryable: boolean;
-  constructor(error: ProviderError) {
-    super(`Native model invocation failed (${error.code}).`);
-    this.name = 'NativeChatModelError';
-    this.code = error.code;
-    this.retryable = error.retryable;
-  }
-}
-
-function unsupported(): never {
-  throw new NativeChatModelError({
-    code: 'unsupported_capability',
-    message: 'The invocation adapter does not support this option.',
-    retryable: false,
-  });
-}
+export { NativeChatModelError };
+export type { NativeChatModelCallOptions };
 
 /** Runnable invocation over an already selected, consent-gated provider. No provider selection,
  * tool binding, streaming strategy, structured-output strategy or consent is created here.
@@ -96,19 +76,22 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
   }
   /* eslint-enable no-dupe-class-members */
 
-  /** BaseChatModel.generate emits raw health messages to callbacks and ambient tracers.
-   * Own this boundary so invoke/generatePrompt remain private; provider telemetry stays upstream.
-   * No cache or retry wrapper may skip or duplicate an invocation's single provider dispatch. */
+  /** Keep raw messages and ambient tracers private while allowing opted-in metadata callbacks.
+   * No cache or retry wrapper may skip or duplicate the provider's single dispatch. */
   async generate(
     messages: BaseMessageLike[][],
     options?: string[] | Partial<NativeChatModelCallOptions>,
-    _callbacks?: Callbacks,
+    callbacks?: Callbacks,
   ): Promise<LLMResult> {
     if (Array.isArray(options)) unsupported();
+    const callOptions = {
+      ...(options ?? {}),
+      ...(callbacks === undefined ? {} : { callbacks }),
+    };
     const results: ChatResult[] = [];
     for (const input of messages) {
       const converted = NativeChatModel._convertInputToPromptValue(input).toChatMessages();
-      results.push(await this._generate(converted, options ?? {}));
+      results.push(await this._generate(converted, callOptions));
     }
     return { generations: results.map((result) => result.generations) };
   }
@@ -165,11 +148,22 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     responseFormat ??= options.responseFormat;
     const prepared = this.prepareInvocation(options);
     const provider = prepared.provider;
-    options = prepared.options;
+    // LangChain removes callbacks into RunnableConfig; the public generate override carries its
+    // explicit callback argument back here only for this safe custom-event boundary.
+    const telemetryOptions = prepared.options as this['ParsedCallOptions'] &
+      Pick<NativeChatModelCallOptions, 'callbacks'>;
+    const { externalTelemetryEnabled, callbacks, ...providerOptions } = telemetryOptions;
+    if (externalTelemetryEnabled !== undefined && typeof externalTelemetryEnabled !== 'boolean')
+      unsupported();
+    options = providerOptions;
     validateGenerationOptions(provider, options, responseFormat, unsupported);
     const signal = options.signal;
     if (signal?.aborted)
       throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
+    const telemetry = createCallbackTelemetrySink({
+      enabled: externalTelemetryEnabled,
+      callbacks,
+    });
     const request = {
       messages: toNativeMessages(messages).messages,
       ...(responseFormat === undefined ? {} : { responseFormat }),
@@ -178,59 +172,79 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
         : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
     };
-    let result;
+    const startedAt = Date.now();
+    let outcome: TelemetryOutcome = 'success';
+    let errorCode: ProviderErrorCode | undefined;
     try {
-      // Pass the signal through: the provider owns native cancellation and listener cleanup.
-      result = await provider.generate(request, { signal });
-    } catch (error) {
+      let result;
+      try {
+        // Pass the signal through: the provider owns native cancellation and listener cleanup.
+        result = await provider.generate(request, { signal });
+      } catch (error) {
+        if (signal?.aborted)
+          throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
+        if (error instanceof Error && error.name === 'AbortError') throw error;
+        if (error instanceof NativeChatModelError) throw error;
+        throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
+      }
       if (signal?.aborted)
         throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
-      if (error instanceof Error && error.name === 'AbortError') throw error;
-      if (error instanceof NativeChatModelError) throw error;
-      throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
+      if (!result.ok) throw new NativeChatModelError(result.error);
+      const response = result.value;
+      const usage = response.usage ?? undefined;
+      if (
+        usage !== undefined &&
+        (typeof usage !== 'object' ||
+          Array.isArray(usage) ||
+          ![usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
+            (count) => Number.isSafeInteger(count) && count >= 0,
+          ))
+      ) {
+        throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
+      }
+      const [converted] = toLangChainMessages([
+        { role: 'assistant', content: response.text, toolCalls: response.toolCalls },
+      ]);
+      if (!AIMessage.isInstance(converted)) throw new Error('Expected an assistant response.');
+      // Complete replies must be reusable as history; partial chunks remain rejected on input.
+      const message = new AIMessage({
+        content: converted.content,
+        tool_calls: converted.tool_calls,
+        response_metadata: { finish_reason: response.finishReason },
+        // Preserve provider totals verbatim. A missing usage object is not a zero-token response.
+        ...(usage === undefined
+          ? {}
+          : {
+              usage_metadata: {
+                input_tokens: usage.inputTokens,
+                output_tokens: usage.outputTokens,
+                total_tokens: usage.totalTokens,
+              },
+            }),
+      });
+      return {
+        result: { generations: [{ text: response.text, message }] },
+        ...(response.structuredOutput === undefined
+          ? {}
+          : { structuredOutput: response.structuredOutput }),
+        finishReason: response.finishReason,
+        hasToolCalls: response.toolCalls.length > 0,
+      };
+    } catch (error) {
+      if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        outcome = 'cancelled';
+      } else {
+        outcome = 'error';
+        errorCode = error instanceof NativeChatModelError ? error.code : 'internal_error';
+      }
+      throw error;
+    } finally {
+      telemetry.record({
+        operation: 'language-model.generate',
+        outcome,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        ...(outcome === 'error' ? { errorCode: errorCode ?? 'internal_error' } : {}),
+      });
     }
-    if (signal?.aborted)
-      throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
-    if (!result.ok) throw new NativeChatModelError(result.error);
-    const response = result.value;
-    const usage = response.usage ?? undefined;
-    if (
-      usage !== undefined &&
-      (typeof usage !== 'object' ||
-        Array.isArray(usage) ||
-        ![usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
-          (count) => Number.isSafeInteger(count) && count >= 0,
-        ))
-    ) {
-      throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
-    }
-    const [converted] = toLangChainMessages([
-      { role: 'assistant', content: response.text, toolCalls: response.toolCalls },
-    ]);
-    if (!AIMessage.isInstance(converted)) throw new Error('Expected an assistant response.');
-    // Complete replies must be reusable as history; partial chunks remain rejected on input.
-    const message = new AIMessage({
-      content: converted.content,
-      tool_calls: converted.tool_calls,
-      response_metadata: { finish_reason: response.finishReason },
-      // Preserve provider totals verbatim. A missing usage object is not a zero-token response.
-      ...(usage === undefined
-        ? {}
-        : {
-            usage_metadata: {
-              input_tokens: usage.inputTokens,
-              output_tokens: usage.outputTokens,
-              total_tokens: usage.totalTokens,
-            },
-          }),
-    });
-    return {
-      result: { generations: [{ text: response.text, message }] },
-      ...(response.structuredOutput === undefined
-        ? {}
-        : { structuredOutput: response.structuredOutput }),
-      finishReason: response.finishReason,
-      hasToolCalls: response.toolCalls.length > 0,
-    };
   }
 }
