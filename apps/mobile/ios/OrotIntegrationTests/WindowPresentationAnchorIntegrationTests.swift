@@ -79,7 +79,10 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
     @MainActor
     func testBridgeFallbackRejectsMultipleKeyWindowCandidates() throws {
         let window = try foregroundKeyWindow()
-        let otherCandidate = UIWindow(frame: window.bounds)
+        let scene = try XCTUnwrap(window.windowScene)
+        // The injected bridge candidate list must fail closed before it can choose either window.
+        let otherCandidate = UIWindow(windowScene: scene)
+        otherCandidate.frame = window.bounds
         XCTAssertNil(WindowPresentationAnchor.resolve(foregroundKeyWindows: [window, otherCandidate]))
     }
 

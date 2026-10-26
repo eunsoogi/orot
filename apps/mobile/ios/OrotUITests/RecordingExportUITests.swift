@@ -80,6 +80,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         let resizedPoint = try ExportDismissalGeometry.point(
             snapshot: resizedSnapshot,
             session: session,
+            applicationFrame: resizedApplicationFrame,
             nowMs: Date().timeIntervalSince1970 * 1000,
             preferredFrame: backgroundRow.frame,
         )
