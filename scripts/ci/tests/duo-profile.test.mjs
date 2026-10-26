@@ -47,7 +47,7 @@ test('Duo selects its supported runtime without changing SDK or ordinary destina
   }
 });
 
-test('Duo remains opt-in with its own product compatibility and exact native launch inventory', () => {
+test('Duo remains opt-in with its own product compatibility and exact native test inventory', () => {
   const duo = iosTestBuildSpec('duo');
   const core = iosTestBuildSpec('core');
   assert.equal(duo.productProfile, 'ios-test-duo');
@@ -74,6 +74,7 @@ test('Duo remains opt-in with its own product compatibility and exact native lau
   assert.deepEqual(buildInputs(duo), buildInputs(core));
   assert.deepEqual(iosTestInventory('duo'), [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
+    'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   ]);
   assert.throws(() => iosTestInventory('duo', 'integration'), /Unsupported/);
   assert.throws(() => iosTestInventory('duo', 'navigation'), /Unsupported/);

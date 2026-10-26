@@ -78,6 +78,7 @@ test('each profile declares unique existing cases and every test method is sched
     'microphone',
     'local-model',
     'provider-selection',
+    'duo',
   ]) {
     const inventory = iosTestInventory(profile);
     assert.ok(inventory.length > 0);
