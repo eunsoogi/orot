@@ -106,7 +106,11 @@ test('executes the model tool call and returns its matching tool result before a
   expect(requests[1]?.messages).toEqual(
     expect.arrayContaining([
       { role: 'assistant', content: '', toolCalls: [call] },
-      expect.objectContaining({ role: 'tool', toolCallId: call.id }),
+      expect.objectContaining({
+        role: 'tool',
+        toolCallId: call.id,
+        result: expect.objectContaining({ items: expect.any(Array) }),
+      }),
     ]),
   );
 });
