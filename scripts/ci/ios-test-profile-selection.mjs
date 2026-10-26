@@ -1,13 +1,18 @@
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
-/** Shared fixture cases keep the requested profile when it owns the full selection. */
-export function selectIosTestFixtureProfile(profile, fixtureProfiles, tests) {
+/** Shared UI identifiers keep the requested destination only when it owns every selected test. */
+export function selectIosTestProfileForSelection(
+  profile,
+  profileCandidates,
+  tests,
+  inventory = iosTestInventory,
+) {
   if (
-    fixtureProfiles.includes(profile) &&
-    tests.every((test) => iosTestInventory(profile).includes(test))
+    profileCandidates.includes(profile) &&
+    tests.every((test) => inventory(profile).includes(test))
   )
     return profile;
-  return fixtureProfiles.find((candidate) =>
-    tests.some((test) => iosTestInventory(candidate).includes(test)),
+  return profileCandidates.find((candidate) =>
+    tests.some((test) => inventory(candidate).includes(test)),
   );
 }

@@ -4,7 +4,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
 import { backupTests, iosTestInventory } from './ios-test-inventory.mjs';
-import { selectIosTestFixtureProfile } from './ios-test-profile-selection.mjs';
+import { selectIosTestProfileForSelection } from './ios-test-profile-selection.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
@@ -32,7 +32,9 @@ const tests = selected.length
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
 const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
-const fixtureSelection = selectIosTestFixtureProfile(profile, fixtureProfiles, tests);
+// Resolve Duo overlap only for a requested Duo run; other profiles keep their own selection contract.
+const selectableProfiles = profile === 'duo' ? [...fixtureProfiles, 'duo'] : fixtureProfiles;
+const fixtureSelection = selectIosTestProfileForSelection(profile, selectableProfiles, tests);
 const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
 const fixtureSession = /^[a-f0-9-]{36}$/i.test(
   process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION ?? '',
