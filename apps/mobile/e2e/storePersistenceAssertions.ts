@@ -51,13 +51,11 @@ export async function assertAbsent(
     (await store.get(foreign, 'profile')) === null,
     'deleted foreign profile returned',
   );
+  // Check every returned profile, including its final corrected text, while allowing the receipt row.
   requireProbe(
-    (
-      await store.search(namespace, {
-        query: correctedText,
-        filter: { text: correctedText },
-      })
-    ).length === 0,
+    (await store.search(namespace, { query: correctedText })).every(
+      item => item.key !== 'profile',
+    ),
     'deleted Store search returned',
   );
   requireProbe(

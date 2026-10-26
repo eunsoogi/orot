@@ -37,6 +37,10 @@ import {
   createAgentMemoryProbeFixture,
 } from '../src/memory/agentMemoryProbeFixtures';
 import { runStorePersistenceOperation } from '../e2e/storePersistenceProbe';
+import {
+  assertIsolation,
+  assertAbsent,
+} from '../e2e/storePersistenceAssertions';
 
 test('three native driver phases traverse the production graph and reject stale citations using the shared Store', async () => {
   const identifier = 'test-memory-12345678-1234-1234-1234-123456789012';
@@ -123,4 +127,69 @@ test('rejects unsupported phases before opening memory', async () => {
       'test-memory-12345678-1234-1234-1234-123456789012',
     ),
   ).rejects.toThrow('Unsupported');
+});
+
+test('native isolation assertions reject a search that ignores namespace even when text filtering is correct', async () => {
+  const storage = new PersistentMemoryStorage();
+  const embedder = createRememoriEmbedder(deterministicProvider);
+  const memory = await createAgentMemory({ storage, embedder });
+  const store = createAgentMemoryStoreView(
+    memory,
+    new RememoriLangGraphStore({ storage, embedder }),
+  );
+  const namespace = ['native-store-persistence', 'local'];
+  try {
+    await store.put(namespace, 'profile', { text: correctedText }, ['text']);
+    await store.put(
+      ['native-store-persistence', 'foreign'],
+      'profile',
+      { text: correctedText },
+      ['text'],
+    );
+    await expect(
+      assertIsolation(store, namespace, 'ordinary-memory-key'),
+    ).resolves.toBeUndefined();
+    const search = store.search.bind(store);
+    // Deliberately broken namespace handling retains the real Store's text filter.
+    store.search = (_namespace, options) => search([], options);
+    await expect(
+      assertIsolation(store, namespace, 'ordinary-memory-key'),
+    ).rejects.toThrow('namespace/search isolation failed');
+  } finally {
+    await store.stop();
+    await memory.close();
+  }
+});
+
+test('native absence assertions reject stale search results containing the last updated profile', async () => {
+  const storage = new PersistentMemoryStorage();
+  const embedder = createRememoriEmbedder(deterministicProvider);
+  const memory = await createAgentMemory({ storage, embedder });
+  const store = createAgentMemoryStoreView(
+    memory,
+    new RememoriLangGraphStore({ storage, embedder }),
+  );
+  const namespace = ['native-store-persistence', 'local'];
+  try {
+    await store.put(namespace, 'profile', { text: '수정된 외래 알림 기억' }, [
+      'text',
+    ]);
+    const stale = await store.search(namespace, { query: correctedText });
+    await store.delete(namespace, 'profile');
+    await expect(
+      assertAbsent(store, namespace, ['foreign'], 'ordinary-memory-key'),
+    ).resolves.toBeUndefined();
+    // Simulate an index retaining the updated row after key deletion, with functioning text filters.
+    store.search = async (_namespace, options) =>
+      stale.filter(
+        item =>
+          !options?.filter?.text || item.value.text === options.filter.text,
+      );
+    await expect(
+      assertAbsent(store, namespace, ['foreign'], 'ordinary-memory-key'),
+    ).rejects.toThrow('deleted Store search returned');
+  } finally {
+    await store.stop();
+    await memory.close();
+  }
 });

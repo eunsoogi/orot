@@ -91,7 +91,8 @@ export async function runStorePersistenceProbe(
       await store.put(
         foreign,
         'profile',
-        { text: '다른 이름공간의 합성 기억' },
+        // Identical content makes namespace isolation depend on scope, never on a text filter.
+        { text: correctedText },
         ['text'],
       );
       const item = await store.get(namespace, 'profile');
@@ -140,10 +141,11 @@ export async function runStorePersistenceProbe(
         (await memory.getByKey('profile')) === null,
         'Store row leaked into ordinary memory',
       );
+      const ordinary = await memory.recall(correctedText, {
+        minSimilarity: 0.999,
+      });
       requireProbe(
-        (await memory.recall(correctedText)).every(
-          hit => hit.text !== '다른 이름공간의 합성 기억',
-        ),
+        ordinary.length === 1 && ordinary[0]?.id === legacy.value.id,
         'Store text leaked into ordinary recall',
       );
       const original = await probeStoreWorkflow({
