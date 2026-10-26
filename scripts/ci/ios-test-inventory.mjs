@@ -10,10 +10,11 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
-  // Notification privacy, trigger identity and cold-start delivery remain native obligations.
+  // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testFractionalTimestampsNeverRoundDeliveryEarlierThanTheSelectedOffset',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testPendingReplacementUsesOneRequestAndCancellationRemovesIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
@@ -186,13 +187,15 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This opt-in profile covers host launch, the geometry bridge, and root navigation; broader Duo screen coverage has its own acceptance boundary.
+  // This opt-in profile covers host launch, Duo geometry, root and contextual navigation, departure guards and keyboard Save behavior.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
       'OrotUITests/TestHostConnectionTests/testHostLaunches',
       'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
       'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+      'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
+      'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
     ];
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();

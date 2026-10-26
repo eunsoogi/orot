@@ -30,6 +30,14 @@ final class StandardAdapterIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(usage["input_tokens"] as? Int, 7)
         XCTAssertEqual(usage["output_tokens"] as? Int, 3)
         XCTAssertEqual(usage["total_tokens"] as? Int, 10)
+        let graph = try XCTUnwrap(result["graph"] as? [String: Any])
+        XCTAssertEqual(graph["status"] as? String, "result")
+        XCTAssertEqual(graph["toolCallId"] as? String, "call_hermes_graph")
+        XCTAssertEqual(graph["toolMessageCallId"] as? String, "call_hermes_graph")
+        XCTAssertEqual(graph["searchCalls"] as? Int, 1)
+        XCTAssertEqual(graph["modelCalls"] as? Int, 2)
+        XCTAssertEqual(graph["messageRoundTrip"] as? Bool, true)
+        XCTAssertEqual(graph["summary"] as? String, "Source found.")
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
         attachment.name = "standard-adapter-native-receipt"
         attachment.lifetime = .keepAlways

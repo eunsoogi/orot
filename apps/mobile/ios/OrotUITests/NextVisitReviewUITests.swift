@@ -85,6 +85,17 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     func testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion() throws {
+        try verifyKeyboardSavePosition(expectsRightRail: false)
+    }
+
+    @MainActor
+    func testDuoRightRailKeepsKeyboardSaveInsideTheContentLane() throws {
+        try verifyKeyboardSavePosition(expectsRightRail: true)
+    }
+
+    /// The Duo inventory selects right-rail assertions; the shared iPhone fixture checks keyboard reachability only.
+    @MainActor
+    private func verifyKeyboardSavePosition(expectsRightRail: Bool) throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -95,6 +106,10 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
+        if expectsRightRail {
+            XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
+            XCTAssertGreaterThan(back.toolbar.frame.midX, app.frame.midX)
+        }
         XCTAssertFalse(node(app, "next-visit-questions-back").exists)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-appointment-time")))
         XCTAssertEqual(node(app, "next-visit-provider-select").label, "AI 선택 또는 변경, 합성 UI 검사 제공자")
@@ -121,6 +136,10 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(keyboard.minY, keyboardTop)
         XCTAssertLessThanOrEqual(keyboard.maxY, keyboardTop + keyboardHeight + 1)
         let save = try NavigationUITestConditions.navigationAction(app, "next-visit-review-save")
+        if expectsRightRail {
+            // Duo keeps the narrow contextual host in its lane while Save remains in content above the keyboard.
+            XCTAssertLessThan(save.toolbar.frame.maxX, back.toolbar.frame.minX)
+        }
         XCTAssertLessThanOrEqual(save.control.frame.maxY, keyboardTop)
         capture(app, "visit-questions-keyboard-save-action")
         try NavigationUITestConditions.tapNavigation(app, "next-visit-review-save")
