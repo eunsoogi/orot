@@ -149,6 +149,24 @@ it('drains cold-start and foreground taps through a guarded route for the exact 
   expect(controller.getSnapshot().routes).toHaveLength(2);
 });
 
+it('does not retry a reminder tap after its own navigation guard is declined', async () => {
+  const { runtime, controller, guard, target } = setup();
+  guard.mockResolvedValueOnce(false);
+  jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce(target);
+  await render(
+    <AppointmentReminderProvider runtime={runtime}>
+      <AppointmentReminderDeliveryHost controller={controller} />
+    </AppointmentReminderProvider>,
+  );
+  await waitFor(() => expect(guard).toHaveBeenCalledTimes(1));
+
+  const wake = jest.mocked(subscribeAppointmentReminderOpened).mock.calls[0][0];
+  await act(async () => wake());
+
+  expect(guard).toHaveBeenCalledTimes(1);
+  expect(runtime.targets.size).toBe(0);
+});
+
 it('rejects a tap cancelled while the navigation confirmation is open', async () => {
   const { runtime, store, controller, guard, target } = setup();
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});

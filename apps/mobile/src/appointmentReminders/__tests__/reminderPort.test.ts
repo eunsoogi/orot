@@ -77,7 +77,9 @@ function deliverySetup() {
     loadAppointments: jest.fn(async (): Promise<readonly Appointment[]> => [
       appointment,
     ]),
-    confirmNavigation: jest.fn(async () => true),
+    confirmNavigation: jest.fn(
+      async (): Promise<'approved' | 'declined' | 'busy'> => 'approved',
+    ),
     openVisitPreparation: jest.fn(() => true),
     onUnavailable: jest.fn(),
   };
@@ -106,7 +108,7 @@ it('does not open a visit cancelled while the existing navigation guard is await
     port.loadAppointments.mockResolvedValue([
       { ...appointment, status: 'cancelled' },
     ]);
-    return true;
+    return 'approved';
   });
   await expect(deliver()).resolves.toBe('stale');
   expect(port.openVisitPreparation).not.toHaveBeenCalled();
@@ -115,7 +117,7 @@ it('does not open a visit cancelled while the existing navigation guard is await
 
 it('does not navigate or retry unsolicited after the user declines to leave active work', async () => {
   const { port, deliver } = deliverySetup();
-  port.confirmNavigation.mockResolvedValueOnce(false);
+  port.confirmNavigation.mockResolvedValueOnce('declined');
   await expect(deliver()).resolves.toBe('declined');
   await expect(deliver()).resolves.toBe('empty');
   expect(port.openVisitPreparation).not.toHaveBeenCalled();

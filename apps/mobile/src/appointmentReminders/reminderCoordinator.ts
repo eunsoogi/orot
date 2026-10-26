@@ -132,8 +132,8 @@ export class AppointmentReminderCoordinator {
 export interface AppointmentReminderDeliveryPort {
   consumeTarget(): Promise<unknown>;
   loadAppointments(): Promise<readonly Appointment[]>;
-  /** Uses the existing navigation leave guard; a notification cannot discard active work. */
-  confirmNavigation(): Promise<boolean>;
+  /** A busy navigation is retried later; an explicit decline ends this tap. */
+  confirmNavigation(): Promise<'approved' | 'declined' | 'busy'>;
   /** Synchronous commit after revalidation; opening the screen must not start AI work. */
   openVisitPreparation(appointment: Appointment): boolean;
   onUnavailable(reason: 'stale' | 'error'): void;
@@ -170,7 +170,9 @@ export function createAppointmentReminderDelivery(
             port.onUnavailable('stale');
             return 'stale';
           }
-          if (!(await port.confirmNavigation())) {
+          const navigation = await port.confirmNavigation();
+          if (navigation === 'busy') return 'deferred';
+          if (navigation === 'declined') {
             // A user's declined leave prompt cancels this tap, not their draft.
             retained = null;
             return 'declined';
