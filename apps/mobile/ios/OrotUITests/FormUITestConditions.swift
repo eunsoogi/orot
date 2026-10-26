@@ -8,19 +8,20 @@ enum FormUITestConditions {
         app.textViews.matching(identifier: identifier).firstMatch
     }
 
-    /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
-    /// Noninteractive text callers must prove rendered visibility separately when opting out of hit testing.
+    /// AX can mark a keyboard-covered control hittable; require measured viewport containment before a tap.
+    /// Journal callers also exclude floating navigation buttons; noninteractive text must prove rendered visibility separately.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
         let scroll = UITestConditions.element(app, scrollID)
-        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding)
+        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding, observeFocusGesture: observeFocusGesture)
     }
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
+        let journalScroll = scroll.identifier == "symptoms-scroll"
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
         for attempt in 0 ... 16 {
             let keyboard = app.keyboards.firstMatch
@@ -30,15 +31,19 @@ enum FormUITestConditions {
             let keyboardFrame = keyboard.exists ? keyboard.frame : nil
             let targetFrame = target.exists ? target.frame : nil
             lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
-            guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame, reservedKeyboard: focusedKeyboardFrame) else {
+            let controls = journalScroll ? navigationControlFrames(app) : nil
+            let usableScroll = journalScroll ? unobstructedScrollFrame(scrollFrame, target: targetFrame, in: app, controls: controls) : scrollFrame
+            guard let geometry = FormScrollGeometry.current(application: applicationFrame, scroll: usableScroll, keyboard: keyboardFrame, input: journalScroll ? targetFrame : nil, referenceSize: referenceSize, reservedKeyboard: journalScroll ? nil : focusedKeyboardFrame) else {
                 XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
                 return nil
             }
+            lastObservation += ", usableViewport=\(geometry.viewport), focusedViewport=\(String(describing: focusedViewport))"
             if let targetFrame, geometry.contains(targetFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
                 // Reuse this exact successful observation if focus later clips the AX frame.
                 return targetFrame
             }
             if attempt == 16 {
+                observeFocusGesture?("reveal-exhausted", focusedKeyboardFrame)
                 break
             }
             let position: CGFloat?
@@ -49,11 +54,15 @@ enum FormUITestConditions {
                 lastObservation += ", excluded=\(excludedFrame)"
                 position = geometry.horizontalPosition(outside: excludedFrame)
             } else {
-                position = focusedKeyboardFrame == nil ? horizontalPosition : targetFrame.flatMap { geometry.horizontalPosition(outside: $0) }
+                position = avoidTarget || focusedKeyboardFrame != nil ? targetFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
             }
-            guard let position, let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: position, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) else {
+            guard let position, var gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: position, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) else {
                 XCTFail("The form gesture has invalid coordinates")
                 return nil
+            }
+            if journalScroll {
+                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, target: targetFrame, controls: controls ?? [], start: gesture.start, end: gesture.end) else { return nil }
+                gesture = gutter
             }
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
             let origin = app.coordinate(withNormalizedOffset: .zero)
@@ -62,24 +71,40 @@ enum FormUITestConditions {
             // Default-speed short drags can move a tall row beyond the opposite edge. Use slow movement only
             // once the target intersects the viewport; keep fast travel, containment, hit testing and the gesture budget.
             let velocity: XCUIGestureVelocity = targetFrame.map { geometry.viewport.intersects($0) } == true ? .slow : .default
+            if stopAfterFirstFocusDrag {
+                print("Journal single focus drag start=\(gesture.start), end=\(gesture.end), velocity=\(velocity)")
+            }
             XCTContext.runActivity(named: "Measured form scroll \(attempt + 1): \(lastObservation)") { _ in
+                // Observe the same reserved boundary around the existing gesture, without changing its coordinates or budget.
+                observeFocusGesture?("before-scroll-\(attempt + 1)", focusedKeyboardFrame)
+                observeFirstDrag?(applicationFrame, geometry.viewport, targetFrame, controls ?? [], gesture.start, gesture.end)
                 start.press(forDuration: 0.05, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
+                observeFocusGesture?("after-scroll-\(attempt + 1)", focusedKeyboardFrame)
+            }
+            // Opt-in measurement ends after this unchanged gesture; nil prevents refocus, editing, or another loop iteration.
+            if stopAfterFirstFocusDrag || observeFirstDrag != nil {
+                observeFocusGesture?("single-observation-complete", focusedKeyboardFrame)
+                return nil
             }
         }
         XCTFail("Control did not enter the measured form viewport: \(lastObservation)")
         return nil
     }
 
-    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {
+    /// Return exposure/edit failure so guarded callers stop before another field or a missing keyboard action.
+    @discardableResult
+    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String, observeCursorTap: ((String) -> Void)? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false) -> Bool {
         let replaceStartedAt = ProcessInfo.processInfo.systemUptime
         defer { recordTiming("replace-total", since: replaceStartedAt) }
         // Pass measured closures as explicit arguments so Swift binds `else` to each guard statement.
-        guard let reference = measure("reveal", { reveal(input, in: app, scrollID: scrollID) }) else { return }
+        guard let reference = measure("reveal", { reveal(input, in: app, scrollID: scrollID, observeFocusGesture: observeFocusGesture) }) else { return false }
         let current = measure("value-read") { input.value as? String ?? "" }
+        observeFocusGesture?("before-focus-tap", nil)
         measure("field-tap") { input.tap() }
+        observeFocusGesture?("after-focus-tap", nil)
         guard let focused = measure("focused-input", {
-            exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID)
-        }) else { return }
+            exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID, observeFocusGesture: observeFocusGesture, stopAfterFirstFocusDrag: stopAfterFirstFocusDrag)
+        }) else { return false }
         let shouldReplace = if current.isEmpty {
             false
         } else {
@@ -93,7 +118,17 @@ enum FormUITestConditions {
                 CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
                          dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
             }
+            // Only the journal needs an extra guard against its floating navigation buttons.
+            observeCursorTap?("before")
+            if scrollID == "symptoms-scroll" {
+                let tapPoint = CGPoint(x: focused.application.minX + point.dx, y: focused.application.minY + point.dy)
+                guard !navigationControlFrames(app).contains(where: { $0.contains(tapPoint) }) else {
+                    XCTFail("The cursor tap must not be covered by a floating navigation control: \(tapPoint)")
+                    return false
+                }
+            }
             measure("caret-tap") { app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap() }
+            observeCursorTap?("after")
             // Controlled fields can drop batched backspaces while rerendering.
             // Send one delete key through the focused app instead of re-resolving the input query per Character.
             // exact-empty below remains the only outcome check; do not retry a missed deletion.
@@ -102,7 +137,8 @@ enum FormUITestConditions {
                     app.typeText(XCUIKeyboardKey.delete.rawValue)
                 }
             }
-            measure("exact-empty") { exactValue(input, equals: "") }
+            let emptied = measure("exact-empty") { exactValue(input, equals: "") }
+            guard emptied || scrollID != "symptoms-scroll" else { return false }
         }
         if !text.isEmpty {
             // Controlled fields can drop batched input, so preserve per-character synchronization.
@@ -114,7 +150,7 @@ enum FormUITestConditions {
                 }
             }
         }
-        measure("exact-value") { exactValue(input, equals: text) }
+        return measure("exact-value") { exactValue(input, equals: text) }
     }
 
     /// Keep timing diagnostic-only; step names and durations exclude field text and identifiers.
@@ -129,32 +165,60 @@ enum FormUITestConditions {
         print("OROT_FORM_UI_TIMING {\"step\":\"\(step)\",\"elapsedMs\":\(elapsedMs)}")
     }
 
-    /// Focus can clip the AX frame. Keep the earlier observed height, reserve the observed occlusion, then independently verify the refocused input.
-    private static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String) -> (application: CGRect, input: CGRect)? {
+    /// Native navigation buttons consume touches while their transparent gaps pass through to the form.
+    private static func navigationControlFrames(_ app: XCUIApplication) -> [CGRect] {
+        let bar = UITestConditions.element(app, "navigation-action-bar-overlay")
+        guard bar.exists else { return [] }
+        return bar.descendants(matching: .button).allElementsBoundByIndex
+            .filter { $0.exists && $0.isHittable }.map(\.frame)
+    }
+
+    /// Bottom content padding permits scrolling past the floating bar; it does not make covered input pixels readable.
+    static func unobstructedScrollFrame(_ scroll: CGRect, target: CGRect?, in app: XCUIApplication, controls: [CGRect]? = nil) -> CGRect {
+        var usable = scroll
+        for control in controls ?? navigationControlFrames(app) where control.intersects(scroll) {
+            if let target, control.maxX <= target.minX || control.minX >= target.maxX {
+                continue
+            }
+            usable.size.height = max(0, min(usable.maxY, control.minY) - usable.minY)
+        }
+        return usable
+    }
+
+    /// Keep main's keyboard-present reveal rule for generic forms; the journal uses current navigation and input geometry.
+    private static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String, observeFocusGesture: ((String, CGRect?) -> Void)?, stopAfterFirstFocusDrag: Bool = false) -> (application: CGRect, input: CGRect)? {
+        let journal = scrollID == "symptoms-scroll"
         let keyboard = app.keyboards.firstMatch
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
         let scroll = UITestConditions.element(app, scrollID)
         let applicationFrame = app.frame
         let scrollFrame = scroll.frame
-        guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame) else {
+        let inputFrame = input.frame
+        let usableScroll = journal ? unobstructedScrollFrame(scrollFrame, target: inputFrame, in: app) : scrollFrame
+        guard let geometry = FormScrollGeometry.current(application: applicationFrame, scroll: usableScroll, keyboard: keyboardFrame, input: journal ? inputFrame : nil, referenceSize: referenceSize) else {
             XCTFail("The focused input has no finite keyboard viewport")
             return nil
         }
         // Record the frames already queried by containment, without another AX read or private input value.
         // Native activity timestamps pair these observations with the existing test video if editing fails.
-        let inputFrame = keyboardFrame.map { _ in input.frame }
         XCTContext.runActivity(named: "Focused form viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame)), input=\(String(describing: inputFrame)), viewport=\(geometry.viewport), referenceSize=\(referenceSize)") { _ in }
-        if let keyboardFrame, let inputFrame, !geometry.contains(inputFrame, referenceSize: referenceSize) {
-            guard let reservation = geometry.keyboardReservation(keyboardFrame, for: inputFrame, referenceSize: referenceSize) else {
-                XCTFail("The focused input has no finite occlusion boundary")
-                return nil
+        if journal {
+            if !geometry.contains(inputFrame, referenceSize: referenceSize) {
+                guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, avoidTarget: true, referenceSize: referenceSize, observeFocusGesture: observeFocusGesture, stopAfterFirstFocusDrag: stopAfterFirstFocusDrag) != nil else { return nil }
+                observeFocusGesture?("before-refocus-tap", nil)
+                input.tap()
+                observeFocusGesture?("after-refocus-tap", nil)
             }
-            // Dragging can dismiss the keyboard. Keep its observed space until refocus; a clipped slice cannot finish the reveal.
+            guard !stopAfterFirstFocusDrag else { return nil }
+            return FormFocusedInputConditions.verify(input, referenceSize: referenceSize, in: app, scroll: scroll, journal: true, observeFocusGesture: observeFocusGesture)
+        }
+        if let keyboardFrame, !geometry.contains(inputFrame, referenceSize: referenceSize) {
+            guard let reservation = geometry.keyboardReservation(keyboardFrame, for: inputFrame, referenceSize: referenceSize) else { XCTFail("The focused input has no finite occlusion boundary"); return nil }
+            // Preserve the original keyboard reservation during the generic form reveal.
             guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, focusedKeyboardFrame: reservation, referenceSize: referenceSize) != nil else { return nil }
             input.tap()
         }
-        // A reserved frame is only a scroll constraint, never evidence that the refocused editor is currently visible.
         let actualKeyboardFrame = keyboard.exists ? keyboard.frame : nil
         let actualApplicationFrame = app.frame
         let actualScrollFrame = scroll.frame
@@ -173,11 +237,12 @@ enum FormUITestConditions {
         return (application: actualApplicationFrame, input: actualInputFrame)
     }
 
-    private static func exactValue(_ input: XCUIElement, equals text: String) {
+    private static func exactValue(_ input: XCUIElement, equals text: String) -> Bool {
         // Native key synthesis has completed and waited for the app to idle. A missed edit
         // cannot finish later without another action; fail with its actual value instead of polling forever.
         let value = input.value as? String ?? ""
         let observed = text.isEmpty && value == input.placeholderValue ? "" : value
         XCTAssertEqual(observed, text, "The completed native edit must replace the entire input value")
+        return observed == text
     }
 }

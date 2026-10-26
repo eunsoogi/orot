@@ -11,6 +11,8 @@ import { healthkitSettingsKo } from './healthkitSettings';
 import { probeKo } from './probeKo';
 
 export const ko = {
+  'symptoms.title': '증상 일지',
+  'symptoms.description': '직접 기록한 증상과 경과',
   ...probeKo,
   ...backupKo,
   'app.welcome.title': '오롯',

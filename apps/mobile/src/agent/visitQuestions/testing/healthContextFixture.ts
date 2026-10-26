@@ -56,6 +56,7 @@ export async function visitHealthFixture(
     const { id, effectiveAt, ingestedAt, provenance, reviewState } =
       observation;
     await records.put('symptom_entry', {
+      status: 'active',
       id,
       effectiveAt,
       ingestedAt,

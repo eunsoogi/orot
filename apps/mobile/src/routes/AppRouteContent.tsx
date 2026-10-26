@@ -1,3 +1,5 @@
+import { SymptomsRoute } from '../symptoms/SymptomsRoute';
+import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -34,6 +36,7 @@ import type {
 export type { AppNavigationRoute } from './appNavigationRoute';
 
 interface AppRouteContentProps {
+  readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
   readonly selectTab: (tab: AppRootTab) => void;
@@ -70,6 +73,7 @@ interface AppRouteContentProps {
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
+  loadSymptoms,
   actions,
   activeTab,
   selectTab,
@@ -117,6 +121,7 @@ export function AppRouteContent({
       case 'records':
         return (
           <RecordsRoute
+            onOpenSymptoms={() => actions.push('symptoms')}
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
@@ -163,6 +168,10 @@ export function AppRouteContent({
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
+      );
+    case 'symptoms':
+      return (
+        <SymptomsRoute loadSymptoms={loadSymptoms} onBack={actions.onBack} />
       );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;

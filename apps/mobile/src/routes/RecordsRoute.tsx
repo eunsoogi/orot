@@ -6,6 +6,7 @@ import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 
 interface RecordsRouteProps {
+  readonly onOpenSymptoms: () => void;
   readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
@@ -13,6 +14,7 @@ interface RecordsRouteProps {
 
 /** Keeps recording and local records discoverable without manual HealthKit entry points. */
 export function RecordsRoute({
+  onOpenSymptoms,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
@@ -52,6 +54,27 @@ export function RecordsRoute({
         <Text style={styles.recordingActionTitle}>
           {t('records.newRecording')}
         </Text>
+      </Pressable>
+
+      {/* Self-reported symptoms stay separate from imported clinical records. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenSymptoms}
+        style={styles.healthCard}
+        testID="symptoms-open"
+      >
+        <View style={styles.healthIcon}>
+          <AppSymbol
+            name="square.and.pencil"
+            size={28}
+            color={appColors.primaryText}
+          />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{t('symptoms.title')}</Text>
+          <Text style={styles.cardSummary}>{t('symptoms.description')}</Text>
+        </View>
+        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
       </Pressable>
 
       {/* A separate library keeps health records reachable regardless of saved-recording count. */}
