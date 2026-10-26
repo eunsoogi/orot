@@ -9,6 +9,8 @@ const all = IOS_TEST_COHORT_NAMES;
 // The maintained plan includes recording-export UI and root-tab integration assertions.
 const recordingSource = [...recording, 'core-ui'];
 const navigationSource = [...ui, 'core-integration'];
+// The shared anchor affects its presentation, recording, and navigation consumers.
+const windowAnchorCohorts = ['core-integration', 'recording-evidence', 'navigation-features'];
 const questions = ['core-integration', 'questions', 'provider'];
 const calendar = ['core-integration', 'calendar', 'provider', 'questions'];
 const calendarUi = ['calendar', 'provider', 'questions'];
@@ -200,6 +202,8 @@ function nativeTestImpact(path) {
 
   if (path.includes('/OrotMobile.xcodeproj/')) return full('native-project-configuration');
   if (path.includes('/OrotMobile/')) {
+    if (lower === 'windowpresentationanchor.swift')
+      return impact(windowAnchorCohorts, 'current-window-presentation-anchor');
     if (/^(test|syntheticcalendar|testfixture|testcontrol|testoperation)/i.test(file))
       return full('shared-native-test-driver');
     if (/^(database|storage|sqlcipher|keychain|appdelegate)/i.test(file))

@@ -72,6 +72,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         let geometry = try XCTUnwrap(ready)
         let frame = geometry.frame
         let point = geometry.point
+        try assertCurrentWindowAnchor(app, marker: marker)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "actual-audio-share-sheet"
         screenshot.lifetime = .keepAlways
@@ -163,6 +164,34 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         let ready = NSPredicate { _, _ in UITestConditions.text(target).hasPrefix("{") }
         XCTAssertEqual(UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: nil)]), .completed)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(target).utf8)) as? [String: Any])
+    }
+
+    @MainActor
+    private func assertCurrentWindowAnchor(_ app: XCUIApplication, marker: XCUIElement) throws {
+        // The share controller and any UIKit popover must use the same window as the presenter that UIKit actually chose.
+        var anchor: [String: Any]?
+        var completion: [String: Any]?
+        let ready = NSPredicate { _, _ in
+            guard let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+                  let lifecycle = report["lifecycle"] as? [[String: Any]]
+            else { return false }
+            anchor = lifecycle.last(where: { $0["event"] as? String == "export-presentation-anchor" })
+            completion = lifecycle.last(where: { $0["event"] as? String == "export-presentation-completion" })
+            return anchor != nil && completion != nil
+        }
+        XCTAssertEqual(UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: nil)]), .completed, app.debugDescription)
+        let observation = try XCTUnwrap(anchor)
+        let presentation = try XCTUnwrap(completion)
+        XCTAssertEqual(observation["presenterSharesWindow"] as? Bool, true)
+        XCTAssertEqual(observation["sourceViewSharesWindow"] as? Bool, true)
+        XCTAssertEqual(observation["windowIsKey"] as? Bool, true)
+        XCTAssertEqual(observation["windowSceneIsForegroundActive"] as? Bool, true)
+        XCTAssertEqual(observation["sourceRectIntersectsWindow"] as? Bool, true)
+        if observation["popoverAvailable"] as? Bool == true {
+            XCTAssertEqual(observation["popoverConfigured"] as? Bool, true)
+        }
+        XCTAssertEqual(presentation["presenterMatches"] as? Bool, true)
+        XCTAssertEqual(presentation["presenterWindowMatches"] as? Bool, true)
     }
 
     @MainActor

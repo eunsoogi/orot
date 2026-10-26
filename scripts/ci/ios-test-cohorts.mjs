@@ -54,6 +54,7 @@ const cohorts = {
       'AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
       'AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
       'WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+      'OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     ],
   },
   'navigation-routes': {

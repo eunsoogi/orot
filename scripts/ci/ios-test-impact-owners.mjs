@@ -2,6 +2,14 @@
 export const maintainedNativeTestOwners = new Map([
   ['apps/mobile/ios/orotuitests/recordingexportuitests.swift', ['recording-evidence']],
   ['apps/mobile/ios/orotuitests/transcriptevidenceuitests.swift', ['recording-evidence']],
+  [
+    'apps/mobile/ios/orotuitests/orientationpresentationanchoruitests.swift',
+    ['navigation-features'],
+  ],
+  [
+    'apps/mobile/ios/orotintegrationtests/windowpresentationanchorintegrationtests.swift',
+    ['core-integration'],
+  ],
   ['apps/mobile/ios/orotuitests/pagedhealthrecordsuitests.swift', ['navigation-routes']],
   [
     'apps/mobile/ios/orotuitests/unifiedimportuitests.swift',

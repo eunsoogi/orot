@@ -84,6 +84,14 @@ test('maintained native tests select each cohort that owns their assertions', ()
   const cases = [
     ['apps/mobile/ios/OrotUITests/RecordingExportUITests.swift', ['recording-evidence']],
     ['apps/mobile/ios/OrotUITests/TranscriptEvidenceUITests.swift', ['recording-evidence']],
+    [
+      'apps/mobile/ios/OrotUITests/OrientationPresentationAnchorUITests.swift',
+      ['navigation-features'],
+    ],
+    [
+      'apps/mobile/ios/OrotIntegrationTests/WindowPresentationAnchorIntegrationTests.swift',
+      ['core-integration'],
+    ],
     ['apps/mobile/ios/OrotUITests/PagedHealthRecordsUITests.swift', ['navigation-routes']],
     [
       'apps/mobile/ios/OrotUITests/UnifiedImportUITests.swift',
@@ -136,6 +144,28 @@ test('source paths include cohorts owning their maintained native dependent test
       cohort: 'core-integration',
       identifier:
         'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
+    },
+    {
+      sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',
+      testPath:
+        'apps/mobile/ios/OrotIntegrationTests/WindowPresentationAnchorIntegrationTests.swift',
+      cohort: 'core-integration',
+      identifier:
+        'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
+    },
+    {
+      sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',
+      testPath: 'apps/mobile/ios/OrotUITests/RecordingExportUITests.swift',
+      cohort: 'recording-evidence',
+      identifier:
+        'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+    },
+    {
+      sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',
+      testPath: 'apps/mobile/ios/OrotUITests/OrientationPresentationAnchorUITests.swift',
+      cohort: 'navigation-features',
+      identifier:
+        'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     },
   ];
 

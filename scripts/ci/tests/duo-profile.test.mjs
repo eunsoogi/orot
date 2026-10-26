@@ -75,6 +75,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.deepEqual(iosTestInventory('duo'), [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+    'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   ]);
   assert.throws(() => iosTestInventory('duo', 'integration'), /Unsupported/);
   assert.throws(() => iosTestInventory('duo', 'navigation'), /Unsupported/);

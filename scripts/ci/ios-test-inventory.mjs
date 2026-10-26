@@ -48,6 +48,15 @@ const coreTests = [
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
+  // Presenters and popover sources must stay attached to the foreground window selected for UIKit.
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackRejectsMultipleKeyWindowCandidates',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testPopoverAnchorRejectsARegionOutsideItsWindow',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testMovingTheSourceRegionOutOfWindowInvalidatesTheAnchor',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testDetachedSourceViewInvalidatesTheResolvedAnchorBeforePresentation',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingTheKeyWindowInvalidatesTheResolvedAnchor',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingThePresentationStackInvalidatesTheResolvedPresenter',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
@@ -115,6 +124,7 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
   'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+  'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
   'OrotUITests/RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
@@ -173,12 +183,13 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This profile covers host launch and the explicit geometry bridge check; broader Duo screen coverage has its own acceptance boundary.
+  // Keep orientation and route-state verification on the separate iOS 27.1 Duo destination.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
       'OrotUITests/TestHostConnectionTests/testHostLaunches',
       'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+      'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     ];
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();
