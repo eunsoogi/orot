@@ -36,6 +36,11 @@ RCT_EXPORT_VIEW_PROPERTY(actions, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(onAction, RCTBubblingEventBlock)
 @end
 
+// Deliver window and reserved-region changes from the full-window geometry sensor.
+@interface RCT_EXTERN_MODULE (NavigationGeometryViewManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(onGeometryChange, RCTDirectEventBlock)
+@end
+
 @interface OrotAppMetadata : NSObject <RCTBridgeModule>
 @end
 @implementation OrotAppMetadata
