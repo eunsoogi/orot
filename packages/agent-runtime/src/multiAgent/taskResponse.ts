@@ -85,7 +85,7 @@ async function consumeInitialOutcome<TResult>(
     return { ...completeState(), modelCalls: state.modelCalls };
   }
 
-  const correctionRequest = buildTaskRequest(
+  const correctionRequest = await buildTaskRequest(
     context.options.provider,
     context.options.task,
     input,

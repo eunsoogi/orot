@@ -142,7 +142,7 @@ test('a pre-aborted request still cannot start planning or query approval', asyn
   expect(fixture.authorize).not.toHaveBeenCalled();
 });
 
-test('a correction does not reuse the initial research promise', () => {
+test('a correction does not reuse the initial research promise', async () => {
   const { options } = setup();
   const state = { ...initialState(options), modelCalls: 1 };
   const input = {
@@ -150,7 +150,7 @@ test('a correction does not reuse the initial research promise', () => {
     evidence: options.initialEvidence,
     research: responderResearchAvailability(options.execution, options.tools, state),
   };
-  const request = buildTaskRequest(
+  const request = await buildTaskRequest(
     options.provider,
     options.task,
     input,

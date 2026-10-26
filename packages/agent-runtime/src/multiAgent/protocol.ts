@@ -12,6 +12,7 @@ import type { JsonObject } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
 import { guidedSchema } from './guidedSchema';
 import { taskCitationSchema } from './citationSchema';
+import { formatResearcherPrompt } from './prompts';
 
 export type TaskRoleOutput<TResult> =
   | { readonly type: 'result'; readonly value: TResult; readonly citations: readonly unknown[] }
@@ -214,17 +215,8 @@ export function researcherPrompt(
   tools: readonly EvidenceSearchTool[],
   allowedScope: AllowedEvidenceScope,
   budget: MultiAgentBudget,
-): string {
-  return [
-    'Role: EvidenceResearcher. Choose one bounded, read-only evidence tool and its schema-limited input.',
-    'Return JSON with toolId, sourceKind, and input. Do not answer the user task or invent fields.',
-    'Search input must describe the missing task facts, not the protocol need label such as confirm_value.',
-    `Need: ${need}`,
-    `Task: ${request}`,
-    `Allowed source scope: ${JSON.stringify(allowedScope)}`,
-    `Allowlisted tools: ${JSON.stringify(tools)}`,
-    `Maximum results: ${budget.maxEvidenceItems}`,
-  ].join('\n');
+): Promise<string> {
+  return formatResearcherPrompt(request, need, tools, allowedScope, budget);
 }
 
 // Sorted keys make equality stable when provider JSON uses a different object-key order.
