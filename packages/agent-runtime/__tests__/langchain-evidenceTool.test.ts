@@ -17,11 +17,15 @@ describe('LangChain evidence search boundary', () => {
     expect(result).toBeInstanceOf(ToolMessage);
     expect(result.tool_call_id).toBe('call-1');
     expect(JSON.parse(result.content as string)).toEqual({ status: 'result', batch });
-    expect(domain.search).toHaveBeenCalledWith({
-      ...request,
-      input: { query: 'sleep' },
-      signal: context.signal,
-    });
+    // This fixture has no optional graph Store context.
+    expect(domain.search).toHaveBeenCalledWith(
+      {
+        ...request,
+        input: { query: 'sleep' },
+        signal: context.signal,
+      },
+      undefined,
+    );
     expect(context.revalidateEvidence).toHaveBeenCalledWith(
       batch.items.map(({ content: _content, ...reference }) => reference),
       context.signal,

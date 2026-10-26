@@ -11,8 +11,11 @@ import { localEvidenceFingerprint } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
-import type { EvidenceReference } from '@orot/agent-runtime';
-import type { EvidenceSearchTool } from '@orot/agent-runtime';
+import type {
+  EvidenceReference,
+  EvidenceSearchRuntime,
+  EvidenceSearchTool,
+} from '@orot/agent-runtime';
 import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
 import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
 import { createVisitHealthContext } from './healthContext';
@@ -32,6 +35,7 @@ export type VisitQuestionContextResult =
       readonly status: 'ready';
       readonly appointment: Appointment;
       readonly appointmentRevision: string;
+      readonly store?: EvidenceSearchRuntime['store'];
       readonly appointmentContext: {
         readonly effectiveAt: string;
         readonly timeZoneIdentifier: string | null;
@@ -48,6 +52,7 @@ export type VisitQuestionContextResult =
         maxEvidenceItems: number,
         sourceKind: VisitQuestionSearchSource,
         signal?: AbortSignal,
+        runtime?: EvidenceSearchRuntime,
       ) => Promise<VisitQuestionEvidenceCollection>;
       readonly revalidateEvidence: (
         citations: readonly VisitQuestionEvidenceItem[],
@@ -86,6 +91,7 @@ export async function prepareVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
   readonly queryService: VisitQuestionQueryPort;
+  readonly store?: EvidenceSearchRuntime['store'];
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
   readonly buildChunks: VisitQuestionChunkBuilder;
@@ -151,12 +157,13 @@ export async function prepareVisitQuestionContext(input: {
     maxEvidenceItems: number,
     sourceKind: VisitQuestionSearchSource,
     signal?: AbortSignal,
+    runtime?: EvidenceSearchRuntime,
   ) => {
     const searched = await searchVisitQuestionEvidence({
       query: searchQuery,
       maxEvidenceItems,
       sourceKind,
-      queryService: input.queryService,
+      store: runtime?.store,
       repository: input.repository,
       rag: input.rag,
       buildChunks,
@@ -198,6 +205,7 @@ export async function prepareVisitQuestionContext(input: {
     status: 'ready',
     appointment,
     appointmentRevision: localEvidenceFingerprint(appointment),
+    ...(input.store ? { store: input.store } : {}),
     appointmentContext: context,
     query,
     evidence,

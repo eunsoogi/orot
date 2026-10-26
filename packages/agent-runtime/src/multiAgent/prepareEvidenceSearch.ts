@@ -2,6 +2,7 @@ import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canReserveToolModelCall } from './evidenceToolModelBudget';
+import type { BaseStore } from '@langchain/langgraph/web';
 import { createLangChainEvidenceTool } from '../langchain/evidenceTool';
 import type { EvidenceSearchReservation } from '../langchain/evidenceTool';
 import type { EvidenceBatch, EvidenceSearchTool, ProviderStopObservation } from './contracts';
@@ -50,6 +51,7 @@ export async function invokePreparedEvidenceSearch<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   tool: EvidenceSearchTool,
+  store?: BaseStore,
 ): Promise<PreparedSearchResult> {
   const pending = state.pendingOperation;
   const input = context.researchInput;
@@ -64,8 +66,8 @@ export async function invokePreparedEvidenceSearch<TResult>(
     additionalModelCalls: tool.additionalModelCalls,
     // Preserve the domain receiver even when a service implements methods on its prototype.
     parseInput: (value) => tool.parseInput(value),
-    search: async (request) => {
-      const outcome = await tool.search(request);
+    search: async (request, runtime) => {
+      const outcome = await tool.search(request, runtime);
       if ('status' in outcome) return outcome;
       // Optional undefined fields are absent in JSON. Retain insertion order for
       // existing range/reference comparisons and checkpoint restoration after validation.
@@ -86,6 +88,7 @@ export async function invokePreparedEvidenceSearch<TResult>(
     }),
     revalidateEvidence: (references, signal) =>
       context.options.revalidateEvidence(references, signal),
+    store,
   });
   // Plain arguments keep native message conversion at its existing boundary. No graph
   // runnable config enters this private invocation, so query/evidence callbacks stay disabled.
