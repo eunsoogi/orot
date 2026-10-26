@@ -24,6 +24,7 @@ test('loads only the selected dose’s exact medication dependency even when reg
     }
     // IDs are table-local. An unrelated older symptom with the same ID is not a dose dependency.
     await repository.put('symptom_entry', {
+      status: 'active',
       id: 'linked-medication',
       effectiveAt: '2026-10-01T00:00:00Z',
       recordedAt: '2026-10-01T00:00:00Z',

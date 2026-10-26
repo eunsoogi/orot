@@ -129,6 +129,7 @@ export function buildFixtureRecords(fixtureId: string): FixtureRecords {
       ]),
       description: 'Synthetic intermittent headache reported; no cause or diagnosis recorded.',
       bodySite: 'head',
+      status: 'active',
     },
   ];
 

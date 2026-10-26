@@ -7,11 +7,13 @@ jest.mock('../../navigation', () => ({
 }));
 
 test('keeps recording and imported records visible without manual import actions', async () => {
+  const onOpenSymptoms = jest.fn();
   const onOpenRecording = jest.fn();
   const onOpenHealthLibrary = jest.fn();
   const onOpenSavedRecordings = jest.fn();
   await render(
     <RecordsRoute
+      onOpenSymptoms={onOpenSymptoms}
       onOpenSavedRecordings={onOpenSavedRecordings}
       onOpenRecording={onOpenRecording}
       onOpenHealthLibrary={onOpenHealthLibrary}
@@ -28,6 +30,8 @@ test('keeps recording and imported records visible without manual import actions
   expect(screen.queryByTestId('recording-library-panel')).toBeNull();
   await fireEvent.press(screen.getByTestId('records-open-saved-recordings'));
   expect(onOpenSavedRecordings).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('symptoms-open'));
+  expect(onOpenSymptoms).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
   expect(onOpenRecording).toHaveBeenCalledTimes(1);

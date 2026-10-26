@@ -129,7 +129,8 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         row.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-detail")))
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "transcript-panel")))
-        let duration = reveal(app, "recording-detail-duration")
+        // No editor can present a keyboard before this read-only detail control is revealed.
+        let duration = reveal(app, "recording-detail-duration", keyboardMayBeVisible: false)
         XCTAssertNotEqual(UITestConditions.text(duration), "길이 확인 불가")
         XCTAssertTrue(UITestConditions.element(app, "recording-detail-date").exists)
         XCTAssertTrue(UITestConditions.element(app, "recording-playback-button").exists)
@@ -176,8 +177,8 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45) -> XCUIElement {
-        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop, maximumScrollFraction: maximumScrollFraction)
+    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45, keyboardMayBeVisible: Bool = true) -> XCUIElement {
+        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop, maximumScrollFraction: maximumScrollFraction, keyboardMayBeVisible: keyboardMayBeVisible)
     }
 
     @MainActor

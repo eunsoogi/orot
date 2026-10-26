@@ -128,6 +128,7 @@ export async function seedHealthContextNativeRecords(
     });
   }
   await records.put('symptom_entry', {
+    status: 'active',
     ...metadata('symptom', '2026-10-03T01:00:00Z'),
     provenance: { origin: 'user_reported', sourceRecordIds: [] },
     description: 'Synthetic symptom',

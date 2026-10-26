@@ -28,15 +28,19 @@ export function fixture({
     name: 'owned-continuation-fixture',
     udid: '11111111-2222-4333-8444-555555555555',
   };
+  // Exercise the two established scoped cases regardless of new full-reset cases in the inventory.
+  const calendarCases = iosTestInventory('fixtures', 'calendar');
   const identifiers =
     selectedIdentifiers ??
     (scoped
-      ? iosTestInventory('fixtures', 'calendar').slice(-2)
+      ? calendarCases.filter((identifier) =>
+          /\/(AppointmentsUITests|CalendarSelectionUITests)\//.test(identifier),
+        )
       : [
           ...iosTestInventory('fixtures').filter((identifier) =>
             identifier.includes('/StorageMigrationUITests/'),
           ),
-          iosTestInventory('fixtures', 'calendar').at(-1),
+          calendarCases.find((identifier) => identifier.includes('/CalendarSelectionUITests/')),
         ]);
   const trace = join(value.root, 'calls.jsonl');
   const cleanupMarker = join(value.root, 'fixture-cleanup-completed');

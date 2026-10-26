@@ -75,6 +75,7 @@ test('finds an identifier embedded in selected text even when its record is outs
     await runMigrations(database);
     const repository = createRecordRepository(database);
     await repository.put('symptom_entry', {
+      status: 'active',
       ...metadata,
       id: 'outside record / 42',
       description: 'Synthetic note',
@@ -99,6 +100,7 @@ test('rebuilds exact citations and rejects modified, removed, and stale source r
     await runMigrations(database);
     const repository = createRecordRepository(database);
     const record = {
+      status: 'active' as const,
       ...metadata,
       id: 'selected-symptom',
       description: 'Original synthetic note',

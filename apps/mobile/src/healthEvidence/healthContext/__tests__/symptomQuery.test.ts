@@ -13,6 +13,7 @@ test('preserves recorded numeric severity while bounding symptom coverage by occ
       ['outside', '2026-10-02T10:00:00Z', 9],
     ] as const) {
       await records.put('symptom_entry', {
+        status: 'active',
         id,
         effectiveAt,
         recordedAt: effectiveAt,
