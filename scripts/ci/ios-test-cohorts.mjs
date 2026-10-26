@@ -53,6 +53,7 @@ const cohorts = {
     cases: [
       'AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
       'AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+      'WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     ],
   },
   'navigation-routes': {
