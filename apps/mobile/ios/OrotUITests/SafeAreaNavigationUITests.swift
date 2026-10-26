@@ -85,6 +85,7 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
             XCTAssertLessThanOrEqual(scroll.frame.maxX, contentRegion.frame.maxX + 0.5)
             XCTAssertLessThanOrEqual(scroll.frame.maxY, root.maxY - systemBottomInset + 0.5)
             XCTAssertLessThanOrEqual(action.frame.maxX, contentRegion.frame.maxX + 0.5)
+            XCTAssertLessThanOrEqual(action.frame.maxY, root.maxY - systemBottomInset + 0.5)
             XCTAssertFalse(scroll.frame.intersects(rightRail.frame))
             XCTAssertFalse(action.frame.intersects(rightRail.frame))
         } else {
