@@ -178,11 +178,12 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This profile covers host launch and the explicit geometry bridge check; broader Duo screen coverage has its own acceptance boundary.
+  // This opt-in profile covers host launch, the geometry bridge, and root navigation; broader Duo screen coverage has its own acceptance boundary.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
       'OrotUITests/TestHostConnectionTests/testHostLaunches',
+      'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
       'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     ];
   if (suite === 'journey') return speechJourneyTests.slice();
