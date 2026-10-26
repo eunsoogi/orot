@@ -187,7 +187,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // Keep Duo navigation, geometry and orientation verification on the iOS 27.1 destination.
+  // The opt-in Duo profile covers host launch, root navigation, the geometry bridge, and orientation on iOS 27.1; broader Duo screen acceptance remains separate.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
