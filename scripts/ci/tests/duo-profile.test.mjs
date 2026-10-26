@@ -77,20 +77,25 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const coreTests = iosTestInventory('core');
   const contextualDeparture =
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
+  const homeSummary =
+    'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const duoKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 6);
+  assert.equal(duoInventory.length, 7);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
+    homeSummary,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     contextualDeparture,
     duoKeyboardSave,
   ]);
   // The ordinary iPhone fixture retains its keyboard contract; only the Duo profile expects a contextual rail.
+  assert.ok(iPhoneFixtures.includes(homeSummary));
+  assert.ok(coreTests.includes(homeSummary));
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(!duoInventory.includes(standardKeyboardSave));
   assert.ok(!iPhoneFixtures.includes(contextualDeparture));
