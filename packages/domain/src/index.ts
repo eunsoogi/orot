@@ -96,6 +96,25 @@ export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
 export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
 export {
+  INITIAL_SAFETY_POLICY,
+  SafetyPolicyActionSchema,
+  SafetyPolicyCategorySchema,
+  SafetyPolicyDecisionSchema,
+  SafetyPolicyDocumentSchema,
+  SafetyPolicyInputSchema,
+  SafetyPolicyRuleSchema,
+  SafetyWarningSignSchema,
+} from './safetyPolicySchemas';
+export type {
+  SafetyPolicyAction,
+  SafetyPolicyCategory,
+  SafetyPolicyDecision,
+  SafetyPolicyDocument,
+  SafetyPolicyInput,
+  SafetyPolicyRule,
+} from './safetyPolicySchemas';
+export { SafetyPolicyEngine, preserveSafetyPolicyActions } from './safetyPolicyEngine';
+export {
   createTranscriptCorrection,
   TranscriptAudioRangeSchema,
   TranscriptEvidenceSegmentSchema,
