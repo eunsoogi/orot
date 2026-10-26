@@ -4,6 +4,7 @@ import {
   speechJourneyTests,
 } from './ios-test-config.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
+import { duoTests } from './duo-test-inventory.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { medicalDocumentCoreTests } from './medical-document-test-inventory.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
@@ -192,17 +193,8 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This opt-in profile covers host launch, Duo geometry, root/contextual navigation, departure guards, keyboard Save behavior, and orientation state.
   // Do not let an unknown Release profile fall through to the provider inventory.
-  if (profile === 'duo')
-    return [
-      'OrotUITests/TestHostConnectionTests/testHostLaunches',
-      'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
-      'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
-      'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
-      'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
-      'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
-    ];
+  if (profile === 'duo') return duoTests.slice();
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();

@@ -7,6 +7,7 @@ import { runVisitQuestionWorkflow } from '../src/agent/visitQuestions/workflow';
 import type { VisitQuestionContextResult } from '../src/agent/visitQuestions/evidenceService';
 import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/taskContract';
 import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
+import { runLangChainMessageProbe } from './langchainMessageProbe';
 
 const event: CalendarEvent = {
   calendarEventIdentifier: 'synthetic-appointment',
@@ -100,6 +101,7 @@ function preparedContext(): Extract<
 
 /** Calls shipping workflows and records native failures through the configured native call boundary. */
 export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
+  const messageConstruction = await runLangChainMessageProbe();
   let onGenerate: (() => void) | undefined;
   const modelProvider = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
@@ -209,6 +211,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   if (timer) clearTimeout(timer);
   return {
     availability: availability.status,
+    messageConstruction,
     calendar,
     nextVisit,
     cancellation: {

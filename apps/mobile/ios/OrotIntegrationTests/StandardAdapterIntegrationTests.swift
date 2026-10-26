@@ -4,8 +4,9 @@ import XCTest
 
 final class StandardAdapterIntegrationTests: OrotFailFastTestCase {
     func testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation() async throws {
-        // Synthetic raw SDK/transport replies traverse Hermes and shipping native modules.
-        // The receipt proves adapter integration, not live inference or physical-device behavior.
+        // Synthetic native replies traverse Hermes; the graph probe runs the production response
+        // decoder and confirms its citation remains bound to the fixture source.
+        // This proves adapter integration, not live inference or physical-device behavior.
         let result = try await TestOperationBroker.shared.request("standard-adapters")
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
@@ -38,6 +39,7 @@ final class StandardAdapterIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(graph["modelCalls"] as? Int, 2)
         XCTAssertEqual(graph["messageRoundTrip"] as? Bool, true)
         XCTAssertEqual(graph["summary"] as? String, "Source found.")
+        XCTAssertEqual(graph["citationSourceIds"] as? [String], ["source-42"])
         let privacy = try XCTUnwrap(result["privacySafeCallbacks"] as? [String: Any])
         XCTAssertEqual(privacy["defaultCallbackEvents"] as? Int, 0)
         XCTAssertEqual(privacy["optInCallbackEvents"] as? Int, 2)

@@ -34,7 +34,7 @@ export async function consumeTaskModelResponse<TResult>(
     const finalState = { ...state, modelCalls: result.modelCalls };
     return {
       ...(result.response
-        ? consumeResponderResponse(context, finalState, result.response, input, revised, true)
+        ? await consumeResponderResponse(context, finalState, result.response, input, revised, true)
         : result.failure
           ? finishModelFailure(context, result.failure)
           : completeState()),
@@ -72,7 +72,7 @@ async function consumeInitialOutcome<TResult>(
   if (outcome.status !== 'response') return finishModelFailure(context, outcome);
   const toolCall = consumeNativeToolCall(context, state, outcome.response);
   if (toolCall) return toolCall;
-  const result = consumeResponderResponse(context, state, outcome.response, input, revised);
+  const result = await consumeResponderResponse(context, state, outcome.response, input, revised);
   const correctionInstruction = context.responseCorrectionInstruction;
   context.responseCorrectionInstruction = undefined;
   if (!correctionInstruction) return result;
@@ -138,14 +138,14 @@ async function consumeInitialOutcome<TResult>(
     };
   }
   return {
-    ...consumeResponderResponse(
+    ...(await consumeResponderResponse(
       context,
       correctionState,
       correctionOutcome.response,
       input,
       true,
       true,
-    ),
+    )),
     modelCalls: correctionState.modelCalls,
   };
 }

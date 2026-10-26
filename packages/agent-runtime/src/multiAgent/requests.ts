@@ -90,7 +90,7 @@ export async function buildTaskRequest<TResult>(
               ? [
                   {
                     role: 'assistant' as const,
-                    content: canonicalJson(parseJsonOutput(correctionResponse)),
+                    content: canonicalJson(await parseJsonOutput(correctionResponse)),
                   },
                 ]
               : []),

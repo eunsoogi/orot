@@ -8,6 +8,7 @@ import type {
   TaskResponderContract,
   TaskResponderInput,
 } from './contracts';
+import { JsonOutputParser } from '@langchain/core/output_parsers';
 import type { JsonObject } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
 import { guidedSchema } from './guidedSchema';
@@ -31,13 +32,16 @@ const EVIDENCE_NEEDS: readonly EvidenceNeed[] = [
   'other',
 ];
 
+const jsonOutputParser = new JsonOutputParser<Record<string, unknown>>();
+
 // Providers without native structured output still use the same local parsers and validators.
-export function parseJsonOutput(value: {
+export async function parseJsonOutput(value: {
   readonly text: string;
   readonly structuredOutput?: unknown;
-}): unknown {
+}): Promise<unknown> {
   if (value.structuredOutput !== undefined) return value.structuredOutput;
-  return JSON.parse(value.text) as unknown;
+  // Parse complete model text with LangChain; envelope and task checks stay in their own domains.
+  return jsonOutputParser.parse(value.text);
 }
 
 export function isEvidenceNeed(value: unknown): value is EvidenceNeed {

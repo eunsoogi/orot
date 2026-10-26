@@ -102,7 +102,7 @@ export async function callPartitionedTaskResponse<TResult>(
     if (!outcome || outcome.status !== 'response') return { modelCalls, failure: outcome };
     const response = outcome.response;
     try {
-      const decodedResponse = decodeTaskResponse(response);
+      const decodedResponse = await decodeTaskResponse(response);
       const decoded = decodedResponse.output;
       // Reuse the normal response's closed categories. Never expose a provider's
       // text, generated keys or a task's free-form validation reason in telemetry.
@@ -114,7 +114,8 @@ export async function callPartitionedTaskResponse<TResult>(
         response.finishReason !== 'complete' ||
         response.toolCalls.length ||
         utf8ByteLength(response.text) > state.budget.maxPayloadBytes ||
-        utf8ByteLength(canonicalJson(parseJsonOutput(response))) > state.budget.maxPayloadBytes ||
+        utf8ByteLength(canonicalJson(await parseJsonOutput(response))) >
+          state.budget.maxPayloadBytes ||
         decoded.type !== 'result'
       ) {
         stop(
