@@ -5,6 +5,7 @@ import {
 } from './ios-test-config.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { medicalDocumentCoreTests } from './medical-document-test-inventory.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
@@ -25,6 +26,7 @@ const coreTests = [
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
+  ...medicalDocumentCoreTests,
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
@@ -93,6 +95,10 @@ export const healthImportTests = [
   'OrotUITests/HealthImportUITests/testCommonObservationsUseEncryptedStorageAndIdempotentReplay',
   'OrotUITests/UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation',
   'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
+  // Real document-picker journeys run in both the Debug import suite and Release fixture suite.
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
 ];
 export const localModelTests = [
   'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation',
@@ -147,6 +153,9 @@ export const fixtureTests = [
   'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
