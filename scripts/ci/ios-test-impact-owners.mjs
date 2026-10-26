@@ -39,3 +39,5 @@ export const recordingCohorts = [
   'microphone',
   'speech',
 ];
+
+export const workflowProgressCohorts = ['core-integration'];
