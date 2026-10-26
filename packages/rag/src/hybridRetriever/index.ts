@@ -29,7 +29,11 @@ export interface HybridRetrieverInput extends BaseRetrieverInput {
   /** Caller-selected page, never an implicit corpus scan. */
   readonly chunks: readonly EvidenceChunk[];
   readonly removalReader: EvidenceRemovalReader;
-  /** Return direct standard adapters. Runnable bindings can replace the private callback manager. */
+  /**
+   * Return a new direct adapter for every invocation and transfer exclusive ownership:
+   * do not retain/share it. Retrieval clears its callbacks/verbose and consumes it once.
+   * Runnable bindings can replace private managers and are not admitted.
+   */
   readonly createLexicalRetriever: (request: HybridCandidateRequest) => CandidateRetriever;
   readonly createVectorRetriever: (request: HybridCandidateRequest) => CandidateRetriever;
   readonly filters?: EvidenceSearchFilters;
@@ -49,6 +53,7 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
   lc_namespace = ['orot', 'rag', 'retrievers'];
   private config?: RunnableConfig;
   private allowCallerStream = false;
+  private usedAdapters = new WeakSet<CandidateRetriever>();
 
   constructor(private readonly input: HybridRetrieverInput) {
     super(input);
@@ -62,10 +67,17 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     }
   }
 
+  private invocationScope() {
+    const scoped = new HybridRetriever(this.input);
+    // Every public consumer shares the same single-use admission boundary.
+    scoped.usedAdapters = this.usedAdapters;
+    return scoped;
+  }
+
   override async invoke(query: string, options?: RunnableConfig) {
     // BaseRetriever does not pass RunnableConfig to _getRelevantDocuments.
     // Scope normalized deadlines/signals per call so concurrent invocations stay independent.
-    const scoped = new HybridRetriever(this.input);
+    const scoped = this.invocationScope();
     scoped.config = ensureConfig(options);
     scoped.allowCallerStream = this.allowCallerStream;
     return scoped.retrieveForCaller(query);
@@ -78,7 +90,7 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     options: EventOptions,
     streamOptions?: Parameters<BaseRetriever['streamEvents']>[2],
   ) => {
-    const scoped = new HybridRetriever(this.input);
+    const scoped = this.invocationScope();
     scoped.allowCallerStream = true;
     return scoped.callerEvents(
       query,
@@ -101,7 +113,7 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
   }
 
   override streamLog(...[query, options, streamOptions]: Parameters<BaseRetriever['streamLog']>) {
-    const scoped = new HybridRetriever(this.input);
+    const scoped = this.invocationScope();
     scoped.allowCallerStream = true;
     return scoped.callerLog(query, { ...ensureConfig(options), callbacks: [] }, streamOptions);
   }
@@ -154,6 +166,17 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
           'Hybrid retrieval requires direct standard retriever adapters.',
         );
       }
+      if (this.usedAdapters.has(child)) {
+        throw new LocalEmbeddingJobError(
+          'invalid_request',
+          'Factories must return a fresh single-use adapter.',
+        );
+      }
+      this.usedAdapters.add(child);
+      // The transferred original receiver preserves native private fields and bound invoke.
+      // Clear attached observers too: the direct vector adapter reads this.callbacks itself.
+      child.callbacks = [];
+      child.verbose = false;
       return child.invoke(query, config);
     });
   }

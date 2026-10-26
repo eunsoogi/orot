@@ -1,7 +1,13 @@
 import type { EvidenceChunk } from '../chunking';
 import type { LocalEmbeddingVectorStore } from '../embeddingRetrieval';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
-import { CallbackManager, type Callbacks } from '@langchain/core/callbacks/manager';
+import {
+  CallbackManager,
+  type Callbacks,
+  type CallbackManagerForRetrieverRun,
+  type CallbackManagerForChainRun,
+  type CallbackManagerForToolRun,
+} from '@langchain/core/callbacks/manager';
 
 /** Standard children may configure local/ambient handlers, but none may receive content. */
 export class PrivateChildCallbacks extends CallbackManager {
@@ -10,6 +16,34 @@ export class PrivateChildCallbacks extends CallbackManager {
   }
   override addHandler(): void {
     /* Reject local, verbose, tracing and configure-hook handlers. */
+  }
+  override async handleRetrieverStart(
+    ...args: Parameters<CallbackManager['handleRetrieverStart']>
+  ) {
+    return this.privateRun(await super.handleRetrieverStart(...args));
+  }
+  override async handleChainStart(...args: Parameters<CallbackManager['handleChainStart']>) {
+    return this.privateRun(await super.handleChainStart(...args));
+  }
+  override async handleToolStart(...args: Parameters<CallbackManager['handleToolStart']>) {
+    return this.privateRun(await super.handleToolStart(...args));
+  }
+  private privateRun<
+    T extends
+      CallbackManagerForRetrieverRun | CallbackManagerForChainRun | CallbackManagerForToolRun,
+  >(run: T): T {
+    // Standard run.getChild() creates an ordinary manager. Preserve rejection through
+    // retriever, chain and tool descendants, including calls with explicit run context.
+    const inheritedChild = run.getChild.bind(run);
+    run.getChild = (tag?: string) => {
+      const inherited = inheritedChild();
+      const child = new PrivateChildCallbacks(run.runId);
+      child.addTags(inherited.tags);
+      child.addMetadata(inherited.metadata);
+      if (tag) child.addTags([tag], false);
+      return child;
+    };
+    return run;
   }
 }
 

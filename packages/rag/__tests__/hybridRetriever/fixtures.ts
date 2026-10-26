@@ -42,6 +42,31 @@ export class StockRetriever extends BaseRetriever {
   }
 }
 
+/** Native private state requires the actual constructed adapter as the invocation receiver. */
+export class PrivateFieldRetriever extends StockRetriever {
+  #privateDocuments: DocumentInterface[];
+  constructor(documents: DocumentInterface[]) {
+    super(documents);
+    this.#privateDocuments = documents;
+  }
+  override async _getRelevantDocuments(_query: string) {
+    return this.#privateDocuments;
+  }
+}
+
+/** Drain a public consumer so rejection checks cover its actual invocation scope. */
+export async function consume(retriever: HybridRetriever, method: string, query: string) {
+  if (method === 'invoke') return retriever.invoke(query);
+  if (method === 'batch') return retriever.batch([query]);
+  const stream =
+    method === 'events'
+      ? retriever.streamEvents(query, { version: 'v2' })
+      : retriever.streamLog(query);
+  const output = [];
+  for await (const item of stream) output.push(item);
+  return output;
+}
+
 /** Isolate synthetic ambient callbacks without enabling real network tracing. */
 export async function withPrivateCallbackContext(
   test: (

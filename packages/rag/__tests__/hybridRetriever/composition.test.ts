@@ -1,7 +1,38 @@
 import { Document } from '@langchain/core/documents';
-import { chunk, document, setup, StockRetriever, withPrivateCallbackContext } from './fixtures';
+import {
+  chunk,
+  document,
+  setup,
+  StockRetriever,
+  PrivateFieldRetriever,
+  consume,
+  withPrivateCallbackContext,
+} from './fixtures';
 
 describe('standard hybrid retriever composition', () => {
+  it('preserves a direct adapter with native private fields', async () => {
+    const page = [chunk('private-field')];
+    const { retriever } = setup(page, [], [], {
+      createLexicalRetriever: () => new PrivateFieldRetriever(page.map(document)),
+    });
+    expect(await retriever.invoke('synthetic query')).toEqual(page.map(document));
+  });
+
+  it.each(['invoke', 'batch', 'events', 'log'])(
+    'rejects reuse before a second child invocation through %s',
+    async (method) => {
+      const page = [chunk('owned-instance')];
+      const child = new StockRetriever(page.map(document));
+      const invoke = jest.spyOn(child, 'invoke');
+      const { retriever } = setup(page, [], [], { createLexicalRetriever: () => child });
+      expect(await retriever.invoke('synthetic first query')).toEqual(page.map(document));
+      await expect(consume(retriever, method, 'synthetic reuse query')).rejects.toThrow(
+        'fresh single-use',
+      );
+      expect(invoke).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('keeps synthetic callback payloads private at the hybrid and standard child boundaries', async () => {
     await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
       const query = 'synthetic private query';

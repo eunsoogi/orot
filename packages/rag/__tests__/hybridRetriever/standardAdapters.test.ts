@@ -11,7 +11,11 @@ import {
 import { HybridRetriever } from '../../src/hybridRetriever';
 import type { EvidenceChunk } from '../../src/chunking';
 import type { SqlDatabase } from '@orot/storage';
-import { CallbackManager, type Callbacks } from '@langchain/core/callbacks/manager';
+import {
+  CallbackManager,
+  type Callbacks,
+  type CallbackManagerForRetrieverRun,
+} from '@langchain/core/callbacks/manager';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import {
   setup as syntheticSetup,
@@ -31,7 +35,7 @@ describe('hybrid composition with the merged standard adapters', () => {
   });
   afterEach(() => close());
 
-  async function setup(chunks: EvidenceChunk[], callbacks: Callbacks = []) {
+  async function setup(chunks: EvidenceChunk[], callbacks: Callbacks = [], boundInvoke = false) {
     const { vectors } = store(database);
     const removalReader = new SqlCipherRagEmbeddingStorage(database);
     const textStore = new SqlCipherRagFullTextSearchStore(database);
@@ -52,48 +56,79 @@ describe('hybrid composition with the merged standard adapters', () => {
           callbacks,
           verbose: true,
         }),
-      createVectorRetriever: ({ chunks: candidates, filters, limit }) =>
-        vectors.asRetriever({
+      createVectorRetriever: ({ chunks: candidates, filters, limit }) => {
+        const vectorRetriever = vectors.asRetriever({
           k: limit,
           filter: { ...filters, candidates },
           callbacks,
           verbose: true,
-        }),
+        });
+        if (boundInvoke) vectorRetriever.invoke = vectorRetriever.invoke.bind(vectorRetriever);
+        return vectorRetriever;
+      },
     });
     return { retriever, vectors };
   }
 
-  it('keeps real adapter callbacks and global verbose output private', async () => {
-    await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
-      const page = [chunk('a', 'source-a')];
-      const { retriever } = await setup(page, [handler]);
-      expect(await retriever.invoke('consultation', { callbacks: [handler] })).toEqual(
-        page.map(document),
-      );
-      expect(seen).toEqual([]);
-      expect(consoleLog).not.toHaveBeenCalled();
-    }, true);
-  });
+  it.each(['ordinary', 'spoofed', 'bound spoofed'])(
+    'keeps %s real adapter callbacks and verbose output private',
+    async (boundary) => {
+      await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
+        const page = [chunk('a', 'source-a')];
+        const attached =
+          boundary === 'ordinary'
+            ? handler
+            : Object.assign(new SyntheticObserver(seen), {
+                name: 'event_stream_tracer',
+                receiveStream: {},
+                tapOutputIterable: () => {},
+              });
+        const { retriever } = await setup(page, [attached], boundary === 'bound spoofed');
+        expect(await retriever.invoke('consultation', { callbacks: [handler] })).toEqual(
+          page.map(document),
+        );
+        expect(seen).toEqual([]);
+        expect(consoleLog).not.toHaveBeenCalled();
+      }, true);
+    },
+  );
 
-  it('isolates nested standard invocations that omit their callback config', async () => {
-    await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
-      const page = [chunk('a', 'source-a')];
-      const documents = page.map(document);
-      class NestedRetriever extends StockRetriever {
-        override _getRelevantDocuments(query: string) {
-          return new StockRetriever(documents, { callbacks: [handler], verbose: true }).invoke(
-            query,
-          );
+  it.each(['implicit config', 'run child', 'chain child', 'tool child'])(
+    'isolates nested standard invocations using %s',
+    async (boundary) => {
+      await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
+        const page = [chunk('a', 'source-a')];
+        const documents = page.map(document);
+        class NestedRetriever extends StockRetriever {
+          override async _getRelevantDocuments(
+            query: string,
+            run?: CallbackManagerForRetrieverRun,
+          ) {
+            let callbacks = boundary === 'implicit config' ? undefined : run?.getChild();
+            const serialized = {
+              lc: 1 as const,
+              type: 'not_implemented' as const,
+              id: ['synthetic'],
+            };
+            if (boundary === 'chain child')
+              callbacks = (await callbacks!.handleChainStart(serialized, { query })).getChild();
+            if (boundary === 'tool child')
+              callbacks = (await callbacks!.handleToolStart(serialized, query)).getChild();
+            return new StockRetriever(documents, { callbacks: [handler], verbose: true }).invoke(
+              query,
+              callbacks ? { callbacks } : undefined,
+            );
+          }
         }
-      }
-      const { retriever } = syntheticSetup(page, [], [], {
-        createLexicalRetriever: () => new NestedRetriever(documents),
-      });
-      expect(await retriever.invoke('synthetic nested query')).toEqual(documents);
-      expect(seen).toEqual([]);
-      expect(consoleLog).not.toHaveBeenCalled();
-    }, true);
-  });
+        const { retriever } = syntheticSetup(page, [], [], {
+          createLexicalRetriever: () => new NestedRetriever(documents),
+        });
+        expect(await retriever.invoke('synthetic nested query')).toEqual(documents);
+        expect(seen).toEqual([]);
+        expect(consoleLog).not.toHaveBeenCalled();
+      }, true);
+    },
+  );
 
   it('rejects callback-bound runnable wrappers before delivering a query', async () => {
     await withPrivateCallbackContext(async (seen, handler) => {
