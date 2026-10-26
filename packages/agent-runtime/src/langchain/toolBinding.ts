@@ -1,10 +1,9 @@
-import type { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
+import type { AIMessageChunk } from '@langchain/core/messages';
 import type { BindToolsInput, ToolChoice } from '@langchain/core/language_models/chat_models';
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 import { convertToOpenAITool } from '@langchain/core/utils/function_calling';
 import type { Runnable } from '@langchain/core/runnables';
 import {
-  providerFailure,
   type JsonObject,
   type JsonValue,
   type LanguageModelProvider,
@@ -106,6 +105,14 @@ function withToolRequest(
   tools: readonly ToolDefinition[],
   choice: NativeToolChoice,
 ): LanguageModelProvider {
+  function withTools(request: LanguageModelRequest): LanguageModelRequest {
+    if (request.tools !== undefined || request.toolChoice !== undefined) fail('invalid_request');
+    return {
+      ...request,
+      ...(choice === 'none' || tools.length === 0 ? {} : { tools }),
+      ...(choice === 'required' ? { toolChoice: 'required' as const } : {}),
+    };
+  }
   return {
     id: provider.id,
     kind: provider.kind,
@@ -113,25 +120,10 @@ function withToolRequest(
     // Share the selected provider's declared capabilities; binding must never enable them.
     capabilities: provider.capabilities,
     ...(provider.searchPublicWeb ? { searchPublicWeb: provider.searchPublicWeb } : {}),
-    ...(provider.stream ? { stream: provider.stream.bind(provider) } : {}),
-    generate(request: LanguageModelRequest, options) {
-      if (request.tools !== undefined || request.toolChoice !== undefined)
-        return Promise.resolve(
-          providerFailure({
-            code: 'invalid_request',
-            message: '',
-            retryable: false,
-          }),
-        );
-      return provider.generate(
-        {
-          ...request,
-          ...(choice === 'none' || tools.length === 0 ? {} : { tools }),
-          ...(choice === 'required' ? { toolChoice: 'required' as const } : {}),
-        },
-        options,
-      );
-    },
+    ...(provider.stream
+      ? { stream: (request, options) => provider.stream!(withTools(request), options) }
+      : {}),
+    generate: (request, options) => provider.generate(withTools(request), options),
   };
 }
 
@@ -157,16 +149,18 @@ export class NativeToolBindingChatModel extends NativeChatModel {
     const callOptions = { ...(kwargs ?? {}) };
     delete callOptions.tool_choice;
     // A fresh instance keeps callers from bypassing schema and provider-capability validation.
-    const bound = new NativeToolBindingChatModel(this.provider);
+    const bound = this.cloneWithProvider(this.provider);
     bound.boundTools = definitions;
     bound.boundToolChoice = choice;
     return Object.keys(callOptions).length > 0 ? bound.withConfig(callOptions) : bound;
   }
 
-  async _generate(
-    messages: BaseMessage[],
-    options: this['ParsedCallOptions'],
-  ): Promise<Awaited<ReturnType<NativeChatModel['_generate']>>> {
+  /** Derived strategies must survive binding, including their public stream privacy boundary. */
+  protected cloneWithProvider(provider: LanguageModelProvider): NativeToolBindingChatModel {
+    return new NativeToolBindingChatModel(provider);
+  }
+
+  protected override prepareInvocation(options: this['ParsedCallOptions']) {
     const choice =
       options.tool_choice === undefined
         ? this.boundToolChoice
@@ -178,9 +172,6 @@ export class NativeToolBindingChatModel extends NativeChatModel {
     const callOptions = { ...options };
     delete callOptions.tool_choice;
     // Reuse the base request, cancellation, error, usage, and privacy behavior for one dispatch.
-    return new NativeChatModel(withToolRequest(this.provider, tools, choice))._generate(
-      messages,
-      callOptions,
-    );
+    return { provider: withToolRequest(this.provider, tools, choice), options: callOptions };
   }
 }

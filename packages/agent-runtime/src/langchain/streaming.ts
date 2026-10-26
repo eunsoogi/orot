@@ -3,23 +3,24 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import type {
-  LanguageModelProvider,
-  LanguageModelResponse,
-  ProviderError,
-  ToolCall,
-} from '@orot/model-runtime';
-import {
-  NativeChatModel,
-  NativeChatModelError,
-  type NativeChatModelCallOptions,
-} from './chatModel';
+import type { LanguageModelProvider, LanguageModelResponse, ToolCall } from '@orot/model-runtime';
+import { NativeChatModelError, type NativeChatModelCallOptions } from './chatModel';
 import { toNativeMessages } from './messages';
+import {
+  chunk,
+  usageMetadata,
+  validToolCall,
+  callsMatch,
+  providerError,
+  internalError,
+  cancelled,
+} from './streamingSupport';
+import { NativeToolBindingChatModel } from './toolBinding';
 
 export type NativeChatModelStreamMode = 'append-only' | 'buffered';
 
 /** Explicit adapter for providers whose stream event text semantics are known by the caller. */
-export class NativeStreamingChatModel extends NativeChatModel {
+export class NativeStreamingChatModel extends NativeToolBindingChatModel {
   constructor(
     provider: LanguageModelProvider,
     private readonly streamMode: NativeChatModelStreamMode,
@@ -28,6 +29,10 @@ export class NativeStreamingChatModel extends NativeChatModel {
     // Missing capability or transport keeps the base invoke-once fallback.
     this.disableStreaming =
       !provider.capabilities.streaming || typeof provider.stream !== 'function';
+  }
+
+  protected override cloneWithProvider(provider: LanguageModelProvider) {
+    return new NativeStreamingChatModel(provider, this.streamMode);
   }
 
   /** Avoids callback setup and eager reads; iterator closure does not promise native inference stops. */
@@ -62,10 +67,11 @@ export class NativeStreamingChatModel extends NativeChatModel {
     }
     const [, callOptions] = this._separateRunnableConfigFromCallOptionsCompat(options);
     const messages = BaseChatModel._convertInputToPromptValue(input).toChatMessages();
+    const prepared = this.prepareInvocation(callOptions);
     for await (const generationChunk of convertNativeStream(
-      this.provider,
+      prepared.provider,
       messages,
-      callOptions,
+      prepared.options,
       this.streamMode,
     )) {
       if (callOptions.signal?.aborted) throw cancelled();
@@ -89,6 +95,7 @@ async function* convertNativeStream(
     messages: toNativeMessages(messages).messages,
     ...(options.maxOutputTokens !== undefined ? { maxOutputTokens: options.maxOutputTokens } : {}),
     ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+    ...(options.responseFormat ? { responseFormat: options.responseFormat } : {}),
   };
   let text = '';
   let completed: LanguageModelResponse | undefined;
@@ -153,7 +160,7 @@ function validateOptions(
   options: NativeChatModelCallOptions,
 ): void {
   const supported = new Set(
-    'signal maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature'.split(
+    'signal maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature responseFormat'.split(
       ' ',
     ),
   );
@@ -163,88 +170,8 @@ function validateOptions(
     if (options[control] !== undefined && !provider.capabilities.requestControls?.includes(control))
       throw new NativeChatModelError(providerError('unsupported_capability'));
   }
+  if (options.responseFormat && !provider.capabilities.structuredOutput)
+    throw new NativeChatModelError(providerError('unsupported_capability'));
   if (!provider.capabilities.streaming || typeof provider.stream !== 'function')
     throw new NativeChatModelError(providerError('unsupported_capability'));
-}
-
-function chunk(
-  text: string,
-  finishReason?: LanguageModelResponse['finishReason'],
-  calls: readonly ToolCall[] = [],
-  index?: number,
-  usage?: AIMessageChunk['usage_metadata'],
-): ChatGenerationChunk {
-  const message = new AIMessageChunk({
-    content: text,
-    ...(finishReason ? { response_metadata: { finish_reason: finishReason } } : {}),
-    ...(usage ? { usage_metadata: usage } : {}),
-    ...(calls.length
-      ? {
-          tool_call_chunks: calls.map((call, offset) => ({
-            type: 'tool_call_chunk' as const,
-            id: call.id,
-            name: call.name,
-            args: JSON.stringify(call.arguments),
-            index: index ?? offset,
-          })),
-        }
-      : {}),
-  });
-  return new ChatGenerationChunk({
-    text,
-    message,
-    ...(finishReason ? { generationInfo: { finish_reason: finishReason } } : {}),
-  });
-}
-
-function usageMetadata(response: LanguageModelResponse): AIMessageChunk['usage_metadata'] {
-  const usage = response.usage;
-  if (usage === undefined) return undefined;
-  if (!usage || Array.isArray(usage)) throw internalError();
-  const counts = [usage.inputTokens, usage.outputTokens, usage.totalTokens];
-  if (!counts.every((count) => Number.isSafeInteger(count) && count >= 0)) throw internalError();
-  return {
-    input_tokens: usage.inputTokens,
-    output_tokens: usage.outputTokens,
-    total_tokens: usage.totalTokens,
-  };
-}
-
-function validToolCall(value: unknown): value is ToolCall {
-  if (!value || typeof value !== 'object') return false;
-  const call = value as ToolCall;
-  const validId = typeof call.id === 'string' && !!call.id.trim();
-  const validName = typeof call.name === 'string' && !!call.name.trim();
-  const validArguments =
-    !!call.arguments && typeof call.arguments === 'object' && !Array.isArray(call.arguments);
-  return validId && validName && validArguments;
-}
-
-function callsMatch(streamed: readonly ToolCall[], completed: readonly ToolCall[]): boolean {
-  // Providers may publish calls only in the terminal response; streamed calls must reconcile exactly.
-  return (
-    streamed.length === 0 ||
-    (streamed.length === completed.length &&
-      streamed.every((call, index) => {
-        const final = completed[index];
-        return (
-          final !== undefined &&
-          call.id === final.id &&
-          call.name === final.name &&
-          JSON.stringify(call.arguments) === JSON.stringify(final.arguments)
-        );
-      }))
-  );
-}
-
-function providerError(code: ProviderError['code']): ProviderError {
-  return { code, message: '', retryable: false };
-}
-
-function internalError(): NativeChatModelError {
-  return new NativeChatModelError(providerError('internal_error'));
-}
-
-function cancelled(): Error {
-  return Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
 }

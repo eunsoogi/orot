@@ -1,3 +1,4 @@
+import { validateGenerationOptions } from './chatOptions';
 import {
   BaseChatModel,
   type BaseChatModelCallOptions,
@@ -29,6 +30,7 @@ import {
 export interface NativeChatModelCallOptions extends BaseChatModelCallOptions {
   readonly maxOutputTokens?: number;
   readonly temperature?: number;
+  readonly responseFormat?: StructuredOutputFormat;
 }
 
 /** Preserve the provider's closed error classification without exposing its diagnostic payload. */
@@ -117,6 +119,11 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     return (await this.generateNative(messages, options)).result;
   }
 
+  /** Strategy hook shared by invoke, structured output and stream; never dispatches by itself. */
+  protected prepareInvocation(options: this['ParsedCallOptions']) {
+    return { provider: this.provider, options };
+  }
+
   private async invokeStructuredOutput(
     input: BaseLanguageModelInput,
     plan: StructuredOutputPlan,
@@ -149,32 +156,11 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     options: this['ParsedCallOptions'],
     responseFormat?: StructuredOutputFormat,
   ): Promise<NativeGenerationResult> {
-    // Reject unsupported requests before dispatch rather than silently dropping model controls.
-    const supported = new Set([
-      'signal',
-      'timeout',
-      'maxConcurrency',
-      'callbacks',
-      'tags',
-      'metadata',
-      'runName',
-      'runId',
-      'configurable',
-      'recursionLimit',
-      'maxOutputTokens',
-      'temperature',
-    ]);
-    if (Object.keys(options).some((key) => !supported.has(key))) unsupported();
-    for (const control of ['maxOutputTokens', 'temperature'] as const) {
-      if (
-        options[control] !== undefined &&
-        !this.provider.capabilities.requestControls?.includes(control)
-      )
-        unsupported();
-    }
-    // A deadline requires host-owned cancellation; do not race a timeout against live native work.
-    if (options.timeout !== undefined) unsupported();
-    if (responseFormat !== undefined && !this.provider.capabilities.structuredOutput) unsupported();
+    responseFormat ??= options.responseFormat;
+    const prepared = this.prepareInvocation(options);
+    const provider = prepared.provider;
+    options = prepared.options;
+    validateGenerationOptions(provider, options, responseFormat, unsupported);
     const signal = options.signal;
     if (signal?.aborted)
       throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
@@ -189,7 +175,7 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     let result;
     try {
       // Pass the signal through: the provider owns native cancellation and listener cleanup.
-      result = await this.provider.generate(request, { signal });
+      result = await provider.generate(request, { signal });
     } catch (error) {
       if (signal?.aborted)
         throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });

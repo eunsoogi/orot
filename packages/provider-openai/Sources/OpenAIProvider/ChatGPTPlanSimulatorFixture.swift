@@ -8,6 +8,7 @@
 
         public enum Scenario: String, Sendable {
             case completed
+            case adapterCompleted
             case usageLimit
             case cancellable
             case toolRoundTrip
