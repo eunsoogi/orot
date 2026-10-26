@@ -8,6 +8,7 @@ import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { medicalDocumentCoreTests } from './medical-document-test-inventory.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
+import { windowPresentationAnchorTests } from './window-presentation-anchor-test-inventory.mjs';
 
 const coreTests = [
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
@@ -53,15 +54,7 @@ const coreTests = [
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUnverifiedFullScreenPresentationRetainsExportUntilDismissal',
-  // Presenters and popover sources must stay attached to the foreground window selected for UIKit.
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackRejectsMultipleKeyWindowCandidates',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testPopoverAnchorRejectsARegionOutsideItsWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testMovingTheSourceRegionOutOfWindowInvalidatesTheAnchor',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testDetachedSourceViewInvalidatesTheResolvedAnchorBeforePresentation',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingTheKeyWindowInvalidatesTheResolvedAnchor',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingThePresentationStackInvalidatesTheResolvedPresenter',
+  ...windowPresentationAnchorTests,
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
