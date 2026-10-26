@@ -92,15 +92,21 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "navigation-route-scroll").exists)
         let detailScroll = node(app, "health-records-detail-scroll")
         let detailRoot = try rootFrame(app, containing: detailScroll.frame)
-        // The full-screen viewport reaches the root bottom; the final-row assertion below checks content clearance from floating navigation.
-        XCTAssertEqual(detailScroll.frame.minX, detailRoot.minX, accuracy: 0.5)
-        XCTAssertEqual(detailScroll.frame.maxX, detailRoot.maxX, accuracy: 0.5)
-        XCTAssertEqual(detailScroll.frame.maxY, detailRoot.maxY, accuracy: 0.5)
+        let contentViewport = node(app, "navigation-content-region")
+        XCTAssertTrue(contentViewport.exists && !contentViewport.frame.isEmpty)
         let rightRail = node(app, "navigation-right-rail")
         if rightRail.exists {
-            // On a Duo window, route content must end before the shell's reserved navigation lane.
+            // The keyboard root is the full window; the Duo route uses only the measured content lane.
             XCTAssertFalse(rightRail.frame.isEmpty)
-            XCTAssertGreaterThanOrEqual(rightRail.frame.minX, detailRoot.maxX - 0.5)
+            XCTAssertEqual(contentViewport.frame.maxX, rightRail.frame.minX, accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.maxX, detailRoot.maxX, accuracy: 0.5)
+            let systemBottomInset = try NavigationUITestConditions.safeArea(app, testCase: self).bottom
+            XCTAssertLessThanOrEqual(detailScroll.frame.maxX, contentViewport.frame.maxX + 0.5)
+            XCTAssertLessThanOrEqual(detailScroll.frame.maxY, detailRoot.maxY - systemBottomInset + 0.5)
+        } else {
+            XCTAssertEqual(detailScroll.frame.minX, detailRoot.minX, accuracy: 0.5)
+            XCTAssertEqual(detailScroll.frame.maxX, detailRoot.maxX, accuracy: 0.5)
+            XCTAssertEqual(detailScroll.frame.maxY, detailRoot.maxY, accuracy: 0.5)
         }
         let last = node(app, "health-record-row-11")
         FormUITestConditions.reveal(last, in: app, scrollID: "health-records-detail-scroll")
