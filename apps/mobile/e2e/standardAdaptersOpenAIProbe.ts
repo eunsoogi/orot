@@ -123,8 +123,9 @@ export async function runStandardAdaptersOpenAIProbe() {
             'Synthetic cancellation',
             { signal: cancellation.signal, callbacks },
           )) {
-            void part;
-            throw new Error('Buffered cancellation published partial output');
+            throw new Error(
+              'Buffered cancellation published output of type ' + part.type,
+            );
           }
         } else
           await model.invoke('Synthetic cancellation', {
