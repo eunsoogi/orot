@@ -71,6 +71,7 @@
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		C48E4D8B9A064C7D850136A0 /* WindowPresentationAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */; };
+		5E87FF95506955455199819F /* PopoverSourceRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */; };
 		C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */; };
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
@@ -311,6 +312,7 @@
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrientationPresentationAnchorUITests.swift; sourceTree = "<group>"; };
 		D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WindowPresentationAnchor.swift; path = OrotMobile/WindowPresentationAnchor.swift; sourceTree = "<group>"; };
+		82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PopoverSourceRegion.swift; path = OrotMobile/PopoverSourceRegion.swift; sourceTree = "<group>"; };
 		D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManualHistoryUITests.swift; sourceTree = "<group>"; };
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
@@ -516,6 +518,7 @@
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */,
+				82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
 				B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */,
 				B64F0000000000000000000B /* RecordingDeletion.swift */,
@@ -1068,6 +1071,7 @@
 				A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				C48E4D8B9A064C7D850136A0 /* WindowPresentationAnchor.swift in Sources */,
+				5E87FF95506955455199819F /* PopoverSourceRegion.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
 				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,
 				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,

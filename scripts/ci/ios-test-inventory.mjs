@@ -51,6 +51,7 @@ const coreTests = [
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUnverifiedFullScreenPresentationRetainsExportUntilDismissal',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testDefaultTranscriptSharePreservesItsExactWindowRegionUntilDismissal',
   // Presenters and popover sources must stay attached to the foreground window selected for UIKit.
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',

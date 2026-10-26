@@ -196,7 +196,7 @@ function nativeTestImpact(path) {
 
   if (path.includes('/OrotMobile.xcodeproj/')) return full('native-project-configuration');
   if (path.includes('/OrotMobile/')) {
-    if (lower === 'windowpresentationanchor.swift')
+    if (['windowpresentationanchor.swift', 'popoversourceregion.swift'].includes(lower))
       return impact(windowAnchorCohorts, 'current-window-presentation-anchor');
     if (/^(test|syntheticcalendar|testfixture|testcontrol|testoperation)/i.test(file))
       return full('shared-native-test-driver');
