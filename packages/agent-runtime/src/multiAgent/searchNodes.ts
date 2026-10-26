@@ -8,6 +8,7 @@ import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { invokePreparedEvidenceSearch, prepareEvidenceSearch } from './prepareEvidenceSearch';
 import { toolProviderStop } from './evidenceToolModelBudget';
+import { appendNativeToolResultMessage } from './nativeTools';
 
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
@@ -118,26 +119,26 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       if (combined.items.length && !(await evidenceIsFresh(context, combined)))
         return completeState();
-      context.currentEvidence = combined;
-      context.nativeToolMessages?.push({
-        role: 'tool',
-        toolCallId: context.pendingNativeToolCallId,
-        // The full batch was size/scope/freshness checked and remains in currentEvidence.
-        // Rebuilt tasks can expose facts once; callback identity and coverage remain intact.
-        result: JSON.parse(
-          JSON.stringify(
-            options.task.nativeToolResultMode === 'evidence_references'
-              ? {
-                  contentLocation: 'current_task_messages',
-                  evidenceIds: batch.items.map((item) => item.evidenceId),
-                  coverage: batch.coverage,
-                  conflicts: batch.conflicts,
-                }
-              : batch,
-          ),
+      const callId = context.pendingNativeToolCallId;
+      const result = JSON.parse(
+        JSON.stringify(
+          options.task.nativeToolResultMode === 'evidence_references'
+            ? {
+                contentLocation: 'current_task_messages',
+                evidenceIds: batch.items.map((item) => item.evidenceId),
+                coverage: batch.coverage,
+                conflicts: batch.conflicts,
+              }
+            : batch,
         ),
-      });
+      );
+      if (!appendNativeToolResultMessage(context.nativeToolMessages, callId, result)) {
+        stop(context, 'The evidence result did not match one pending tool call.', 'invalid_output');
+        return completeState();
+      }
+      // The full batch is already checked and remains in currentEvidence; the ToolMessage carries only its call identity and result.
       context.pendingNativeToolCallId = undefined;
+      context.currentEvidence = combined;
       return {
         phase: 'revised_response' as const,
         evidenceReferences: referencesFromBatch(combined),
