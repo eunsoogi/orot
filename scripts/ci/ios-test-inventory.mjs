@@ -128,6 +128,8 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+  // Home reflow belongs to ordinary iPhone and Core UI coverage as well as Duo.
+  'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
   'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
@@ -191,8 +193,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This opt-in profile covers host launch, Duo geometry, root/contextual navigation, departure guards, keyboard Save behavior, and orientation state.
-  // Do not let an unknown Release profile fall through to the provider inventory.
+  // Keep Duo opt-in; unknown Release profiles must not fall through to provider tests.
   if (profile === 'duo')
     return [
       'OrotUITests/TestHostConnectionTests/testHostLaunches',
