@@ -1,3 +1,4 @@
+import { AppointmentReminderControls } from '../appointmentReminders/AppointmentReminderControls';
 import { View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -46,6 +47,7 @@ export default function AppointmentCard({
       <Text testID={`appointment-status-${appointment.id}`}>
         {t(statusKeys[appointment.status])}
       </Text>
+      <AppointmentReminderControls appointment={appointment} />
       {canEdit ? (
         <View style={styles.actions}>
           <Button
