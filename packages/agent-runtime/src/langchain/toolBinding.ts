@@ -160,8 +160,15 @@ export class NativeToolBindingChatModel extends NativeChatModel {
     return new NativeToolBindingChatModel(provider);
   }
 
+  /** LangChain may insert undefined defaults; only explicit invocation values replace bound ones. */
+  protected override resolveInvocationOptions(options: this['ParsedCallOptions']) {
+    return {
+      ...this.boundOptions,
+      ...Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)),
+    } as this['ParsedCallOptions'];
+  }
+
   protected override prepareInvocation(options: this['ParsedCallOptions']) {
-    options = { ...this.boundOptions, ...options };
     const choice =
       options.tool_choice === undefined
         ? this.boundToolChoice

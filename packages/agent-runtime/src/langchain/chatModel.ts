@@ -91,6 +91,7 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
           message: 'Unsupported structured-output request.',
           retryable: false,
         }),
+      (options) => this.resolveInvocationOptions(options as this['ParsedCallOptions']),
     ) as Runnable<BaseLanguageModelInput, RunOutput | { raw: BaseMessage; parsed: RunOutput }>;
   }
   /* eslint-enable no-dupe-class-members */
@@ -120,6 +121,10 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
   }
 
   /** Strategy hook shared by invoke, structured output and stream; never dispatches by itself. */
+  protected resolveInvocationOptions(options: this['ParsedCallOptions']) {
+    return options;
+  }
+
   protected prepareInvocation(options: this['ParsedCallOptions']) {
     return { provider: this.provider, options };
   }
@@ -156,6 +161,7 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     options: this['ParsedCallOptions'],
     responseFormat?: StructuredOutputFormat,
   ): Promise<NativeGenerationResult> {
+    options = this.resolveInvocationOptions(options);
     responseFormat ??= options.responseFormat;
     const prepared = this.prepareInvocation(options);
     const provider = prepared.provider;

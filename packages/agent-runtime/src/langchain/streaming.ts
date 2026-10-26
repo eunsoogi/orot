@@ -67,19 +67,20 @@ export class NativeStreamingChatModel extends NativeToolBindingChatModel {
     }
     const [, callOptions] = this._separateRunnableConfigFromCallOptionsCompat(options);
     const messages = BaseChatModel._convertInputToPromptValue(input).toChatMessages();
-    const prepared = this.prepareInvocation(callOptions);
+    const resolvedOptions = this.resolveInvocationOptions(callOptions);
+    const prepared = this.prepareInvocation(resolvedOptions);
     for await (const generationChunk of convertNativeStream(
       prepared.provider,
       messages,
       prepared.options,
       this.streamMode,
     )) {
-      if (callOptions.signal?.aborted) throw cancelled();
+      if (resolvedOptions.signal?.aborted) throw cancelled();
       yield generationChunk.message as AIMessageChunk;
       // Check again before the next async-iterator read so an abort between chunks does not pull upstream.
-      if (callOptions.signal?.aborted) throw cancelled();
+      if (resolvedOptions.signal?.aborted) throw cancelled();
     }
-    if (callOptions.signal?.aborted) throw cancelled();
+    if (resolvedOptions.signal?.aborted) throw cancelled();
   }
 }
 
