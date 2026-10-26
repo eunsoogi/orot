@@ -116,6 +116,24 @@ The default detail surface is `NAVIGATION_SURFACE_HEIGHT` 48pt; the root-tab sur
 
 Root-tab selection and contextual back/home/primary actions have different roles. Preserve routes, unsaved-input confirmation, and recording transition restrictions when changing their presentation.
 
+## Adaptive iPhone and Duo layouts
+
+The [Duo screen inventory](docs/design/duo/coverage.md) maps root tabs, guarded routes, local forms, sheets, system presentations, and unresolved entry points to design references. A component export or generated image does not establish a reachable screen or working Duo support. Confirm the caller and renderer before adapting or excluding a surface.
+
+Ordinary iPhone navigation retains the bottom bar and its existing labels. The Duo presentation uses icons only in a content-free right navigation lane: Back at the upper right, Home and root tabs at the lower right. Preserve each control's SF Symbol, accessible name, selected trait, disabled state, and action. Hiding a visible label must not remove its VoiceOver name. Root selection remains one continuous indicator within the shared Glass surface; Back and Home never acquire persistent selection emphasis.
+
+Keep the existing Back control at 48 by 48pt and match the navigation exterior width to it. Preserve the 20pt Back glyph and 22pt Home/root glyphs; do not scale controls to fill expanded space. The bottom-bar dimensions above remain the ordinary iPhone contract, not dimensions for a stretched vertical bar. Keep a visible gap below the actual system-reserved region, including when that region expands. Never place records, editors, the conversation composer, or fixed task actions inside the navigation lane.
+
+Choose content columns from the current window's usable geometry, four-sided safe areas, navigation occlusion, keyboard, and text size. Device names and fold-state booleans do not establish usable space. Compact, expanded, rotated, and left/right Split View windows must remain readable; a single column is valid whenever two readable panels do not fit. Avoid double-counting safe areas. Scrollers and fixed actions must clear the occupied edge and leave their final controls reachable.
+
+Preserve the native material and emphasis described above when changing placement: shared root Glass, regular Back/Home Glass, prominent primary actions, and the existing fallback on unsupported platforms. Retain typography, dark appearance, increased contrast, Reduce Motion, and Reduce Transparency. Generated blur, painted gradients, and a React Native `View` do not prove native Liquid Glass.
+
+Geometry changes are layout changes, not new navigation or work sessions. Keep route keys and Back-stack state, recording and transcription jobs, in-flight AI requests, drafts, provider/evidence selection, scroll position, and deletion undo with their existing owners. Preserve SQLCipher storage, provenance, selected evidence scope, and explicit transmission consent. A wider view must not fetch or transmit additional records merely because another panel is visible.
+
+System permission dialogs, authentication, sharing, alerts, and sheets remain part of screen coverage. Anchor applicable presentations to the current window and preserve cancellation and dismissal behavior. Permission-request completion does not prove HealthKit read access, and local backup preparation does not prove iCloud backup completion.
+
+Design references use synthetic examples. Compare each adapted screen with authentic app captures and exercise its actual primary action, keyboard, resizing, navigation, settings, and relevant system presentation. Mockups and component tests do not replace native interaction evidence. Record that evidence with the owning implementation change, outside this reusable guide.
+
 ## Screen composition patterns
 
 Use these compositions for the corresponding flows. Preserve heading hierarchy, spacing, grouping, icon proportions, and action placement when adapting a screen to its content.
@@ -129,7 +147,7 @@ Use these compositions for the corresponding flows. Preserve heading hierarchy, 
 
 Use the shared dynamic palette, 24pt content-side spacing, and a hierarchy with approximately 30pt screen headings, 16pt body text, and 14pt supporting text. These values apply to these screen patterns rather than a global token API. Preserve their hierarchy when text scales or the keyboard opens.
 
-Contextual navigation places Back at the left and Home at the right as separate regular Liquid Glass buttons without selected-tab emphasis. Keep 48pt-high targets, a compact 64pt Home control, and a visible gap between Home and the primary task action. Preserve the 22pt home glyph, 11pt contextual home label, and 12pt root-tab label. Persistent selection belongs only to root tabs. Animate changes in bar content and continuous root selection movement from the current presentation, so rapid navigation can interrupt smoothly. Reduce Motion settles the final state without movement. Render controls as interactive components rather than flattened images.
+Ordinary iPhone contextual navigation places Back at the left and Home at the right as separate regular Liquid Glass buttons without selected-tab emphasis. Keep 48pt-high targets, a compact 64pt Home control, and a visible gap between Home and the primary task action. Preserve the 22pt home glyph, 11pt contextual home label, and 12pt root-tab label. Use the adaptive-layout contract above for Duo placement and hidden labels. Persistent selection belongs only to root tabs. Animate changes in bar content and continuous root selection movement from the current presentation, so rapid navigation can interrupt smoothly. Reduce Motion settles the final state without movement. Render controls as interactive components rather than flattened images.
 
 Runtime records, model names, availability, progress, and errors must be real. Waveform samples must come from microphone metering and represent silence and pause accurately. The calendar import action classifies all events in the displayed date range and automatically saves validated medical appointments. Inspecting an imported result only expands its explanation. External literature belongs to the conversation RAG flow, with exact-query consent, provenance, citations, and failure handling preserved.
 
@@ -148,6 +166,6 @@ Runtime records, model names, availability, progress, and errors must be real. W
 - Are heading, body, and supporting roles distinct and unclipped at large text sizes?
 - Are empty, loading, error, disabled, selected, and destructive states represented?
 - Do controls have accessible names, roles, and states, with touch targets of at least 44pt?
-- Do safe areas, bottom navigation, and the keyboard leave final content and primary actions accessible?
+- Do safe areas, bottom or right navigation, system-reserved regions, and the keyboard leave final content and primary actions accessible?
 - Has the running screen been inspected in light, dark, and large-text modes, and where relevant, increased contrast and Reduce Transparency?
 - Are design references compared with authentic app captures, and are interaction and accessibility claims backed by checks recorded in the implementation PR or issue?
