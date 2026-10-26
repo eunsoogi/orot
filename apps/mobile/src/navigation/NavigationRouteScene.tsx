@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { NavigationRouteScrollView } from './NavigationRouteScrollView';
 import {
   NavigationPrimaryActionContext,
@@ -113,14 +114,23 @@ export function NavigationRouteScene<Name extends string>({
       </NavigationPrimaryActionContext.Provider>
     </NavigationLeaveStateRegistrationProvider>
   );
+  // Keep adaptive layout below the route-keyed scene so width changes never replace its owner.
+  const adaptiveContent = (
+    <AdaptiveColumns
+      active={active}
+      primary={routeContent}
+      routeKey={route.key}
+      testID={`navigation-route-columns-${route.key}`}
+    />
+  );
   const body = scrollable ? (
     <NavigationRouteScrollView
       key={`${route.key}:${rootTabs?.activeTab ?? ''}`}
     >
-      {routeContent}
+      {adaptiveContent}
     </NavigationRouteScrollView>
   ) : (
-    <View style={styles.fill}>{routeContent}</View>
+    <View style={styles.fill}>{adaptiveContent}</View>
   );
 
   const scene = (
