@@ -90,6 +90,7 @@ test('maintained native tests select each cohort that owns their assertions', ()
       ['core-ui', 'health-observations', 'health-recovery', 'navigation-imports'],
     ],
     ['apps/mobile/ios/OrotUITests/StorageMigrationUITests.swift', ['calendar-appointments']],
+    ['apps/mobile/ios/OrotUITests/ManualHistoryUITests.swift', ['calendar-appointments']],
     [
       'apps/mobile/ios/OrotIntegrationTests/NavigationLayoutIntegrationTests.swift',
       ['core-integration'],

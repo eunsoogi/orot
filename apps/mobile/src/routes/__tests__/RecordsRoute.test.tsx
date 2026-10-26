@@ -10,6 +10,7 @@ test('keeps recording and imported records visible without manual import actions
   const onOpenSymptoms = jest.fn();
   const onOpenRecording = jest.fn();
   const onOpenHealthLibrary = jest.fn();
+  const onOpenManualHistory = jest.fn();
   const onOpenSavedRecordings = jest.fn();
   await render(
     <RecordsRoute
@@ -17,6 +18,7 @@ test('keeps recording and imported records visible without manual import actions
       onOpenSavedRecordings={onOpenSavedRecordings}
       onOpenRecording={onOpenRecording}
       onOpenHealthLibrary={onOpenHealthLibrary}
+      onOpenManualHistory={onOpenManualHistory}
     />,
   );
 
@@ -34,6 +36,9 @@ test('keeps recording and imported records visible without manual import actions
   expect(onOpenSymptoms).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
+  await fireEvent.press(screen.getByTestId('records-open-manual-history'));
   expect(onOpenRecording).toHaveBeenCalledTimes(1);
   expect(onOpenHealthLibrary).toHaveBeenCalledTimes(1);
+  expect(onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('과거 건강 기록', { exact: true })).toBeTruthy();
 });
