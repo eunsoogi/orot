@@ -22,7 +22,7 @@ class Recorder extends BaseCallbackHandler {
 }
 
 describe('native chat ambient telemetry boundary', () => {
-  it('suppresses ambient payload tracing with a positive control', async () => {
+  it('suppresses ambient payload tracing for plain and structured calls with a positive control', async () => {
     const recorder = new Recorder();
     const key = 'synthetic-private-chat-hook';
     registerConfigureHook({ contextVar: key, inheritable: true });
@@ -53,6 +53,27 @@ describe('native chat ambient telemetry boundary', () => {
           output_tokens: 4,
           total_tokens: 16,
         });
+        expect(recorder.events).toEqual([]);
+
+        const structuredModel = new NativeChatModel(
+          new InMemoryFakeLanguageModelProvider({
+            response: {
+              text: '{"answer":"SYNTHETIC_PRIVATE_ANSWER"}',
+              toolCalls: [],
+              finishReason: 'complete',
+            },
+          }),
+        );
+        await expect(
+          structuredModel
+            .withStructuredOutput({
+              type: 'object',
+              properties: { answer: { type: 'string' } },
+              required: ['answer'],
+              additionalProperties: false,
+            })
+            .invoke('SYNTHETIC_PRIVATE_QUESTION'),
+        ).resolves.toEqual({ answer: 'SYNTHETIC_PRIVATE_ANSWER' });
         expect(recorder.events).toEqual([]);
       } finally {
         setContextVariable(key, undefined);

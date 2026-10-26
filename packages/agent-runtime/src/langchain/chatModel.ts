@@ -3,10 +3,28 @@ import {
   type BaseChatModelCallOptions,
 } from '@langchain/core/language_models/chat_models';
 import { AIMessage, type BaseMessage, type BaseMessageLike } from '@langchain/core/messages';
+import type {
+  BaseLanguageModelInput,
+  StructuredOutputMethodOptions,
+} from '@langchain/core/language_models/base';
+import type { Runnable } from '@langchain/core/runnables';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import type { Callbacks } from '@langchain/core/callbacks/manager';
-import type { LanguageModelProvider, ProviderError, ProviderErrorCode } from '@orot/model-runtime';
+import type {
+  LanguageModelProvider,
+  ProviderError,
+  ProviderErrorCode,
+  StructuredOutputFormat,
+} from '@orot/model-runtime';
 import { toLangChainMessages, toNativeMessages } from './messages';
+import {
+  createStructuredOutputRunnable,
+  withJsonSchemaInstruction,
+  type NativeGenerationResult,
+  type StructuredOutputInvocationResult,
+  type StructuredOutputPlan,
+  type StructuredOutputSchema,
+} from './structuredOutput';
 
 export interface NativeChatModelCallOptions extends BaseChatModelCallOptions {
   readonly maxOutputTokens?: number;
@@ -45,6 +63,36 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     return 'orot-native';
   }
 
+  /* eslint-disable no-dupe-class-members -- These overloads preserve LangChain's includeRaw result inference. */
+  /** Route LangChain's standard API to this provider's declared format capability or JSON fallback.
+   * The returned runnable uses the private call path so prompts and results never enter callbacks. */
+  override withStructuredOutput<RunOutput extends Record<string, any> = Record<string, any>>(
+    outputSchema: StructuredOutputSchema<RunOutput>,
+    config?: StructuredOutputMethodOptions<false>,
+  ): Runnable<BaseLanguageModelInput, RunOutput>;
+  override withStructuredOutput<RunOutput extends Record<string, any> = Record<string, any>>(
+    outputSchema: StructuredOutputSchema<RunOutput>,
+    config: StructuredOutputMethodOptions<true>,
+  ): Runnable<BaseLanguageModelInput, { raw: BaseMessage; parsed: RunOutput }>;
+  override withStructuredOutput<RunOutput extends Record<string, any> = Record<string, any>>(
+    outputSchema: StructuredOutputSchema<RunOutput>,
+    config?: StructuredOutputMethodOptions<boolean>,
+  ): Runnable<BaseLanguageModelInput, RunOutput | { raw: BaseMessage; parsed: RunOutput }> {
+    return createStructuredOutputRunnable<RunOutput>(
+      this.provider.capabilities,
+      outputSchema,
+      config,
+      (input, plan, options) => this.invokeStructuredOutput(input, plan, options),
+      (code) =>
+        new NativeChatModelError({
+          code,
+          message: 'Unsupported structured-output request.',
+          retryable: false,
+        }),
+    ) as Runnable<BaseLanguageModelInput, RunOutput | { raw: BaseMessage; parsed: RunOutput }>;
+  }
+  /* eslint-enable no-dupe-class-members */
+
   /** BaseChatModel.generate emits raw health messages to callbacks and ambient tracers.
    * Own this boundary so invoke/generatePrompt remain private; provider telemetry stays upstream.
    * No cache or retry wrapper may skip or duplicate an invocation's single provider dispatch. */
@@ -66,6 +114,41 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     messages: BaseMessage[],
     options: this['ParsedCallOptions'],
   ): Promise<ChatResult> {
+    return (await this.generateNative(messages, options)).result;
+  }
+
+  private async invokeStructuredOutput(
+    input: BaseLanguageModelInput,
+    plan: StructuredOutputPlan,
+    options: Partial<NativeChatModelCallOptions>,
+  ): Promise<StructuredOutputInvocationResult> {
+    const converted = NativeChatModel._convertInputToPromptValue(input).toChatMessages();
+    const messages = withJsonSchemaInstruction(converted, plan);
+    const generated = await this.generateNative(
+      messages,
+      options as this['ParsedCallOptions'],
+      plan.mode === 'native' ? plan.format : undefined,
+    );
+    const [generation] = generated.result.generations;
+    if (!generation || !AIMessage.isInstance(generation.message)) {
+      throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
+    }
+    return {
+      raw: generation.message,
+      ...(generated.structuredOutput === undefined
+        ? {}
+        : { structuredOutput: generated.structuredOutput }),
+      finishReason: generated.finishReason,
+      hasToolCalls: generated.hasToolCalls,
+    };
+  }
+
+  /** Keep the only native dispatch path shared by plain and structured calls. */
+  private async generateNative(
+    messages: BaseMessage[],
+    options: this['ParsedCallOptions'],
+    responseFormat?: StructuredOutputFormat,
+  ): Promise<NativeGenerationResult> {
     // Reject unsupported requests before dispatch rather than silently dropping model controls.
     const supported = new Set([
       'signal',
@@ -91,11 +174,13 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
     }
     // A deadline requires host-owned cancellation; do not race a timeout against live native work.
     if (options.timeout !== undefined) unsupported();
+    if (responseFormat !== undefined && !this.provider.capabilities.structuredOutput) unsupported();
     const signal = options.signal;
     if (signal?.aborted)
       throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
     const request = {
       messages: toNativeMessages(messages).messages,
+      ...(responseFormat === undefined ? {} : { responseFormat }),
       ...(options.maxOutputTokens !== undefined
         ? { maxOutputTokens: options.maxOutputTokens }
         : {}),
@@ -146,6 +231,13 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
             },
           }),
     });
-    return { generations: [{ text: response.text, message }] };
+    return {
+      result: { generations: [{ text: response.text, message }] },
+      ...(response.structuredOutput === undefined
+        ? {}
+        : { structuredOutput: response.structuredOutput }),
+      finishReason: response.finishReason,
+      hasToolCalls: response.toolCalls.length > 0,
+    };
   }
 }
