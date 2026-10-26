@@ -9,10 +9,11 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
-  // Notification privacy, trigger identity and cold-start delivery remain native obligations.
+  // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testFractionalTimestampsNeverRoundDeliveryEarlierThanTheSelectedOffset',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testPendingReplacementUsesOneRequestAndCancellationRemovesIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
