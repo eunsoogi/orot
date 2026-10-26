@@ -10,6 +10,17 @@ import type {
   MedicalDocumentFileDeletion,
   StagedMedicalDocument,
 } from './medicalDocumentNativeBridge';
+import {
+  canUseMedicalDocumentGeneration,
+  currentMedicalDocumentGeneration,
+  getMedicalDocumentGeneration,
+  trackStagedMedicalDocument,
+} from './medicalDocumentLifecycle';
+import {
+  compareMedicalDocumentEvidenceSpans,
+  makeMedicalDocumentEvidenceSpans,
+  makeMedicalDocumentSourceRecord,
+} from './medicalDocumentImportRecords';
 
 export type MedicalDocumentSaveResult = 'saved' | 'duplicate';
 export type MedicalDocumentSourceRecord = Extract<
@@ -43,71 +54,6 @@ async function loadRepository(): Promise<RecordRepository> {
   return openLocalStorage();
 }
 
-function makeSourceRecord(
-  document: StagedMedicalDocument,
-  timestamp: string,
-): SourceRecord {
-  // The import time belongs to provenance; it must not masquerade as the clinical event date.
-  return {
-    id: document.id,
-    ingestedAt: timestamp,
-    provenance: { origin: 'imported', sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' },
-    sourceKind: 'medical_document',
-    title: document.displayName,
-    contentHash: document.contentHash,
-  };
-}
-
-function makeEvidenceSpans(
-  document: StagedMedicalDocument,
-  timestamp: string,
-): EvidenceSpan[] {
-  return document.sections.map(section => ({
-    id: section.id,
-    ingestedAt: timestamp,
-    provenance: { origin: 'imported', sourceRecordIds: [document.id] },
-    reviewState: { status: 'unreviewed' },
-    sourceRecordId: document.id,
-    text: section.text,
-    ...(section.pageNumber === undefined
-      ? {}
-      : { pageNumber: section.pageNumber }),
-    locator:
-      section.pageNumber === undefined
-        ? {
-            kind: 'text_range' as const,
-            startOffset: section.startOffset,
-            endOffset: section.endOffset,
-          }
-        : {
-            kind: 'document_range' as const,
-            pageNumber: section.pageNumber,
-            startOffset: section.startOffset,
-            endOffset: section.endOffset,
-          },
-  }));
-}
-
-function compareEvidenceSpans(left: EvidenceSpan, right: EvidenceSpan): number {
-  const leftPage = left.pageNumber ?? 0;
-  const rightPage = right.pageNumber ?? 0;
-  const byPage = leftPage - rightPage;
-  if (byPage !== 0) return byPage;
-
-  const leftOffset =
-    left.locator?.kind === 'text_range' ||
-    left.locator?.kind === 'document_range'
-      ? left.locator.startOffset
-      : 0;
-  const rightOffset =
-    right.locator?.kind === 'text_range' ||
-    right.locator?.kind === 'document_range'
-      ? right.locator.startOffset
-      : 0;
-  return leftOffset - rightOffset || left.id.localeCompare(right.id);
-}
-
 /** Commits source and excerpt rows together, while native cleanup owns any uncommitted original. */
 export function createMedicalDocumentImportService(
   dependencies: MedicalDocumentImportDependencies = {},
@@ -138,31 +84,57 @@ export function createMedicalDocumentImportService(
       const evidenceSpans =
         await repository.evidenceSpans.listForSourceRecord(sourceId);
       // The repository orders by identity; this view restores source page/offset order.
-      evidenceSpans.sort(compareEvidenceSpans);
+      evidenceSpans.sort(compareMedicalDocumentEvidenceSpans);
       return { ...source, evidenceSpans };
     },
     async selectDocument() {
+      // Bind the database snapshot and picker call to one lifecycle epoch.
+      const generation = currentMedicalDocumentGeneration();
+      if (!canUseMedicalDocumentGeneration(generation)) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
       const repository = await getRepository();
       const sources = await repository.list('source_record');
       const documentIds = sources
         .filter(source => source.sourceKind === 'medical_document')
         .map(source => source.id);
-      await files.reconcile(documentIds);
-      return pick();
+      await files.reconcile(documentIds, generation);
+      if (!canUseMedicalDocumentGeneration(generation)) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
+      const document = await pick();
+      if (dependencies.pick !== undefined && document) {
+        if (!canUseMedicalDocumentGeneration(generation)) {
+          throw new MedicalDocumentImportError('IMPORT_FAILED');
+        }
+        trackStagedMedicalDocument(document.id);
+      }
+      return document;
     },
     async saveDocument(document) {
+      // A retired picker ID has no current generation and cannot be saved again.
+      const generation = getMedicalDocumentGeneration(document.id);
+      if (
+        generation === undefined ||
+        !canUseMedicalDocumentGeneration(generation)
+      ) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
       const repository = await getRepository();
       const existing = await repository.sourceRecords.findByContentHash(
         document.contentHash,
       );
+      if (!canUseMedicalDocumentGeneration(generation)) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
       if (existing) {
-        await preserveDuplicateOriginal(files, existing, document);
+        await preserveDuplicateOriginal(files, existing, document, generation);
         return 'duplicate';
       }
 
       const timestamp = getTimestamp();
-      const source = makeSourceRecord(document, timestamp);
-      const spans = makeEvidenceSpans(document, timestamp);
+      const source = makeMedicalDocumentSourceRecord(document, timestamp);
+      const spans = makeMedicalDocumentEvidenceSpans(document, timestamp);
       if (spans.length === 0) {
         throw new MedicalDocumentImportError('EMPTY_DOCUMENT');
       }
@@ -175,7 +147,9 @@ export function createMedicalDocumentImportService(
           await writer.put('source_record', source);
           for (const span of spans) await writer.put('evidence_span', span);
         });
-        markMedicalDocumentPersisted(document.id);
+        if (!markMedicalDocumentPersisted(document.id, generation)) {
+          throw new MedicalDocumentImportError('IMPORT_FAILED');
+        }
         return 'saved';
       } catch (error) {
         let duplicate: SourceRecord | null;
@@ -187,7 +161,12 @@ export function createMedicalDocumentImportService(
           throw error;
         }
         if (duplicate) {
-          await preserveDuplicateOriginal(files, duplicate, document);
+          await preserveDuplicateOriginal(
+            files,
+            duplicate,
+            document,
+            generation,
+          );
           return 'duplicate';
         }
         // Keep the staged original available so the review can retry or cancel this save.
@@ -205,6 +184,7 @@ async function preserveDuplicateOriginal(
   files: MedicalDocumentFileDeletion,
   retainedSource: SourceRecord,
   document: StagedMedicalDocument,
+  generation: number,
 ): Promise<void> {
   // The content-hash index is shared across source kinds; only documents own these originals.
   if (retainedSource.sourceKind !== 'medical_document') {
@@ -217,13 +197,16 @@ async function preserveDuplicateOriginal(
       retainedSource.id,
       document.id,
       document.contentHash,
+      generation,
     );
   } catch {
     throw new MedicalDocumentImportError('IMPORT_FAILED');
   }
 
   // Keep a recovered canonical file protected until reconciliation reads its database row.
-  markMedicalDocumentPersisted(retainedSource.id);
+  if (!markMedicalDocumentPersisted(retainedSource.id, generation)) {
+    throw new MedicalDocumentImportError('IMPORT_FAILED');
+  }
   if (retainedSource.id !== document.id) {
     await discardOriginal(files, document.id);
   }

@@ -9,6 +9,7 @@ import {
   createMedicalDocumentImportService,
   type MedicalDocumentImportDependencies,
 } from '../medicalDocumentImportService';
+import { trackStagedMedicalDocument } from '../medicalDocumentLifecycle';
 import type {
   MedicalDocumentFileDeletion,
   StagedMedicalDocument,
@@ -30,6 +31,7 @@ const document: StagedMedicalDocument = {
 };
 
 function setup(overrides: Partial<MedicalDocumentImportDependencies> = {}) {
+  trackStagedMedicalDocument(document.id);
   const writes: Array<{ kind: string; record: unknown }> = [];
   const writer = {
     get: jest.fn().mockResolvedValue(null),
@@ -81,7 +83,7 @@ test('reconciles saved document files before opening the picker', async () => {
   await expect(service.selectDocument()).resolves.toEqual(document);
 
   expect(repository.list).toHaveBeenCalledWith('source_record');
-  expect(files.reconcile).toHaveBeenCalledWith([document.id]);
+  expect(files.reconcile.mock.calls[0]?.[0]).toEqual([document.id]);
 });
 
 test('stores unreviewed provenance and page locators without inventing clinical dates', async () => {

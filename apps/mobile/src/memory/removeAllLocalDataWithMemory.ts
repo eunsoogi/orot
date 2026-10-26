@@ -6,6 +6,11 @@ import {
   type MedicalDocumentFileDeletion,
 } from '../medicalDocuments/medicalDocumentNativeBridge';
 import {
+  endMedicalDocumentDeletion,
+  retireDeletedMedicalDocumentSources,
+  startMedicalDocumentDeletion,
+} from '../medicalDocuments/medicalDocumentLifecycle';
+import {
   nativeAudioDeletion,
   type RecordingAudioDeletion,
 } from '../recording/recordingLibraryService';
@@ -48,22 +53,22 @@ export async function removeAllLocalDataWithMemory(
   const audioDeletion = dependencies.audioDeletion ?? nativeAudioDeletion;
   const documentDeletion =
     dependencies.medicalDocumentDeletion ?? medicalDocumentFileDeletion;
-  const sources = await repository.list('source_record');
-  const recordingSourceIds = sources
-    .filter(source => source.sourceKind === 'audio_recording')
-    .map(source => source.id);
-  const documentSourceIds = sources
-    .filter(source => source.sourceKind === 'medical_document')
-    .map(source => source.id);
+  const deletionGeneration = startMedicalDocumentDeletion();
   const stagedRecordingIds: string[] = [];
   const stagedDocumentIds: string[] = [];
-  let documentFileSourceIds = documentSourceIds;
 
   try {
+    const sources = await repository.list('source_record');
+    const recordingSourceIds = sources
+      .filter(source => source.sourceKind === 'audio_recording')
+      .map(source => source.id);
+    const documentSourceIds = sources
+      .filter(source => source.sourceKind === 'medical_document')
+      .map(source => source.id);
     await audioDeletion.reconcile(recordingSourceIds);
     // Only saved rows clear bridge tracking; active picks are added after reconcile for deletion staging.
-    await documentDeletion.reconcile(documentSourceIds);
-    documentFileSourceIds = [
+    await documentDeletion.reconcile(documentSourceIds, deletionGeneration);
+    const documentFileSourceIds = [
       ...new Set([
         ...documentSourceIds,
         ...(await getProtectedMedicalDocumentSourceIds()),
@@ -86,6 +91,8 @@ export async function removeAllLocalDataWithMemory(
         rag.clear(deletedLocalRecordIds, transaction),
     );
 
+    // Database deletion owns the lifecycle; retire the whole batch before any asynchronous file cleanup.
+    retireDeletedMedicalDocumentSources(stagedDocumentIds);
     let audioCleanupPending = false;
     for (const sourceId of stagedRecordingIds) {
       try {
@@ -135,5 +142,7 @@ export async function removeAllLocalDataWithMemory(
       );
     }
     throw error;
+  } finally {
+    endMedicalDocumentDeletion();
   }
 }

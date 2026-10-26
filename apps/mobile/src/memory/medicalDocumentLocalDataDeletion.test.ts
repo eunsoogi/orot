@@ -48,8 +48,8 @@ function setup() {
     commit: jest.fn(),
   };
   const medicalDocumentDeletion = {
-    reconcile: jest.fn(async () => {
-      events.push('documents-reconcile');
+    reconcile: jest.fn(async (sourceIds: readonly string[]) => {
+      events.push(`documents-reconcile:${sourceIds.length}`);
     }),
     stage: jest.fn(async (id: string) => {
       events.push(`document-stage:${id}`);
@@ -124,9 +124,9 @@ describe('medical document file lifecycle during local data deletion', () => {
       }),
     ).resolves.toMatchObject({ medicalDocumentCleanupPending: false });
 
-    expect(context.medicalDocumentDeletion.reconcile).toHaveBeenCalledWith(
-      sourceIDs,
-    );
+    expect(
+      context.medicalDocumentDeletion.reconcile.mock.calls[0]?.[0],
+    ).toEqual(sourceIDs);
     expect(context.medicalDocumentDeletion.stage).toHaveBeenCalledWith(
       activeDocumentID,
     );

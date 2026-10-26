@@ -151,3 +151,89 @@ test('restores an unsaved original without losing protection after local deletio
     }
   }
 });
+
+test('retires the whole document batch before failed cleanup can interleave', async () => {
+  const previousNativeModule = NativeModules.MedicalDocumentImportModule;
+  const firstDocument = {
+    ...stagedDocument,
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  };
+  const secondDocument = {
+    ...stagedDocument,
+    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  };
+  let signalFirstCommit!: () => void;
+  const firstCommitStarted = new Promise<void>(resolve => {
+    signalFirstCommit = resolve;
+  });
+  let rejectFirstCommit!: (error: Error) => void;
+  const firstCommit = new Promise<void>((_resolve, reject) => {
+    rejectFirstCommit = reject;
+  });
+  const reconcileMedicalDocumentFiles = jest.fn().mockResolvedValue(undefined);
+  NativeModules.MedicalDocumentImportModule = {
+    pickMedicalDocument: jest
+      .fn()
+      .mockResolvedValueOnce(firstDocument)
+      .mockResolvedValueOnce(secondDocument),
+    discardMedicalDocument: jest.fn().mockResolvedValue(undefined),
+    ensureMedicalDocumentOriginal: jest.fn().mockResolvedValue(undefined),
+    reconcileMedicalDocumentFiles,
+    stageMedicalDocumentDeletion: jest.fn().mockResolvedValue(undefined),
+    restoreMedicalDocumentDeletion: jest.fn().mockResolvedValue(undefined),
+    commitMedicalDocumentDeletion: jest.fn((sourceId: string) =>
+      sourceId === firstDocument.id
+        ? (signalFirstCommit(), firstCommit)
+        : Promise.resolve(),
+    ),
+  };
+
+  const repository = {
+    list: jest.fn().mockResolvedValue([]),
+    listAllLocalDeletionReferences: jest.fn().mockResolvedValue([]),
+    deleteAllLocalData: jest.fn().mockResolvedValue({ sourceRecordIds: [] }),
+  } as unknown as RecordRepository;
+  const prepare = jest.fn().mockResolvedValue(undefined);
+  const clear = jest.fn().mockResolvedValue(undefined);
+  const memory = {
+    forgetAll: jest.fn().mockResolvedValue(0),
+  } as unknown as AgentMemoryService;
+
+  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({} as never);
+  jest.mocked(openLocalStorage).mockResolvedValue(repository);
+  jest
+    .mocked(createLocalE5RagService)
+    .mockReturnValue({ prepare, clear } as never);
+  await medicalDocumentNativeBridge.pick();
+  await medicalDocumentNativeBridge.pick();
+
+  try {
+    const deletion = removeAllLocalDataWithMemory(memory, {
+      audioDeletion: {
+        reconcile: jest.fn().mockResolvedValue(undefined),
+        stage: jest.fn().mockResolvedValue(undefined),
+        restore: jest.fn().mockResolvedValue(undefined),
+        commit: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+    await firstCommitStarted;
+    const interleavedReconcile = medicalDocumentFileDeletion.reconcile([]);
+    rejectFirstCommit(new Error('Synthetic native cleanup failure.'));
+
+    await expect(deletion).resolves.toMatchObject({
+      medicalDocumentCleanupPending: true,
+    });
+    await interleavedReconcile;
+
+    expect(reconcileMedicalDocumentFiles).toHaveBeenLastCalledWith([]);
+    await expect(getProtectedMedicalDocumentSourceIds()).resolves.toEqual([]);
+  } finally {
+    await medicalDocumentNativeBridge.discard(firstDocument.id);
+    await medicalDocumentNativeBridge.discard(secondDocument.id);
+    if (previousNativeModule === undefined) {
+      delete NativeModules.MedicalDocumentImportModule;
+    } else {
+      NativeModules.MedicalDocumentImportModule = previousNativeModule;
+    }
+  }
+});

@@ -1,5 +1,6 @@
 import type { RecordRepository, HashedSourceRecord } from '@orot/storage';
 import { getProtectedMedicalDocumentSourceIds } from '../medicalDocumentNativeBridge';
+import { trackStagedMedicalDocument } from '../medicalDocumentLifecycle';
 import { createMedicalDocumentImportService } from '../medicalDocumentImportService';
 import type {
   MedicalDocumentFileDeletion,
@@ -45,6 +46,7 @@ function setup(
     transactionFailure?: Error;
   } = {},
 ) {
+  trackStagedMedicalDocument(stagedDocument.id);
   const lookups = options.lookups ?? [];
   let lookupIndex = 0;
   const findByContentHash = jest.fn(async () => {
@@ -85,6 +87,7 @@ test('same-id retries keep the retained original', async () => {
     stagedDocument.id,
     stagedDocument.id,
     stagedDocument.contentHash,
+    expect.any(Number),
   );
   expect(files.discard).not.toHaveBeenCalled();
 });
@@ -95,6 +98,7 @@ test('different-id duplicates restore a missing canonical original before cleanu
     ...stagedDocument,
     id: '44444444-4444-4444-8444-444444444444',
   };
+  trackStagedMedicalDocument(selectedDocument.id);
 
   await expect(service.saveDocument(selectedDocument)).resolves.toBe(
     'duplicate',
@@ -104,6 +108,7 @@ test('different-id duplicates restore a missing canonical original before cleanu
     retainedSource.id,
     selectedDocument.id,
     selectedDocument.contentHash,
+    expect.any(Number),
   );
   expect(files.discard).toHaveBeenCalledWith(selectedDocument.id);
   expect(files.ensureOriginal.mock.invocationCallOrder[0]).toBeLessThan(
@@ -131,6 +136,7 @@ test('transaction-race duplicates use the same protected-original recovery', asy
     ...stagedDocument,
     id: '55555555-5555-4555-8555-555555555555',
   };
+  trackStagedMedicalDocument(selectedDocument.id);
   const { files, service } = setup({
     lookups: [null, retainedSource],
     transactionFailure: new Error('Synthetic unique-hash race.'),
@@ -144,6 +150,7 @@ test('transaction-race duplicates use the same protected-original recovery', asy
     retainedSource.id,
     selectedDocument.id,
     selectedDocument.contentHash,
+    expect.any(Number),
   );
   expect(files.discard).toHaveBeenCalledWith(selectedDocument.id);
   expect(files.ensureOriginal.mock.invocationCallOrder[0]).toBeLessThan(

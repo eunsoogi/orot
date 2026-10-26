@@ -1,5 +1,15 @@
 /** Keeps local document extraction and protected-file lifecycle behind one typed native boundary. */
 import { NativeModules } from 'react-native';
+import {
+  canUseMedicalDocumentGeneration,
+  confirmMedicalDocumentReconciliation,
+  currentMedicalDocumentGeneration,
+  discardMedicalDocumentFromLifecycle,
+  markMedicalDocumentPersistedInLifecycle,
+  medicalDocumentReconciliationIds,
+  protectedMedicalDocumentSourceIds,
+  trackStagedMedicalDocument,
+} from './medicalDocumentLifecycle';
 
 export interface MedicalDocumentTextSection {
   readonly id: string;
@@ -34,7 +44,7 @@ export class MedicalDocumentImportError extends Error {
 }
 
 export interface MedicalDocumentFileDeletion {
-  reconcile(sourceIds: readonly string[]): Promise<void>;
+  reconcile(sourceIds: readonly string[], generation?: number): Promise<void>;
   stage(sourceId: string): Promise<void>;
   restore(sourceId: string): Promise<void>;
   commit(sourceId: string): Promise<void>;
@@ -42,6 +52,7 @@ export interface MedicalDocumentFileDeletion {
     retainedSourceId: string,
     stagedSourceId: string,
     expectedContentHash: string,
+    generation?: number,
   ): Promise<void>;
   discard(sourceId: string): Promise<void>;
 }
@@ -71,9 +82,6 @@ const nativeCodes = new Set<MedicalDocumentImportErrorCode>([
   'IMPORT_FAILED',
 ]);
 
-// Keep selected and newly persisted originals until a repository-backed reconcile confirms their IDs.
-const activeStagedDocumentIds = new Set<string>();
-const persistedAwaitingReconciliationIds = new Set<string>();
 let fileOperationTail: Promise<void> = Promise.resolve();
 
 function serializeFileOperation<T>(operation: () => Promise<T>): Promise<T> {
@@ -89,17 +97,14 @@ export async function getProtectedMedicalDocumentSourceIds(): Promise<
   string[]
 > {
   await fileOperationTail;
-  return [
-    ...new Set([
-      ...activeStagedDocumentIds,
-      ...persistedAwaitingReconciliationIds,
-    ]),
-  ];
+  return protectedMedicalDocumentSourceIds();
 }
 
-export function markMedicalDocumentPersisted(sourceId: string): void {
-  activeStagedDocumentIds.delete(sourceId);
-  persistedAwaitingReconciliationIds.add(sourceId);
+export function markMedicalDocumentPersisted(
+  sourceId: string,
+  generation = currentMedicalDocumentGeneration(),
+): boolean {
+  return markMedicalDocumentPersistedInLifecycle(sourceId, generation);
 }
 
 function normalizeError(error: unknown): MedicalDocumentImportError {
@@ -133,37 +138,36 @@ async function callNative<T>(
 }
 
 export const medicalDocumentNativeBridge = {
-  pick: () =>
-    serializeFileOperation(async () => {
+  pick: () => {
+    const generation = currentMedicalDocumentGeneration();
+    return serializeFileOperation(async () => {
+      if (!canUseMedicalDocumentGeneration(generation)) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
       const document = await callNative(module => module.pickMedicalDocument());
-      if (document) activeStagedDocumentIds.add(document.id);
+      if (document) trackStagedMedicalDocument(document.id);
       return document;
-    }),
+    });
+  },
   discard: (sourceId: string) =>
     serializeFileOperation(async () => {
       await callNative(module => module.discardMedicalDocument(sourceId));
-      activeStagedDocumentIds.delete(sourceId);
-      persistedAwaitingReconciliationIds.delete(sourceId);
+      discardMedicalDocumentFromLifecycle(sourceId);
     }),
 };
 
 export const medicalDocumentFileDeletion: MedicalDocumentFileDeletion = {
-  reconcile: sourceIds =>
+  reconcile: (sourceIds, generation = currentMedicalDocumentGeneration()) =>
     serializeFileOperation(async () => {
-      const persistedIds = new Set(sourceIds);
-      await callNative(module =>
-        module.reconcileMedicalDocumentFiles([
-          ...new Set([
-            ...persistedIds,
-            ...activeStagedDocumentIds,
-            ...persistedAwaitingReconciliationIds,
-          ]),
-        ]),
+      const retainedIds = medicalDocumentReconciliationIds(
+        sourceIds,
+        generation,
       );
-      for (const sourceId of persistedIds) {
-        activeStagedDocumentIds.delete(sourceId);
-        persistedAwaitingReconciliationIds.delete(sourceId);
-      }
+      if (retainedIds === null) return;
+      await callNative(module =>
+        module.reconcileMedicalDocumentFiles(retainedIds),
+      );
+      confirmMedicalDocumentReconciliation(sourceIds, generation);
     }),
   stage: sourceId =>
     serializeFileOperation(() =>
@@ -173,23 +177,28 @@ export const medicalDocumentFileDeletion: MedicalDocumentFileDeletion = {
     serializeFileOperation(() =>
       callNative(module => module.restoreMedicalDocumentDeletion(sourceId)),
     ),
+  /** Native cleanup runs after the database owner has retired its entire source batch. */
   commit: sourceId =>
-    serializeFileOperation(async () => {
-      await callNative(module =>
-        module.commitMedicalDocumentDeletion(sourceId),
-      );
-      activeStagedDocumentIds.delete(sourceId);
-      persistedAwaitingReconciliationIds.delete(sourceId);
-    }),
-  ensureOriginal: (retainedSourceId, stagedSourceId, expectedContentHash) =>
     serializeFileOperation(() =>
-      callNative(module =>
+      callNative(module => module.commitMedicalDocumentDeletion(sourceId)),
+    ),
+  ensureOriginal: (
+    retainedSourceId,
+    stagedSourceId,
+    expectedContentHash,
+    generation = currentMedicalDocumentGeneration(),
+  ) =>
+    serializeFileOperation(() => {
+      if (!canUseMedicalDocumentGeneration(generation)) {
+        throw new MedicalDocumentImportError('IMPORT_FAILED');
+      }
+      return callNative(module =>
         module.ensureMedicalDocumentOriginal(
           retainedSourceId,
           stagedSourceId,
           expectedContentHash,
         ),
-      ),
-    ),
+      );
+    }),
   discard: sourceId => medicalDocumentNativeBridge.discard(sourceId),
 };
