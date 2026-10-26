@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
+		A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000002 /* AppointmentReminderTestObservation.m */; };
+		A68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */; };
+		A68F00000000000000000004 /* ReminderJourneyObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000004 /* ReminderJourneyObservation.swift */; };
+		A68F00000000000000000005 /* ReminderJourneyForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000005 /* ReminderJourneyForm.swift */; };
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
@@ -212,6 +217,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
+		B68F00000000000000000002 /* AppointmentReminderTestObservation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppointmentReminderTestObservation.m; path = OrotMobile/AppointmentReminderTestObservation.m; sourceTree = "<group>"; };
+		B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderJourneyUITests.swift; path = AppointmentReminderJourneyUITests.swift; sourceTree = "<group>"; };
+		B68F00000000000000000004 /* ReminderJourneyObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReminderJourneyObservation.swift; path = ReminderJourneyObservation.swift; sourceTree = "<group>"; };
+		B68F00000000000000000005 /* ReminderJourneyForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReminderJourneyForm.swift; path = ReminderJourneyForm.swift; sourceTree = "<group>"; };
 		096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHistoryView.swift; sourceTree = "<group>"; };
 		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
 		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
@@ -501,6 +511,8 @@
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
 				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
+				B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */,
+				B68F00000000000000000002 /* AppointmentReminderTestObservation.m */,
 				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
 				B67F00000000000000000002 /* AppointmentReminderModule.m */,
 				B67F00000000000000000003 /* AppointmentReminderNotifications.swift */,
@@ -676,6 +688,9 @@
 				E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */,
 				9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */,
 				75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */,
+				B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */,
+				B68F00000000000000000004 /* ReminderJourneyObservation.swift */,
+				B68F00000000000000000005 /* ReminderJourneyForm.swift */,
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
 				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
@@ -1039,6 +1054,8 @@
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
 				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
+				A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */,
+				A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */,
 				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
 				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
 				A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */,
@@ -1092,6 +1109,9 @@
 				E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */,
 				64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */,
 				4D43610E1739E517D500E672 /* StorageMigrationUITests.swift in Sources */,
+				A68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift in Sources */,
+				A68F00000000000000000004 /* ReminderJourneyObservation.swift in Sources */,
+				A68F00000000000000000005 /* ReminderJourneyForm.swift in Sources */,
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
 				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,

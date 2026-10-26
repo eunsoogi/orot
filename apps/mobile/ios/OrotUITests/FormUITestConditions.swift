@@ -102,41 +102,23 @@ enum FormUITestConditions {
         observeFocusGesture?("before-focus-tap", nil)
         measure("field-tap") { input.tap() }
         observeFocusGesture?("after-focus-tap", nil)
-        guard let focused = measure("focused-input", {
+        guard measure("focused-input", {
             exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID, observeFocusGesture: observeFocusGesture, stopAfterFirstFocusDrag: stopAfterFirstFocusDrag)
-        }) else { return false }
+        }) != nil else { return false }
         let shouldReplace = if current.isEmpty {
             false
         } else {
             measure("placeholder-read") { current != input.placeholderValue }
         }
         if shouldReplace {
-            // Default activation placed the caret at the start in hosted traces. Touch the lower trailing
-            // interior of the independently observed input for these short, visible fixture contents.
-            // This is not a document-end operation for internally scrolled text; exact-empty must reject a missed end.
-            let point = measure("caret-placement") {
-                CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
-                         dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
-            }
-            // Only the journal needs an extra guard against its floating navigation buttons.
-            observeCursorTap?("before")
-            if scrollID == "symptoms-scroll" {
-                let tapPoint = CGPoint(x: focused.application.minX + point.dx, y: focused.application.minY + point.dy)
-                guard !navigationControlFrames(app).contains(where: { $0.contains(tapPoint) }) else {
-                    XCTFail("The cursor tap must not be covered by a floating navigation control: \(tapPoint)")
-                    return false
-                }
-            }
-            measure("caret-tap") { app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap() }
-            observeCursorTap?("after")
-            // Controlled fields can drop batched backspaces while rerendering.
-            // Send one delete key through the focused app instead of re-resolving the input query per Character.
-            // exact-empty below remains the only outcome check; do not retry a missed deletion.
-            measure("delete-existing") {
-                for _ in current {
-                    app.typeText(XCUIKeyboardKey.delete.rawValue)
-                }
-            }
+            // A trailing viewport tap can leave the caret inside internally scrolled text.
+            // XCTest's native Command-A selects the entire focused value, including its offscreen suffix.
+            // Keep the existing observer around selection without synthesizing another coordinate tap.
+            observeCursorTap?("before-select-all")
+            measure("select-existing") { app.typeKey("a", modifierFlags: .command) }
+            observeCursorTap?("after-select-all")
+            // One native delete replaces the selection; exact-empty rejects a missed selection without retrying.
+            measure("delete-existing") { app.typeText(XCUIKeyboardKey.delete.rawValue) }
             let emptied = measure("exact-empty") { exactValue(input, equals: "") }
             guard emptied || scrollID != "symptoms-scroll" else { return false }
         }

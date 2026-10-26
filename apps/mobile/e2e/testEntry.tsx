@@ -24,6 +24,7 @@ import { registerTestApplicationRenderer } from './testApplicationRenderer';
 import { registerNavigationTestObserver } from '../src/navigation/navigationTestObservation';
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
+import { ReminderTestObservation } from './ReminderTestObservation';
 
 const settingsManager = NativeModules.SettingsManager as
   | {
@@ -39,6 +40,7 @@ const lifecycleObservation =
   settings.OROT_TEST_EXPORT_OBSERVATION === 'YES';
 const appearanceObservation =
   settings.OROT_TEST_APPEARANCE_OBSERVATION === 'YES';
+const reminderObservation = settings.OROT_TEST_REMINDER_OBSERVATION === 'YES';
 const geometryObservation =
   settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation;
 if (lifecycleObservation) {
@@ -48,7 +50,7 @@ if (lifecycleObservation) {
 }
 
 // XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.
-if (geometryObservation || appearanceObservation) {
+if (geometryObservation || appearanceObservation || reminderObservation) {
   AppRegistry.setWrapperComponentProvider(() => TestObservationWrapper);
 }
 
@@ -95,10 +97,15 @@ function TestObservationWrapper({ children }: PropsWithChildren) {
   ) : (
     children
   );
-  return appearanceObservation ? (
+  const observed = appearanceObservation ? (
     <AppearanceTestObservation>{content}</AppearanceTestObservation>
   ) : (
     content
+  );
+  return reminderObservation ? (
+    <ReminderTestObservation>{observed}</ReminderTestObservation>
+  ) : (
+    observed
   );
 }
 
