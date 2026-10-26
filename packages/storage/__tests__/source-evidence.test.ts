@@ -1,113 +1,18 @@
 import { describe, expect, it } from '@jest/globals';
 import { openEncryptedStorage } from '../src';
-import type { SqlDatabase, SqlExecutor, SqlResult, SqlTransaction, SqlValue } from '../src';
-import type { EvidenceSpanLocator } from '@orot/domain';
-
-declare const require: (specifier: string) => unknown;
-
-interface TestStatement {
-  all(...parameters: SqlValue[]): Array<Record<string, SqlValue>>;
-  run(...parameters: SqlValue[]): { changes: number };
-}
-
-interface TestConnection {
-  prepare(query: string): TestStatement;
-  exec(query: string): void;
-  close(): void;
-}
-
-interface TestFileSystem {
-  mkdtempSync(prefix: string): string;
-  rmSync(path: string, options: { recursive: boolean; force: boolean }): void;
-}
-
-const { DatabaseSync } = require('node:sqlite') as {
-  DatabaseSync: new (path: string) => TestConnection;
-};
-const { mkdtempSync, rmSync } = require('node:fs') as TestFileSystem;
-const { tmpdir } = require('node:os') as { tmpdir(): string };
-const { join } = require('node:path') as { join(...parts: string[]): string };
-
-function createDatabase(path = ':memory:'): SqlDatabase {
-  const connection = new DatabaseSync(path);
-  const execute = async (query: string, parameters: SqlValue[] = []): Promise<SqlResult> => {
-    const normalized = query.trim().toUpperCase();
-    const statement = connection.prepare(query);
-    if (normalized.startsWith('SELECT') || /^PRAGMA [A-Z_]+$/.test(normalized)) {
-      return { rows: statement.all(...parameters) };
-    }
-    return { rows: [], rowsAffected: statement.run(...parameters).changes };
-  };
-  const executor: SqlExecutor = { execute };
-  return {
-    ...executor,
-    async transaction(operation: (transaction: SqlTransaction) => Promise<void>) {
-      connection.exec('BEGIN IMMEDIATE');
-      const transaction: SqlTransaction = {
-        execute,
-        commit: () => ({ rows: [] }),
-        rollback: () => ({ rows: [] }),
-      };
-      try {
-        await operation(transaction);
-        connection.exec('COMMIT');
-      } catch (error) {
-        connection.exec('ROLLBACK');
-        throw error;
-      }
-    },
-    closeAsync: async () => connection.close(),
-  };
-}
-
-function options(database: SqlDatabase) {
-  return {
-    name: 'orot-source-evidence.db',
-    keyStore: {
-      async getSecret() {
-        return 'ab'.repeat(32);
-      },
-      async setSecret() {},
-    },
-    randomBytes(target: Uint8Array) {
-      target.fill(1);
-    },
-    openDatabase() {
-      return database;
-    },
-  };
-}
-
-const hashA = 'sha256:' + 'a'.repeat(64);
-const hashB = 'sha256:' + 'b'.repeat(64);
-
-function sourceRecord(id: string, contentHash = hashA, title = 'Synthetic source') {
-  return {
-    id,
-    effectiveAt: '2026-01-01T00:00:00Z',
-    recordedAt: '2026-01-01T00:00:00Z',
-    ingestedAt: '2026-01-01T00:00:00Z',
-    provenance: { origin: 'imported' as const, sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' as const },
-    sourceKind: 'other' as const,
-    title,
-    contentHash,
-  };
-}
-
-function evidenceSpan(id: string, sourceRecordId: string, locator: EvidenceSpanLocator) {
-  return {
-    id,
-    effectiveAt: '2026-01-01T00:00:00Z',
-    recordedAt: '2026-01-01T00:00:00Z',
-    ingestedAt: '2026-01-01T00:00:00Z',
-    provenance: { origin: 'derived' as const, sourceRecordIds: [sourceRecordId] },
-    reviewState: { status: 'unreviewed' as const },
-    sourceRecordId,
-    text: 'Synthetic excerpt from the original source.',
-    locator,
-  };
-}
+import {
+  audioSourceRecord,
+  createDatabase,
+  evidenceSpan,
+  hashA,
+  hashB,
+  join,
+  mkdtempSync,
+  options,
+  rmSync,
+  sourceRecord,
+  tmpdir,
+} from './sourceEvidenceTestSupport';
 
 describe('persistent source and evidence repositories', () => {
   it('deduplicates by content hash and reloads updated source relationships after reopen', async () => {
@@ -115,10 +20,11 @@ describe('persistent source and evidence repositories', () => {
     const databasePath = join(directory, 'database.sqlite');
     const firstDatabase = createDatabase(databasePath);
     const firstRepository = await openEncryptedStorage(options(firstDatabase));
-    const createdSource = await firstRepository.sourceRecords.create(sourceRecord('source-1'));
-    const duplicate = await firstRepository.sourceRecords.create(
-      sourceRecord('source-duplicate', hashA, 'Duplicate metadata must not replace the original'),
-    );
+    const createdSource = await firstRepository.sourceRecords.create(audioSourceRecord('source-1'));
+    const duplicate = await firstRepository.sourceRecords.create({
+      ...audioSourceRecord('source-duplicate'),
+      title: 'Duplicate metadata must not replace the original',
+    });
     const createdSpan = await firstRepository.evidenceSpans.create(
       evidenceSpan('span-1', 'source-1', {
         kind: 'audio_time_range',
@@ -205,41 +111,108 @@ describe('persistent source and evidence repositories', () => {
     await database.closeAsync?.();
   });
 
-  it('upgrades schema v1 without rewriting legacy records or losing relationships', async () => {
-    const database = createDatabase();
-    await database.execute(
-      'CREATE TABLE source_records (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, recorded_at TEXT NOT NULL, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
-    );
-    await database.execute(
-      'CREATE TABLE evidence_spans (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, recorded_at TEXT NOT NULL, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
-    );
-    const legacySource = { ...sourceRecord('legacy-source') };
-    delete (legacySource as { contentHash?: string }).contentHash;
-    const legacySpan = { ...evidenceSpan('legacy-span', 'legacy-source', {
-      kind: 'text_range', startOffset: 0, endOffset: 1,
-    }) };
-    delete (legacySpan as { locator?: EvidenceSpanLocator }).locator;
-    await database.execute(
-      'INSERT INTO source_records (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
-      ['legacy-source', legacySource.effectiveAt, legacySource.recordedAt, legacySource.ingestedAt, JSON.stringify(legacySource)],
-    );
-    await database.execute(
-      'INSERT INTO evidence_spans (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
-      ['legacy-span', legacySpan.effectiveAt, legacySpan.recordedAt, legacySpan.ingestedAt, JSON.stringify(legacySpan)],
-    );
-    await database.execute('PRAGMA user_version = 1');
-
+  it('deletes provenance-linked records and citations with their source', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-delete-'));
+    const databasePath = join(directory, 'database.sqlite');
+    const database = createDatabase(databasePath);
     const repository = await openEncryptedStorage(options(database));
-    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(3);
-    expect(await repository.get('source_record', 'legacy-source')).toMatchObject({
-      id: 'legacy-source',
+    const source = await repository.sourceRecords.create(sourceRecord('deleted-source', hashA));
+    const span = await repository.evidenceSpans.create(
+      evidenceSpan('deleted-span', source.id, {
+        kind: 'text_range',
+        startOffset: 0,
+        endOffset: 4,
+      }),
+    );
+    const metadata = {
+      effectiveAt: '2026-01-01T00:00:00Z',
+      recordedAt: '2026-01-01T00:00:00Z',
+      ingestedAt: '2026-01-01T00:00:00Z',
+      provenance: { origin: 'derived' as const, sourceRecordIds: [source.id] },
+      reviewState: { status: 'unreviewed' as const },
+    };
+    await repository.put('encounter', {
+      ...metadata,
+      id: 'deleted-encounter',
+      encounterKind: 'outpatient',
+      summary: 'Synthetic dependent encounter.',
     });
-    expect(await repository.evidenceSpans.get('legacy-span')).toMatchObject({
-      sourceRecordId: 'legacy-source',
-      text: 'Synthetic excerpt from the original source.',
+    await repository.put('visit_question', {
+      ...metadata,
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      id: 'deleted-question',
+      questionText: 'Synthetic dependent question?',
+      priority: 'routine',
+      evidenceSpanIds: [span.id],
     });
-    expect(await repository.sourceRecords.delete('legacy-source')).toBe(true);
-    expect(await repository.evidenceSpans.get('legacy-span')).toBeNull();
+    await repository.put('visit_brief', {
+      ...metadata,
+      id: 'deleted-brief',
+      encounterId: 'deleted-encounter',
+      summary: 'Synthetic dependent brief.',
+      questionIds: ['deleted-question'],
+      evidenceSpanIds: [span.id],
+      medicationAssertionIds: [],
+    });
+
+    expect(await repository.sourceRecords.delete(source.id)).toBe(true);
+    expect(await repository.evidenceSpans.get(span.id)).toBeNull();
+    expect(await repository.get('encounter', 'deleted-encounter')).toBeNull();
+    expect(await repository.get('visit_question', 'deleted-question')).toBeNull();
+    expect(await repository.get('visit_brief', 'deleted-brief')).toBeNull();
     await database.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('keeps source ID deletion fences after reopening storage', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-tombstone-'));
+    const databasePath = join(directory, 'database.sqlite');
+    const database = createDatabase(databasePath);
+    const repository = await openEncryptedStorage(options(database));
+    const source = await repository.sourceRecords.create(sourceRecord('deleted-source', hashA));
+    expect(await repository.sourceRecords.delete(source.id)).toBe(true);
+    await database.closeAsync?.();
+
+    const reopenedDatabase = createDatabase(databasePath);
+    const reopenedRepository = await openEncryptedStorage(options(reopenedDatabase));
+    await expect(
+      reopenedRepository.sourceRecords.create(sourceRecord(source.id, hashB)),
+    ).rejects.toThrow('A deleted source cannot be reimported.');
+    await expect(
+      reopenedRepository.sourceRecords.create(sourceRecord('replacement-source', hashA)),
+    ).resolves.toMatchObject({ id: 'replacement-source' });
+    expect(await reopenedRepository.sourceRecords.get(source.id)).toBeNull();
+    expect(await reopenedRepository.sourceRecords.findByContentHash(hashA)).toMatchObject({
+      id: 'replacement-source',
+    });
+    await reopenedDatabase.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('rolls back source and evidence deletion when dependent cleanup fails', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-delete-rollback-'));
+    const database = createDatabase(join(directory, 'database.sqlite'));
+    const repository = await openEncryptedStorage(options(database));
+    const source = await repository.sourceRecords.create(sourceRecord('retained-source', hashA));
+    const span = await repository.evidenceSpans.create(
+      evidenceSpan('retained-span', source.id, {
+        kind: 'text_range',
+        startOffset: 0,
+        endOffset: 4,
+      }),
+    );
+
+    // A failed downstream cleanup must not leave the source without its evidence rows.
+    await expect(
+      repository.sourceRecords.delete(source.id, async (transaction) => {
+        await transaction.execute('DELETE FROM evidence_spans WHERE id = ?', [span.id]);
+        throw new Error('injected vector cleanup failure');
+      }),
+    ).rejects.toThrow('injected vector cleanup failure');
+
+    expect(await repository.sourceRecords.get(source.id)).not.toBeNull();
+    expect(await repository.evidenceSpans.get(span.id)).not.toBeNull();
+    await database.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
   });
 });

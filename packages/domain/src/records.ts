@@ -1,5 +1,10 @@
 import { z } from 'zod';
+import { SymptomEntrySchema } from './symptomRecord';
+export { SymptomEntrySchema, SymptomEntryStatusSchema } from './symptomRecord';
+export type { SymptomEntryStatus } from './symptomRecord';
 import {
+  ImportedRecordMetadataSchema,
+  ObservationIntervalSchema,
   RecordIdSchema,
   RecordMetadataSchema,
   TimestampSchema,
@@ -55,12 +60,22 @@ export const SourceRecordSchema = RecordMetadataSchema.safeExtend({
     'prescription',
     'imaging_report',
     'device_export',
+    'audio_recording',
     'other',
   ]),
   title: NonEmptyTextSchema.optional(),
   externalReference: NonEmptyTextSchema.optional(),
   contentHash: SourceContentHashSchema.optional(),
+  // Legacy audio rows remain valid until their measured file length is available.
+  recordingDurationMs: NonNegativeIntegerSchema.optional(),
 }).superRefine((record, context) => {
+  if (record.recordingDurationMs !== undefined && record.sourceKind !== 'audio_recording') {
+    context.addIssue({
+      code: 'custom',
+      path: ['recordingDurationMs'],
+      message: 'Only audio recording sources can store a recording duration.',
+    });
+  }
   if (record.provenance.origin === 'derived') {
     context.addIssue({
       code: 'custom',
@@ -108,10 +123,7 @@ export const EncounterSchema = RecordMetadataSchema.safeExtend({
   endedAt: TimestampSchema.optional(),
   summary: NonEmptyTextSchema.optional(),
 }).superRefine((encounter, context) => {
-  if (
-    encounter.endedAt &&
-    compareTimestamps(encounter.endedAt, encounter.effectiveAt) < 0
-  ) {
+  if (encounter.endedAt && compareTimestamps(encounter.endedAt, encounter.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['endedAt'],
@@ -125,31 +137,55 @@ export const ObservationValueSchema = z.discriminatedUnion('kind', [
     kind: z.literal('quantity'),
     amount: z.number().finite(),
     unit: NonEmptyTextSchema,
+    // Keep a source-reported representation separate from normalized query units.
+    sourceRepresentation: z
+      .discriminatedUnion('status', [
+        z.strictObject({
+          status: z.literal('available'),
+          amount: z.number().finite(),
+          unit: NonEmptyTextSchema,
+        }),
+        z.strictObject({
+          status: z.literal('unavailable'),
+          reason: NonEmptyTextSchema,
+        }),
+      ])
+      .optional(),
   }),
   z.strictObject({ kind: z.literal('text'), text: NonEmptyTextSchema }),
   z.strictObject({ kind: z.literal('boolean'), value: z.boolean() }),
 ]);
 
-export const HealthObservationSchema = RecordMetadataSchema.safeExtend({
+export const HealthObservationSchema = ImportedRecordMetadataSchema.safeExtend({
+  effectiveAt: TimestampSchema,
+  ...ObservationIntervalSchema.shape,
   observationKind: z.enum(['measurement', 'diagnosis', 'allergy', 'procedure', 'other']),
   concept: NonEmptyTextSchema,
   value: ObservationValueSchema,
-});
-
-export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
-  description: NonEmptyTextSchema,
-  bodySite: NonEmptyTextSchema.optional(),
-  severity: z.number().int().min(0).max(10).optional(),
-  resolvedAt: TimestampSchema.optional(),
-}).superRefine((symptom, context) => {
+}).superRefine((observation, context) => {
+  if (!observation.recordedAt && observation.provenance.origin !== 'imported') {
+    context.addIssue({
+      code: 'custom',
+      path: ['recordedAt'],
+      message: 'A missing recordedAt is only valid when the source does not provide it.',
+    });
+  }
   if (
-    symptom.resolvedAt &&
-    compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0
+    observation.recordedAt &&
+    observation.reviewState.status === 'reviewed' &&
+    compareTimestamps(observation.reviewState.reviewedAt, observation.recordedAt) < 0
   ) {
     context.addIssue({
       code: 'custom',
-      path: ['resolvedAt'],
-      message: 'resolvedAt must not precede effectiveAt.',
+      path: ['reviewState', 'reviewedAt'],
+      message: 'reviewedAt must not precede recordedAt.',
+    });
+  }
+  if (observation.endedAt && compareTimestamps(observation.endedAt, observation.effectiveAt) < 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['endedAt'],
+      message: 'endedAt must not precede effectiveAt.',
     });
   }
 });
@@ -160,5 +196,9 @@ export type EvidenceSpan = z.infer<typeof EvidenceSpanSchema>;
 export type EvidenceSpanLocator = z.infer<typeof EvidenceSpanLocatorSchema>;
 export type Encounter = z.infer<typeof EncounterSchema>;
 export type ObservationValue = z.infer<typeof ObservationValueSchema>;
+export type QuantitySourceRepresentation = Extract<
+  ObservationValue,
+  { kind: 'quantity' }
+>['sourceRepresentation'];
 export type HealthObservation = z.infer<typeof HealthObservationSchema>;
 export type SymptomEntry = z.infer<typeof SymptomEntrySchema>;

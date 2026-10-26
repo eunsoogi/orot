@@ -1,0 +1,141 @@
+import { createVisitQuestionTaskResponder } from '../taskContract';
+import type {
+  VisitQuestionEvidenceItem,
+  VisitQuestionResponderInput,
+} from '../taskContract';
+import { DoseEventSchema } from '@orot/domain';
+import { chunkStructuredRecord } from '@orot/rag';
+import {
+  unsupportedDateOrValueKind,
+  hasUnsupportedDateOrValue,
+} from '../questionFacts';
+
+const responder = createVisitQuestionTaskResponder();
+const source: VisitQuestionEvidenceItem = {
+  sourceKind: 'personal_record',
+  sourceId: 'source-1',
+  sourceRevision: 'source-r1',
+  evidenceId: 'evidence-1',
+  evidenceRevision: 'evidence-r1',
+  locator: { kind: 'structured_record', recordId: 'record-1' },
+  effectiveTime: '2026-09-01T09:00:00Z',
+  reviewState: 'reviewed',
+  content: '합성 건강 기록',
+};
+
+function validation(questionText: string, evidenceText: string) {
+  const input: VisitQuestionResponderInput = {
+    request: '다음 진료를 준비하세요.',
+    context: { effectiveAt: '2026-11-01T09:00:00+09:00' },
+    evidence: {
+      items: [{ ...source, content: evidenceText }],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  const questions = [
+    {
+      questionText,
+      rationale: '현재 기록에서 확인할 만한 내용이에요.',
+      priority: 'routine',
+      evidenceIds: ['evidence-1'],
+    },
+    {
+      questionText: '이 기록은 어떻게 확인하면 좋을까요?',
+      rationale: '의료진에게 의미를 물어볼 수 있어요.',
+      priority: 'routine',
+      evidenceIds: ['evidence-1'],
+    },
+    {
+      questionText: '다음 방문 전 기록할 점이 있을까요?',
+      rationale: '진료 사이에 확인할 방법을 물어볼 수 있어요.',
+      priority: 'important',
+      evidenceIds: ['evidence-1'],
+    },
+  ];
+  return responder.validateResult({ status: 'suggestions', questions }, input);
+}
+
+function expectRejectedFact(questionText: string, evidenceText: string) {
+  // Invalid facts remain rejected while the workflow may request one bounded correction.
+  expect(validation(questionText, evidenceText)).toMatchObject({
+    status: 'invalid',
+    reason: 'A visit question contains an unsupported date or numeric value.',
+  });
+}
+
+describe('visit-question numeric fact validation', () => {
+  it.each([
+    ['120/80 mmHg', '120 mmHg와 80 mmHg', 'quantity_ratio'],
+    ['5 g', '5 mg', 'quantity_unit'],
+    ['5.000000000000001 mg', '5 mg', 'quantity_precision'],
+    ['6 mg', '5 mg', 'quantity_value'],
+  ])(
+    'classifies %s without authorizing an unsupported claim',
+    (text, content, kind) => {
+      const evidence = [{ ...source, content }];
+      expect(unsupportedDateOrValueKind(text, evidence)).toBe(kind);
+      expect(hasUnsupportedDateOrValue(text, evidence)).toBe(true);
+    },
+  );
+  it('recognizes a Korean month and day as a date supported by the cited timestamp', () => {
+    expect(
+      validation(
+        '9월 1일 기록의 의미를 진료에서 확인할까요?',
+        '합성 건강 기록',
+      ),
+    ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
+    expectRejectedFact('9월 2일 기록의 의미를 확인할까요?', '합성 건강 기록');
+    expectRejectedFact('복용 기간을 1일로 정할까요?', '합성 건강 기록');
+    expectRejectedFact('측정값 9를 확인할까요?', '합성 건강 기록');
+  });
+  it('compares heart-rate quantities with their complete denominator', () => {
+    const evidence =
+      'health_observation: {"value":{"amount":72,"unit":"count/min"}}';
+    for (const unit of ['count/min', '회/분']) {
+      expect(
+        validation(
+          `심박수 72 ${unit} 기록을 어떻게 해석하면 좋을까요?`,
+          evidence,
+        ),
+      ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
+    }
+    expectRejectedFact('심박수 73 회/분 기록을 확인할까요?', evidence);
+    expectRejectedFact('심박수 72 회/초 기록을 확인할까요?', evidence);
+  });
+  it('preserves an amount and unit stored as separate structured fields', () => {
+    const doseEvent = DoseEventSchema.parse({
+      id: 'dose-event-1',
+      effectiveAt: '2026-09-01T12:00:00.000Z',
+      recordedAt: '2026-09-01T12:00:00.000Z',
+      ingestedAt: '2026-09-01T12:00:00.000Z',
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      eventKind: 'taken',
+      medicationAssertionId: 'medication-assertion-1',
+      dose: { amount: 5, unit: 'mg' },
+    });
+    const structuredDose = chunkStructuredRecord('dose_event', doseEvent).text;
+
+    expect(
+      validation('복용량 5 mg을 진료에서 확인할까요?', structuredDose).status,
+    ).toBe('valid');
+    expectRejectedFact('복용량 5 g을 진료에서 확인할까요?', structuredDose);
+  });
+
+  it('preserves units, signs, and ordered ratios while accepting source-matched values', () => {
+    expect(
+      validation(
+        '혈압 120/80 mmHg를 진료에서 어떻게 확인할까요?',
+        '건강 관찰 기록: 혈압 120/80 mmHg',
+      ).status,
+    ).toBe('valid');
+    expectRejectedFact(
+      '혈압 80/120 mmHg를 진료에서 어떻게 확인할까요?',
+      '건강 관찰 기록: 혈압 120/80 mmHg',
+    );
+    expectRejectedFact('5 g 복용을 확인하면 좋을까요?', '복용량: 5 mg');
+    expectRejectedFact('측정값이 9였는지 확인하면 좋을까요?', '합성 건강 기록');
+    expectRejectedFact('5를 복용했는지 확인하면 좋을까요?', '기록된 값: -5');
+  });
+});

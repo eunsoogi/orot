@@ -48,9 +48,7 @@ export class InMemoryFakeLanguageModelProvider implements LanguageModelProvider 
     this.error = options.error;
   }
 
-  async generate(
-    request: LanguageModelRequest,
-  ): Promise<ProviderResult<LanguageModelResponse>> {
+  async generate(request: LanguageModelRequest): Promise<ProviderResult<LanguageModelResponse>> {
     const validationError = this.validateRequest(request);
     if (validationError) return providerFailure(validationError);
     if (this.error) return providerFailure(this.error);
@@ -58,7 +56,9 @@ export class InMemoryFakeLanguageModelProvider implements LanguageModelProvider 
       return providerFailure(this.unsupported('Tool calls are not supported by this provider.'));
     }
     if (this.response?.structuredOutput !== undefined && !this.capabilities.structuredOutput) {
-      return providerFailure(this.unsupported('Structured output is not supported by this provider.'));
+      return providerFailure(
+        this.unsupported('Structured output is not supported by this provider.'),
+      );
     }
 
     return providerSuccess(this.response ?? this.defaultResponse(request.messages));
@@ -93,7 +93,11 @@ export class InMemoryFakeLanguageModelProvider implements LanguageModelProvider 
 
   private validateRequest(request: LanguageModelRequest): ProviderError | undefined {
     if (request.messages.length === 0) {
-      return { code: 'invalid_request', message: 'At least one message is required.', retryable: false };
+      return {
+        code: 'invalid_request',
+        message: 'At least one message is required.',
+        retryable: false,
+      };
     }
     if (request.tools?.length && !this.capabilities.toolCalling) {
       return this.unsupported('Tool calling is not supported by this provider.');
@@ -122,7 +126,8 @@ export class InMemoryFakeLanguageModelProvider implements LanguageModelProvider 
       if (typeof message.content === 'string') {
         types.add('text');
       } else {
-        for (const part of message.content as readonly LanguageModelInputPart[]) types.add(part.type);
+        for (const part of message.content as readonly LanguageModelInputPart[])
+          types.add(part.type);
       }
     }
     return types;
@@ -135,12 +140,19 @@ export class InMemoryFakeLanguageModelProvider implements LanguageModelProvider 
       .map((content) =>
         typeof content === 'string'
           ? content
-          : content.filter((part) => part.type === 'text').map((part) => part.text).join(' '),
+          : content
+              .filter((part) => part.type === 'text')
+              .map((part) => part.text)
+              .join(' '),
       )
       .filter(Boolean)
       .join(' ');
 
-    return { text: text ? `Fake response: ${text}` : 'Fake response.', toolCalls: [], finishReason: 'complete' };
+    return {
+      text: text ? `Fake response: ${text}` : 'Fake response.',
+      toolCalls: [],
+      finishReason: 'complete',
+    };
   }
 
   private unsupported(message: string): ProviderError {

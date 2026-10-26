@@ -1,0 +1,46 @@
+name: OAuth execution
+on:
+  workflow_call:
+    inputs:
+      archive_digest: { required: true, type: string }
+      manifest_digest: { required: true, type: string }
+permissions: { contents: read }
+env:
+  CI: 'true'
+  TZ: UTC
+  # Pin the named bundle because the hosted image default can change between releases.
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+jobs:
+  execution:
+    name: OAuth
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-oauth }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-oauth-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-oauth/products
+      - name: Verify products and execute every discovered XCTest without compilation
+        env:
+          ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
+          MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
+        run: scripts/ci/run-command.sh oauth-test-execution artifacts/ios-oauth/execution.log -- node scripts/ci/oauth-test-products.mjs execute artifacts/ios-oauth/products "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Preserve the first execution result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-oauth/*.log
+            artifacts/ios-oauth/products/tests.log
+            artifacts/ios-oauth/products/receipt.json
+            artifacts/ios-oauth/products/manifest.json
+          if-no-files-found: warn
+          retention-days: 7

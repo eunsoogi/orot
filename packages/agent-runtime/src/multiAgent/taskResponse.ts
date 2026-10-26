@@ -1,0 +1,173 @@
+import type { LanguageModelRequest } from '@orot/model-runtime';
+import type { TaskResponderInput } from './contracts';
+import type { ModelCallOutcome } from './modelCall';
+import { callModelWithEvidenceFreshness } from './modelCallFreshness';
+import { buildTaskRequest } from './requests';
+import { consumeResponderResponse } from './responses';
+import {
+  canceled,
+  completeState,
+  operationKey,
+  reportProgress,
+  reportTaskStreamEvent,
+  stop,
+} from './runtimeContext';
+import type { RuntimeContext } from './runtimeContext';
+import type { WorkflowState } from './state';
+import { consumeNativeToolCall } from './nativeTools';
+import { callConversationalResponder } from './conversationalResponder';
+import { createTaskTextObserver } from './taskTextObserver';
+import { callPartitionedTaskResponse, finalResultInputs } from './partitionedTaskResponse';
+
+/** Applies task validation and, when explicitly requested, one bounded correction call. */
+export async function consumeTaskModelResponse<TResult>(
+  context: RuntimeContext<TResult>,
+  state: WorkflowState,
+  request: LanguageModelRequest,
+  input: TaskResponderInput,
+  revised: boolean,
+): Promise<Partial<WorkflowState>> {
+  context.responseCorrectionInstruction = undefined;
+  const groups = finalResultInputs(context, input);
+  if (groups) {
+    const result = await callPartitionedTaskResponse(context, state, input, groups);
+    const finalState = { ...state, modelCalls: result.modelCalls };
+    return {
+      ...(result.response
+        ? consumeResponderResponse(context, finalState, result.response, input, revised, true)
+        : result.failure
+          ? finishModelFailure(context, result.failure)
+          : completeState()),
+      modelCalls: result.modelCalls,
+    };
+  }
+  const onTaskText = createTaskTextObserver(context, input);
+  if (onTaskText) {
+    reportTaskStreamEvent(context, { type: 'started' });
+  }
+  const response = await callConversationalResponder(context, state, request, input, onTaskText);
+  // Count the bounded mandatory-search retry in the same checkpoint as ordinary calls.
+  const result = await consumeInitialOutcome(
+    context,
+    response.state,
+    response.outcome,
+    input,
+    revised,
+  );
+  return {
+    ...result,
+    modelCalls: Math.max(response.state.modelCalls, result.modelCalls ?? 0),
+  };
+}
+
+/** Common final validation and one-shot task correction, after any mandatory lookup handoff. */
+async function consumeInitialOutcome<TResult>(
+  context: RuntimeContext<TResult>,
+  state: WorkflowState,
+  outcome: ModelCallOutcome | undefined,
+  input: TaskResponderInput,
+  revised: boolean,
+): Promise<Partial<WorkflowState>> {
+  if (!outcome) return completeState();
+  if (outcome.status !== 'response') return finishModelFailure(context, outcome);
+  const toolCall = consumeNativeToolCall(context, state, outcome.response);
+  if (toolCall) return toolCall;
+  const result = consumeResponderResponse(context, state, outcome.response, input, revised);
+  const correctionInstruction = context.responseCorrectionInstruction;
+  context.responseCorrectionInstruction = undefined;
+  if (!correctionInstruction) return result;
+  if (context.signal.aborted) {
+    canceled(context);
+    return { ...completeState(), modelCalls: state.modelCalls };
+  }
+  if (state.modelCalls >= state.budget.maxModelCalls) {
+    stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
+    return { ...completeState(), modelCalls: state.modelCalls };
+  }
+
+  const correctionRequest = buildTaskRequest(
+    context.options.provider,
+    context.options.task,
+    input,
+    state.budget,
+    correctionInstruction,
+    outcome.response,
+  );
+  if (correctionRequest.status === 'unsupported_input') {
+    context.outcome = {
+      status: 'unavailable',
+      reason: 'The selected provider cannot accept this task input.',
+      providerErrorCode: 'unsupported_input',
+    };
+    return { ...completeState(), modelCalls: state.modelCalls };
+  }
+  if (correctionRequest.status !== 'ready') {
+    stop(context, 'The task correction request was invalid.', 'invalid_output');
+    return { ...completeState(), modelCalls: state.modelCalls };
+  }
+
+  const correctionState: WorkflowState = {
+    ...state,
+    modelCalls: state.modelCalls + 1,
+    pendingOperation: {
+      kind: 'model',
+      operationKey: operationKey('model', state.modelCalls + 1),
+    },
+  };
+  // Reuse the selected provider and current evidence, then run the same local checks again.
+  const onCorrectionText = createTaskTextObserver(context, input);
+  if (onCorrectionText) {
+    reportTaskStreamEvent(context, { type: 'started' });
+    reportProgress(context, {
+      type: 'model_started',
+      phase: 'revised_response',
+    });
+  }
+  const correctionOutcome = await callModelWithEvidenceFreshness(
+    context,
+    correctionRequest.request,
+    onCorrectionText,
+  );
+  if (!correctionOutcome) {
+    return { ...completeState(), modelCalls: correctionState.modelCalls };
+  }
+  if (correctionOutcome.status !== 'response') {
+    return {
+      ...finishModelFailure(context, correctionOutcome),
+      modelCalls: correctionState.modelCalls,
+    };
+  }
+  return {
+    ...consumeResponderResponse(
+      context,
+      correctionState,
+      correctionOutcome.response,
+      input,
+      true,
+      true,
+    ),
+    modelCalls: correctionState.modelCalls,
+  };
+}
+
+/** Maps provider failures without exposing request or evidence content. */
+export function finishModelFailure<TResult>(
+  context: RuntimeContext<TResult>,
+  outcome: ModelCallOutcome,
+): Partial<WorkflowState> {
+  if (outcome.status === 'cancelled') canceled(context, outcome.providerStop);
+  else if (outcome.status === 'consent_required') {
+    stop(
+      context,
+      'User approval is required before this payload can be processed.',
+      'consent_required',
+    );
+  } else if (outcome.status === 'unavailable') {
+    context.outcome = {
+      status: 'unavailable',
+      reason: 'The selected model could not complete the request.',
+      providerErrorCode: outcome.errorCode,
+    };
+  }
+  return completeState();
+}

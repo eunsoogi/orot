@@ -1,0 +1,18 @@
+name: Prepare pinned iOS platform dependencies
+description: Install and verify CocoaPods inputs before either isolated native build.
+runs:
+  using: composite
+  steps:
+    - name: Prepare platform dependencies
+      shell: bash
+      # CocoaPods 1.17's pnpm symlink group-base recovery remains pinned and scoped to this install.
+      env:
+        OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1'
+        RUBYOPT: -r${{ github.workspace }}/scripts/ci/cocoapods-null-byte-diagnostic.rb
+      # Retain CocoaPods diagnostics while failing the step on warning markers.
+      run: |
+        bash scripts/ci/verify-toolchain.sh --cocoapods-only
+        scripts/ci/run-command.sh ios-focus-pods artifacts/ios-focus/pods.log -- node scripts/ci/fail-on-warning.mjs -- pnpm --filter @orot/mobile ios:pods --deployment
+    - name: Verify generated privacy metadata
+      shell: bash
+      run: node scripts/ci/ios-test-source-inputs.mjs

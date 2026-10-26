@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
-import { chmodSync, copyFileSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  copyFileSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +18,11 @@ import test from 'node:test';
 const CHECKER = resolve(dirname(fileURLToPath(import.meta.url)), '../check-loc.mjs');
 
 function git(root, ...args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
 }
 
 function put(root, name, content) {
@@ -36,7 +49,7 @@ function repository(files = {}) {
 }
 
 function physicalLines(count) {
-  return `${Array.from({ length: count }, (_, index) => index % 3 === 0 ? '// comment' : index % 3 === 1 ? '' : 'source();').join('\n')}\n`;
+  return `${Array.from({ length: count }, (_, index) => (index % 3 === 0 ? '// comment' : index % 3 === 1 ? '' : 'source();')).join('\n')}\n`;
 }
 
 function run(root, ...args) {
@@ -62,6 +75,19 @@ test('exactly 250 physical lines pass and 251 fail', (t) => {
   assert.match(failing.output, /FAIL UNTRACKED "src\/boundary\.ts" lines=251 limit=250/);
 });
 
+test('checks Ruby source extensions against the shared physical-line limit', (t) => {
+  const repo = repository();
+  clean(t, repo.root);
+  const rubyPath = 'scripts/ci/cocoapods-null-byte-diagnostic.rb';
+  put(repo.root, rubyPath, 'source\n'.repeat(251));
+  const result = run(repo.root, '--base', repo.base);
+  assert.equal(result.status, 1, result.output);
+  assert.match(
+    result.output,
+    /FAIL UNTRACKED "scripts\/ci\/cocoapods-null-byte-diagnostic\.rb" lines=251 limit=250/,
+  );
+});
+
 test('reports every over-limit changed path', (t) => {
   const repo = repository();
   clean(t, repo.root);
@@ -70,7 +96,10 @@ test('reports every over-limit changed path', (t) => {
   const result = run(repo.root, '--base', repo.base);
   assert.equal(result.status, 1, result.output);
   assert.match(result.output, /FAIL UNTRACKED "packages\/domain\/first\.ts" lines=251 limit=250/);
-  assert.match(result.output, /FAIL UNTRACKED "apps\/mobile\/__tests__\/second\.test\.ts" lines=252 limit=250/);
+  assert.match(
+    result.output,
+    /FAIL UNTRACKED "apps\/mobile\/__tests__\/second\.test\.ts" lines=252 limit=250/,
+  );
 });
 
 test('checks a committed integrated change from the supplied main base', (t) => {
@@ -81,7 +110,44 @@ test('checks a committed integrated change from the supplied main base', (t) => 
   git(repo.root, 'commit', '--quiet', '-m', 'integrate changed source');
   const result = run(repo.root, '--base', repo.base);
   assert.equal(result.status, 1, result.output);
-  assert.match(result.output, /FAIL CHANGED "packages\/domain\/integrated\.ts" lines=251 limit=250/);
+  assert.match(
+    result.output,
+    /FAIL CHANGED "packages\/domain\/integrated\.ts" lines=251 limit=250/,
+  );
+});
+
+test('checks main-push changes against the event before SHA instead of origin/main at HEAD', (t) => {
+  const repo = repository();
+  clean(t, repo.root);
+
+  // A main push workflow checks out the new HEAD, so origin/main and HEAD already match.
+  put(repo.root, 'packages/domain/pushed.ts', physicalLines(250));
+  git(repo.root, 'add', 'packages/domain/pushed.ts');
+  git(repo.root, 'commit', '--quiet', '-m', 'push compliant source');
+  const compliantPushSha = git(repo.root, 'rev-parse', 'HEAD');
+  git(repo.root, 'update-ref', 'refs/remotes/origin/main', compliantPushSha);
+
+  const compliant = run(repo.root, '--base', repo.base);
+  assert.equal(compliant.status, 0, compliant.output);
+  assert.match(compliant.output, /lines=250 limit=250/);
+
+  put(repo.root, 'packages/domain/pushed.ts', physicalLines(251));
+  git(repo.root, 'add', 'packages/domain/pushed.ts');
+  git(repo.root, 'commit', '--quiet', '-m', 'push oversized source');
+  const oversizedPushSha = git(repo.root, 'rev-parse', 'HEAD');
+  git(repo.root, 'update-ref', 'refs/remotes/origin/main', oversizedPushSha);
+
+  const oldMergeBase = git(repo.root, 'merge-base', 'refs/remotes/origin/main', 'HEAD');
+  assert.equal(oldMergeBase, oversizedPushSha);
+  const skippedByHeadComparison = run(repo.root, '--base', oldMergeBase);
+  assert.equal(skippedByHeadComparison.status, 0, skippedByHeadComparison.output);
+
+  const checkedAgainstPushBefore = run(repo.root, '--base', compliantPushSha);
+  assert.equal(checkedAgainstPushBefore.status, 1, checkedAgainstPushBefore.output);
+  assert.match(
+    checkedAgainstPushBefore.output,
+    /FAIL CHANGED "packages\/domain\/pushed\.ts" lines=251 limit=250/,
+  );
 });
 
 test('checks a renamed Unicode path and safely skips a deletion', (t) => {
@@ -119,7 +185,8 @@ test('reports policy exclusions with reasons', (t) => {
   for (const [name, content] of Object.entries(files)) put(repo.root, name, `${content}changed\n`);
   const result = run(repo.root, '--base', repo.base);
   assert.equal(result.status, 0, result.output);
-  for (const name of Object.keys(files)) assert.ok(result.output.includes(`EXCLUDED ${JSON.stringify(name)} reason=`), result.output);
+  for (const name of Object.keys(files))
+    assert.ok(result.output.includes(`EXCLUDED ${JSON.stringify(name)} reason=`), result.output);
 });
 
 test('classifies literal path segments and preserves a leading BOM in path names', (t) => {
@@ -134,7 +201,10 @@ test('classifies literal path segments and preserves a leading BOM in path names
   assert.equal(result.status, 1, result.output);
   for (const name of names) {
     const shownName = JSON.stringify(name).replace(/\uFEFF/g, '\\uFEFF');
-    assert.ok(result.output.includes(`FAIL UNTRACKED ${shownName} lines=251 limit=250`), result.output);
+    assert.ok(
+      result.output.includes(`FAIL UNTRACKED ${shownName} lines=251 limit=250`),
+      result.output,
+    );
   }
 });
 

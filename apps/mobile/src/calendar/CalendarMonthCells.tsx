@@ -1,0 +1,183 @@
+import { Pressable, View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
+import { t } from '../i18n';
+import { formatCalendarEventRange } from './dateTime';
+import { calendarStyles as styles } from './calendarStyles';
+import type { CalendarGridDay } from './calendarMonth';
+import { formatCalendarDate } from './calendarMonth';
+import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
+import type { CalendarEvent } from './types';
+
+export function calendarDayAccessibilityLabel(
+  dateKey: string,
+  dayEvents: CalendarMonthDisplayEvent[],
+  today = false,
+): string {
+  const visit = dayEvents.some(item => item.isNextVisit)
+    ? [t('calendar.nextVisit')]
+    : [];
+  const titles = dayEvents
+    .slice(0, 3)
+    .map(
+      item =>
+        item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle'),
+    );
+  const additionalEvents =
+    dayEvents.length > titles.length
+      ? [
+          t('calendar.additionalEvents', {
+            count: dayEvents.length - titles.length,
+          }),
+        ]
+      : [];
+  return [
+    formatCalendarDate(dateKey),
+    ...(today ? [t('calendar.today')] : []),
+    ...visit,
+    ...titles,
+    ...additionalEvents,
+  ].join(', ');
+}
+
+interface CalendarDayCellProps {
+  day: CalendarGridDay;
+  dayEvents: CalendarMonthDisplayEvent[];
+  label: string;
+  selected: boolean;
+  today: boolean;
+  onPress: (dateKey: string) => void;
+}
+
+export function CalendarDayCell({
+  day,
+  dayEvents,
+  label,
+  selected,
+  today,
+  onPress,
+}: CalendarDayCellProps) {
+  const hasNextVisit = dayEvents.some(item => item.isNextVisit);
+  // Keep each date to one screen-reader stop; its label explains the decorative dots and badge.
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      hitSlop={{ top: 2, bottom: 2, left: 1, right: 1 }}
+      onPress={() => onPress(day.dateKey)}
+      style={[
+        styles.calendarDay,
+        !day.belongsToMonth && styles.calendarOutsideDay,
+      ]}
+      testID={`calendar-day-${day.dateKey}`}
+    >
+      <View
+        style={[
+          styles.calendarDayFace,
+          selected && styles.calendarSelectedDay,
+          !selected && today && styles.calendarTodayDay,
+        ]}
+        testID={`calendar-day-face-${day.dateKey}`}
+      >
+        <Text
+          style={[
+            styles.calendarDayNumber,
+            selected && styles.calendarSelectedDayNumber,
+            !selected && today && styles.calendarTodayDayNumber,
+          ]}
+        >
+          {day.dayNumber}
+        </Text>
+        {dayEvents.length ? (
+          <View
+            accessibilityElementsHidden
+            style={styles.calendarEventMarkers}
+            testID={`calendar-day-event-markers-${day.dateKey}`}
+          >
+            {Array.from(
+              { length: Math.min(dayEvents.length, 3) },
+              (_, index) => (
+                <View
+                  key={`${day.dateKey}-event-${index}`}
+                  style={[
+                    styles.calendarEventMarker,
+                    selected && styles.calendarSelectedEventMarker,
+                  ]}
+                />
+              ),
+            )}
+          </View>
+        ) : null}
+        {hasNextVisit ? (
+          <Text
+            accessibilityElementsHidden
+            style={styles.calendarVisitMarker}
+            testID={`calendar-day-next-visit-${day.dateKey}`}
+          >
+            ★
+          </Text>
+        ) : null}
+      </View>
+      {today ? (
+        <Text style={styles.calendarTodayLabel}>{t('calendar.today')}</Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+interface CalendarMonthEventRowProps {
+  item: CalendarMonthDisplayEvent;
+  onSelectEvent: (event: CalendarEvent) => void;
+}
+
+export function CalendarMonthEventRow({
+  item,
+  onSelectEvent,
+}: CalendarMonthEventRowProps) {
+  // The shared wrapper supplies an appearance-aware color for the unstyled event time.
+  const title =
+    item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
+  const time = formatCalendarEventRange(item.event);
+  return (
+    <View
+      style={[
+        styles.calendarEventRow,
+        item.isNextVisit && styles.calendarNextVisitEvent,
+      ]}
+      testID={item.isNextVisit ? 'calendar-next-visit' : undefined}
+    >
+      <View
+        style={styles.calendarEventHeading}
+        testID={`calendar-event-row-${item.rowKey}`}
+      >
+        <Text
+          style={styles.eventTitle}
+          testID={item.isNextVisit ? 'calendar-next-visit-title' : undefined}
+        >
+          {title}
+        </Text>
+        {item.isNextVisit ? (
+          <Text style={styles.calendarNextVisitBadge}>
+            {t('calendar.nextVisit')}
+          </Text>
+        ) : null}
+      </View>
+      <Text testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}>
+        {time}
+      </Text>
+      {item.canSelect ? (
+        <Pressable
+          accessibilityLabel={`${title}, ${time}, ${t('calendar.selectEvent')}`}
+          accessibilityRole="button"
+          onPress={() => onSelectEvent(item.event)}
+          style={styles.calendarSelectEventButton}
+          testID={`calendar-candidate-${item.event.calendarEventIdentifier}`}
+        >
+          <Text style={styles.calendarSelectEventLabel}>
+            {t('calendar.selectEvent')}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}

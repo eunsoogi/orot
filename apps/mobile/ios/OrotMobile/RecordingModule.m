@@ -1,0 +1,69 @@
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+#import <TargetConditionals.h>
+
+@interface RCT_EXTERN_MODULE (RecordingModule, RCTEventEmitter)
+
+RCT_EXTERN_METHOD(getState : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)
+                      reject)
+RCT_EXTERN_METHOD(startRecording : (BOOL)acknowledged resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(pauseRecording : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(resumeRecording : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stopRecording : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)
+                      reject)
+RCT_EXTERN_METHOD(playRecordingRange : (NSString *)recordingID startMs : (NSNumber *)
+                      startMs endMs : (NSNumber *)endMs syntheticFixture : (BOOL)
+                          syntheticFixture resolver : (RCTPromiseResolveBlock)
+                              resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stopRecordingPlayback : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getRecordingDuration : (NSString *)recordingID syntheticFixture : (BOOL)
+                      syntheticFixture resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(installSyntheticTranscriptionFixture : (NSString *)base64 resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(removeSyntheticTranscriptionFixture : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+// Keep export and deletion declarations aligned with the Swift promise methods on RecordingModule.
+RCT_EXTERN_METHOD(shareRecordingAudio : (NSString *)recordingID resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(shareRecordingTranscript : (NSString *)text resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(reconcileRecordingDeletions : (NSArray<NSString *> *)sourceIDs resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stageRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(restoreRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(commitRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+
+#if DEBUG && TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(prepareSyntheticCapture : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(prepareSyntheticStartFailure : (NSString *)point resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(simulateInterruption : (NSString *)phase resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+#endif
+
+#if TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(simulatePlaybackRouteLoss : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(verifySyntheticRecordingExportAuthorization : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getSyntheticExportResidueCount : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+// The dedicated Simulator probe checks source bytes without exposing the source path or content.
+RCT_EXTERN_METHOD(isSyntheticTranscriptionFixtureUnchanged : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(armSyntheticExportCancellation : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+#endif
+
+@end

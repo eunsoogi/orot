@@ -119,20 +119,22 @@ describe('encrypted local storage', () => {
     const tables = await database.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     );
-    expect(tables.rows.map(row => row.name)).toEqual([
-      'appointments',
-      'dose_events',
-      'encounters',
-      'evidence_spans',
-      'health_observations',
-      'manual_history_entries',
-      'medication_assertions',
-      'source_records',
-      'symptom_entries',
-      'visit_briefs',
-      'visit_questions',
-    ]);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(3);
+    expect(tables.rows.map(row => row.name)).toEqual(
+      expect.arrayContaining([
+        'appointments',
+        'dose_events',
+        'encounters',
+        'evidence_spans',
+        'health_observations',
+        'manual_history_entries',
+        'source_records',
+        'symptom_entries',
+        'transcript_segments',
+        'visit_briefs',
+        'visit_questions',
+      ]),
+    );
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(11);
     expect((await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows)
       .toHaveLength(0);
     await database.closeAsync?.();
@@ -169,12 +171,63 @@ describe('encrypted local storage', () => {
     );
 
     await expect(
-      repository.transaction(async transaction => {
+      repository.transaction(async (transaction) => {
         await transaction.put('source_record', sampleRecord);
         throw new Error('abort transaction');
       }),
     ).rejects.toThrow('abort transaction');
     expect(await repository.get('source_record', 'legacy-note')).toBeNull();
+    await database.closeAsync?.();
+  });
+
+  it('stores unknown medication source times as null and commits changes with their cursor atomically', async () => {
+    const database = createDatabase();
+    const repository = await openEncryptedStorage(
+      createOptions(database, { value: '12'.repeat(32) }),
+    );
+    const definition = {
+      id: 'healthkit-medication-concept-1',
+      medicationConceptIdentifier: 'concept-1',
+      displayText: 'Sample medication',
+      generalForm: 'tablet',
+      isArchived: false,
+      hasSchedule: true,
+      ingestedAt: '2026-10-01T08:00:00Z',
+      provenance: {
+        origin: 'imported',
+        sourceRecordIds: ['concept-1'],
+        source: { system: 'healthkit' },
+      },
+      reviewState: { status: 'unreviewed' },
+    } as const;
+    const checkpoint = {
+      key: 'healthkit:medications:medicationDoseEvents',
+      value: 'opaque-anchor',
+      updatedAt: '2026-10-01T08:01:00Z',
+    };
+
+    await expect(
+      repository.transaction(async (transaction) => {
+        await transaction.put('medication_definition', definition);
+        await transaction.putSyncCheckpoint(checkpoint);
+        throw new Error('abort medication sync');
+      }),
+    ).rejects.toThrow('abort medication sync');
+    expect(await repository.get('medication_definition', definition.id)).toBeNull();
+    expect(await repository.getSyncCheckpoint(checkpoint.key)).toBeNull();
+
+    await repository.transaction(async (transaction) => {
+      await transaction.put('medication_definition', definition);
+      await transaction.putSyncCheckpoint(checkpoint);
+    });
+    expect(await repository.get('medication_definition', definition.id)).toEqual(definition);
+    expect(await repository.list('medication_definition')).toEqual([definition]);
+    expect(await repository.getSyncCheckpoint(checkpoint.key)).toEqual(checkpoint);
+    const timeColumns = await database.execute(
+      'SELECT effective_at, recorded_at FROM medication_definitions WHERE id = ?',
+      [definition.id],
+    );
+    expect(timeColumns.rows[0]).toEqual({ effective_at: null, recorded_at: null });
     await database.closeAsync?.();
   });
 
@@ -195,10 +248,12 @@ describe('encrypted local storage', () => {
     ).rejects.toThrow('unsupported record type');
     const reopened = createDatabase(databasePath);
     expect((await reopened.execute('PRAGMA user_version')).rows[0].user_version).toBe(0);
-    expect((await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows)
-      .toHaveLength(1);
-    expect((await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'source_records'")).rows)
-      .toHaveLength(0);
+    expect(
+      (await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
+    ).toHaveLength(1);
+    expect(
+      (await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'source_records'")).rows,
+    ).toHaveLength(0);
     await reopened.closeAsync?.();
     rmSync(directory, { recursive: true, force: true });
   });

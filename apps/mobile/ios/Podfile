@@ -1,6 +1,6 @@
 # Resolve react_native_pods.rb with node to allow for hoisting
 require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
+                                                 'require.resolve(
     "react-native/scripts/react_native_pods.rb",
     {paths: [process.argv[1]]},
   )', __dir__]).strip
@@ -23,6 +23,11 @@ target 'OrotMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # The hosted test bundle imports production native services and resolves React headers through its app host.
+  target 'OrotIntegrationTests' do
+    inherit! :search_paths
+  end
+
   post_install do |installer|
     react_native_post_install(
       installer,
@@ -30,5 +35,12 @@ target 'OrotMobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    # Reconcile RN's pinned artifact headers after a fresh install. Its patched
+    # configuration-switch script repeats the same repair before replacing a slice.
+    react_native_root = File.expand_path(config[:reactNativePath], __dir__)
+    Pod::Executable.execute_command('node', [
+                                      File.join(react_native_root, 'scripts/orot-prebuilt-headers.cjs'),
+                                      File.join(__dir__, 'Pods/React-Core-prebuilt')
+                                    ])
   end
 end

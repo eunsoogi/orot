@@ -1,0 +1,214 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+
+const require = createRequire(import.meta.url);
+// Parse the workflow event map so trigger assertions validate structure rather than incidental text.
+const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
+const readRepositoryFile = (path) =>
+  readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
+const e2eWorkflow = readRepositoryFile('.github/workflows/e2e-test.yml');
+const codeWorkflow = readRepositoryFile('.github/workflows/code-quality.yml');
+const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
+const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
+const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
+const platformSelector = readRepositoryFile('scripts/quality/platforms.mjs');
+const e2eReceiptAction = readRepositoryFile(
+  '.github/actions/ios-e2e-validation-receipt/action.yml',
+);
+const surfacePolicy = JSON.parse(readRepositoryFile('scripts/quality/surface-policy.json'));
+const qualitySurfaceAction = readRepositoryFile('.github/actions/run-quality-surface/action.yml');
+const qualitySetupAction = readRepositoryFile('.github/actions/setup-linux-quality/action.yml');
+
+function jobBlock(source, jobId) {
+  const start = source.indexOf(`  ${jobId}:\n`);
+  if (start < 0) return '';
+  const nextJob = /\n {2}[a-z0-9_-]+:\n/.exec(source.slice(start + 1));
+  return source.slice(start, nextJob ? start + 1 + nextJob.index : undefined);
+}
+
+test('runs a full-inventory lint leaf for every language surface on Linux', () => {
+  const surfaceNames = {
+    javascript: 'JavaScript',
+    typescript: 'TypeScript',
+    swift: 'Swift',
+    'objective-c': 'Objective-C',
+    shell: 'Shell',
+    ruby: 'Ruby',
+    yaml: 'YAML',
+    json: 'JSON',
+    xml: 'XML',
+    properties: 'Properties',
+  };
+
+  for (const surface of Object.keys(surfacePolicy.surfaces)) {
+    const jobId = `lint_${surface.replaceAll('-', '_')}`;
+    const lint = jobBlock(codeWorkflow, jobId);
+    assert.ok(lint, `missing ${surface} lint leaf`);
+    assert.ok(lint.includes(`name: Lint / ${surfaceNames[surface]}`));
+    assert.match(lint, /needs: inventory/);
+    assert.match(lint, /runs-on: ubuntu-24\.04/);
+    assert.match(lint, /selection_complete != 'true'/);
+    assert.ok(lint.includes(`needs.inventory.outputs.${jobId.slice(5)} == 'true'`));
+    assert.match(lint, /uses: \.\/\.github\/actions\/run-quality-surface/);
+    assert.ok(lint.includes(`surface: ${surface}`));
+  }
+
+  // Static job IDs preserve each protected context while the composite shares setup and check execution.
+  assert.ok(qualitySurfaceAction.includes('pnpm quality:inventory'));
+  assert.match(
+    qualitySurfaceAction,
+    /pnpm lint -- --platform linux --surface "\$\{\{ inputs\.surface \}\}"/,
+  );
+  assert.match(
+    qualitySurfaceAction,
+    /ci-quality-\$\{\{ inputs\.mode == 'lint' && format\('lint-\{0\}', inputs\.surface\) \|\| 'format' \}\}-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(qualitySurfaceAction, /if: \$\{\{ inputs\.mode == 'format' \}\}/);
+  assert.ok(qualitySurfaceAction.includes('pnpm format:check -- --platform linux'));
+  assert.ok(qualitySetupAction.includes('tool-versions.json'));
+  assert.doesNotMatch(qualitySurfaceAction, /--exclude|changed-files|paths-filter/);
+});
+
+test('publishes inventory and canonical source LOC as separate Linux checks', () => {
+  const inventory = jobBlock(codeWorkflow, 'inventory');
+  const loc = jobBlock(codeWorkflow, 'source_loc');
+
+  assert.match(inventory, /name: Maintained file inventory/);
+  assert.match(inventory, /runs-on: ubuntu-24\.04/);
+  assert.ok(inventory.includes('pnpm quality:inventory'));
+  assert.ok(inventory.includes('quality-inventory.log'));
+  assert.match(loc, /name: Source LOC policy/);
+  assert.match(loc, /runs-on: ubuntu-24\.04/);
+  assert.match(loc, /fetch-depth: 0/);
+  assert.ok(
+    loc.includes(
+      "LOC_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}",
+    ),
+  );
+  assert.match(
+    loc,
+    /if \[\[ "\$GITHUB_EVENT_NAME" == workflow_dispatch \]\]; then[\s\S]*?scripts\/ci\/check-loc\.mjs --all[\s\S]*?else[\s\S]*?scripts\/ci\/check-loc\.mjs --base "\$LOC_BASE_SHA"/,
+  );
+  assert.doesNotMatch(loc, /git merge-base origin\/main HEAD/);
+});
+
+test('keeps formatting, unit, and policy checks as independent Linux leaves', () => {
+  const format = jobBlock(codeWorkflow, 'format_check');
+  assert.match(format, /name: Format check/);
+  assert.match(format, /runs-on: ubuntu-24\.04/);
+  assert.ok(format.includes('uses: ./.github/actions/run-quality-surface'));
+  assert.ok(format.includes('mode: format'));
+  assert.doesNotMatch(format, /--surface/);
+
+  const unitJobs = [
+    ['typecheck', 'TypeScript typecheck', 'pnpm typecheck'],
+    ['unit_tests', 'Unit and component tests', 'scripts/ci/run-test-suite.sh unit'],
+  ];
+  for (const [jobId, name, command] of unitJobs) {
+    const job = jobBlock(unitTestWorkflow, jobId);
+    assert.ok(job, `missing ${jobId} leaf`);
+    assert.ok(job.includes(`name: ${name}`));
+    assert.match(job, /runs-on: ubuntu-24\.04/);
+    assert.ok(job.includes(command), `${name} command changed`);
+    if (jobId === 'unit_tests') {
+      // Unit tests consume only the selector outputs from typecheck and stay a separate required leaf.
+      assert.match(job, /needs: typecheck/);
+      assert.match(
+        job,
+        /if: \$\{\{ always\(\) && !cancelled\(\)[\s\S]*needs\.typecheck\.outputs\.unit_tests == 'true'/,
+      );
+    } else {
+      assert.doesNotMatch(job, /^\s+needs:/m, `${name} cannot depend on an aggregate job`);
+    }
+  }
+
+  const policyJob = jobBlock(policyCheckWorkflow, 'gate_tests');
+  assert.ok(policyJob, 'missing policy-test leaf');
+  assert.ok(policyJob.includes('name: CI, release, and quality gate tests'));
+  assert.match(policyJob, /runs-on: ubuntu-24\.04/);
+  assert.ok(
+    policyJob.includes(
+      'scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs',
+    ),
+  );
+  assert.doesNotMatch(policyJob, /^\s+needs:/m);
+  // Separate contexts let branch protection identify failures by responsibility.
+  assert.doesNotMatch(unitTestWorkflow, /^\x20{2}gate_tests:/m);
+  assert.doesNotMatch(policyCheckWorkflow, /^\x20{2}(typecheck|unit_tests):/m);
+});
+
+test('pins the policy-test Ruby runtime and keeps its logs outside checkout inventory', () => {
+  const gate = jobBlock(policyCheckWorkflow, 'gate_tests');
+  const expectedRubyVersion = codeWorkflow.match(/EXPECTED_RUBY_VERSION: '([^']+)'/)?.[1];
+
+  assert.ok(expectedRubyVersion, 'Code Quality must declare the Ruby version');
+  assert.ok(policyCheckWorkflow.includes(`EXPECTED_RUBY_VERSION: '${expectedRubyVersion}'`));
+  assert.match(gate, /uses: ruby\/setup-ruby@[a-f0-9]{40}/);
+  assert.ok(gate.includes('ruby-version: ${{ env.EXPECTED_RUBY_VERSION }}'));
+  assert.ok(
+    gate.includes(
+      'run: scripts/ci/run-command.sh install "$RUNNER_TEMP/orot-gate-tests/install.log" -- pnpm install --frozen-lockfile',
+    ),
+  );
+  assert.ok(
+    gate.includes(
+      'run: scripts/ci/run-command.sh gate-tests "$RUNNER_TEMP/orot-gate-tests/gate-tests.log" -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs',
+    ),
+  );
+  assert.ok(gate.includes('path: ${{ runner.temp }}/orot-gate-tests/'));
+  assert.doesNotMatch(gate, /artifacts\/gate-tests/);
+});
+
+test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
+  const staticTriggers =
+    'on:\n  pull_request:\n    types: [opened, synchronize, reopened]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+
+  assert.match(codeWorkflow, /^name: Code Quality$/m);
+  assert.match(unitTestWorkflow, /^name: Unit Test$/m);
+  assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
+  assert.match(e2eWorkflow, /^name: E2E Test$/m);
+  for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow]) {
+    assert.ok(workflow.replace(/^ {4}#.*\n/gm, '').includes(staticTriggers));
+    assert.ok(
+      workflow.includes(
+        'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+      ),
+    );
+    assert.ok(workflow.includes('cancel-in-progress: true'));
+    assert.match(workflow, /^permissions:\n[ ]{2}contents: read/m);
+    assert.doesNotMatch(workflow, /workflow_call/);
+  }
+  assert.deepEqual(Object.keys(yaml.load(e2eWorkflow).on), ['schedule', 'workflow_dispatch']);
+  assert.deepEqual(yaml.load(e2eWorkflow).on.schedule, [{ cron: '0 18 * * *' }]);
+  assert.doesNotMatch(e2eWorkflow, /^[ ]{2}(pull_request|push):/m);
+  assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
+  // Nightly and manual Full runs share the Mac reservation; authentication remains serialized.
+  assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
+  assert.match(e2eWorkflow, /cancel-in-progress: false/);
+  assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
+  assert.match(e2eWorkflow, /^permissions:\n[ ]{2}contents: read/m);
+  assert.doesNotMatch(e2eWorkflow, /^ {2}pull-requests: read$/m);
+  assert.doesNotMatch(e2eWorkflow, /workflow_call/);
+  assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
+  assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
+  const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
+  assert.match(buildJob, /^ {4}name: Validate \/ Build$/m);
+  assert.match(buildJob, /uses: \.\/\.github\/actions\/ios-e2e-validation-receipt/);
+  assert.match(e2eReceiptAction, /test "\$DIAGNOSTIC" != true/);
+  assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
+  assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
+});
+
+test('surface selection validates the complete inventory before filtering one lint surface', () => {
+  assert.match(qualityCli, /const inventory = await buildInventory\(\)/);
+  assert.match(qualityCli, /selectSurfaceEntries\(platformEntries, policy, surface\)/);
+  assert.match(qualityCli, /surface selection cannot be combined with path exclusions/);
+  assert.match(qualityCli, /if \(!surface && !entries\.some/);
+  assert.doesNotMatch(
+    platformSelector,
+    /No maintained files are selected for the \$\{surface\} quality surface/,
+  );
+});

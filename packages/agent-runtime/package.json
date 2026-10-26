@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@langchain/core": "1.2.14",
-    "@langchain/langgraph": "1.4.18"
+    "@langchain/langgraph": "1.4.18",
+    "@orot/model-runtime": "workspace:*"
   }
 }

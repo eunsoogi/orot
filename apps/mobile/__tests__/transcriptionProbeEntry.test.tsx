@@ -1,0 +1,69 @@
+jest.mock('react-native', () => ({
+  AppRegistry: { registerComponent: jest.fn() },
+  NativeModules: { SettingsManager: { settings: {} } },
+}));
+
+jest.mock('../src/agent/polyfills', () => ({}));
+
+jest.mock('../e2e/transcription/transcriptionProbe', () => ({
+  TranscriptionProbe: 'NativeSpeechProbe',
+}));
+
+jest.mock('../e2e/transcription/transcriptEvidenceProbe', () => ({
+  TranscriptEvidenceProbe: 'TranscriptEvidenceProbe',
+}));
+
+// Keep route selection isolated from the platform UI each probe mounts.
+jest.mock('../e2e/transcription/RecordingExportProbeHarness', () => ({
+  RecordingExportProbeHarness: 'RecordingExportProbeHarness',
+}));
+
+jest.mock('../e2e/transcription/RecordingLibraryVisualProbe', () => ({
+  RecordingLibraryVisualProbe: 'RecordingLibraryVisualProbe',
+}));
+
+jest.mock('../e2e/transcription/RecordingSessionVisualProbe', () => ({
+  RecordingSessionVisualProbe: 'RecordingSessionVisualProbe',
+}));
+
+function loadProbeEntry(settings: Record<string, unknown>) {
+  jest.resetModules();
+  const reactNative = require('react-native');
+  reactNative.AppRegistry.registerComponent.mockClear();
+  reactNative.NativeModules.SettingsManager.settings = settings;
+  require('../e2e/transcriptionProbeEntry');
+  return reactNative.AppRegistry.registerComponent.mock.calls[0][1]();
+}
+
+test('keeps native speech as the default Simulator probe entry', () => {
+  expect(loadProbeEntry({})).toBe('NativeSpeechProbe');
+});
+
+test('launches transcript evidence without mounting the native speech probe', () => {
+  expect(
+    loadProbeEntry({ OROT_TRANSCRIPTION_PROBE_MODE: 'transcript-evidence' }),
+  ).toBe('TranscriptEvidenceProbe');
+});
+
+test('launches recording export in its dedicated probe route', () => {
+  expect(
+    loadProbeEntry({ OROT_TRANSCRIPTION_PROBE_MODE: 'recording-export' }),
+  ).toBe('RecordingExportProbeHarness');
+});
+
+test('launches the saved-recording visual probe only when requested', () => {
+  // This route-selection test isolates the fixture UI and its native dependencies.
+  expect(
+    loadProbeEntry({
+      OROT_TRANSCRIPTION_PROBE_MODE: 'recording-library-visual',
+    }),
+  ).toBe('RecordingLibraryVisualProbe');
+});
+
+test('keeps synthetic active recording UI behind its explicit Simulator selector', () => {
+  expect(
+    loadProbeEntry({
+      OROT_TRANSCRIPTION_PROBE_MODE: 'recording-session-visual',
+    }),
+  ).toBe('RecordingSessionVisualProbe');
+});

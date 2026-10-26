@@ -10,7 +10,13 @@ import type {
   SourceContentHash,
   SourceRecord,
 } from '@orot/domain';
-import { decodeStoredRecord, deleteStoredRecord, insertStoredRecord, readStoredRecord, updateStoredRecord } from './recordPersistence';
+import {
+  decodeStoredRecord,
+  deleteStoredRecord,
+  insertStoredRecord,
+  readStoredRecord,
+  updateStoredRecord,
+} from './recordPersistence';
 import type { RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
@@ -22,7 +28,10 @@ export interface SourceRecordRepository {
   get(id: string): Promise<SourceRecord | null>;
   findByContentHash(hash: SourceContentHash): Promise<HashedSourceRecord | null>;
   update(record: HashedSourceRecord): Promise<void>;
-  delete(id: string): Promise<boolean>;
+  delete(
+    id: string,
+    withinDeletionTransaction?: (transaction: SqlExecutor) => Promise<void>,
+  ): Promise<boolean>;
 }
 
 export interface EvidenceSpanRepository {
@@ -73,7 +82,7 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
       const record = parseHashedSourceRecord(input);
       let result: HashedSourceRecord | null = null;
       try {
-        await database.transaction(async transaction => {
+        await database.transaction(async (transaction) => {
           const existingId = await readStoredRecord(transaction, 'source_record', record.id);
           if (existingId) {
             if (existingId.contentHash === record.contentHash) {
@@ -91,7 +100,10 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
           result = record;
         });
       } catch (error) {
-        if (!(error instanceof Error) || !error.message.includes('source_records_content_hash_idx')) {
+        if (
+          !(error instanceof Error) ||
+          !error.message.includes('source_records_content_hash_idx')
+        ) {
           throw error;
         }
         const duplicate = await findSourceByHash(database, record.contentHash);
@@ -109,7 +121,7 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
     },
     async update(input) {
       const record = parseHashedSourceRecord(input);
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         if (!(await readStoredRecord(transaction, 'source_record', record.id))) {
           throw new Error('Source record does not exist.');
         }
@@ -122,10 +134,14 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
         }
       });
     },
-    async delete(id) {
+    async delete(id, withinDeletionTransaction) {
       let deleted = false;
-      await database.transaction(async transaction => {
-        deleted = await deleteStoredRecord(transaction, 'source_record', RecordIdSchema.parse(id));
+      await database.transaction(async (transaction) => {
+        const sourceId = RecordIdSchema.parse(id);
+        if (!(await readStoredRecord(transaction, 'source_record', sourceId))) return;
+        // Vector fences and source cascades commit together so a resumed graph cannot revive deleted evidence.
+        await withinDeletionTransaction?.(transaction);
+        deleted = await deleteStoredRecord(transaction, 'source_record', sourceId);
       });
       return deleted;
     },
@@ -134,7 +150,7 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
   const evidenceSpans: EvidenceSpanRepository = {
     async create(input) {
       const span = parseLocatedEvidenceSpan(input);
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         await requireEvidenceSource(transaction, span.sourceRecordId);
         if (await readStoredRecord(transaction, 'evidence_span', span.id)) {
           throw new Error('Evidence span ID already exists.');
@@ -152,23 +168,29 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
         "SELECT payload_json FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = ? ORDER BY id",
         [id],
       );
-      return result.rows.map(row => decodeStoredRecord('evidence_span', row.payload_json));
+      return result.rows.map((row) => decodeStoredRecord('evidence_span', row.payload_json));
     },
     async update(input) {
       const span = parseLocatedEvidenceSpan(input);
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         if (!(await readStoredRecord(transaction, 'evidence_span', span.id))) {
           throw new Error('Evidence span does not exist.');
         }
         await requireEvidenceSource(transaction, span.sourceRecordId);
-        if (!(await updateStoredRecord(transaction, 'evidence_span', span as RecordMap['evidence_span']))) {
+        if (
+          !(await updateStoredRecord(
+            transaction,
+            'evidence_span',
+            span as RecordMap['evidence_span'],
+          ))
+        ) {
           throw new Error('Evidence span does not exist.');
         }
       });
     },
     async delete(id) {
       let deleted = false;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         deleted = await deleteStoredRecord(transaction, 'evidence_span', RecordIdSchema.parse(id));
       });
       return deleted;

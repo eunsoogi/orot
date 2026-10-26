@@ -1,0 +1,31 @@
+diff --git a/ios/Fabric/RNCSafeAreaProviderComponentView.mm b/ios/Fabric/RNCSafeAreaProviderComponentView.mm
+index f315ccda83ea81b1ce24ca2c33dad2513e299b17..e8c33c7917255411005bf97aa793ac768e75b6b2 100644
+--- a/ios/Fabric/RNCSafeAreaProviderComponentView.mm
++++ b/ios/Fabric/RNCSafeAreaProviderComponentView.mm
+@@ -106,9 +106,10 @@ - (void)invalidateSafeAreaInsets
+         .insets =
+             {
+                 .top = safeAreaInsets.top,
+-                .left = safeAreaInsets.left,
+-                .bottom = safeAreaInsets.bottom,
++                // Match the generated event field declaration order.
+                 .right = safeAreaInsets.right,
++                .bottom = safeAreaInsets.bottom,
++                .left = safeAreaInsets.left,
+             },
+         .frame =
+             {
+
+diff --git a/react-native-safe-area-context.podspec b/react-native-safe-area-context.podspec
+index 078def5..cc47196 100644
+--- a/react-native-safe-area-context.podspec
++++ b/react-native-safe-area-context.podspec
+@@ -28,6 +28,8 @@ Pod::Spec.new do |s|
+ 
+     s.subspec "common" do |ss|
+       ss.source_files         = "common/cpp/**/*.{cpp,h}"
++      # Its only implementation is Android-specific; do not archive an empty iOS object.
++      ss.exclude_files        = "common/cpp/react/renderer/components/safeareacontext/RNCSafeAreaViewState.cpp"
+       ss.header_dir           = "react/renderer/components/safeareacontext"
+       ss.pod_target_xcconfig  = { "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"" }
+     end

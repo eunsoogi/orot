@@ -1,6 +1,15 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { t } from '../i18n';
+import AppointmentCard from './AppointmentCard';
+import AppointmentForm from './AppointmentForm';
+import styles from './appointmentsStyles';
+import { useNavigationLeaveStateRegistration } from '../navigation';
+import type { NavigationLeaveState } from '../navigation';
 import {
   toAppointmentTimestamp,
   toAppointmentTimestampForEdit,
@@ -9,10 +18,14 @@ import {
 
 interface AppointmentsScreenProps {
   repository: AppointmentRepository;
-  onBack: () => void;
+  onAppointmentsChanged?: () => void;
 }
 
-export default function AppointmentsScreen({ repository, onBack }: AppointmentsScreenProps) {
+export default function AppointmentsScreen({
+  repository,
+  onAppointmentsChanged,
+}: AppointmentsScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinicLabel, setClinicLabel] = useState('');
   const [date, setDate] = useState('');
@@ -24,6 +37,17 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [inputRevision, setInputRevision] = useState(0);
+
+  useNavigationLeaveStateRegistration({
+    canLeave: !saving,
+    hasUnsavedChanges: formOpen,
+    isRecording: false,
+    hasOngoingOperation: saving,
+    revision,
+    inputRevision,
+  } satisfies NavigationLeaveState);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -31,7 +55,7 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
     try {
       setAppointments(await repository.list());
     } catch {
-      setError('Appointments could not be loaded. Try again.');
+      setError(t('appointments.loadError'));
     } finally {
       setLoading(false);
     }
@@ -50,6 +74,8 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
     setError('');
     setNotice('');
     setFormOpen(true);
+    setRevision(current => current + 1);
+    setInputRevision(current => current + 1);
   }
 
   function startEditing(appointment: Appointment) {
@@ -61,6 +87,8 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
     setNote(appointment.note ?? '');
     setError('');
     setFormOpen(true);
+    setRevision(current => current + 1);
+    setInputRevision(current => current + 1);
   }
 
   async function saveAppointment() {
@@ -68,16 +96,17 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
       ? toAppointmentTimestampForEdit(editing.effectiveAt, date, time)
       : toAppointmentTimestamp(date, time);
     if (!clinicLabel.trim()) {
-      setError('Enter a clinic or specialty.');
+      setError(t('appointments.validation.clinicRequired'));
       return;
     }
     if (!effectiveAt) {
-      setError('Enter a valid local date and time.');
+      setError(t('appointments.validation.dateTimeInvalid'));
       return;
     }
 
     setSaving(true);
     setError('');
+    setRevision(current => current + 1);
     const trimmedNote = note.trim();
     try {
       if (editing) {
@@ -94,13 +123,17 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
         });
       }
       await reload();
+      // Home reads the same repository and refreshes only after the save succeeds.
+      onAppointmentsChanged?.();
       setFormOpen(false);
-      setNotice(editing ? 'Appointment updated.' : 'Appointment saved.');
+      setNotice(editing ? t('appointments.updated') : t('appointments.saved'));
       setEditing(null);
+      setRevision(current => current + 1);
     } catch {
-      setError('Appointment could not be saved. Try again.');
+      setError(t('appointments.saveError'));
     } finally {
       setSaving(false);
+      setRevision(current => current + 1);
     }
   }
 
@@ -109,142 +142,108 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
     try {
       await repository.cancel(appointment.id);
       await reload();
-      setNotice('Appointment cancelled.');
+      onAppointmentsChanged?.();
+      setNotice(t('appointments.cancelled'));
     } catch {
-      setError('Appointment could not be cancelled. Try again.');
+      setError(t('appointments.cancelError'));
     }
   }
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      // Starting an edit replaces the list and resets its potentially distant scroll offset.
+      key={formOpen ? 'editor' : 'list'}
+      contentContainerStyle={[styles.container, navigationInset]}
+      keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
+      style={styles.scroll}
       testID="appointments-scroll"
     >
-      <View style={styles.topBar}>
-        <Text accessibilityRole="header" style={styles.title} testID="appointments-title">
-          Appointments
+      {!formOpen ? (
+        <Text
+          accessibilityRole="header"
+          style={styles.title}
+          testID="appointments-title"
+        >
+          {t('appointments.title')}
         </Text>
-        <Button onPress={onBack} testID="appointments-back" title="Back" />
-      </View>
-      <Text style={styles.message}>Keep your visit details on this device.</Text>
+      ) : null}
+      {!formOpen ? (
+        <Text style={styles.message}>{t('appointments.description')}</Text>
+      ) : null}
       {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
-      {error ? <Text accessibilityRole="alert" testID="appointment-error">{error}</Text> : null}
+      {error ? (
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="appointment-error"
+        >
+          {error}
+        </Text>
+      ) : null}
 
-      {loading ? (
-        <Text testID="appointments-loading">Loading appointments…</Text>
+      {formOpen ? null : loading ? (
+        <Text testID="appointments-loading">{t('appointments.loading')}</Text>
       ) : error && appointments.length === 0 ? (
-        <Button onPress={reload} testID="appointments-retry" title="Try again" />
+        <Button
+          onPress={reload}
+          testID="appointments-retry"
+          title={t('appointments.retry')}
+        />
       ) : (
         <>
           {appointments.length === 0 ? (
-            <Text testID="appointments-empty">No appointments yet.</Text>
+            <Text testID="appointments-empty">{t('appointments.empty')}</Text>
           ) : (
-            appointments.map(appointment => {
-              const localTime = toLocalAppointmentDateTime(appointment.effectiveAt);
-              const canEdit = appointment.status === 'scheduled' || appointment.status === 'rescheduled';
-              return (
-                <View key={appointment.id} style={styles.card} testID={`appointment-${appointment.id}`}>
-                  <Text style={styles.clinic} testID={`appointment-clinic-${appointment.id}`}>
-                    {appointment.clinicLabel ?? appointment.reason ?? 'Appointment'}
-                  </Text>
-                  <Text testID={`appointment-time-${appointment.id}`}>
-                    {localTime.date} at {localTime.time} (local time)
-                  </Text>
-                  {appointment.note ? <Text>{appointment.note}</Text> : null}
-                  <Text testID={`appointment-status-${appointment.id}`}>
-                    {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                  </Text>
-                  {canEdit ? (
-                    <View style={styles.actions}>
-                      <Button
-                        onPress={() => startEditing(appointment)}
-                        testID={`appointment-edit-${appointment.id}`}
-                        title="Edit"
-                      />
-                      <Button
-                        onPress={() => cancelAppointment(appointment)}
-                        testID={`appointment-cancel-${appointment.id}`}
-                        title="Cancel appointment"
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })
+            appointments.map(appointment => (
+              <AppointmentCard
+                key={appointment.id}
+                appointment={appointment}
+                onEdit={() => startEditing(appointment)}
+                onCancel={() => cancelAppointment(appointment)}
+              />
+            ))
           )}
         </>
       )}
 
       {!formOpen ? (
-        <Button onPress={startNewAppointment} testID="appointment-add" title="Add appointment" />
+        <Button
+          onPress={startNewAppointment}
+          testID="appointment-add"
+          title={t('appointments.actions.add')}
+        />
       ) : (
-        <View style={styles.form}>
-          <Text accessibilityRole="header" style={styles.formTitle}>
-            {editing ? 'Edit appointment' : 'New appointment'}
-          </Text>
-          <TextInput
-            accessibilityLabel="Clinic or specialty"
-            onChangeText={setClinicLabel}
-            placeholder="Clinic or specialty"
-            style={styles.input}
-            testID="appointment-clinic-input"
-            value={clinicLabel}
-          />
-          <TextInput
-            accessibilityLabel="Appointment date"
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            style={styles.input}
-            testID="appointment-date-input"
-            value={date}
-          />
-          <TextInput
-            accessibilityLabel="Appointment time"
-            onChangeText={setTime}
-            placeholder="HH:MM"
-            style={styles.input}
-            testID="appointment-time-input"
-            value={time}
-          />
-          <Text style={styles.hint}>Date and time use your device’s local time zone.</Text>
-          <TextInput
-            accessibilityLabel="Optional appointment note"
-            onChangeText={setNote}
-            placeholder="Optional note"
-            style={[styles.input, styles.note]}
-            testID="appointment-note-input"
-            value={note}
-          />
-          <Button
-            disabled={saving}
-            onPress={saveAppointment}
-            testID="appointment-save"
-            title={saving ? 'Saving…' : 'Save appointment'}
-          />
-          <Button
-            disabled={saving}
-            onPress={() => setFormOpen(false)}
-            testID="appointment-form-cancel"
-            title="Close"
-          />
-        </View>
+        <AppointmentForm
+          editing={Boolean(editing)}
+          clinicLabel={clinicLabel}
+          date={date}
+          time={time}
+          note={note}
+          saving={saving}
+          onClinicLabelChange={value => {
+            setClinicLabel(value);
+            setInputRevision(current => current + 1);
+          }}
+          onDateChange={value => {
+            setDate(value);
+            setInputRevision(current => current + 1);
+          }}
+          onTimeChange={value => {
+            setTime(value);
+            setInputRevision(current => current + 1);
+          }}
+          onNoteChange={value => {
+            setNote(value);
+            setInputRevision(current => current + 1);
+          }}
+          onSave={saveAppointment}
+          onClose={() => {
+            setFormOpen(false);
+            setRevision(current => current + 1);
+          }}
+        />
       )}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20, backgroundColor: '#f7f8fa', minHeight: '100%' },
-  topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  message: { color: '#45515f', fontSize: 15 },
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  clinic: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16 },
-  form: { backgroundColor: 'white', borderRadius: 10, gap: 10, padding: 14 },
-  formTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  input: { borderColor: '#a8b3bf', borderRadius: 8, borderWidth: 1, padding: 10 },
-  note: { minHeight: 48 },
-  hint: { color: '#45515f', fontSize: 13 },
-});

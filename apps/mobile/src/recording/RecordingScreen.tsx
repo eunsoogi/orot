@@ -1,0 +1,229 @@
+import { useEffect, useState } from 'react';
+import RecordingControls from './RecordingControls';
+import {
+  clearPendingRecordingRetry,
+  getPendingRecordingRetry,
+  setPendingRecordingRetry,
+} from './recordingRetryState';
+import { recordingService } from './recordingService';
+import type {
+  CompletedRecording,
+  RecordingPlaybackService,
+  RecordingService,
+  RecordingSnapshot,
+} from './recordingTypes';
+import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
+import type { RecordingLibraryService } from './recordingLibraryService';
+import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
+import { errorMessage, sourceSaveErrorMessage } from './recordingErrors';
+import { useAutomaticRecordingTranscription } from './useAutomaticRecordingTranscription';
+import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions';
+
+interface RecordingScreenProps {
+  onBack: () => void;
+  onOpenSavedRecordings?: () => void;
+  service?: RecordingService;
+  playbackService?: RecordingPlaybackService;
+  /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
+  transcriptService?: TranscriptEvidenceService;
+  recordingLibraryService?: RecordingLibraryService;
+}
+
+const initialSnapshot: RecordingSnapshot = {
+  status: 'idle',
+  id: null,
+  durationMs: 0,
+  consentAcknowledged: false,
+};
+
+export default function RecordingScreen({
+  onBack,
+  onOpenSavedRecordings,
+  service = recordingService,
+  playbackService = service,
+  transcriptService,
+  recordingLibraryService = defaultRecordingLibraryService,
+}: RecordingScreenProps) {
+  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [stateReady, setStateReady] = useState(false);
+  const [consentAcknowledged, setConsentAcknowledged] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(
+    () => getPendingRecordingRetry(service),
+  );
+  const [sourceSaved, setSourceSaved] = useState(
+    () => getPendingRecordingRetry(service) === null,
+  );
+  const automaticTranscription =
+    useAutomaticRecordingTranscription(transcriptService);
+  const probeActions = useRecordingScreenProbeActions();
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: () => void = () => {};
+    const pendingRetry = getPendingRecordingRetry(service);
+    setLastRecording(pendingRetry);
+    setSourceSaved(pendingRetry === null);
+    try {
+      unsubscribe = service.subscribe(value => {
+        if (mounted) {
+          setSnapshot(value);
+          setConsentAcknowledged(value.consentAcknowledged);
+          setStateReady(true);
+        }
+      });
+      service
+        .getState()
+        .then(value => {
+          if (mounted) {
+            setSnapshot(value);
+            setConsentAcknowledged(value.consentAcknowledged);
+            setStateReady(true);
+          }
+        })
+        .catch(reason => {
+          if (mounted) {
+            setError(errorMessage(reason));
+            setStateReady(true);
+          }
+        });
+    } catch (reason) {
+      setError(errorMessage(reason));
+      setStateReady(true);
+    }
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [service]);
+
+  async function runAction(action: () => Promise<RecordingSnapshot>) {
+    setBusy(true);
+    setError('');
+    try {
+      const next = await action();
+      setSnapshot(next);
+      setConsentAcknowledged(next.consentAcknowledged);
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function start() {
+    await runAction(async () => {
+      const next = await service.start(consentAcknowledged);
+      clearPendingRecordingRetry(service);
+      setLastRecording(null);
+      setSourceSaved(false);
+      automaticTranscription.reset();
+      return next;
+    });
+  }
+
+  async function stop() {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await service.stop();
+      setLastRecording(result);
+      // Keep metadata retries only after both permanent-file checks are verified.
+      const backupEligible = result.excludedFromBackup === false;
+      if (result.fileProtection === 'complete' && backupEligible) {
+        setPendingRecordingRetry(service, result);
+      } else {
+        clearPendingRecordingRetry(service);
+      }
+      setSnapshot({
+        status: 'completed',
+        id: result.id,
+        durationMs: result.durationMs,
+        consentAcknowledged: false,
+      });
+      setConsentAcknowledged(false);
+      try {
+        await service.saveSource(result);
+        clearPendingRecordingRetry(service);
+        setSourceSaved(true);
+        automaticTranscription.start(result.id);
+      } catch (reason) {
+        setSourceSaved(false);
+        setError(sourceSaveErrorMessage(reason));
+      }
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      probeActions.clear();
+      setBusy(false);
+    }
+  }
+
+  async function retrySourceSave() {
+    if (!lastRecording) return;
+    setBusy(true);
+    setError('');
+    try {
+      await service.saveSource(lastRecording);
+      clearPendingRecordingRetry(service);
+      setSourceSaved(true);
+      automaticTranscription.start(lastRecording.id);
+    } catch (reason) {
+      setError(sourceSaveErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function retryTranscription(): void {
+    const sourceId = automaticTranscription.state?.sourceId;
+    if (sourceId) automaticTranscription.start(sourceId);
+  }
+
+  function handleRecordingSourceDeleted(sourceId: string): void {
+    automaticTranscription.cancel(sourceId);
+    if (lastRecording?.id !== sourceId) return;
+    // Clear the retry snapshot too, so a deleted file cannot return through metadata retry after remount.
+    clearPendingRecordingRetry(service);
+    setLastRecording(null);
+    setSourceSaved(false);
+    setSnapshot(initialSnapshot);
+    setConsentAcknowledged(false);
+  }
+
+  return (
+    <RecordingControls
+      onOpenSavedRecordings={onOpenSavedRecordings}
+      onBack={onBack}
+      stateReady={stateReady}
+      status={snapshot.status}
+      durationMs={snapshot.durationMs}
+      amplitude={snapshot.amplitude}
+      consentAcknowledged={consentAcknowledged}
+      onToggleConsent={() => setConsentAcknowledged(value => !value)}
+      busy={busy}
+      onStart={start}
+      onPause={() => runAction(() => service.pause())}
+      onResume={() => runAction(() => service.resume())}
+      onStop={stop}
+      lastRecording={lastRecording}
+      sourceSaved={sourceSaved}
+      onRetrySourceSave={retrySourceSave}
+      error={error}
+      syntheticProbeAvailable={probeActions.available}
+      syntheticProbeReady={probeActions.ready}
+      onPrepareSyntheticProbe={probeActions.prepare}
+      onPrepareSyntheticStartFailure={probeActions.prepareStartFailure}
+      onSendInterruption={probeActions.sendInterruption}
+      probeError={probeActions.error}
+      transcriptService={transcriptService}
+      playbackService={playbackService}
+      recordingLibraryService={recordingLibraryService}
+      automaticTranscription={automaticTranscription.state}
+      onRetryTranscription={retryTranscription}
+      onRecordingSourceDeleted={handleRecordingSourceDeleted}
+    />
+  );
+}

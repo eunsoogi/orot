@@ -1,0 +1,20 @@
+name: Cache pnpm lockfile verification
+description: Reuse pnpm's policy-verified lockfile record while keeping the package store separate.
+inputs:
+  pnpm-version:
+    description: The pinned pnpm version used to verify this lockfile.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Cache pnpm lockfile verification
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ runner.temp }}/orot-pnpm-cache/lockfile-verified.jsonl
+        key: orot-pnpm-lockfile-verification-v1-${{ runner.os }}-${{ runner.arch }}-pnpm-${{ inputs.pnpm-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc', 'package.json') }}
+    - name: Configure the verification cache and preserve the pnpm store
+      shell: bash
+      run: |
+        # Keep pnpm's policy cache separate from the package store initialized by setup-node.
+        printf 'PNPM_CONFIG_CACHE_DIR=%s/orot-pnpm-cache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+        printf 'PNPM_CONFIG_STORE_DIR=%s\n' "$(pnpm store path)" >> "$GITHUB_ENV"

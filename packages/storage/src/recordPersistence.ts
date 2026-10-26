@@ -18,8 +18,8 @@ function values<K extends RecordKind>(kind: K, input: RecordMap[K]) {
     table: STORAGE_TABLES[kind].table,
     parameters: [
       record.id,
-      record.effectiveAt,
-      record.recordedAt,
+      record.effectiveAt ?? null,
+      record.recordedAt ?? null,
       record.ingestedAt,
       JSON.stringify(record),
     ],
@@ -38,6 +38,16 @@ export async function readStoredRecord<K extends RecordKind>(
   return result.rows.length === 0 ? null : decodeStoredRecord(kind, result.rows[0].payload_json);
 }
 
+export async function listStoredRecords<K extends RecordKind>(
+  executor: SqlExecutor,
+  kind: K,
+): Promise<RecordMap[K][]> {
+  const result = await executor.execute(
+    'SELECT payload_json FROM ' + STORAGE_TABLES[kind].table + ' ORDER BY id',
+  );
+  return result.rows.map((row) => decodeStoredRecord(kind, row.payload_json));
+}
+
 export async function insertStoredRecord<K extends RecordKind>(
   executor: SqlExecutor,
   kind: K,
@@ -45,7 +55,8 @@ export async function insertStoredRecord<K extends RecordKind>(
 ): Promise<void> {
   const { table, parameters } = values(kind, input);
   await executor.execute(
-    'INSERT INTO ' + table +
+    'INSERT INTO ' +
+      table +
       ' (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
     parameters,
   );
@@ -58,9 +69,16 @@ export async function updateStoredRecord<K extends RecordKind>(
 ): Promise<boolean> {
   const { table, record } = values(kind, input);
   const result = await executor.execute(
-    'UPDATE ' + table +
+    'UPDATE ' +
+      table +
       ' SET effective_at = ?, recorded_at = ?, ingested_at = ?, payload_json = ? WHERE id = ?',
-    [record.effectiveAt, record.recordedAt, record.ingestedAt, JSON.stringify(record), record.id],
+    [
+      record.effectiveAt ?? null,
+      record.recordedAt ?? null,
+      record.ingestedAt,
+      JSON.stringify(record),
+      record.id,
+    ],
   );
   return (result.rowsAffected ?? 0) > 0;
 }
@@ -72,7 +90,9 @@ export async function upsertStoredRecord<K extends RecordKind>(
 ): Promise<void> {
   const { table, parameters } = values(kind, input);
   await executor.execute(
-    'INSERT INTO ' + table + ' (id, effective_at, recorded_at, ingested_at, payload_json) ' +
+    'INSERT INTO ' +
+      table +
+      ' (id, effective_at, recorded_at, ingested_at, payload_json) ' +
       'VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET ' +
       'effective_at = excluded.effective_at, recorded_at = excluded.recorded_at, ' +
       'ingested_at = excluded.ingested_at, payload_json = excluded.payload_json',

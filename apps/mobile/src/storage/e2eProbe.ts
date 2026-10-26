@@ -1,4 +1,6 @@
-import type { RecordMap, RecordKind } from '@orot/storage';
+import type { RecordKind } from '@orot/storage';
+import { buildPersistedEvidenceChunks } from '@orot/rag';
+import { createStorageProbeFixtures } from './storageProbeFixtures';
 import {
   getCipherVersion,
   hasDatabaseKey,
@@ -9,31 +11,90 @@ import {
 
 export type StorageProbeMode = 'fresh' | 'restart' | 'legacy';
 
-const sampleRecord = {
-  id: 'storage-e2e-record',
-  effectiveAt: '2026-01-01T00:00:00Z',
-  recordedAt: '2026-01-01T00:00:00Z',
-  ingestedAt: '2026-01-01T00:00:00Z',
-  provenance: { origin: 'user_reported', sourceRecordIds: [] },
-  reviewState: { status: 'unreviewed' },
-  sourceKind: 'user_note',
-  title: 'Synthetic storage probe',
-  contentHash: 'sha256:' + 'c'.repeat(64),
-} satisfies RecordMap['source_record'];
+async function seedRagProbe(
+  repository: Awaited<ReturnType<typeof openLocalStorage>>,
+  fixtures: ReturnType<typeof createStorageProbeFixtures>,
+) {
+  const {
+    ragMedicationSpan,
+    ragAudioSourceRecord,
+    ragTranscript,
+    staleTranscriptSpan,
+    ragObservation,
+  } = fixtures;
+  await repository.sourceRecords.create(ragAudioSourceRecord);
+  await repository.evidenceSpans.create(ragMedicationSpan);
+  await repository.transcripts.append([ragTranscript]);
+  await repository.evidenceSpans.create(staleTranscriptSpan);
+  await repository.put('health_observation', ragObservation);
+  return repository.transcripts.correct(
+    ragTranscript.id,
+    'Metformin 500 mg after breakfast.',
+    '2026-01-02T08:10:00.000Z',
+  );
+}
 
-const sampleEvidenceSpan = {
-  id: 'storage-e2e-evidence',
-  effectiveAt: '2026-01-01T00:00:00Z',
-  recordedAt: '2026-01-01T00:00:00Z',
-  ingestedAt: '2026-01-01T00:00:00Z',
-  provenance: { origin: 'imported', sourceRecordIds: [sampleRecord.id] },
-  reviewState: { status: 'unreviewed' },
-  sourceRecordId: sampleRecord.id,
-  text: 'Synthetic storage evidence excerpt.',
-  locator: { kind: 'text_range', startOffset: 0, endOffset: 35 },
-} satisfies RecordMap['evidence_span'];
+async function verifyRagProbe(
+  repository: Awaited<ReturnType<typeof openLocalStorage>>,
+  fixtures: ReturnType<typeof createStorageProbeFixtures>,
+) {
+  const {
+    ragMedicationSpan,
+    ragTranscript,
+    staleTranscriptSpan,
+    ragObservation,
+  } = fixtures;
+  const chunks = await buildPersistedEvidenceChunks(repository);
+  const currentTranscript = chunks.find(
+    chunk =>
+      chunk.metadata.transcriptRevision?.transcriptId ===
+      ragTranscript.transcriptId,
+  );
+  const medication = chunks.find(
+    chunk => chunk.metadata.evidenceId === ragMedicationSpan.id,
+  );
+  const observation = chunks.find(
+    chunk => chunk.metadata.evidenceId === ragObservation.id,
+  );
+  const staleArtifacts = await repository.transcripts.listStaleArtifacts(
+    ragTranscript.transcriptId,
+  );
 
-export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
+  if (
+    !currentTranscript ||
+    currentTranscript.text !== 'Metformin 500 mg after breakfast.' ||
+    currentTranscript.metadata.transcriptRevision?.revision !== 2 ||
+    currentTranscript.metadata.transcriptRevision?.supersedesId !==
+      ragTranscript.id ||
+    currentTranscript.metadata.reviewState.status !== 'needs_review' ||
+    currentTranscript.metadata.effectiveTime !== ragTranscript.effectiveAt ||
+    currentTranscript.metadata.evidenceLocator.kind !== 'audio_time_range' ||
+    medication?.text !== ragMedicationSpan.text ||
+    observation?.metadata.recordType !== 'health_observation' ||
+    !observation.text.includes('"amount":70.5') ||
+    !observation.text.includes('"unit":"kg"') ||
+    chunks.some(chunk => chunk.metadata.evidenceId === ragTranscript.id) ||
+    chunks.some(
+      chunk => chunk.metadata.evidenceId === staleTranscriptSpan.id,
+    ) ||
+    !staleArtifacts.some(
+      artifact =>
+        artifact.kind === 'evidence_span' &&
+        artifact.id === staleTranscriptSpan.id,
+    )
+  ) {
+    throw new Error(
+      'Persisted local records did not produce the expected RAG evidence chunks.',
+    );
+  }
+}
+
+export async function runStorageProbe(
+  mode: StorageProbeMode,
+  fixtureIdentifier?: string,
+): Promise<void> {
+  const fixtures = createStorageProbeFixtures(fixtureIdentifier);
+  const { sampleRecord, sampleEvidenceSpan } = fixtures;
   if (mode === 'legacy') await prepareLegacyStorageForE2e(sampleRecord);
   const repository = await openLocalStorage();
   const cipherVersion = await getCipherVersion();
@@ -53,9 +114,13 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
       title: 'Duplicate content must keep the first source record.',
     });
     if (duplicate.id !== stored.id) {
-      throw new Error('Duplicate source content was not resolved deterministically.');
+      throw new Error(
+        'Duplicate source content was not resolved deterministically.',
+      );
     }
     await repository.evidenceSpans.create(sampleEvidenceSpan);
+    await seedRagProbe(repository, fixtures);
+    await verifyRagProbe(repository, fixtures);
     return;
   }
   const stored =
@@ -66,14 +131,18 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
     throw new Error('The synthetic storage record was not preserved.');
   }
   if (mode === 'restart') {
-    const spans = await repository.evidenceSpans.listForSourceRecord(sampleRecord.id);
+    // The RAG probe adds sibling spans, so verify this storage fixture by its stable ID.
+    const storedEvidenceSpan = await repository.evidenceSpans.get(
+      sampleEvidenceSpan.id,
+    );
     if (
-      spans.length !== 1 ||
-      spans[0]?.id !== sampleEvidenceSpan.id ||
-      spans[0].locator?.kind !== 'text_range' ||
-      spans[0].locator.endOffset !== 35
+      !storedEvidenceSpan ||
+      storedEvidenceSpan.sourceRecordId !== sampleRecord.id ||
+      storedEvidenceSpan.locator?.kind !== 'text_range' ||
+      storedEvidenceSpan.locator.endOffset !== 35
     ) {
       throw new Error('The synthetic evidence span was not preserved.');
     }
+    await verifyRagProbe(repository, fixtures);
   }
 }

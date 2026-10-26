@@ -1,0 +1,74 @@
+name: Build and inspect the production app
+description: Build the default app and retain its SDK and Keychain boundaries independently of test executors.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/ios-native-toolchain
+    - name: Capture production source fingerprints before Pods
+      id: production_fingerprints
+      shell: bash
+      run: node scripts/ci/ios-cache-fingerprint-cli.mjs --derived-data-only
+    - name: Verify actual production toolchain before cache and builds
+      id: production_toolchain
+      shell: bash
+      run: scripts/ci/run-command.sh production-toolchain artifacts/ios-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
+    - name: Restore production-only DerivedData and CocoaPods intermediates
+      id: production_cache_restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          apps/mobile/ios/build-production
+          apps/mobile/ios/Pods
+        key: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-source-${{ steps.production_fingerprints.outputs.build_inputs }}
+        restore-keys: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-
+    - name: Prepare the isolated production DerivedData boundary
+      id: production_cache
+      shell: bash
+      env:
+        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
+        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
+        EXPECTED_XCODE_VERSION: '27.1'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.1'
+        EXPECTED_PNPM_VERSION: '12.3.4'
+        EXPECTED_RUBY_VERSION: '4.0.7'
+        EXPECTED_COCOAPODS_VERSION: '1.17.0'
+        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
+      run: node scripts/ci/ios-derived-data-cache.mjs prepare production
+    - uses: ./.github/actions/ios-platform-dependencies
+    - name: Build production with its default entry and compiler flags
+      if: steps.production_cache.outputs.app_reusable != 'true'
+      shell: bash
+      run: scripts/ci/run-command.sh ios-production-build artifacts/ios-focus/production.log -- bash scripts/ci/build-ios-simulator-app.sh build
+    - name: Write the production-only cache manifest
+      if: steps.production_cache.outputs.app_reusable != 'true'
+      shell: bash
+      env:
+        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
+        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
+        EXPECTED_XCODE_VERSION: '27.1'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.1'
+        EXPECTED_PNPM_VERSION: '12.3.4'
+        EXPECTED_RUBY_VERSION: '4.0.7'
+        EXPECTED_COCOAPODS_VERSION: '1.17.0'
+        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
+      run: node scripts/ci/ios-derived-data-cache.mjs write production
+    - name: Verify production uses the Apple SDK without the model mock
+      shell: bash
+      run: scripts/ci/run-command.sh apple-production-boundary artifacts/ios-focus/apple-production-boundary.log -- node scripts/ci/verify-apple-model-product.mjs production apps/mobile/ios/build-production/Build/Products/Debug-iphonesimulator/Orot.app
+    - name: Verify Simulator defaults
+      shell: bash
+      run: node scripts/ci/verify-simulator-keychain-defaults.mjs
+    - name: Record completed production build obligations
+      shell: bash
+      run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
+    - name: Save verified production outputs
+      # This cache contains only the production app and Pods. OAuth's separate products and tests remain final-gate obligations.
+      if: success() && steps.production_cache_restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          apps/mobile/ios/build-production
+          apps/mobile/ios/Pods
+        key: ${{ steps.production_cache_restore.outputs.cache-primary-key }}
