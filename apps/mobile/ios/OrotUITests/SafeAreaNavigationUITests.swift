@@ -96,10 +96,19 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(detailScroll.frame.minX, detailRoot.minX, accuracy: 0.5)
         XCTAssertEqual(detailScroll.frame.maxX, detailRoot.maxX, accuracy: 0.5)
         XCTAssertEqual(detailScroll.frame.maxY, detailRoot.maxY, accuracy: 0.5)
+        let rightRail = node(app, "navigation-right-rail")
+        if rightRail.exists {
+            // On a Duo window, route content must end before the shell's reserved navigation lane.
+            XCTAssertFalse(rightRail.frame.isEmpty)
+            XCTAssertGreaterThanOrEqual(rightRail.frame.minX, detailRoot.maxX - 0.5)
+        }
         let last = node(app, "health-record-row-11")
         FormUITestConditions.reveal(last, in: app, scrollID: "health-records-detail-scroll")
         try NavigationUITestConditions.scrollToBottom(app, "health-records-detail-scroll")
         XCTAssertTrue(last.exists && last.isHittable)
+        if rightRail.exists {
+            XCTAssertLessThanOrEqual(last.frame.maxX, rightRail.frame.minX + 0.5)
+        }
         try inset(app, "health-record-row-11", bottom: true, top: false)
         capture(app, "synthetic-blood-pressure-library-final-row-safe-area")
     }

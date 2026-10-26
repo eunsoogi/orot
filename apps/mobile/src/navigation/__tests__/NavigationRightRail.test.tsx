@@ -110,7 +110,7 @@ function NavigationFixture({ showPrimary }: { readonly showPrimary: boolean }) {
             surface={TrackingSurface}
           />
         }
-        childHandlesSafeArea
+        childHandlesSafeArea={false}
       >
         <RouteContents />
       </NavigationViewport>
@@ -120,7 +120,7 @@ function NavigationFixture({ showPrimary }: { readonly showPrimary: boolean }) {
 
 const duoGeometry: NavigationGeometryPayload = {
   windowBounds: { x: 0, y: 0, width: 1000, height: 900 },
-  safeAreaInsets: { top: 40, right: 0, bottom: 30, left: 0 },
+  safeAreaInsets: { top: 40, right: 22, bottom: 30, left: 14 },
   reservedRegionsSupported: true,
   reservedRegions: [
     {
@@ -148,7 +148,7 @@ beforeEach(() => {
 test('moves root actions into the right lane without losing route state or bottom clearance', async () => {
   const { rerender } = await render(
     <SafeAreaInsetsContext.Provider
-      value={{ top: 40, right: 0, bottom: 30, left: 0 }}
+      value={{ top: 40, right: 22, bottom: 30, left: 14 }}
     >
       <NavigationFixture showPrimary />
     </SafeAreaInsetsContext.Provider>,
@@ -167,12 +167,15 @@ test('moves root actions into the right lane without losing route state or botto
     StyleSheet.flatten(
       screen.getByTestId('navigation-content-region').props.style,
     ),
-  ).toEqual(expect.objectContaining({ paddingBottom: 30, right: 60 }));
+  ).toEqual(expect.objectContaining({ paddingBottom: 30, right: 82 }));
+  expect(
+    screen.getByTestId('navigation-safe-area-content').props.accessibilityHint,
+  ).toBe('top,left');
   expect(
     StyleSheet.flatten(
       screen.getByTestId('navigation-right-rail-host').props.style,
     ),
-  ).toEqual(expect.objectContaining({ height: 900, width: 60 }));
+  ).toEqual(expect.objectContaining({ height: 900, width: 82 }));
   expect(
     screen.getByTestId('navigation-right-rail').props.accessibilityHint,
   ).toBe('right');
@@ -186,17 +189,23 @@ test('moves root actions into the right lane without losing route state or botto
   expect(screen.getByTestId('route-draft').props.children).toBe('edited');
   expect(lifecycle).toEqual({ mounted: 2, unmounted: 0 });
 
-  // Only the primary bottom flow contributes to the measured inset; the absolute rail is excluded.
+  // The right lane reserves the system bottom once, leaving only the real action overlap for scrolling.
+  await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
+    nativeEvent: { layout: { height: 900, width: 918, x: 0, y: 0 } },
+  });
   await fireEvent(overlay, 'layout', {
-    nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 0 } },
+    nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 828 } },
   });
   expect(screen.getByTestId('route-bottom-inset').props.children).toBe(
-    72 + NAVIGATION_CONTENT_GAP,
+    42 + NAVIGATION_CONTENT_GAP,
   );
+  expect(screen.getByTestId('page-end-space').props.style).toEqual({
+    paddingBottom: 42 + NAVIGATION_CONTENT_GAP,
+  });
 
   await rerender(
     <SafeAreaInsetsContext.Provider
-      value={{ top: 40, right: 0, bottom: 30, left: 0 }}
+      value={{ top: 40, right: 22, bottom: 30, left: 14 }}
     >
       <NavigationFixture showPrimary={false} />
     </SafeAreaInsetsContext.Provider>,
@@ -229,6 +238,12 @@ test('moves root actions into the right lane without losing route state or botto
       screen.getByTestId('navigation-content-region').props.style,
     ),
   ).toEqual({ flex: 1 });
+  await fireEvent(overlay, 'layout', {
+    nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 828 } },
+  });
+  expect(screen.getByTestId('route-bottom-inset').props.children).toBe(
+    72 + NAVIGATION_CONTENT_GAP,
+  );
   expect(screen.getByTestId('route-draft').props.children).toBe('edited');
   expect(lifecycle).toEqual({ mounted: 2, unmounted: 1 });
 });
