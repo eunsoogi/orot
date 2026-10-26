@@ -190,7 +190,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // This opt-in profile covers host launch, Duo geometry, root/contextual navigation, departure guards, keyboard Save behavior, and orientation state.
+  // Keep Duo geometry, orientation state, four-sided clearance, contextual navigation, and native share cleanup opt-in.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
@@ -200,6 +200,8 @@ export function iosTestInventory(profile, suite = 'all') {
       'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
       'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
       'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
+      'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
+      'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
     ];
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();

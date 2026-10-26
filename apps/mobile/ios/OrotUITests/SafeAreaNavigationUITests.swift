@@ -70,9 +70,29 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "navigation-route-scroll").exists)
         XCTAssertTrue(action.isHittable)
         let root = try rootFrame(app, containing: action.frame)
-        XCTAssertEqual(node(app, "recording-controls-scroll").frame.maxY, root.maxY, accuracy: 0.5)
-        let bar = try NavigationUITestConditions.navigationAction(app, "navigation-back").toolbar
-        XCTAssertLessThanOrEqual(action.frame.maxY, bar.frame.minY)
+        let scroll = node(app, "recording-controls-scroll")
+        let contentRegion = node(app, "navigation-content-region")
+        XCTAssertTrue(contentRegion.exists && !contentRegion.frame.isEmpty)
+        let rightRail = node(app, "navigation-right-rail")
+        if rightRail.exists {
+            // The full-height rail shares vertical space with content; keep controls in the measured lane and above the system bottom inset.
+            XCTAssertFalse(rightRail.frame.isEmpty)
+            XCTAssertEqual(contentRegion.frame.minX, root.minX, accuracy: 0.5)
+            XCTAssertEqual(contentRegion.frame.maxX, rightRail.frame.minX, accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.maxX, root.maxX, accuracy: 0.5)
+            let systemBottomInset = try NavigationUITestConditions.safeArea(app, testCase: self).bottom
+            XCTAssertGreaterThanOrEqual(scroll.frame.minX, contentRegion.frame.minX - 0.5)
+            XCTAssertLessThanOrEqual(scroll.frame.maxX, contentRegion.frame.maxX + 0.5)
+            XCTAssertLessThanOrEqual(scroll.frame.maxY, root.maxY - systemBottomInset + 0.5)
+            XCTAssertLessThanOrEqual(action.frame.maxX, contentRegion.frame.maxX + 0.5)
+            XCTAssertLessThanOrEqual(action.frame.maxY, root.maxY - systemBottomInset + 0.5)
+            XCTAssertFalse(scroll.frame.intersects(rightRail.frame))
+            XCTAssertFalse(action.frame.intersects(rightRail.frame))
+        } else {
+            XCTAssertEqual(scroll.frame.maxY, root.maxY, accuracy: 0.5)
+            let bar = try NavigationUITestConditions.navigationAction(app, "navigation-back").toolbar
+            XCTAssertLessThanOrEqual(action.frame.maxY, bar.frame.minY)
+        }
         capture(app, "recording-inner-scroll-floating-bar-safe-area")
     }
 
