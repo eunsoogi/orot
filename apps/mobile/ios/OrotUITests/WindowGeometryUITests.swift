@@ -14,12 +14,12 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
 
     @MainActor
     func testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation() throws {
-        try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation()
+        try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: true)
     }
 
     /// Separate profile identifiers keep iPhone and Duo results distinct while sharing one route journey.
     @MainActor
-    private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation() throws {
+    private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: Bool = false) throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
@@ -30,9 +30,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         app.launch()
         defer { app.terminate() }
 
-        try assertGeometry(waitForGeometry(app))
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        let rootRoute = try XCTUnwrap(waitForGeometry(app).adaptive.routeKey)
         tap(app, "ai-feature-visit-questions")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         try NavigationUITestConditions.tapNavigation(app, "next-visit-generate")
@@ -54,20 +54,43 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-source-content")))
         tap(app, "next-visit-source-close")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        let questionRoute = try XCTUnwrap(waitForGeometry(app, routeKeyDifferentFrom: rootRoute).adaptive.routeKey)
+
+        if verifyAdaptiveReflow {
+            // The Duo run follows UIKit orientation events without synthesizing geometry.
+            defer { XCUIDevice.shared.orientation = .portrait }
+            let before = try waitForGeometry(app)
+            XCUIDevice.shared.orientation = .landscapeLeft
+            let landscape = try waitForGeometry(app, widthDifferentFrom: before.publicUIKit.windowBounds.width, routeWidthDifferentFrom: before.adaptive.width)
+            XCTAssertTrue(landscape.adaptive.routeKey == questionRoute && landscape.adaptive.columns == 2 && (question.value as? String) == draft)
+            XCUIDevice.shared.orientation = .portrait
+            let portrait = try waitForGeometry(app, widthDifferentFrom: landscape.publicUIKit.windowBounds.width, routeWidthDifferentFrom: landscape.adaptive.width)
+            XCTAssertTrue(portrait.adaptive.routeKey == questionRoute && (question.value as? String) == draft)
+        }
 
         try assertGeometry(waitForGeometry(app))
         XCTAssertTrue((question.value as? String) == draft, "The edited question must survive the source-detail route")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        if verifyAdaptiveReflow {
+            let returned = try waitForGeometry(app, routeKeyDifferentFrom: questionRoute)
+            XCTAssertEqual(returned.adaptive.routeKey, rootRoute)
+        }
     }
 
     @MainActor
-    private func waitForGeometry(_ app: XCUIApplication) throws -> GeometryReceipt {
+    private func waitForGeometry(_ app: XCUIApplication, widthDifferentFrom previousWidth: Double? = nil,
+                                 routeWidthDifferentFrom previousRouteWidth: Double? = nil,
+                                 routeKeyDifferentFrom previousRouteKey: String? = nil) throws -> GeometryReceipt
+    {
         // Wait for the actual event, committed context and independent UIKit snapshot to agree.
         var receipt: GeometryReceipt?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             receipt = self.readGeometry(app)
-            return receipt?.matchesPublicUIKit == true
+            let widthChanged = previousWidth.map { abs((receipt?.publicUIKit.windowBounds.width ?? $0) - $0) > 0.5 } ?? true
+            let routeWidthChanged = previousRouteWidth.map { abs((receipt?.adaptive.width ?? $0) - $0) > 0.5 } ?? true
+            let routeChanged = previousRouteKey.map { receipt?.adaptive.routeKey != $0 } ?? true
+            return receipt?.matchesPublicUIKit == true && widthChanged && routeWidthChanged && routeChanged
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "The native sensor event and RN context must match current UIKit geometry")
         return try XCTUnwrap(receipt)
@@ -86,6 +109,10 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
               let eventJSON = event["nativePayload"] as? String,
               let eventSnapshotJSON = event["normalizedSnapshot"] as? String,
               let contextSnapshotJSON = context["normalizedSnapshot"] as? String,
+              let adaptive = lifecycle.last(where: { $0["event"] as? String == "adaptive-columns-layout" && $0["active"] as? Bool == true }),
+              let adaptiveRouteKey = adaptive["routeKey"] as? String,
+              let adaptiveWidth = (adaptive["width"] as? String).flatMap(Double.init),
+              let adaptiveColumns = (adaptive["columns"] as? String).flatMap(Int.init),
               let referenceData = try? JSONSerialization.data(withJSONObject: reference),
               let native = try? JSONDecoder().decode(GeometryPayload.self, from: Data(eventJSON.utf8)),
               let eventSnapshot = try? JSONDecoder().decode(GeometrySnapshot.self, from: Data(eventSnapshotJSON.utf8)),
@@ -94,7 +121,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         else {
             return nil
         }
-        return GeometryReceipt(native: native, eventSnapshot: eventSnapshot, contextSnapshot: contextSnapshot, publicUIKit: publicUIKit)
+        return GeometryReceipt(native: native, eventSnapshot: eventSnapshot, contextSnapshot: contextSnapshot, publicUIKit: publicUIKit, adaptive: (routeKey: adaptiveRouteKey, width: adaptiveWidth, columns: adaptiveColumns))
     }
 
     private func assertGeometry(_ receipt: GeometryReceipt) {
@@ -126,6 +153,7 @@ private struct GeometryReceipt {
     let eventSnapshot: GeometrySnapshot
     let contextSnapshot: GeometrySnapshot
     let publicUIKit: GeometryPayload
+    let adaptive: (routeKey: String, width: Double, columns: Int)
 
     var matchesPublicUIKit: Bool {
         native.matches(publicUIKit)

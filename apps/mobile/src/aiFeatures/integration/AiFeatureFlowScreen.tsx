@@ -19,6 +19,7 @@ import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 
 export interface VisitQuestionsRenderInput {
+  readonly navigationRouteKey?: string;
   readonly onBack: () => void;
   readonly onOpenProviderSelection: () => void;
   readonly onOpenSource: (reference: EvidenceItem) => void;
@@ -117,6 +118,7 @@ export function AiFeatureFlowScreen({
     case 'visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({
+            navigationRouteKey,
             onBack,
             onOpenProviderSelection,
             onOpenSource,

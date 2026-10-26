@@ -1,13 +1,42 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
 import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
 } from '../index';
+
+const measurableView = View as unknown as {
+  prototype: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  };
+};
+const windowBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
+
+beforeEach(() => windowBounds.clear());
+
+jest
+  .spyOn(measurableView.prototype, 'measureInWindow')
+  .mockImplementation(function (
+    this: { readonly props: { readonly testID?: string } },
+    callback,
+  ) {
+    const bounds = windowBounds.get(this.props.testID ?? '');
+    if (bounds) callback(bounds.x, 0, bounds.width, 600);
+  });
+
+function setWindowBounds(testID: string, x: number, width: number) {
+  windowBounds.set(testID, { x, width });
+}
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');
@@ -39,18 +68,33 @@ function RegisterLeaveState({
   return null;
 }
 
-function StatefulHomeRoute() {
+function StatefulHomeRoute({
+  onStartRequest,
+}: {
+  readonly onStartRequest: () => void;
+}) {
   const [draft, setDraft] = useState('');
+  useEffect(() => {
+    onStartRequest();
+  }, [onStartRequest]);
   return (
-    <Text testID="home-draft" onPress={() => setDraft('preserved')}>
-      {draft || 'empty'}
-    </Text>
+    <AdaptiveColumns
+      primary={
+        <Text testID="home-draft" onPress={() => setDraft('preserved')}>
+          {draft || 'empty'}
+        </Text>
+      }
+      secondary={<Text testID="home-selection">selected record</Text>}
+      testID="home-columns"
+    />
   );
 }
 
 // Retained native stack scenes keep drafts intact across a forward/back transition.
 test('preserves the previous route scene state while opening and leaving a child route', async () => {
   const controller = createNavigationController<TestRoute>('home');
+  const onStartRequest = jest.fn();
+  const rootRouteKey = controller.getSnapshot().currentRoute.key;
   const source: NavigationLeaveStateSource<TestRoute> = {
     readState: () => ({
       hasUnsavedChanges: false,
@@ -66,12 +110,30 @@ test('preserves the previous route scene state while opening and leaving a child
       {({ route, registerLeaveState }) => (
         <>
           <RegisterLeaveState register={registerLeaveState} source={source} />
-          {route.name === 'home' ? <StatefulHomeRoute /> : <Text>editor</Text>}
+          {route.name === 'home' ? (
+            <StatefulHomeRoute onStartRequest={onStartRequest} />
+          ) : (
+            <Text>editor</Text>
+          )}
         </>
       )}
     </NavigationRouteAdapter>,
   );
-  fireEvent.press(screen.getByTestId('home-draft'));
+  expect(
+    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)
+      ?.flexDirection,
+  ).toBe('column');
+  await fireEvent.press(screen.getByTestId('home-draft'));
+  setWindowBounds('home-columns-host', 0, 1400);
+  await fireEvent(screen.getByTestId('home-columns-host'), 'layout', {
+    nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
+  });
+  expect(
+    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)
+      ?.flexDirection,
+  ).toBe('row');
+  expect(controller.getSnapshot().currentRoute.key).toBe(rootRouteKey);
+  expect(onStartRequest).toHaveBeenCalledTimes(1);
   await act(async () => {
     controller.push('editor');
   });
@@ -80,6 +142,8 @@ test('preserves the previous route scene state while opening and leaving a child
   );
 
   expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.key).toBe(rootRouteKey);
+  expect(onStartRequest).toHaveBeenCalledTimes(1);
   expect(
     screen.getByTestId('home-draft', { includeHiddenElements: true }),
   ).toHaveTextContent('preserved');
