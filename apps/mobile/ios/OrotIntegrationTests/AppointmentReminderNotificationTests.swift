@@ -5,6 +5,82 @@ import XCTest
 
 /// Synthetic bridge inputs verify content privacy without requesting OS notification permission.
 final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
+    private struct RecordedRequest: Equatable {
+        let identifier: String
+        let appointmentId: String?
+        let timeKey: String?
+        let userInfoKeys: [String]
+        let title: String
+        let body: String
+        let nextTriggerAt: Double?
+    }
+
+    private enum NotificationOperation: Equatable {
+        case removePending([String])
+        case removeDelivered([String])
+        case add(String)
+    }
+
+    private struct NotificationSnapshot {
+        let pending: [RecordedRequest]
+        let deliveredIdentifiers: [String]
+        let operations: [NotificationOperation]
+    }
+
+    /// Records same-ID request replacement and operation order for regression assertions.
+    private final class RecordingNotificationCenter: AppointmentReminderNotificationCenter, @unchecked Sendable {
+        private let lock = NSLock()
+        private var pending: [String: RecordedRequest] = [:]
+        private var deliveredIdentifiers: Set<String> = []
+        private var operations: [NotificationOperation] = []
+
+        func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+            lock.withLock {
+                operations.append(.removePending(identifiers))
+                identifiers.forEach { pending.removeValue(forKey: $0) }
+            }
+        }
+
+        func removeDeliveredNotifications(withIdentifiers identifiers: [String]) {
+            lock.withLock {
+                operations.append(.removeDelivered(identifiers))
+                identifiers.forEach { deliveredIdentifiers.remove($0) }
+            }
+        }
+
+        func add(_ request: UNNotificationRequest) async throws {
+            let recorded = RecordedRequest(
+                identifier: request.identifier,
+                appointmentId: request.content.userInfo["appointmentId"] as? String,
+                timeKey: request.content.userInfo["timeKey"] as? String,
+                userInfoKeys: request.content.userInfo.keys.compactMap { $0 as? String }.sorted(),
+                title: request.content.title,
+                body: request.content.body,
+                nextTriggerAt: (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate()?.timeIntervalSince1970,
+            )
+            lock.withLock {
+                operations.append(.add(request.identifier))
+                pending[request.identifier] = recorded
+            }
+        }
+
+        func markDelivered(_ identifier: String) {
+            _ = lock.withLock {
+                deliveredIdentifiers.insert(identifier)
+            }
+        }
+
+        func snapshot() -> NotificationSnapshot {
+            lock.withLock {
+                NotificationSnapshot(
+                    pending: pending.values.sorted { $0.identifier < $1.identifier },
+                    deliveredIdentifiers: deliveredIdentifiers.sorted(),
+                    operations: operations,
+                )
+            }
+        }
+    }
+
     private func input() -> [String: Any] {
         let start = 2_064_380_400_000.0
         return [
@@ -63,6 +139,57 @@ final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
         let trigger = try XCTUnwrap(request.trigger as? UNCalendarNotificationTrigger)
         XCTAssertNil(trigger.dateComponents.timeZone)
         XCTAssertEqual(request.content.userInfo["timeKey"] as? String, value["timeKey"] as? String)
+    }
+
+    func testPendingReplacementUsesOneRequestAndCancellationRemovesIt() async throws {
+        let center = RecordingNotificationCenter()
+        let scheduler = AppointmentReminderRequestScheduler(center: center)
+        let identifier = AppointmentReminderNotifications.requestIdentifier
+        let first = try AppointmentReminderNotificationPlan(input() as NSDictionary).request()
+        try await scheduler.replace(first)
+
+        var updated = input()
+        let updatedStart = 2_064_466_800_000.0
+        updated["appointmentId"] = "synthetic-next-visit"
+        updated["appointmentStartAt"] = updatedStart
+        updated["fireAt"] = updatedStart - 3_600_000
+        updated["timeKey"] = "instant:\(Int64(updatedStart))"
+        let second = try AppointmentReminderNotificationPlan(updated as NSDictionary).request()
+        try await scheduler.replace(second)
+
+        let replaced = center.snapshot()
+        XCTAssertEqual(replaced.pending.count, 1)
+        let request = try XCTUnwrap(replaced.pending.first)
+        XCTAssertEqual(request.identifier, identifier)
+        XCTAssertEqual(request.appointmentId, "synthetic-next-visit")
+        XCTAssertEqual(request.timeKey, "instant:\(Int64(updatedStart))")
+        XCTAssertEqual(request.userInfoKeys, ["appointmentId", "timeKey"])
+        XCTAssertEqual(request.title, "Orot")
+        XCTAssertEqual(request.body, "준비할 내용을 확인해 보세요.")
+        XCTAssertEqual(
+            try XCTUnwrap(request.nextTriggerAt),
+            (updatedStart - 3_600_000) / 1000,
+            accuracy: 1,
+        )
+        XCTAssertEqual(
+            replaced.operations,
+            [
+                .removeDelivered([identifier]),
+                .add(identifier),
+                .removeDelivered([identifier]),
+                .add(identifier),
+            ],
+        )
+
+        center.markDelivered(identifier)
+        scheduler.cancel()
+        let cancelled = center.snapshot()
+        XCTAssertTrue(cancelled.pending.isEmpty)
+        XCTAssertTrue(cancelled.deliveredIdentifiers.isEmpty)
+        XCTAssertEqual(
+            Array(cancelled.operations.suffix(2)),
+            [.removePending([identifier]), .removeDelivered([identifier])],
+        )
     }
 
     func testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt() throws {

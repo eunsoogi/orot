@@ -144,7 +144,10 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     currentEvidence: options.initialEvidence,
   };
   try {
-    const graph = makeGraph(context, options.checkpointer);
+    const graph = makeGraph(context, {
+      checkpointer: options.checkpointer,
+      store: options.store,
+    });
     let persistedGraphResume = false;
     if (options.checkpointer) {
       // Checkpoint channel values hold references only; restore source content after validation.
