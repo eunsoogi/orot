@@ -4,9 +4,8 @@ import {
   applyWorkflowStreamEvent,
   workflowProgressLabel,
 } from '../agent/workflowActivity';
-import { t } from '../i18n';
 
-/** Keeps provisional question text separate from validated questions and route results. */
+/** Keeps provisional text separate from validated questions and typed phase activity. */
 export function useQuestionGenerationActivity() {
   const [activity, setActivity] = useState<string | null>(null);
   const [preview, setPreview] = useState('');
@@ -28,8 +27,6 @@ export function useQuestionGenerationActivity() {
       },
       onTaskStreamEvent: event => {
         if (!isCurrentRun()) return;
-        if (event.type === 'started')
-          setActivity(t('aiActivity.phase.response'));
         setPreview(current => applyWorkflowStreamEvent(current, event));
       },
     }),

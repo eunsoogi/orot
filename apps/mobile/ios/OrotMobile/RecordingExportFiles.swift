@@ -12,6 +12,13 @@ enum RecordingExportFailure: Error {
     case cleanupFailed
 }
 
+/// A live but unconfirmed modal still owns its temporary export until completion.
+enum RecordingExportPresentationDisposition: String {
+    case confirmed
+    case liveButUnverified
+    case unavailable
+}
+
 /// Holds a protected export until the presenting controller is dismissed and cleans it only once.
 @MainActor
 final class RecordingExportPresentationLifecycle {
@@ -27,14 +34,11 @@ final class RecordingExportPresentationLifecycle {
         controllerIsLive: Bool,
         rejectUnavailable: () -> Void,
     ) -> RecordingExportPresentationDisposition {
-        let disposition = RecordingExportPresentationDisposition.resolve(
-            didPresent: didPresent,
-            controllerIsLive: controllerIsLive,
-        )
-        guard disposition == .unavailable else { return disposition }
-        guard finishIfNeeded() else { return disposition }
+        guard !didPresent else { return .confirmed }
+        guard !controllerIsLive else { return .liveButUnverified }
+        guard finishIfNeeded() else { return .unavailable }
         rejectUnavailable()
-        return disposition
+        return .unavailable
     }
 
     func finishIfNeeded() -> Bool {

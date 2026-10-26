@@ -1,4 +1,17 @@
+import type { MultiAgentResponderStreamEvent } from './contracts';
+
 type JsonPathPart = string | number;
+
+/** Keeps append-only display updates compact and represents revised text as a replacement. */
+export function projectDisplayTextUpdate(
+  previous: string,
+  next: string,
+): MultiAgentResponderStreamEvent | undefined {
+  if (previous === next) return undefined;
+  return next.startsWith(previous)
+    ? { type: 'text_delta', text: next.slice(previous.length) }
+    : { type: 'text_snapshot', text: next };
+}
 
 type ReadResult =
   | { readonly status: 'found'; readonly text: string }

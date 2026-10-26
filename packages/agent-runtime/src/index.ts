@@ -53,6 +53,7 @@ export type {
   TaskResponderInput,
   TaskResultValidation,
 } from './multiAgent/contracts';
+export type { EvidenceSearchRuntime } from './multiAgent/evidenceContracts';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './multiAgent/contracts';
 
 export type {

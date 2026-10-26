@@ -54,3 +54,15 @@ export const windowAnchorCohorts = [
   'recording-evidence',
   'navigation-features',
 ];
+export const workflowProgressCohorts = ['core-integration'];
+
+// Provider changes reach both native bridges and the feature workflows that consume them.
+export const providerCohorts = [
+  'core-integration',
+  'provider',
+  'selection',
+  'local-model',
+  'questions',
+  'calendar',
+  'health',
+];

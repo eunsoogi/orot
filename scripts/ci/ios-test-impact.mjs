@@ -1,9 +1,11 @@
-import { IOS_TEST_COHORT_NAMES as all } from './ios-test-execution-plan.mjs';
+import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 import {
   maintainedNativeTestOwners,
   sharedUiCohorts as ui,
   recordingCohorts as recording,
   windowAnchorCohorts,
+  workflowProgressCohorts,
+  providerCohorts as provider,
 } from './ios-test-impact-owners.mjs';
 
 // The maintained plan includes recording-export UI and root-tab integration assertions.
@@ -14,19 +16,9 @@ const calendar = ['core-integration', 'calendar', 'provider', 'questions'];
 const calendarUi = ['calendar', 'provider', 'questions'];
 const health = ['core-integration', 'health', 'calendar', 'provider', 'questions'];
 const healthUi = ['health', 'calendar', 'provider', 'questions'];
-const provider = [
-  'core-integration',
-  'provider',
-  'selection',
-  'local-model',
-  'questions',
-  'calendar',
-  'health',
-];
-
 function canonical(cohorts) {
   // Filtering the maintained plan expands a family and deduplicates overlapping selections in plan order.
-  return all.filter((cohort) =>
+  return IOS_TEST_COHORT_NAMES.filter((cohort) =>
     cohorts.some((selected) => cohort === selected || cohort.startsWith(selected + '-')),
   );
 }
@@ -36,11 +28,13 @@ function impact(cohorts, reason, oauth = false) {
 }
 
 function full(reason, oauth = true) {
-  return impact(all, reason, oauth);
+  return impact(IOS_TEST_COHORT_NAMES, reason, oauth);
 }
 
 function e2eImpact(path) {
   const file = path.split('/').at(-1).toLowerCase();
+  if (['workflowprogressfixture.ts', 'workflowprogressprobe.ts'].includes(file))
+    return impact(workflowProgressCohorts, 'workflow-progress-probe');
   if (/^standardadapters(?:apple|openai)?probe\.ts$/.test(file))
     return impact(['provider'], 'standard-adapter-probe');
   if (

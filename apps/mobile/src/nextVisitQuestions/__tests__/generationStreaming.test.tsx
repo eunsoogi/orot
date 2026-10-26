@@ -33,11 +33,6 @@ test('shows a provisional question stream and ignores events after cancellation'
   ).toBe('현재 자료를 확인하고 질문 후보를 만들고 있어요.');
 
   await act(async () => {
-    observer?.onTaskStreamEvent?.({ type: 'started' });
-    observer?.onTaskStreamEvent?.({
-      type: 'text_delta',
-      text: '최근 변화는 언제부터였나요?',
-    });
     observer?.onProgress?.({
       type: 'evidence_search',
       status: 'started',
@@ -47,6 +42,25 @@ test('shows a provisional question stream and ignores events after cancellation'
   expect(
     screen.getByTestId('next-visit-generation-progress').props.children,
   ).toBe('필요한 자료를 찾고 있어요.');
+  await act(async () => {
+    observer?.onProgress?.({
+      type: 'evidence_search',
+      status: 'completed',
+      sourceKind: 'personal_record',
+    });
+    observer?.onProgress?.({
+      type: 'model_started',
+      phase: 'revised_response',
+    });
+    observer?.onTaskStreamEvent?.({ type: 'started' });
+    observer?.onTaskStreamEvent?.({
+      type: 'text_delta',
+      text: '최근 변화는 언제부터였나요?',
+    });
+  });
+  expect(
+    screen.getByTestId('next-visit-generation-progress').props.children,
+  ).toBe('검토 결과를 반영하고 있어요.');
   expect(
     screen.getByTestId('next-visit-generation-preview').props.children,
   ).toBeTruthy();

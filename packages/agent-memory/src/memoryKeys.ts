@@ -20,6 +20,40 @@ export async function readMemoryByKey(
   };
 }
 
+/** Direct Store ID filters must honor persisted source deletion and invalidation fences. */
+export async function readMemoryById(
+  storage: AgentMemoryStorageAdapter,
+  memoryId: string,
+): Promise<Omit<AgentMemoryHit, 'score'> | null> {
+  const normalizedId = memoryId.trim();
+  if (!normalizedId) throw new Error('A memory identifier is required.');
+  const [invalidatedSourceIds, removedSourceIds, records] = await Promise.all([
+    storage.listInvalidatedSourceIds(),
+    storage.listRemovedSourceIds(),
+    storage.listRecords(),
+  ]);
+  const invalidated = new Set([...invalidatedSourceIds, ...removedSourceIds]);
+  const record = records.find((candidate) => candidate.id === normalizedId);
+  if (!record || invalidated.has(record.id)) return null;
+  const metadata = metadataFrom(record.meta);
+  if (
+    typeof metadata.memoryKey !== 'string' ||
+    !isAgentMemoryKind(metadata.kind) ||
+    !isProvenance(metadata.provenance) ||
+    metadata.provenance.sourceIds.some((sourceId) => invalidated.has(sourceId))
+  ) {
+    return null;
+  }
+  return {
+    memoryKey: metadata.memoryKey,
+    id: record.id,
+    text: record.text,
+    kind: metadata.kind,
+    provenance: metadata.provenance,
+    createdAt: record.createdAt,
+  };
+}
+
 export async function recordsForKey(
   storage: AgentMemoryStorageAdapter,
   memoryKey: string,

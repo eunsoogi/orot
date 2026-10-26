@@ -3,8 +3,16 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { AIMessageChunk, type BaseMessage } from '@langchain/core/messages';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import type { LanguageModelProvider, LanguageModelResponse, ToolCall } from '@orot/model-runtime';
+import type {
+  LanguageModelProvider,
+  LanguageModelResponse,
+  ProviderErrorCode,
+  TelemetryOutcome,
+  TelemetrySink,
+  ToolCall,
+} from '@orot/model-runtime';
 import { NativeChatModelError, type NativeChatModelCallOptions } from './chatModel';
+import { createCallbackTelemetrySink } from './telemetryCallbacks';
 import { toNativeMessages } from './messages';
 import {
   chunk,
@@ -56,7 +64,7 @@ export class NativeStreamingChatModel extends NativeToolBindingChatModel {
     );
   }
 
-  /** The base iterator starts LangChain callbacks before this adapter can suppress private data. */
+  /** Keep raw lifecycle callbacks suppressed; buffered streams may emit only opted-in safe events. */
   override async *_streamIterator(
     input: BaseLanguageModelInput,
     options?: Partial<NativeChatModelCallOptions>,
@@ -65,15 +73,23 @@ export class NativeStreamingChatModel extends NativeToolBindingChatModel {
       yield await this.invoke(input, options);
       return;
     }
-    const [, callOptions] = this._separateRunnableConfigFromCallOptionsCompat(options);
+    const [config, callOptions] = this._separateRunnableConfigFromCallOptionsCompat(options);
     const messages = BaseChatModel._convertInputToPromptValue(input).toChatMessages();
     const resolvedOptions = this.resolveInvocationOptions(callOptions);
     const prepared = this.prepareInvocation(resolvedOptions);
+    const telemetry =
+      this.streamMode === 'buffered'
+        ? createCallbackTelemetrySink({
+            enabled: prepared.options.externalTelemetryEnabled,
+            callbacks: config.callbacks,
+          })
+        : undefined;
     for await (const generationChunk of convertNativeStream(
       prepared.provider,
       messages,
       prepared.options,
       this.streamMode,
+      telemetry,
     )) {
       if (resolvedOptions.signal?.aborted) throw cancelled();
       yield generationChunk.message as AIMessageChunk;
@@ -89,6 +105,7 @@ async function* convertNativeStream(
   messages: BaseMessage[],
   options: NativeChatModelCallOptions,
   mode: NativeChatModelStreamMode,
+  telemetry?: TelemetrySink,
 ): AsyncGenerator<ChatGenerationChunk> {
   validateOptions(provider, options);
   if (options.signal?.aborted) throw cancelled();
@@ -101,6 +118,8 @@ async function* convertNativeStream(
   let text = '';
   let completed: LanguageModelResponse | undefined;
   const streamedCalls: ToolCall[] = [];
+  const startedAt = Date.now();
+  let finalChunk: ChatGenerationChunk;
   try {
     for await (const result of provider.stream!(request, { signal: options.signal })) {
       if (options.signal?.aborted) throw cancelled();
@@ -130,30 +149,50 @@ async function* convertNativeStream(
         throw internalError();
       }
     }
+    // Providers may finish async iterator cleanup after yielding their terminal event.
+    if (options.signal?.aborted) throw cancelled();
+    if (!completed || typeof completed.text !== 'string' || !Array.isArray(completed.toolCalls))
+      throw internalError();
+    if (
+      completed.toolCalls.some((call) => !validToolCall(call)) ||
+      !callsMatch(streamedCalls, completed.toolCalls)
+    )
+      throw internalError();
+    const usage = usageMetadata(completed);
+    let finalText = completed.text;
+    if (mode === 'append-only') {
+      if (finalText !== text)
+        throw new NativeChatModelError(providerError('unsupported_capability'));
+      finalText = '';
+    }
+    // Buffering lets replacement snapshots and the terminal response settle before emitting one
+    // ordinary append-only LangChain message chunk; the caller sees final text, not live progress.
+    const remainingCalls =
+      mode === 'buffered' || streamedCalls.length === 0 ? completed.toolCalls : [];
+    finalChunk = chunk(finalText, completed.finishReason, remainingCalls, undefined, usage);
   } catch (error) {
+    const isCancelled =
+      options.signal?.aborted || (error instanceof Error && error.name === 'AbortError');
+    const outcome: TelemetryOutcome = isCancelled ? 'cancelled' : 'error';
+    const errorCode: ProviderErrorCode =
+      error instanceof NativeChatModelError ? error.code : 'internal_error';
+    telemetry?.record({
+      operation: 'language-model.stream',
+      outcome,
+      durationMs: Math.max(0, Date.now() - startedAt),
+      ...(outcome === 'error' ? { errorCode } : {}),
+    });
     if (options.signal?.aborted) throw cancelled();
     if (error instanceof NativeChatModelError) throw error;
     if (error instanceof Error && error.name === 'AbortError') throw cancelled(); // Redact provider diagnostics.
     throw internalError();
   }
-  if (!completed || typeof completed.text !== 'string' || !Array.isArray(completed.toolCalls))
-    throw internalError();
-  if (
-    completed.toolCalls.some((call) => !validToolCall(call)) ||
-    !callsMatch(streamedCalls, completed.toolCalls)
-  )
-    throw internalError();
-  const usage = usageMetadata(completed);
-  let finalText = completed.text;
-  if (mode === 'append-only') {
-    if (finalText !== text) throw new NativeChatModelError(providerError('unsupported_capability'));
-    finalText = '';
-  }
-  // Buffering lets replacement snapshots and the terminal response settle before emitting one
-  // ordinary append-only LangChain message chunk; the caller sees final text, not live progress.
-  const remainingCalls =
-    mode === 'buffered' || streamedCalls.length === 0 ? completed.toolCalls : [];
-  yield chunk(finalText, completed.finishReason, remainingCalls, undefined, usage);
+  telemetry?.record({
+    operation: 'language-model.stream',
+    outcome: 'success',
+    durationMs: Math.max(0, Date.now() - startedAt),
+  });
+  yield finalChunk;
 }
 
 function validateOptions(
@@ -161,11 +200,16 @@ function validateOptions(
   options: NativeChatModelCallOptions,
 ): void {
   const supported = new Set(
-    'signal maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature responseFormat'.split(
+    'signal maxConcurrency callbacks tags metadata runName runId configurable recursionLimit maxOutputTokens temperature responseFormat externalTelemetryEnabled'.split(
       ' ',
     ),
   );
   if (Object.keys(options).some((key) => !supported.has(key)))
+    throw new NativeChatModelError(providerError('unsupported_capability'));
+  if (
+    options.externalTelemetryEnabled !== undefined &&
+    typeof options.externalTelemetryEnabled !== 'boolean'
+  )
     throw new NativeChatModelError(providerError('unsupported_capability'));
   for (const control of ['maxOutputTokens', 'temperature'] as const) {
     if (options[control] !== undefined && !provider.capabilities.requestControls?.includes(control))

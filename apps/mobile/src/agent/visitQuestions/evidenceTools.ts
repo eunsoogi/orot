@@ -1,6 +1,7 @@
 import type {
   EvidenceBatch,
   EvidenceSearchRequest,
+  EvidenceSearchRuntime,
   EvidenceSearchTool,
 } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
@@ -71,6 +72,7 @@ export function createVisitQuestionEvidenceSearchTools(input: {
     maxEvidenceItems: number,
     sourceKind: VisitQuestionSearchSource,
     signal: AbortSignal,
+    runtime?: EvidenceSearchRuntime,
   ) => Promise<VisitQuestionEvidenceCollection>;
   readonly initialEvidenceCount: number;
   readonly maxEvidenceItems: number;
@@ -111,7 +113,7 @@ export function createVisitQuestionEvidenceSearchTools(input: {
         : 'Search current user-reviewed Rememori memories for a short query. Return only source-linked reviewed memory.',
     inputSchema: QUERY_SCHEMA,
     parseInput: parseQuery,
-    async search(request) {
+    async search(request, runtime) {
       if (!request.allowedScope.sourceKinds.includes(sourceKind)) {
         throw new Error(
           'The requested local source kind is outside this workflow.',
@@ -128,12 +130,21 @@ export function createVisitQuestionEvidenceSearchTools(input: {
       if (request.signal.aborted)
         throw new Error('The visit-question evidence search was cancelled.');
 
-      const searched = await input.searchEvidence(
-        query,
-        maxEvidenceItems,
-        sourceKind,
-        request.signal,
-      );
+      const searched =
+        sourceKind === 'reviewed_memory'
+          ? await input.searchEvidence(
+              query,
+              maxEvidenceItems,
+              sourceKind,
+              request.signal,
+              runtime,
+            )
+          : await input.searchEvidence(
+              query,
+              maxEvidenceItems,
+              sourceKind,
+              request.signal,
+            );
       if (request.signal.aborted)
         throw new Error('The visit-question evidence search was cancelled.');
 

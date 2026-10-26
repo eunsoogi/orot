@@ -2,22 +2,6 @@ import Foundation
 import React
 import UIKit
 
-/// Separates an unconfirmed presentation from an absent modal so live share UI keeps its temporary file.
-@MainActor
-enum RecordingExportPresentationDisposition: String, Equatable {
-    case confirmed
-    case liveButUnverified
-    case unavailable
-
-    static func resolve(didPresent: Bool, controllerIsLive: Bool) -> Self {
-        if didPresent {
-            return .confirmed
-        }
-        guard controllerIsLive else { return .unavailable }
-        return .liveButUnverified
-    }
-}
-
 public extension RecordingModule {
     @objc(shareRecordingAudio:resolver:rejecter:)
     func shareRecordingAudio(

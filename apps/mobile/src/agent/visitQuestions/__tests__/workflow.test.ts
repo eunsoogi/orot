@@ -47,11 +47,13 @@ describe('visit-question shared workflow', () => {
     expect(result.questions[0]?.citations).toEqual([
       prepared.supplementalEvidence,
     ]);
+    // The optional fifth argument carries graph Store context; this fixture has none.
     expect(prepared.searchEvidence).toHaveBeenCalledWith(
       '최근 검사 결과',
       expect.any(Number),
       'personal_record',
       expect.any(AbortSignal),
+      undefined,
     );
     expect(prepared.revalidateEvidence).toHaveBeenCalledWith(
       expect.arrayContaining([

@@ -55,7 +55,21 @@ test('shows safe answer text and separate evidence activity while generating', a
     '기록에서 근거를 찾고 있어요.',
   );
   await act(async () => {
+    observer?.onProgress?.({
+      type: 'evidence_search',
+      status: 'completed',
+      sourceKind: 'personal_record',
+    });
+    observer?.onProgress?.({
+      type: 'model_started',
+      phase: 'revised_response',
+    });
     observer?.onTaskStreamEvent?.({ type: 'started' });
+  });
+  expect(screen.getByTestId('rag-conversation-progress').props.children).toBe(
+    '답변을 다듬고 있어요.',
+  );
+  await act(async () => {
     observer?.onTaskStreamEvent?.({
       type: 'text_delta',
       text: '기록에는 혈압이 남아 있어요.',

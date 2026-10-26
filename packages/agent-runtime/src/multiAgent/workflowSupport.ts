@@ -179,7 +179,7 @@ export async function restoreRunEvidence<TResult>(
 
 export function makeGraph<TResult>(
   context: RuntimeContext<TResult>,
-  checkpointer?: MultiAgentWorkflowOptions<TResult>['checkpointer'],
+  graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> = {},
 ) {
   const nodes = createNodes(context);
   const routeMap = {
@@ -210,7 +210,7 @@ export function makeGraph<TResult>(
     .addConditionalEdges('executeSearch', route, routeMap)
     .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
     .addConditionalEdges('invokeRevision', route, routeMap)
-    .compile({ checkpointer });
+    .compile({ store: graphOptions.store, checkpointer: graphOptions.checkpointer });
 }
 
 export function publicResult<TResult>(
