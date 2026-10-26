@@ -18,7 +18,7 @@ function assertTestMethodDeclared(identifier) {
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 49, 6],
+    ['core', 58, 6],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -54,6 +54,11 @@ test('separate Core and Speech runners cover every registered boundary without d
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates',
   ])
     assert.ok(iosTestInventory('core', 'integration').includes(identifier), identifier);
+  assert.ok(
+    iosTestInventory('core', 'integration').includes(
+      'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
+    ),
+  );
   assert.ok(
     iosTestInventory('core', 'ui').includes(
       'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',

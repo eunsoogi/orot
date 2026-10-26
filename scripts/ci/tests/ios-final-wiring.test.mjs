@@ -79,14 +79,14 @@ test('scheduled cohort jobs use one consistent role and target', () => {
   }
 });
 
-test('full integration execution preserves 151 observations and every registered provider case', () => {
+test('full integration execution preserves profile observations and every registered provider case', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Release 111 + Debug 31 + Speech 9 retain every scheduled case and the added regressions.
-  assert.equal(scheduled.length, 151);
+  // The three picker journeys repeat across Debug health-import and Release fixtures.
+  assert.equal(scheduled.length, 161);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 148);
+  assert.equal(identifiers.size, 158);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

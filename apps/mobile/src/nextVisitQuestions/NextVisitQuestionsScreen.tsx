@@ -7,7 +7,9 @@ import type {
 
 /** Standalone consumers own their controller; app routes inject a retained controller. */
 export function NextVisitQuestionsScreen<T extends NextVisitEvidenceReference>(
-  props: NextVisitQuestionsScreenProps<T>,
+  props: NextVisitQuestionsScreenProps<T> & {
+    readonly navigationRouteKey?: string;
+  },
 ) {
   const controller = useNextVisitQuestionsController(props);
   return <NextVisitQuestionsScreenView {...props} controller={controller} />;

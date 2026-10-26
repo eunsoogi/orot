@@ -35,23 +35,31 @@ test('shared picker journeys honor their valid profile and reject a foreign fixt
   }
 });
 
-test('a shared orientation case retains the requested Duo profile when both inventories own it', () => {
-  const sharedOrientationCase =
-    'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute';
-  const inventories = new Map([
-    ['fixtures', [sharedOrientationCase]],
-    ['duo', [sharedOrientationCase]],
-  ]);
-  const profileInventory = (profile) => inventories.get(profile) ?? [];
-  assert.equal(
-    selectIosTestProfileForSelection(
-      'duo',
-      ['fixtures', 'health-import', 'microphone', 'provider-selection', 'duo'],
-      [sharedOrientationCase],
-      profileInventory,
-    ),
+test('a shared fixture and Duo case follows the explicitly requested Duo profile', () => {
+  const fixtureInventory = iosTestInventory('fixtures');
+  const duoInventory = iosTestInventory('duo');
+  const sharedCase = fixtureInventory.find((identifier) => duoInventory.includes(identifier));
+  assert.ok(sharedCase);
+  const accepted = fixture(0, 'duo', 'all', [sharedCase]);
+  try {
+    assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+    assert.deepEqual(
+      accepted.calls
+        .find((call) => call.name === 'xcodebuild')
+        .args.filter((argument) => argument.startsWith('-only-testing:')),
+      ['-only-testing:' + sharedCase],
+    );
+  } finally {
+    rmSync(accepted.directory, { recursive: true, force: true });
+  }
+  const profileCandidates = [
+    'fixtures',
+    'health-import',
+    'microphone',
+    'provider-selection',
     'duo',
-  );
+  ];
+  assert.equal(selectIosTestProfileForSelection('duo', profileCandidates, [sharedCase]), 'duo');
 });
 
 test('a complete Duo selection remains available without fixture-session restrictions', () => {

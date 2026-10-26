@@ -3,7 +3,9 @@ import {
   maintainedNativeTestOwners,
   sharedUiCohorts as ui,
   recordingCohorts as recording,
+  windowAnchorCohorts,
   workflowProgressCohorts,
+  providerCohorts as provider,
 } from './ios-test-impact-owners.mjs';
 
 // The maintained plan includes recording-export UI and root-tab integration assertions.
@@ -14,16 +16,6 @@ const calendar = ['core-integration', 'calendar', 'provider', 'questions'];
 const calendarUi = ['calendar', 'provider', 'questions'];
 const health = ['core-integration', 'health', 'calendar', 'provider', 'questions'];
 const healthUi = ['health', 'calendar', 'provider', 'questions'];
-const provider = [
-  'core-integration',
-  'provider',
-  'selection',
-  'local-model',
-  'questions',
-  'calendar',
-  'health',
-];
-
 function canonical(cohorts) {
   // Filtering the maintained plan expands a family and deduplicates overlapping selections in plan order.
   return IOS_TEST_COHORT_NAMES.filter((cohort) =>
@@ -204,6 +196,8 @@ function nativeTestImpact(path) {
 
   if (path.includes('/OrotMobile.xcodeproj/')) return full('native-project-configuration');
   if (path.includes('/OrotMobile/')) {
+    if (lower === 'windowpresentationanchor.swift')
+      return impact(windowAnchorCohorts, 'current-window-presentation-anchor');
     if (/^(test|syntheticcalendar|testfixture|testcontrol|testoperation)/i.test(file))
       return full('shared-native-test-driver');
     if (/^(database|storage|sqlcipher|keychain|appdelegate)/i.test(file))

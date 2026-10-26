@@ -12,6 +12,43 @@ enum RecordingExportFailure: Error {
     case cleanupFailed
 }
 
+/// A live but unconfirmed modal still owns its temporary export until completion.
+enum RecordingExportPresentationDisposition: String {
+    case confirmed
+    case liveButUnverified
+    case unavailable
+}
+
+/// Holds a protected export until the presenting controller is dismissed and cleans it only once.
+@MainActor
+final class RecordingExportPresentationLifecycle {
+    private let cleanup: () -> Bool
+    private var didClean = false
+
+    init(cleanup: @escaping () -> Bool) {
+        self.cleanup = cleanup
+    }
+
+    func completePresentation(
+        didPresent: Bool,
+        controllerIsLive: Bool,
+        rejectUnavailable: () -> Void,
+    ) -> RecordingExportPresentationDisposition {
+        guard !didPresent else { return .confirmed }
+        guard !controllerIsLive else { return .liveButUnverified }
+        guard finishIfNeeded() else { return .unavailable }
+        rejectUnavailable()
+        return .unavailable
+    }
+
+    func finishIfNeeded() -> Bool {
+        guard !didClean else { return true }
+        guard cleanup() else { return false }
+        didClean = true
+        return true
+    }
+}
+
 enum RecordingExportFiles {
     private static let folderName = "OrotRecordingExports"
     private static let lock = NSLock()
