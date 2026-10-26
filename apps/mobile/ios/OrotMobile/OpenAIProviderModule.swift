@@ -90,6 +90,9 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                                 "toolCalls": response.toolCalls.map(Self.nativeToolCall),
                                 "continuationItems": response.continuationItems,
                             ]
+                            if let usage = response.usage {
+                                payload["usage"] = usage.nativePayload
+                            }
                             // Public-search output carries provider citations, not fetched originals.
                             if let search = response.webSearch {
                                 payload["webSearch"] = [

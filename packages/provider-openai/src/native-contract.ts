@@ -1,3 +1,5 @@
+import type { LanguageModelResponse } from '@orot/model-runtime';
+
 export interface ChatGPTPlanModelDescriptor {
   readonly slug: string;
   readonly displayName: string;
@@ -88,6 +90,7 @@ export type ChatGPTPlanNativeEvent =
       readonly toolCalls?: readonly ChatGPTPlanNativeToolCall[];
       readonly continuationItems?: readonly string[];
       readonly webSearch?: ChatGPTPlanWebSearchResult;
+      readonly usage?: LanguageModelResponse['usage'];
     }
   | { readonly requestId: string; readonly type: 'failed'; readonly error: ChatGPTPlanNativeError };
 
