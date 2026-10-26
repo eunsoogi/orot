@@ -5,12 +5,12 @@ import XCTest
 final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     @MainActor
     func testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection() throws {
-        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
-        // Exercise the real UIKit constructor; custom traits must preserve disabled state without granting tab selection.
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 48, height: 300))
+        surface.layoutMode = "right" // Exercise disabled traits in the native contextual rail layout.
         for (disabled, selected) in [(true, false), (false, true), (true, true), (false, false)] {
             surface.actions = [[
-                "id": "primary", "label": "Synthetic action", "testID": "synthetic-navigation-action",
-                "accessibilityLabel": "Synthetic action", "primary": true,
+                "id": "back", "label": "Back", "testID": "navigation-back",
+                "accessibilityLabel": "Back",
                 "disabled": disabled, "selected": selected,
             ]] as NSArray
             surface.layoutIfNeeded()

@@ -3,6 +3,8 @@ import type {
   LanguageModelRequest,
   LanguageModelResponse,
 } from '@orot/model-runtime';
+import { AIMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages';
+import { toLangChainMessages, toNativeMessages } from '../langchain/messages';
 import { isSourceAllowed } from './evidence';
 import { guidedSchema } from './guidedSchema';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -49,7 +51,7 @@ export function withNativeTools<TResult>(
             },
           ]
         : []),
-      ...(context.nativeToolMessages ?? []),
+      ...nativeToolMessagesForRequest(context.nativeToolMessages),
     ],
     ...(available
       ? {
@@ -112,19 +114,71 @@ export function consumeNativeToolCall<TResult>(
     return completeState();
   }
   context.nativeToolMessages ??= [];
-  if (
-    context.nativeToolMessages.some(
-      (message) => message.role === 'tool' && message.toolCallId === call.id,
-    )
-  ) {
-    stop(context, 'The model reused a completed tool call identity.', 'invalid_output');
+  if (context.nativeToolMessages.some((message) => hasToolCallIdentity(message, call.id))) {
+    stop(context, 'The model reused an existing tool call identity.', 'invalid_output');
     return completeState();
   }
-  context.nativeToolMessages.push({ role: 'assistant', content: response.text, toolCalls: [call] });
+  let assistantMessage: BaseMessage | undefined;
+  try {
+    [assistantMessage] = toLangChainMessages([
+      { role: 'assistant', content: response.text, toolCalls: [call] },
+    ]);
+  } catch {
+    stop(context, 'The model returned an invalid tool call message.', 'invalid_output');
+    return completeState();
+  }
+  if (!assistantMessage || !AIMessage.isInstance(assistantMessage)) {
+    stop(context, 'The model returned an invalid tool call message.', 'invalid_output');
+    return completeState();
+  }
+  context.nativeToolMessages.push(assistantMessage);
   context.pendingNativeToolCallId = call.id;
   context.researchInput = input;
   return { phase: 'evidence_search', selectedToolId: tool.id, pendingOperation: undefined };
 }
 
-/** Tool payloads remain ephemeral, like evidence text; graph checkpoints contain neither. */
-export type NativeToolMessages = LanguageModelMessage[];
+/** Keep standard messages between graph nodes; checkpoints retain neither tool payloads nor evidence text. */
+export type NativeToolMessages = BaseMessage[];
+
+/** Convert only when crossing back into the provider-neutral request contract. */
+export function nativeToolMessagesForRequest(
+  messages: NativeToolMessages | undefined,
+): readonly LanguageModelMessage[] {
+  return toNativeMessages(messages ?? []).messages;
+}
+
+/** Append only one serializable tool result for the graph's outstanding assistant call. */
+export function appendNativeToolResultMessage(
+  messages: NativeToolMessages | undefined,
+  callId: string | undefined,
+  result: Extract<LanguageModelMessage, { role: 'tool' }>['result'],
+): boolean {
+  if (!callId || !messages) return false;
+  const matchingCalls = messages.reduce(
+    (count, message) =>
+      count +
+      (AIMessage.isInstance(message)
+        ? (message.tool_calls?.filter((call) => call.id === callId).length ?? 0)
+        : 0),
+    0,
+  );
+  if (
+    matchingCalls !== 1 ||
+    messages.some((message) => ToolMessage.isInstance(message) && message.tool_call_id === callId)
+  )
+    return false;
+  try {
+    const [toolMessage] = toLangChainMessages([{ role: 'tool', toolCallId: callId, result }]);
+    if (!toolMessage || !ToolMessage.isInstance(toolMessage)) return false;
+    messages.push(toolMessage);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasToolCallIdentity(message: BaseMessage, callId: string): boolean {
+  if (AIMessage.isInstance(message))
+    return message.tool_calls?.some((call) => call.id === callId) ?? false;
+  return ToolMessage.isInstance(message) && message.tool_call_id === callId;
+}
