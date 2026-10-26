@@ -52,8 +52,8 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             }
             wait(for: [presented], timeout: 5)
             XCTAssertEqual(didPresent, true)
-            XCTAssertTrue(anchor.matchesPresenter(picker))
-            XCTAssertTrue(anchor.presenterSharesWindow(picker))
+            XCTAssertTrue(anchor.presentationRelationshipMatches(picker))
+            XCTAssertTrue(anchor.presentedControllerSharesWindow(picker))
 
             let resizedFrame = CGRect(
                 x: sideFrame.minX,

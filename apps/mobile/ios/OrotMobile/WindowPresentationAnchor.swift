@@ -5,6 +5,7 @@ import UIKit
 struct WindowPresentationAnchor {
     let window: UIWindow
     private let presenter: UIViewController
+    private let eligiblePresenterIdentifiers: Set<ObjectIdentifier>
     private let sourceView: UIView
     private let sourceRect: CGRect
 
@@ -50,7 +51,13 @@ struct WindowPresentationAnchor {
               resolvedRect.intersects(resolvedView.bounds),
               rectInWindow.intersects(window.bounds)
         else { return nil }
-        return Self(window: window, presenter: presenter, sourceView: resolvedView, sourceRect: resolvedRect)
+        return Self(
+            window: window,
+            presenter: presenter,
+            eligiblePresenterIdentifiers: presentationPresenterIdentifiers(from: presenter, root: root),
+            sourceView: resolvedView,
+            sourceRect: resolvedRect,
+        )
     }
 
     /// Confirms the presenter, source region, and foreground key window still match the resolved anchor.
@@ -66,37 +73,38 @@ struct WindowPresentationAnchor {
         return Self.topmostPresenter(from: root, in: window) === presenter
     }
 
-    /// Presents through the resolved controller and confirms UIKit attached it to the same window.
+    /// Validates the source before presenting, then confirms UIKit kept the presented view in the destination window.
     func present(_ controller: UIViewController, animated: Bool = true, completion: @escaping (Bool) -> Void) {
         guard isCurrent, apply(to: controller) != false else {
             completion(false)
             return
         }
         let anchorWindow = window
-        let anchorPresenter = presenter
-        let anchorSourceView = sourceView
-        let anchorSourceRect = sourceRect
-        // UIKit owns a presented controller while it is open; weak captures keep this check from retaining a stale window stack.
-        anchorPresenter.present(controller, animated: animated) { [weak anchorWindow, weak anchorPresenter, weak anchorSourceView, weak controller] in
-            guard let anchorWindow,
-                  let anchorPresenter,
-                  let anchorSourceView,
-                  let controller,
-                  Self.sourceRegionIsCurrent(
-                      window: anchorWindow,
-                      presenter: anchorPresenter,
-                      sourceView: anchorSourceView,
-                      sourceRect: anchorSourceRect,
-                  )
-            else {
+        let eligiblePresenterIdentifiers = eligiblePresenterIdentifiers
+        // A full-screen adaptation removes the source hierarchy, so completion checks the live modal relationship instead.
+        presenter.present(controller, animated: animated) { [weak anchorWindow, weak controller] in
+            guard let anchorWindow, let controller else {
                 completion(false)
                 return
             }
-            completion(
-                controller.presentingViewController === anchorPresenter
-                    && controller.presentingViewController?.viewIfLoaded?.window === anchorWindow,
-            )
+            completion(Self.presentationIsOwnedByAnchorWindow(
+                controller,
+                window: anchorWindow,
+                eligiblePresenterIdentifiers: eligiblePresenterIdentifiers,
+            ))
         }
+    }
+
+    /// Configures a presentation relationship through the selected presenter or its eligible UIKit ancestor.
+    func presentationRelationshipMatches(_ controller: UIViewController) -> Bool {
+        guard let actualPresenter = controller.presentingViewController else { return false }
+        return eligiblePresenterIdentifiers.contains(ObjectIdentifier(actualPresenter))
+            && actualPresenter.presentedViewController === controller
+    }
+
+    /// Confirms UIKit attached the presented controller's view to the source window.
+    func presentedControllerSharesWindow(_ controller: UIViewController) -> Bool {
+        controller.viewIfLoaded?.window === window
     }
 
     /// Sets the UIKit popover source in the same window used for presentation.
@@ -107,17 +115,6 @@ struct WindowPresentationAnchor {
         popover.sourceView = sourceView
         popover.sourceRect = sourceRect
         return isCurrent && popover.sourceView?.window === window && popover.sourceRect == sourceRect
-    }
-
-    /// Confirms the presented controller and its presenter remain attached to this anchor's window.
-    func matchesPresenter(_ controller: UIViewController) -> Bool {
-        controller.presentingViewController === presenter
-    }
-
-    /// Verifies UIKit did not move the selected presenter to another window before presentation completed.
-    func presenterSharesWindow(_ controller: UIViewController) -> Bool {
-        controller.presentingViewController?.viewIfLoaded?.window === window
-            && presenter.viewIfLoaded?.window === window
     }
 
     #if OROT_TESTS
@@ -153,6 +150,43 @@ struct WindowPresentationAnchor {
             return topmostPresenter(from: visibleChild, in: window)
         }
         return root
+    }
+
+    private static func presentationPresenterIdentifiers(
+        from presenter: UIViewController,
+        root: UIViewController,
+    ) -> Set<ObjectIdentifier> {
+        var pending = [presenter, root]
+        var identifiers = Set<ObjectIdentifier>()
+        while let candidate = pending.popLast() {
+            guard identifiers.insert(ObjectIdentifier(candidate)).inserted else { continue }
+            if let parent = candidate.parent {
+                pending.append(parent)
+            }
+            if let presenting = candidate.presentingViewController {
+                pending.append(presenting)
+            }
+        }
+        return identifiers
+    }
+
+    /// Confirms the modal's live UIKit relationship without requiring the covered source hierarchy to remain attached.
+    private static func presentationIsOwnedByAnchorWindow(
+        _ controller: UIViewController,
+        window: UIWindow,
+        eligiblePresenterIdentifiers: Set<ObjectIdentifier>,
+    ) -> Bool {
+        guard window.windowScene?.activationState == .foregroundActive,
+              window.isKeyWindow,
+              !window.isHidden,
+              window.alpha > 0,
+              let actualPresenter = controller.presentingViewController,
+              eligiblePresenterIdentifiers.contains(ObjectIdentifier(actualPresenter)),
+              actualPresenter.presentedViewController === controller,
+              let presentedView = controller.viewIfLoaded,
+              presentedView.window === window
+        else { return false }
+        return true
     }
 
     /// Rechecks the visible source region in the same active window without forcing UIKit to load controller views.

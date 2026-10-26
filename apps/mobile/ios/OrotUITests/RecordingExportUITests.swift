@@ -202,8 +202,9 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         if observation["popoverAvailable"] as? Bool == true {
             XCTAssertEqual(observation["popoverConfigured"] as? Bool, true)
         }
-        XCTAssertEqual(presentation["presenterMatches"] as? Bool, true)
-        XCTAssertEqual(presentation["presenterWindowMatches"] as? Bool, true)
+        XCTAssertEqual(presentation["presentationDisposition"] as? String, "confirmed")
+        XCTAssertEqual(presentation["presentationRelationshipMatches"] as? Bool, true)
+        XCTAssertEqual(presentation["presentedControllerSharesWindow"] as? Bool, true)
     }
 
     @MainActor
