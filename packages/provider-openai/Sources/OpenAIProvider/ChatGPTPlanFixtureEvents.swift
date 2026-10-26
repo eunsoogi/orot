@@ -21,6 +21,15 @@
             ])
         }
 
+        /// Standard adapter tests need reported counts, independently of the absent-usage fixture.
+        static let adapterCompleted = event("response.completed", [
+            "type": "response.completed",
+            "response": [
+                "status": "completed", "output_text": "안녕하세요",
+                "usage": ["input_tokens": 7, "output_tokens": 3, "total_tokens": 10],
+            ],
+        ])
+
         static let functionCallAdded = event("response.output_item.added", [
             "type": "response.output_item.added",
             "item": [

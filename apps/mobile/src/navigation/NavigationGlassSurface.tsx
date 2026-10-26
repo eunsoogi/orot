@@ -44,11 +44,19 @@ export interface NavigationGlassSurfaceProps {
   readonly testID: string;
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
+  readonly layoutMode?: 'bottom' | 'right';
+  readonly railTopInset?: number;
+  readonly railBottomInset?: number;
+  readonly railRightInset?: number;
 }
 
 interface NavigationGlassNativeProps extends ViewProps {
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
+  readonly layoutMode?: 'bottom' | 'right';
+  readonly railTopInset?: number;
+  readonly railBottomInset?: number;
+  readonly railRightInset?: number;
 }
 
 const NativeNavigationGlassSurface =
@@ -59,7 +67,11 @@ const NativeNavigationGlassSurface =
 export function NavigationGlassSurface({
   actions = [],
   children,
+  layoutMode,
   onAction,
+  railBottomInset,
+  railRightInset,
+  railTopInset,
   style,
   testID,
 }: NavigationGlassSurfaceProps) {
@@ -70,7 +82,11 @@ export function NavigationGlassSurface({
     return (
       <NativeNavigationGlassSurface
         actions={actions}
+        layoutMode={layoutMode}
         onAction={onAction}
+        railBottomInset={railBottomInset}
+        railRightInset={railRightInset}
+        railTopInset={railTopInset}
         style={[styles.surface, hasRootTabs && styles.rootTabSurface, style]}
         testID={testID}
       />

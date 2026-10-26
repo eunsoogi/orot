@@ -23,6 +23,11 @@ export async function runDomainTestOperation(
       ? parameters.storageIdentifier
       : undefined;
   switch (operation) {
+    case 'standard-adapters': {
+      const { runStandardAdaptersProbe } =
+        await import('./standardAdaptersProbe');
+      return runStandardAdaptersProbe();
+    }
     case 'ai-scale-calendar': {
       const { measureScaleCalendar } = await import('./aiScaleCalendar');
       const runs = [];

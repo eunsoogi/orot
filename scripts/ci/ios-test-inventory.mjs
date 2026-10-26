@@ -79,6 +79,7 @@ const providerTests = [
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
+  'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
   'OrotIntegrationTests/MedicationDoseCursorTests/testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
   'OrotIntegrationTests/MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
@@ -153,6 +154,9 @@ export const fixtureTests = [
   'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
   'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
+  'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
+  'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
+  'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
@@ -183,11 +187,12 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // Keep orientation and route-state verification on the separate iOS 27.1 Duo destination.
+  // Keep Duo navigation, geometry and orientation verification on the iOS 27.1 destination.
   // Do not let an unknown Release profile fall through to the provider inventory.
   if (profile === 'duo')
     return [
       'OrotUITests/TestHostConnectionTests/testHostLaunches',
+      'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
       'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
       'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     ];

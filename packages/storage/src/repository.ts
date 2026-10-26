@@ -13,7 +13,9 @@ import {
   upsertStoredRecord,
 } from './recordPersistence';
 import { createSourceEvidenceRepositories } from './sourceEvidence';
+import { createManualHistoryRepository } from './manualHistory';
 import type { EvidenceSpanRepository, SourceRecordRepository } from './sourceEvidence';
+import type { ManualHistoryRepository } from './manualHistory';
 import { createTranscriptEvidenceRepository } from './transcriptEvidence';
 import type { TranscriptEvidenceRepository } from './transcriptEvidence';
 import {
@@ -45,6 +47,7 @@ export interface RecordRepository extends RecordWriter {
   ): Promise<HealthObservationPage>;
   sourceRecords: SourceRecordRepository;
   evidenceSpans: EvidenceSpanRepository;
+  manualHistory: ManualHistoryRepository;
   transcripts: TranscriptEvidenceRepository;
   get<K extends RecordKind>(kind: K, id: string): Promise<RecordMap[K] | null>;
   getSyncCheckpoint(key: string): Promise<SyncCheckpoint | null>;
@@ -114,6 +117,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
   const transcripts = createTranscriptEvidenceRepository(database);
   return {
     ...sourceEvidenceRepositories,
+    manualHistory: createManualHistoryRepository(database),
     listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
     listHealthObservationPage: (cursor, limit, filter) =>
       readHealthObservationPage(database, cursor, limit, filter),

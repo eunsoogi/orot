@@ -46,7 +46,7 @@ describe('stateful LangGraph', () => {
 
     const result = await graph.invoke({ request });
 
-    expect(provider.generate).toHaveBeenCalledWith(request);
+    expect(provider.generate).toHaveBeenCalledWith(request, { signal: undefined });
     expect(result.result).toEqual(providerSuccess(response));
   });
 });

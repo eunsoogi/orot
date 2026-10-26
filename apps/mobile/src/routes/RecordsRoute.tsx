@@ -10,6 +10,7 @@ interface RecordsRouteProps {
   readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
+  readonly onOpenManualHistory: () => void;
 }
 
 /** Keeps recording and local records discoverable without manual HealthKit entry points. */
@@ -18,6 +19,7 @@ export function RecordsRoute({
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
+  onOpenManualHistory,
 }: RecordsRouteProps) {
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -92,6 +94,31 @@ export function RecordsRoute({
           <Text style={styles.cardSummary}>
             {t('records.savedRecordingsSummary')}
           </Text>
+        </View>
+        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenManualHistory}
+        style={styles.healthCard}
+        testID="records-open-manual-history"
+      >
+        <View
+          style={[
+            styles.healthIcon,
+            { backgroundColor: appColors.primarySoft },
+          ]}
+        >
+          <AppSymbol
+            name="text.book.closed"
+            size={28}
+            color={appColors.primaryAction}
+          />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{t('manualHistory.title')}</Text>
+          <Text style={styles.cardSummary}>{t('manualHistory.subtitle')}</Text>
         </View>
         <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
       </Pressable>
