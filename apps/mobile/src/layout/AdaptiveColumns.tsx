@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
@@ -109,18 +109,24 @@ export function AdaptiveColumns({
             : nextWidth,
         );
       }}
-      style={rootStyle}
-      testID={testID}
+      style={styles.measurementHost}
+      testID={`${testID}-host`}
     >
-      {/* Stable wrappers keep each panel mounted while only the axis and widths change. */}
-      <View style={primaryPanelStyle} testID={`${testID}-primary`}>
-        {primary}
-      </View>
-      {hasSecondary ? (
-        <View style={secondaryPanelStyle} testID={`${testID}-secondary`}>
-          {secondary}
+      <View style={rootStyle} testID={testID}>
+        {/* Stable wrappers keep each panel mounted while only the axis and widths change. */}
+        <View style={primaryPanelStyle} testID={`${testID}-primary`}>
+          {primary}
         </View>
-      ) : null}
+        {hasSecondary ? (
+          <View style={secondaryPanelStyle} testID={`${testID}-secondary`}>
+            {secondary}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  measurementHost: { flexGrow: 1, minWidth: 0, minHeight: 0 },
+});

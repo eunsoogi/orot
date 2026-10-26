@@ -26,6 +26,7 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
     section: {
       gap: tokens.spacing.md,
     },
+    adaptivePanel: { gap: tokens.spacing.xxl },
     sectionHeading: {
       color: colors.text,
       fontSize: tokens.typography.sizes.heading,

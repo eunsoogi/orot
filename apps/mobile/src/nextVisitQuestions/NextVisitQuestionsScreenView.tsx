@@ -1,4 +1,5 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useContext } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -6,6 +7,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { NavigationPrimaryActionContext } from '../navigation/useNavigationPrimaryAction';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type { NextVisitQuestionsController } from './controllerTypes';
 import { QuestionReviewActions } from './QuestionReviewActions';
@@ -33,9 +36,11 @@ export function NextVisitQuestionsScreenView<
 >(
   props: NextVisitQuestionsScreenProps<TReference> & {
     readonly controller: NextVisitQuestionsController<TReference>;
+    readonly navigationRouteKey?: string;
   },
 ) {
   const navigationInset = useNavigationContentInset();
+  const activeRoute = useContext(NavigationPrimaryActionContext) !== null;
   const styles = createNextVisitStyles(props.theme);
   const { controller } = props;
   const currentAppointmentId =
@@ -82,6 +87,102 @@ export function NextVisitQuestionsScreenView<
     if (props.onOpenSource) props.onOpenSource(reference);
     else controller.openSource(reference);
   };
+  const contextPanel = (
+    <View style={styles.adaptivePanel}>
+      {!isReviewing ? (
+        <ProviderSection
+          provider={props.provider}
+          onChoose={props.onOpenProviderSelection}
+          theme={props.theme}
+        />
+      ) : null}
+      {!isReviewing ? (
+        <Text style={styles.introduction}>
+          {savedQuestions.length > 0
+            ? copy.saved.introduction
+            : copy.introduction}
+        </Text>
+      ) : null}
+      <AppointmentSection
+        appointment={props.appointment}
+        onRefresh={props.onRefreshAppointment}
+        theme={props.theme}
+      />
+    </View>
+  );
+  const questionsPanel = (
+    <View style={styles.adaptivePanel}>
+      {!isReviewing ? (
+        <NextVisitGenerationSection
+          controller={controller}
+          theme={props.theme}
+          isGenerating={isGenerating}
+          isSaving={isSaving}
+          hasSharedAction={hasSharedAction}
+          canGenerate={canGenerate}
+          generateLabel={generateLabel}
+          hasSavedQuestions={savedQuestions.length > 0}
+        />
+      ) : null}
+      {isReviewing ? (
+        <QuestionReviewSection
+          caveats={controller.caveats}
+          isSaving={isSaving}
+          onMove={controller.moveQuestion}
+          onOpenSource={openSource}
+          onRemove={controller.removeQuestion}
+          onUpdate={controller.updateQuestion}
+          questions={controller.draftQuestions}
+          saveMessage={controller.saveMessage}
+          theme={props.theme}
+        />
+      ) : null}
+      {isReviewing && hasSharedAction ? (
+        <ActionButton
+          disabled={isSaving}
+          label={copy.review.cancel}
+          onPress={controller.cancelReview}
+          theme={props.theme}
+          variant="secondary"
+          testID="next-visit-review-cancel"
+        />
+      ) : null}
+      <SavedQuestionsSection
+        caveats={savedCaveats}
+        errorMessage={savedError?.message}
+        isReviewing={isReviewing}
+        hasSharedAction={hasSharedAction}
+        onEdit={() => controller.startReview(savedQuestions, savedCaveats)}
+        onOpenSource={openSource}
+        onRetry={props.onRetrySavedQuestions}
+        questions={savedQuestions}
+        restorationNotice={savedRestorationNotice}
+        status={savedStatus}
+        theme={props.theme}
+      />
+      {!isReviewing && savedQuestions.length > 0 && !isGenerating ? (
+        <ActionButton
+          disabled={!canGenerate}
+          label={copy.saved.generateAgain}
+          onPress={controller.generate}
+          theme={props.theme}
+          variant="link"
+          testID="next-visit-generate"
+        />
+      ) : null}
+      {!isReviewing &&
+      controller.phase === 'saved' &&
+      controller.saveMessage ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={styles.muted}
+          testID="next-visit-save-message"
+        >
+          {controller.saveMessage}
+        </Text>
+      ) : null}
+    </View>
+  );
 
   return (
     <>
@@ -110,99 +211,13 @@ export function NextVisitQuestionsScreenView<
             </Text>
           </View>
 
-          {!isReviewing ? (
-            <ProviderSection
-              provider={props.provider}
-              onChoose={props.onOpenProviderSelection}
-              theme={props.theme}
-            />
-          ) : null}
-
-          {!isReviewing ? (
-            <Text style={styles.introduction}>
-              {savedQuestions.length > 0
-                ? copy.saved.introduction
-                : copy.introduction}
-            </Text>
-          ) : null}
-
-          <AppointmentSection
-            appointment={props.appointment}
-            onRefresh={props.onRefreshAppointment}
-            theme={props.theme}
+          <AdaptiveColumns
+            active={activeRoute}
+            primary={contextPanel}
+            routeKey={props.navigationRouteKey}
+            secondary={questionsPanel}
+            testID="next-visit-question-columns"
           />
-
-          {!isReviewing ? (
-            <NextVisitGenerationSection
-              controller={controller}
-              theme={props.theme}
-              isGenerating={isGenerating}
-              isSaving={isSaving}
-              hasSharedAction={hasSharedAction}
-              canGenerate={canGenerate}
-              generateLabel={generateLabel}
-              hasSavedQuestions={savedQuestions.length > 0}
-            />
-          ) : null}
-
-          {isReviewing ? (
-            <QuestionReviewSection
-              caveats={controller.caveats}
-              isSaving={isSaving}
-              onMove={controller.moveQuestion}
-              onOpenSource={openSource}
-              onRemove={controller.removeQuestion}
-              onUpdate={controller.updateQuestion}
-              questions={controller.draftQuestions}
-              saveMessage={controller.saveMessage}
-              theme={props.theme}
-            />
-          ) : null}
-
-          {isReviewing && hasSharedAction ? (
-            <ActionButton
-              disabled={isSaving}
-              label={copy.review.cancel}
-              onPress={controller.cancelReview}
-              theme={props.theme}
-              variant="secondary"
-              testID="next-visit-review-cancel"
-            />
-          ) : null}
-          <SavedQuestionsSection
-            caveats={savedCaveats}
-            errorMessage={savedError?.message}
-            isReviewing={isReviewing}
-            hasSharedAction={hasSharedAction}
-            onEdit={() => controller.startReview(savedQuestions, savedCaveats)}
-            onOpenSource={openSource}
-            onRetry={props.onRetrySavedQuestions}
-            questions={savedQuestions}
-            restorationNotice={savedRestorationNotice}
-            status={savedStatus}
-            theme={props.theme}
-          />
-          {!isReviewing && savedQuestions.length > 0 && !isGenerating ? (
-            <ActionButton
-              disabled={!canGenerate}
-              label={copy.saved.generateAgain}
-              onPress={controller.generate}
-              theme={props.theme}
-              variant="link"
-              testID="next-visit-generate"
-            />
-          ) : null}
-          {!isReviewing &&
-          controller.phase === 'saved' &&
-          controller.saveMessage ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              style={styles.muted}
-              testID="next-visit-save-message"
-            >
-              {controller.saveMessage}
-            </Text>
-          ) : null}
         </ScrollView>
         {isReviewing && !hasSharedAction ? (
           <QuestionReviewActions

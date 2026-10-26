@@ -96,7 +96,7 @@ test('preserves the previous route scene state while opening and leaving a child
       ?.flexDirection,
   ).toBe('column');
   await fireEvent.press(screen.getByTestId('home-draft'));
-  await fireEvent(screen.getByTestId('home-columns'), 'layout', {
+  await fireEvent(screen.getByTestId('home-columns-host'), 'layout', {
     nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
   });
   expect(

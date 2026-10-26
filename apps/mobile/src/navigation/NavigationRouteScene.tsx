@@ -114,15 +114,18 @@ export function NavigationRouteScene<Name extends string>({
       </NavigationPrimaryActionContext.Provider>
     </NavigationLeaveStateRegistrationProvider>
   );
-  // Keep adaptive layout below the route-keyed scene so width changes never replace its owner.
-  const adaptiveContent = (
-    <AdaptiveColumns
-      active={active}
-      primary={routeContent}
-      routeKey={route.key}
-      testID={`navigation-route-columns-${route.key}`}
-    />
-  );
+  // The question editor owns two panels; a scene-level single pane would hide their shared width.
+  const adaptiveContent =
+    route.name === 'visit-questions' ? (
+      routeContent
+    ) : (
+      <AdaptiveColumns
+        active={active}
+        primary={routeContent}
+        routeKey={route.key}
+        testID={`navigation-route-columns-${route.key}`}
+      />
+    );
   const body = scrollable ? (
     <NavigationRouteScrollView
       key={`${route.key}:${rootTabs?.activeTab ?? ''}`}

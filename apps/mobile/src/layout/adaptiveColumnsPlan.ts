@@ -3,6 +3,7 @@ import type { NavigationOcclusion } from '../navigation/navigationLayout';
 import { NAVIGATION_MINIMUM_COLUMN_WIDTH } from '../navigation/navigationRootLayout';
 
 export const ADAPTIVE_COLUMN_GAP = 24;
+// Match the root navigation's minimum height for regions that can host side-by-side panels.
 const FULL_HEIGHT_REGION_RATIO = 0.6;
 
 export interface AdaptiveColumnsInput {
@@ -89,17 +90,6 @@ export function resolveAdaptiveColumns({
     measuredWidth > 0
       ? measuredWidth
       : fallbackWidth;
-  if (!hasSecondary) {
-    return {
-      columns: 1,
-      contentWidth,
-      leadingInset: 0,
-      primaryWidth: contentWidth,
-      secondaryWidth: 0,
-      columnGap: 0,
-      rowGap: 0,
-    };
-  }
   const scale =
     Number.isFinite(fontScale) && fontScale > 0 ? Math.max(1, fontScale) : 1;
   const minimumWidth =
@@ -122,6 +112,32 @@ export function resolveAdaptiveColumns({
   const fullHeightRegions = regions.filter(
     region => region.height >= referenceHeight * FULL_HEIGHT_REGION_RATIO,
   );
+  const singleColumnRegions =
+    fullHeightRegions.length > 0 ? fullHeightRegions : regions;
+  const selectedRegion = singleColumnRegions
+    .slice()
+    .sort(
+      (first, second) => second.width - first.width || first.x - second.x,
+    )[0];
+  const singleWidth = selectedRegion
+    ? Math.min(contentWidth, selectedRegion.width)
+    : contentWidth;
+  const leadingInset = selectedRegion
+    ? Math.max(0, selectedRegion.x - regionOriginX)
+    : 0;
+
+  if (!hasSecondary) {
+    // A single-panel route still stays inside one native region instead of spanning a seam.
+    return {
+      columns: 1,
+      contentWidth,
+      leadingInset,
+      primaryWidth: singleWidth,
+      secondaryWidth: 0,
+      columnGap: 0,
+      rowGap: 0,
+    };
+  }
 
   if (hasNativeDivision) {
     let bestPair:
@@ -183,17 +199,6 @@ export function resolveAdaptiveColumns({
     }
   }
 
-  const selectedRegion = fullHeightRegions
-    .slice()
-    .sort(
-      (first, second) => second.width - first.width || first.x - second.x,
-    )[0];
-  const singleWidth = selectedRegion
-    ? Math.min(contentWidth, selectedRegion.width)
-    : contentWidth;
-  const leadingInset = selectedRegion
-    ? Math.max(0, selectedRegion.x - regionOriginX)
-    : 0;
   const hasNativeRegions = validRegions(usableRegions).length > 0;
   const oneUninterruptedRegion =
     !hasNativeDivision &&

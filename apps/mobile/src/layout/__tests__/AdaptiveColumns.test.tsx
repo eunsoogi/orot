@@ -70,7 +70,7 @@ test('reflows mounted panels while retaining drafts, selection, and request owne
     'question draft',
   );
   await fireEvent.press(screen.getByTestId('secondary-selection'));
-  await fireEvent(screen.getByTestId('adaptive-columns'), 'layout', {
+  await fireEvent(screen.getByTestId('adaptive-columns-host'), 'layout', {
     nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
   });
 
@@ -84,7 +84,7 @@ test('reflows mounted panels while retaining drafts, selection, and request owne
   expect(startPrimary).toHaveBeenCalledTimes(1);
   expect(startSecondary).toHaveBeenCalledTimes(1);
 
-  await fireEvent(screen.getByTestId('adaptive-columns'), 'layout', {
+  await fireEvent(screen.getByTestId('adaptive-columns-host'), 'layout', {
     nativeEvent: { layout: { width: 1200, height: 600, x: 0, y: 0 } },
   });
 

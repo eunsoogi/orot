@@ -62,11 +62,10 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
             let before = try waitForGeometry(app)
             XCUIDevice.shared.orientation = .landscapeLeft
             let landscape = try waitForGeometry(app, widthDifferentFrom: before.publicUIKit.windowBounds.width, routeWidthDifferentFrom: before.adaptive.width)
-            XCTAssertEqual(landscape.adaptive.routeKey, questionRoute)
-            XCTAssertTrue((question.value as? String) == draft)
+            XCTAssertTrue(landscape.adaptive.routeKey == questionRoute && landscape.adaptive.columns == 2 && (question.value as? String) == draft)
             XCUIDevice.shared.orientation = .portrait
             let portrait = try waitForGeometry(app, widthDifferentFrom: landscape.publicUIKit.windowBounds.width, routeWidthDifferentFrom: landscape.adaptive.width)
-            XCTAssertEqual(portrait.adaptive.routeKey, questionRoute)
+            XCTAssertTrue(portrait.adaptive.routeKey == questionRoute && (question.value as? String) == draft)
         }
 
         try assertGeometry(waitForGeometry(app))
@@ -113,6 +112,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
               let adaptive = lifecycle.last(where: { $0["event"] as? String == "adaptive-columns-layout" && $0["active"] as? Bool == true }),
               let adaptiveRouteKey = adaptive["routeKey"] as? String,
               let adaptiveWidth = (adaptive["width"] as? String).flatMap(Double.init),
+              let adaptiveColumns = (adaptive["columns"] as? String).flatMap(Int.init),
               let referenceData = try? JSONSerialization.data(withJSONObject: reference),
               let native = try? JSONDecoder().decode(GeometryPayload.self, from: Data(eventJSON.utf8)),
               let eventSnapshot = try? JSONDecoder().decode(GeometrySnapshot.self, from: Data(eventSnapshotJSON.utf8)),
@@ -121,7 +121,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         else {
             return nil
         }
-        return GeometryReceipt(native: native, eventSnapshot: eventSnapshot, contextSnapshot: contextSnapshot, publicUIKit: publicUIKit, adaptive: (routeKey: adaptiveRouteKey, width: adaptiveWidth))
+        return GeometryReceipt(native: native, eventSnapshot: eventSnapshot, contextSnapshot: contextSnapshot, publicUIKit: publicUIKit, adaptive: (routeKey: adaptiveRouteKey, width: adaptiveWidth, columns: adaptiveColumns))
     }
 
     private func assertGeometry(_ receipt: GeometryReceipt) {
@@ -153,7 +153,7 @@ private struct GeometryReceipt {
     let eventSnapshot: GeometrySnapshot
     let contextSnapshot: GeometrySnapshot
     let publicUIKit: GeometryPayload
-    let adaptive: (routeKey: String, width: Double)
+    let adaptive: (routeKey: String, width: Double, columns: Int)
 
     var matchesPublicUIKit: Bool {
         native.matches(publicUIKit)

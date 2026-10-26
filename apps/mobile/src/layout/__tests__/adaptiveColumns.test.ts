@@ -82,7 +82,7 @@ test('falls back to one native region when two readable panels do not fit', () =
   });
 });
 
-test('keeps a single route panel within its measured parent until a second panel exists', () => {
+test('keeps a single route panel within one usable native region', () => {
   const plan = resolveAdaptiveColumns({
     windowWidth: 1000,
     fontScale: 1,
@@ -99,6 +99,6 @@ test('keeps a single route panel within its measured parent until a second panel
   expect(plan).toMatchObject({
     columns: 1,
     contentWidth: 920,
-    primaryWidth: 920,
+    primaryWidth: 500,
   });
 });

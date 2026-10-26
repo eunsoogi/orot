@@ -41,6 +41,7 @@ function RouteView(
   );
   const screenProps = {
     appointment: route.appointment,
+    navigationRouteKey: props.navigationRouteKey,
     onGenerate: route.onGenerate,
     onOpenProviderSelection: route.openProviderSelection,
     onOpenSource: route.onOpenSource,
