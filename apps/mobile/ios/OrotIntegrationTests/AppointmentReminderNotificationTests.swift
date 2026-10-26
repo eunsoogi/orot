@@ -65,7 +65,7 @@ final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
         }
 
         func markDelivered(_ identifier: String) {
-            lock.withLock {
+            _ = lock.withLock {
                 deliveredIdentifiers.insert(identifier)
             }
         }

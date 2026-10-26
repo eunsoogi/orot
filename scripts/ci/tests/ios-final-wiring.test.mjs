@@ -83,7 +83,7 @@ test('full integration execution preserves 131 observations and every registered
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Release 93 + Debug 28 + Speech 9 retain each release case and the added regressions.
+  // Release 94 + Debug 28 + Speech 9 retain each release case and the added regressions.
   assert.equal(scheduled.length, 131);
   const identifiers = new Set(scheduled);
   assert.equal(identifiers.size, 131);
