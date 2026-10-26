@@ -1,12 +1,18 @@
-import type { DocumentInterface } from '@langchain/core/documents';
+import { CallbackManager } from '@langchain/core/callbacks/manager';
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
 import { ensureConfig, type RunnableConfig } from '@langchain/core/runnables';
+import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import type { EvidenceChunk, EvidenceChunkMetadata } from '../chunking';
 import { evidenceChunkToDocument, documentToEvidenceChunk } from '../langchain/documents';
 import type { HybridSearchRankingConfig } from '../hybridRetrieval';
 import { LocalEmbeddingJobError } from '../localEmbeddings';
 import { filterEvidenceChunks, type EvidenceSearchFilters } from '../retrievalFilters';
-import { eligibleHybridChunks, type EvidenceRemovalReader } from './eligibility';
+import {
+  callerStreamHandlers,
+  eligibleHybridChunks,
+  PrivateChildCallbacks,
+  type EvidenceRemovalReader,
+} from './eligibility';
 import { boundedCount, fuseDocuments, resolveRanking } from './fusion';
 
 export interface HybridCandidateRequest {
@@ -16,15 +22,14 @@ export interface HybridCandidateRequest {
   readonly limit: number;
 }
 
-export interface CandidateRetriever {
-  invoke(query: string, config?: RunnableConfig): Promise<DocumentInterface[]>;
-}
+export type CandidateRetriever = BaseRetriever;
+type EventOptions = RunnableConfig & { version: 'v1' | 'v2'; encoding?: 'text/event-stream' };
 
 export interface HybridRetrieverInput extends BaseRetrieverInput {
   /** Caller-selected page, never an implicit corpus scan. */
   readonly chunks: readonly EvidenceChunk[];
   readonly removalReader: EvidenceRemovalReader;
-  /** Factories bind the current page and budget to the app's existing standard adapters. */
+  /** Return direct standard adapters. Runnable bindings can replace the private callback manager. */
   readonly createLexicalRetriever: (request: HybridCandidateRequest) => CandidateRetriever;
   readonly createVectorRetriever: (request: HybridCandidateRequest) => CandidateRetriever;
   readonly filters?: EvidenceSearchFilters;
@@ -43,6 +48,7 @@ function abortIfNeeded(signal?: AbortSignal): void {
 export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
   lc_namespace = ['orot', 'rag', 'retrievers'];
   private config?: RunnableConfig;
+  private allowCallerStream = false;
 
   constructor(private readonly input: HybridRetrieverInput) {
     super(input);
@@ -61,11 +67,95 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     // Scope normalized deadlines/signals per call so concurrent invocations stay independent.
     const scoped = new HybridRetriever(this.input);
     scoped.config = ensureConfig(options);
-    return scoped.invokeWithCallbacks(query);
+    scoped.allowCallerStream = this.allowCallerStream;
+    return scoped.retrieveForCaller(query);
   }
 
-  private invokeWithCallbacks(query: string) {
-    return super.invoke(query, this.config);
+  // Clear every incoming observer before the framework installs its direct-consumer handler.
+  // Preserve all overloads, including SSE byte output; Parameters<> alone narrows to SSE.
+  override streamEvents = ((
+    query: string,
+    options: EventOptions,
+    streamOptions?: Parameters<BaseRetriever['streamEvents']>[2],
+  ) => {
+    const scoped = new HybridRetriever(this.input);
+    scoped.allowCallerStream = true;
+    return scoped.callerEvents(
+      query,
+      {
+        ...ensureConfig(options),
+        version: options.version,
+        encoding: options.encoding,
+        callbacks: [],
+      },
+      streamOptions,
+    );
+  }) as BaseRetriever<EvidenceChunkMetadata>['streamEvents'];
+
+  private callerEvents(
+    query: string,
+    options: EventOptions,
+    streamOptions?: Parameters<BaseRetriever['streamEvents']>[2],
+  ) {
+    return super.streamEvents(query, options, streamOptions);
+  }
+
+  override streamLog(...[query, options, streamOptions]: Parameters<BaseRetriever['streamLog']>) {
+    const scoped = new HybridRetriever(this.input);
+    scoped.allowCallerStream = true;
+    return scoped.callerLog(query, { ...ensureConfig(options), callbacks: [] }, streamOptions);
+  }
+
+  private callerLog(...args: Parameters<BaseRetriever['streamLog']>) {
+    return super.streamLog(...args);
+  }
+
+  private async retrieveForCaller(query: string) {
+    // Bypass BaseRetriever.configure(): even an empty handler list installs ambient tracing.
+    const handlers = this.allowCallerStream ? callerStreamHandlers(this.config?.callbacks) : [];
+    if (handlers.length === 0) return this._getRelevantDocuments(query);
+    const manager = new CallbackManager();
+    handlers.forEach((handler) => manager.addHandler(handler));
+    manager.addTags(this.tags ?? []);
+    manager.addTags(this.config?.tags ?? [], false);
+    manager.addMetadata(this.metadata ?? {});
+    manager.addMetadata(this.config?.metadata ?? {}, false);
+    const run = await manager.handleRetrieverStart(
+      this.toJSON(),
+      query,
+      this.config?.runId,
+      undefined,
+      undefined,
+      undefined,
+      this.config?.runName ?? this.getName(),
+    );
+    try {
+      const documents = await this._getRelevantDocuments(query);
+      await run.handleRetrieverEnd(documents);
+      return documents;
+    } catch (error) {
+      await run.handleRetrieverError(error);
+      throw error;
+    }
+  }
+
+  private retrieveChild(
+    create: HybridRetrieverInput['createLexicalRetriever'],
+    request: HybridCandidateRequest,
+    query: string,
+  ) {
+    const config = { ...this.config, callbacks: new PrivateChildCallbacks() };
+    // Also replace implicit callbacks so standard descendants cannot reacquire an outer observer.
+    return AsyncLocalStorageProviderSingleton.runWithConfig(config, async () => {
+      const child = create(request);
+      if (!(child instanceof BaseRetriever)) {
+        throw new LocalEmbeddingJobError(
+          'invalid_request',
+          'Hybrid retrieval requires direct standard retriever adapters.',
+        );
+      }
+      return child.invoke(query, config);
+    });
   }
 
   override async _getRelevantDocuments(query: string) {
@@ -94,8 +184,8 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     const candidateLimit = Math.max(limit, ranking.candidateLimit);
     const request = { chunks: searchable, filters: this.input.filters, limit: candidateLimit };
     const [lexical, vector] = await Promise.all([
-      this.input.createLexicalRetriever(request).invoke(query, this.config),
-      this.input.createVectorRetriever(request).invoke(query, this.config),
+      this.retrieveChild(this.input.createLexicalRetriever, request, query),
+      this.retrieveChild(this.input.createVectorRetriever, request, query),
     ]);
     abortIfNeeded(this.config?.signal);
     // A deletion may commit while a child is retrieving. Fence again before returning citations.

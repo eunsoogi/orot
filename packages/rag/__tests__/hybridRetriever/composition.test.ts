@@ -1,7 +1,86 @@
 import { Document } from '@langchain/core/documents';
-import { chunk, document, setup } from './fixtures';
+import { chunk, document, setup, StockRetriever, withPrivateCallbackContext } from './fixtures';
 
 describe('standard hybrid retriever composition', () => {
+  it('keeps synthetic callback payloads private at the hybrid and standard child boundaries', async () => {
+    await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
+      const query = 'synthetic private query';
+      const page = [chunk('private')];
+      const documents = page.map(document);
+      const stock = new StockRetriever(documents, { verbose: true });
+      expect(await stock.invoke(query)).toEqual(documents);
+      expect(seen).toEqual([query, documents]);
+      expect(consoleLog.mock.calls.flat().join(' ')).toContain(query);
+      expect(consoleLog.mock.calls.flat().join(' ')).toContain(page[0].text);
+      seen.length = 0;
+      consoleLog.mockClear();
+      const { retriever } = setup(page, [], [], {
+        callbacks: [handler],
+        verbose: true,
+        createLexicalRetriever: () =>
+          new StockRetriever(documents, { callbacks: [handler], verbose: true }),
+        createVectorRetriever: () =>
+          new StockRetriever(documents, { callbacks: [handler], verbose: true }),
+      });
+      expect(await retriever.invoke(query, { callbacks: [handler] })).toEqual(documents);
+      expect(seen).toEqual([]);
+      expect(consoleLog).not.toHaveBeenCalled();
+      expect(await retriever.batch([query], [{ callbacks: [handler] }])).toEqual([documents]);
+      const stream = await retriever.stream(query, { callbacks: [handler] });
+      const streamed = [];
+      for await (const output of stream) streamed.push(output);
+      expect(streamed).toEqual([documents]);
+      for (const version of ['v1', 'v2'] as const) {
+        const events = [];
+        for await (const event of retriever.streamEvents(query, { version, callbacks: [handler] }))
+          events.push(event);
+        expect(events).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ event: 'on_retriever_start', data: { input: query } }),
+            expect.objectContaining({
+              event: 'on_retriever_end',
+              data: {
+                output: version === 'v2' ? documents : { documents },
+              },
+            }),
+          ]),
+        );
+      }
+      expect(seen).toEqual([]);
+      const failure = new Error('synthetic private failure');
+      const failed = setup(page, [], [], {
+        callbacks: [handler],
+        createLexicalRetriever: () => new StockRetriever([], { callbacks: [handler] }, failure),
+      }).retriever;
+      await expect(failed.invoke(query, { callbacks: [handler] })).rejects.toThrow(failure);
+      expect(seen).toEqual([]);
+    });
+  });
+
+  it('preserves cancellation and the signal passed to each child without disclosing callbacks', async () => {
+    await withPrivateCallbackContext(async (seen, handler) => {
+      const controller = new AbortController();
+      const page = [chunk('a')];
+      const { retriever, lexicalInvoke, vectorInvoke } = setup(page, page.map(document), [], {
+        callbacks: [handler],
+      });
+      lexicalInvoke.mockImplementation(async () => {
+        controller.abort();
+        return page.map(document);
+      });
+      await expect(
+        retriever.invoke('synthetic query', { signal: controller.signal, callbacks: [handler] }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      for (const invoke of [lexicalInvoke, vectorInvoke]) {
+        expect(invoke).toHaveBeenCalledWith(
+          'synthetic query',
+          expect.objectContaining({ signal: controller.signal }),
+        );
+      }
+      expect(seen).toEqual([]);
+    });
+  });
+
   it('uses existing weighted RRF for shared, lexical-only and vector-only documents', async () => {
     const page = ['lexical-only', 'shared', 'vector-only'].map(chunk);
     const { retriever } = setup(page, page.slice(0, 2).map(document), page.slice(1).map(document), {
@@ -11,6 +90,34 @@ describe('standard hybrid retriever composition', () => {
     // Existing RRF gives 5/2, 5/3+1/2, and 1/3, respectively.
     expect(documents.map((item) => item.id)).toEqual(['lexical-only', 'shared', 'vector-only']);
     expect(documents.map((item) => item.metadata)).toEqual(page.map((item) => item.metadata));
+  });
+
+  it('isolates simultaneous cancellation and normalizes a live caller deadline once', async () => {
+    const page = [chunk('a')];
+    const controller = new AbortController();
+    const { retriever, lexicalInvoke, vectorInvoke } = setup(page, page.map(document), []);
+    lexicalInvoke.mockImplementation(async (query: string) => {
+      if (query === 'synthetic cancelled query') controller.abort();
+      return page.map(document);
+    });
+    const [cancelled, live] = await Promise.allSettled([
+      retriever.invoke('synthetic cancelled query', { signal: controller.signal }),
+      retriever.invoke('synthetic live query', { timeout: 1000 }),
+    ]);
+    expect(cancelled).toMatchObject({ status: 'rejected', reason: { name: 'AbortError' } });
+    expect(live).toMatchObject({ status: 'fulfilled', value: page.map(document) });
+    for (const invoke of [lexicalInvoke, vectorInvoke]) {
+      const config = (
+        invoke.mock.calls as unknown as [
+          string,
+          { signal: AbortSignal; timeout?: number; metadata: { timeoutMs: number } },
+        ][]
+      ).find(([query]) => query === 'synthetic live query')![1];
+      expect(config.signal).toBeInstanceOf(AbortSignal);
+      expect(config.signal.aborted).toBe(false);
+      expect(config.timeout).toBeUndefined();
+      expect(config.metadata.timeoutMs).toBe(1000);
+    }
   });
 
   it('breaks exact score ties by chunk ID regardless of child completion order', async () => {

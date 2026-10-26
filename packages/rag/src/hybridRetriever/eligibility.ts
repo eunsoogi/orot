@@ -1,5 +1,37 @@
 import type { EvidenceChunk } from '../chunking';
 import type { LocalEmbeddingVectorStore } from '../embeddingRetrieval';
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
+import { CallbackManager, type Callbacks } from '@langchain/core/callbacks/manager';
+
+/** Standard children may configure local/ambient handlers, but none may receive content. */
+export class PrivateChildCallbacks extends CallbackManager {
+  override copy(): CallbackManager {
+    return new PrivateChildCallbacks();
+  }
+  override addHandler(): void {
+    /* Reject local, verbose, tracing and configure-hook handlers. */
+  }
+}
+
+/** Only call inside a private stream scope whose incoming callbacks were cleared first. */
+export function callerStreamHandlers(callbacks?: Callbacks): BaseCallbackHandler[] {
+  const handlers = Array.isArray(callbacks) ? callbacks : (callbacks?.handlers ?? []);
+  // This recognizes the pinned library's internal handlers, not arbitrary observer identity.
+  // Provenance comes from the inaccessible scope created by streamEvents/streamLog.
+  return handlers.filter((handler): handler is BaseCallbackHandler => {
+    const candidate = handler as {
+      name?: unknown;
+      receiveStream?: unknown;
+      tapOutputIterable?: unknown;
+    };
+    return (
+      handler instanceof BaseCallbackHandler &&
+      (candidate.name === 'event_stream_tracer' || candidate.name === 'log_stream_tracer') &&
+      candidate.receiveStream !== undefined &&
+      typeof candidate.tapOutputIterable === 'function'
+    );
+  });
+}
 
 export type EvidenceRemovalReader = Pick<LocalEmbeddingVectorStore, 'findRemovedEvidence'>;
 

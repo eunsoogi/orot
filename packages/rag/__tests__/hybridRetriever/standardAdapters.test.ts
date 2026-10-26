@@ -11,6 +11,14 @@ import {
 import { HybridRetriever } from '../../src/hybridRetriever';
 import type { EvidenceChunk } from '../../src/chunking';
 import type { SqlDatabase } from '@orot/storage';
+import { CallbackManager, type Callbacks } from '@langchain/core/callbacks/manager';
+import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
+import {
+  setup as syntheticSetup,
+  StockRetriever,
+  SyntheticObserver,
+  withPrivateCallbackContext,
+} from './fixtures';
 
 describe('hybrid composition with the merged standard adapters', () => {
   let database: SqlDatabase;
@@ -23,7 +31,7 @@ describe('hybrid composition with the merged standard adapters', () => {
   });
   afterEach(() => close());
 
-  async function setup(chunks: EvidenceChunk[]) {
+  async function setup(chunks: EvidenceChunk[], callbacks: Callbacks = []) {
     const { vectors } = store(database);
     const removalReader = new SqlCipherRagEmbeddingStorage(database);
     const textStore = new SqlCipherRagFullTextSearchStore(database);
@@ -31,6 +39,8 @@ describe('hybrid composition with the merged standard adapters', () => {
     const retriever = new HybridRetriever({
       chunks,
       removalReader,
+      callbacks,
+      verbose: true,
       createLexicalRetriever: ({ chunks: candidates, filters, limit }) =>
         new LocalLexicalRetriever({
           chunks: candidates,
@@ -39,15 +49,121 @@ describe('hybrid composition with the merged standard adapters', () => {
           candidateLimit: limit,
           textStore,
           removalReader,
+          callbacks,
+          verbose: true,
         }),
       createVectorRetriever: ({ chunks: candidates, filters, limit }) =>
         vectors.asRetriever({
           k: limit,
           filter: { ...filters, candidates },
+          callbacks,
+          verbose: true,
         }),
     });
     return { retriever, vectors };
   }
+
+  it('keeps real adapter callbacks and global verbose output private', async () => {
+    await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
+      const page = [chunk('a', 'source-a')];
+      const { retriever } = await setup(page, [handler]);
+      expect(await retriever.invoke('consultation', { callbacks: [handler] })).toEqual(
+        page.map(document),
+      );
+      expect(seen).toEqual([]);
+      expect(consoleLog).not.toHaveBeenCalled();
+    }, true);
+  });
+
+  it('isolates nested standard invocations that omit their callback config', async () => {
+    await withPrivateCallbackContext(async (seen, handler, consoleLog) => {
+      const page = [chunk('a', 'source-a')];
+      const documents = page.map(document);
+      class NestedRetriever extends StockRetriever {
+        override _getRelevantDocuments(query: string) {
+          return new StockRetriever(documents, { callbacks: [handler], verbose: true }).invoke(
+            query,
+          );
+        }
+      }
+      const { retriever } = syntheticSetup(page, [], [], {
+        createLexicalRetriever: () => new NestedRetriever(documents),
+      });
+      expect(await retriever.invoke('synthetic nested query')).toEqual(documents);
+      expect(seen).toEqual([]);
+      expect(consoleLog).not.toHaveBeenCalled();
+    }, true);
+  });
+
+  it('rejects callback-bound runnable wrappers before delivering a query', async () => {
+    await withPrivateCallbackContext(async (seen, handler) => {
+      const page = [chunk('a', 'source-a')];
+      const stock = new StockRetriever(page.map(document));
+      const invoke = jest.spyOn(stock, 'invoke');
+      const manager = new CallbackManager();
+      manager.addHandler(handler as SyntheticObserver);
+      const { retriever } = syntheticSetup(page, [], [], {
+        createLexicalRetriever: () =>
+          stock.withConfig({ callbacks: manager }) as unknown as StockRetriever,
+      });
+      await expect(retriever.invoke('synthetic wrapped query')).rejects.toThrow(
+        'direct standard retriever adapters',
+      );
+      expect(invoke).not.toHaveBeenCalled();
+      expect(seen).toEqual([]);
+    });
+  });
+
+  it('excludes spoofed stream observers while preserving concurrent v1/v2, SSE and log consumers', async () => {
+    await withPrivateCallbackContext(async (seen, _handler, consoleLog) => {
+      const page = [chunk('a', 'source-a')];
+      const documents = page.map(document);
+      // Deliberately satisfy the old stream-handler shape: scope provenance must still reject it.
+      const spoof = Object.assign(new SyntheticObserver(seen), {
+        name: 'event_stream_tracer',
+        receiveStream: {},
+        tapOutputIterable: () => {},
+      });
+      const { retriever } = syntheticSetup(page, documents, [], { callbacks: [spoof] });
+      await AsyncLocalStorageProviderSingleton.runWithConfig({ callbacks: [spoof] }, async () => {
+        expect(await retriever.invoke('synthetic direct query', { callbacks: [spoof] })).toEqual(
+          documents,
+        );
+        const collect = async (query: string, version: 'v1' | 'v2') => {
+          const events = [];
+          for await (const event of retriever.streamEvents(query, { version, callbacks: [spoof] }))
+            events.push(event);
+          expect(events[0].data.input).toBe(query);
+          expect(events[events.length - 1].data.output).toEqual(
+            version === 'v2' ? documents : { documents },
+          );
+        };
+        await Promise.all([
+          collect('synthetic first query', 'v1'),
+          collect('synthetic second query', 'v2'),
+        ]);
+        for (const version of ['v1', 'v2'] as const) {
+          let encoded = '';
+          for await (const bytes of retriever.streamEvents('synthetic SSE query', {
+            version,
+            encoding: 'text/event-stream',
+            callbacks: [spoof],
+          }))
+            encoded += new TextDecoder().decode(bytes);
+          expect(encoded).toContain('synthetic SSE query');
+          expect(encoded).toContain(page[0].text);
+        }
+        const patches = [];
+        for await (const patch of retriever.streamLog('synthetic log query', {
+          callbacks: [spoof],
+        }))
+          patches.push(patch);
+        expect(JSON.stringify(patches)).toContain(page[0].text);
+        expect(seen).toEqual([]);
+        expect(consoleLog).not.toHaveBeenCalled();
+      });
+    }, true);
+  });
 
   it('preserves complete source metadata through actual FTS and vector retrievers', async () => {
     const page = [chunk('a', 'source-a'), chunk('b', 'source-b')];
