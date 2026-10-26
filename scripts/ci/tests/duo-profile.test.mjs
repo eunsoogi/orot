@@ -72,11 +72,35 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
       ),
     );
   assert.deepEqual(buildInputs(duo), buildInputs(core));
-  assert.deepEqual(iosTestInventory('duo'), [
+  const duoInventory = iosTestInventory('duo');
+  const iPhoneFixtures = iosTestInventory('fixtures');
+  const coreTests = iosTestInventory('core');
+  const contextualDeparture =
+    'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
+  const duoKeyboardSave =
+    'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
+  const standardKeyboardSave =
+    'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
+  assert.equal(duoInventory.length, 5);
+  assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+    contextualDeparture,
+    duoKeyboardSave,
   ]);
+  // The ordinary iPhone fixture retains its keyboard contract; only the Duo profile expects a contextual rail.
+  assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
+  assert.ok(!duoInventory.includes(standardKeyboardSave));
+  assert.ok(!iPhoneFixtures.includes(contextualDeparture));
+  assert.ok(!iPhoneFixtures.includes(duoKeyboardSave));
+  assert.ok(!coreTests.includes(contextualDeparture));
+  assert.ok(!coreTests.includes(duoKeyboardSave));
+  assert.ok(
+    coreTests.includes(
+      'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection',
+    ),
+  );
   assert.throws(() => iosTestInventory('duo', 'integration'), /Unsupported/);
   assert.throws(() => iosTestInventory('duo', 'navigation'), /Unsupported/);
   assert.ok(iosTestExecutionPlan().every((job) => job.profile !== 'duo'));
