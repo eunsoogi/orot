@@ -115,6 +115,7 @@ const cohorts = {
       'CalendarSelectionUITests',
       'HealthImportUITests',
       'StorageMigrationUITests',
+      'ManualHistoryUITests',
     ],
   },
   provider: { profiles: ['provider-data'], minutes: 20 },
