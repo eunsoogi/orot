@@ -4,6 +4,7 @@ import type {
   ToolReturnType,
   ToolRunnableConfig,
 } from '@langchain/core/tools';
+import type { BaseStore } from '@langchain/langgraph/web';
 import { ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages';
 import { Validator } from '@langchain/core/utils/json_schema';
@@ -52,6 +53,8 @@ export interface TrustedEvidenceToolContext {
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ): Promise<boolean>;
+  /** LangGraph's persistent store stays host-owned and is never copied into the tool schema. */
+  readonly store?: BaseStore;
 }
 
 /** Standard call() emits health queries before consent and results afterwards, including to
@@ -174,7 +177,10 @@ export function createLangChainEvidenceTool(
           Promise.resolve().then(() => {
             if (context.signal.aborted) throw new Error('Search cancelled before dispatch.');
             started = true;
-            return domain.search({ ...reserved, input, signal: context.signal });
+            return domain.search(
+              { ...reserved, input, signal: context.signal },
+              context.store ? { store: context.store } : undefined,
+            );
           }),
           context.signal,
         );

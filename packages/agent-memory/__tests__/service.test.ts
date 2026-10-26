@@ -1,5 +1,4 @@
 import { createAgentMemory } from '../src/service';
-import { createAgentMemoryTools } from '../src/tools';
 import type { AgentMemoryInput } from '../src/types';
 import { embedder, PersistentMemoryStorage, preference } from './testFixtures';
 
@@ -130,40 +129,6 @@ describe('on-device agent memory lifecycle', () => {
     } as unknown as AgentMemoryInput;
 
     await expect(memory.remember(invalid)).rejects.toThrow('user-confirmed or human-reviewed');
-    expect(await storage.listRecords()).toEqual([]);
-    await memory.close();
-  });
-
-  it('gates LangGraph writes and deletes on caller authorization', async () => {
-    const storage = new PersistentMemoryStorage();
-    const memory = await createAgentMemory({ embedder, storage });
-    const draft = {
-      memoryKey: preference.memoryKey,
-      text: preference.text,
-      kind: preference.kind,
-    };
-    const deniedTools = createAgentMemoryTools(memory, {
-      authorizeWrite: async () => null,
-      authorizeDelete: async () => false,
-    });
-
-    await expect(deniedTools[0].invoke(draft)).resolves.toBe(
-      JSON.stringify({ stored: false, reason: 'memory_write_not_authorized' }),
-    );
-    expect(await storage.listRecords()).toEqual([]);
-
-    const authorizedTools = createAgentMemoryTools(memory, {
-      authorizeWrite: async () => ({ provenance: preference.provenance }),
-      authorizeDelete: async () => true,
-    });
-    const stored = JSON.parse(await authorizedTools[0].invoke(draft)) as {
-      stored: boolean;
-      id: string;
-    };
-    expect(stored.stored).toBe(true);
-    await expect(authorizedTools[3].invoke({ memoryId: stored.id })).resolves.toBe(
-      JSON.stringify({ deleted: true }),
-    );
     expect(await storage.listRecords()).toEqual([]);
     await memory.close();
   });

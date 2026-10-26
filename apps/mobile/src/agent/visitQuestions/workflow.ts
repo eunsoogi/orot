@@ -97,12 +97,13 @@ export async function runVisitQuestionWorkflow(input: {
   );
   const tools = createVisitQuestionEvidenceSearchTools({
     aliases,
-    searchEvidence: (query, maxEvidenceItems, sourceKind, signal) =>
+    searchEvidence: (query, maxEvidenceItems, sourceKind, signal, runtime) =>
       input.prepared.searchEvidence(
         query,
         maxEvidenceItems,
         sourceKind,
         signal,
+        runtime,
       ),
     initialEvidenceCount: aliases.batch.items.length,
     maxEvidenceItems: budget.maxEvidenceItems,
@@ -133,6 +134,7 @@ export async function runVisitQuestionWorkflow(input: {
     task: createVisitQuestionTaskResponder(),
     initialEvidence: aliases.batch,
     tools,
+    ...(input.prepared.store ? { store: input.prepared.store } : {}),
     consent,
     async revalidateEvidence(references, signal) {
       if (signal.aborted) return false;

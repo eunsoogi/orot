@@ -2,6 +2,7 @@ import type { LocalMemoryHit } from '@orot/agent-runtime';
 import type { Appointment } from '@orot/domain';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import type { RecordRepository } from '@orot/storage';
+import type { EvidenceSearchRuntime } from '@orot/agent-runtime';
 
 export const now = '2026-10-07T04:00:00.000Z';
 
@@ -73,7 +74,7 @@ export function ports(
       },
     ),
     searchMemory: jest.fn(async (_query: string, limit?: number) => {
-      order.push('memory');
+      order.push('freshness-memory');
       if (options.memoryError) throw new Error('synthetic memory failure');
       return {
         status: 'available' as const,
@@ -82,6 +83,28 @@ export function ports(
       };
     }),
   };
+  const store = {
+    search: jest.fn(
+      async (
+        _namespace: readonly string[],
+        searchOptions?: { limit?: number },
+      ) => {
+        order.push('store-memory');
+        if (options.memoryError) throw new Error('synthetic memory failure');
+        const hit = memoryHit;
+        return [
+          {
+            key: 'visit-memory-key',
+            namespace: ['agent-memory'],
+            value: { ...hit, memoryKey: 'visit-memory-key' },
+            score: hit.score,
+            createdAt: new Date(hit.createdAt),
+            updatedAt: new Date(hit.createdAt),
+          },
+        ].slice(0, searchOptions?.limit ?? 3);
+      },
+    ),
+  } as unknown as NonNullable<EvidenceSearchRuntime['store']>;
   const repository = {
     async get() {
       return null;
@@ -111,5 +134,5 @@ export function ports(
       },
     ),
   };
-  return { queryService, repository, rag, order };
+  return { queryService, repository, rag, store, order };
 }

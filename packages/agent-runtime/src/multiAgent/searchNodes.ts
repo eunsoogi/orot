@@ -8,12 +8,13 @@ import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { invokePreparedEvidenceSearch, prepareEvidenceSearch } from './prepareEvidenceSearch';
 import { toolProviderStop } from './evidenceToolModelBudget';
+import type { Runtime } from '@langchain/langgraph/web';
 
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const { options } = context;
 
-  const executeSearch = async (state: WorkflowState) => {
+  const executeSearch = async (state: WorkflowState, runtime: Runtime) => {
     if (context.signal.aborted) {
       canceled(context);
       return completeState();
@@ -35,7 +36,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     let batch: EvidenceBatch;
     try {
       const searched = await observeUntilAbort(
-        invokePreparedEvidenceSearch(context, state, tool),
+        invokePreparedEvidenceSearch(context, state, tool, runtime.store),
         context.signal,
       );
       if (searched.kind === 'cancelled') {

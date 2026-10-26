@@ -1,5 +1,11 @@
-import type { AgentMemoryService } from '@orot/agent-memory';
-import { openLocalAgentMemory } from '../../memory/localAgentMemory';
+import type {
+  AgentMemoryService,
+  AgentMemoryStoreView,
+} from '@orot/agent-memory';
+import {
+  openLocalAgentMemory,
+  openLocalAgentMemoryStore,
+} from '../../memory/localAgentMemory';
 import { LocalE5EmbeddingProvider } from '../../rag/localE5EmbeddingProvider';
 import { localE5NativeBackend } from '../../rag/localE5NativeBackend';
 import { openLocalE5RagService } from '../../rag/localE5RagService';
@@ -40,11 +46,19 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   const repository = await secureDatabase.openLocalStorage();
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   let memory: AgentMemoryService | undefined;
+  let memoryStore: AgentMemoryStoreView | undefined;
   try {
     localMemoryEmbedder ??= new LocalE5EmbeddingProvider(localE5NativeBackend);
     memory = await openLocalAgentMemory(localMemoryEmbedder);
   } catch {
     // The query layer reports unavailable memory while retaining usable local RAG evidence.
+  }
+  if (memory && localMemoryEmbedder) {
+    try {
+      memoryStore = await openLocalAgentMemoryStore(localMemoryEmbedder);
+    } catch {
+      // Graph search reports unavailable instead of falling back to the query service.
+    }
   }
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const queryService = await openLocalRecordQueryService(memory);
@@ -55,6 +69,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   const prepared = await prepareVisitQuestionContext({
     ...input,
     queryService,
+    store: memoryStore,
     repository,
     rag,
     readHealthContext: localData.readHealthContext,

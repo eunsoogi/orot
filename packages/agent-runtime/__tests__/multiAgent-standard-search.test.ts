@@ -102,7 +102,6 @@ test.each([false, true])('preserves combined duplicate checks, native=%s', async
   expect(run.search).toHaveBeenCalledTimes(1);
   expect(run.requests).toHaveLength(native ? 1 : 2);
 });
-
 test('does not introduce tool callback payloads at the production search boundary', async () => {
   const run = standardSearchFixture(true);
   const callback = {

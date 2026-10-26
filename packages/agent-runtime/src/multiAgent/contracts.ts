@@ -6,6 +6,7 @@ import type {
   ProviderErrorCode,
 } from '@orot/model-runtime';
 import type { RunnableConfig } from '@langchain/core/runnables';
+import type { BaseStore } from '@langchain/langgraph/web';
 import type { BaseCheckpointSaver } from '@langchain/langgraph/web';
 import type {
   AllowedEvidenceScope,
@@ -135,6 +136,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
     signal: AbortSignal,
   ) => Promise<EvidenceBatch>;
   readonly checkpointer?: BaseCheckpointSaver;
+  /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */
+  readonly store?: BaseStore;
 }
 
 export type MultiAgentPhase =
