@@ -37,8 +37,10 @@ The rule requires a current measurement, mmHg units, a timestamp, a source, and
 an explicit symptom assessment. A repeat must be taken at least 60 seconds
 after the prior reading before the persistent-reading branch can request
 clinician contact. Incomplete measurement data routes to verification. A
-historical reading, unknown population, pregnancy, childhood, unstructured
-symptoms, and conditions outside this rule remain insufficient information.
+historical reading, unknown population, pregnancy, childhood, and conditions
+outside this rule remain insufficient information. Free-text symptom
+descriptions are rejected rather than interpreted; invalid unstructured input
+that includes a reading routes to measurement-data verification.
 
 This initial rule set is not comprehensive emergency detection. It does not
 evaluate warning symptoms without a severe-range blood-pressure reading, other

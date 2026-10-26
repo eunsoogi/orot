@@ -75,17 +75,37 @@ function orderedReadings(readings: SafetyPolicyReading[]): SafetyPolicyReading[]
   return [...readings].sort((left, right) => compareTimestamps(left.measuredAt, right.measuredAt));
 }
 
+function submillisecondDigits(timestamp: string): string {
+  const fraction = timestamp.match(/\.(\d+)(?=(?:Z|[+-]\d{2}:\d{2})$)/i)?.[1] ?? '';
+  return fraction.slice(3);
+}
+
+function hasElapsedAtLeastSeconds(start: string, end: string, seconds: number): boolean {
+  // Date.parse normalizes zones but truncates accepted fractions after milliseconds.
+  const elapsedMilliseconds = Date.parse(end) - Date.parse(start);
+  const minimumMilliseconds = seconds * 1000;
+  if (elapsedMilliseconds !== minimumMilliseconds) return elapsedMilliseconds > minimumMilliseconds;
+
+  // At the exact millisecond boundary, compare the remaining fractional digits to avoid rounding up.
+  const startFraction = submillisecondDigits(start);
+  const endFraction = submillisecondDigits(end);
+  const precision = Math.max(startFraction.length, endFraction.length);
+  return endFraction.padEnd(precision, '0') >= startFraction.padEnd(precision, '0');
+}
+
 function hasPersistentSevereReadings(readings: SafetyPolicyReading[]): boolean {
   const ordered = orderedReadings(readings);
-  const minimumRepeatIntervalMs = severeBloodPressureRule.thresholds.repeatAfterSeconds * 1000;
 
   // A prior normal or early reading cannot satisfy the persistent severe-reading condition.
   return (
     ordered.length === 2 &&
     isSevereRange(ordered[0]!) &&
     isSevereRange(ordered[1]!) &&
-    Date.parse(ordered[1]!.measuredAt) - Date.parse(ordered[0]!.measuredAt) >=
-      minimumRepeatIntervalMs
+    hasElapsedAtLeastSeconds(
+      ordered[0]!.measuredAt,
+      ordered[1]!.measuredAt,
+      severeBloodPressureRule.thresholds.repeatAfterSeconds,
+    )
   );
 }
 
