@@ -20,6 +20,9 @@ test('all four hosted fixture groups partition all maintained UI cases including
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
   ];
+  const documentImportJourneys = original.filter((identifier) =>
+    identifier.startsWith('OrotUITests/MedicalDocumentImportJourneyUITests/'),
+  );
   assert.deepEqual(
     original.filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
     manualHistory,
@@ -35,6 +38,14 @@ test('all four hosted fixture groups partition all maintained UI cases including
       .flatMap(({ identifiers }) => identifiers)
       .filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
     manualHistory,
+  );
+  assert.deepEqual(
+    iosTestCohortTasks('calendar-appointments')
+      .flatMap(({ identifiers }) => identifiers)
+      .filter((identifier) =>
+        identifier.startsWith('OrotUITests/MedicalDocumentImportJourneyUITests/'),
+      ),
+    documentImportJourneys,
   );
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);

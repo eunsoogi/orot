@@ -87,6 +87,26 @@ test('full integration execution preserves 149 observations and every registered
   assert.equal(scheduled.length, 149);
   const identifiers = new Set(scheduled);
   assert.equal(identifiers.size, 146);
+  const frequencies = new Map();
+  for (const identifier of scheduled)
+    frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
+  const repeated = [...frequencies]
+    .filter(([, count]) => count > 1)
+    .sort(([left], [right]) => left.localeCompare(right));
+  assert.deepEqual(repeated, [
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+      2,
+    ],
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+      2,
+    ],
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+      2,
+    ],
+  ]);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',

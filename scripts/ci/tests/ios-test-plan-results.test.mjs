@@ -138,7 +138,7 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   const outcome = run(root);
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
-  assert.equal(result.observations.length, 149);
+  assert.equal(result.observations.length, 146);
   assert.equal(result.schemaVersion, 2);
   assert.equal(result.validationTier, 'full');
   assert.equal(result.oauthRequired, true);

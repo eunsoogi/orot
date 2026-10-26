@@ -5,7 +5,11 @@ import { appColors } from '../layout/appColors';
 import { AppText } from '../layout/AppText';
 
 /** Keeps manually entered history distinct while exposing it beside imported records. */
-export function ManualHistoryAction({ onPress }: { readonly onPress: () => void }) {
+export function ManualHistoryAction({
+  onPress,
+}: {
+  readonly onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
