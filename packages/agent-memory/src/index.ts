@@ -7,6 +7,8 @@ export type {
   CreateAgentMemoryOptions,
 } from './service';
 export { createAgentMemoryTools } from './tools';
+export { RememoriLangGraphStore } from './langgraphStore/store';
+export type { RememoriLangGraphStoreOptions } from './langgraphStore/types';
 export type {
   AgentMemoryAuthorization,
   AgentMemoryDraft,
