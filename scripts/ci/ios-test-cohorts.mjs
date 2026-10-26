@@ -109,6 +109,7 @@ const cohorts = {
     minutes: 20,
     classes: [
       'AppointmentsUITests',
+      'AppointmentReminderJourneyUITests',
       'SymptomJournalUITests',
       'CalendarSelectionUITests',
       'HealthImportUITests',

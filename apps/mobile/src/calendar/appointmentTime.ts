@@ -2,6 +2,11 @@ import type { Appointment } from '@orot/storage';
 
 /** Resolve a linked appointment start, preserving floating civil time locally. */
 export function appointmentStartTime(appointment: Appointment): number {
+  // An explicit local edit wins until Calendar is reconfirmed. Legacy records
+  // have no marker and keep their existing floating-time interpretation.
+  if (appointment.startTimeAuthority === 'manual') {
+    return new Date(appointment.effectiveAt).getTime();
+  }
   const snapshot = appointment.calendarEventSnapshot;
   const match =
     snapshot?.timeZoneIdentifier === null &&

@@ -18,6 +18,7 @@ import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
 import { observeNavigationTest } from './navigationTestObservation';
+import { NavigationGeometryProvider } from './NavigationGeometryProvider';
 import {
   NavigationMotionContext,
   useNavigationReduceMotion,
@@ -210,23 +211,25 @@ export function NavigationRouteAdapter<Name extends string>({
   return (
     <NavigationMotionContext.Provider value={reduceMotion}>
       <SafeAreaProvider style={styles.fill}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.fill}
-          testID="navigation-keyboard-avoiding-root"
-        >
-          <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
-            <NativeRouteStack
-              controller={controller}
-              canNativeGoBack={canNativeGoBack}
-              isTransitioning={snapshot.isTransitioning}
-              reduceMotion={reduceMotion}
-              renderRoute={renderRoute}
-              routes={snapshot.routes}
-              onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
-            />
-          </NavigationViewport>
-        </KeyboardAvoidingView>
+        <NavigationGeometryProvider>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.fill}
+            testID="navigation-keyboard-avoiding-root"
+          >
+            <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
+              <NativeRouteStack
+                controller={controller}
+                canNativeGoBack={canNativeGoBack}
+                isTransitioning={snapshot.isTransitioning}
+                reduceMotion={reduceMotion}
+                renderRoute={renderRoute}
+                routes={snapshot.routes}
+                onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
+              />
+            </NavigationViewport>
+          </KeyboardAvoidingView>
+        </NavigationGeometryProvider>
       </SafeAreaProvider>
     </NavigationMotionContext.Provider>
   );

@@ -1,3 +1,5 @@
+import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
+import type { AiFeatureServices } from '../aiFeatures/integration/featureServices';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
@@ -36,6 +38,7 @@ import type {
 export type { AppNavigationRoute } from './appNavigationRoute';
 
 interface AppRouteContentProps {
+  readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
@@ -73,6 +76,7 @@ interface AppRouteContentProps {
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
+  loadSavedVisitQuestions,
   loadSymptoms,
   actions,
   activeTab,
@@ -165,6 +169,13 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
+    case 'appointment-preparation':
+      return (
+        <AppointmentPreparationRoute
+          routeKey={actions.route.key}
+          loadSavedQuestions={loadSavedVisitQuestions}
+        />
+      );
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
