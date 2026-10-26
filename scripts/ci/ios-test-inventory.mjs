@@ -9,6 +9,10 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs',
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testMissingAndDetachedTargetsRemainExplicit',
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testSnapshotPreservesFocusAndOmitsTextAndHierarchy',
   'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
   ...statePersistenceTests,
   ...fixtureIsolationTests,
