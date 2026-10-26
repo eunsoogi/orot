@@ -5,17 +5,18 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
+import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import type { RecordingLibraryService } from '../recordingLibraryService';
+import type { RecordingSourceRecord } from '../recordingTypes';
 import {
   mockNativeDeletionAlert,
   confirmNativeDeletion,
   pressNativeDeletionButton,
 } from '../testSupport/nativeDeletionAlert';
 
-const firstSource: SourceRecord = {
+const firstSource: RecordingSourceRecord = {
   id: 'recording-1',
   sourceKind: 'audio_recording',
   effectiveAt: '2026-10-05T10:00:00.000Z',
@@ -26,7 +27,7 @@ const firstSource: SourceRecord = {
   title: '첫 상담 녹음',
 };
 
-const secondSource: SourceRecord = {
+const secondSource: RecordingSourceRecord = {
   ...firstSource,
   id: 'recording-2',
   recordedAt: '2026-10-06T10:00:05.000Z',

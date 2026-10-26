@@ -51,41 +51,79 @@ export const EvidenceSpanLocatorSchema = EvidenceSpanLocatorBaseSchema.superRefi
   },
 );
 
-export const SourceRecordSchema = RecordMetadataSchema.safeExtend({
-  sourceKind: z.enum([
-    'user_note',
-    'caregiver_note',
-    'clinician_note',
-    'lab_report',
-    'prescription',
-    'imaging_report',
-    'device_export',
-    'audio_recording',
-    'other',
-  ]),
+const SourceRecordFieldsSchema = z.strictObject({
   title: NonEmptyTextSchema.optional(),
   externalReference: NonEmptyTextSchema.optional(),
   contentHash: SourceContentHashSchema.optional(),
   // Legacy audio rows remain valid until their measured file length is available.
   recordingDurationMs: NonNegativeIntegerSchema.optional(),
-}).superRefine((record, context) => {
-  if (record.recordingDurationMs !== undefined && record.sourceKind !== 'audio_recording') {
-    context.addIssue({
-      code: 'custom',
-      path: ['recordingDurationMs'],
-      message: 'Only audio recording sources can store a recording duration.',
-    });
-  }
-  if (record.provenance.origin === 'derived') {
-    context.addIssue({
-      code: 'custom',
-      path: ['provenance', 'origin'],
-      message: 'A source record cannot be derived from another record.',
-    });
-  }
 });
 
-export const EvidenceSpanSchema = RecordMetadataSchema.safeExtend({
+type NonDocumentSourceKind =
+  | 'user_note'
+  | 'caregiver_note'
+  | 'clinician_note'
+  | 'lab_report'
+  | 'prescription'
+  | 'imaging_report'
+  | 'device_export'
+  | 'audio_recording'
+  | 'other';
+
+type SourceRecordFields = z.infer<typeof SourceRecordFieldsSchema>;
+type NonDocumentSourceRecord = {
+  [Kind in NonDocumentSourceKind]: z.infer<typeof RecordMetadataSchema> &
+    SourceRecordFields & { sourceKind: Kind };
+}[NonDocumentSourceKind];
+type MedicalDocumentSourceRecord = z.infer<typeof ImportedRecordMetadataSchema> &
+  SourceRecordFields & { sourceKind: 'medical_document' };
+
+// Keep each source kind as a literal variant so date-bearing records stay narrow in callers.
+function makeNonDocumentSourceRecordSchema<Kind extends NonDocumentSourceKind>(sourceKind: Kind) {
+  return RecordMetadataSchema.safeExtend({
+    sourceKind: z.literal(sourceKind),
+    ...SourceRecordFieldsSchema.shape,
+  });
+}
+
+// Raw documents have no reliable clinical or authored date until a user supplies one.
+const MedicalDocumentSourceRecordSchema = ImportedRecordMetadataSchema.safeExtend({
+  sourceKind: z.literal('medical_document'),
+  ...SourceRecordFieldsSchema.shape,
+});
+
+export const SourceRecordSchema = z
+  .discriminatedUnion('sourceKind', [
+    makeNonDocumentSourceRecordSchema('user_note'),
+    makeNonDocumentSourceRecordSchema('caregiver_note'),
+    makeNonDocumentSourceRecordSchema('clinician_note'),
+    makeNonDocumentSourceRecordSchema('lab_report'),
+    makeNonDocumentSourceRecordSchema('prescription'),
+    makeNonDocumentSourceRecordSchema('imaging_report'),
+    makeNonDocumentSourceRecordSchema('device_export'),
+    makeNonDocumentSourceRecordSchema('audio_recording'),
+    makeNonDocumentSourceRecordSchema('other'),
+    MedicalDocumentSourceRecordSchema,
+  ])
+  .superRefine((record, context) => {
+    if (record.recordingDurationMs !== undefined && record.sourceKind !== 'audio_recording') {
+      context.addIssue({
+        code: 'custom',
+        path: ['recordingDurationMs'],
+        message: 'Only audio recording sources can store a recording duration.',
+      });
+    }
+    if (record.provenance.origin === 'derived') {
+      context.addIssue({
+        code: 'custom',
+        path: ['provenance', 'origin'],
+        message: 'A source record cannot be derived from another record.',
+      });
+    }
+  });
+
+// Excerpts can be ingested without a reliable authored or clinical date.
+export const EvidenceSpanSchema = ImportedRecordMetadataSchema.safeExtend({
   sourceRecordId: RecordIdSchema,
   text: NonEmptyTextSchema,
   pageNumber: z.number().int().positive().optional(),
@@ -190,7 +228,7 @@ export const HealthObservationSchema = ImportedRecordMetadataSchema.safeExtend({
   }
 });
 
-export type SourceRecord = z.infer<typeof SourceRecordSchema>;
+export type SourceRecord = NonDocumentSourceRecord | MedicalDocumentSourceRecord;
 export type SourceContentHash = z.infer<typeof SourceContentHashSchema>;
 export type EvidenceSpan = z.infer<typeof EvidenceSpanSchema>;
 export type EvidenceSpanLocator = z.infer<typeof EvidenceSpanLocatorSchema>;

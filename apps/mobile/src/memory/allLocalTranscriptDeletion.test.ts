@@ -74,6 +74,13 @@ describe('all-local transcript deletion', () => {
           restore: jest.fn().mockResolvedValue(undefined),
           commit: jest.fn().mockResolvedValue(undefined),
         },
+        medicalDocumentDeletion: {
+          reconcile: jest.fn().mockResolvedValue(undefined),
+          stage: jest.fn().mockResolvedValue(undefined),
+          restore: jest.fn().mockResolvedValue(undefined),
+          commit: jest.fn().mockResolvedValue(undefined),
+          discard: jest.fn().mockResolvedValue(undefined),
+        },
       });
       await expect(
         repository.get('source_record', source.id),

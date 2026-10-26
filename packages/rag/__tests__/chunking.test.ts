@@ -1,4 +1,4 @@
-import type { Appointment, Encounter } from '@orot/domain';
+import type { Appointment, Encounter, EvidenceSpan, SourceRecord } from '@orot/domain';
 import { chunkEvidenceSpan, chunkStructuredRecord, chunkTranscriptSegment } from '../src/chunking';
 import { buildPersistedEvidenceChunks } from '../src/persistedRecords';
 import {
@@ -166,5 +166,50 @@ describe('evidence-aware chunks', () => {
     expect(first.some((chunk) => chunk.metadata.evidenceId === originalTranscript.id)).toBe(false);
     expect(first.some((chunk) => chunk.metadata.evidenceId === staleTranscriptSpan.id)).toBe(false);
     expect(first.map((chunk) => chunk.id)).toEqual(second.map((chunk) => chunk.id));
+  });
+
+  it('includes imported medical document excerpts in persisted retrieval with page provenance', async () => {
+    const source: SourceRecord = {
+      id: 'rag-fixture-medical-document',
+      ingestedAt: '2026-01-02T08:00:00.000Z',
+      provenance: { origin: 'imported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      sourceKind: 'medical_document',
+      title: 'Synthetic medical document',
+      contentHash: 'sha256:' + 'c'.repeat(64),
+    };
+    const span: EvidenceSpan = {
+      id: 'rag-fixture-medical-document-page-2',
+      sourceRecordId: source.id,
+      text: 'Synthetic result text',
+      pageNumber: 2,
+      locator: {
+        kind: 'document_range',
+        pageNumber: 2,
+        startOffset: 0,
+        endOffset: 'Synthetic result text'.length,
+      },
+      ingestedAt: source.ingestedAt,
+      provenance: { origin: 'imported', sourceRecordIds: [source.id] },
+      reviewState: { status: 'unreviewed' },
+    };
+    const chunks = await buildPersistedEvidenceChunks(
+      createFixtureReader({ sourceRecords: [source], evidenceSpans: [span] }),
+    );
+
+    expect(chunks).toContainEqual(
+      expect.objectContaining({
+        text: span.text,
+        metadata: expect.objectContaining({
+          sourceId: source.id,
+          sourceRecordIds: [source.id],
+          evidenceId: span.id,
+          evidenceLocator: span.locator,
+          effectiveTime: null,
+          recordType: 'evidence_span',
+          reviewState: { status: 'unreviewed' },
+        }),
+      }),
+    );
   });
 });

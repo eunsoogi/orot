@@ -133,9 +133,14 @@ export const currentMedicationAssertion: MedicationAssertion = {
   confirmedByUserId: 'fixture-user',
 };
 
-export function createFixtureReader(): PersistedEvidenceReader {
+export function createFixtureReader(
+  extras: {
+    readonly sourceRecords?: readonly SourceRecord[];
+    readonly evidenceSpans?: readonly EvidenceSpan[];
+  } = {},
+): PersistedEvidenceReader {
   const records: Partial<{ [K in RecordKind]: RecordMap[K][] }> = {
-    source_record: [recordingSource, noteSource],
+    source_record: [recordingSource, noteSource, ...(extras.sourceRecords ?? [])],
     health_observation: [currentObservation],
     medication_assertion: [currentMedicationAssertion],
   };
@@ -146,9 +151,11 @@ export function createFixtureReader(): PersistedEvidenceReader {
     },
     evidenceSpans: {
       async listForSourceRecord(sourceRecordId) {
-        return [medicationEvidenceSpan, staleTranscriptSpan].filter(
-          (span) => span.sourceRecordId === sourceRecordId,
-        );
+        return [
+          medicationEvidenceSpan,
+          staleTranscriptSpan,
+          ...(extras.evidenceSpans ?? []),
+        ].filter((span) => span.sourceRecordId === sourceRecordId);
       },
     },
     transcripts: {
