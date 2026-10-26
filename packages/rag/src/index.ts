@@ -58,3 +58,10 @@ export type {
 export type { LocalFullTextSearchMatch, LocalFullTextSearchStore } from './localTextSearch';
 export { filterEvidenceChunks } from './retrievalFilters';
 export type { EvidenceSearchFilters } from './retrievalFilters';
+// Standard consumers receive Documents; app consumers can retain the same operation's ranking fields.
+export { HybridRetriever } from './hybridRetriever';
+export type {
+  HybridRetrieverInput,
+  HybridCandidateRequest,
+  CandidateRetriever,
+} from './hybridRetriever';
