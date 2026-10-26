@@ -1,3 +1,8 @@
+import {
+  defaultReminderAppointmentLoader,
+  withAppointmentReminderApp,
+} from './src/appointmentReminders/AppointmentReminderContext';
+import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
 import type { SymptomJournalRepository } from './src/symptoms/localRepository';
 import { SymptomFilterProvider } from './src/symptoms/SymptomFilterContext';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
@@ -41,10 +46,6 @@ import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecords
 import type { HealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 
-declare const require: (path: string) => {
-  openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
-};
-
 interface AppProps {
   loadSymptoms?: () => Promise<SymptomJournalRepository>;
   loadAppointments?: () => Promise<AppointmentRepository>;
@@ -60,13 +61,9 @@ interface AppProps {
   renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
 }
 
-function defaultAppointmentLoader(): Promise<AppointmentRepository> {
-  return require('./src/appointments/localRepository').openLocalAppointmentRepository();
-}
-
-export default function App({
+function App({
   loadSymptoms,
-  loadAppointments = defaultAppointmentLoader,
+  loadAppointments = defaultReminderAppointmentLoader,
   loadRecordings = loadRecordingSummaries,
   calendarBridge = eventKitCalendarBridge,
   loadBloodPressureObservations,
@@ -187,6 +184,9 @@ export default function App({
                   />
                 ) : (
                   <AppRouteContent
+                    loadSavedVisitQuestions={
+                      ai.services.loadSavedVisitQuestions
+                    }
                     actions={actions}
                     loadSymptoms={loadSymptoms}
                     activeTab={activeTab}
@@ -233,6 +233,7 @@ export default function App({
                 )
               }
             </NavigationRouteAdapter>
+            <AppointmentReminderDeliveryHost controller={appNavigation} />
             {ai.disclosureSheet}
           </AiFeatureSharedNavigationStateProvider>
         </RecordingSelectionProvider>
@@ -244,3 +245,4 @@ export default function App({
 const styles = StyleSheet.create({
   appShell: { flex: 1, backgroundColor: appColors.background },
 });
+export default withAppointmentReminderApp(App);

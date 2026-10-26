@@ -26,9 +26,11 @@ it('recalculates after the appointment update commits', async () => {
       effectiveAt: '2035-06-03T09:30:00Z',
     });
   });
-  await expect(decorated.update(appointment.id, {
-    effectiveAt: '2035-06-03T09:30:00Z',
-  })).resolves.toBe(appointment);
+  await expect(
+    decorated.update(appointment.id, {
+      effectiveAt: '2035-06-03T09:30:00Z',
+    }),
+  ).resolves.toBe(appointment);
   expect(reminders.reconcile).toHaveBeenCalledTimes(1);
 });
 
@@ -42,8 +44,12 @@ it('reconciles cancellation while preserving a committed result if notification 
 
 it('does not change reminders when the appointment mutation fails', async () => {
   const { repository, reminders, decorated } = setup();
-  repository.cancel.mockRejectedValueOnce(new Error('Synthetic storage failure'));
-  await expect(decorated.cancel(appointment.id)).rejects.toThrow('Synthetic storage failure');
+  repository.cancel.mockRejectedValueOnce(
+    new Error('Synthetic storage failure'),
+  );
+  await expect(decorated.cancel(appointment.id)).rejects.toThrow(
+    'Synthetic storage failure',
+  );
   expect(reminders.reconcile).not.toHaveBeenCalled();
 });
 

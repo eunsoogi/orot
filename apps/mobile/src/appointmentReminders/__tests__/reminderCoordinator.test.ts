@@ -15,9 +15,11 @@ function setup(initial: AppointmentReminderSelection | null = choice) {
   let visits: readonly Appointment[] = [appointment];
   const port = {
     readSelection: jest.fn(async () => selection),
-    writeSelection: jest.fn(async (value: AppointmentReminderSelection | null) => {
-      selection = value;
-    }),
+    writeSelection: jest.fn(
+      async (value: AppointmentReminderSelection | null) => {
+        selection = value;
+      },
+    ),
     authorizationStatus: jest.fn(
       async (): Promise<ReminderAuthorization> => 'authorized',
     ),
@@ -81,7 +83,10 @@ it('never schedules a stale snapshot after an outstanding permission prompt', as
   const { coordinator, port, setVisits } = setup(null);
   let reply!: (value: ReminderAuthorization) => void;
   port.requestAuthorization.mockImplementationOnce(
-    () => new Promise<ReminderAuthorization>(resolve => { reply = resolve; }),
+    () =>
+      new Promise<ReminderAuthorization>(resolve => {
+        reply = resolve;
+      }),
   );
   const selecting = coordinator.select(choice);
   await Promise.resolve();

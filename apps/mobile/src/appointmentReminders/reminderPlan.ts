@@ -21,9 +21,11 @@ export interface AppointmentReminderTarget {
 }
 
 function floatingStart(appointment: Appointment): string | undefined {
+  // Match the shared start resolver: obsolete Calendar civil time cannot identify a manual override.
+  if (appointment.startTimeAuthority === 'manual') return undefined;
   const snapshot = appointment.calendarEventSnapshot;
   return snapshot?.timeZoneIdentifier === null
-    ? snapshot.floatingStartAt
+    ? (snapshot.floatingStartAt ?? undefined)
     : undefined;
 }
 
@@ -81,8 +83,7 @@ export function resolveAppointmentReminderTarget(
   appointments: readonly Appointment[],
   now: number,
 ): Appointment | null {
-  if (!value || typeof value !== 'object' || !Number.isFinite(now))
-    return null;
+  if (!value || typeof value !== 'object' || !Number.isFinite(now)) return null;
   const target = value as Partial<AppointmentReminderTarget>;
   if (
     typeof target.appointmentId !== 'string' ||

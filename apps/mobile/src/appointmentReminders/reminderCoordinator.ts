@@ -8,10 +8,7 @@ import type {
   AppointmentReminderSelection,
 } from './reminderPlan';
 
-export type ReminderAuthorization =
-  | 'notDetermined'
-  | 'authorized'
-  | 'denied';
+export type ReminderAuthorization = 'notDetermined' | 'authorized' | 'denied';
 
 /** Native persistence stores the opt-in identity/duration, never appointment text. */
 export interface AppointmentReminderPort {
@@ -143,12 +140,7 @@ export interface AppointmentReminderDeliveryPort {
 }
 
 export type AppointmentReminderDeliveryResult =
-  | 'empty'
-  | 'opened'
-  | 'declined'
-  | 'deferred'
-  | 'stale'
-  | 'error';
+  'empty' | 'opened' | 'declined' | 'deferred' | 'stale' | 'error';
 
 /**
  * One serialized inbox drain serves both cold-start and foreground taps. Keep a
@@ -199,7 +191,10 @@ export function createAppointmentReminderDelivery(
         }
       },
     );
-    queue = delivery.then(() => undefined, () => undefined);
+    queue = delivery.then(
+      () => undefined,
+      () => undefined,
+    );
     return delivery;
   };
 }

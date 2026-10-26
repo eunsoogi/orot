@@ -50,7 +50,9 @@ struct AppointmentReminderNotificationPlan {
         )
         // Floating Calendar visits follow civil time if the device zone changes.
         // Zoned/manual instants use UTC components so travel cannot shift delivery.
-        if !floating { components.timeZone = calendar.timeZone }
+        if !floating {
+            components.timeZone = calendar.timeZone
+        }
         return UNNotificationRequest(
             identifier: AppointmentReminderNotifications.requestIdentifier,
             content: content,
@@ -127,9 +129,13 @@ actor AppointmentReminderNotifications {
         replacement = operation
         do {
             try await operation.value
-            if revision == current { replacement = nil }
+            if revision == current {
+                replacement = nil
+            }
         } catch {
-            if revision == current { replacement = nil }
+            if revision == current {
+                replacement = nil
+            }
             throw error
         }
     }

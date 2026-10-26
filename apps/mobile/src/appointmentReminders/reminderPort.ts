@@ -1,5 +1,11 @@
-import type { AppointmentReminderPort, ReminderAuthorization } from './reminderCoordinator';
-import type { AppointmentReminderPlan, AppointmentReminderSelection } from './reminderPlan';
+import type {
+  AppointmentReminderPort,
+  ReminderAuthorization,
+} from './reminderCoordinator';
+import type {
+  AppointmentReminderPlan,
+  AppointmentReminderSelection,
+} from './reminderPlan';
 
 export interface AppointmentReminderNativeModule {
   readSelection(): Promise<unknown>;
@@ -33,11 +39,16 @@ export function createAppointmentReminderPort(
         (choice.leadMinutes !== 60 && choice.leadMinutes !== 1440)
       )
         throw new Error('The saved reminder preference is invalid.');
-      return { appointmentId: choice.appointmentId, leadMinutes: choice.leadMinutes };
+      return {
+        appointmentId: choice.appointmentId,
+        leadMinutes: choice.leadMinutes,
+      };
     },
     writeSelection: value => native().writeSelection(value),
-    authorizationStatus: async () => authorization(await native().authorizationStatus()),
-    requestAuthorization: async () => authorization(await native().requestAuthorization()),
+    authorizationStatus: async () =>
+      authorization(await native().authorizationStatus()),
+    requestAuthorization: async () =>
+      authorization(await native().requestAuthorization()),
     replace: value => native().replace(value),
   };
 }

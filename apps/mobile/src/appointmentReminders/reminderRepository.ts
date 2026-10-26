@@ -27,8 +27,7 @@ export function withAppointmentReminders(
       committed(() => repository.confirmCalendarEvent(input)),
     reconfirmCalendarEvent: (id, input) =>
       committed(() => repository.reconfirmCalendarEvent(id, input)),
-    update: (id, changes) =>
-      committed(() => repository.update(id, changes)),
+    update: (id, changes) => committed(() => repository.update(id, changes)),
     cancel: id => committed(() => repository.cancel(id)),
   };
 }

@@ -5,9 +5,13 @@ import React
 public final class AppointmentReminderModule: RCTEventEmitter {
     private var observer: NSObjectProtocol?
 
-    @objc override public static func requiresMainQueueSetup() -> Bool { false }
+    @objc override public static func requiresMainQueueSetup() -> Bool {
+        false
+    }
 
-    override public func supportedEvents() -> [String]! { ["appointmentReminderOpened"] }
+    override public func supportedEvents() -> [String]! {
+        ["appointmentReminderOpened"]
+    }
 
     override public func startObserving() {
         // React invokes module methods on its own queue; event delivery uses main.
@@ -32,13 +36,17 @@ public final class AppointmentReminderModule: RCTEventEmitter {
     override public func stopObserving() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if let observer = self.observer { NotificationCenter.default.removeObserver(observer) }
-            self.observer = nil
+            if let observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            observer = nil
         }
     }
 
     deinit {
-        if let observer { NotificationCenter.default.removeObserver(observer) }
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     @objc(readSelection:rejecter:)
@@ -64,7 +72,7 @@ public final class AppointmentReminderModule: RCTEventEmitter {
 
     @objc(authorizationStatus:rejecter:)
     public func authorizationStatus(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
-        Task { resolve(await AppointmentReminderNotifications.shared.authorizationStatus()) }
+        Task { await resolve(AppointmentReminderNotifications.shared.authorizationStatus()) }
     }
 
     @objc(requestAuthorization:rejecter:)
@@ -72,7 +80,7 @@ public final class AppointmentReminderModule: RCTEventEmitter {
         _ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         Task {
-            do { resolve(try await AppointmentReminderNotifications.shared.requestAuthorization()) }
+            do { try await resolve(AppointmentReminderNotifications.shared.requestAuthorization()) }
             catch { reject("REMINDER_PERMISSION_FAILED", "Notification authorization could not be checked.", nil) }
         }
     }

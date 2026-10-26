@@ -54,6 +54,47 @@ function createMemoryRepositories() {
 }
 
 describe('appointment persistence adapter', () => {
+  it('persists manual start authority with the edit and clears it on Calendar reconfirmation', async () => {
+    const { records, executor } = createMemoryRepositories();
+    const appointments = createAppointmentRepository(records, executor, {
+      clock: () => '2035-06-01T00:00:00Z',
+      createId: () => 'floating-start-edit',
+    });
+    const selected = {
+      calendarEventIdentifier: 'synthetic-floating-event',
+      effectiveAt: '2035-06-02T09:30:00Z',
+      endsAt: '2035-06-02T10:30:00Z',
+      calendarEventSnapshot: {
+        title: 'Synthetic appointment',
+        timeZoneIdentifier: null,
+        floatingStartAt: '2035-06-02T09:30:00.000',
+        floatingEndAt: '2035-06-02T10:30:00.000',
+        isAllDay: false,
+        occurrenceDate: null,
+        isDetached: false,
+        recurrenceRules: [],
+      },
+    };
+    const original = await appointments.confirmCalendarEvent(selected);
+    await appointments.update(original.id, { effectiveAt: '2035-06-02T08:30:00Z' });
+    expect(await appointments.list()).toEqual([
+      expect.objectContaining({
+        effectiveAt: '2035-06-02T08:30:00Z',
+        startTimeAuthority: 'manual',
+        calendarEventSnapshot: selected.calendarEventSnapshot,
+      }),
+    ]);
+    await appointments.update(original.id, {
+      note: 'Synthetic note',
+      endsAt: '2035-06-02T11:00:00Z',
+    });
+    expect((await appointments.list())[0]).toMatchObject({ startTimeAuthority: 'manual' });
+    await appointments.reconfirmCalendarEvent(original.id, selected);
+    const [reconfirmed] = await appointments.list();
+    expect(reconfirmed.effectiveAt).toBe(selected.effectiveAt);
+    expect(reconfirmed).not.toHaveProperty('startTimeAuthority');
+  });
+
   it('persists and reconfirms only a user-selected Calendar event snapshot', async () => {
     const { rows, records, executor } = createMemoryRepositories();
     const appointments = createAppointmentRepository(records, executor, {

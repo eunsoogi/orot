@@ -9,6 +9,14 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  // Notification privacy, trigger identity and cold-start delivery remain native obligations.
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFractionalTimestampsNeverRoundDeliveryEarlierThanTheSelectedOffset',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
   'OrotIntegrationTests/SymptomAccessorySnapshotTests/testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs',
   'OrotIntegrationTests/SymptomAccessorySnapshotTests/testMissingAndDetachedTargetsRemainExplicit',
