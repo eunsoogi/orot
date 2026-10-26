@@ -61,13 +61,14 @@ export async function removeAllLocalDataWithMemory(
 
   try {
     await audioDeletion.reconcile(recordingSourceIds);
+    // Only saved rows clear bridge tracking; active picks are added after reconcile for deletion staging.
+    await documentDeletion.reconcile(documentSourceIds);
     documentFileSourceIds = [
       ...new Set([
         ...documentSourceIds,
         ...(await getProtectedMedicalDocumentSourceIds()),
       ]),
     ];
-    await documentDeletion.reconcile(documentFileSourceIds);
     for (const sourceId of recordingSourceIds) {
       await audioDeletion.stage(sourceId);
       stagedRecordingIds.push(sourceId);

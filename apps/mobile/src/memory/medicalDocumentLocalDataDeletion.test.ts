@@ -124,10 +124,9 @@ describe('medical document file lifecycle during local data deletion', () => {
       }),
     ).resolves.toMatchObject({ medicalDocumentCleanupPending: false });
 
-    expect(context.medicalDocumentDeletion.reconcile).toHaveBeenCalledWith([
-      ...sourceIDs,
-      activeDocumentID,
-    ]);
+    expect(context.medicalDocumentDeletion.reconcile).toHaveBeenCalledWith(
+      sourceIDs,
+    );
     expect(context.medicalDocumentDeletion.stage).toHaveBeenCalledWith(
       activeDocumentID,
     );
