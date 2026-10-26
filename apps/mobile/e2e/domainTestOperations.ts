@@ -1,5 +1,5 @@
 import { runStorageProbe } from '../src/storage/e2eProbe';
-import { runAgentMemoryProbe } from '../src/memory/agentMemoryProbe';
+import { runAgentMemoryTestOperation } from './agentMemoryTestOperation';
 import { runGraphIntegrationProbe } from './graphIntegrationProbe';
 import { withMockAppleModel } from './appleModelMockBridge';
 import { appleModelMockScript } from './appleModelMockFixtures';
@@ -228,26 +228,7 @@ export async function runDomainTestOperation(
     case 'storage-read':
       await runStorageProbe('restart', storageIdentifier);
       return { sourceAndEvidenceRestored: true, ragChunksVerified: true };
-    case 'memory-create':
-      await runAgentMemoryProbe('fresh', memoryIdentifier);
-      return { synthetic: true, persisted: true, networkDisabled: true };
-    case 'memory-delete':
-      await runAgentMemoryProbe('delete', memoryIdentifier);
-      return { removed: true, networkDisabled: true };
-    case 'memory-restart':
-      await runAgentMemoryProbe('restart', memoryIdentifier);
-      return {
-        restoredBeforeDeletion: true,
-        removed: true,
-        networkDisabled: true,
-      };
-    case 'memory-tombstone':
-      await runAgentMemoryProbe('tombstone-restart', memoryIdentifier);
-      return { tombstoneVerified: true, networkDisabled: true };
-    case 'memory-verify-deletion':
-      await runAgentMemoryProbe('verify-deletion', memoryIdentifier);
-      return { absentFromMemoryAndSearch: true, networkDisabled: true };
     default:
-      throw new Error('Unknown iOS test operation: ' + operation);
+      return runAgentMemoryTestOperation(operation, memoryIdentifier);
   }
 }
