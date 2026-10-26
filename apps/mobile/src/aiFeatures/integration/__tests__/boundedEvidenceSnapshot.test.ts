@@ -23,6 +23,7 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
     const records = createRecordRepository(database);
     for (let index = 0; index < 24; index += 1) {
       await records.put('symptom_entry', {
+        status: 'active',
         ...metadata,
         id: `recent-${String(index).padStart(2, '0')}`,
         description:
@@ -32,6 +33,7 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
       });
     }
     const older = {
+      status: 'active' as const,
       ...metadata,
       id: 'outside record / 42',
       effectiveAt: '2020-01-01T00:00:00Z',

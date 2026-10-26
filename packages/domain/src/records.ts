@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { SymptomEntrySchema } from './symptomRecord';
+export { SymptomEntrySchema, SymptomEntryStatusSchema } from './symptomRecord';
+export type { SymptomEntryStatus } from './symptomRecord';
 import {
   ImportedRecordMetadataSchema,
   ObservationIntervalSchema,
@@ -183,21 +186,6 @@ export const HealthObservationSchema = ImportedRecordMetadataSchema.safeExtend({
       code: 'custom',
       path: ['endedAt'],
       message: 'endedAt must not precede effectiveAt.',
-    });
-  }
-});
-
-export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
-  description: NonEmptyTextSchema,
-  bodySite: NonEmptyTextSchema.optional(),
-  severity: z.number().int().min(0).max(10).optional(),
-  resolvedAt: TimestampSchema.optional(),
-}).superRefine((symptom, context) => {
-  if (symptom.resolvedAt && compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0) {
-    context.addIssue({
-      code: 'custom',
-      path: ['resolvedAt'],
-      message: 'resolvedAt must not precede effectiveAt.',
     });
   }
 });
