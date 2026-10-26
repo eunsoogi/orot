@@ -15,16 +15,19 @@ import type {
 } from '@orot/model-runtime';
 import { runStandardAdaptersAppleProbe } from './standardAdaptersAppleProbe';
 import { runStandardAdaptersOpenAIProbe } from './standardAdaptersOpenAIProbe';
+import { runPrivacySafeCallbacksProbe } from './privacySafeCallbacksProbe';
 
-/** Each provider keeps its own native test port and cleanup receipt. No live account or model inference. */
+/** Each mock-backed probe owns a separate port and receipt; no live account or model inference is used. */
 export async function runStandardAdaptersProbe() {
   const apple = await runStandardAdaptersAppleProbe();
   const openai = await runStandardAdaptersOpenAIProbe();
   const graph = await runHermesToolMessageGraphProbe();
+  const privacySafeCallbacks = await runPrivacySafeCallbacksProbe();
   return {
     apple,
     openai,
     graph,
+    privacySafeCallbacks,
     synthetic: true,
     modelExecution: 'mock',
     actualModel: 'not-run',

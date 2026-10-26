@@ -56,7 +56,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
         options.provider.capabilities.toolCalling,
       ),
     };
-    const request = buildTaskRequest(options.provider, options.task, input, state.budget);
+    const request = await buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {
       context.outcome = {
         status: 'unavailable',
@@ -110,7 +110,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The evidence research handoff was incomplete.', 'invalid_output');
       return completeState();
     }
-    const request = buildResearchRequest(
+    const request = await buildResearchRequest(
       options.provider,
       options.request,
       state.evidenceNeed,
@@ -174,7 +174,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
         options.provider.capabilities.toolCalling,
       ),
     };
-    const request = buildTaskRequest(options.provider, options.task, input, state.budget);
+    const request = await buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {
       context.outcome = {
         status: 'unavailable',

@@ -35,7 +35,7 @@ function provider(structuredOutput: boolean, toolCalling: boolean): LanguageMode
 
 test.each([false, true])(
   'non-guided responders receive the actual result envelope and task schema, tools=%s',
-  (native) => {
+  async (native) => {
     const research = native
       ? {
           candidateTools: [
@@ -63,7 +63,7 @@ test.each([false, true])(
           }
         : {}),
     };
-    const built = buildTaskRequest(
+    const built = await buildTaskRequest(
       provider(false, native),
       task,
       requestInput,
@@ -86,8 +86,13 @@ test.each([false, true])(
   },
 );
 
-test('native structured output retains its schema channel without a duplicate schema prompt', () => {
-  const built = buildTaskRequest(provider(true, false), task, input, DEFAULT_MULTI_AGENT_BUDGET);
+test('native structured output retains its schema channel without a duplicate schema prompt', async () => {
+  const built = await buildTaskRequest(
+    provider(true, false),
+    task,
+    input,
+    DEFAULT_MULTI_AGENT_BUDGET,
+  );
   if (built.status !== 'ready') throw new Error('Expected a valid request.');
   expect(built.request.responseFormat?.schema).toEqual(taskResponseSchema(task, input));
   expect(

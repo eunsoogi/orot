@@ -1,4 +1,21 @@
 import { extractPartialJsonStringAtPath } from '../src';
+import { projectDisplayTextUpdate } from '../src/multiAgent/streamProjection';
+
+test('projects appended display text as a delta and replacement text as a snapshot', () => {
+  expect(projectDisplayTextUpdate('', 'First')).toEqual({
+    type: 'text_delta',
+    text: 'First',
+  });
+  expect(projectDisplayTextUpdate('First', 'First sentence')).toEqual({
+    type: 'text_delta',
+    text: ' sentence',
+  });
+  expect(projectDisplayTextUpdate('First sentence', 'Replacement')).toEqual({
+    type: 'text_snapshot',
+    text: 'Replacement',
+  });
+  expect(projectDisplayTextUpdate('Replacement', 'Replacement')).toBeUndefined();
+});
 
 test('extracts only the requested nested string from an incomplete JSON response', () => {
   const response =

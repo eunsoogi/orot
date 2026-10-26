@@ -45,6 +45,26 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["duplicateNodes"] as? Int, 0)
     }
 
+    /// Runs the production workflow graph with scripted model and local-search responses only.
+    func testWorkflowProgressProjectsBufferedRuntimeEvents() async throws {
+        let result = try await operation("workflow-progress")
+        XCTAssertEqual(result["synthetic"] as? Bool, true)
+        XCTAssertEqual(result["modelExecution"] as? String, "scripted")
+        XCTAssertEqual(result["actualModel"] as? String, "not-run")
+        XCTAssertEqual(result["successStatus"] as? String, "result")
+        XCTAssertEqual(result["successProgress"] as? [String], [
+            "model_started:task_response",
+            "model_started:evidence_research",
+            "evidence_search:started:personal_record",
+            "evidence_search:completed:personal_record",
+            "model_started:revised_response",
+        ])
+        XCTAssertEqual(result["projectedText"] as? String, "Synthetic answer.")
+        XCTAssertEqual(result["streamTypes"] as? [String], ["started", "started", "text_delta"])
+        XCTAssertEqual(result["partialVisibleBeforeCompletion"] as? Bool, false)
+        XCTAssertEqual(result["privatePayloadExposed"] as? Bool, false)
+    }
+
     func testLargeHealthLibraryUsesDefaultPagesAndStableCursors() async throws {
         let result = try await operation("health-pagination", parameters: ["fixtureIdentifier": "test-pagination-\(UUID().uuidString)"])
         XCTAssertEqual(result["encrypted"] as? Bool, true)

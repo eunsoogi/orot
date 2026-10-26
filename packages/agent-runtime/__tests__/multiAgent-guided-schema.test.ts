@@ -56,8 +56,8 @@ test('projects native generation guidance without mutating the authoritative sch
   });
 });
 
-test('guided citation appendix sends only allowlisted IDs and leaves reference validation local', () => {
-  const request = buildTaskRequest(
+test('guided citation appendix sends only allowlisted IDs and leaves reference validation local', async () => {
+  const request = await buildTaskRequest(
     {
       kind: 'language-model',
       id: 'guided',

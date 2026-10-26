@@ -3,9 +3,9 @@ import {
   maintainedNativeTestOwners,
   sharedUiCohorts as ui,
   recordingCohorts as recording,
+  workflowProgressCohorts,
 } from './ios-test-impact-owners.mjs';
 
-const all = IOS_TEST_COHORT_NAMES;
 // The maintained plan includes recording-export UI and root-tab integration assertions.
 const recordingSource = [...recording, 'core-ui'];
 const navigationSource = [...ui, 'core-integration'];
@@ -26,7 +26,7 @@ const provider = [
 
 function canonical(cohorts) {
   // Filtering the maintained plan expands a family and deduplicates overlapping selections in plan order.
-  return all.filter((cohort) =>
+  return IOS_TEST_COHORT_NAMES.filter((cohort) =>
     cohorts.some((selected) => cohort === selected || cohort.startsWith(selected + '-')),
   );
 }
@@ -36,11 +36,13 @@ function impact(cohorts, reason, oauth = false) {
 }
 
 function full(reason, oauth = true) {
-  return impact(all, reason, oauth);
+  return impact(IOS_TEST_COHORT_NAMES, reason, oauth);
 }
 
 function e2eImpact(path) {
   const file = path.split('/').at(-1).toLowerCase();
+  if (['workflowprogressfixture.ts', 'workflowprogressprobe.ts'].includes(file))
+    return impact(workflowProgressCohorts, 'workflow-progress-probe');
   if (/^standardadapters(?:apple|openai)?probe\.ts$/.test(file))
     return impact(['provider'], 'standard-adapter-probe');
   if (
