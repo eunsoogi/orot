@@ -4,10 +4,9 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
 import { backupTests, iosTestInventory } from './ios-test-inventory.mjs';
-import { selectIosTestProfileForSelection } from './ios-test-profile-selection.mjs';
+import { resolveIosTestProfileSelection } from './ios-test-profile-selection.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
-import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
 import { startIosSimulatorLifecycleDiagnosticsForUiTests } from './ios-simulator-lifecycle-runner.mjs';
 import { authDiagnosticTest, startIosAuthDiagnostics } from './ios-auth-diagnostics.mjs';
@@ -31,11 +30,11 @@ const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
-const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
-// Resolve Duo overlap only for a requested Duo run; other profiles keep their own selection contract.
-const selectableProfiles = profile === 'duo' ? [...fixtureProfiles, 'duo'] : fixtureProfiles;
-const fixtureSelection = selectIosTestProfileForSelection(profile, selectableProfiles, tests);
-const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
+const { fixtureSelection, hostPreparation, isFixtureProfile } = resolveIosTestProfileSelection(
+  profile,
+  tests,
+  process.env.OROT_IOS_TEST_PHASE,
+);
 const fixtureSession = /^[a-f0-9-]{36}$/i.test(
   process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION ?? '',
 );
@@ -117,7 +116,7 @@ if (
     'Backup cases require isolated host-orchestrated phases on the backup destination',
   );
 if (
-  (fixtureProfiles.includes(profile) &&
+  (isFixtureProfile &&
     !hostPreparation &&
     (!selected.length ||
       new Set(tests).size !== tests.length ||
