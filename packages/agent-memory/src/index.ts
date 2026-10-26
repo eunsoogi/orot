@@ -1,4 +1,9 @@
 export { createRememoriEmbedder } from './embedder';
+export {
+  AGENT_MEMORY_NAMESPACE,
+  AgentMemoryStoreView,
+  createAgentMemoryStoreView,
+} from './agentMemoryStoreView';
 export type { EmbeddingProvider } from '@orot/model-runtime';
 export { createAgentMemory } from './service';
 export type {

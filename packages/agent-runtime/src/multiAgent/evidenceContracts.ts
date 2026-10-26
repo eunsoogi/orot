@@ -1,4 +1,5 @@
 import type { JsonObject, JsonValue, LanguageModelRequest } from '@orot/model-runtime';
+import type { BaseStore } from '@langchain/langgraph/web';
 
 export type EvidenceSourceKind = 'personal_record' | 'reviewed_memory' | 'external_medical';
 export type EvidenceNeed = 'missing_coverage' | 'verify_conflict' | 'confirm_value' | 'other';
@@ -147,6 +148,11 @@ export interface EvidenceSearchRequest {
   readonly signal: AbortSignal;
 }
 
+/** Host-only graph capabilities supplied to a domain search, never model arguments. */
+export interface EvidenceSearchRuntime {
+  readonly store?: BaseStore;
+}
+
 export interface EvidenceSearchTool {
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
@@ -157,5 +163,8 @@ export interface EvidenceSearchTool {
   readonly description: string;
   readonly inputSchema: JsonObject;
   parseInput(value: unknown): JsonObject | undefined;
-  search(request: EvidenceSearchRequest): Promise<EvidenceSearchOutcome>;
+  search(
+    request: EvidenceSearchRequest,
+    runtime?: EvidenceSearchRuntime,
+  ): Promise<EvidenceSearchOutcome>;
 }

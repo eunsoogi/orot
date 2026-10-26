@@ -18,6 +18,8 @@ export interface AgentMemorySourceRemovalResult {
 export interface AgentMemoryService {
   /** Reads the current durable mapping without relying on a prior process's Rememori ID. */
   getByKey(memoryKey: string): Promise<Omit<AgentMemoryHit, 'score'> | null>;
+  /** Reads a current row by Rememori ID so Store filters can resolve authorized deletion requests. */
+  getById(memoryId: string): Promise<Omit<AgentMemoryHit, 'score'> | null>;
   forgetByKey(memoryKey: string): Promise<boolean>;
   remember(input: AgentMemoryInput): Promise<string>;
   update(input: AgentMemoryInput): Promise<string>;

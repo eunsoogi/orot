@@ -1,5 +1,8 @@
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
-import type { LocalMemoryHit } from '@orot/agent-runtime';
+import type {
+  EvidenceSearchRuntime,
+  LocalMemoryHit,
+} from '@orot/agent-runtime';
 import type { HybridSearchOptions } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
@@ -9,9 +12,9 @@ import {
 import { visitQuestionEvidenceIdentityKey } from './evidenceAliases';
 import type {
   VisitQuestionEvidenceRepository,
-  VisitQuestionQueryPort,
   VisitQuestionChunkBuilder,
 } from './evidenceRevalidation';
+import { searchReviewedMemoryFromStore } from './reviewedMemorySearch';
 
 export type VisitQuestionSearchSource = 'personal_record' | 'reviewed_memory';
 type VisitQuestionRagPort = Pick<LocalE5RagService, 'index' | 'search'>;
@@ -57,7 +60,7 @@ export async function searchVisitQuestionEvidence(input: {
   readonly query: string;
   readonly maxEvidenceItems: number;
   readonly sourceKind?: VisitQuestionSearchSource;
-  readonly queryService: VisitQuestionQueryPort;
+  readonly store?: EvidenceSearchRuntime['store'];
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
   readonly buildChunks: VisitQuestionChunkBuilder;
@@ -87,35 +90,8 @@ export async function searchVisitQuestionEvidence(input: {
   let transcriptHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let recordSearchTruncated = false;
   let transcriptSearchTruncated = false;
-  const readReviewedMemory = async () => {
-    try {
-      // One extra local result distinguishes a full page from an exact-size result.
-      const probeLimit = Math.min(
-        limits.memoryResultLimit + 1,
-        LOCAL_MEMORY_MAX_RESULTS,
-      );
-      // The query port cannot abort; the outer search discards results after cancellation.
-      const memory = await input.queryService.searchMemory(
-        input.query,
-        probeLimit,
-      );
-      return {
-        hits: memory.hits.slice(0, limits.memoryResultLimit),
-        truncated:
-          memory.hits.length > limits.memoryResultLimit ||
-          (limits.memoryResultLimit === LOCAL_MEMORY_MAX_RESULTS &&
-            memory.hits.length >= LOCAL_MEMORY_MAX_RESULTS),
-        unavailable: memory.status === 'local_memory_unavailable',
-      };
-    } catch {
-      return {
-        hits: [] as readonly LocalMemoryHit[],
-        truncated: false,
-        unavailable: true,
-      };
-    }
-  };
-  let memoryPromise: ReturnType<typeof readReviewedMemory> | undefined;
+  let memoryPromise:
+    ReturnType<typeof searchReviewedMemoryFromStore> | undefined;
 
   if (sourceKind !== 'reviewed_memory') {
     const chunks = await buildChunks(input.repository, {
@@ -133,7 +109,11 @@ export async function searchVisitQuestionEvidence(input: {
       throw new Error('Evidence search was cancelled.');
     if (sourceKind !== 'personal_record') {
       // Start independent on-device memory and RAG reads together after indexing.
-      memoryPromise = readReviewedMemory();
+      memoryPromise = searchReviewedMemoryFromStore(
+        input.store,
+        input.query,
+        limits.memoryResultLimit,
+      );
     }
     const recordFilters: HybridSearchOptions = {
       // One shared ranked page lets the last slot contain either clinical or transcript evidence.
@@ -171,7 +151,11 @@ export async function searchVisitQuestionEvidence(input: {
     recordHits = recordProbe.slice(0, limits.recordResultLimit);
     transcriptHits = transcriptProbe.slice(0, limits.transcriptResultLimit);
   } else {
-    memoryPromise = readReviewedMemory();
+    memoryPromise = searchReviewedMemoryFromStore(
+      input.store,
+      input.query,
+      limits.memoryResultLimit,
+    );
   }
   if (input.signal?.aborted) throw new Error('Evidence search was cancelled.');
 

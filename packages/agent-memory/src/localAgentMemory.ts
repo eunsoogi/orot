@@ -3,7 +3,7 @@ import type { Embedder, RecallOptions } from 'rememori';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
 import { writeMemory } from './memoryWrites';
-import { readMemoryByKey, recordsForKey } from './memoryKeys';
+import { readMemoryById, readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
 
@@ -28,6 +28,10 @@ export class LocalAgentMemory implements AgentMemoryService {
 
   getByKey(memoryKey: string): Promise<Omit<AgentMemoryHit, 'score'> | null> {
     return this.enqueue(() => readMemoryByKey(this.storage, memoryKey));
+  }
+
+  getById(memoryId: string): Promise<Omit<AgentMemoryHit, 'score'> | null> {
+    return this.enqueue(() => readMemoryById(this.storage, memoryId));
   }
 
   forgetByKey(memoryKey: string): Promise<boolean> {
