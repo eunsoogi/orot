@@ -22,6 +22,11 @@ export async function runDomainTestOperation(
     typeof parameters.storageIdentifier === 'string'
       ? parameters.storageIdentifier
       : undefined;
+  if (parameters.storePersistence === true) {
+    const { runStorePersistenceOperation } =
+      require('./storePersistenceProbe') as typeof import('./storePersistenceProbe');
+    return runStorePersistenceOperation(operation, memoryIdentifier);
+  }
   switch (operation) {
     case 'standard-adapters': {
       const { runStandardAdaptersProbe } =

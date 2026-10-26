@@ -8,13 +8,12 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         let fixture = try fixtureIdentifier()
         let storage = try await operation("storage-create", parameters: ["storageIdentifier": fixture.replacingOccurrences(of: "test-persistence-", with: "test-storage-")])
         truths(storage, ["encrypted", "wrongKeyRejected", "recordsVerified"])
-        let memory = try await operation("memory-create", parameters: ["fixtureIdentifier": memoryIdentifier()])
-        truths(memory, ["persisted", "networkDisabled"])
+        let memory = try await storeOperation("memory-create", phase: "fresh")
         let checkpoint = try await operation("checkpoint-persistence", parameters: ["fixtureIdentifier": fixture, "mode": "save"])
         XCTAssertEqual(checkpoint["value"] as? Int, 4)
         XCTAssertEqual(checkpoint["nodeRuns"] as? [String], ["increment"])
         XCTAssertEqual(checkpoint["note"] as? String, "환자 기록: café 🌱🩺")
-        try attach(fixture, phase: "seed")
+        try attach(fixture, phase: "seed", storeReceipt: memory)
     }
 
     func testStorageReadMemoryDeletionAndCheckpointResumeInNewProcess() async throws {
@@ -22,22 +21,44 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         try requireNewProcess()
         let storage = try await operation("storage-read", parameters: ["storageIdentifier": fixture.replacingOccurrences(of: "test-persistence-", with: "test-storage-")])
         truths(storage, ["sourceAndEvidenceRestored", "ragChunksVerified"])
-        let memory = try await operation("memory-restart", parameters: ["fixtureIdentifier": memoryIdentifier()])
-        truths(memory, ["restoredBeforeDeletion", "removed", "networkDisabled"])
+        let memory = try await storeOperation("memory-restart", phase: "restart")
         let checkpoint = try await operation("checkpoint-persistence", parameters: ["fixtureIdentifier": fixture, "mode": "resume"])
         XCTAssertEqual(checkpoint["value"] as? Int, 8)
         XCTAssertEqual(checkpoint["nodeRuns"] as? [String], ["increment", "double"])
         XCTAssertEqual(checkpoint["note"] as? String, "환자 기록: café 🌱🩺")
         XCTAssertEqual(checkpoint["cleaned"] as? Bool, true)
-        try attach(fixture, phase: "resume")
+        try attach(fixture, phase: "resume", storeReceipt: memory)
     }
 
     func testRemovedMemoryAndSearchStayAbsentInThirdProcess() async throws {
         let fixture = try fixtureIdentifier()
         try requireNewProcess()
-        let result = try await operation("memory-verify-deletion", parameters: ["fixtureIdentifier": memoryIdentifier()])
-        truths(result, ["absentFromMemoryAndSearch", "networkDisabled"])
-        try attach(fixture, phase: "absence")
+        let memory = try await storeOperation("memory-verify-deletion", phase: "verify-deletion")
+        try attach(fixture, phase: "absence", storeReceipt: memory)
+    }
+
+    /// Every phase returns observed Store identifiers, timestamps and provenance, rather than driver success constants.
+    private func storeOperation(_ name: String, phase: String) async throws -> [String: Any] {
+        let identifier = try memoryIdentifier()
+        let result = try await operation(name, parameters: ["fixtureIdentifier": identifier, "storePersistence": true])
+        XCTAssertEqual(result["synthetic"] as? Bool, true)
+        let receipt = try XCTUnwrap(result["storeReceipt"] as? [String: Any])
+        XCTAssertEqual(receipt["fixtureIdentifier"] as? String, identifier)
+        XCTAssertEqual(receipt["phase"] as? String, phase)
+        truths(receipt, ["sqlCipher", "storeVerified", "syntheticProvider"])
+        XCTAssertEqual(receipt["networkAttempts"] as? Int, 0)
+        XCTAssertGreaterThan(try XCTUnwrap(receipt["graphSearches"] as? Int), 0)
+        XCTAssertFalse(try XCTUnwrap(receipt["memoryId"] as? String).isEmpty)
+        XCTAssertEqual(receipt["memoryKey"] as? String, "preference:\(identifier):outpatient-reminder")
+        for field in ["createdAt", "updatedAt", "memoryCreatedAt"] {
+            XCTAssertGreaterThan(try XCTUnwrap(receipt[field] as? Double), 0, field)
+        }
+        let provenance = try XCTUnwrap(receipt["provenance"] as? [String: Any])
+        XCTAssertEqual(provenance["sourceIds"] as? [String], [identifier])
+        XCTAssertEqual(provenance["reviewState"] as? String, "user_confirmed")
+        let dates = try XCTUnwrap(provenance["sourceDates"] as? [[String: String]])
+        XCTAssertEqual(dates, [["sourceId": identifier, "date": "2026-01-02T00:00:00Z"]])
+        return receipt
     }
 
     private func fixtureIdentifier() throws -> String {
@@ -77,9 +98,9 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         }
     }
 
-    private func attach(_ fixture: String, phase: String) throws {
+    private func attach(_ fixture: String, phase: String, storeReceipt: [String: Any]) throws {
         let receipt: [String: Any] = try ["fixtureIdentifier": fixture, "memoryIdentifier": memoryIdentifier(), "phase": phase,
-                                          "processIdentifier": ProcessInfo.processInfo.processIdentifier]
+                                          "processIdentifier": ProcessInfo.processInfo.processIdentifier, "storeReceipt": storeReceipt]
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt), uniformTypeIdentifier: "public.json")
         attachment.name = "state-persistence-\(phase)"
         attachment.lifetime = .keepAlways
