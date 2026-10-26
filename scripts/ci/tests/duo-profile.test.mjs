@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { iosTestBuildSpec, iosTestConfig } from '../ios-test-config.mjs';
-import { verifyIosSimulatorOwnerContract } from '../ios-test-cohorts.mjs';
+import { iosTestCohortTasks, verifyIosSimulatorOwnerContract } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
@@ -79,18 +79,34 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
   const duoKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
+  const fourSidedOcclusion =
+    'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary';
+  const recordingShareDismissal =
+    'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 5);
+  assert.equal(duoInventory.length, 7);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     contextualDeparture,
     duoKeyboardSave,
+    fourSidedOcclusion,
+    recordingShareDismissal,
   ]);
-  // The ordinary iPhone fixture retains its keyboard contract; only the Duo profile expects a contextual rail.
+  // Keep the iPhone cohorts intact while scheduling the same native regressions on the separate Duo destination.
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
+  assert.ok(iPhoneFixtures.includes(fourSidedOcclusion));
+  assert.ok(coreTests.includes(recordingShareDismissal));
+  const navigationImports = iosTestCohortTasks('navigation-imports').flatMap(
+    (task) => task.identifiers,
+  );
+  const recordingEvidence = iosTestCohortTasks('recording-evidence').flatMap(
+    (task) => task.identifiers,
+  );
+  assert.ok(navigationImports.includes(fourSidedOcclusion));
+  assert.ok(recordingEvidence.includes(recordingShareDismissal));
   assert.ok(!duoInventory.includes(standardKeyboardSave));
   assert.ok(!iPhoneFixtures.includes(contextualDeparture));
   assert.ok(!iPhoneFixtures.includes(duoKeyboardSave));
