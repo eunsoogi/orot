@@ -93,11 +93,11 @@ test('cold pollution proof requires real database, files, keys, permission and f
     );
 });
 
-test('fresh creation, migration, key lifecycle, backup and native permission cases retain full resets', () => {
+test('fresh creation, migration, document import, backup and native permission cases retain full resets', () => {
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
-  // The summary/library journeys and geometry bridge retain conservative fresh installation isolation.
+  // Summary recovery, geometry, and imported documents require fresh local-state isolation.
   assert.deepEqual(full, [
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
@@ -109,6 +109,9 @@ test('fresh creation, migration, key lifecycle, backup and native permission cas
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
+    'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+    'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+    'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
   ]);
   assert.equal(
     iosFixtureResetMode('fixtures', 'OrotUITests/NewTests/testUnknown'),

@@ -145,7 +145,7 @@ Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQ
 
 CI의 공개 E2E 실행은 `main`에서 매일 03:00 KST에 시작하는 nightly Full workflow와 `main`에서 수동으로 시작하는 Full workflow입니다. PR, push, 다른 브랜치의 수동 dispatch는 Mac E2E 실행을 시작하지 않습니다. 단일 사례의 개발 확인은 로컬 명령으로 수행하며, 수동 Full과 집중 결과는 release 증거로 사용할 수 없습니다.
 
-Full E2E 실행은 Debug 31개, Release 109개, Speech 9개로 총 149개의 cohort 관측을 각각 한 번씩 수행하고 Keychain 인증 사례 두 개를 별도 receipt에 추가합니다. 문서 가져오기 UI 여정 세 개는 Debug import와 Release fixture 양쪽에서 실행되어 146개의 고유 XCTest 사례를 구성합니다. PR에서는 Mac E2E runner를 시작하지 않습니다. release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
+Full E2E의 27개 cohort 계획은 146개의 고유 XCTest 사례를 각각 한 번씩 수행하고 Keychain 인증 사례 두 개를 별도 receipt에 추가합니다. 넓은 프로필 inventory를 합산하면 Debug 31개, Release 109개, Speech 9개로 149개의 관측과 146개의 고유 사례가 됩니다. 세 문서 가져오기 UI 여정은 Debug `health-import`와 Release `fixtures` 양쪽에 포함되지만, 전체 cohort 계획에서는 각각 한 번만 실행합니다. PR에서는 Mac E2E runner를 시작하지 않습니다. release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
 
 실제 실행·초기화 driver는 Apple 도구를 호출하기 전에 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. Simulator를 변경하지 않는 cohort 조정기는 소유권 계약만 확인하며 같은 상태 조회를 중복 실행하지 않습니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 

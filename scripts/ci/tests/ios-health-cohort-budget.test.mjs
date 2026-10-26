@@ -23,6 +23,11 @@ const original = [
   'OrotUITests/UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation',
   'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
 ];
+const documentJourneys = [
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+];
 const context = { sourceSha: 'a'.repeat(40), runId: '123', attempt: '1' };
 
 function report(cohort) {
@@ -39,8 +44,15 @@ function report(cohort) {
   };
 }
 
-test('Health Full and affected plans retain all four original methods exactly once', () => {
-  assert.deepEqual(iosTestInventory('health-import'), original);
+test('Health cohorts retain their four cases while both import profiles cover documents', () => {
+  // The three picker journeys belong to both broad profiles; focused Health cohorts remain Health-only.
+  assert.deepEqual(iosTestInventory('health-import'), [...original, ...documentJourneys]);
+  assert.deepEqual(
+    iosTestInventory('fixtures', 'calendar').filter((identifier) =>
+      documentJourneys.includes(identifier),
+    ),
+    documentJourneys,
+  );
   // Keep the observed long storage journeys in different budgets without cutting either method.
   assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [original[1], original[2]]);
   assert.deepEqual(iosTestCohortTasks(cohorts[1])[0].identifiers, [original[0], original[3]]);
