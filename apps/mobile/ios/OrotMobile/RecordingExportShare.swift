@@ -4,18 +4,16 @@ import UIKit
 
 /// Separates an unconfirmed presentation from an absent modal so live share UI keeps its temporary file.
 @MainActor
-enum RecordingExportPresentationDisposition: String {
+enum RecordingExportPresentationDisposition: String, Equatable {
     case confirmed
     case liveButUnverified
     case unavailable
 
-    static func resolve(didPresent: Bool, controller: UIViewController) -> Self {
+    static func resolve(didPresent: Bool, controllerIsLive: Bool) -> Self {
         if didPresent {
             return .confirmed
         }
-        guard controller.presentingViewController != nil || controller.viewIfLoaded?.window != nil else {
-            return .unavailable
-        }
+        guard controllerIsLive else { return .unavailable }
         return .liveButUnverified
     }
 }
@@ -126,12 +124,15 @@ public extension RecordingModule {
         reject: @escaping RCTPromiseRejectBlock,
     ) {
         DispatchQueue.main.async {
+            let lifecycle = RecordingExportPresentationLifecycle {
+                self.finishExport(operation, reject: reject)
+            }
             #if OROT_TESTS
                 TestLifecycleObservation.record("export-presentation-enqueued", fields: ["syntheticCancellation": simulateCancellationAfterPresentation])
             #endif
             // The bridge has no invoking UIView, so resolve its single foreground key window instead of guessing a scene.
             guard let anchor = WindowPresentationAnchor.resolve() else {
-                guard self.finishExport(operation, reject: reject) else { return }
+                guard lifecycle.finishIfNeeded() else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
@@ -144,7 +145,7 @@ public extension RecordingModule {
                 #if OROT_TESTS
                     TestLifecycleObservation.record("export-completion", fields: ["completed": completed, "hasError": error != nil])
                 #endif
-                guard self.finishExport(operation, reject: reject) else { return }
+                guard lifecycle.finishIfNeeded() else { return }
                 if let error {
                     reject("RECORDING_EXPORT_FAILED", "The selected export activity failed.", error as NSError)
                     return
@@ -157,7 +158,7 @@ public extension RecordingModule {
             }
             let popoverConfiguration = anchor.apply(to: activity)
             guard anchor.isCurrent, popoverConfiguration != false else {
-                guard self.finishExport(operation, reject: reject) else { return }
+                guard lifecycle.finishIfNeeded() else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
@@ -175,7 +176,13 @@ public extension RecordingModule {
                 TestLifecycleObservation.record("export-present-called")
             #endif
             anchor.present(activity, animated: true) { didPresent in
-                let disposition = RecordingExportPresentationDisposition.resolve(didPresent: didPresent, controller: activity)
+                let disposition = lifecycle.completePresentation(
+                    didPresent: didPresent,
+                    controllerIsLive: activity.presentingViewController != nil || activity.viewIfLoaded?.window != nil,
+                    rejectUnavailable: {
+                        reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
+                    },
+                )
                 #if OROT_TESTS
                     TestLifecycleObservation.record(
                         "export-presentation-completion",
@@ -186,20 +193,13 @@ public extension RecordingModule {
                         ],
                     )
                 #endif
-                switch disposition {
-                case .confirmed:
-                    break
-                case .liveButUnverified:
-                    // Keep the export until UIKit calls the existing dismissal handler for this live controller.
+                if disposition == .liveButUnverified {
                     #if OROT_TESTS
                         TestLifecycleObservation.record("export-presentation-unverified-retained")
                     #endif
                     return
-                case .unavailable:
-                    guard self.finishExport(operation, reject: reject) else { return }
-                    reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
-                    return
                 }
+                guard disposition == .confirmed else { return }
                 if simulateCancellationAfterPresentation {
                     #if OROT_TESTS
                         TestLifecycleObservation.record("export-synthetic-cancel-scheduled")

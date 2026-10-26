@@ -12,6 +12,39 @@ enum RecordingExportFailure: Error {
     case cleanupFailed
 }
 
+/// Holds a protected export until the presenting controller is dismissed and cleans it only once.
+@MainActor
+final class RecordingExportPresentationLifecycle {
+    private let cleanup: () -> Bool
+    private var didClean = false
+
+    init(cleanup: @escaping () -> Bool) {
+        self.cleanup = cleanup
+    }
+
+    func completePresentation(
+        didPresent: Bool,
+        controllerIsLive: Bool,
+        rejectUnavailable: () -> Void,
+    ) -> RecordingExportPresentationDisposition {
+        let disposition = RecordingExportPresentationDisposition.resolve(
+            didPresent: didPresent,
+            controllerIsLive: controllerIsLive,
+        )
+        guard disposition == .unavailable else { return disposition }
+        guard finishIfNeeded() else { return disposition }
+        rejectUnavailable()
+        return disposition
+    }
+
+    func finishIfNeeded() -> Bool {
+        guard !didClean else { return true }
+        guard cleanup() else { return false }
+        didClean = true
+        return true
+    }
+}
+
 enum RecordingExportFiles {
     private static let folderName = "OrotRecordingExports"
     private static let lock = NSLock()

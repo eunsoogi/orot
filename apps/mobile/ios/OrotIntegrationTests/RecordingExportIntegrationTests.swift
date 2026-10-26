@@ -52,6 +52,17 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
     func testUnverifiedFullScreenPresentationRetainsExportUntilDismissal() throws {
         let operation = try RecordingExportFiles.transcriptFile(text: "share this transcript")
         addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
+        var cleanupCount = 0
+        let lifecycle = RecordingExportPresentationLifecycle {
+            cleanupCount += 1
+            do {
+                try RecordingExportFiles.finish(operation.directory)
+                return true
+            } catch {
+                XCTFail("Unexpected export cleanup error: \(error)")
+                return false
+            }
+        }
 
         let originalWindow = try foregroundKeyWindow()
         let scene = try XCTUnwrap(originalWindow.windowScene)
@@ -92,17 +103,52 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         // UIKit removes the covered child hierarchy after a full-screen presentation completes.
         XCTAssertNil(source.window)
 
-        XCTAssertEqual(RecordingExportPresentationDisposition.resolve(didPresent: false, controller: modal), .liveButUnverified)
+        var unavailableRejections = 0
+        let disposition = lifecycle.completePresentation(
+            didPresent: false,
+            controllerIsLive: modal.presentingViewController != nil || modal.viewIfLoaded?.window != nil,
+            rejectUnavailable: { unavailableRejections += 1 },
+        )
+        XCTAssertEqual(disposition, .liveButUnverified)
+        XCTAssertEqual(cleanupCount, 0)
+        XCTAssertEqual(unavailableRejections, 0)
         XCTAssertTrue(FileManager.default.fileExists(atPath: operation.file.path))
 
         let dismissed = expectation(description: "The full-screen controller is dismissed")
         modal.dismiss(animated: false) { dismissed.fulfill() }
         wait(for: [dismissed], timeout: 5)
 
-        XCTAssertEqual(RecordingExportPresentationDisposition.resolve(didPresent: false, controller: modal), .unavailable)
-        try RecordingExportFiles.finish(operation.directory)
+        XCTAssertTrue(lifecycle.finishIfNeeded())
+        XCTAssertEqual(cleanupCount, 1)
+        XCTAssertTrue(lifecycle.finishIfNeeded())
+        XCTAssertEqual(cleanupCount, 1)
         XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
         XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
+
+        let unavailableOperation = try RecordingExportFiles.transcriptFile(text: "unavailable share")
+        addTeardownBlock { try RecordingExportFiles.finish(unavailableOperation.directory) }
+        var unavailableCleanupCount = 0
+        var failureRejections = 0
+        let unavailableLifecycle = RecordingExportPresentationLifecycle {
+            unavailableCleanupCount += 1
+            do {
+                try RecordingExportFiles.finish(unavailableOperation.directory)
+                return true
+            } catch {
+                XCTFail("Unexpected unavailable-export cleanup error: \(error)")
+                return false
+            }
+        }
+        let unavailableController = UIViewController()
+        let unavailableDisposition = unavailableLifecycle.completePresentation(
+            didPresent: false,
+            controllerIsLive: unavailableController.presentingViewController != nil || unavailableController.viewIfLoaded?.window != nil,
+            rejectUnavailable: { failureRejections += 1 },
+        )
+        XCTAssertEqual(unavailableDisposition, .unavailable)
+        XCTAssertEqual(unavailableCleanupCount, 1)
+        XCTAssertEqual(failureRejections, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: unavailableOperation.file.path))
     }
 
     @MainActor
