@@ -1,6 +1,7 @@
 import { AIMessage } from '@langchain/core/messages';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { NativeChatModel } from '../src/langchain/chatModel';
+import type { StructuredOutputSchema } from '../src/langchain/structuredOutput';
 
 const schema = {
   type: 'object',
@@ -27,6 +28,19 @@ function fixture(supportsNative: boolean, text = '{"answer":"ok"}') {
     generate,
   };
   return { generate, model: new NativeChatModel(provider), provider };
+}
+
+function serializableSchema(
+  validate: (value: unknown) => unknown | Promise<unknown>,
+): StructuredOutputSchema<{ answer: string }> {
+  return {
+    '~standard': {
+      version: 1,
+      vendor: 'orot-test',
+      validate,
+      jsonSchema: { input: () => schema },
+    },
+  } as unknown as StructuredOutputSchema<{ answer: string }>;
 }
 
 describe('native chat structured output', () => {
@@ -105,6 +119,32 @@ describe('native chat structured output', () => {
     expect(generate).toHaveBeenCalledTimes(1);
   });
 
+  it('lets runtime schema defaults run and still rejects invalid runtime values', async () => {
+    // Runtime schemas may accept input that their generated output schema marks as required.
+    const defaultingSchema = serializableSchema((value) => {
+      if (value === null || typeof value !== 'object' || Array.isArray(value))
+        return { issues: [{ message: 'Expected an object.' }] };
+      const answer = (value as Record<string, unknown>).answer ?? 'fallback';
+      return typeof answer === 'string'
+        ? { value: { answer } }
+        : { issues: [{ message: 'Expected a string.' }] };
+    });
+    const valid = fixture(false, '{}');
+
+    await expect(
+      valid.model.withStructuredOutput(defaultingSchema).invoke('Question'),
+    ).resolves.toEqual({
+      answer: 'fallback',
+    });
+    expect(valid.generate).toHaveBeenCalledTimes(1);
+
+    const invalid = fixture(false, '{"answer":42}');
+    await expect(
+      invalid.model.withStructuredOutput(defaultingSchema).invoke('Question'),
+    ).rejects.toMatchObject({ name: 'StructuredOutputError', code: 'invalid_output' });
+    expect(invalid.generate).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects forced native formatting when the provider does not declare it', () => {
     const { generate, model } = fixture(false);
 
@@ -163,6 +203,33 @@ describe('native chat structured output', () => {
     expect(Object.values(callbacks).every((callback) => callback.mock.calls.length === 0)).toBe(
       true,
     );
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves cancellation when asynchronous schema validation finishes late', async () => {
+    const { generate, model } = fixture(true);
+    const controller = new AbortController();
+    let finishValidation!: (result: unknown) => void;
+    let markValidationStarted!: () => void;
+    const validationStarted = new Promise<void>((resolve) => {
+      markValidationStarted = resolve;
+    });
+    const pendingValidation = new Promise<unknown>((resolve) => {
+      finishValidation = resolve;
+    });
+    const asyncSchema = serializableSchema(async () => {
+      markValidationStarted();
+      return pendingValidation;
+    });
+    const invocation = model
+      .withStructuredOutput(asyncSchema)
+      .invoke('Question', { signal: controller.signal });
+
+    await validationStarted;
+    controller.abort();
+    finishValidation({ value: { answer: 'late' } });
+
+    await expect(invocation).rejects.toMatchObject({ name: 'AbortError' });
     expect(generate).toHaveBeenCalledTimes(1);
   });
 

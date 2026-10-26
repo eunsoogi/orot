@@ -152,9 +152,16 @@ export function prepareStructuredOutput(
   ].join('\n');
   const runtimeSchema = outputSchema as RuntimeSchemaLike & StandardSchemaLike;
   const standardValidate = runtimeSchema['~standard']?.validate;
+  // Runtime validators own acceptance and transformations such as defaults; JSON Schema guides generation.
+  const hasRuntimeParser =
+    (isSerializableSchema(outputSchema) && typeof standardValidate === 'function') ||
+    typeof runtimeSchema.parseAsync === 'function' ||
+    typeof runtimeSchema.safeParseAsync === 'function' ||
+    typeof runtimeSchema.parse === 'function' ||
+    typeof runtimeSchema.safeParse === 'function';
   const parse = async (value: unknown) => {
     try {
-      if (!validator.validate(value).valid) throw new StructuredOutputError();
+      if (!hasRuntimeParser && !validator.validate(value).valid) throw new StructuredOutputError();
       if (isSerializableSchema(outputSchema) && standardValidate) {
         const result = await standardValidate.call(runtimeSchema['~standard'], value);
         if (result.issues !== undefined || !('value' in result)) throw new StructuredOutputError();

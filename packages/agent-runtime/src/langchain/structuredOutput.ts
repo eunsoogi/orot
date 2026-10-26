@@ -55,6 +55,12 @@ export function withJsonSchemaInstruction(
   ];
 }
 
+/** Keep cancellation active after provider work while asynchronous schema parsing finishes. */
+function throwIfInvocationAborted(signal?: AbortSignal): void {
+  if (signal?.aborted)
+    throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
+}
+
 class PrivateStructuredOutputRunnable<RunOutput extends Record<string, any>> extends Runnable<
   BaseLanguageModelInput,
   RunOutput | { readonly raw: BaseMessage; readonly parsed: RunOutput },
@@ -109,8 +115,16 @@ export function createStructuredOutputRunnable<RunOutput extends Record<string, 
       }
     }
 
-    // Schema parsing stays separate from the caller's domain citation and evidence checks.
-    const parsed = (await parse(value)) as RunOutput;
+    // Schema parsing stays separate from domain checks, but cancellation still spans async parsing.
+    throwIfInvocationAborted(options.signal);
+    let parsed: RunOutput;
+    try {
+      parsed = (await parse(value)) as RunOutput;
+    } catch (error) {
+      throwIfInvocationAborted(options.signal);
+      throw error;
+    }
+    throwIfInvocationAborted(options.signal);
     return config?.includeRaw ? { raw: result.raw, parsed } : parsed;
   });
 }
