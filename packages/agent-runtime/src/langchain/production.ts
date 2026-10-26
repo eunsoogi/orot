@@ -26,6 +26,7 @@ export async function invokeProductionRequest(
   const observed: LanguageModelProvider = {
     ...provider,
     generate: async (wire, options) => {
+      wire = restoreEmptyCollections(request, wire);
       assertSameRequest(request, wire);
       const result = await provider.generate(wire, options);
       if (result.ok) response = result.value;
@@ -34,6 +35,7 @@ export async function invokeProductionRequest(
     ...(provider.stream
       ? {
           async *stream(wire, options) {
+            wire = restoreEmptyCollections(request, wire);
             assertSameRequest(request, wire);
             const iterator = provider.stream!(wire, options)[Symbol.asyncIterator]();
             const stop = () => {
@@ -89,6 +91,27 @@ export async function invokeProductionRequest(
   if (!response)
     throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
   return response;
+}
+
+/** LangChain omits empty optional tool arrays. Restore only explicitly approved empty fields,
+ * then compare the complete reconstructed payload before passing it to the native provider. */
+function restoreEmptyCollections(
+  approved: LanguageModelRequest,
+  wire: LanguageModelRequest,
+): LanguageModelRequest {
+  return {
+    ...wire,
+    ...(approved.tools?.length === 0 && wire.tools === undefined ? { tools: [] } : {}),
+    messages: wire.messages.map((message, index) => {
+      const original = approved.messages[index];
+      return message.role === 'assistant' &&
+        original?.role === 'assistant' &&
+        original.toolCalls?.length === 0 &&
+        message.toolCalls === undefined
+        ? { ...message, toolCalls: [] }
+        : message;
+    }),
+  };
 }
 
 /** Reconstructed adapter requests must match the exact payload approved by the caller. */

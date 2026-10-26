@@ -186,6 +186,7 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
       if (signal?.aborted)
         throw Object.assign(new Error('Native invocation cancelled.'), { name: 'AbortError' });
       if (error instanceof Error && error.name === 'AbortError') throw error;
+      if (error instanceof NativeChatModelError) throw error;
       throw new NativeChatModelError({ code: 'internal_error', message: '', retryable: false });
     }
     if (signal?.aborted)
