@@ -8,7 +8,18 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testNativeGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation() throws {
+    func testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation() throws {
+        try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation()
+    }
+
+    @MainActor
+    func testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation() throws {
+        try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation()
+    }
+
+    /// Separate profile identifiers keep iPhone and Duo results distinct while sharing one route journey.
+    @MainActor
+    private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
