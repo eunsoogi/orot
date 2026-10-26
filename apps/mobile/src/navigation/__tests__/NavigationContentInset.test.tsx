@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
-import { useNavigationContentInset } from '../useNavigationContentInset';
+import {
+  NavigationOcclusionContext,
+  useNavigationContentInset,
+} from '../useNavigationContentInset';
 import {
   BOTTOM_NAVIGATION_CONTENT_INSET,
   NAVIGATION_CONTENT_GAP,
@@ -35,18 +38,44 @@ test('tracks the measured overlay when keyboard or larger labels change its heig
     </NavigationViewport>,
   );
   const overlay = screen.getByTestId('navigation-action-bar-overlay');
+  await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
+    nativeEvent: { layout: { height: 900, width: 320, x: 0, y: 0 } },
+  });
   await fireEvent(overlay, 'layout', {
-    nativeEvent: { layout: { height: 160, width: 320, x: 0, y: 0 } },
+    nativeEvent: { layout: { height: 160, width: 320, x: 0, y: 740 } },
   });
   expect(
     StyleSheet.flatten(screen.getByTestId('page-end-space').props.style)
       .paddingBottom,
   ).toBe(176);
   await fireEvent(overlay, 'layout', {
-    nativeEvent: { layout: { height: 58, width: 320, x: 0, y: 0 } },
+    nativeEvent: { layout: { height: 58, width: 320, x: 0, y: 842 } },
   });
   expect(
     StyleSheet.flatten(screen.getByTestId('page-end-space').props.style)
       .paddingBottom,
   ).toBe(74);
+});
+
+test('maps asymmetric navigation occlusion to the matching scroll edges', async () => {
+  await render(
+    <NavigationOcclusionContext.Provider
+      value={{
+        placement: 'right',
+        systemInsets: { top: 37, right: 18, bottom: 29, left: 11 },
+        viewportInsets: { top: 0, right: 78, bottom: 29, left: 0 },
+        scrollContentInsets: { top: 3, right: 7, bottom: 13, left: 5 },
+      }}
+    >
+      <PageEnd />
+    </NavigationOcclusionContext.Provider>,
+  );
+  expect(
+    StyleSheet.flatten(screen.getByTestId('page-end-space').props.style),
+  ).toEqual({
+    paddingTop: 19,
+    paddingRight: 23,
+    paddingBottom: 29,
+    paddingLeft: 21,
+  });
 });
