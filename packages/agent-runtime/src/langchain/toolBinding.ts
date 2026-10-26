@@ -1,8 +1,5 @@
-import type { AIMessageChunk } from '@langchain/core/messages';
 import type { BindToolsInput, ToolChoice } from '@langchain/core/language_models/chat_models';
-import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 import { convertToOpenAITool } from '@langchain/core/utils/function_calling';
-import type { Runnable } from '@langchain/core/runnables';
 import {
   type JsonObject,
   type JsonValue,
@@ -131,6 +128,7 @@ function withToolRequest(
 export class NativeToolBindingChatModel extends NativeChatModel {
   private boundTools: readonly ToolDefinition[] = [];
   private boundToolChoice: NativeToolChoice = 'auto';
+  private boundOptions: Partial<NativeChatModelCallOptions> = {};
 
   constructor(provider: LanguageModelProvider) {
     super(provider);
@@ -139,7 +137,7 @@ export class NativeToolBindingChatModel extends NativeChatModel {
   bindTools(
     tools: BindToolsInput[],
     kwargs?: Partial<NativeChatModelCallOptions>,
-  ): Runnable<BaseLanguageModelInput, AIMessageChunk, NativeChatModelCallOptions> {
+  ): NativeToolBindingChatModel {
     const definitions = normalizeTools(tools);
     if (definitions.length > 0 && !this.provider.capabilities.toolCalling)
       fail('unsupported_capability');
@@ -152,7 +150,9 @@ export class NativeToolBindingChatModel extends NativeChatModel {
     const bound = this.cloneWithProvider(this.provider);
     bound.boundTools = definitions;
     bound.boundToolChoice = choice;
-    return Object.keys(callOptions).length > 0 ? bound.withConfig(callOptions) : bound;
+    // Keep the public structured-output method available even when tools bind model controls.
+    bound.boundOptions = callOptions;
+    return bound;
   }
 
   /** Derived strategies must survive binding, including their public stream privacy boundary. */
@@ -161,6 +161,7 @@ export class NativeToolBindingChatModel extends NativeChatModel {
   }
 
   protected override prepareInvocation(options: this['ParsedCallOptions']) {
+    options = { ...this.boundOptions, ...options };
     const choice =
       options.tool_choice === undefined
         ? this.boundToolChoice

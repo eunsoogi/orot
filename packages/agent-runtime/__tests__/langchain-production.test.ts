@@ -78,7 +78,7 @@ describe('production standard model composition', () => {
 
   it('preserves binding for public structured output and validates once without callbacks', async () => {
     const { provider, generate, stream } = fixture();
-    const bound = createProductionChatModel(provider).bindTools([tool]) as NativeStreamingChatModel;
+    const bound = createProductionChatModel(provider).bindTools([tool], { maxOutputTokens: 20 });
     const callback = jest.fn();
     const result = await bound
       .withStructuredOutput(schema, { name: 'answer' })
@@ -88,6 +88,7 @@ describe('production standard model composition', () => {
     expect(generate.mock.calls[0]?.[0]).toMatchObject({
       tools: [{ name: 'lookup' }],
       responseFormat: { name: 'answer', schema },
+      maxOutputTokens: 20,
     });
     expect(stream).not.toHaveBeenCalled();
     expect(callback).not.toHaveBeenCalled();
@@ -124,5 +125,20 @@ describe('production standard model composition', () => {
     const chunks = [];
     for await (const part of await bound.stream('Question')) chunks.push(part.content);
     expect(chunks).toEqual([response.text, '']);
+  });
+
+  it('compares approved tool history as JSON data rather than object key insertion order', async () => {
+    const { provider, generate } = fixture();
+    const call = { name: 'lookup', arguments: { id: 'synthetic' }, id: 'native-call' };
+    const request: LanguageModelRequest = {
+      messages: [
+        { role: 'user', content: 'Find source' },
+        { role: 'assistant', content: '', toolCalls: [call] },
+        { role: 'tool', toolCallId: call.id, result: { found: true } },
+      ],
+    };
+    await expect(invokeProductionRequest(provider, request)).resolves.toEqual(response);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate.mock.calls[0]?.[0]).toEqual(request);
   });
 });

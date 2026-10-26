@@ -101,6 +101,22 @@ function assertSameRequest(approved: LanguageModelRequest, wire: LanguageModelRe
     'maxOutputTokens',
     'temperature',
   ] as const;
-  if (fields.some((field) => JSON.stringify(approved[field]) !== JSON.stringify(wire[field])))
+  if (fields.some((field) => canonical(approved[field]) !== canonical(wire[field])))
     throw new NativeChatModelError({ code: 'invalid_request', message: '', retryable: false });
+}
+
+/** Message conversion may reorder JSON object keys without changing the approved data. */
+function canonical(value: unknown): string | undefined {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  const record = value as Record<string, unknown>;
+  return (
+    '{' +
+    Object.keys(record)
+      .sort()
+      .filter((key) => record[key] !== undefined)
+      .map((key) => JSON.stringify(key) + ':' + canonical(record[key]))
+      .join(',') +
+    '}'
+  );
 }
