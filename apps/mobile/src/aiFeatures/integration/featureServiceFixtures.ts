@@ -126,6 +126,11 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
     },
     data: {
       repository: { readRecord: jest.fn(async () => null) } as never,
+      manualHistory: { getEvidence: jest.fn(async () => null) } as never,
+      readManualHistoryCandidates: jest.fn(async () => ({
+        candidates: [],
+        hasMoreCandidates: false,
+      })),
       rag: rag as never,
       memoryStorage,
       readCandidates: jest.fn(async () => completeCandidates),

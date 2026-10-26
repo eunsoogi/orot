@@ -9,6 +9,7 @@ export type AppNavigationRoute =
   | 'unified-import'
   | 'health-records'
   | 'health-records-detail'
+  | 'manual-history'
   | 'appointments'
   | 'appointment-preparation'
   | 'medical'

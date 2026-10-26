@@ -115,6 +115,30 @@ export type {
 } from './safetyPolicySchemas';
 export { SafetyPolicyEngine, preserveSafetyPolicyActions } from './safetyPolicyEngine';
 export {
+  ManualHistoryCorrectionInputSchema,
+  ManualHistoryCreateInputSchema,
+  ManualHistoryDateSchema,
+  ManualHistoryEntrySchema,
+  ManualHistoryEvidenceSchema,
+  ManualHistoryKindSchema,
+  ManualHistoryProvenanceSchema,
+  ManualHistoryQuerySchema,
+  correctManualHistoryEntry,
+  createManualHistoryEntry,
+  toManualHistoryEvidence,
+} from './manualHistory';
+export type {
+  ManualHistoryCorrectionInput,
+  ManualHistoryCreateInput,
+  ManualHistoryDate,
+  ManualHistoryEntry,
+  ManualHistoryEvidence,
+  ManualHistoryKind,
+  ManualHistoryProvenance,
+  ManualHistoryQuery,
+  ParsedManualHistoryQuery,
+} from './manualHistory';
+export {
   createTranscriptCorrection,
   TranscriptAudioRangeSchema,
   TranscriptEvidenceSegmentSchema,

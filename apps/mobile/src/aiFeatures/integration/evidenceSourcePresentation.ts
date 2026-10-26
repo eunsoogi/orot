@@ -6,6 +6,7 @@ import {
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import type { EvidenceSourceDocument } from './evidenceRegistry';
+import type { ManualHistoryEvidence } from '@orot/domain';
 import { presentHealthContext } from './healthContextPresentation';
 import {
   evidenceRecordHero,
@@ -119,6 +120,49 @@ function memoryRows(record: PersistedMemoryRecord): EvidenceSourceDetailRow[] {
   ];
 }
 
+function manualHistoryPresentation(
+  evidence: ManualHistoryEvidence,
+): EvidenceSourceDetailSection[] {
+  const kindLabels: Record<ManualHistoryEvidence['kind'], string> = {
+    diagnosis_history: '진단 또는 과거 병력',
+    procedure: '시술 또는 수술',
+    medication_context: '복용약 관련 내용',
+    note: '자유 메모',
+  };
+  return [
+    {
+      title: '직접 입력한 과거 건강 기록',
+      rows: [
+        { label: '기록 종류', value: kindLabels[evidence.kind] },
+        {
+          label: '기준일',
+          value:
+            evidence.effectiveDate.status === 'known'
+              ? evidence.effectiveDate.date
+              : '알 수 없음',
+        },
+        { label: '출처', value: '사용자 직접 입력' },
+        {
+          label: '검토 상태',
+          value:
+            evidence.reviewState.status === 'reviewed'
+              ? '확인됨'
+              : '의료진 미확인',
+        },
+        { label: '기록한 날짜', value: evidence.recordedAt },
+        ...(evidence.correctionNote
+          ? [{ label: '수정 메모', value: evidence.correctionNote }]
+          : []),
+      ],
+      hero: {
+        heading: kindLabels[evidence.kind],
+        body: evidence.text,
+        consumedLabels: [],
+      },
+    },
+  ];
+}
+
 /** Renders persisted citation sources without exposing opaque local identifiers. */
 export function presentEvidenceSource(
   document: EvidenceSourceDocument,
@@ -134,6 +178,8 @@ export function presentEvidenceSource(
       },
     ];
   }
+  if (document.sourceKind === 'manual_history')
+    return manualHistoryPresentation(document.evidence);
   return document.records.map(entry => ({
     title: recordTitle(entry),
     rows: personalRecordRows(entry),

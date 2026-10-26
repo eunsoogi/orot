@@ -16,6 +16,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { healthOverviewEvidence } from './healthOverviewEvidence';
 import { scopedEvidenceItems } from './evidenceItemScope';
 import { localEvidenceKey } from './evidenceSnapshot';
+import { manualHistoryEffectiveDate } from './manualHistoryEvidence';
 import {
   jsonByteLength,
   MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
@@ -68,7 +69,7 @@ export function createLocalEvidenceSearchTool(input: {
     execution: 'local_read_only',
     description:
       input.sourceKind === 'personal_record'
-        ? 'Search local medication registrations and doses, health measurements, activity, sleep, symptoms, visits and transcripts. Transcripts or photos are not prerequisites. ' +
+        ? 'Search local medication registrations and doses, health measurements, activity, sleep, symptoms, visits, transcripts and user-entered historical health notes. Transcripts or photos are not prerequisites. ' +
           (allowOverview
             ? 'For a general health summary choose view=health_overview to retrieve bounded recent facts across health topics in one read. '
             : '') +
@@ -101,6 +102,7 @@ export function createLocalEvidenceSearchTool(input: {
           snapshot.items,
           request,
           input.sourceKind,
+          item => manualHistoryEffectiveDate(item, input.registry),
         );
         const candidateKeys = new Set(candidates.map(localEvidenceKey));
         const chunks = snapshot.chunks.filter(chunk =>

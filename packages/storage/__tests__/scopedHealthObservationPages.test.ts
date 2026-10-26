@@ -173,7 +173,7 @@ test('upgrades version nine by adding only the library index and preserving save
         ),
     });
     expect(statements.some((sql) => /DROP|INSERT|UPDATE|ALTER/i.test(sql))).toBe(false);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(10);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(11);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',
