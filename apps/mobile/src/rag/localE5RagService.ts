@@ -15,6 +15,7 @@ import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { LocalE5EmbeddingProvider } from './localE5EmbeddingProvider';
 import { LocalE5Embeddings } from './localE5Embeddings';
 import { LocalLexicalRetriever } from './localLexicalRetriever';
+import { PagedVectorRetriever } from './pagedVectorRetriever';
 import { localE5NativeBackend } from './localE5NativeBackend';
 import { SqlCipherRagEmbeddingStorage } from '../storage/ragEmbeddingStorage';
 import { SqlCipherRagFullTextSearchStore } from '../storage/ragFullTextSearch';
@@ -182,10 +183,17 @@ export function createLocalE5RagService(
             removalReader: storage,
           }),
         createVectorRetriever: request =>
-          vectors.asRetriever({
-            k: request.limit,
-            filter: { ...request.filters, candidates: request.chunks },
-          }),
+          request.chunks.length > 500
+            ? new PagedVectorRetriever({
+                request,
+                database,
+                embeddings,
+                options,
+              })
+            : vectors.asRetriever({
+                k: request.limit,
+                filter: { ...request.filters, candidates: request.chunks },
+              }),
       }).searchHits(query, { signal: options.signal });
     },
   };

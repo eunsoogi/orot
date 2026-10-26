@@ -59,12 +59,6 @@ export class HybridRetriever extends BaseRetriever<EvidenceChunkMetadata> {
     super(input);
     boundedCount(input.limit ?? 5);
     resolveRanking(input.ranking);
-    if (input.chunks.length > 500) {
-      throw new LocalEmbeddingJobError(
-        'invalid_request',
-        'Hybrid candidate pages may contain at most 500 chunks.',
-      );
-    }
   }
 
   private invocationScope() {
