@@ -1,5 +1,6 @@
 #import <React/RCTViewManager.h>
 #import <React/RCTComponent.h>
+#import <UIKit/UIKit.h>
 
 // Native trailing swipe actions emit only the selected session identity.
 @interface RCT_EXTERN_MODULE (ConversationHistoryViewManager, RCTViewManager)
@@ -31,9 +32,14 @@ RCT_EXPORT_VIEW_PROPERTY(onComposerPress, RCTDirectEventBlock)
 
 // Register the Swift view manager with React Native's UIKit view registry.
 @interface RCT_EXTERN_MODULE (NavigationGlassViewManager, RCTViewManager)
-// Bridge serializable actions and tap events without replacing their JS semantics.
+// Keep measured rail placement with action descriptors so UIKit can move
+// existing controls in place.
 RCT_EXPORT_VIEW_PROPERTY(actions, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(onAction, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(layoutMode, NSString)
+RCT_EXPORT_VIEW_PROPERTY(railTopInset, CGFloat)
+RCT_EXPORT_VIEW_PROPERTY(railBottomInset, CGFloat)
+RCT_EXPORT_VIEW_PROPERTY(railRightInset, CGFloat)
 @end
 
 // Deliver window and reserved-region changes from the full-window geometry sensor.

@@ -1,16 +1,6 @@
-import type { ComponentType, ReactNode } from 'react';
-import { useContext, useEffect, useState } from 'react';
-import {
-  Keyboard,
-  Platform,
-  StyleSheet,
-  useColorScheme,
-  View,
-} from 'react-native';
-import {
-  SafeAreaView,
-  SafeAreaInsetsContext,
-} from 'react-native-safe-area-context';
+import type { ComponentType } from 'react';
+import { useEffect, useState } from 'react';
+import { Keyboard, StyleSheet, useColorScheme, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
 import {
   NavigationGlassSurface,
@@ -22,14 +12,10 @@ import {
   createNativeNavigationBindings,
   settleNavigationRequest,
 } from './nativeNavigationActions';
-import {
-  NAVIGATION_ACTION_TOP_PADDING,
-  NAVIGATION_ACTION_BOTTOM_PADDING,
-  ROOT_TAB_SAFE_AREA_TRANSLATION,
-} from './navigationLayout';
 import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
 import { RootTabActions } from './RootTabActions';
+import { NavigationActionBarPresentation } from './NavigationActionBarPresentation';
 
 export type NavigationSurfaceProps = NavigationGlassSurfaceProps;
 export type NavigationSurface = ComponentType<NavigationSurfaceProps>;
@@ -69,15 +55,15 @@ export function NavigationActionBar<Name extends string>({
 }: NavigationActionBarProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
   const isDarkAppearance = useColorScheme() === 'dark';
-  const [systemKeyboardVisible, setSystemKeyboardVisible] = useState(false);
-  const isKeyboardVisible = keyboardVisible ?? systemKeyboardVisible;
+  const [systemKeyboardHeight, setSystemKeyboardHeight] = useState(0);
+  const isKeyboardVisible = keyboardVisible ?? systemKeyboardHeight > 0;
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () =>
-      setSystemKeyboardVisible(true),
+    const showSubscription = Keyboard.addListener('keyboardDidShow', event =>
+      setSystemKeyboardHeight(event.endCoordinates.height),
     );
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () =>
-      setSystemKeyboardVisible(false),
+      setSystemKeyboardHeight(0),
     );
     return () => {
       showSubscription.remove();
@@ -153,86 +139,25 @@ export function NavigationActionBar<Name extends string>({
     </View>
   );
 
-  const barSurface = (
-    <Surface
-      actions={nativeBindings.actions}
-      onAction={nativeBindings.onAction}
-      testID={
-        Surface === NavigationGlassSurface && Platform.OS === 'ios'
-          ? 'navigation-bar-native-surface'
-          : 'navigation-bar-fallback'
-      }
-    >
-      {actions}
-    </Surface>
-  );
   const reclaimRootTabInset =
     rootTabs && !isKeyboardVisible && !safeAreaHandledByParent;
-  // Keep any transform outside the native host so UIKit geometry stays aligned.
-  const surface = (
-    <NavigationSurfacePosition
-      reclaimRootTabInset={Boolean(reclaimRootTabInset)}
-    >
-      {barSurface}
-    </NavigationSurfacePosition>
-  );
-
-  // Keep one home-indicator inset and a narrow side gutter around the native bar.
-  return safeAreaHandledByParent ? (
-    <View pointerEvents="box-none" style={styles.safeArea}>
-      {surface}
-    </View>
-  ) : (
-    <SafeAreaView
-      edges={isKeyboardVisible ? [] : ['bottom']}
-      pointerEvents="box-none"
-      style={styles.safeArea}
-      testID="navigation-action-bar-safe-area"
-    >
-      {surface}
-    </SafeAreaView>
-  );
-}
-
-/** Preserves the native surface identity while changing root-tab inset translation. */
-function NavigationSurfacePosition({
-  children,
-  reclaimRootTabInset,
-}: {
-  readonly children: ReactNode;
-  readonly reclaimRootTabInset: boolean;
-}) {
-  const insets = useContext(SafeAreaInsetsContext);
-  if (reclaimRootTabInset && insets == null) {
-    throw new Error(
-      'No safe area value available. Make sure you are rendering <SafeAreaProvider> at the top of your app.',
-    );
-  }
-  const bottomInset = insets?.bottom ?? 0;
-  const positionStyle = reclaimRootTabInset
-    ? {
-        transform: [
-          {
-            translateY: Math.min(ROOT_TAB_SAFE_AREA_TRANSLATION, bottomInset),
-          },
-        ],
-      }
-    : undefined;
   return (
-    <View pointerEvents="box-none" style={positionStyle}>
-      {children}
-    </View>
+    <NavigationActionBarPresentation
+      actions={nativeBindings.actions}
+      bottomActions={actions}
+      isDarkAppearance={isDarkAppearance}
+      keyboardHeight={isKeyboardVisible ? systemKeyboardHeight : 0}
+      keyboardVisible={isKeyboardVisible}
+      onAction={nativeBindings.onAction}
+      primaryAction={primaryAction}
+      reclaimRootTabInset={Boolean(reclaimRootTabInset)}
+      safeAreaHandledByParent={safeAreaHandledByParent}
+      surface={Surface}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flexShrink: 0,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 8,
-    paddingTop: NAVIGATION_ACTION_TOP_PADDING,
-    paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
-  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',

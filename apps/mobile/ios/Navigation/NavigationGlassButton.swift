@@ -2,6 +2,28 @@ import UIKit
 
 /// Builds native controls while keeping persistent selection exclusive to root tabs.
 enum NavigationGlassButton {
+    /// Keeps contextual controls at their shipping sizes except for the compact rail Home target.
+    static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool) -> CGFloat? {
+        switch action.id {
+        case "back":
+            NavigationRootGlassBar.exteriorWidth
+        case "home":
+            usesRightRail ? NavigationRootGlassBar.exteriorWidth : 64
+        default:
+            nil
+        }
+    }
+
+    /// Hides only Home's visible title in the rail; the button keeps its VoiceOver name.
+    static func setUsesRightRail(_ usesRightRail: Bool, for action: NavigationActionDescriptor, button: UIButton) {
+        guard action.id == "home" else { return }
+        for content in button.subviews.compactMap({ $0 as? UIStackView }) {
+            content.arrangedSubviews.compactMap { $0 as? UILabel }.forEach {
+                $0.isHidden = usesRightRail
+            }
+        }
+    }
+
     /// Creates a UIKit control once for a stable navigation action ID.
     static func make(for action: NavigationActionDescriptor, onAction: @escaping (String) -> Void) -> UIButton {
         let button = UIButton(type: .system)
@@ -12,9 +34,6 @@ enum NavigationGlassButton {
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
             button.heightAnchor.constraint(equalToConstant: height),
         ])
-        if action.id == "back" || action.id == "home" {
-            button.widthAnchor.constraint(equalToConstant: action.id == "home" ? 64 : 48).isActive = true
-        }
         if action.id == "back" {
             NavigationBackContent.attach(to: button, testID: action.testID)
         }
