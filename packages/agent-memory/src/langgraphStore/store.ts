@@ -1,5 +1,6 @@
-import { BaseStore } from '@langchain/langgraph';
-import type { Operation, OperationResults } from '@langchain/langgraph';
+// Hermes must use LangGraph's web export, whose entry avoids Node AsyncLocalStorage initialization.
+import { BaseStore } from '@langchain/langgraph/web';
+import type { Operation, OperationResults } from '@langchain/langgraph/web';
 import { RememoriLangGraphBackend } from './backend';
 import type { RememoriLangGraphStoreOptions } from './types';
 
