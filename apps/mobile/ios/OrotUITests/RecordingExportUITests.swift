@@ -23,6 +23,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             }
             app.terminate()
         }
+        XCUIDevice.shared.orientation = .portrait
         launch(app)
         // Own both sources so the regression does not depend on another suite's saved recordings.
         let backgroundSource = try prepare(app)
@@ -44,6 +45,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
             app.terminate()
+            XCUIDevice.shared.orientation = .portrait
         }
         let source = try prepare(app)
         // Authorization matrices, programmatic cancellation and restart residue have independent native tests.
@@ -69,19 +71,28 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         }
         // AX exposes the dismissal element before UIKit finishes presenting it. Await both presentation boundaries.
         XCTAssertEqual(UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: presented, object: nil)]), .completed)
-        let geometry = try XCTUnwrap(ready)
-        let frame = geometry.frame
-        let point = geometry.point
+        XCTAssertNotNil(ready)
         try assertCurrentWindowAnchor(app, marker: marker)
+        add(ExportDismissalGeometryRegression.verifyModalRemainsOpenAcrossOrientationChanges(app: app, dismissal: dismissal))
+        let resizedSnapshot = UITestConditions.text(marker)
+        let resizedFrame = dismissal.frame
+        let resizedApplicationFrame = app.frame
+        let resizedPoint = try ExportDismissalGeometry.point(
+            snapshot: resizedSnapshot,
+            session: session,
+            nowMs: Date().timeIntervalSince1970 * 1000,
+            preferredFrame: backgroundRow.frame,
+        )
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "actual-audio-share-sheet"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         // The AX dismissal frame covers the whole screen. Require a fresh safe corridor outside public presented geometry.
         // The audio path never consumes the synthetic cancellation hook.
-        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point, snapshot: geometry.snapshot, applicationFrame: geometry.application)
-        app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
-        captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: frame, point: point)
+        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: resizedFrame, point: resizedPoint,
+                                 snapshot: resizedSnapshot, applicationFrame: resizedApplicationFrame)
+        app.coordinate(withNormalizedOffset: .zero).withOffset(resizedPoint).tap()
+        captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: resizedFrame, point: resizedPoint)
         XCTAssertFalse(element(app, "recording-detail").exists, "Dismissing the native share must not select its obscured recording row")
         value(app, "recording-export-status", "내보내기를 취소했어요.")
         XCTAssertFalse(dismissal.exists)

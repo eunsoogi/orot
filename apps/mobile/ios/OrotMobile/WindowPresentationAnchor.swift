@@ -36,7 +36,8 @@ struct WindowPresentationAnchor {
         else { return nil }
 
         let presenter = topmostPresenter(from: root, in: window)
-        let resolvedView = sourceView ?? presenter.view
+        // Do not load a controller's view just to invent an anchor when UIKit has not attached it yet.
+        guard let resolvedView = sourceView ?? presenter.viewIfLoaded else { return nil }
         guard resolvedView.window === window, !resolvedView.isHidden, resolvedView.alpha > 0 else { return nil }
 
         let resolvedRect = sourceRect ?? (sourceView == nil
@@ -54,14 +55,13 @@ struct WindowPresentationAnchor {
 
     /// Confirms the presenter, source region, and foreground key window still match the resolved anchor.
     var isCurrent: Bool {
-        let rectInWindow = sourceView.convert(sourceRect, to: window)
-        guard isAttachedToWindow,
-              window.isKeyWindow,
-              !sourceView.isHidden,
-              sourceView.alpha > 0,
-              sourceRect.intersects(sourceView.bounds),
-              rectInWindow.intersects(window.bounds),
-              let root = window.rootViewController
+        guard Self.sourceRegionIsCurrent(
+            window: window,
+            presenter: presenter,
+            sourceView: sourceView,
+            sourceRect: sourceRect,
+        ),
+            let root = window.rootViewController
         else { return false }
         return Self.topmostPresenter(from: root, in: window) === presenter
     }
@@ -72,12 +72,30 @@ struct WindowPresentationAnchor {
             completion(false)
             return
         }
-        presenter.present(controller, animated: animated) { [weak self, weak controller] in
-            guard let self, let controller else {
+        let anchorWindow = window
+        let anchorPresenter = presenter
+        let anchorSourceView = sourceView
+        let anchorSourceRect = sourceRect
+        // UIKit owns a presented controller while it is open; weak captures keep this check from retaining a stale window stack.
+        anchorPresenter.present(controller, animated: animated) { [weak anchorWindow, weak anchorPresenter, weak anchorSourceView, weak controller] in
+            guard let anchorWindow,
+                  let anchorPresenter,
+                  let anchorSourceView,
+                  let controller,
+                  Self.sourceRegionIsCurrent(
+                      window: anchorWindow,
+                      presenter: anchorPresenter,
+                      sourceView: anchorSourceView,
+                      sourceRect: anchorSourceRect,
+                  )
+            else {
                 completion(false)
                 return
             }
-            completion(matchesPresenter(controller) && presenterSharesWindow(controller) && isAttachedToWindow)
+            completion(
+                controller.presentingViewController === anchorPresenter
+                    && controller.presentingViewController?.viewIfLoaded?.window === anchorWindow,
+            )
         }
     }
 
@@ -137,11 +155,30 @@ struct WindowPresentationAnchor {
         return root
     }
 
-    private var isAttachedToWindow: Bool {
-        window.windowScene?.activationState == .foregroundActive
-            && !window.isHidden
-            && window.alpha > 0
-            && sourceView.window === window
-            && presenter.viewIfLoaded?.window === window
+    /// Rechecks the visible source region in the same active window without forcing UIKit to load controller views.
+    private static func sourceRegionIsCurrent(
+        window: UIWindow,
+        presenter: UIViewController,
+        sourceView: UIView,
+        sourceRect: CGRect,
+    ) -> Bool {
+        guard let presenterView = presenter.viewIfLoaded,
+              window.windowScene?.activationState == .foregroundActive,
+              window.isKeyWindow,
+              !window.isHidden,
+              window.alpha > 0,
+              presenterView.window === window,
+              !presenterView.isHidden,
+              presenterView.alpha > 0,
+              sourceView.window === window,
+              !sourceView.isHidden,
+              sourceView.alpha > 0
+        else { return false }
+
+        let rectInWindow = sourceView.convert(sourceRect, to: window)
+        return sourceRect.width > 0
+            && sourceRect.height > 0
+            && sourceRect.intersects(sourceView.bounds)
+            && rectInWindow.intersects(window.bounds)
     }
 }

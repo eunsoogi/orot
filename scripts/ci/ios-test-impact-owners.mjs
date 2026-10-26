@@ -47,3 +47,10 @@ export const recordingCohorts = [
   'microphone',
   'speech',
 ];
+
+// The presentation anchor reaches its direct native, share-sheet and orientation consumers.
+export const windowAnchorCohorts = [
+  'core-integration',
+  'recording-evidence',
+  'navigation-features',
+];

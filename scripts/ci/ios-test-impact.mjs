@@ -1,16 +1,14 @@
-import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
+import { IOS_TEST_COHORT_NAMES as all } from './ios-test-execution-plan.mjs';
 import {
   maintainedNativeTestOwners,
   sharedUiCohorts as ui,
   recordingCohorts as recording,
+  windowAnchorCohorts,
 } from './ios-test-impact-owners.mjs';
 
-const all = IOS_TEST_COHORT_NAMES;
 // The maintained plan includes recording-export UI and root-tab integration assertions.
 const recordingSource = [...recording, 'core-ui'];
 const navigationSource = [...ui, 'core-integration'];
-// The shared anchor affects its presentation, recording, and navigation consumers.
-const windowAnchorCohorts = ['core-integration', 'recording-evidence', 'navigation-features'];
 const questions = ['core-integration', 'questions', 'provider'];
 const calendar = ['core-integration', 'calendar', 'provider', 'questions'];
 const calendarUi = ['calendar', 'provider', 'questions'];

@@ -14,18 +14,66 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow() throws {
-        let window = try foregroundKeyWindow()
+        let (window, originalWindow) = try isolatedKeyWindow()
+        defer {
+            window.isHidden = true
+            originalWindow.makeKeyAndVisible()
+        }
         let root = try XCTUnwrap(window.rootViewController)
+        let screenBounds = try XCTUnwrap(window.windowScene).screen.coordinateSpace.bounds
+        let halfWidth = screenBounds.width / 2
+        let splitSideFrames = [
+            CGRect(x: screenBounds.minX, y: screenBounds.minY, width: halfWidth, height: screenBounds.height),
+            CGRect(x: screenBounds.midX, y: screenBounds.minY, width: halfWidth, height: screenBounds.height),
+        ]
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 1, height: 1))
         root.view.addSubview(source)
         defer { source.removeFromSuperview() }
 
-        let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
-        picker.modalPresentationStyle = .popover
-        XCTAssertEqual(anchor.apply(to: picker), true)
-        XCTAssertTrue(picker.popoverPresentationController?.sourceView?.window === window)
-        XCTAssertEqual(picker.popoverPresentationController?.sourceRect, source.bounds)
+        // A test-owned window in each screen half exercises both Split View coordinate origins without a private multitasking gesture.
+        for sideFrame in splitSideFrames {
+            window.frame = sideFrame
+            root.view.setNeedsLayout()
+            root.view.layoutIfNeeded()
+            let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
+            XCTAssertTrue(anchor.window === window)
+
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+            picker.modalPresentationStyle = .popover
+            XCTAssertEqual(anchor.apply(to: picker), true)
+            XCTAssertTrue(picker.popoverPresentationController?.sourceView?.window === window)
+            XCTAssertEqual(picker.popoverPresentationController?.sourceRect, source.bounds)
+
+            var didPresent: Bool?
+            let presented = expectation(description: "The document picker stays on the source window")
+            anchor.present(picker, animated: false) { result in
+                didPresent = result
+                presented.fulfill()
+            }
+            wait(for: [presented], timeout: 5)
+            XCTAssertEqual(didPresent, true)
+            XCTAssertTrue(anchor.matchesPresenter(picker))
+            XCTAssertTrue(anchor.presenterSharesWindow(picker))
+
+            let resizedFrame = CGRect(
+                x: sideFrame.minX,
+                y: sideFrame.minY,
+                width: sideFrame.width * 0.9,
+                height: sideFrame.height,
+            )
+            window.frame = resizedFrame
+            root.view.setNeedsLayout()
+            root.view.layoutIfNeeded()
+            XCTAssertTrue(picker.presentingViewController?.viewIfLoaded?.window === window)
+            if let popover = picker.popoverPresentationController, let popoverSource = popover.sourceView {
+                XCTAssertTrue(popoverSource.window === window)
+                XCTAssertTrue(popoverSource.convert(popover.sourceRect, to: window).intersects(window.bounds))
+            }
+
+            let dismissed = expectation(description: "The document picker closes before testing the other window side")
+            picker.dismiss(animated: false) { dismissed.fulfill() }
+            wait(for: [dismissed], timeout: 5)
+        }
     }
 
     @MainActor
