@@ -122,3 +122,46 @@ test('searches current manual history and invalidates citations after correction
     close();
   }
 });
+
+test('reports truncated coverage when the manual-history window is bounded', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    const storage = createRecordRepository(database);
+    for (let index = 0; index < 41; index += 1) {
+      await storage.manualHistory.create({
+        kind: 'note',
+        title: `Synthetic history ${index}`,
+        details: 'Synthetic details for bounded history coverage.',
+        effectiveDate: { status: 'unknown' },
+      });
+    }
+    const data: AiFeatureLocalData = {
+      ...createLocalEvidenceData(database),
+      repository: createLocalHealthEvidenceRepository(database),
+      memoryStorage: { listRecords: async () => [] },
+      loadMemoryRecords: async () => [],
+      rag: {
+        index: jest.fn(async () => undefined),
+        search: jest.fn(async () => []),
+      },
+    };
+
+    const snapshot = await loadFeatureEvidenceSnapshot(
+      data,
+      new LocalEvidenceReferenceRegistry(),
+      new AbortController().signal,
+    );
+
+    expect(snapshot.inventory.inventoryComplete).toBe(true);
+    expect(
+      snapshot.coverage.find(item => item.sourceKind === 'personal_record')
+        ?.truncated,
+    ).toBe(true);
+    expect(
+      snapshot.items.filter(item => item.sourceKind === 'personal_record'),
+    ).toHaveLength(40);
+  } finally {
+    close();
+  }
+});

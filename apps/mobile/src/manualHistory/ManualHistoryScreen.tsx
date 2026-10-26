@@ -216,6 +216,8 @@ export default function ManualHistoryScreen({
         />
       ) : (
         <ManualHistoryForm
+          // Replace field state when switching entries, then restore that entry's saved draft.
+          key={formKey ?? 'new'}
           initialValue={initialValue ?? correctionInitialValue}
           isCorrection={formEntry !== null}
           onClose={() => setFormOpen(false)}

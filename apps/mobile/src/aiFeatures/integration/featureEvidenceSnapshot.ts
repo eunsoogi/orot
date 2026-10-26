@@ -104,7 +104,9 @@ export async function loadFeatureEvidenceSnapshot(
     inventory: selection.catalog,
     records,
     candidateRecords: selection.candidates,
-    hasMoreCandidates: selection.hasMoreCandidates,
+    // Coverage includes truncation from either independently bounded source.
+    hasMoreCandidates:
+      selection.hasMoreCandidates || manualHistorySelection.hasMoreCandidates,
     manualHistoryCandidates: manualHistorySelection.candidates,
     persistedChunks,
     loadCurrentPersistedChunks: () => data.loadCurrentChunks(identities),
