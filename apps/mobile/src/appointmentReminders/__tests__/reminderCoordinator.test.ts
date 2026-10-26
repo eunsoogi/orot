@@ -140,3 +140,24 @@ it('does not report success if scheduling and subsequent cleanup both fail', asy
     busy: false,
   });
 });
+
+it('clears the previous request after native replacement fails', async () => {
+  const { coordinator, port } = setup();
+  port.replace.mockRejectedValueOnce(
+    new Error('Synthetic notification center add failure'),
+  );
+
+  await expect(coordinator.reconcile()).rejects.toThrow(
+    'Appointment reminders could not be updated.',
+  );
+  expect(port.replace).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({ appointmentId: appointment.id }),
+  );
+  expect(port.replace).toHaveBeenNthCalledWith(2, null);
+  expect(coordinator.getSnapshot()).toEqual({
+    selection: choice,
+    status: 'error',
+    busy: false,
+  });
+});
