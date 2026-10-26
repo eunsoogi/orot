@@ -6,7 +6,7 @@ import { ports, now, chunk } from '../testing/evidenceServiceFixtures';
 import { makeProvider, selectedOption } from '../testing/workflowFixtures';
 import { runVisitQuestionWorkflow } from '../workflow';
 
-test('reads reviewed memory through the compiled graph Store and revalidates through the query service', async () => {
+test('keeps valid dated memory and drops malformed provenance from the graph Store', async () => {
   const dependencies = ports();
   const memory = {
     id: 'memory-1',
@@ -35,6 +35,20 @@ test('reads reviewed memory through the compiled graph Store and revalidates thr
     createdAt: new Date(memory.createdAt),
     updatedAt: new Date(memory.createdAt),
   };
+  // Persisted Store rows are untyped, so malformed dates must not become evidence.
+  const malformedStoreItem = {
+    ...storeItem,
+    key: 'legacy-invalid-memory-key',
+    value: {
+      ...storeItem.value,
+      id: 'malformed-memory',
+      memoryKey: 'legacy-invalid-memory-key',
+      provenance: {
+        ...memory.provenance,
+        sourceDates: ['2026-10-01T00:00:00Z'],
+      },
+    },
+  };
   const storeBatch = jest.fn(async (operations: readonly unknown[]) =>
     operations.map(operation => {
       if (typeof operation !== 'object' || operation === null) return [];
@@ -43,7 +57,7 @@ test('reads reviewed memory through the compiled graph Store and revalidates thr
         readonly limit?: number;
       };
       return search.namespacePrefix?.[0] === 'agent-memory'
-        ? [storeItem].slice(0, search.limit ?? 10)
+        ? [storeItem, malformedStoreItem].slice(0, search.limit ?? 10)
         : [];
     }),
   );
@@ -159,6 +173,14 @@ test('reads reviewed memory through the compiled graph Store and revalidates thr
       expect.objectContaining({
         sourceKind: 'reviewed_memory',
         sourceId: memory.id,
+      }),
+    ]),
+  );
+  expect(searchedEvidence.batch.items).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        sourceKind: 'reviewed_memory',
+        sourceId: 'malformed-memory',
       }),
     ]),
   );
