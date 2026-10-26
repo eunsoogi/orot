@@ -121,7 +121,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
     const outcome = await callModelWithEvidenceFreshness(context, request);
     if (!outcome) return completeState();
     if (outcome.status !== 'response') return finishModelFailure(context, outcome);
-    const plan = decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
+    const plan = await decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
     const tool = plan && options.tools.find((candidate) => candidate.id === plan.toolId);
     let input: JsonObject | undefined;
     try {

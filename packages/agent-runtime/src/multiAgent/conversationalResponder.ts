@@ -35,7 +35,7 @@ export async function callConversationalResponder<TResult>(
     !context.options.provider.capabilities.toolCalling
   )
     return { outcome, state };
-  const { output } = decodeTaskResponse<JsonValue>(outcome.response);
+  const { output } = await decodeTaskResponse<JsonValue>(outcome.response);
   if (
     output?.type !== 'result' ||
     isEvidenceIndependentResult(context.options.task, output.value, input)

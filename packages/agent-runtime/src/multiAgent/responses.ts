@@ -22,14 +22,14 @@ import { decodeTaskResponse } from './taskResponseDecoding';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
 import { isEvidenceIndependentResult } from './evidenceIndependentResult';
 
-export function consumeResponderResponse<TResult>(
+export async function consumeResponderResponse<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   response: LanguageModelResponse,
   input: TaskResponderInput,
   revised: boolean,
   correctionAttempted = false,
-): Partial<WorkflowState> {
+): Promise<Partial<WorkflowState>> {
   if (context.signal.aborted) {
     context.outcome = context.timedOut()
       ? { status: 'budget_exceeded', reason: 'The run exceeded its time limit.' }
@@ -44,11 +44,11 @@ export function consumeResponderResponse<TResult>(
     );
     return completeState();
   }
-  if (outputExceedsLimit(response, state.budget.maxPayloadBytes)) {
+  if (await outputExceedsLimit(response, state.budget.maxPayloadBytes)) {
     stop(context, 'The task responder output exceeded the payload limit.', 'budget_exceeded');
     return completeState();
   }
-  const { output: decoded, reason } = decodeTaskResponse<TResult>(response);
+  const { output: decoded, reason } = await decodeTaskResponse<TResult>(response);
   if (!decoded) {
     if (!correctionAttempted) {
       try {
@@ -197,23 +197,26 @@ export function consumeResponderResponse<TResult>(
   };
 }
 
-export function decodeResearchPlan(
+export async function decodeResearchPlan(
   response: LanguageModelResponse,
   maxPayloadBytes: number,
-): ResearchPlan | undefined {
+): Promise<ResearchPlan | undefined> {
   if (response.finishReason !== 'complete' || response.toolCalls.length > 0) return undefined;
-  if (outputExceedsLimit(response, maxPayloadBytes)) return undefined;
+  if (await outputExceedsLimit(response, maxPayloadBytes)) return undefined;
   try {
-    return parseResearchPlan(parseJsonOutput(response));
+    return parseResearchPlan(await parseJsonOutput(response));
   } catch {
     return undefined;
   }
 }
 
-function outputExceedsLimit(response: LanguageModelResponse, maxPayloadBytes: number): boolean {
+async function outputExceedsLimit(
+  response: LanguageModelResponse,
+  maxPayloadBytes: number,
+): Promise<boolean> {
   if (utf8ByteLength(response.text) > maxPayloadBytes) return true;
   try {
-    return utf8ByteLength(canonicalJson(parseJsonOutput(response))) > maxPayloadBytes;
+    return utf8ByteLength(canonicalJson(await parseJsonOutput(response))) > maxPayloadBytes;
   } catch {
     return false;
   }
