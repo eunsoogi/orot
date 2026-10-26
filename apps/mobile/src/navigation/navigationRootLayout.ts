@@ -6,12 +6,16 @@ export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
 export const NAVIGATION_MINIMUM_COLUMN_WIDTH = 320;
 // Keep aligned with NavigationRootGlassBar.railHeight: five 52pt controls and four 4pt gaps.
 export const NAVIGATION_ROOT_RAIL_HEIGHT = 5 * 52 + 4 * 4;
+// Mirror fixed control heights and stack spacing from NavigationGlassButton and NavigationGlassView.
+export const NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT = 48;
+export const NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING = 12;
 
-/** Checks the fixed native root-tab stack against its full usable vertical segment. */
-export function fitsNavigationRootRail(
+/** Checks a fixed native control stack against its measured usable vertical segment. */
+export function fitsNavigationRailSegment(
   availableHeight: number,
   topInset: number,
   bottomInset: number,
+  requiredControlHeight: number,
 ): boolean {
   return (
     Number.isFinite(availableHeight) &&
@@ -20,7 +24,23 @@ export function fitsNavigationRootRail(
     topInset >= 0 &&
     Number.isFinite(bottomInset) &&
     bottomInset >= 0 &&
-    availableHeight - topInset - bottomInset >= NAVIGATION_ROOT_RAIL_HEIGHT
+    Number.isFinite(requiredControlHeight) &&
+    requiredControlHeight >= 0 &&
+    availableHeight - topInset - bottomInset >= requiredControlHeight
+  );
+}
+
+/** Checks the fixed native root-tab stack against its full usable vertical segment. */
+export function fitsNavigationRootRail(
+  availableHeight: number,
+  topInset: number,
+  bottomInset: number,
+): boolean {
+  return fitsNavigationRailSegment(
+    availableHeight,
+    topInset,
+    bottomInset,
+    NAVIGATION_ROOT_RAIL_HEIGHT,
   );
 }
 

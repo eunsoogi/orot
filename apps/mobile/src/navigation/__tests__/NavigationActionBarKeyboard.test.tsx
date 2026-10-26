@@ -68,3 +68,39 @@ test('uses the bottom bar when the keyboard leaves too little room for the compl
     screen.getByTestId('navigation-bar-fallback-actions').props.children,
   ).toBe('tab-home');
 });
+
+test('uses the bottom bar when the keyboard leaves too little room for contextual actions', async () => {
+  await render(
+    <NavigationRootLayoutContext.Provider value={rightLayout}>
+      <NavigationActionBarPresentation
+        actions={[
+          {
+            id: 'back',
+            label: 'Back',
+            accessibilityLabel: 'Back',
+            testID: 'navigation-back',
+          },
+          {
+            id: 'home',
+            label: 'Home',
+            accessibilityLabel: 'Home',
+            testID: 'navigation-home',
+          },
+        ]}
+        bottomActions={<View testID="bottom-navigation-actions" />}
+        isDarkAppearance={false}
+        keyboardHeight={400}
+        keyboardVisible
+        onAction={jest.fn()}
+        reclaimRootTabInset={false}
+        safeAreaHandledByParent
+        surface={PresentationSurface}
+      />
+    </NavigationRootLayoutContext.Provider>,
+  );
+
+  expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
+  expect(
+    screen.getByTestId('navigation-bar-fallback-actions').props.children,
+  ).toBe('back,home');
+});

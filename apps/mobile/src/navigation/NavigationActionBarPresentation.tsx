@@ -24,7 +24,10 @@ import {
   NAVIGATION_ACTION_TOP_PADDING,
 } from './navigationLayout';
 import {
+  fitsNavigationRailSegment,
   fitsNavigationRootRail,
+  NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
+  NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
   NAVIGATION_ROOT_RAIL_GUTTER,
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
@@ -67,18 +70,30 @@ export function NavigationActionBarPresentation({
       ? NAVIGATION_ROOT_RAIL_GUTTER
       : candidateRightLayout?.railBottomInset;
   const hasRootTabs = actions.some(action => action.rootTab);
-  // The keyboard can shorten a rail after geometry resolution. Keep the fixed
-  // root stack in bottom flow when it no longer fits.
-  const rightLayout =
-    candidateRightLayout &&
-    (!hasRootTabs ||
-      fitsNavigationRootRail(
-        candidateRailHeight,
-        candidateRightLayout.railTopInset,
-        candidateRailBottomInset ?? 0,
-      ))
-      ? candidateRightLayout
-      : undefined;
+  const contextualActionCount = actions.filter(
+    action => action.id !== 'primary',
+  ).length;
+  // Native inner actions keep one flexible spacer, so each control also needs
+  // one stack gap.
+  // Keyboard resizing can remove room for either native stack. Move controls
+  // to bottom flow rather than clipping them.
+  const railFits = candidateRightLayout
+    ? hasRootTabs
+      ? fitsNavigationRootRail(
+          candidateRailHeight,
+          candidateRightLayout.railTopInset,
+          candidateRailBottomInset ?? 0,
+        )
+      : fitsNavigationRailSegment(
+          candidateRailHeight,
+          candidateRightLayout.railTopInset,
+          candidateRailBottomInset ?? 0,
+          contextualActionCount *
+            (NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
+              NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING),
+        )
+    : false;
+  const rightLayout = railFits ? candidateRightLayout : undefined;
   const isRightRail = rightLayout !== undefined;
   const laneActions = rightLayout
     ? actions.filter(action => action.id !== 'primary')
