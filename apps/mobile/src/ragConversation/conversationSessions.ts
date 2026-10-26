@@ -189,7 +189,8 @@ export function createConversationSessions() {
                     find(id).pendingMessage?.content ?? '',
                     event,
                   ),
-                  activity: copy.progressAnswer,
+                  // Stream content changes independently; keep the latest typed phase visible.
+                  activity: find(id).pendingMessage?.activity ?? copy.loading,
                 },
               });
           },

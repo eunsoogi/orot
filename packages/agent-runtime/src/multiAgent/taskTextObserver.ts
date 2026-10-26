@@ -1,8 +1,9 @@
 import type { LanguageModelStreamEvent } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import { reportTaskStreamEvent, type RuntimeContext } from './runtimeContext';
+import { projectDisplayTextUpdate } from './streamProjection';
 
-/** Raw JSON stays private even when a task projection rejects a partial value. */
+/** Projects only approved text and preserves replacements without exposing raw JSON. */
 export function projectedTaskText<TResult>(
   context: RuntimeContext<TResult>,
   input: TaskResponderInput,
@@ -30,13 +31,9 @@ export function createTaskTextObserver<TResult>(
     rawOutput = event.type === 'text_delta' ? rawOutput + event.text : event.text;
     const projected = projectedTaskText(context, input, rawOutput);
     const next = prefix + (projected ? (prefix ? '\n\n' : '') + projected : '');
-    if (next === displayed) return;
-    reportTaskStreamEvent(
-      context,
-      next.startsWith(displayed)
-        ? { type: 'text_delta', text: next.slice(displayed.length) }
-        : { type: 'text_snapshot', text: next },
-    );
+    const update = projectDisplayTextUpdate(displayed, next);
+    if (!update) return;
+    reportTaskStreamEvent(context, update);
     displayed = next;
   };
 }

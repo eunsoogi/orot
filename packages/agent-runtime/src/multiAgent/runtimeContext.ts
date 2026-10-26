@@ -41,6 +41,11 @@ export interface RuntimeContext<TResult> {
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   currentEvidence: EvidenceBatch;
+  /** Keeps the active source category so stop/cancel can close an in-flight search safely. */
+  activeEvidenceSearchSourceKind?: Extract<
+    MultiAgentProgressEvent,
+    { readonly type: 'evidence_search' }
+  >['sourceKind'];
   researchInput?: JsonObject;
   nativeToolMessages?: import('./nativeTools').NativeToolMessages;
   pendingNativeToolCallId?: string;
@@ -54,6 +59,13 @@ export function reportProgress<TResult>(
   context: RuntimeContext<TResult>,
   event: MultiAgentProgressEvent,
 ): void {
+  if (event.type === 'evidence_search') {
+    if (event.status === 'started') {
+      context.activeEvidenceSearchSourceKind = event.sourceKind;
+    } else if (context.activeEvidenceSearchSourceKind === event.sourceKind) {
+      context.activeEvidenceSearchSourceKind = undefined;
+    }
+  }
   try {
     context.onProgress?.(event);
   } catch {
@@ -79,6 +91,7 @@ export function stop<TResult>(
   status: FailureStatus = 'needs_clarification',
 ): void {
   context.outcome = { status, reason };
+  finishActiveEvidenceSearch(context, 'failed');
 }
 
 export function canceled<TResult>(
@@ -86,9 +99,21 @@ export function canceled<TResult>(
   providerStop: ProviderStopObservation = 'not_started',
 ): void {
   if (context.outcome?.status === 'cancelled') return;
-  context.outcome = context.timedOut()
+  const timedOut = context.timedOut();
+  context.outcome = timedOut
     ? { status: 'budget_exceeded', reason: 'The run exceeded its time limit.' }
     : { status: 'cancelled', providerStop };
+  finishActiveEvidenceSearch(context, timedOut ? 'failed' : 'cancelled');
+}
+
+/** Search nodes report success directly; this closes only an active search on an early exit. */
+function finishActiveEvidenceSearch<TResult>(
+  context: RuntimeContext<TResult>,
+  status: 'failed' | 'cancelled',
+): void {
+  const sourceKind = context.activeEvidenceSearchSourceKind;
+  if (!sourceKind) return;
+  reportProgress(context, { type: 'evidence_search', status, sourceKind });
 }
 
 export function completeState() {

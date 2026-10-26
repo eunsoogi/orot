@@ -28,6 +28,11 @@ export async function runDomainTestOperation(
         await import('./standardAdaptersProbe');
       return runStandardAdaptersProbe();
     }
+    case 'workflow-progress': {
+      const { runWorkflowProgressProbe } =
+        await import('./workflowProgressProbe');
+      return runWorkflowProgressProbe();
+    }
     case 'ai-scale-calendar': {
       const { measureScaleCalendar } = await import('./aiScaleCalendar');
       const runs = [];
