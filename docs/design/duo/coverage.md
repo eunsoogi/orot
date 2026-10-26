@@ -4,9 +4,21 @@ This inventory supports [issue #265](https://github.com/eunsoogi/orot/issues/265
 
 ## Evidence and acceptance boundary
 
-The source comparison uses worktree HEAD `c20fb48964d8b7ba4c69983c86d8dd76ab5d0757`. Reconcile this inventory again when feature routes are integrated. It is a source-backed coverage proposal, not a claim that Duo layout, every mockup's visual fidelity, or native interaction has passed.
+The route and renderer comparison uses current `main` at `2190b82f7709db2a6bfb65de0eb6edb75a7d0a6b`, merged into this issue branch at `a799b7d04cb789cbaec6d02f3982a0f5983f52e9`. Reconcile this inventory again when feature routes are integrated. It is a source-backed coverage proposal, not a claim that Duo layout matches the running app or that native interaction has passed.
 
-The registered mockup references are P01–P42 and P42-empty/P42-loading: 44 images, not 44 independent routes. Their owning issue links below contain the registered mockups. Every reference is mapped by its declared subject and source, including proposed features and mismatched entry-point descriptions. This mapping does not establish pixel fidelity or state coverage within the images. Images contain synthetic examples. Written rules and current renderers take precedence over invented controls, data, dimensions, or duplicated navigation in an image.
+The registered mockup references are P01–P42 and P42-empty/P42-loading: 44 images, not 44 independent routes. Their owning issue links below contain the registered mockups. Every reference is mapped by its declared subject and source, including proposed features and mismatched entry-point descriptions. Images contain synthetic examples. Written rules and current renderers take precedence over invented controls, data, dimensions, or duplicated navigation in an image.
+
+## Static gallery review
+
+On 2026-10-26, all 44 registered PNGs were visually reviewed in labeled contact sheets. The local `screens-v5` files and `github-assets` copies have matching SHA-256 digests for every reference. The review covers visible content and layout relationships; it is not a pixel comparison with the running app. The assets are expanded light-appearance mockups. They do not show dark appearance, larger text, keyboard-open forms, narrow Split View, or live loading and interaction behavior.
+
+- P01–P05 show the five root tabs with icon-only navigation at the lower right. P03 and P17 show the same embedded calendar composition; P17 does not add a root route.
+- P16 is titled as manual appointment entry, but its image shows the appointment list and add action, like P13. In the current app, `medical-manual` renders `AppointmentsScreen`, which owns the list and local create/edit form. The image is not evidence of a separate `ManualAppointmentScreen` presentation.
+- P30 shows the routed evidence detail with a Back control and source metadata. Keep it separate from the conditional `SourceEvidenceSheet` used by the standalone visit-question view; the screenshot does not establish that the sheet has a separate Duo presentation.
+- P42 shows an external-literature error presentation. P42-empty and P42-loading show local states of that same literature screen. They are examples, not a universal shared state renderer.
+- P33–P41 depict proposed features. Their images do not establish current routes or renderers and remain pending integration.
+
+The right navigation lane is visually reserved for controls in the expanded references. Static images cannot establish the native Liquid Glass material, the animated continuous selection indicator, accessibility behavior, or state retention after resizing. Those remain implementation and runtime checks.
 
 Status meanings:
 
@@ -147,8 +159,8 @@ These surfaces need their own compact/expanded/narrow-window review, including c
 
 Before dependent implementation, eunsoogi must resolve the entry-point decisions above and accept or correct the crosswalk. No unreachable component has been excluded. P33–P41 remain feature-integration obligations; they cannot count as implemented screens merely because their mockups exist.
 
-For each connected surface, the adaptation owner must compare its registered image with authentic app captures and preserve current controls, actual state, material and data semantics. Correct the image or implementation as appropriate when they differ. P16's wrapper attribution, P30's detail/sheet distinction, and P42's feature-specific recovery are explicit reconciliation points. Visual fidelity of all 44 images remains unaccepted by this inventory.
+For each connected surface, the adaptation owner must compare its registered image with authentic app captures and preserve current controls, actual state, material and data semantics. Correct the image or implementation as appropriate when they differ. The full static review records the P16 list-versus-form mismatch, P30's detail/sheet distinction, and P42's feature-specific recovery boundary; visual fidelity to the running app remains unaccepted without authentic captures.
 
-Native interaction proof remains outstanding: exercise the original primary action, resize/fold/unfold/rotate and both Split View placements, then read back draft/selection/scroll/job/undo/Back-stack state. Include compact, expanded and narrow readable layouts, keyboard, large text, dark mode and applicable permission/error/progress/confirmation presentations. Mockups and RNTL do not replace these observations.
+Native interaction proof remains outstanding: exercise the original primary action, resize/fold/unfold/rotate and both Split View placements, then read back draft/selection/scroll/job/undo/Back-stack state. Include compact, expanded and narrow readable layouts, keyboard, large text, dark mode and applicable permission/error/progress/confirmation presentations. The current opt-in Duo validation profile in [development guidance](../../development.md) runs a native host-launch case; it does not exercise screen layout or interactions. Mockups and RNTL do not replace these observations.
 
 This documentation change does not modify executable behavior and uses content, local-link, route/renderer and changed-scope readback plus `git diff --check`. No build, Simulator, behavior test, release or publication result is claimed. Keep issue #265 open until owner decisions and its required authentic evidence are reconciled.
