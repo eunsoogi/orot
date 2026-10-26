@@ -1,11 +1,16 @@
 import UIKit
 
-/// One joined 60pt glass surface with 52pt root targets and a moving selection view.
+/// Preserves one joined Glass surface and moving selection while switching between bottom and side layouts.
 final class NavigationRootGlassBar: UIVisualEffectView {
+    static let exteriorWidth: CGFloat = 48
+    /// Five 52pt targets plus four 4pt gaps keep rail buttons the same size as bottom targets.
+    static let railHeight: CGFloat = 276
+
     private let stack = UIStackView()
     private let indicator = UIView()
     private var descriptors: [NavigationActionDescriptor] = []
     private var buttons: [UIButton] = []
+    private var usesVerticalLayout = false
 
     init() {
         let material: UIVisualEffect
@@ -83,6 +88,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
                     if let label = child as? UILabel {
                         label.text = action.label
                         label.textColor = color
+                        label.isHidden = usesVerticalLayout
                     }
                 }
             }
@@ -92,6 +98,23 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         moveIndicator(animated: animated && !compositionChanged)
         // React Native may deliver actions before Auto Layout resolves the new button frames.
         setNeedsLayout()
+    }
+
+    /// Hides only visible tab titles in the narrow lane; button accessibility names remain unchanged.
+    func setVerticalLayout(_ isVertical: Bool) {
+        guard usesVerticalLayout != isVertical else { return }
+        usesVerticalLayout = isVertical
+        stack.axis = isVertical ? .vertical : .horizontal
+        layer.cornerRadius = isVertical ? Self.exteriorWidth / 2 : 30
+        for (button, action) in zip(buttons, descriptors) where action.rootTab {
+            for content in button.subviews.compactMap({ $0 as? UIStackView }) {
+                content.arrangedSubviews.compactMap { $0 as? UILabel }.forEach {
+                    $0.isHidden = isVertical
+                }
+            }
+        }
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     private var selectedFrame: CGRect? {
