@@ -40,7 +40,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 132);
+  assert.equal(actual.size, 142);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
@@ -97,7 +97,7 @@ test('two Release destinations partition the original work exactly once and pres
   assert.deepEqual(partitioned.map(key).sort(), original.map(key).sort());
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [66, 29],
+    [75, 30],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',
