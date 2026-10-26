@@ -18,3 +18,12 @@ test('standard adapter bridge coverage is scheduled exactly once by the provider
   ])
     assert.deepEqual(iosTestImpactForPath(path).cohorts, ['provider']);
 });
+
+test('an unregistered adapter lookalike retains the unknown helper fallback', () => {
+  const unknown = iosTestImpactForPath('apps/mobile/e2e/standardAdaptersUnregisteredProbe.ts');
+  assert.equal(unknown.reason, 'unknown-e2e-impact');
+  assert.deepEqual(
+    unknown.cohorts,
+    iosTestImpactForPath('apps/mobile/e2e/unregisteredProbe.ts').cohorts,
+  );
+});
