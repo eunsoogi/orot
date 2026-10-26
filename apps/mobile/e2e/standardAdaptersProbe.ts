@@ -35,7 +35,7 @@ export async function runStandardAdaptersProbe() {
   };
 }
 
-/** Exercise a synthetic evidence-tool round trip through the multi-agent graph in the Hermes test host. */
+/** Exercise production JSON decoding and citation binding through the multi-agent graph in Hermes. */
 async function runHermesToolMessageGraphProbe() {
   const callId = 'call_hermes_graph';
   const publication = {
@@ -226,5 +226,6 @@ async function runHermesToolMessageGraphProbe() {
     modelCalls: requests.length,
     messageRoundTrip,
     summary: result.value.summary,
+    citationSourceIds: result.citations.map(reference => reference.sourceId),
   };
 }
