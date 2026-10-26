@@ -107,7 +107,7 @@
             }
         }
 
-        /// Observe public UIKit navigation state while preserving recognizer configuration, delegates and route guards.
+        /// Observe public UIKit navigation and window geometry while preserving recognizers and route guards.
         @objc(navigationSnapshot:rejecter:)
         func navigationSnapshot(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
             DispatchQueue.main.async {
@@ -156,6 +156,7 @@
                 resolve(["navigation": observations, "events": self.gestureEvents,
                          "presentations": presentations,
                          "lifecycle": TestLifecycleObservation.snapshot(),
+                         "windowGeometry": NavigationGeometryTestObservation.snapshot(),
                          "symptomScrollTrace": self.symptomScrollTrace?.snapshot() ?? [:],
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])
             }

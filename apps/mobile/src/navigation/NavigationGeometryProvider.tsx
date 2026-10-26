@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import {
   type NativeSyntheticEvent,
@@ -13,6 +19,7 @@ import {
   type NavigationGeometryPayload,
   type NavigationGeometrySnapshot,
 } from './navigationGeometry';
+import { observeNavigationTest } from './navigationTestObservation';
 
 interface NavigationGeometryViewProps extends ViewProps {
   readonly onGeometryChange: (
@@ -41,10 +48,23 @@ export function NavigationGeometryProvider({
   );
   const onGeometryChange = useCallback(
     (event: NativeSyntheticEvent<NavigationGeometryPayload>) => {
-      setGeometry(createNavigationGeometrySnapshot(event.nativeEvent));
+      const snapshot = createNavigationGeometrySnapshot(event.nativeEvent);
+      // The opt-in XCTest observer receives geometry only; production has no registered sink.
+      observeNavigationTest('window-geometry', {
+        nativePayload: JSON.stringify(event.nativeEvent),
+        normalizedSnapshot: JSON.stringify(snapshot),
+      });
+      setGeometry(snapshot);
     },
     [],
   );
+  useEffect(() => {
+    if (!geometry) return;
+    // Observe the committed context value separately from the native event callback.
+    observeNavigationTest('window-geometry-context', {
+      normalizedSnapshot: JSON.stringify(geometry),
+    });
+  }, [geometry]);
 
   return (
     <NavigationGeometryContext.Provider value={geometry}>

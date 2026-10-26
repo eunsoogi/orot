@@ -114,6 +114,7 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+  'OrotUITests/WindowGeometryUITests/testNativeGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
   'OrotUITests/RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
@@ -174,7 +175,11 @@ export function iosTestInventory(profile, suite = 'all') {
     throw new Error('Unsupported integration test suite selection');
   // This profile proves native host launch only; Duo screen coverage has its own acceptance boundary.
   // Do not let an unknown Release profile fall through to the provider inventory.
-  if (profile === 'duo') return ['OrotUITests/TestHostConnectionTests/testHostLaunches'];
+  if (profile === 'duo')
+    return [
+      'OrotUITests/TestHostConnectionTests/testHostLaunches',
+      'OrotUITests/WindowGeometryUITests/testNativeGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+    ];
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();

@@ -4,6 +4,7 @@ export const iosFixtureGroups = Object.freeze({
     'AiFeatureNavigationUITests',
     'SafeAreaNavigationUITests',
     'RootNavigationUITests',
+    'WindowGeometryUITests',
     'PagedHealthRecordsUITests',
     'UnifiedImportUITests',
   ],
