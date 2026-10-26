@@ -116,6 +116,36 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testContextualBackAndHomeHonorDepartureConfirmationInRightRail() throws {
+        let app = XCUIApplication()
+        launch(app)
+        defer { app.terminate() }
+        try openManualHistory(app)
+        tap(app, "manual-history-add", in: "manual-history-scroll")
+        guard replace(app, "manual-history-title-input", with: "Synthetic rail draft") else { return }
+
+        let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
+        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
+        // Exercise the native rail controls and prove Home does not bypass the route's discard guard.
+        XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
+        XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
+        XCTAssertGreaterThan(back.toolbar.frame.midX, app.frame.midX)
+        XCTAssertLessThan(back.control.frame.midY, home.control.frame.midY)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        let leavePrompt = app.alerts["저장하지 않은 내용이 있어요"]
+        XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
+        leavePrompt.buttons["계속 편집"].tap()
+        XCTAssertEqual(UITestConditions.element(app, "manual-history-title-input").value as? String, "Synthetic rail draft")
+
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
+        XCTAssertTrue(UITestConditions.exists(confirmLeave), app.debugDescription)
+        confirmLeave.tap()
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        XCTAssertFalse(UITestConditions.element(app, "manual-history-title-input").exists)
+    }
+
+    @MainActor
     private func launch(_ app: XCUIApplication, largeText: Bool = false) {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         if largeText {
