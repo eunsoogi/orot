@@ -67,15 +67,67 @@ enum AppointmentReminderError: Error {
     case expired
 }
 
+/// Keeps feature-owned request operations injectable so their ordering can be tested without OS permission state.
+protocol AppointmentReminderNotificationCenter {
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String])
+    func removeDeliveredNotifications(withIdentifiers identifiers: [String])
+    func add(_ request: UNNotificationRequest) async throws
+}
+
+private struct SystemAppointmentReminderNotificationCenter: AppointmentReminderNotificationCenter {
+    let center: UNUserNotificationCenter
+
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    func removeDeliveredNotifications(withIdentifiers identifiers: [String]) {
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+    }
+
+    func add(_ request: UNNotificationRequest) async throws {
+        try await center.add(request)
+    }
+}
+
+struct AppointmentReminderRequestScheduler {
+    private let center: any AppointmentReminderNotificationCenter
+
+    init(center: any AppointmentReminderNotificationCenter) {
+        self.center = center
+    }
+
+    /// UserNotifications replaces pending requests with the same identifier; removing first opens an observable asynchronous gap.
+    func replace(_ request: UNNotificationRequest) async throws {
+        center.removeDeliveredNotifications(withIdentifiers: [AppointmentReminderNotifications.requestIdentifier])
+        try await center.add(request)
+    }
+
+    /// Explicit cancellation clears both pending and already delivered alerts owned by this feature.
+    func cancel() {
+        let identifiers = [AppointmentReminderNotifications.requestIdentifier]
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+    }
+}
+
 /// Owns one local request. No APNs registration, token, network, or EventKit write is involved.
 actor AppointmentReminderNotifications {
     static let shared = AppointmentReminderNotifications()
     static let requestIdentifier = "com.orot.visit-preparation"
-    private let center = UNUserNotificationCenter.current()
+    private let center: UNUserNotificationCenter
+    private let requestScheduler: AppointmentReminderRequestScheduler
     private let defaults = UserDefaults.standard
     private let selectionKey = "com.orot.visit-preparation.selection"
     private var replacement: Task<Void, Error>?
     private var revision = 0
+
+    init(center: UNUserNotificationCenter = .current()) {
+        self.center = center
+        requestScheduler = AppointmentReminderRequestScheduler(
+            center: SystemAppointmentReminderNotificationCenter(center: center),
+        )
+    }
 
     func readSelection() -> [String: Any]? {
         guard let selection = defaults.dictionary(forKey: selectionKey),
@@ -141,10 +193,10 @@ actor AppointmentReminderNotifications {
     }
 
     private func apply(_ plan: AppointmentReminderNotificationPlan?) async throws {
-        let identifiers = [Self.requestIdentifier]
-        center.removePendingNotificationRequests(withIdentifiers: identifiers)
-        center.removeDeliveredNotifications(withIdentifiers: identifiers)
-        guard let plan else { return }
+        guard let plan else {
+            requestScheduler.cancel()
+            return
+        }
         guard plan.fireAt > Date() else { throw AppointmentReminderError.expired }
         guard await authorizationStatus() == "authorized" else {
             throw AppointmentReminderError.permissionDenied
@@ -156,6 +208,6 @@ actor AppointmentReminderNotifications {
               let trigger = request.trigger as? UNCalendarNotificationTrigger,
               let next = trigger.nextTriggerDate(), next > Date()
         else { throw AppointmentReminderError.expired }
-        try await center.add(request)
+        try await requestScheduler.replace(request)
     }
 }
