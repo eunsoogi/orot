@@ -45,6 +45,15 @@
         private var observationSequence = 0
         private var gestureEvents: [[String: Any]] = []
         private let navigationObservationID = UUID().uuidString
+        private var symptomScrollTrace: SymptomScrollTrace?
+
+        override func invalidate() {
+            DispatchQueue.main.async {
+                self.symptomScrollTrace?.stop()
+                self.symptomScrollTrace = nil
+            }
+            super.invalidate()
+        }
 
         @objc override static func requiresMainQueueSetup() -> Bool {
             false
@@ -117,6 +126,10 @@
                     }
                 }
                 let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+                if self.symptomScrollTrace == nil {
+                    self.symptomScrollTrace = SymptomScrollTrace()
+                }
+                self.symptomScrollTrace?.refresh(windows: windows)
                 windows.filter(\.isKeyWindow).compactMap(\.rootViewController).forEach(visit)
                 let observations = controllers.map { navigation -> [String: Any] in
                     let navigationID = self.observationIdentifier(navigation, prefix: "navigation")
@@ -143,6 +156,7 @@
                 resolve(["navigation": observations, "events": self.gestureEvents,
                          "presentations": presentations,
                          "lifecycle": TestLifecycleObservation.snapshot(),
+                         "symptomScrollTrace": self.symptomScrollTrace?.snapshot() ?? [:],
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])
             }
         }
