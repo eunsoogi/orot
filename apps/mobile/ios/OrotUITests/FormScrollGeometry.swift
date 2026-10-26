@@ -9,7 +9,7 @@ struct FormScrollGeometry {
     init?(application: CGRect, scroll: CGRect, keyboard: CGRect?, reservedKeyboard: CGRect? = nil) {
         guard Self.valid(application), Self.valid(scroll) else { return nil }
         var visible = scroll.intersection(application)
-        // A drag can dismiss the keyboard. Retain its observed space until the input is refocused.
+        // A supplied reservation is a constraint, not an observation that the keyboard is currently present.
         for keyboard in [keyboard, reservedKeyboard].compactMap(\.self) {
             guard Self.valid(keyboard) else { return nil }
             visible.size.height = min(visible.maxY, keyboard.minY) - visible.minY
@@ -17,6 +17,14 @@ struct FormScrollGeometry {
         guard Self.valid(visible) else { return nil }
         self.application = application
         viewport = visible
+    }
+
+    /// Derive clipping from this evaluation; an explicit reserved frame is retained only for existing non-journal callers.
+    static func current(application: CGRect, scroll: CGRect, keyboard: CGRect?, input: CGRect?, referenceSize: CGSize?, reservedKeyboard: CGRect? = nil) -> Self? {
+        guard let geometry = Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservedKeyboard) else { return nil }
+        guard let keyboard, let input, let referenceSize else { return geometry }
+        guard let reservation = geometry.keyboardReservation(keyboard, for: input, referenceSize: referenceSize) else { return nil }
+        return Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservation)
     }
 
     /// A focused AX frame can contain only the visible slice. Retain the previously observed height as a minimum, not an unproved full extent.

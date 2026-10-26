@@ -10,12 +10,27 @@ const FORM_INPUT_ACCESSORY_IDS = {
   bodySite: 'symptom-form-body-site',
   severity: 'symptom-form-severity',
 };
-export const FORM_KEYBOARD_FIELDS = Object.entries(
-  FORM_INPUT_ACCESSORY_IDS,
-).map(([testSuffix, nativeID]) => ({ nativeID, testSuffix }));
-
 type FormInputKey = keyof typeof FORM_INPUT_ACCESSORY_IDS;
+type FormMode = 'create' | 'edit';
 
-export function formInputAccessoryID(field: FormInputKey): string | undefined {
-  return Platform.OS === 'ios' ? FORM_INPUT_ACCESSORY_IDS[field] : undefined;
+function nativeAccessoryID(field: FormInputKey, mode?: FormMode): string {
+  const id = FORM_INPUT_ACCESSORY_IDS[field];
+  // Distinct create/edit description props avoid the unchanged-ID reuse boundary.
+  return field === 'description' && mode ? `${id}-${mode}` : id;
+}
+
+export function formKeyboardFields(mode: FormMode) {
+  return (Object.keys(FORM_INPUT_ACCESSORY_IDS) as FormInputKey[]).map(
+    field => ({
+      nativeID: nativeAccessoryID(field, mode),
+      testSuffix: field,
+    }),
+  );
+}
+
+export function formInputAccessoryID(
+  field: FormInputKey,
+  mode?: FormMode,
+): string | undefined {
+  return Platform.OS === 'ios' ? nativeAccessoryID(field, mode) : undefined;
 }

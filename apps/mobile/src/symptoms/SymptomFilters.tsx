@@ -5,10 +5,10 @@ import {
   Platform,
   Pressable,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import type { SymptomFilter, SymptomStatus } from './types';
+import TextInput from './SymptomTextInput';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
 import styles from './SymptomFilters.styles';

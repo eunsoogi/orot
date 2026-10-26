@@ -1,22 +1,72 @@
+import CoreFoundation
 import XCTest
 
 /// Types synthetic observations through the product UI and its real encrypted repository.
 final class SymptomJournalUITests: OrotFailFastTestCase {
+    private let singleSeverityObservation = ProcessInfo.processInfo.environment["OROT_SINGLE_SEVERITY_DRAG"] == "1"
+    private let singleOnsetObservation = ProcessInfo.processInfo.environment["OROT_SINGLE_ONSET_REVEAL"] == "1"
+    private var severityDragObserved = false
+    private var severityGestureBeganAtMs: Double?
+    private var severityGestureEndedAtMs: Double?
+
     @MainActor
     func testCreationEditingFilteringAndResolutionSurviveRelaunch() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
         try launchJournal(app)
-        tap(app, "symptom-add")
-        replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true)
-        replace(app, "symptom-onset-date", "2025-04-02")
-        replace(app, "symptom-onset-time", "09:30")
-        tap(app, "symptom-status-active")
-        replace(app, "symptom-severity", "6", observeFocusGesture: true)
+        guard tap(app, "symptom-add") else { return }
+        guard replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true) else { return }
+        NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "create-description-focused")
+        if singleOnsetObservation {
+            var observed = false
+            FormUITestConditions.reveal(app.textFields["symptom-onset-date"], in: app, scroll: UITestConditions.element(app, "symptoms-scroll"), observeFirstDrag: { application, viewport, target, controls, start, end in
+                SymptomJournalUITestObservations.onsetReveal(app, application: application, viewport: viewport, target: target, controls: controls, start: start, end: end)
+                observed = true
+            })
+            XCTAssertTrue(observed, "The diagnostic must reach the first onset-date reveal drag")
+            return
+        }
+        guard replace(app, "symptom-onset-date", "2025-04-02") else { return }
+        guard replace(app, "symptom-onset-time", "09:30") else { return }
+        guard tap(app, "symptom-status-active") else { return }
+        if singleSeverityObservation {
+            // Incomplete geometry cannot justify an input gesture; reject it before touching severity.
+            print("Journal single severity diagnostic opt-in active")
+            let prior = diagnosticSnapshot(app, phase: "delivery-before-severity")
+            let delivery = prior?.last { event in
+                event["event"] as? String == "symptom-scroll-diagnostic"
+                    && ["layout", "content-size"].contains(event["phase"] as? String ?? "")
+            }
+            let requiredGeometry = ["contentOffset": ["x", "y"], "contentSize": ["width", "height"],
+                                    "contentInset": ["top", "left", "bottom", "right"], "layoutMeasurement": ["width", "height"]]
+            guard let atMs = delivery?["receivedAtMs"] as? Double, atMs.isFinite,
+                  let payload = (delivery?["payload"] as? String)?.data(using: .utf8),
+                  let geometry = (try? JSONSerialization.jsonObject(with: payload)) as? [String: Any],
+                  let metrics = geometry["latestScrollEvent"] as? [String: Any],
+                  requiredGeometry.allSatisfy({ name, keys in
+                      guard let fields = metrics[name] as? [String: Any] else { return false }
+                      return keys.allSatisfy {
+                          guard let number = fields[$0] as? NSNumber else { return false }
+                          return CFGetTypeID(number) != CFBooleanGetTypeID() && number.doubleValue.isFinite
+                      }
+                  })
+            else {
+                XCTFail("Severity diagnostic requires a delivered layout/content-size event with a finite receipt time and complete finite contentOffset, contentSize, contentInset and layoutMeasurement")
+                return
+            }
+        }
+        let severityCompleted = replace(app, "symptom-severity", "6", observeFocusGesture: true)
+        // A diagnostic completion proves only that one original focused drag was measured, never journal acceptance.
+        if singleSeverityObservation {
+            XCTAssertTrue(severityDragObserved, "The setup must reach the first focused severity drag")
+            return
+        }
+        // A failed edit already recorded an assertion; never wait for a keyboard action after that failure.
+        guard severityCompleted else { return }
         accessory(app, "symptom-keyboard-save-severity")
-        visible(app, "Synthetic intermittent tingling")
-        visible(app, "Your severity: 6/10")
-        visible(app, "User-entered · not clinician-confirmed")
+        guard visible(app, "Synthetic intermittent tingling") else { return }
+        guard visible(app, "Your severity: 6/10") else { return }
+        guard visible(app, "User-entered · not clinician-confirmed") else { return }
         let description = app.staticTexts.matching(NSPredicate(format:
             "identifier BEGINSWITH 'symptom-' AND identifier ENDSWITH '-description'")).firstMatch
         XCTAssertTrue(description.exists && description.isHittable)
@@ -27,22 +77,23 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         XCTAssertTrue(onset.exists)
         let originalOnset = UITestConditions.text(onset)
         XCTAssertEqual(originalOnset, "2025-04-02 at 09:30 (local time)")
-        tap(app, "symptom-edit-" + entryID)
-        replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true)
+        guard tap(app, "symptom-edit-" + entryID) else { return }
+        guard replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true) else { return }
+        NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "before-edit-accessory-wait")
         accessory(app, "symptom-keyboard-save-description")
         UITestConditions.value(UITestConditions.element(app, cardID + "-description"),
                                equals: "Synthetic tingling after lunch\nUsually in the afternoon")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
-        tap(app, "symptom-filter-active", towardTop: true)
-        replace(app, "symptom-filter-from-date", "2025-04-02")
-        replace(app, "symptom-filter-from-time", "09:30")
-        replace(app, "symptom-filter-through-date", "2025-04-02")
-        replace(app, "symptom-filter-through-time", "09:30")
+        guard tap(app, "symptom-filter-active", towardTop: true) else { return }
+        guard replace(app, "symptom-filter-from-date", "2025-04-02") else { return }
+        guard replace(app, "symptom-filter-from-time", "09:30") else { return }
+        guard replace(app, "symptom-filter-through-date", "2025-04-02") else { return }
+        guard replace(app, "symptom-filter-through-time", "09:30") else { return }
         accessory(app, "symptom-filter-keyboard-apply-through-time")
         UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Active")
-        tap(app, "symptom-resolve-" + entryID)
+        guard tap(app, "symptom-resolve-" + entryID) else { return }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-empty")))
-        tap(app, "symptom-filter-resolved", towardTop: true)
+        guard tap(app, "symptom-filter-resolved", towardTop: true) else { return }
         UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Resolved")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
         capture(app, "symptom-journal-resolved")
@@ -50,7 +101,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         try launchJournal(app)
         UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Resolved")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
-        visible(app, "User-entered · not clinician-confirmed")
+        guard visible(app, "User-entered · not clinician-confirmed") else { return }
         capture(app, "symptom-journal-persisted-after-relaunch")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
@@ -60,6 +111,8 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     private func launchJournal(_ app: XCUIApplication) throws {
         // No provider, HealthKit, clock, or database adapter replaces the journal's product path.
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        // The passive marker is opted in for this scenario; diagnostic-only early-exit flags remain separate.
+        app.launchArguments += ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
@@ -73,14 +126,17 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func replace(_ app: XCUIApplication, _ identifier: String, _ value: String, multiline: Bool = false, observeCursorTap: Bool = false, observeFocusGesture: Bool = false) {
+    private func replace(_ app: XCUIApplication, _ identifier: String, _ value: String, multiline: Bool = false, observeCursorTap: Bool = false, observeFocusGesture: Bool = false) -> Bool {
         let input = multiline ? app.textViews[identifier] : app.textFields[identifier]
         XCTAssertTrue(UITestConditions.exists(input))
-        FormUITestConditions.replace(input, with: value, in: app, scrollID: "symptoms-scroll", observeCursorTap: observeCursorTap ? { phase in
-            self.observeJournalCursorTap(app, input: input, phase: phase)
-        } : nil, observeFocusGesture: observeFocusGesture ? { phase, reservation in
+        return FormUITestConditions.replace(input, with: value, in: app, scrollID: "symptoms-scroll", observeCursorTap: observeCursorTap ? { phase in
+            SymptomJournalUITestObservations.cursorTap(app, input: input, phase: phase)
+        } : nil, observeFocusGesture: SymptomJournalUITestObservations.onsetFocusObserver(app, input: input, identifier: identifier, forwarding: observeFocusGesture ? { phase, reservation in
             self.observeJournalFocusGesture(app, input: input, phase: phase, reservation: reservation)
-        } : nil)
+            if phase == "single-observation-complete" {
+                self.severityDragObserved = true
+            }
+        } : nil), stopAfterFirstFocusDrag: singleSeverityObservation && observeFocusGesture)
     }
 
     /// AX reads are sequential observations around the unchanged severity gestures, not an atomic layout snapshot.
@@ -109,42 +165,53 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
             "alerts=\(app.alerts.allElementsBoundByIndex.map(\.label))",
         ].joined(separator: "; ")
         XCTContext.runActivity(named: "Journal severity focus \(phase): \(observations)") { _ in }
-    }
-
-    /// Diagnose focus loss at the unchanged edit cursor tap; geometry and screenshots are observations, not new pass conditions.
-    @MainActor
-    private func observeJournalCursorTap(_ app: XCUIApplication, input: XCUIElement, phase: String) {
-        func geometry(_ element: XCUIElement) -> String {
-            let exists = element.exists
-            return "exists=\(exists), frame=\(exists ? String(describing: element.frame) : "absent"), hittable=\(exists && element.isHittable)"
-        }
-        let keyboard = app.keyboards.firstMatch
-        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true"))
-            .allElementsBoundByIndex.map(\.identifier)
-        let observations = [
-            "input: \(geometry(input))",
-            "keyboard: \(geometry(keyboard))",
-            "back: \(geometry(app.buttons["navigation-back"]))",
-            "home: \(geometry(app.buttons["navigation-home"]))",
-            "journalVisible=\(UITestConditions.element(app, "symptoms-title").exists)",
-            "alerts=\(app.alerts.allElementsBoundByIndex.map(\.label))",
-            "focusedIdentifiers=\(focused)",
-        ].joined(separator: "; ")
-        XCTContext.runActivity(named: "Journal cursor tap \(phase): \(observations)") { activity in
-            let screenshot = XCTAttachment(screenshot: app.screenshot())
-            screenshot.name = "journal-cursor-tap-\(phase)"
-            screenshot.lifetime = .keepAlways
-            activity.add(screenshot)
+        if singleSeverityObservation {
+            // These are contemporaneous public AX observations; absent tabs remain unavailable rather than inferred from setup.
+            let selected = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'navigation-tab-'")).allElementsBoundByIndex.filter(\.isSelected).map(\.identifier)
+            print("Journal diagnostic route symptomsVisible=\(UITestConditions.element(app, "symptoms-title").exists), selectedTab=\(selected.isEmpty ? "unavailable" : selected.joined(separator: ","))")
+            // Host observation boundaries bracket the gesture call; they are not native touch timestamps.
+            if phase == "after-scroll-1" {
+                severityGestureEndedAtMs = Date().timeIntervalSince1970 * 1000
+            }
+            _ = diagnosticSnapshot(app, phase: phase)
+            if phase == "before-scroll-1" {
+                severityGestureBeganAtMs = Date().timeIntervalSince1970 * 1000
+            }
         }
     }
 
+    /// Interpret the helper's single raw snapshot without repairing missing, truncated or stale observations.
     @MainActor
-    private func tap(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false) {
+    private func diagnosticSnapshot(_ app: XCUIApplication, phase: String) -> [[String: Any]]? {
+        guard let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "severity-\(phase)-native-navigation"),
+              let lifecycle = snapshot["lifecycle"] as? [[String: Any]]
+        else {
+            print("Journal native snapshot \(phase): unavailable or truncated")
+            return nil
+        }
+        let events = lifecycle.filter { $0["event"] as? String == "symptom-scroll-diagnostic" }
+        let trace = snapshot["symptomScrollTrace"] as? [String: Any] ?? [:]
+        print("Journal native snapshot \(phase): atMs=\(String(describing: snapshot["atMs"])), ringCount=\(lifecycle.count), selection=\(String(describing: trace["selection"])), nativeRecorded=\(String(describing: trace["recordedCount"])), nativeDropped=\(String(describing: trace["droppedCount"])), hostStartBoundaryMs=\(String(describing: severityGestureBeganAtMs)), hostEndBoundaryMs=\(String(describing: severityGestureEndedAtMs))")
+        if phase == "single-observation-complete" {
+            XCTAssertEqual((trace["selection"] as? [String: Any])?["attached"] as? Bool, true, "The symptom UIScrollView trace must actually attach")
+            XCTAssertTrue((trace["events"] as? [[String: Any]])?.contains {
+                $0["event"] as? String == "symptom-native-scroll-pan" && $0["isScrollPan"] as? Bool == true && $0["ownerIsScrollView"] as? Bool == true
+                    && (($0["callbackAtMs"] as? Double) ?? -.infinity) >= (severityGestureBeganAtMs ?? .infinity)
+            } == true, "The existing scroll pan must deliver a callback after this severity gesture began")
+        }
+        return events
+    }
+
+    @MainActor
+    private func tap(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false) -> Bool {
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target))
-        FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll", towardTop: towardTop)
-        XCTAssertTrue(target.isHittable)
+        let revealed = FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll", towardTop: towardTop) != nil
+        let hittable = target.isHittable
+        XCTAssertTrue(hittable)
+        guard revealed, hittable else { return false }
         target.tap()
+        return true
     }
 
     @MainActor
@@ -155,11 +222,14 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func visible(_ app: XCUIApplication, _ text: String) {
+    private func visible(_ app: XCUIApplication, _ text: String) -> Bool {
         let target = app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
         XCTAssertTrue(UITestConditions.exists(target))
-        FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll", towardTop: true)
-        XCTAssertTrue(target.isHittable)
+        let revealed = FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll", towardTop: true) != nil
+        let hittable = target.isHittable
+        XCTAssertTrue(hittable)
+        guard revealed, hittable else { return false }
+        return true
     }
 
     @MainActor

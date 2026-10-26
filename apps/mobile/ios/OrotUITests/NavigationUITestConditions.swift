@@ -13,6 +13,35 @@ enum NavigationUITestConditions {
         let bottom: CGFloat
     }
 
+    /// Attach one raw navigation marker read; missing or truncated JSON stays unavailable without polling.
+    static func observationSnapshot(_ app: XCUIApplication, testCase: XCTestCase, attachmentName: String) -> [String: Any]? {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
+        let data = Data(payload.utf8)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = attachmentName
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
+    /// Read the existing interval-refreshed marker once; missing data remains unavailable, never a forced live snapshot.
+    static func symptomAccessorySnapshot(_ app: XCUIApplication, testCase: XCTestCase, phase: String) {
+        let snapshot = observationSnapshot(app, testCase: testCase, attachmentName: "symptom-accessory-\(phase)-raw")
+        let trace = snapshot?["symptomScrollTrace"] as? [String: Any]
+        let payload: [String: Any] = [
+            "phase": phase, "sampled": true,
+            "markerReadAtMs": Date().timeIntervalSince1970 * 1000,
+            "bridgeSampleAtMs": snapshot?["atMs"] as Any? ?? NSNull(),
+            "descriptionAccessory": trace?["descriptionAccessory"] as Any? ?? ["status": "unavailable"],
+        ]
+        let data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data("{\"status\":\"unavailable\"}".utf8)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "symptom-accessory-\(phase)-sample"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+    }
+
     /// The test-only root exposes the public native SafeAreaListener event. Compare its actual frame before using the insets for another view.
     static func safeArea(_ app: XCUIApplication, testCase: XCTestCase? = nil) throws -> SafeAreaObservation {
         let marker = UITestConditions.element(app, "safe-area-test-observation")

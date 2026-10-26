@@ -1,4 +1,5 @@
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import TextInput from './SymptomTextInput';
 import type { SymptomEntry } from '@orot/storage';
 import styles from './SymptomForm.styles';
 

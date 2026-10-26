@@ -1,20 +1,14 @@
 import { useState } from 'react';
-import {
-  Button,
-  Keyboard,
-  Platform,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Button, Keyboard, Platform, Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
+import TextInput from './SymptomTextInput';
 import { toSymptomTimestamp } from './dateTime';
 import SymptomCreateFields from './SymptomCreateFields';
 import styles from './SymptomForm.styles';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import type { NewSymptomDraft, SymptomEdit } from './types';
 import {
-  FORM_KEYBOARD_FIELDS,
+  formKeyboardFields,
   formInputAccessoryID,
 } from './symptomFormKeyboard';
 
@@ -136,7 +130,7 @@ export default function SymptomForm({
         multiline
         onChangeText={change(setDescription)}
         placeholder="Describe what you feel"
-        inputAccessoryViewID={formInputAccessoryID('description')}
+        inputAccessoryViewID={formInputAccessoryID('description', mode)}
         style={[styles.input, styles.description]}
         testID="symptom-description"
         value={description}
@@ -224,7 +218,7 @@ export default function SymptomForm({
               },
             },
           ]}
-          fields={FORM_KEYBOARD_FIELDS}
+          fields={formKeyboardFields(mode)}
         />
       ) : null}
     </View>
