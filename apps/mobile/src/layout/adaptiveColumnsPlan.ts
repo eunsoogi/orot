@@ -11,7 +11,10 @@ export interface AdaptiveColumnsInput {
   readonly fontScale: number;
   readonly systemInsets: NavigationOcclusion['systemInsets'];
   readonly viewportInsets: NavigationOcclusion['viewportInsets'];
-  readonly measuredWidth?: number | null;
+  readonly measuredBounds?: {
+    readonly x: number;
+    readonly width: number;
+  } | null;
   readonly safeAreaFrame?: NavigationGeometryRect | null;
   readonly usableRegions?: readonly NavigationGeometryRect[];
   readonly hasNativeDivision?: boolean;
@@ -61,7 +64,7 @@ export function resolveAdaptiveColumns({
   fontScale,
   systemInsets,
   viewportInsets,
-  measuredWidth,
+  measuredBounds,
   safeAreaFrame,
   usableRegions,
   hasNativeDivision = false,
@@ -83,19 +86,22 @@ export function resolveAdaptiveColumns({
         nonNegative(viewportInsets.right),
       ),
   );
-  const contentWidth =
-    measuredWidth !== null &&
-    measuredWidth !== undefined &&
-    Number.isFinite(measuredWidth) &&
-    measuredWidth > 0
-      ? measuredWidth
-      : fallbackWidth;
+  const hasMeasuredBounds =
+    measuredBounds !== null &&
+    measuredBounds !== undefined &&
+    Number.isFinite(measuredBounds.x) &&
+    Number.isFinite(measuredBounds.width) &&
+    measuredBounds.width > 0;
+  const contentWidth = hasMeasuredBounds ? measuredBounds.width : fallbackWidth;
   const scale =
     Number.isFinite(fontScale) && fontScale > 0 ? Math.max(1, fontScale) : 1;
   const minimumWidth =
     positive(minColumnWidth, NAVIGATION_MINIMUM_COLUMN_WIDTH) * scale;
   const requestedGap = positive(columnGap, ADAPTIVE_COLUMN_GAP);
-  const regionOriginX = safeAreaFrame?.x ?? nonNegative(systemInsets.left);
+  // Native regions use window coordinates, so clip them to the measured host before translating offsets.
+  const regionOriginX = hasMeasuredBounds
+    ? measuredBounds.x
+    : (safeAreaFrame?.x ?? nonNegative(systemInsets.left));
   const regionEndX = regionOriginX + contentWidth;
   const regions = validRegions(usableRegions)
     .map(region => {

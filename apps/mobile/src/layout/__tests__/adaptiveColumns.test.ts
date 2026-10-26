@@ -40,7 +40,7 @@ test('subtracts safe edges and the right rail once when no parent measurement ex
 test('pairs native regions and clips the rail from measured content only once', () => {
   const plan = resolveAdaptiveColumns({
     windowWidth: 1000,
-    measuredWidth: 940,
+    measuredBounds: { x: 0, width: 940 },
     fontScale: 1,
     systemInsets: clearInsets,
     viewportInsets: { ...clearInsets, right: 60 },
@@ -59,6 +59,43 @@ test('pairs native regions and clips the rail from measured content only once', 
     secondaryWidth: 428,
     columnGap: 24,
   });
+});
+
+test('clips window regions to a padded host before translating panel widths', () => {
+  const plan = resolveAdaptiveColumns({
+    windowWidth: 1000,
+    measuredBounds: { x: 24, width: 872 },
+    fontScale: 1,
+    systemInsets: clearInsets,
+    viewportInsets: { ...clearInsets, right: 80 },
+    safeAreaFrame: { x: 0, y: 0, width: 1000, height: 800 },
+    usableRegions: [
+      { x: 0, y: 0, width: 490, height: 800 },
+      { x: 510, y: 0, width: 410, height: 800 },
+    ],
+    hasNativeDivision: true,
+    hasSecondary: true,
+  });
+
+  expect(plan).toMatchObject({
+    columns: 2,
+    contentWidth: 872,
+    leadingInset: 0,
+    primaryWidth: 464,
+    secondaryWidth: 384,
+    columnGap: 24,
+  });
+  expect(24 + plan.leadingInset + plan.primaryWidth).toBeLessThanOrEqual(490);
+  expect(
+    24 + plan.leadingInset + plan.primaryWidth + plan.columnGap,
+  ).toBeGreaterThanOrEqual(510);
+  expect(
+    24 +
+      plan.leadingInset +
+      plan.primaryWidth +
+      plan.columnGap +
+      plan.secondaryWidth,
+  ).toBeLessThanOrEqual(920);
 });
 
 test('falls back to one native region when two readable panels do not fit', () => {

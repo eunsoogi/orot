@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
@@ -9,6 +9,34 @@ import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
 } from '../index';
+
+const measurableView = View as unknown as {
+  prototype: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  };
+};
+const windowBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
+
+beforeEach(() => windowBounds.clear());
+
+jest
+  .spyOn(measurableView.prototype, 'measureInWindow')
+  .mockImplementation(function (
+    this: { readonly props: { readonly testID?: string } },
+    callback,
+  ) {
+    const bounds = windowBounds.get(this.props.testID ?? '');
+    if (bounds) callback(bounds.x, 0, bounds.width, 600);
+  });
+
+function setWindowBounds(testID: string, x: number, width: number) {
+  windowBounds.set(testID, { x, width });
+}
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');
@@ -96,6 +124,7 @@ test('preserves the previous route scene state while opening and leaving a child
       ?.flexDirection,
   ).toBe('column');
   await fireEvent.press(screen.getByTestId('home-draft'));
+  setWindowBounds('home-columns-host', 0, 1400);
   await fireEvent(screen.getByTestId('home-columns-host'), 'layout', {
     nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
   });

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import type { HostInstance } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
@@ -41,8 +42,29 @@ export function AdaptiveColumns({
   const { width, fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
   const geometry = useNavigationGeometry();
-  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+  const hostRef = useRef<HostInstance | null>(null);
+  const [measuredBounds, setMeasuredBounds] = useState<{
+    readonly x: number;
+    readonly width: number;
+  } | null>(null);
   const hasSecondary = secondary !== undefined && secondary !== null;
+  const measureHost = useCallback(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    // Native geometry uses window coordinates, so local layout offsets are not interchangeable.
+    host.measureInWindow((x, _y, nextWidth) => {
+      if (!Number.isFinite(x) || !Number.isFinite(nextWidth) || nextWidth <= 0)
+        return;
+      setMeasuredBounds(previous =>
+        previous !== null &&
+        Math.abs(previous.x - x) < 0.5 &&
+        Math.abs(previous.width - nextWidth) < 0.5
+          ? previous
+          : { x, width: nextWidth },
+      );
+    });
+  }, []);
   const plan = useMemo(
     () =>
       resolveAdaptiveColumns({
@@ -50,7 +72,7 @@ export function AdaptiveColumns({
         fontScale,
         systemInsets: occlusion.systemInsets,
         viewportInsets: occlusion.viewportInsets,
-        measuredWidth,
+        measuredBounds,
         safeAreaFrame: geometry?.safeAreaFrame,
         usableRegions: geometry?.usableRegions,
         hasNativeDivision: geometry?.reservedRegions.some(
@@ -61,8 +83,21 @@ export function AdaptiveColumns({
         ),
         hasSecondary,
       }),
-    [fontScale, geometry, hasSecondary, measuredWidth, occlusion, width],
+    [fontScale, geometry, hasSecondary, measuredBounds, occlusion, width],
   );
+
+  useEffect(() => {
+    measureHost();
+  }, [
+    fontScale,
+    geometry,
+    measureHost,
+    occlusion.systemInsets.left,
+    occlusion.systemInsets.right,
+    occlusion.viewportInsets.left,
+    occlusion.viewportInsets.right,
+    width,
+  ]);
 
   useEffect(() => {
     if (!routeKey) return;
@@ -100,15 +135,8 @@ export function AdaptiveColumns({
 
   return (
     <View
-      onLayout={({ nativeEvent }) => {
-        const nextWidth = nativeEvent.layout.width;
-        if (!Number.isFinite(nextWidth) || nextWidth <= 0) return;
-        setMeasuredWidth(previous =>
-          previous !== null && Math.abs(previous - nextWidth) < 0.5
-            ? previous
-            : nextWidth,
-        );
-      }}
+      onLayout={measureHost}
+      ref={hostRef}
       style={styles.measurementHost}
       testID={`${testID}-host`}
     >
