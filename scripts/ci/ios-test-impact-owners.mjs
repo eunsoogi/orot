@@ -3,6 +3,14 @@ export const maintainedNativeTestOwners = new Map([
   ['apps/mobile/ios/orotintegrationtests/standardadapterintegrationtests.swift', ['provider']],
   ['apps/mobile/ios/orotuitests/recordingexportuitests.swift', ['recording-evidence']],
   ['apps/mobile/ios/orotuitests/transcriptevidenceuitests.swift', ['recording-evidence']],
+  [
+    'apps/mobile/ios/orotuitests/orientationpresentationanchoruitests.swift',
+    ['navigation-features'],
+  ],
+  [
+    'apps/mobile/ios/orotintegrationtests/windowpresentationanchorintegrationtests.swift',
+    ['core-integration'],
+  ],
   ['apps/mobile/ios/orotuitests/pagedhealthrecordsuitests.swift', ['navigation-routes']],
   [
     'apps/mobile/ios/orotuitests/unifiedimportuitests.swift',
@@ -40,4 +48,21 @@ export const recordingCohorts = [
   'speech',
 ];
 
+// The presentation anchor reaches its direct native, share-sheet and orientation consumers.
+export const windowAnchorCohorts = [
+  'core-integration',
+  'recording-evidence',
+  'navigation-features',
+];
 export const workflowProgressCohorts = ['core-integration'];
+
+// Provider changes reach both native bridges and the feature workflows that consume them.
+export const providerCohorts = [
+  'core-integration',
+  'provider',
+  'selection',
+  'local-model',
+  'questions',
+  'calendar',
+  'health',
+];

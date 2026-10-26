@@ -108,11 +108,15 @@ public extension RecordingModule {
         reject: @escaping RCTPromiseRejectBlock,
     ) {
         DispatchQueue.main.async {
+            let lifecycle = RecordingExportPresentationLifecycle {
+                self.finishExport(operation, reject: reject)
+            }
             #if OROT_TESTS
                 TestLifecycleObservation.record("export-presentation-enqueued", fields: ["syntheticCancellation": simulateCancellationAfterPresentation])
             #endif
-            guard let presenter = Self.activePresenter() else {
-                guard self.finishExport(operation, reject: reject) else { return }
+            // The bridge has no invoking UIView, so resolve its single foreground key window instead of guessing a scene.
+            guard let anchor = WindowPresentationAnchor.resolve() else {
+                guard lifecycle.finishIfNeeded() else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
@@ -125,7 +129,7 @@ public extension RecordingModule {
                 #if OROT_TESTS
                     TestLifecycleObservation.record("export-completion", fields: ["completed": completed, "hasError": error != nil])
                 #endif
-                guard self.finishExport(operation, reject: reject) else { return }
+                guard lifecycle.finishIfNeeded() else { return }
                 if let error {
                     reject("RECORDING_EXPORT_FAILED", "The selected export activity failed.", error as NSError)
                     return
@@ -136,27 +140,50 @@ public extension RecordingModule {
             activity.completionWithItemsHandler = { _, completed, _, error in
                 completeExport(completed, error)
             }
-            if let popover = activity.popoverPresentationController {
-                popover.sourceView = presenter.view
-                popover.sourceRect = CGRect(
-                    x: presenter.view.bounds.midX,
-                    y: presenter.view.bounds.midY,
-                    width: 1,
-                    height: 1,
-                )
+            let popoverConfiguration = anchor.apply(to: activity)
+            guard anchor.isCurrent, popoverConfiguration != false else {
+                guard lifecycle.finishIfNeeded() else { return }
+                reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
+                return
             }
+            let popoverConfigured = popoverConfiguration == true
+            #if OROT_TESTS
+                TestLifecycleObservation.record(
+                    "export-presentation-anchor",
+                    fields: anchor.testObservation(
+                        popoverAvailable: activity.popoverPresentationController != nil,
+                        popoverConfigured: popoverConfigured,
+                    ),
+                )
+            #endif
             #if OROT_TESTS
                 TestLifecycleObservation.record("export-present-called")
             #endif
-            presenter.present(activity, animated: true) {
+            anchor.present(activity, animated: true) { didPresent in
+                let disposition = lifecycle.completePresentation(
+                    didPresent: didPresent,
+                    controllerIsLive: activity.presentingViewController != nil || activity.viewIfLoaded?.window != nil,
+                    rejectUnavailable: {
+                        reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
+                    },
+                )
                 #if OROT_TESTS
-                    TestLifecycleObservation.record("export-presentation-completion", fields: ["presenterMatches": activity.presentingViewController === presenter])
+                    TestLifecycleObservation.record(
+                        "export-presentation-completion",
+                        fields: [
+                            "presentationDisposition": disposition.rawValue,
+                            "presentationRelationshipMatches": anchor.presentationRelationshipMatches(activity),
+                            "presentedControllerSharesWindow": anchor.presentedControllerSharesWindow(activity),
+                        ],
+                    )
                 #endif
-                guard activity.presentingViewController === presenter else {
-                    guard self.finishExport(operation, reject: reject) else { return }
-                    reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
+                if disposition == .liveButUnverified {
+                    #if OROT_TESTS
+                        TestLifecycleObservation.record("export-presentation-unverified-retained")
+                    #endif
                     return
                 }
+                guard disposition == .confirmed else { return }
                 if simulateCancellationAfterPresentation {
                     #if OROT_TESTS
                         TestLifecycleObservation.record("export-synthetic-cancel-scheduled")
@@ -191,16 +218,5 @@ public extension RecordingModule {
             reject("RECORDING_EXPORT_CLEANUP_FAILED", "The temporary export could not be removed.", nil)
             return false
         }
-    }
-
-    private static func activePresenter() -> UIViewController? {
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-        var presenter = scene?.windows.first(where: \.isKeyWindow)?.rootViewController
-        while let presented = presenter?.presentedViewController {
-            presenter = presented
-        }
-        return presenter
     }
 }

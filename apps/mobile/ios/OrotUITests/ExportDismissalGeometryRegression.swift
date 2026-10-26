@@ -1,10 +1,42 @@
 import XCTest
 
-/// Run pure geometry regressions inside the existing Export case, so focused and full selections retain these checks.
+/// Keeps dismissal geometry and live share-sheet resize checks inside the existing Export case.
 enum ExportDismissalGeometryRegression {
     private static let observer = "00000000-0000-4000-8000-000000000001"
     private static let window = CGRect(x: 0, y: 0, width: 375, height: 667)
     private static let safe = CGRect(x: 0, y: 20, width: 375, height: 647)
+
+    @MainActor
+    static func verifyModalRemainsOpenAcrossOrientationChanges(
+        app: XCUIApplication,
+        dismissal: XCUIElement,
+    ) -> XCTAttachment {
+        let portraitViewport = app.frame
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = NSPredicate { _, _ in
+            dismissal.exists && app.frame.width > app.frame.height && app.frame.width != portraitViewport.width
+        }
+        XCTAssertEqual(
+            UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: landscape, object: nil)]),
+            .completed,
+            "The native share sheet must remain open when its window rotates to landscape",
+        )
+        XCTAssertTrue(dismissal.exists, app.debugDescription)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "audio-share-sheet-landscape"
+        screenshot.lifetime = .keepAlways
+
+        // Return to the original viewport before the caller reacquires its dismissal hit region.
+        XCUIDevice.shared.orientation = .portrait
+        let portrait = NSPredicate { _, _ in dismissal.exists && app.frame.height > app.frame.width }
+        XCTAssertEqual(
+            UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: portrait, object: nil)]),
+            .completed,
+            "The share sheet must remain attached when its window returns to portrait",
+        )
+        return screenshot
+    }
 
     static func verify() throws {
         // Expanded geometry is the hosted failure's public frame; the smaller detent represents the local path.
