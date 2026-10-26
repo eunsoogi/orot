@@ -36,9 +36,9 @@ test.each([
   ['visit questions', createVisitQuestionTaskResponder()],
 ] as const)(
   'serializes the real %s workflow as Apple guided output',
-  (_, contract) => {
+  async (_, contract) => {
     const provider = new AppleFoundationModelsProvider(new FakeNativeBridge());
-    const built = buildTaskRequest(
+    const built = await buildTaskRequest(
       provider,
       contract as TaskResponderContract<unknown>,
       input,
@@ -104,7 +104,7 @@ test('sends the real workflow to the selected ChatGPT slug without unsupported c
     issuedClientID: 'synthetic',
     model: { slug: 'chosen-model', displayName: 'Chosen' },
   });
-  const built = buildTaskRequest(
+  const built = await buildTaskRequest(
     provider,
     createAppointmentClassificationTask(),
     input,
@@ -115,7 +115,7 @@ test('sends the real workflow to the selected ChatGPT slug without unsupported c
   expect(bridge.started[0]?.request.model).toBe('chosen-model');
 });
 
-test('serializes mixed-source summary choices and constrained top-level citation IDs for Apple', () => {
+test('serializes mixed-source summary choices and constrained top-level citation IDs for Apple', async () => {
   const evidence = {
     ...summaryEvidence,
     items: [
@@ -127,7 +127,7 @@ test('serializes mixed-source summary choices and constrained top-level citation
       },
     ],
   };
-  const built = buildTaskRequest(
+  const built = await buildTaskRequest(
     new AppleFoundationModelsProvider(new FakeNativeBridge()),
     symptomSummaryTask,
     { ...input, evidence },

@@ -70,7 +70,7 @@ export async function callPartitionedTaskResponse<TResult>(
         remainingModelCalls: Math.max(0, state.budget.maxModelCalls - modelCalls),
       },
     };
-    const request = buildTaskRequest(
+    const request = await buildTaskRequest(
       context.options.provider,
       context.options.task,
       activeInput,

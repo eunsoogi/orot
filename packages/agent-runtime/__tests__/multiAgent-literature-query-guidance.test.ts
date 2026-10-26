@@ -5,7 +5,7 @@ import { makeProvider } from './multiAgent-external-evidence-fixtures';
 
 test.each([false, true])(
   'delivers literature query semantics to the researcher (guided=%s)',
-  (guided) => {
+  async (guided) => {
     const { provider } = makeProvider([]);
     const tool = createEuropePmcEvidenceSearchTool({
       service: { search: async () => ({ status: 'empty' }) },
@@ -13,7 +13,7 @@ test.each([false, true])(
     });
     const question =
       'Europe PMC에서 "sleep duration adults"로 검색하고 검색 결과를 한국어로 요약해 주세요.';
-    const request = buildResearchRequest(
+    const request = await buildResearchRequest(
       { ...provider, capabilities: { ...provider.capabilities, structuredOutput: guided } },
       question,
       'missing_coverage',
@@ -51,13 +51,13 @@ test.each([
     'europe-pmc-publication-search',
     { sourceKinds: ['external_medical'], sourceIds: ['other-source'] },
   ],
-] as const)('omits Europe PMC system guidance for %s', (_label, present, id, scope) => {
+] as const)('omits Europe PMC system guidance for %s', async (_label, present, id, scope) => {
   const { provider } = makeProvider([]);
   const tool = createEuropePmcEvidenceSearchTool({
     service: { search: async () => ({ status: 'empty' }) },
     consent: { authorize: async () => 'denied' },
   });
-  const request = buildResearchRequest(
+  const request = await buildResearchRequest(
     provider,
     '지난 진료 기록을 찾아 주세요.',
     'missing_coverage',
