@@ -60,7 +60,7 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
             "model_started:revised_response",
         ])
         XCTAssertEqual(result["projectedText"] as? String, "Synthetic answer.")
-        XCTAssertEqual(result["streamTypes"] as? [String], ["started", "text_delta"])
+        XCTAssertEqual(result["streamTypes"] as? [String], ["started", "started", "text_delta"])
         XCTAssertEqual(result["partialVisibleBeforeCompletion"] as? Bool, false)
         XCTAssertEqual(result["privatePayloadExposed"] as? Bool, false)
     }
