@@ -166,7 +166,7 @@ test('source paths include cohorts owning their maintained native dependent test
       testPath: 'apps/mobile/ios/OrotIntegrationTests/RecordingExportIntegrationTests.swift',
       cohort: 'core-integration',
       identifier:
-        'OrotIntegrationTests/RecordingExportIntegrationTests/testDefaultTranscriptSharePreservesItsExactWindowRegionUntilDismissal',
+        'OrotIntegrationTests/RecordingExportIntegrationTests/testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal',
     },
     {
       sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',
