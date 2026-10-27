@@ -3,10 +3,10 @@ import type { EncounterModelOptions } from './extraction';
 import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 
-/** The selected recording is the entire payload boundary, even on a wider screen. */
+/** Keep the selected recording as the payload scope and use its attempt nonce for the workflow identity. */
 export function composeEncounterModel(
   sourceId: string,
-  threadId: string,
+  executionId: string,
   selected: Extract<SelectedAiResolution, { status: 'ready' }>,
   consent: ExecutionConsentPort,
 ): EncounterModelOptions {
@@ -14,7 +14,7 @@ export function composeEncounterModel(
     provider: selected.provider,
     consent,
     execution: {
-      operationRunId: threadId,
+      operationRunId: executionId,
       providerId: selected.provider.id,
       modelId: selected.modelId,
       recipient: selected.recipient,

@@ -58,7 +58,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return
         }
 
-        let window = UIWindow(windowScene: windowScene)
+        let window: UIWindow
+        #if OROT_TESTS
+            if let launch = HealthReviewObservationWindow.session() {
+                window = HealthReviewObservationWindow(windowScene: windowScene, launch: launch)
+            } else {
+                window = UIWindow(windowScene: windowScene)
+            }
+        #else
+            window = UIWindow(windowScene: windowScene)
+        #endif
         self.window = window
         appDelegate.window = window
 

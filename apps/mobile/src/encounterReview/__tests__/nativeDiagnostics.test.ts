@@ -34,6 +34,35 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+test('original UUID-shaped seed reaches approval with diagnostics and survives restore and deletion', async () => {
+  // Exercise the unchanged native fixture in Node SQLite; this does not prove Hermes execution.
+  const seed = await runEncounterReviewFixture('seed', fixture);
+  expect(seed).toMatchObject({
+    status: 'pending',
+    modelCalls: 1,
+    recordCount: 0,
+    diagnostic: {
+      status: 'pending',
+      modelCalls: 1,
+      recordCount: 0,
+      failure: { stage: 'UNKNOWN', category: 'UNKNOWN' },
+    },
+  });
+  expect(await repository().list('health_observation')).toHaveLength(0);
+  expect(await runEncounterReviewFixture('resume', fixture)).toMatchObject({
+    status: 'saved',
+    restoredRecordCount: 0,
+    modelCalls: 0,
+    recordCount: 2,
+  });
+  expect(await runEncounterReviewFixture('readback', fixture)).toMatchObject({
+    status: 'saved',
+    modelCalls: 0,
+    cleanupVerified: true,
+  });
+  expect(await repository().list('health_observation')).toHaveLength(0);
+});
+
 test('a valid production review stays pending until explicit approval and snapshots only its scoped rows', async () => {
   const first = controllerFor(false, true, calls =>
     createNativeReviewDiagnostics(sourceId, calls),

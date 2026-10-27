@@ -232,6 +232,9 @@
 		C588B7000ADF488292FE20DEF531275E /* ScheduleCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */; };
 		0DFC3A5C23C04ADE8C60C526 /* HealthReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */; };
 		501578B7DAC3477AA37CEEE9 /* HealthReviewJourney.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1A570509274DB09372A94F /* HealthReviewJourney.swift */; };
+		292920F729004E4DB0E3C207 /* FormScrollObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573D819AAC6F4E578B760D0B /* FormScrollObservation.swift */; };
+		DEA5F41CFF3B49AFB1F93EBC /* HealthReviewFormSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061F1D7BA0514AA0A9DB534F /* HealthReviewFormSnapshot.swift */; };
+		9D2CD03ED6AA42DB85D1499E /* HealthReviewObservationWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -483,6 +486,9 @@
 		FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarUITests.swift; sourceTree = "<group>"; };
 		8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthReviewUITests.swift; sourceTree = "<group>"; };
 		DA1A570509274DB09372A94F /* HealthReviewJourney.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthReviewJourney.swift; sourceTree = "<group>"; };
+		573D819AAC6F4E578B760D0B /* FormScrollObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FormScrollObservation.swift; path = FormScrollObservation.swift; sourceTree = "<group>"; };
+		061F1D7BA0514AA0A9DB534F /* HealthReviewFormSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthReviewFormSnapshot.swift; path = OrotMobile/HealthReviewFormSnapshot.swift; sourceTree = "<group>"; };
+		DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthReviewObservationWindow.swift; path = OrotMobile/HealthReviewObservationWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -626,6 +632,8 @@
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
 				B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */,
+				DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */,
+				061F1D7BA0514AA0A9DB534F /* HealthReviewFormSnapshot.swift */,
 				83F338ACB5824E578A229C10 /* SymptomAccessorySnapshot.swift */,
 				B64F00000000000000000013 /* TestAppearanceRefresh.swift */,
 				BE2F722F9A5281E9B9A73231 /* TestControl.m */,
@@ -771,6 +779,7 @@
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				D40E9817CB8A4FAF92E6B211 /* EncounterReviewUITests.swift */,
 				DA1A570509274DB09372A94F /* HealthReviewJourney.swift */,
+				573D819AAC6F4E578B760D0B /* FormScrollObservation.swift */,
 				8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
@@ -1200,6 +1209,8 @@
 				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
 				A8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift in Sources */,
+				9D2CD03ED6AA42DB85D1499E /* HealthReviewObservationWindow.swift in Sources */,
+				DEA5F41CFF3B49AFB1F93EBC /* HealthReviewFormSnapshot.swift in Sources */,
 				C9EB3A61F4704C389AB45F65 /* SymptomAccessorySnapshot.swift in Sources */,
 				A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */,
 				CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */,
@@ -1220,6 +1231,7 @@
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				D40E9817CB8A4FAF92E6B210 /* EncounterReviewUITests.swift in Sources */,
 				501578B7DAC3477AA37CEEE9 /* HealthReviewJourney.swift in Sources */,
+				292920F729004E4DB0E3C207 /* FormScrollObservation.swift in Sources */,
 				0DFC3A5C23C04ADE8C60C526 /* HealthReviewUITests.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,

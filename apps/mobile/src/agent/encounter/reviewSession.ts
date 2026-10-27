@@ -11,8 +11,8 @@ const decoder = new TextDecoder();
 const sessionKey = (sourceId: string) =>
   'encounter-review-session:' + encodeURIComponent(sourceId);
 
-function decodeSession(bytes: Uint8Array, sourceId: string): ReviewSession {
-  const value: unknown = JSON.parse(decoder.decode(bytes));
+/** Bind the full checkpoint identity to its source and exact 128-bit attempt nonce. */
+function validateSession(value: unknown, sourceId: string): ReviewSession {
   const prefix = sessionKey(sourceId) + ':';
   if (
     !value ||
@@ -29,6 +29,15 @@ function decodeSession(bytes: Uint8Array, sourceId: string): ReviewSession {
   )
     throw new Error('Invalid recording review session.');
   return { version: 1, sourceId, threadId: value.threadId };
+}
+
+function decodeSession(bytes: Uint8Array, sourceId: string): ReviewSession {
+  try {
+    return validateSession(JSON.parse(decoder.decode(bytes)), sourceId);
+  } catch {
+    // Stored descriptors can contain source identifiers; parse errors must not echo their bytes.
+    throw new Error('Invalid recording review session.');
+  }
 }
 
 /** Compare discovery on the canonical approval transaction, including before an idempotent receipt return.
@@ -68,6 +77,12 @@ export function createEncounterReviewSessions(
 ) {
   const key = sessionKey;
   return {
+    executionId(session: ReviewSession): string {
+      // Workflow and consent IDs use only the verified attempt nonce, never the source-bound thread.
+      const verified = validateSession(session, sourceId);
+      const prefix = key(sourceId) + ':';
+      return 'encounter-extraction-' + verified.threadId.slice(prefix.length);
+    },
     async read(): Promise<ReviewSession | null> {
       const stored = await storage.loadCheckpoint(key(sourceId), '', 'session');
       if (!stored) return null;
