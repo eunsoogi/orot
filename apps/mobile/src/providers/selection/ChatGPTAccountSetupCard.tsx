@@ -5,6 +5,7 @@ import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { providerSelectionText } from './text';
 import type { ChatGPTAccountSetup } from './types';
+import SettingsAccountsPanels from './SettingsAccountsPanels';
 
 interface ChatGPTAccountSetupCardProps {
   readonly setup: ChatGPTAccountSetup;
@@ -13,6 +14,10 @@ interface ChatGPTAccountSetupCardProps {
 export default function ChatGPTAccountSetupCard({
   setup,
 }: ChatGPTAccountSetupCardProps) {
+  if (setup.presentation === 'settings-accounts') {
+    return <SettingsAccountsPanels setup={setup} />;
+  }
+
   const selectedAccountIndex = setup.accounts.findIndex(
     account => account.issuedClientID === setup.selectedAccountID,
   );
@@ -22,18 +27,11 @@ export default function ChatGPTAccountSetupCard({
     !selectedAccount.requiresSignIn &&
     selectedAccount.hasDirectPlanAccess;
   const isProviderSettings = setup.presentation === 'settings-provider';
-  const isAccountSettings = setup.presentation === 'settings-accounts';
 
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
-      {!isAccountSettings ? (
-        <Text style={styles.heading}>
-          {providerSelectionText.remoteHeading}
-        </Text>
-      ) : null}
-      {!isAccountSettings ? (
-        <Text>{providerSelectionText.remotePrivacy}</Text>
-      ) : null}
+      <Text style={styles.heading}>{providerSelectionText.remoteHeading}</Text>
+      <Text>{providerSelectionText.remotePrivacy}</Text>
       {setup.statusMessage ? (
         <Text
           accessibilityRole={setup.statusIsError ? 'alert' : undefined}
@@ -110,16 +108,6 @@ export default function ChatGPTAccountSetupCard({
             title={t('settings.accounts')}
           />
         </>
-      ) : isAccountSettings ? (
-        selectedAccountCanLoadModels ||
-        (setup.accounts.length > 0 && !selectedAccount) ? null : (
-          <Button
-            disabled={setup.busy || setup.actionDisabled}
-            onPress={setup.onAction}
-            testID="chatgpt-account-action"
-            title={setup.actionTitle}
-          />
-        )
       ) : (
         <Button
           disabled={setup.busy || setup.actionDisabled}

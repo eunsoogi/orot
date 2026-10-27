@@ -16,12 +16,14 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
 ): 'scene' | 'screen' => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // Health detail panels resolve against the actual native usable regions.
-  // Appointment entry routes share one screen that measures list and selected-detail panels.
+  // Account management measures its connection and action panels within the full route lane.
+  // Appointment entry routes share the screen that measures list and selected-detail panels.
   // Classification measures its overview and candidate panels from usable geometry.
   // The saved library owns a measured list and summary that share that usable geometry.
   // Sync status measures its status and recovery panels against the actual usable regions.
   // Health data settings pairs category choices with sync and permission status panels.
-  return route.name === 'appointments' ||
+  return route.name === 'settings-accounts' ||
+    route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'medical' ||
     route.name === 'health-records' ||
