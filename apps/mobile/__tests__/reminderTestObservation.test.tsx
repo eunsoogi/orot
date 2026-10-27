@@ -74,3 +74,27 @@ it('does not query the OS with unready diagnostic evidence', async () => {
     ),
   ).toEqual({ status: 'write-failed' });
 });
+
+it('reports writer failure even while the original OS snapshot is pending', async () => {
+  diagnosticReadiness
+    .mockResolvedValueOnce({ status: 'ready' })
+    .mockResolvedValue({ status: 'writer-failed' });
+  snapshot.mockImplementation(() => new Promise(() => {}));
+  await render(
+    <ReminderTestObservation>
+      <Text>Real application tree</Text>
+    </ReminderTestObservation>,
+  );
+  await act(async () => {});
+  expect(snapshot).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    jest.advanceTimersByTime(250);
+  });
+  expect(
+    JSON.parse(
+      screen.getByTestId('reminder-diagnostic-readiness').props
+        .accessibilityLabel,
+    ).status,
+  ).toBe('writer-failed');
+  expect(snapshot).toHaveBeenCalledTimes(1);
+});

@@ -16,7 +16,10 @@ test('native sentinel privacy, same-error propagation, writer gates and terminal
       'apps/mobile/ios/OrotMobile/AppointmentReminderNotifications.swift',
       'utf8',
     );
-    const form = readFileSync('apps/mobile/ios/OrotUITests/ReminderJourneyForm.swift', 'utf8');
+    const form = readFileSync(
+      'apps/mobile/ios/OrotUITests/ReminderJourneyDiagnostic.swift',
+      'utf8',
+    );
     const enums = module.slice(
       module.indexOf('enum AppointmentReminderDiagnosticStage'),
       module.indexOf('/// Ordinary products'),
@@ -80,7 +83,26 @@ enum Terminal { ${terminal} }
       AppointmentReminderDiagnosticTrace.record(.bridgeReject, error: sentinel)
     }
     let ready = AppointmentReminderDiagnosticTrace.readiness
-    print(ready["status"] as! String)
+    if ready["status"] as? String == "ready" {
+      let path = URL(fileURLWithPath: ${JSON.stringify(join(directory, 'trace.jsonl'))})
+      if ProcessInfo.processInfo.environment["OROT_HOST_WRITER_FAILURE"] == "io" {
+        try FileManager.default.removeItem(at: path)
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: false)
+        precondition(!AppointmentReminderDiagnosticTrace.record(.bridgeEnter))
+      } else {
+        var failed = false
+        for _ in 0..<1000 {
+          if !AppointmentReminderDiagnosticTrace.record(.bridgeEnter) { failed = true; break }
+        }
+        precondition(failed)
+      }
+      do {
+        try await AppointmentReminderDiagnosticTrace.aroundAdd { throw sentinel }
+        fatalError("Writer failure must not swallow original error")
+      } catch { precondition(error as NSError === sentinel) }
+      precondition(AppointmentReminderDiagnosticTrace.currentReadiness()["status"] as? String == "writer-failed")
+      print("ready->writer-failed")
+    } else { print(ready["status"] as! String) }
   }
 }
 `,
@@ -99,30 +121,33 @@ enum Terminal { ${terminal} }
       ],
       { timeout: 60000 },
     );
-    const run = (flag, runID) =>
+    const run = (flag, runID, failure = 'capacity') =>
       execFileSync(binary, [], {
         encoding: 'utf8',
         timeout: 10000,
         env: {
           ...process.env,
+          OROT_HOST_WRITER_FAILURE: failure,
           OROT_TEST_REMINDER_DIAGNOSTICS: flag,
           OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID: runID,
         },
       }).trim();
     assert.equal(run('NO', ''), 'disabled');
     assert.equal(run('YES', 'invalid'), 'invalid-run-id');
-    assert.equal(run('YES', '9ae30a38-2911-4555-b5a3-948a6ec879d9'), 'ready');
+    assert.equal(run('YES', '9ae30a38-2911-4555-b5a3-948a6ec879d9'), 'ready->writer-failed');
     const bytes = readFileSync(join(directory, 'trace.jsonl'), 'utf8');
     const records = bytes
       .trimEnd()
       .split('\n')
       .map((line) => JSON.parse(line));
-    assert.equal(records.at(-1).stage, 'diagnostic-ready');
+    assert.equal(records[3].stage, 'diagnostic-ready');
     assert.deepEqual(
       records.slice(0, 3).map((value) => value.operationSequence),
       [1, 1, 1],
     );
     assert.equal(bytes.includes('private-'), false);
+    rmSync(join(directory, 'trace.jsonl'));
+    assert.equal(run('YES', '9ae30a38-2911-4555-b5a3-948a6ec879d9', 'io'), 'ready->writer-failed');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

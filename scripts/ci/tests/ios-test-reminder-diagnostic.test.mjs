@@ -1,9 +1,10 @@
+import { validateReminderDiagnosticTrace } from '../ios-test-reminder-trace.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   prepareRun,
   reminderDiagnosticTest,
-  validateReminderDiagnosticTrace,
+  environmentForRunner,
 } from '../ios-test-reminder-diagnostic.mjs';
 
 test('diagnostics require the original single selector and explicit flag', () => {
@@ -52,4 +53,35 @@ test('export validates complete fixed-schema events and rejects private fields o
     assert.throws(() => validateReminderDiagnosticTrace(line(value), runID));
   assert.throws(() => validateReminderDiagnosticTrace(line(event).trimEnd(), runID));
   assert.throws(() => validateReminderDiagnosticTrace(line(event), 'invalid'));
+});
+
+test('direct runner preserves ordinary environment and rejects mismatched diagnostic admission', () => {
+  const input = { TASK_TEST_VALUE: 'preserved' };
+  assert.deepEqual(environmentForRunner('core', ['ordinary'], 'invocation', input), {
+    ...input,
+    TEST_RUNNER_OROT_IOS_TEST_INVOCATION: 'invocation',
+  });
+  const admitted = {
+    TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTICS: 'YES',
+    TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTIC_RUN_ID: '9ae30a38-2911-4555-b5a3-948a6ec879d9',
+  };
+  assert.equal(
+    environmentForRunner('fixtures', [reminderDiagnosticTest], 'invocation', admitted)
+      .TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTICS,
+    'YES',
+  );
+  assert.throws(() =>
+    environmentForRunner('core', [reminderDiagnosticTest], 'invocation', admitted),
+  );
+  assert.throws(() =>
+    environmentForRunner('fixtures', [reminderDiagnosticTest], 'invocation', {
+      ...admitted,
+      TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTIC_RUN_ID: 'invalid',
+    }),
+  );
+  assert.throws(() =>
+    environmentForRunner('fixtures', [reminderDiagnosticTest], 'invocation', {
+      OROT_IOS_REMINDER_DIAGNOSTICS: 'YES',
+    }),
+  );
 });

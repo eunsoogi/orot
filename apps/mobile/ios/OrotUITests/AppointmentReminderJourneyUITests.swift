@@ -12,7 +12,7 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
     func testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions() throws {
         var order: [String] = []
         do {
-            try ReminderJourneyForm.failConfirmedRejection([
+            try ReminderJourneyDiagnostic.failConfirmedRejection([
                 "outcome": "reject", "status": "error", "busy": false,
                 "currentStatus": "error", "currentBusy": false,
             ]) { order.append("failure-evidence") }
@@ -23,7 +23,7 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         }
         XCTAssertEqual(order, ["failure-evidence", "thrown"])
         // A queued reconciliation that is still busy cannot establish the diagnostic terminal outcome.
-        try ReminderJourneyForm.failConfirmedRejection([
+        try ReminderJourneyDiagnostic.failConfirmedRejection([
             "outcome": "reject", "status": "error", "busy": false,
             "currentStatus": "error", "currentBusy": true,
         ]) { XCTFail("Busy coordinator must retain execution ownership") }
@@ -32,11 +32,18 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
     @MainActor
     func testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps() throws {
         let app = XCUIApplication()
-        defer { UITestConditions.terminateStandaloneApp(app) }
-        let diagnosticRunID = try ReminderJourneyForm.diagnosticRunID()
+        let diagnosticRunID = try ReminderJourneyDiagnostic.diagnosticRunID()
+        defer {
+            // Diagnostic export waits for the app writer to stop; ordinary fixture lifecycle stays canonical.
+            if diagnosticRunID != nil {
+                app.terminate()
+            } else {
+                UITestConditions.terminateStandaloneApp(app)
+            }
+        }
         try ReminderJourneyForm.start(app, session: UUID().uuidString, diagnosticRunID: diagnosticRunID)
         if let diagnosticRunID {
-            try ReminderJourneyForm.requireDiagnostic(app, runID: diagnosticRunID, testCase: self)
+            try ReminderJourneyDiagnostic.requireDiagnostic(app, runID: diagnosticRunID, testCase: self)
         }
         var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
@@ -51,7 +58,7 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         _ = try ReminderJourneyForm.create(app, clinic: "먼저 있는 합성 예약", start: ReminderJourneyForm.time(minutesAhead: 30), note: "합성 자료")
         let originalTime = ReminderJourneyForm.time(minutesAhead: 120)
         let id = try ReminderJourneyForm.create(app, clinic: ReminderJourneyForm.clinic, start: originalTime)
-        let action = diagnosticRunID == nil ? nil : try ReminderJourneyForm.actionSequence(app)
+        let action = diagnosticRunID == nil ? nil : try ReminderJourneyDiagnostic.actionSequence(app)
         ReminderJourneyForm.tap(app, "appointment-reminder-\(id)-60")
         if let action {
             try ReminderJourneyObservation.allowFirstNotification(app, testCase: self, diagnosticAction: action)

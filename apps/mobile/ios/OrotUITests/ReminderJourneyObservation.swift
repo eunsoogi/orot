@@ -77,7 +77,7 @@ enum ReminderJourneyObservation {
         XCTAssertTrue(allow.exists && allow.isHittable)
         allow.tap()
         if let diagnosticAction {
-            try ReminderJourneyForm.awaitAction(app, after: diagnosticAction, testCase: testCase)
+            try ReminderJourneyDiagnostic.awaitAction(app, after: diagnosticAction, testCase: testCase)
         }
         let scheduled = app.staticTexts["알림이 설정되었어요."]
         XCTAssertTrue(UITestConditions.exists(scheduled))

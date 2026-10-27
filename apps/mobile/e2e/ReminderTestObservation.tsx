@@ -25,26 +25,39 @@ export function ReminderTestObservation({ children }: PropsWithChildren) {
     let active = true;
     let reading = false;
     let stopActions = () => {};
-    let diagnosticReady = false;
-    const read = async () => {
-      if (!active || reading || AppState.currentState !== 'active') return;
-      reading = true;
-      // The independent writer handshake completes before any diagnostic OS query.
-      if (!diagnosticReady) {
-        try {
-          const ready =
-            await NativeModules.OrotReminderTestObservation.diagnosticReadiness();
-          if (!active) return;
-          setDiagnostic(ready);
-          if (ready.status !== 'disabled' && ready.status !== 'ready') return;
-          diagnosticReady = true;
-          if (ready.status === 'ready')
+    let mode: 'unknown' | 'disabled' | 'ready' | 'failed' = 'unknown';
+    let checkingHealth = false;
+    const health = async () => {
+      if (!active || checkingHealth || mode === 'disabled' || mode === 'failed')
+        return;
+      checkingHealth = true;
+      try {
+        const ready =
+          await NativeModules.OrotReminderTestObservation.diagnosticReadiness();
+        if (!active) return;
+        setDiagnostic(ready);
+        if (ready.status === 'disabled') mode = 'disabled';
+        else if (ready.status === 'ready') {
+          if (mode === 'unknown')
             stopActions = observeReminderActions(setAction);
-        } catch {
-          if (active) setDiagnostic({ status: 'readiness-unavailable' });
-          return;
-        }
+          mode = 'ready';
+        } else mode = 'failed';
+      } catch {
+        mode = 'failed';
+        if (active) setDiagnostic({ status: 'readiness-unavailable' });
+      } finally {
+        checkingHealth = false;
       }
+    };
+    const read = async () => {
+      if (
+        !active ||
+        reading ||
+        !['ready', 'disabled'].includes(mode) ||
+        AppState.currentState !== 'active'
+      )
+        return;
+      reading = true;
       try {
         const observed =
           await NativeModules.OrotReminderTestObservation.snapshot();
@@ -57,9 +70,15 @@ export function ReminderTestObservation({ children }: PropsWithChildren) {
         reading = false;
       }
     };
-    read().catch(() => undefined);
+    health()
+      .then(read)
+      .catch(() => undefined);
     // This is an observation cadence, never a delivery deadline or a retry of app startup.
-    const interval = setInterval(() => read().catch(() => undefined), 250);
+    const interval = setInterval(() => {
+      // Health stays independent of a pending OS snapshot and adds no notification-center query.
+      health().catch(() => undefined);
+      read().catch(() => undefined);
+    }, 250);
     return () => {
       active = false;
       clearInterval(interval);

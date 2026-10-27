@@ -68,12 +68,13 @@ export class OwnedProcessSupervisor {
     }
   }
 
-  interrupt() {
+  interrupt(signal = 'SIGINT') {
+    if (!['SIGINT', 'SIGTERM'].includes(signal)) throw new Error('Unsupported owned interruption');
     const live = this.observe();
     // The canonical root forwards SIGINT to its own session; do not pause it or double-signal nested writers.
     const root = live.find((row) => row.pid === this.root.pid);
-    if (root) this.send(root, 'SIGINT');
-    else for (const row of live) this.send(row, 'SIGINT');
+    if (root) this.send(root, signal);
+    else for (const row of live) this.send(row, signal);
   }
 
   escalate(signal) {

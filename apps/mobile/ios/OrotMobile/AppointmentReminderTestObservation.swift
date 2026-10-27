@@ -15,7 +15,7 @@
         /// Readiness never queries UserNotifications and must settle before diagnostic scheduling.
         @objc(diagnosticReadiness:rejecter:)
         func diagnosticReadiness(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
-            resolve(AppointmentReminderDiagnosticTrace.readiness)
+            resolve(AppointmentReminderDiagnosticTrace.currentReadiness())
         }
 
         @objc(snapshot:rejecter:)

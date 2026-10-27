@@ -85,6 +85,7 @@
         private static let lock = NSLock()
         private static var callSequence = 0
         private static var nextOperation = 0
+        private static var writerFailed = false
         @TaskLocal static var operationSequence: Int?
 
         /// Child Tasks inherit this opaque bridge invocation; it is not a link to a JS action.
@@ -137,6 +138,12 @@
         ) -> Bool {
             guard let runID = enabledRunID, let url = fileURL else { return false }
             return lock.withLock {
+                var wrote = false
+                defer {
+                    if !wrote {
+                        writerFailed = true
+                    }
+                }
                 let nextSequence = callSequence + 1
                 let event = Event(
                     runID: runID,
@@ -167,6 +174,7 @@
                     try handle.synchronize()
                     try handle.close()
                     callSequence = nextSequence
+                    wrote = true
                     return true
                 } catch {
                     return false
@@ -210,17 +218,15 @@
             }
         }()
 
-        /// Expose only trace presence and the last call sequence to the UI observer.
-        static func status() -> (fileExists: Bool, lastSequence: Int?) {
-            lock.withLock {
-                guard let runID = enabledRunID, let url = fileURL,
-                      FileManager.default.fileExists(atPath: url.path),
-                      let data = try? Data(contentsOf: url), data.count <= maximumBytes,
-                      let line = data.split(separator: 0x0A).last
-                else { return (false, nil) }
-                let value = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any]
-                let matchesRun = value?["runID"] as? String == runID
-                return (true, matchesRun ? value?["callSequence"] as? Int : nil)
+        /// Readiness is a handshake, while later capacity/I/O failure remains a sticky diagnostic state.
+        static func currentReadiness() -> [String: Any] {
+            let initial = readiness
+            return lock.withLock {
+                var value = initial
+                if writerFailed {
+                    value["status"] = "writer-failed"
+                }
+                return value
             }
         }
     }

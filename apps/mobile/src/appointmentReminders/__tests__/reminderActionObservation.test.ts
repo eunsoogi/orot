@@ -1,3 +1,5 @@
+import { appointment } from '../../nextVisitQuestions/testSupport/fixtures';
+import type { AppointmentReminderSelection } from '../reminderPlan';
 import { AppointmentReminderCoordinator } from '../reminderCoordinator';
 import type { AppointmentReminderPort } from '../reminderCoordinator';
 import {
@@ -53,14 +55,21 @@ it('does not let observation errors change the action outcome', () => {
 });
 
 function boundary() {
+  let selection: AppointmentReminderSelection | null = null;
   const port: AppointmentReminderPort = {
-    readSelection: jest.fn(async () => null),
-    writeSelection: jest.fn(async () => undefined),
+    readSelection: jest.fn(async () => selection),
+    writeSelection: jest.fn(async value => {
+      selection = value;
+    }),
     authorizationStatus: jest.fn(async () => 'authorized'),
     requestAuthorization: jest.fn(async () => 'authorized'),
     replace: jest.fn(async () => undefined),
   };
-  const coordinator = new AppointmentReminderCoordinator(async () => [], port);
+  const coordinator = new AppointmentReminderCoordinator(
+    async () => [appointment],
+    port,
+    () => 0,
+  );
   const events: ReminderActionReceipt[] = [];
   let latest: ReminderActionReceipt | undefined;
   const stop = observeReminderActions(value => {
@@ -74,9 +83,9 @@ function boundary() {
     )
       events.push(value);
   });
-  const select = () => {
+  const select = (value: AppointmentReminderSelection | null = null) => {
     const settle = beginReminderAction(coordinator.getSnapshot(), coordinator);
-    return coordinator.select(null).then(
+    return coordinator.select(value).then(
       () => settle('resolve', coordinator.getSnapshot()),
       () => settle('reject', coordinator.getSnapshot()),
     );
@@ -90,15 +99,15 @@ it('a prior error does not turn the next resolved action into a rejection', asyn
     jest
       .mocked(port.replace)
       .mockRejectedValueOnce(new Error('Synthetic native error'));
-    await select();
+    await select({ appointmentId: appointment.id, leadMinutes: 60 });
     expect(coordinator.getSnapshot().status).toBe('error');
-    await select();
+    await select({ appointmentId: appointment.id, leadMinutes: 60 });
     expect(events.map(value => value.outcome)).toEqual(['reject', 'resolve']);
     expect(events[0].status).toBe('error');
     expect(events[1]).toEqual(
       expect.objectContaining({
         outcome: 'resolve',
-        status: 'unscheduled',
+        status: 'scheduled',
         busy: false,
       }),
     );
@@ -179,6 +188,24 @@ it('a rejected action remains distinct from a queued reconciliation that is now 
     release();
     await queued;
     expect(events[0].busy).toBe(false);
+  } finally {
+    stop();
+  }
+});
+
+it('denied permission resolves its own action without reporting scheduling success', async () => {
+  const { port, events, stop, select } = boundary();
+  try {
+    jest.mocked(port.requestAuthorization).mockResolvedValueOnce('denied');
+    await select({ appointmentId: appointment.id, leadMinutes: 60 });
+    expect(events[0]).toEqual(
+      expect.objectContaining({
+        outcome: 'resolve',
+        status: 'denied',
+        busy: false,
+      }),
+    );
+    expect(port.replace).toHaveBeenCalledWith(null);
   } finally {
     stop();
   }
