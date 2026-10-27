@@ -83,14 +83,16 @@ export function createEvidenceSourceDuoServiceDependencies(
   };
 }
 
-/** Preserves the existing disease probe while keeping source-detail seeding behind its own explicit opt-in. */
+/** Keeps disease and source probes separately opted in while sharing the synthetic provider. */
 export function selectAiFeatureProbeDependencies(
   settings: Readonly<Record<string, unknown>>,
-  diseaseDependencies: AiFeatureServiceDependencies,
+  diseaseDependencies: AiFeatureServiceDependencies | undefined,
+  sourceProviderDependencies:
+    AiFeatureServiceDependencies | undefined = diseaseDependencies,
 ): AiFeatureServiceDependencies | undefined {
   if (settings.OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE === 'synthetic') {
     return createEvidenceSourceDuoServiceDependencies(
-      diseaseDependencies.selectedAi,
+      sourceProviderDependencies?.selectedAi,
     );
   }
   return settings.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic'
@@ -176,10 +178,11 @@ const runEvidenceSourceDuoDisease: NonNullable<
   if ('status' in result) {
     throw new Error('The local synthetic evidence search was not available.');
   }
-  const item = result.items.find(
-    value => value.evidenceId === EVIDENCE_SPAN_ID,
-  );
-  if (!item) throw new Error('The synthetic evidence citation was not found.');
+  // Fixture-controlled retrieval returns one saved citation; preserve its opaque registry alias.
+  const [item] = result.items;
+  if (result.items.length !== 1 || !item) {
+    throw new Error('The synthetic evidence citation was not found.');
+  }
   const citation = referenceOnly(item);
   return {
     status: 'workflow',

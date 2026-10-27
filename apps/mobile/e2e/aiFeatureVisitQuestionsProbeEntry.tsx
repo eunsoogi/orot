@@ -96,8 +96,11 @@ const syntheticAiFeatureDependencies: AiFeatureServiceDependencies = {
   externalEvidence: { search: async () => ({ status: 'unavailable' }) },
   diseaseRunner: syntheticDiseaseRunner,
 };
+const syntheticDiseaseFixtureEnabled =
+  launchSettings.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic';
 const aiFeatureServiceDependencies = selectAiFeatureProbeDependencies(
   launchSettings,
+  syntheticDiseaseFixtureEnabled ? syntheticAiFeatureDependencies : undefined,
   syntheticAiFeatureDependencies,
 );
 // Keep this callback stable so route-state rerenders do not abort generation as a provider change.
