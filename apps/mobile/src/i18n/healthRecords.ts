@@ -2,6 +2,7 @@ export const healthRecordsKo = {
   'records.openHealthLibrary': '가져온 건강 기록 보기',
   'healthRecords.title': '건강 기록',
   'healthRecords.description': '이 기기에 저장된 건강 기록을 확인해요.',
+  'healthRecords.importHealthData': '건강 데이터 가져오기',
   'healthRecords.loading': '저장된 건강 기록을 불러오는 중…',
   'healthRecords.empty': '저장된 건강 기록이 없어요.',
   'healthRecords.categoryEmpty': '저장된 {title} 기록이 없어요.',

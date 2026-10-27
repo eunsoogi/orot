@@ -16,6 +16,8 @@ import { createTestServices, deferred } from '../testSupport';
 const copy: HealthKitImportScreenCopy = {
   title: '가져오기',
   description: '필요한 항목을 선택하세요.',
+  sourceSelectionTitle: '출처',
+  activityTitle: '진행 상황',
   localOnly: '선택한 기록은 이 기기에 저장됩니다.',
   readAuthorization: 'HealthKit 읽기 권한 상태는 확인할 수 없습니다.',
   importButton: '선택 항목 가져오기',

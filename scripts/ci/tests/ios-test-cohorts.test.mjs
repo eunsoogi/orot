@@ -40,7 +40,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 164);
+  assert.equal(actual.size, 171);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
@@ -78,7 +78,7 @@ test('Core verifies the integration target before scheduling UI, without losing 
   const tasks = iosTestCohortTasks('release').filter((task) => task.profile === 'core');
   assert.deepEqual(
     tasks.map((task) => task.suite),
-    ['shared-persistence', 'isolation', 'integration', 'ui'],
+    ['shared-persistence', 'encounter-review-persistence', 'isolation', 'integration', 'ui'],
   );
   assert.deepEqual(
     tasks.flatMap((task) => task.identifiers).sort(),
@@ -97,10 +97,11 @@ test('two Release destinations partition the original work exactly once and pres
   assert.deepEqual(partitioned.map(key).sort(), original.map(key).sort());
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [90, 37],
+    [97, 37],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',
+    'core/encounter-review-persistence',
     'core/isolation',
     'core/integration',
     'core/ui',

@@ -5,21 +5,18 @@ import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
 import { appColors } from '../../layout/appColors';
 import { healthKitFeatures, type HealthKitFeature } from '../types';
 import type { HealthKitImportScreenCopy } from './HealthKitImportScreen';
-import type { UnifiedImportProgress } from './types';
 import { unifiedImportStyles as styles } from './unifiedImportStyles';
 
 /** The provider switch is explicit; individual types remain selectable before the single permission batch. */
 export function HealthKitProviderCard({
   copy,
   selected,
-  progress,
   disabled,
   onToggle,
   onToggleFeature,
 }: {
   readonly copy: HealthKitImportScreenCopy;
   readonly selected: ReadonlySet<HealthKitFeature>;
-  readonly progress: UnifiedImportProgress | null;
   readonly disabled: boolean;
   readonly onToggle: () => void;
   readonly onToggleFeature: (feature: HealthKitFeature) => void;
@@ -57,7 +54,6 @@ export function HealthKitProviderCard({
       <View style={styles.options}>
         {healthKitFeatures.map(feature => {
           const featureChecked = selected.has(feature);
-          const outcome = progress?.features[feature];
           return (
             <Pressable
               key={feature}
@@ -78,24 +74,6 @@ export function HealthKitProviderCard({
                   {copy.featureNames[feature]}
                 </Text>
               </View>
-              {outcome && outcome.status !== 'notSelected' ? (
-                <Text
-                  style={styles.status}
-                  testID={`unified-import-feature-status-${feature}`}
-                >
-                  {copy.featureStatuses[outcome.status]}
-                </Text>
-              ) : null}
-              {outcome &&
-              outcome.importedCount !== null &&
-              outcome.deletedCount !== null ? (
-                <Text style={styles.status}>
-                  {copy.changeSummary(
-                    outcome.importedCount,
-                    outcome.deletedCount,
-                  )}
-                </Text>
-              ) : null}
             </Pressable>
           );
         })}

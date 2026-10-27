@@ -14,6 +14,7 @@ import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import { readEncounterTranscript } from './transcript';
 import { encounterConflicts } from './conflicts';
+import { requireCurrentEncounterReviewSession } from './reviewSession';
 
 /** Receipt and records commit together. A replay after a checkpoint-write failure returns the same IDs without another write. */
 export async function persistEncounterApproval(
@@ -21,6 +22,7 @@ export async function persistEncounterApproval(
   pending: EncounterPending,
   approval: EncounterApproval,
   signal: AbortSignal,
+  requireCurrentSession = false,
 ): Promise<string[]> {
   validateEncounterApproval(pending, approval);
   if (approval.decision !== 'approve')
@@ -30,6 +32,12 @@ export async function persistEncounterApproval(
     requireEncounterActive(signal);
     if (!sql)
       throw new Error('Encounter writes require a canonical SQL transaction.');
+    if (requireCurrentSession)
+      await requireCurrentEncounterReviewSession(
+        sql,
+        pending.sourceId,
+        pending.threadId,
+      );
     const transcript = await readEncounterTranscript(
       writer,
       sql,

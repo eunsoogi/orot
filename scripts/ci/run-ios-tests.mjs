@@ -15,6 +15,11 @@ import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests, statePersistencePhases } from './state-persistence-test-phases.mjs';
 import { verifySharedPersistenceSelection } from './shared-persistence-test-phases.mjs';
+import {
+  encounterReviewPersistenceTests,
+  verifyEncounterReviewPhaseSelection,
+} from './encounter-review-persistence-test-phases.mjs';
+import { iosTestXcodeArguments } from './ios-test-xcode-arguments.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -40,6 +45,8 @@ const fixtureSession = /^[a-f0-9-]{36}$/i.test(
   process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION ?? '',
 );
 const sharedPersistence = process.env.OROT_IOS_SHARED_PERSISTENCE_PHASE !== undefined;
+if (tests.some((test) => encounterReviewPersistenceTests.includes(test)))
+  verifyEncounterReviewPhaseSelection(profile, tests, process.env);
 if (sharedPersistence) verifySharedPersistenceSelection(profile, tests, process.env);
 if (!sharedPersistence && tests.some((test) => statePersistenceTests.includes(test))) {
   const index = statePersistencePhases.indexOf(process.env.OROT_IOS_STATE_PHASE);
@@ -174,29 +181,7 @@ let testExitCode = null;
 try {
   const outcome = spawn(
     'xcodebuild',
-    [
-      'test-without-building',
-      '-xctestrun',
-      resolve(runFile),
-      '-destination',
-      'platform=iOS Simulator,id=' + owner.udid,
-      '-resultBundlePath',
-      resolve(results),
-      '-parallel-testing-enabled',
-      'NO',
-      '-maximum-concurrent-test-simulator-destinations',
-      '1',
-      '-disableAutomaticPackageResolution',
-      // Case duration is not an assertion; the owning job retains cancellation authority.
-      '-test-timeouts-enabled',
-      'NO',
-      // Xcode's verbose simctl diagnose stalled for its full 600-second collection
-      // budget after a failed assertion. Preserve xcresult/screenshots and collect
-      // bounded diagnostics; product recognition cancellation remains unchanged.
-      '-collect-test-diagnostics',
-      'never',
-      ...tests.map((test) => '-only-testing:' + test),
-    ],
+    iosTestXcodeArguments({ runFile, results, udid: owner.udid, tests }),
     {
       stdio: 'inherit',
       // Xcode forwards this public prefix to the runner, including its automatic restart after a crash.

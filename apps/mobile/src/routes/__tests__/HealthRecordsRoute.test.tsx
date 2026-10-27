@@ -67,3 +67,23 @@ test('routes the medication summary action to its separate dose-event detail lis
   );
   expect(await screen.findByText('Synthetic medication')).toBeTruthy();
 });
+
+test('opens the existing unified import route from the health records library', async () => {
+  const navigation = actions('health-records');
+  const push = jest.spyOn(navigation, 'push');
+  await render(
+    <HealthRecordsRoute
+      actions={navigation}
+      loadMedicationData={async () => ({ definitions: [], doseEvents: [] })}
+      loadObservations={async () => ({ records: [], nextCursor: null })}
+      onSelectionChange={jest.fn()}
+      route="health-records"
+      selection={null}
+    />,
+  );
+
+  await fireEvent.press(
+    await screen.findByTestId('health-records-open-health-import'),
+  );
+  expect(push).toHaveBeenCalledWith('unified-import');
+});
