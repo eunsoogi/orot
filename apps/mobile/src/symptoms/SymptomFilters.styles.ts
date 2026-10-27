@@ -1,29 +1,44 @@
 import { StyleSheet } from 'react-native';
+import { appColors } from '../layout/appColors';
 
 export default StyleSheet.create({
   filterCard: {
-    backgroundColor: 'white',
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
     borderRadius: 10,
+    borderWidth: 1,
     gap: 10,
     padding: 14,
   },
-  sectionTitle: { color: '#17212b', fontSize: 15, fontWeight: '600' },
-  hint: { color: '#45515f', fontSize: 13 },
-  row: { flexDirection: 'row', gap: 10 },
+  sectionTitle: { color: appColors.text, fontSize: 15, fontWeight: '600' },
+  hint: { color: appColors.secondary, fontSize: 13 },
+  error: { color: appColors.danger },
+  // Date and time inputs wrap when a narrow region cannot fit readable controls.
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   input: {
-    borderColor: '#a8b3bf',
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
     borderRadius: 8,
     borderWidth: 1,
+    color: appColors.text,
+    minHeight: 44,
     padding: 10,
   },
-  halfInput: { flex: 1 },
+  halfInput: { flexBasis: 140, flexGrow: 1, minWidth: 140 },
   choice: {
     alignItems: 'center',
-    borderColor: '#a8b3bf',
+    borderColor: appColors.border,
     borderRadius: 8,
     borderWidth: 1,
-    flex: 1,
+    flexBasis: 80,
+    flexGrow: 1,
+    minHeight: 44,
+    minWidth: 80,
     padding: 10,
   },
-  selectedChoice: { backgroundColor: '#e8f1f8', borderColor: '#1f5c85' },
+  choiceLabel: { color: appColors.text },
+  selectedChoice: {
+    backgroundColor: appColors.primarySoft,
+    borderColor: appColors.primaryText,
+  },
 });

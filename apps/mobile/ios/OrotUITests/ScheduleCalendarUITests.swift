@@ -1,6 +1,6 @@
 import XCTest
 
-/// Exercises synthetic event selection, screen-owned panels, appearance and large-text behavior.
+/// Exercises synthetic event selection, confirmation-panel layout, appearance and large-text behavior.
 final class ScheduleCalendarUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -50,6 +50,11 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
             captureOriginal: { originalAppearance = $0 },
         )
         UITestConditions.value(selectedTitle, equals: "합성 외래 방문")
+        let confirmationPanel = UITestConditions.element(
+            app,
+            "schedule-adaptive-columns-secondary",
+        )
+        let confirm = UITestConditions.element(app, "calendar-confirm-selected")
 
         let landscapeFrame = try ScheduleCalendarAdaptiveLayoutUITestConditions.changeOrientation(
             app,
@@ -68,8 +73,9 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
             file: #filePath,
             line: #line,
         )
+        XCTAssertTrue(confirmationPanel.frame.contains(selectedTitle.frame), app.debugDescription)
+        XCTAssertTrue(confirmationPanel.frame.contains(confirm.frame), app.debugDescription)
 
-        let confirm = UITestConditions.element(app, "calendar-confirm-selected")
         FormUITestConditions.reveal(confirm, in: app, scrollID: "calendar-screen")
         XCTAssertTrue(confirm.isHittable, app.debugDescription)
         confirm.tap()
@@ -229,10 +235,13 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
 
         let title = UITestConditions.element(app, "calendar-selected-event-title")
         UITestConditions.value(title, equals: "합성 외래 방문")
-        XCTAssertTrue(
-            UITestConditions.element(app, "calendar-confirm-selected").exists,
-            app.debugDescription,
+        let confirmationPanel = UITestConditions.element(
+            app,
+            "schedule-adaptive-columns-secondary",
         )
+        let confirm = UITestConditions.element(app, "calendar-confirm-selected")
+        XCTAssertTrue(confirmationPanel.frame.contains(title.frame), app.debugDescription)
+        XCTAssertTrue(confirmationPanel.frame.contains(confirm.frame), app.debugDescription)
         return title
     }
 }

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { appColors } from '../layout/appColors';
 
 export default StyleSheet.create({
   keyboardAvoider: { flex: 1 },
@@ -6,16 +7,18 @@ export default StyleSheet.create({
     gap: 12,
     padding: 20,
     paddingTop: 20,
-    backgroundColor: '#f7f8fa',
+    backgroundColor: appColors.background,
     minHeight: '100%',
   },
+  primaryPanel: { gap: 12, minWidth: 0 },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  sectionTitle: { color: '#17212b', fontSize: 15, fontWeight: '600' },
-  message: { color: '#45515f', fontSize: 15 },
-  hint: { color: '#45515f', fontSize: 13 },
+  title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  sectionTitle: { color: appColors.text, fontSize: 15, fontWeight: '600' },
+  message: { color: appColors.secondary, fontSize: 15 },
+  hint: { color: appColors.secondary, fontSize: 13 },
+  error: { color: appColors.danger },
 });

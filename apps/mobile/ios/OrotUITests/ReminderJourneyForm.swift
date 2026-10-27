@@ -36,6 +36,35 @@ enum ReminderJourneyForm {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "appointment-add")))
     }
 
+    /// Verifies a narrow, explanatory appointment form and keeps its actions reachable above the keyboard.
+    static func assertAppointmentForm(_ app: XCUIApplication, clinic: String) {
+        let panel = UITestConditions.element(app, "appointments-columns-primary")
+        XCTAssertTrue(UITestConditions.exists(panel), app.debugDescription)
+        let panelFrame = panel.frame
+        let form = UITestConditions.element(app, "appointment-form")
+        XCTAssertTrue(UITestConditions.exists(form), app.debugDescription)
+        let formFrame = form.frame
+        XCTAssertLessThanOrEqual(formFrame.width, min(560, panelFrame.width) + 1, app.debugDescription)
+        XCTAssertEqual(formFrame.midX, panelFrame.midX, accuracy: 1)
+
+        let explanation = UITestConditions.element(app, "appointment-form-explanation")
+        XCTAssertEqual(UITestConditions.text(explanation), "진료 예약 정보를 이 기기에 저장해요.")
+        let clinicInput = UITestConditions.element(app, "appointment-clinic-input")
+        XCTAssertEqual(clinicInput.value as? String, clinic, app.debugDescription)
+        for identifier in ["appointment-date-input", "appointment-time-input", "appointment-note-input"] {
+            XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, identifier)), app.debugDescription)
+        }
+        XCTAssertNotNil(FormUITestConditions.reveal(clinicInput, in: app, scrollID: "appointments-scroll"))
+        clinicInput.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
+        for identifier in ["appointment-save", "appointment-form-cancel"] {
+            let action = UITestConditions.element(app, identifier)
+            let visibleFrame = FormUITestConditions.reveal(action, in: app, scrollID: "appointments-scroll")
+            XCTAssertNotNil(visibleFrame, app.debugDescription)
+            XCTAssertTrue(action.isHittable, app.debugDescription)
+        }
+    }
+
     static func time(minutesAhead: Int) -> Date {
         let future = Date().addingTimeInterval(Double(minutesAhead) * 60)
         return Calendar.current.date(from: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: future))!

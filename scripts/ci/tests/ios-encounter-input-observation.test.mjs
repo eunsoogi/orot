@@ -68,21 +68,40 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
 }`,
     );
     const binary = join(directory, 'control');
-    execFileSync(
-      'swiftc',
-      [
-        '-swift-version',
-        '6',
-        '-warnings-as-errors',
-        '-parse-as-library',
-        'apps/mobile/ios/OrotMobile/EncounterInputTrace.swift',
-        'apps/mobile/ios/OrotUITests/EncounterInputObservation.swift',
-        join(directory, 'main.swift'),
-        '-o',
-        binary,
-      ],
-      { timeout: 60000 },
-    );
+    const compilerPath = execFileSync('which', ['swiftc'], { encoding: 'utf8' }).trim();
+    const compilerVersion = execFileSync('swiftc', ['--version'], { encoding: 'utf8' }).trim();
+    const compilerArgs = [
+      '-v',
+      '-swift-version',
+      '6',
+      '-warnings-as-errors',
+      '-parse-as-library',
+      'apps/mobile/ios/OrotMobile/EncounterInputTrace.swift',
+      'apps/mobile/ios/OrotUITests/EncounterInputObservation.swift',
+      join(directory, 'main.swift'),
+      '-o',
+      binary,
+    ];
+    // Keep the 60-second limit and expose host/compiler context only after failure.
+    try {
+      execFileSync('swiftc', compilerArgs, { timeout: 60000 });
+    } catch (error) {
+      console.error(
+        JSON.stringify(
+          {
+            compilerPath,
+            compilerVersion,
+            runnerImageVersion: process.env.ImageVersion || 'unavailable',
+            error: error.message,
+            stdout: error.stdout?.toString('utf8') ?? '',
+            stderr: error.stderr?.toString('utf8') ?? '',
+          },
+          null,
+          2,
+        ),
+      );
+      throw error;
+    }
     const output = execFileSync(binary, [], { encoding: 'utf8', timeout: 10000 });
     assert.match(output, /scalar-controls-pass/);
     assert.match(output, /OROT_ENCOUNTER_INPUT_OVERFLOW/);
