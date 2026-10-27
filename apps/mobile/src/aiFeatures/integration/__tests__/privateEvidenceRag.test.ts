@@ -1,9 +1,8 @@
 import {
-  chunkStructuredRecord,
-  LOCAL_EMBEDDING_IDENTITY,
-  searchHybridEvidenceChunks,
-} from '@orot/rag';
-import type { DocumentQueryEmbeddingProvider } from '@orot/rag';
+  searchFixtureEvidence,
+  type FixtureEmbeddings,
+} from '../../../../../../packages/rag/__tests__/standardRetrievalFixtures';
+import { chunkStructuredRecord, LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
 import { createLocalHealthEvidenceRepository } from '../../../healthEvidence/localEvidenceRepository';
@@ -41,15 +40,11 @@ test('real SQLite deletion guards accept local identities while returned hits re
       ...noStaleEvidence,
     });
     const vectors = new SqlCipherRagEmbeddingStorage(database);
-    const provider: DocumentQueryEmbeddingProvider = {
+    const provider: FixtureEmbeddings = {
       modelIdentity: LOCAL_EMBEDDING_IDENTITY,
-      embedDocuments: async () => ({ ok: true, value: { vectors: [] } }),
-      embedQueries: async () => ({
-        ok: true,
-        value: {
-          vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)],
-        },
-      }),
+      embedDocuments: async () => [],
+      embedQuery: async () =>
+        new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0),
     };
     const lexical = {
       search: jest.fn(async () => [{ chunkId: persisted.id }]),
@@ -58,7 +53,7 @@ test('real SQLite deletion guards accept local identities while returned hits re
       {
         index: async () => undefined,
         search: (query, chunks, limit, options) =>
-          searchHybridEvidenceChunks(
+          searchFixtureEvidence(
             query,
             chunks,
             provider,

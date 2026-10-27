@@ -11,7 +11,11 @@ export async function runAgentMemoryTestOperation(
       return { synthetic: true, persisted: true, networkDisabled: true };
     case 'memory-delete':
       await runAgentMemoryProbe('delete', memoryIdentifier);
-      return { removed: true, networkDisabled: true };
+      return {
+        removed: true,
+        standardRagPositiveControl: true,
+        networkDisabled: true,
+      };
     case 'memory-restart':
       await runAgentMemoryProbe('restart', memoryIdentifier);
       return {
@@ -24,7 +28,11 @@ export async function runAgentMemoryTestOperation(
       return { tombstoneVerified: true, networkDisabled: true };
     case 'memory-verify-deletion':
       await runAgentMemoryProbe('verify-deletion', memoryIdentifier);
-      return { absentFromMemoryAndSearch: true, networkDisabled: true };
+      return {
+        absentFromMemoryAndSearch: true,
+        standardRagDeletionFence: true,
+        networkDisabled: true,
+      };
     default:
       throw new Error('Unknown iOS test operation: ' + operation);
   }

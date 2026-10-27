@@ -24,32 +24,22 @@ export {
   runLocalEmbeddingJob,
 } from './localEmbeddings';
 export type {
-  DocumentQueryEmbeddingProvider,
   LocalEmbeddingBackend,
-  LocalEmbeddingFailure,
   LocalEmbeddingModelIdentity,
   LocalEmbeddingProgress,
-  LocalEmbeddingRequest,
   LocalEmbeddingResponse,
-  LocalEmbeddingResult,
   LocalEmbeddingRole,
   LocalEmbeddingRunOptions,
 } from './localEmbeddings';
-export {
-  clearEvidenceIndex,
-  deleteEvidenceChunks,
-  indexEvidenceChunks,
-  searchEvidenceChunks,
-} from './embeddingRetrieval';
+export { clearEvidenceIndex, deleteEvidenceChunks } from './embeddingRetrieval';
 export type {
   EmbeddingIndexOptions,
   EmbeddingIndexProgress,
   LocalEmbeddingWrite,
-  LocalEmbeddingSearchHit,
   LocalEmbeddingVectorStore,
   PersistedLocalEmbedding,
 } from './embeddingRetrieval';
-export { searchHybridEvidenceChunks, DEFAULT_HYBRID_SEARCH_RANKING } from './hybridRetrieval';
+export { DEFAULT_HYBRID_SEARCH_RANKING } from './hybridRetrieval';
 export type {
   HybridEvidenceSearchHit,
   HybridSearchOptions,

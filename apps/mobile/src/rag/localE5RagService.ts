@@ -1,5 +1,6 @@
 import type {
   EmbeddingIndexOptions,
+  LocalEmbeddingBackend,
   EvidenceChunk,
   HybridEvidenceSearchHit,
   HybridSearchOptions,
@@ -76,12 +77,13 @@ function cancellableDatabase(
   };
 }
 
-// Standard adapters share the app's open encrypted connection; legacy provider stays public.
+// Standard adapters share the encrypted connection; the provider serves Rememori only.
 export function createLocalE5RagService(
   database: SqlDatabase,
+  backend: LocalEmbeddingBackend = localE5NativeBackend,
 ): LocalE5RagService {
-  const provider = new LocalE5EmbeddingProvider(localE5NativeBackend);
-  const embeddings = new LocalE5Embeddings(localE5NativeBackend);
+  const provider = new LocalE5EmbeddingProvider(backend);
+  const embeddings = new LocalE5Embeddings(backend);
   const storage = new SqlCipherRagEmbeddingStorage(database);
   const textSearch = new SqlCipherRagFullTextSearchStore(database);
   return {

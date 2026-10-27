@@ -61,30 +61,6 @@ export interface LocalEmbeddingResponse {
   readonly vectors: readonly (readonly number[])[];
 }
 
-export interface LocalEmbeddingFailure {
-  readonly code: string;
-  readonly message: string;
-  readonly retryable: boolean;
-}
-
-export type LocalEmbeddingResult<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: LocalEmbeddingFailure };
-
-export interface LocalEmbeddingRequest extends LocalEmbeddingRunOptions {
-  readonly input: readonly string[];
-}
-
-export interface DocumentQueryEmbeddingProvider {
-  readonly modelIdentity: LocalEmbeddingModelIdentity;
-  embedDocuments(
-    request: LocalEmbeddingRequest,
-  ): Promise<LocalEmbeddingResult<LocalEmbeddingResponse>>;
-  embedQueries(
-    request: LocalEmbeddingRequest,
-  ): Promise<LocalEmbeddingResult<LocalEmbeddingResponse>>;
-}
-
 export class LocalEmbeddingJobError extends Error {
   constructor(
     readonly code: 'invalid_request' | 'provider_unavailable' | 'internal_error',
