@@ -126,6 +126,9 @@ export function AppRouteContent({
       case 'records':
         return (
           <RecordsRoute
+            recordings={recordings}
+            recordingState={recordingState}
+            onRetryRecordings={() => refreshRecordings()}
             onOpenSymptoms={() => actions.push('symptoms')}
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
