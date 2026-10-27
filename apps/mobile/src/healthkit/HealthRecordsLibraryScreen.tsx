@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import type { HealthObservationPageLoader } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -25,6 +25,7 @@ import {
 interface HealthRecordsLibraryScreenProps {
   readonly loadObservations: HealthObservationPageLoader;
   readonly onBack: () => void;
+  readonly onOpenHealthImport: () => void;
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
   readonly loadMedicationData?: HealthRecordsMedicationLoader;
 }
@@ -33,6 +34,7 @@ interface HealthRecordsLibraryScreenProps {
 export function HealthRecordsLibraryScreen({
   loadObservations,
   onBack,
+  onOpenHealthImport,
   onOpenDetail,
   loadMedicationData,
 }: HealthRecordsLibraryScreenProps) {
@@ -114,18 +116,25 @@ export function HealthRecordsLibraryScreen({
         ) : undefined
       }
       ListHeaderComponent={
-        <HealthRecordsLibraryHeader
-          hasSharedNavigation={hasSharedNavigation}
-          loadState={loadState}
-          observationCount={observationCount}
-          hasMore={hasMore}
-          onBack={onBack}
-          onRetry={() => {
-            for (const category of observationCategories) reload(category);
-          }}
-          onSelectCategory={setSelectedCategory}
-          selectedCategory={selectedCategory}
-        />
+        <View style={styles.listHeader}>
+          <HealthRecordsLibraryHeader
+            hasSharedNavigation={hasSharedNavigation}
+            loadState={loadState}
+            observationCount={observationCount}
+            hasMore={hasMore}
+            onBack={onBack}
+            onRetry={() => {
+              for (const category of observationCategories) reload(category);
+            }}
+            onSelectCategory={setSelectedCategory}
+            selectedCategory={selectedCategory}
+          />
+          <AppButton
+            onPress={onOpenHealthImport}
+            testID="health-records-open-health-import"
+            title={t('healthRecords.importHealthData')}
+          />
+        </View>
       }
       onEndReached={() => {
         if (!loadingMore && !failed) loadNext();
@@ -153,6 +162,7 @@ export function HealthRecordsLibraryScreen({
 }
 
 const styles = StyleSheet.create({
+  listHeader: { gap: 14 },
   container: {
     gap: 16,
     paddingHorizontal: 20,

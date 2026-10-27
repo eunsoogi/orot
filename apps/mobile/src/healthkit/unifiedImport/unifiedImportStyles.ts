@@ -5,6 +5,7 @@ import { appColors } from '../../layout/appColors';
 export const unifiedImportStyles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: appColors.background },
   container: { flexGrow: 1, padding: 24, gap: 20 },
+  panel: { flex: 1, minWidth: 0, gap: 12 },
   title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   description: { color: appColors.secondary, fontSize: 17, lineHeight: 25 },
   card: {
@@ -46,6 +47,12 @@ export const unifiedImportStyles = StyleSheet.create({
     borderColor: appColors.primaryAction,
     backgroundColor: appColors.primarySoft,
   },
+  outcome: {
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: appColors.border,
+    gap: 4,
+  },
   optionHeading: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   optionLabel: { color: appColors.text, fontSize: 14 },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 21 },
@@ -57,6 +64,8 @@ export const unifiedImportStyles = StyleSheet.create({
     lineHeight: 22,
   },
   section: { gap: 12 },
+  // Pair the panel's 12-point gap with 8 points to keep the 20-point header rhythm.
+  headerSection: { gap: 12, marginBottom: 8 },
   candidate: {
     padding: 16,
     gap: 8,

@@ -4,6 +4,7 @@ import type { HealthKitFeature } from '../types';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
@@ -11,6 +12,8 @@ import { useNavigationPrimaryAction } from '../../navigation/useNavigationPrimar
 import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { EventKitImportSection } from './EventKitImportSection';
+import { EventKitSourceCard } from './EventKitSourceCard';
+import { HealthKitImportActivity } from './HealthKitImportActivity';
 import { HealthKitProviderCard } from './HealthKitProviderCard';
 import { createUnifiedImportCoordinator } from './coordinator';
 import { useUnifiedImportScreen } from './useUnifiedImportScreen';
@@ -24,6 +27,8 @@ import type {
 export interface HealthKitImportScreenCopy {
   readonly title: string;
   readonly description: string;
+  readonly sourceSelectionTitle: string;
+  readonly activityTitle: string;
   readonly localOnly: string;
   readonly readAuthorization: string;
   readonly importButton: string;
@@ -103,77 +108,120 @@ export function HealthKitImportScreen({
       style={styles.scroll}
       testID="unified-import-scroll"
     >
-      {onBack && !hasSharedAction ? (
-        <AppButton
-          onPress={onBack}
-          testID="healthkit-unified-import-back"
-          title={t('healthkit.unifiedImport.back')}
-          variant="secondary"
-        />
-      ) : null}
-      <View style={styles.section}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {reviewingCalendar
-            ? t('healthkit.unifiedImport.reviewTitle')
-            : copy.title}
-        </Text>
-        <Text style={styles.description}>
-          {reviewingCalendar ? t('calendar.confirmPrompt') : copy.description}
-        </Text>
-      </View>
-      {!reviewingCalendar || selected.size > 0 ? (
-        <HealthKitProviderCard
-          copy={copy}
-          selected={selected}
-          progress={progress}
-          disabled={isRunning || candidateSaving}
-          onToggle={state.toggleHealthKit}
-          onToggleFeature={state.toggleFeature}
-        />
-      ) : null}
-      <EventKitImportSection
-        reviewing={reviewingCalendar}
-        disabled={isRunning}
-        onToggle={state.toggleEventKit}
-        progress={progress?.eventKit ?? null}
-        run={run}
-        selected={eventKitSelected}
-        onPrimaryActionChange={hasSharedAction ? setCandidateAction : undefined}
-        onSavingChange={setCandidateSaving}
-      />
-      <View style={styles.notice}>
-        <AppSymbol name="lock.shield" size={18} color={appColors.secondary} />
-        <Text style={styles.noticeText}>{copy.localOnly}</Text>
-      </View>
-      <Text style={styles.caption} testID="unified-import-read-authorization">
-        {copy.readAuthorization}
-      </Text>
-      {!hasSharedAction ? (
-        <>
-          <AppButton
-            accessibilityState={{ busy: isRunning }}
-            disabled={!hasSelection || isRunning}
-            onPress={state.startImport}
-            title={copy.importButton}
-            testID="unified-import-start"
-          />
-          {run && isRunning ? (
-            <AppButton
-              onPress={() => run.cancel()}
-              title={copy.cancelButton}
-              testID="unified-import-cancel"
-              variant="secondary"
+      {/* Keep page identity and fallback actions inside their measured usable regions. */}
+      <AdaptiveColumns
+        active
+        routeKey="unified-import"
+        testID="unified-import-columns"
+        primary={
+          <View style={styles.panel} testID="unified-import-source-selection">
+            {onBack && !hasSharedAction ? (
+              <AppButton
+                onPress={onBack}
+                testID="healthkit-unified-import-back"
+                title={t('healthkit.unifiedImport.back')}
+                variant="secondary"
+              />
+            ) : null}
+            <View style={styles.headerSection} testID="unified-import-header">
+              <Text
+                accessibilityRole="header"
+                style={styles.title}
+                testID="unified-import-title"
+              >
+                {reviewingCalendar
+                  ? t('healthkit.unifiedImport.reviewTitle')
+                  : copy.title}
+              </Text>
+              <Text
+                style={styles.description}
+                testID="unified-import-description"
+              >
+                {reviewingCalendar
+                  ? t('calendar.confirmPrompt')
+                  : copy.description}
+              </Text>
+            </View>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {copy.sourceSelectionTitle}
+            </Text>
+            {!reviewingCalendar || selected.size > 0 ? (
+              <HealthKitProviderCard
+                copy={copy}
+                selected={selected}
+                disabled={isRunning || candidateSaving}
+                onToggle={state.toggleHealthKit}
+                onToggleFeature={state.toggleFeature}
+              />
+            ) : null}
+            <EventKitSourceCard
+              reviewing={reviewingCalendar}
+              selected={eventKitSelected}
+              disabled={isRunning || candidateSaving}
+              onToggle={state.toggleEventKit}
             />
-          ) : null}
-        </>
-      ) : null}
-      <Text
-        accessibilityLiveRegion="polite"
-        style={styles.status}
-        testID="unified-import-status"
-      >
-        {copy.phaseStatuses[phase]}
-      </Text>
+            <View style={styles.notice}>
+              <AppSymbol
+                name="lock.shield"
+                size={18}
+                color={appColors.secondary}
+              />
+              <Text style={styles.noticeText}>{copy.localOnly}</Text>
+            </View>
+            <Text
+              style={styles.caption}
+              testID="unified-import-read-authorization"
+            >
+              {copy.readAuthorization}
+            </Text>
+          </View>
+        }
+        secondary={
+          <View style={styles.panel} testID="unified-import-activity">
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {copy.activityTitle}
+            </Text>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={styles.status}
+              testID="unified-import-status"
+            >
+              {copy.phaseStatuses[phase]}
+            </Text>
+            <HealthKitImportActivity copy={copy} progress={progress} />
+            <EventKitImportSection
+              reviewing={reviewingCalendar}
+              disabled={isRunning}
+              progress={progress?.eventKit ?? null}
+              run={run}
+              selected={eventKitSelected}
+              onPrimaryActionChange={
+                hasSharedAction ? setCandidateAction : undefined
+              }
+              onSavingChange={setCandidateSaving}
+            />
+            {!hasSharedAction ? (
+              <>
+                <AppButton
+                  accessibilityState={{ busy: isRunning }}
+                  disabled={!hasSelection || isRunning}
+                  onPress={state.startImport}
+                  title={copy.importButton}
+                  testID="unified-import-start"
+                />
+                {run && isRunning ? (
+                  <AppButton
+                    onPress={() => run.cancel()}
+                    title={copy.cancelButton}
+                    testID="unified-import-cancel"
+                    variant="secondary"
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </View>
+        }
+      />
     </ScrollView>
   );
 }

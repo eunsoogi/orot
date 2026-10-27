@@ -30,6 +30,7 @@ test('loads each category directly and shows pressure while a Watch category rem
     <HealthRecordsLibraryScreen
       loadObservations={loader}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -103,6 +104,7 @@ test('retries only the failed category while retaining the ready pressure card',
     <HealthRecordsLibraryScreen
       loadObservations={loader}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
