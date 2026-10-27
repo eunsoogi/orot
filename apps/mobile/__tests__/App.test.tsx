@@ -85,7 +85,9 @@ test('keeps Home compact and groups calendar and appointment management under Sc
   await renderApp({ loadAppointments, calendarBridge: bridge });
 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
-  expect(screen.getByTestId('navigation-route-columns-route-1')).toBeTruthy();
+  // Home's own adaptive panels need the full usable lane to choose their columns.
+  expect(screen.getByTestId('home-adaptive-columns')).toBeTruthy();
+  expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('settings-open-provider')).toBeNull();
