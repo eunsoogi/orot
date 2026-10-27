@@ -5,6 +5,7 @@ import {
 } from '../agent/encounter/syntheticFixture';
 import { createEncounterReviewService } from './service';
 import { EncounterReviewController } from './controller';
+import { createNativeReviewDiagnostics } from './nativeDiagnostics';
 
 /** Canonical native phases exercise the production service/controller with SQLCipher and real graph checkpoints.
  * Only model output is synthetic; no network or test replacement of persistence is used.
@@ -22,24 +23,28 @@ export async function runEncounterReviewFixture(
   const sourceId = fixture + ':review';
   const repository = await openLocalStorage();
   const synthetic = syntheticEncounterModel(sourceId, mode === 'seed');
-  const service = createEncounterReviewService(async () => ({
-    status: 'ready',
-    selection: {
-      providerId: synthetic.model.provider.id,
-      modelId: 'synthetic',
-    },
-    option: {
+  const diagnostics = createNativeReviewDiagnostics(sourceId, synthetic.calls);
+  const service = createEncounterReviewService(
+    async () => ({
+      status: 'ready',
+      selection: {
+        providerId: synthetic.model.provider.id,
+        modelId: 'synthetic',
+      },
+      option: {
+        provider: synthetic.model.provider,
+        modelId: 'synthetic',
+        displayName: 'Synthetic',
+        privacyBoundary: 'on-device',
+        availability: { status: 'available' },
+      },
       provider: synthetic.model.provider,
       modelId: 'synthetic',
-      displayName: 'Synthetic',
-      privacyBoundary: 'on-device',
-      availability: { status: 'available' },
-    },
-    provider: synthetic.model.provider,
-    modelId: 'synthetic',
-    recipient: 'on-device',
-    remoteProcessing: false,
-  }));
+      recipient: 'on-device',
+      remoteProcessing: false,
+    }),
+    diagnostics,
+  );
   const controller = new EncounterReviewController(sourceId, service, () => {});
   const records = async () =>
     (await repository.list('health_observation')).filter(record =>
@@ -51,16 +56,22 @@ export async function runEncounterReviewFixture(
     if (controller.state.status !== 'idle' || synthetic.calls() !== 0)
       throw new Error('Opening a recording initiated extraction.');
     await controller.start({ authorize: async () => 'renewal_required' });
+    // Diagnostics query rows independently even if the original predicate short-circuits on status.
+    const diagnostic = await diagnostics.snapshot();
     if (
       String(controller.state.status) !== 'pending' ||
       (await records()).length
     )
-      throw new Error('Extraction must await explicit record approval.');
+      throw new Error(
+        'Extraction must await explicit record approval. EncounterReviewDiagnostic ' +
+          JSON.stringify(diagnostic),
+      );
     return {
       status: controller.state.status,
       pending: controller.state.pending,
       modelCalls: synthetic.calls(),
       recordCount: (await records()).length,
+      diagnostic,
     };
   }
   await controller.restore();

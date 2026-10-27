@@ -116,6 +116,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         launch(app, fixture: fixture, mode: "seed")
         openRecording(app, fixture: fixture)
         tap(app, "encounter-start")
+        attachStartDiagnostic(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
         let remove = UITestConditions.element(app, "encounter-probe-remove-source")
         XCTAssertTrue(remove.isHittable)
@@ -124,6 +125,32 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         tap(app, "encounter-save")
         status(app, contains: "사용할 수 없어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+    }
+
+    @MainActor
+    private func attachStartDiagnostic(_ app: XCUIApplication) {
+        // Observe the real settled attempt before the original unbounded Save wait. Observation cannot fail its oracle.
+        var diagnostic: [String: Any] = ["status": "UNKNOWN", "recordCount": "UNKNOWN", "modelCalls": "UNKNOWN", "failure": ["stage": "UNKNOWN", "category": "UNKNOWN"]]
+        let button = UITestConditions.element(app, "encounter-probe-readback")
+        if button.isHittable {
+            readbackSequence += 1
+            button.tap()
+            let element = UITestConditions.element(app, "encounter-probe-report")
+            let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "\"readback\":\(readbackSequence),"), object: element)
+            if UITestConditions.wait(for: [loaded]) == .completed,
+               let data = UITestConditions.text(element).data(using: .utf8),
+               let report = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let snapshot = report["diagnostic"] as? [String: Any]
+            {
+                diagnostic = snapshot
+            }
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: diagnostic) {
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+            attachment.name = "encounter-review-start-diagnostic"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
     }
 
     @MainActor
