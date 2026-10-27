@@ -97,6 +97,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow';
+  const savedRecordingsSelectionSummary =
+    'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview';
   const duoKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
   const fourSidedOcclusion =
@@ -110,7 +112,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep the integrated Duo-only coverage count explicit so missing registrations cannot shrink silently.
-  assert.equal(duoInventory.length, 20);
+  assert.equal(duoInventory.length, 21);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -132,6 +134,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLargeText,
     recordingLiveReflow,
     recordingReviewReflow,
+    savedRecordingsSelectionSummary,
   ]);
   // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
   // health-import regressions run only on the dedicated Duo destination.

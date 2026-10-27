@@ -20,4 +20,5 @@ export const duoTests = [
   'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport',
   'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow',
   'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow',
+  'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview',
 ];
