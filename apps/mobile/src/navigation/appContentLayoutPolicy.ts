@@ -20,12 +20,16 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Classification measures its overview and candidate panels from usable geometry.
   // The saved library owns a measured list and summary that share that usable geometry.
   // Sync status measures its status and recovery panels against the actual usable regions.
+  // Health data settings pairs category choices with sync and permission status panels.
   return route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'medical' ||
     route.name === 'health-records' ||
     route.name === 'health-records-detail' ||
+    route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
+    // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
+    route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||

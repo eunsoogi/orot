@@ -73,14 +73,17 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         let scroll = node(app, "recording-controls-scroll")
         let contentRegion = node(app, "navigation-content-region")
         XCTAssertTrue(contentRegion.exists && !contentRegion.frame.isEmpty)
-        let rightRail = node(app, "navigation-right-rail")
-        if rightRail.exists {
-            // The full-height rail shares vertical space with content; keep controls in the measured lane and above the system bottom inset.
+        let hasRightRail = node(app, "navigation-right-rail").exists
+        let rightRail = try NavigationUITestConditions.navigationAction(app, "navigation-back").toolbar
+        if hasRightRail {
+            // Content stops at its safe edge or the actual native bar, whichever comes first.
             XCTAssertFalse(rightRail.frame.isEmpty)
             XCTAssertEqual(contentRegion.frame.minX, root.minX, accuracy: 0.5)
-            XCTAssertEqual(contentRegion.frame.maxX, rightRail.frame.minX, accuracy: 0.5)
-            XCTAssertEqual(rightRail.frame.maxX, root.maxX, accuracy: 0.5)
-            let systemBottomInset = try NavigationUITestConditions.safeArea(app, testCase: self).bottom
+            let safeArea = try NavigationUITestConditions.safeArea(app, testCase: self)
+            XCTAssertEqual(contentRegion.frame.maxX, min(root.maxX - safeArea.right, rightRail.frame.minX), accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.width, 48, accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.maxX, app.frame.maxX - 12, accuracy: 0.5)
+            let systemBottomInset = safeArea.bottom
             XCTAssertGreaterThanOrEqual(scroll.frame.minX, contentRegion.frame.minX - 0.5)
             XCTAssertLessThanOrEqual(scroll.frame.maxX, contentRegion.frame.maxX + 0.5)
             XCTAssertLessThanOrEqual(scroll.frame.maxY, root.maxY - systemBottomInset + 0.5)
@@ -114,13 +117,16 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         let detailRoot = try rootFrame(app, containing: detailScroll.frame)
         let contentViewport = node(app, "navigation-content-region")
         XCTAssertTrue(contentViewport.exists && !contentViewport.frame.isEmpty)
-        let rightRail = node(app, "navigation-right-rail")
-        if rightRail.exists {
-            // The keyboard root is the full window; the Duo route uses only the measured content lane.
+        let hasRightRail = node(app, "navigation-right-rail").exists
+        let rightRail = try NavigationUITestConditions.navigationAction(app, "navigation-back").toolbar
+        if hasRightRail {
+            // A contracted content root may end before the window-side native rail.
             XCTAssertFalse(rightRail.frame.isEmpty)
-            XCTAssertEqual(contentViewport.frame.maxX, rightRail.frame.minX, accuracy: 0.5)
-            XCTAssertEqual(rightRail.frame.maxX, detailRoot.maxX, accuracy: 0.5)
-            let systemBottomInset = try NavigationUITestConditions.safeArea(app, testCase: self).bottom
+            let safeArea = try NavigationUITestConditions.safeArea(app, testCase: self)
+            XCTAssertEqual(contentViewport.frame.maxX, min(detailRoot.maxX - safeArea.right, rightRail.frame.minX), accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.width, 48, accuracy: 0.5)
+            XCTAssertEqual(rightRail.frame.maxX, app.frame.maxX - 12, accuracy: 0.5)
+            let systemBottomInset = safeArea.bottom
             XCTAssertLessThanOrEqual(detailScroll.frame.maxX, contentViewport.frame.maxX + 0.5)
             XCTAssertLessThanOrEqual(detailScroll.frame.maxY, detailRoot.maxY - systemBottomInset + 0.5)
         } else {
@@ -132,8 +138,8 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(last, in: app, scrollID: "health-records-detail-scroll")
         try NavigationUITestConditions.scrollToBottom(app, "health-records-detail-scroll")
         XCTAssertTrue(last.exists && last.isHittable)
-        if rightRail.exists {
-            XCTAssertLessThanOrEqual(last.frame.maxX, rightRail.frame.minX + 0.5)
+        if hasRightRail {
+            XCTAssertLessThanOrEqual(last.frame.maxX, contentViewport.frame.maxX + 0.5)
         }
         try inset(app, "health-record-row-11", bottom: true, top: false)
         capture(app, "synthetic-blood-pressure-library-final-row-safe-area")

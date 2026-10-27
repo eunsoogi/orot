@@ -76,17 +76,21 @@ do {
 precondition(dispatches == 2 && order == ["before", "dispatch", "after"])
 let before = FormScrollObservation.Record(launch: launch, reveal: 4, step: 2, phase: .before, uptime: 100, target: nil, start: [201,450], end: [201,410])
 let after = FormScrollObservation.Record(launch: launch, reveal: 4, step: 2, phase: .after, uptime: 110, target: nil, start: [201,450], end: [201,410])
-func touch(_ phase: String, number: Int = 1, session: UUID = launch, count: Int = 1, x: Double = 201, time: Double? = nil, truncated: Bool = false, multiple: Bool = false) throws -> FormScrollObservation.Touch {
+func touch(_ phase: String, number: Int = 1, session: UUID = launch, count: Int = 1, x: Double = 201, time: Double? = nil, truncated: Bool = false, multiple: Bool = false, missing: Bool = false, losses: [String] = [], discarded: Int = 0) throws -> FormScrollObservation.Touch {
   let began = phase == "began"
   let stamp = time ?? (began ? 101.0 : 108.0)
   let value: [String: Any] = ["launch": session.uuidString, "sequence": began ? 1 : 2, "touch": number, "phase": phase,
     "touchUptime": stamp, "capturedUptime": stamp + 0.1, "point": [x, began ? 450.0 : 410.0], "touchCount": count, "multipleTouches": multiple,
-    "geometry": ["truncated": truncated, "startMatches": 1]]
+    "geometry": missing ? NSNull() : ["truncated": truncated, "startMatches": 1], "losses": losses, "trackingDiscarded": discarded]
   return try JSONDecoder().decode(FormScrollObservation.Touch.self, from: JSONSerialization.data(withJSONObject: value))
 }
 let pair = try [touch("began"), touch("ended")]
 precondition(FormScrollObservation.bind(pair, dropped: 0, before: before, after: after) == 1)
 let invalidPairs = try [
+  [touch("began"), touch("ended", missing: true, losses: ["receiverMissing"])],
+  [touch("began"), touch("ended", losses: ["trackingMissing"])],
+  [touch("began", losses: ["trackingOverflow"], discarded: 32), touch("ended")],
+  [touch("began"), touch("ended", losses: ["futureUnknownReason"])],
   pair + [touch("began", number: 2, count: 2, time: 103), touch("ended", number: 2, count: 2, time: 106)],
   [touch("began"), touch("ended", multiple: true)],[], [touch("began")], [touch("began"), touch("cancelled")],
   [touch("began", session: UUID()), touch("ended")], [touch("began", count: 2), touch("ended")],

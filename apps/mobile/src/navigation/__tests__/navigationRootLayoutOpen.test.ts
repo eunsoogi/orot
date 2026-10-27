@@ -16,7 +16,7 @@ function layout(payload: NavigationGeometryPayload) {
 }
 
 test.each([
-  [openGeometry, 144, 807, 12],
+  [openGeometry, 84, 867, 136],
   [rotatedGeometry, 60, 609, 94],
 ] as const)(
   'allocates content and a rail inside continuous measured Open space',
@@ -30,7 +30,7 @@ test.each([
       windowHeight: payload.windowBounds.height,
       railTopInset,
       railBottomInset: 46,
-      railRightInset: reservedRightWidth - 48,
+      railRightInset: 12,
       systemBottomInset: 34,
     });
   },
@@ -103,3 +103,76 @@ test.each([
     ).toBe('bottom');
   },
 );
+
+// The content safe edge excludes the system lane; the custom bar can use it
+// below active indicators without carving that same lane out a second time.
+test('places the rail outside the right content safe edge with a real indicator gap', () => {
+  const result = layout(openGeometry);
+  expect(result.placement).toBe('right');
+  if (result.placement !== 'right') throw new Error('Expected a rail');
+  const railRight = openGeometry.windowBounds.width - result.railRightInset;
+  expect(railRight).toBe(939);
+  expect(railRight - 48).toBeGreaterThan(867);
+  expect(result.contentWidth).toBe(867);
+  expect(result.railTopInset).toBe(124 + 12);
+});
+
+test('keeps window origin translations out of local rail insets', () => {
+  const offsetX = 37;
+  const offsetY = 19;
+  const shifted = {
+    ...openGeometry,
+    windowBounds: { ...openGeometry.windowBounds, x: offsetX, y: offsetY },
+    reservedRegions: openGeometry.reservedRegions.map(region => ({
+      ...region,
+      frame: {
+        ...region.frame,
+        x: region.frame.x + offsetX,
+        y: region.frame.y + offsetY,
+      },
+    })),
+  };
+  expect(layout(shifted)).toEqual(layout(openGeometry));
+});
+
+test('uses expanded reserved frames without applying their included margins again', () => {
+  const indicator = openGeometry.reservedRegions[2]!;
+  expect(
+    layout({
+      ...openGeometry,
+      reservedRegions: [
+        openGeometry.reservedRegions[0]!,
+        {
+          ...indicator,
+          frame: { ...indicator.frame, height: 180 },
+          margins: { top: 10, right: 20, bottom: 24, left: 20 },
+        },
+      ],
+    }),
+  ).toEqual(
+    expect.objectContaining({
+      placement: 'right',
+      railTopInset: 192,
+      railRightInset: 12,
+      contentWidth: 867,
+    }),
+  );
+});
+
+test('does not reserve the rail again inside an already contracted content viewport', () => {
+  expect(
+    layout({
+      ...openGeometry,
+      viewportBounds: { x: 24, y: 10, width: 843, height: 625 },
+    }),
+  ).toEqual(
+    expect.objectContaining({
+      placement: 'right',
+      contentWidth: 843,
+      reservedRightWidth: 0,
+      systemBottomInset: 0,
+      railRightInset: 12,
+      railTopInset: 136,
+    }),
+  );
+});
