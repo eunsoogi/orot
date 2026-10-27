@@ -81,16 +81,22 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
   const fourSidedOcclusion =
     'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary';
+  const scheduleReflow =
+    'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation';
+  const scheduleLargeText =
+    'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 9);
+  assert.equal(duoInventory.length, 11);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
+    scheduleReflow,
+    scheduleLargeText,
     contextualDeparture,
     duoKeyboardSave,
     fourSidedOcclusion,
@@ -99,6 +105,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   ]);
   // Keep iPhone fixture membership unchanged; the Records layout case runs only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
+  assert.ok(iPhoneFixtures.includes(scheduleReflow));
+  assert.ok(iPhoneFixtures.includes(scheduleLargeText));
   assert.ok(iPhoneFixtures.includes(fourSidedOcclusion));
   assert.ok(coreTests.includes(recordingShareDismissal));
   const navigationImports = iosTestCohortTasks('navigation-imports').flatMap(

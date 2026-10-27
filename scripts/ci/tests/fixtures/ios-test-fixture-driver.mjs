@@ -28,13 +28,15 @@ export function fixture({
     name: 'owned-continuation-fixture',
     udid: '11111111-2222-4333-8444-555555555555',
   };
-  // Exercise the two established scoped cases regardless of new full-reset cases in the inventory.
+  // Exercise established calendar cases regardless of new full-reset cases in the inventory.
   const calendarCases = iosTestInventory('fixtures', 'calendar');
   const identifiers =
     selectedIdentifiers ??
     (scoped
       ? calendarCases.filter((identifier) =>
-          /\/(AppointmentsUITests|CalendarSelectionUITests)\//.test(identifier),
+          /\/(AppointmentsUITests|CalendarSelectionUITests|ScheduleCalendarUITests)\//.test(
+            identifier,
+          ),
         )
       : [
           ...iosTestInventory('fixtures').filter((identifier) =>
