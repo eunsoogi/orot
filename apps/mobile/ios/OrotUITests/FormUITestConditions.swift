@@ -100,7 +100,7 @@ enum FormUITestConditions {
 
     /// Return exposure/edit failure so guarded callers stop before another field or a missing keyboard action.
     @discardableResult
-    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String, observeCursorTap: ((String) -> Void)? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false) -> Bool {
+    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String, observeCursorTap: ((String) -> Void)? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeInput: ((EncounterInputObservation.Phase) -> Void)? = nil) -> Bool {
         let replaceStartedAt = ProcessInfo.processInfo.systemUptime
         defer { recordTiming("replace-total", since: replaceStartedAt) }
         // Pass measured closures as explicit arguments so Swift binds `else` to each guard statement.
@@ -122,24 +122,33 @@ enum FormUITestConditions {
             // XCTest's native Command-A selects the entire focused value, including its offscreen suffix.
             // Keep the existing observer around selection without synthesizing another coordinate tap.
             observeCursorTap?("before-select-all")
+            observeInput?(.beforeSelect)
             measure("select-existing") { app.typeKey("a", modifierFlags: .command) }
+            observeInput?(.afterSelect)
             observeCursorTap?("after-select-all")
             // One native delete replaces the selection; exact-empty rejects a missed selection without retrying.
+            observeInput?(.beforeDelete)
             measure("delete-existing") { app.typeText(XCUIKeyboardKey.delete.rawValue) }
+            observeInput?(.afterDelete)
             let emptied = measure("exact-empty") { exactValue(input, equals: "") }
+            observeInput?(.afterEmptyAssertion)
             guard emptied || scrollID != "symptoms-scroll" else { return false }
         }
         if !text.isEmpty {
             // Controlled fields can drop batched input, so preserve per-character synchronization.
             // Type through the app's focused control to avoid resolving this changing field query per Character.
             // The exact-value assertion below remains the sole outcome check; no corrective edit follows.
+            observeInput?(.beforeType)
             measure("type-characters") {
                 for character in text {
                     app.typeText(String(character))
                 }
             }
+            observeInput?(.afterType)
         }
-        return measure("exact-value") { exactValue(input, equals: text) }
+        let result = measure("exact-value") { exactValue(input, equals: text) }
+        observeInput?(.afterValueAssertion)
+        return result
     }
 
     /// Keep timing diagnostic-only; step names and durations exclude field text and identifiers.

@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
 export const healthRecordsDetailStyles = StyleSheet.create({
+  panelScroll: { flex: 1, minHeight: 0 },
   container: {
     gap: 12,
     paddingHorizontal: 20,

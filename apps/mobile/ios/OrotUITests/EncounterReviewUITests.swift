@@ -3,6 +3,7 @@ import XCTest
 /// Synthetic recordings and model replies enter the actual saved library, native navigation and production review route.
 final class EncounterReviewUITests: OrotFailFastTestCase {
     private var readbackSequence = 0
+    private var inputObservation: EncounterInputObservation?
     @MainActor
     func testSavedRecordingReviewRestoresWithoutAutomaticExtractionOrApproval() throws {
         let fixture = "test-persistence-" + UUID().uuidString.lowercased()
@@ -26,13 +27,13 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 1)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         app.terminate()
-        launch(app, fixture: fixture, mode: "restore")
+        launch(app, fixture: fixture, mode: "restore", observeInput: true)
         openRecording(app, fixture: fixture)
         status(app, contains: "근거와 충돌")
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
-        FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll")
+        FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record)
         reveal(app, "encounter-save", avoiding: restoredInput).tap()
         status(app, contains: "저장했어요")
         app.terminate()
@@ -154,9 +155,14 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, fixture: String, mode: String) {
+    private func launch(_ app: XCUIApplication, fixture: String, mode: String, observeInput: Bool = false) {
         readbackSequence = 0
         app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "encounter-review", "-OROT_REVIEW_FIXTURE", fixture, "-OROT_REVIEW_MODE", mode]
+        // The original restored edit opts in only when the runner environment explicitly requests it.
+        inputObservation = observeInput && ProcessInfo.processInfo.environment["OROT_TEST_ENCOUNTER_INPUT_OBSERVATION"] == "1" ? EncounterInputObservation() : nil
+        if let inputObservation {
+            app.launchArguments += ["-OROT_TEST_ENCOUNTER_INPUT_OBSERVATION", inputObservation.run.uuidString]
+        }
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
     }
