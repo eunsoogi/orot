@@ -99,6 +99,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
   const medicationHistoryReflow =
     'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
+  const syncStatusReflow =
+    'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
@@ -120,7 +122,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep Settings, recording library/review, appointment, and health-detail coverage explicit.
-  assert.equal(duoInventory.length, 25);
+  assert.equal(duoInventory.length, 26);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -144,6 +146,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLargeText,
     healthRecordDetailReflow,
     medicationHistoryReflow,
+    syncStatusReflow,
     recordingLiveReflow,
     recordingReviewReflow,
     savedRecordingsSelectionSummary,

@@ -18,6 +18,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Health detail panels resolve against the actual native usable regions.
   // Appointment entry routes share the screen that measures list and selected-detail panels.
   // The saved library owns a measured list and summary that share that usable geometry.
+  // Sync status measures its status and recovery panels against the actual usable regions.
   return route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'health-records' ||
@@ -26,6 +27,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
+    route.name === 'settings-sync-status' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||

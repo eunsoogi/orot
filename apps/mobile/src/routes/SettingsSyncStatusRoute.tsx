@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { HealthKitAutoSyncResult } from '../healthkit/autoSync';
 import {
@@ -7,14 +7,16 @@ import {
   loadLocalHealthKitAutoSyncStatus,
   syncLocalPreviouslyRequestedHealthKit,
 } from '../healthkit/autoSyncLocal';
-import { AppButton } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { formatDateTime, t } from '../i18n';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { t } from '../i18n';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { SettingsCalendarSyncSection } from './SettingsCalendarSyncSection';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
+import {
+  SettingsSyncStatusHealthPanel,
+  SettingsSyncStatusRecoveryPanel,
+} from './SettingsSyncStatusPanels';
 
 type AutoSyncSnapshot = Awaited<
   ReturnType<typeof loadLocalHealthKitAutoSyncStatus>
@@ -43,9 +45,13 @@ export function SettingsSyncStatusRoute({
   const [loaded, setLoaded] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [openSettingsError, setOpenSettingsError] = useState(false);
-  const [retryStatus, setRetryStatus] = useState<
-    'complete' | 'retryable' | null
+  const [retryOutcome, setRetryOutcome] = useState<
+    HealthKitAutoSyncResult['status'] | null
   >(null);
+  const [attemptedFeatures, setAttemptedFeatures] = useState<
+    readonly HealthKitAutoSyncFeature[]
+  >([]);
+  const [retryReadbackFailed, setRetryReadbackFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -74,13 +80,21 @@ export function SettingsSyncStatusRoute({
   async function retry() {
     if (retrying || selected.length === 0) return;
     setRetrying(true);
-    setRetryStatus(null);
+    setRetryOutcome(null);
+    setAttemptedFeatures([]);
+    setRetryReadbackFailed(false);
     try {
       const result = await retrySync();
-      setRetryStatus(result.status === 'complete' ? 'complete' : 'retryable');
-      setSnapshot(await loadStatus());
+      setRetryOutcome(result.status);
+      setAttemptedFeatures(result.attemptedFeatures);
+      try {
+        setSnapshot(await loadStatus());
+      } catch {
+        // Keep the returned attempt result authoritative when its checkpoint cannot be reread.
+        setRetryReadbackFailed(true);
+      }
     } catch {
-      setRetryStatus('retryable');
+      setRetryOutcome('retryable');
     } finally {
       setRetrying(false);
     }
@@ -91,11 +105,16 @@ export function SettingsSyncStatusRoute({
     Linking.openSettings().catch(() => setOpenSettingsError(true));
   }
 
-  const message =
-    selected.length === 0
+  const message = !loaded
+    ? t(
+        loadFailed
+          ? 'settings.syncStatus.loadError'
+          : 'settings.healthData.loading',
+      )
+    : selected.length === 0
       ? t('settings.syncStatus.noSelection')
-      : retryStatus
-        ? t(`settings.syncStatus.${retryStatus}`)
+      : retryOutcome
+        ? t(`settings.syncStatus.${retryOutcome}`)
         : snapshot
           ? t(`settings.syncStatus.${snapshot.status}`)
           : t('settings.syncStatus.noResult');
@@ -106,90 +125,34 @@ export function SettingsSyncStatusRoute({
       style={styles.scroll}
       testID="settings-sync-status-scroll"
     >
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="settings-sync-status-title"
-      >
-        {t('settings.syncStatus.title')}
-      </Text>
-      {loadFailed ? (
-        <Text
-          accessibilityRole="alert"
-          style={styles.error}
-          testID="settings-sync-status-load-error"
-        >
-          {t('settings.syncStatus.loadError')}
-        </Text>
-      ) : null}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>
-          {t('settings.syncStatus.healthData')}
-        </Text>
-        {selected.length > 0 ? (
-          <Text
-            style={styles.featureList}
-            testID="settings-sync-selected-features"
-          >
-            {selected
-              .map(feature => t(`healthkit.unifiedImport.feature.${feature}`))
-              .join(' · ')}
-          </Text>
-        ) : null}
-        <Text
-          accessibilityLiveRegion="polite"
-          style={styles.message}
-          testID="settings-sync-status-message"
-        >
-          {!loaded && !loadFailed ? t('settings.healthData.loading') : message}
-        </Text>
-        {snapshot ? (
-          <Text
-            style={styles.timestamp}
-            testID="settings-sync-status-updated-at"
-          >
-            {t('settings.syncStatus.updatedAt', {
-              timestamp: formatDateTime(new Date(snapshot.updatedAt)),
-            })}
-          </Text>
-        ) : null}
-      </View>
-      <SettingsCalendarSyncSection
-        sync={calendarSync}
-        onOpenSystemSettings={openSystemSettings}
-      />
-      {onConfigureHealthData ? (
-        <AppButton
-          onPress={onConfigureHealthData}
-          testID="settings-sync-open-health-data"
-          title={t('settings.healthData')}
-          variant="secondary"
-        />
-      ) : null}
-      <AppButton
-        accessibilityState={{ busy: retrying }}
-        disabled={!loaded || selected.length === 0 || retrying}
-        onPress={() => {
-          retry();
-        }}
-        testID="settings-sync-retry"
-        title={
-          retrying
-            ? t('settings.syncStatus.retrying')
-            : t('settings.syncStatus.retry')
+      <AdaptiveColumns
+        primary={
+          <SettingsSyncStatusHealthPanel
+            attemptedFeatures={attemptedFeatures}
+            calendarSync={calendarSync}
+            loadFailed={loadFailed}
+            message={message}
+            onOpenSystemSettings={openSystemSettings}
+            retryReadbackFailed={retryReadbackFailed}
+            selected={selected}
+            snapshot={snapshot}
+          />
         }
+        secondary={
+          <SettingsSyncStatusRecoveryPanel
+            hasSelection={selected.length > 0}
+            loaded={loaded}
+            onConfigureHealthData={onConfigureHealthData}
+            onOpenSystemSettings={openSystemSettings}
+            onRetry={() => {
+              retry();
+            }}
+            openSettingsError={openSettingsError}
+            retrying={retrying}
+          />
+        }
+        testID="settings-sync-status-layout"
       />
-      <AppButton
-        onPress={openSystemSettings}
-        testID="settings-sync-open-system-settings"
-        title={t('settings.syncStatus.openSettings')}
-        variant="secondary"
-      />
-      {openSettingsError ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {t('settings.syncStatus.openSettingsError')}
-        </Text>
-      ) : null}
     </ScrollView>
   );
 }
@@ -199,23 +162,8 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    gap: 16,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 32,
   },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
-  card: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 8,
-    padding: 16,
-  },
-  sectionTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  featureList: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  message: { color: appColors.text, fontSize: 14, lineHeight: 21 },
-  timestamp: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
-  error: { color: appColors.danger, fontSize: 14, lineHeight: 20 },
 });
