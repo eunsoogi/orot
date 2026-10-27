@@ -11,6 +11,16 @@ function parsedToolResult(message) {
   }
 }
 
+function appointmentContextFromRequest(request) {
+  const prefix = 'Appointment and user context: ';
+  const content = request.messages.find(
+    (message) => message.role === 'user' && message.content?.includes(prefix),
+  )?.content;
+  const contextLine = content?.split('\n').find((line) => line.startsWith(prefix));
+  if (!contextLine) throw new Error('The model request omitted the appointment context.');
+  return JSON.parse(contextLine.slice(prefix.length));
+}
+
 // The standard app tool message carries an EvidenceBatch directly in this harness's default result mode.
 function searchedKinds(request) {
   return new Set(
@@ -135,6 +145,7 @@ function responseFor(testCase, evidenceItems) {
 function createScriptedProvider(testCase) {
   let calls = 0;
   const providerTurns = [];
+  const providerInputs = [];
   const provider = {
     kind: 'language-model',
     id: 'orot-synthetic-evaluation-adapter',
@@ -147,6 +158,12 @@ function createScriptedProvider(testCase) {
     },
     async generate(request) {
       calls += 1;
+      const appointmentContext = appointmentContextFromRequest(request);
+      const query = appointmentContext.note;
+      if (query !== testCase.query) {
+        throw new Error('The model-facing appointment note does not match the fixture query.');
+      }
+      providerInputs.push({ query, appointmentContext });
       const kinds = searchedKinds(request);
       const toolResults = toolResultSummary(request);
       const offeredTools = (request.tools ?? []).map((tool) => tool.name);
@@ -169,9 +186,7 @@ function createScriptedProvider(testCase) {
           ok: true,
           value: {
             text: '',
-            toolCalls: [
-              { id: `synthetic-tool-call-${calls}`, name, arguments: { query: testCase.query } },
-            ],
+            toolCalls: [{ id: `synthetic-tool-call-${calls}`, name, arguments: { query } }],
             finishReason: 'tool_calls',
           },
         };
@@ -198,6 +213,7 @@ function createScriptedProvider(testCase) {
 
   return {
     provider,
+    providerInputs,
     get callCount() {
       return calls;
     },

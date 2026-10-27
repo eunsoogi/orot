@@ -170,7 +170,7 @@ describe('manual synthetic visit-question graph evaluation', () => {
         fixture,
         onContext: (context: any) => {
           evaluationCase = context.evaluationCase;
-          traces.push(context.trace);
+          traces.push(context);
         },
       });
       evaluatedCases.push(evaluationCase);
@@ -227,23 +227,23 @@ describe('manual synthetic visit-question graph evaluation', () => {
         );
       }),
     ).toBe(true);
-    // Pin reproducible fixture outcomes while keeping below-target rubric scores visible in the manual report.
-    expect(report.every(({ status, expectedStatus }) => status === expectedStatus)).toBe(true);
-    expect(report.map(({ caseId, failedDimensions }) => ({ caseId, failedDimensions }))).toEqual([
-      { caseId: 'confirmed-next-visit-with-memory', failedDimensions: [] },
-      { caseId: 'conflicting-medication-needs-clarification', failedDimensions: [] },
-      {
-        caseId: 'historical-measurement-without-current-reading',
-        failedDimensions: ['useful_questions'],
-      },
-    ]);
-    expect(traces[0]).toMatchObject({
-      ragIndexCalls: 1,
-      ragSearchCalls: 1,
-      memoryStoreSearches: 1,
-    });
-    expect(traces[0].memoryQueryServiceSearches).toBeGreaterThan(0);
     if (providerConfig.mode === 'test-adapter') {
+      // Deterministic outcomes belong to the scripted adapter; live-model scores remain report data.
+      expect(report.map(({ status, failedDimensions }) => [status, failedDimensions])).toEqual([
+        ['ready', []],
+        ['needs_clarification', []],
+        ['needs_clarification', ['useful_questions']],
+      ]);
+      expect(traces.map(({ providerInputs }) => providerInputs[0]?.query)).toEqual(
+        fixture.cases.map(({ query }) => query),
+      );
+      expect(new Set(traces.map(({ providerInputs }) => providerInputs[0]?.query)).size).toBe(3);
+      expect(traces[0].trace).toMatchObject({
+        ragIndexCalls: 1,
+        ragSearchCalls: 1,
+        memoryStoreSearches: 1,
+      });
+      expect(traces[0].trace.memoryQueryServiceSearches).toBeGreaterThan(0);
       expect(report.every((item) => item.execution.tokenUsage.status === 'unmeasured')).toBe(true);
     }
   });

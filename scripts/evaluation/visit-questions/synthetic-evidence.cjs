@@ -28,7 +28,7 @@ const { createSyntheticMemory } = require('./synthetic-memory.cjs');
 const FIXTURE_SEED = 'orot-visit-questions-eval-v1';
 const FIXTURE_NOW = '2030-04-26T00:00:00.000Z';
 
-async function canonicalEvaluationCase(testCase, buildChunks, repository, memoryHit) {
+async function canonicalEvaluationCase(testCase, buildChunks, repository, memoryHit, prepared) {
   const personal = testCase.evidence.filter((item) => item.sourceKind === 'personal_record');
   const chunks = await buildChunks(repository, {
     identities: personal.map((item) => ({ kind: 'evidence_span', id: item.evidenceId })),
@@ -57,7 +57,13 @@ async function canonicalEvaluationCase(testCase, buildChunks, repository, memory
   const expectedEvidenceIds = testCase.expected.expectedEvidenceIds.map((id) =>
     fixtureMemory?.evidenceId === id ? memory.item.evidenceId : id,
   );
-  return { ...testCase, evidence, expected: { ...testCase.expected, expectedEvidenceIds } };
+  return {
+    ...testCase,
+    appointment: prepared.appointment,
+    appointmentContext: prepared.appointmentContext,
+    evidence,
+    expected: { ...testCase.expected, expectedEvidenceIds },
+  };
 }
 
 /** Prepares fixtures through the app context service, bounded chunk builder, and Rememori Store. */
@@ -68,7 +74,9 @@ async function makePreparedContext(
   const selectedFixture = fixture.cases.find((item) => item.caseId === testCase.caseId);
   if (!selectedFixture) throw new Error('The evaluation case is not part of its fixture seed.');
   const records = buildFixtureRecords(fixture.fixtureId);
-  const repository = createFixtureRepository(records, testCase.appointment);
+  // The app derives model-facing context from the selected appointment; carry each fixture query there.
+  const appointment = { ...selectedFixture.appointment, note: selectedFixture.query };
+  const repository = createFixtureRepository(records, appointment);
   const trace = {
     appointmentQueries: 0,
     chunkLoads: 0,
@@ -82,7 +90,7 @@ async function makePreparedContext(
     const evidenceData = createFixtureEvidenceData(repository, trace);
     const buildChunks = createBoundedVisitQuestionChunkBuilder(async () => evidenceData);
     const queryService = createLocalRecordQueryService(
-      createFixtureQueryStorage(testCase.appointment, trace),
+      createFixtureQueryStorage(appointment, trace),
       memory.queryReader,
     );
     const { createSyntheticRag } = require('./synthetic-rag.cjs');
@@ -100,10 +108,11 @@ async function makePreparedContext(
       throw new Error(`Synthetic app context was not ready: ${prepared.status}.`);
     }
     const evaluationCase = await canonicalEvaluationCase(
-      testCase,
+      selectedFixture,
       buildChunks,
       repository,
       memory.memoryHit,
+      prepared,
     );
     return { prepared, evaluationCase, trace, close: memory.close };
   } catch (error) {

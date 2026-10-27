@@ -17,7 +17,6 @@ async function runSyntheticCase(testCase, testOverrides = {}) {
   const workflowRoot = path.join(workflowSourceRoot, 'apps/mobile/src/agent/visitQuestions');
   const { runVisitQuestionWorkflow } = require(path.join(workflowRoot, 'workflow'));
   const context = await makePreparedContext(testCase, testOverrides.fixture);
-  testOverrides.onContext?.({ evaluationCase: context.evaluationCase, trace: context.trace });
   // Injected environment and fetch keep provider-boundary integration tests local while exercising the real graph.
   const providerConfig = getVisitQuestionProviderConfig(testOverrides.environment ?? process.env);
   let selectedProvider;
@@ -31,6 +30,7 @@ async function runSyntheticCase(testCase, testOverrides = {}) {
         return scripted.callCount;
       },
       getTokenUsage: () => null,
+      providerInputs: scripted.providerInputs,
     };
   } else {
     selectedProvider = createOpenAIChatCompletionsProvider({
@@ -43,6 +43,12 @@ async function runSyntheticCase(testCase, testOverrides = {}) {
     providerId: selectedProvider.provider.id,
     modelId: providerConfig.model,
   };
+  testOverrides.onContext?.({
+    evaluationCase: context.evaluationCase,
+    appointmentContext: context.prepared.appointmentContext,
+    providerInputs: selectedProvider.providerInputs ?? [],
+    trace: context.trace,
+  });
   const startedAt = process.hrtime.bigint();
   try {
     const result = await runVisitQuestionWorkflow({
