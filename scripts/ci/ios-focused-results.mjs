@@ -43,6 +43,7 @@ export function verifyFocusedIosResults(profile, file, name, directory, context)
             'fixture-isolation',
             'recording-persistence',
             'state-persistence',
+            'encounter-review-persistence',
           ].includes(selection.mode)
         ? `${selection.mode}/results.json`
         : 'results.json';

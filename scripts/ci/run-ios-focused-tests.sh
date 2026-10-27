@@ -15,7 +15,7 @@ directory="$6"
 # Both hosted callers provide an already verified product and booted owned destination.
 # Selection is exact; stateful groups keep their original phase drivers and first-failure boundary.
 case "$mode" in
-  backup | local-model | speech-journey | fixture-isolation | recording-persistence | state-persistence)
+  backup | local-model | speech-journey | fixture-isolation | recording-persistence | state-persistence | encounter-review-persistence)
     scripts/ci/run-command.sh ios-focus-tests "$directory/tests.log" -- node "scripts/ci/run-ios-$mode-tests.mjs" "$test_run" "$owner_file" "$directory/$mode"
     ;;
   authentication)

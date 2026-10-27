@@ -5,6 +5,8 @@ import type { HealthKitImportScreenCopy } from './HealthKitImportScreen';
 export const unifiedHealthImportCopy: HealthKitImportScreenCopy = {
   title: t('healthkit.unifiedImport.title'),
   description: t('healthkit.unifiedImport.description'),
+  sourceSelectionTitle: t('healthkit.unifiedImport.sourceSelectionTitle'),
+  activityTitle: t('healthkit.unifiedImport.activityTitle'),
   localOnly: t('healthkit.unifiedImport.localOnly'),
   readAuthorization: t('healthkit.unifiedImport.readAuthorization'),
   importButton: t('healthkit.unifiedImport.import'),

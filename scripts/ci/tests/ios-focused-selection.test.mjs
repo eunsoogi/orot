@@ -181,7 +181,7 @@ test('focused consumer verifies exact products before its only boot and retains 
   assert.match(execution, /run-ios-fixture-tests\.mjs "\$@"/);
   assert.match(
     execution,
-    /backup \| local-model \| speech-journey \| fixture-isolation \| recording-persistence \| state-persistence\)/,
+    /backup \| local-model \| speech-journey \| fixture-isolation \| recording-persistence \| state-persistence \| encounter-review-persistence\)/,
   );
   assert.doesNotMatch(
     source,

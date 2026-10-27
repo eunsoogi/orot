@@ -68,7 +68,9 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, Records 허브의 적응형 열과 큰 글씨 접근성, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존을 확인하는 열세 사례로 구성됩니다.
+`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Settings 측정 패널의 다크 모드·가로 회전·큰 글씨와 카테고리 이동 (`OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText`), 네 개 AI 진입점의 측정 콘텐츠 영역 배치와 동의 없는 근거 화면 진입, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, Records 허브의 적응형 열과 큰 글씨 접근성, 건강 기록에서 통합 가져오기 진입, 선택·진행 상태의 Duo 기하 변화 유지, 큰 글씨 단일 열, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존을 확인하는 열여덟 사례로 구성됩니다.
+
+이 열여덟 사례 목록은 [Settings Duo 등록](https://github.com/eunsoogi/orot/issues/277)의 `bcc2d09bd23c0660058ee516f3b08544b59b99f8`와 선행 Duo 등록이 통합된 구성을 설명합니다. 그 소스가 아직 병합되지 않은 체크아웃에서는 준비된 등록 계약이며, 실제 실행 목록은 해당 체크아웃의 `duo-test-inventory.mjs`로 확인하세요. 문서에 목록을 보존하는 것만으로 미병합 UI의 통합이나 실행 성공을 입증하지 않습니다.
 
 로컬 Duo 검증도 다른 작업과 겹치지 않는 제품 경로와 새 소유권 파일을 사용합니다. 실행 전후의 `simctl list -j` 결과를 별도로 보존해 소유 기기 외의 UDID·기기 유형·런타임·상태가 유지되는지 비교하세요. 준비는 선택한 런타임이 없으면 실패하며 다른 런타임으로 대체하거나 설치하지 않습니다. 검증 중 오류가 나더라도 마지막 cleanup은 실행해 기록된 소유 기기만 종료하고 삭제하세요.
 
@@ -104,6 +106,19 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
+전사 후보 검토의 영속화는 `encounter-review-persistence` 전용 cohort에서 별도로 실행합니다. 기존 state/shared persistence 묶음이 저장한 건강 관찰도 실제 충돌 검사 대상이므로 같은 데이터베이스의 다음 단계로 덧붙이지 않습니다. 다른 작업과 겹치지 않는 제품 경로와 소유권 파일을 사용하세요.
+
+```sh
+node scripts/ci/build-ios-tests.mjs core build/integration-tests-encounter-review
+node scripts/ci/ios-test-simulator.mjs prepare-cohort encounter-review-persistence build/ios-encounter-review-owner.json
+node scripts/ci/run-ios-encounter-review-persistence-tests.mjs build/integration-tests-encounter-review/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-encounter-review-owner.json build/ios-encounter-review-phases
+node scripts/ci/ios-test-simulator.mjs cleanup encounter-review-persistence build/ios-encounter-review-owner.json
+```
+
+driver는 한 번만 초기화한 뒤 production service/controller로 seed, resume, readback을 세 앱 프로세스에서 실행합니다. JSON attachment 본문의 같은 run UUID·fixture ID·phase와 서로 다른 실제 PID를 대조하며, 복원 snapshot 전체가 seed와 일치하고 추출 호출과 자동 저장이 없음을 확인합니다. 명시적인 저장 뒤 세 번째 프로세스에서 reviewed·derived·unknown-speaker 기록과 정확한 근거를 읽고 자기 source와 연결된 자료만 삭제합니다. 단계 사이에는 초기화하지 않습니다. 어느 단계가 실패해도 소유 Simulator cleanup을 수행하고, 이후 실제 `simctl list -j`에서 기록된 UDID의 부재를 확인해 receipt를 보존하세요. 삭제 또는 부재 확인이 실패하거나 불명확하면 소유권과 실패 기록을 유지하고 다른 기기를 건드리지 않습니다.
+
+집중 실행은 `focus_profile=ios/core`, `focus_scenario_file=scripts/ci/encounter-review-persistence-test-phases.mjs`, `focus_scenario_name=group/encounter-review-persistence`로 전체 세 단계를 선택합니다. 단일 phase 선택은 거부합니다. 네이티브 화면 여정은 기존 `recording-evidence` cohort에 등록된 `EncounterReviewUITests`가 실제 저장 녹음 목록과 navigation을 통해 검토 화면을 엽니다. 합성 모델 응답은 실제 제공자 품질의 근거가 아니며, source 등록·빌드·Simulator 실행·모델 품질의 결과를 각각 구분하세요.
+
 두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 `authentication` suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. 로컬에서 아래 명령을 실행할 때는 owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켠 뒤, prompted 사례에서 일치하는 얼굴을 입력하세요. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
 
 ```sh
@@ -113,7 +128,7 @@ OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core bui
 
 전체 Keychain authentication suite는 Full E2E workflow에서 재사용 가능한 `ios-focused.yml` 작업으로 실행합니다. hosted 작업은 Device Hub를 열고 생성된 owner Simulator를 확인한 뒤 Face ID를 등록합니다. 두 보호 쿼리 동안 Device Hub의 `Authorized with Face ID` 입력을 보내며, 창이나 메뉴 조작을 확인할 수 없으면 테스트를 중단합니다. 로컬 명령은 위의 수동 Face ID 절차를 따릅니다.
 
-Keychain authentication은 162개 cohort 관측과 별도로 두 개의 보호 쿼리 결과를 기록합니다. Full receipt는 두 관측, 같은 run·attempt의 테스트 결과 bundle, owner Simulator와 성공한 Face ID 입력 로그를 함께 검증합니다. 해당 task가 소유한 Simulator만 사용하고 owner 파일을 통해 정리하세요. 테스트는 합성 데이터만 저장합니다.
+Keychain authentication은 169개 cohort 관측과 별도로 두 개의 보호 쿼리 결과를 기록합니다. Full receipt는 두 관측, 같은 run·attempt의 테스트 결과 bundle, owner Simulator와 성공한 Face ID 입력 로그를 함께 검증합니다. 해당 task가 소유한 Simulator만 사용하고 owner 파일을 통해 정리하세요. 테스트는 합성 데이터만 저장합니다.
 
 제품과 의존성을 준비한 뒤 기록된 기기만 부팅합니다. hosted 실행은 승인된 runtime을 확인한 뒤 공개 `simctl runtime dyld_shared_cache update <runtime>` 명령이 끝나야 Simulator를 생성·부팅합니다. 선택한 runtime만 대상으로 하며 강제 재생성이나 삭제는 하지 않습니다. 이 준비 시간과 resource samples도 전체 비용에 포함하고, 개발용 Mac과 자체 호스팅 러너에서는 이 단계를 추가하지 않습니다. `test-without-building`은 consumer에서 다시 컴파일하지 않습니다. CI는 run·attempt·source와 build input·제품 digest를 검증한 뒤 Simulator를 생성하며, 검증 실패를 빌드나 다른 제품으로 대체하지 않습니다. 실행은 한 destination과 worker를 사용하고 첫 실패·결과 bundle·첨부 자료·단계 시간·resource samples를 보존합니다.
 
@@ -125,7 +140,7 @@ Backup runner의 소유 destination 검사가 실패하면 `artifacts/ios-cohort
 
 테스트 실행은 `-test-timeouts-enabled NO`를 명시하고 사례별 실행 허용 시간을 지정하지 않습니다. UI 조건·native broker·asset 설치·앱 receipt·일반 준비 명령은 실제 결과를 기다립니다. UI의 50ms run-loop 양보와 receipt의 50ms 확인 간격은 관측 주기이며 완료 제한이 아닙니다. receipt 대기 중에는 현재 토큰의 receipt 존재 여부와 `simctl launch`가 반환한 실제 PID의 생존을 반복 확인합니다. receipt를 읽고 검증·삭제하기 직전에는 새 `simctl list -j` 결과로 승인 runtime, 기기 이름·UDID·유형 ID와 `Booted` 상태를 확인하고, 각 Simulator 변경 명령 직전에도 소유권을 새로 확인합니다. 소유권 또는 부팅 손실, 다른 PID의 receipt, 프로세스 종료와 오류는 실패합니다. 끝나지 않은 조건을 성공으로 처리하지 않습니다. Apple 내부 접근성 IPC의 자체 중단·runner crash는 이 정책으로 해결됐다고 해석하지 않습니다.
 
-공통 XCTest 준비·종료 단계는 호스트 소켓 대기를 별도 작업에서 수행해 메인 실행 흐름의 앱 상태 통지를 막지 않습니다. UI fixture 준비는 호스트 응답 뒤에도 XCTest가 `com.orot.mobile`의 `.notRunning` 상태를 직접 관측해야 본문에 진입합니다. 호스트 명령 완료와 XCTest의 상태 반영은 서로 다른 경계입니다. 이 관측에는 경과 시간 제한이나 앱 실행 재시도를 추가하지 않습니다. 실제 XCTest를 사용하는 메인 실행 흐름 회귀 검사는 macOS와 Xcode에서 `node --test scripts/ci/tests/ios-test-fixture-runloop.test.mjs`로 실행합니다. Apple XCTest가 없는 Linux에서는 이 검사만 실행하지 않으며, 현재 iOS 162개 사례의 필수 실행에는 영향을 주지 않습니다.
+공통 XCTest 준비·종료 단계는 호스트 소켓 대기를 별도 작업에서 수행해 메인 실행 흐름의 앱 상태 통지를 막지 않습니다. UI fixture 준비는 호스트 응답 뒤에도 XCTest가 `com.orot.mobile`의 `.notRunning` 상태를 직접 관측해야 본문에 진입합니다. 호스트 명령 완료와 XCTest의 상태 반영은 서로 다른 경계입니다. 이 관측에는 경과 시간 제한이나 앱 실행 재시도를 추가하지 않습니다. 실제 XCTest를 사용하는 메인 실행 흐름 회귀 검사는 macOS와 Xcode에서 `node --test scripts/ci/tests/ios-test-fixture-runloop.test.mjs`로 실행합니다. Apple XCTest가 없는 Linux에서는 이 검사만 실행하지 않으며, 현재 iOS 169개 사례의 필수 실행에는 영향을 주지 않습니다.
 
 전체 hosted job의 `timeout-minutes`는 VM 실행·취소·artifact 및 소유 기기 정리를 위한 바깥 경계로 유지합니다. 실패 뒤 선택적으로 수집하는 설치 상태 5초·앱 로그 30초, resource sample 10초, 진단 수집기의 용량·수명과 종료 유예는 보조 관측과 소유 자식 정리만 제한합니다. 이들은 테스트 성공을 만들거나 본문을 재시도하지 않으며 관측 실패는 별도로 남깁니다. 제품의 25초 녹음 자동 종료와 실제 Speech 서비스 취소는 제품 요구사항으로 유지합니다.
 
@@ -145,7 +160,7 @@ Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQ
 
 CI의 공개 E2E 실행은 `main`에서 매일 03:00 KST에 시작하는 nightly Full workflow와 `main`에서 수동으로 시작하는 Full workflow입니다. PR, push, 다른 브랜치의 수동 dispatch는 Mac E2E 실행을 시작하지 않습니다. 단일 사례의 개발 확인은 로컬 명령으로 수행하며, 수동 Full과 집중 결과는 release 증거로 사용할 수 없습니다.
 
-Full E2E의 27개 cohort 계획은 162개의 고유 XCTest 사례를 각각 한 번씩 수행하고 Keychain 인증 사례 두 개를 별도 receipt에 추가합니다. 넓은 프로필 inventory를 합산하면 Debug 31개, Release 125개, Speech 9개로 165개의 관측과 162개의 고유 사례가 됩니다. 세 문서 가져오기 UI 여정은 Debug `health-import`와 Release `fixtures` 양쪽 inventory에 포함되지만 전체 cohort 계획에서는 각각 한 번씩만 실행합니다. PR에서는 Mac E2E runner를 시작하지 않습니다. release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
+Full E2E의 28개 cohort 계획은 169개의 고유 XCTest 사례를 각각 한 번씩 수행하고 Keychain 인증 사례 두 개를 별도 receipt에 추가합니다. 넓은 프로필 inventory를 합산하면 Debug 31개, Release 132개, Speech 9개로 172개의 관측과 169개의 고유 사례가 됩니다. 세 문서 가져오기 UI 여정은 Debug `health-import`와 Release `fixtures` 양쪽 inventory에 포함되지만 전체 cohort 계획에서는 각각 한 번씩만 실행합니다. PR에서는 Mac E2E runner를 시작하지 않습니다. release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
 
 실제 실행·초기화 driver는 Apple 도구를 호출하기 전에 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. Simulator를 변경하지 않는 cohort 조정기는 소유권 계약만 확인하며 같은 상태 조회를 중복 실행하지 않습니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 
@@ -153,19 +168,19 @@ Full E2E의 27개 cohort 계획은 162개의 고유 XCTest 사례를 각각 한 
 
 일반 CI는 호스트 Apple Intelligence 지원·활성화·모델 다운로드나 CLI 약관 동의를 요구하지 않습니다. 결과에는 `modelExecution=mock`, `actualModel=not-run`을 남기며 실제 Apple 모델의 응답 품질이나 추론 실행을 검증했다고 해석하지 않습니다. 제품 빌드의 기본 경로는 실제 Apple SDK를 사용합니다. 빌드 후 앱에 연결된 기호를 검사하여 생산용 제품에는 mock 제어 endpoint가 없고 실제 `LanguageModelSession`이 연결되어 있으며, 테스트 제품에는 반대로 mock만 연결되어 있음을 확인합니다. 실행 인자나 환경 변수로 생산용 앱의 mock을 켤 수 없습니다.
 
-Full E2E graph는 Debug·Release·Production·OAuth 빌드 작업 4개, 기능별 iOS 실행 cohort 27개, OAuth 실행 1개, 마지막에 직렬 실행하는 Keychain authentication 작업으로 구성됩니다. 모든 실행은 호환되는 빌드 산출물만 사용하며 workflow의 macOS concurrency 설정을 공유합니다.
+Full E2E graph는 Debug·Release·Production·OAuth 빌드 작업 4개, 기능별 iOS 실행 cohort 28개, OAuth 실행 1개, 마지막에 직렬 실행하는 Keychain authentication 작업으로 구성됩니다. 모든 실행은 호환되는 빌드 산출물만 사용하며 workflow의 macOS concurrency 설정을 공유합니다.
 
-Release 125개 관측과 Speech 9개 관측은 독립 기능 작업 22개에 정확히 한 번씩 배정됩니다. Core UI는 루트 네비게이션·호스트 4개와 녹음 내보내기·전사 근거 2개를 독립 작업으로 실행합니다. Navigation은 Features·Routes·Accessibility·Imports, Calendar는 Consent·Appointments·수동 병력 및 문서 가져오기, Questions는 Review·Conversation·Accessibility·Summary·Literature, Recordings는 Controls·Review·Playback으로 나누며 각 XCTest 메서드 안의 모드 변경·재시작·복원·동의 검증은 분리하지 않습니다. 각 작업은 전용 Simulator 하나를 사용합니다. UI fixture 44개는 Navigation·Recordings·Questions·Calendar와 독립된 사례별 초기화를 유지합니다. `run-ios-fixture-tests.mjs`를 사용하는 네 프로필의 독립 UI 사례와 Backup의 독립된 첫 세 사례는 선택한 묶음마다 XCTest 실행기를 한 번 시작합니다. 실행기의 공통 XCTest 준비·종료 경계는 호스트가 먼저 연 loopback 소켓에 사례마다 연결해 기존 초기화·정리를 기다립니다. 세션·요청 UUID가 일치하는 응답만 인정하며, 호스트 종료로 연결이 끊기거나 응답이 잘못되면 실패합니다. 파일 반복 조회나 별도 생존 확인, 고정 대기 제한은 추가하지 않습니다. 앱 재시작이나 assertion은 변경하지 않으며, 첫 실패 뒤의 기존 fail-fast 표식은 후속 준비를 막습니다. 요청·준비·정리 실패와 원본 xcresult의 실패·skip·미실행은 성공으로 처리하지 않습니다. Backup 복원과 local-model 재실행은 실제 데이터 의존이 있어 원래 순서를 유지합니다. Persistence는 저장 상태 3단계와 녹음 자료 2단계를 3개의 새 프로세스로 묶습니다. 첫 설치·키 생성은 첫 프로세스에서 단독 검증하고, 다음 두 프로세스는 서로 다른 UUID를 쓰는 저장 상태와 녹음 자료 검증을 함께 실행합니다. 단계 사이에는 초기화하지 않으며 두 영역의 실제 PID와 원래 판정 결과를 모두 확인합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 44개 전체를 14개 독립 작업으로 선택합니다. 독립 선택 실행의 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
+Release 132개 관측과 Speech 9개 관측은 독립 기능 작업 23개에 정확히 한 번씩 배정됩니다. Core UI는 루트 네비게이션·호스트 4개와 녹음 내보내기·전사 근거 및 후보 검토 6개를 독립 작업으로 실행합니다. Navigation은 Features·Routes·Accessibility·Imports, Calendar는 Consent·Appointments·수동 병력 및 문서 가져오기, Questions는 Review·Conversation·Accessibility·Summary·Literature, Recordings는 Controls·Review·Playback으로 나누며 각 XCTest 메서드 안의 모드 변경·재시작·복원·동의 검증은 분리하지 않습니다. 각 작업은 전용 Simulator 하나를 사용합니다. UI fixture 44개는 Navigation·Recordings·Questions·Calendar와 독립된 사례별 초기화를 유지합니다. `run-ios-fixture-tests.mjs`를 사용하는 네 프로필의 독립 UI 사례와 Backup의 독립된 첫 세 사례는 선택한 묶음마다 XCTest 실행기를 한 번 시작합니다. 실행기의 공통 XCTest 준비·종료 경계는 호스트가 먼저 연 loopback 소켓에 사례마다 연결해 기존 초기화·정리를 기다립니다. 세션·요청 UUID가 일치하는 응답만 인정하며, 호스트 종료로 연결이 끊기거나 응답이 잘못되면 실패합니다. 파일 반복 조회나 별도 생존 확인, 고정 대기 제한은 추가하지 않습니다. 앱 재시작이나 assertion은 변경하지 않으며, 첫 실패 뒤의 기존 fail-fast 표식은 후속 준비를 막습니다. 요청·준비·정리 실패와 원본 xcresult의 실패·skip·미실행은 성공으로 처리하지 않습니다. Backup 복원과 local-model 재실행은 실제 데이터 의존이 있어 원래 순서를 유지합니다. Persistence는 저장 상태 3단계와 녹음 자료 2단계를 3개의 새 프로세스로 묶습니다. 첫 설치·키 생성은 첫 프로세스에서 단독 검증하고, 다음 두 프로세스는 서로 다른 UUID를 쓰는 저장 상태와 녹음 자료 검증을 함께 실행합니다. 단계 사이에는 초기화하지 않으며 두 영역의 실제 PID와 원래 판정 결과를 모두 확인합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 44개 전체를 14개 독립 작업으로 선택합니다. 독립 선택 실행의 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
 
 각 cohort runner는 계획된 task의 실행 모드, suite와 XCTest target을 바탕으로 UI host 준비가 필요한지 판단합니다. UI 작업이 있으면 준비 helper를 한 번 실행하고, 같은 runner process의 이후 UI task에서는 완료 상태만 재사용합니다. 시작 시 기존 `artifacts/ios-cohort/ui-preparation` 디렉터리가 있으면 그 결과를 재사용하지 않고 실패합니다. 이번 실행에서 helper가 만든 host XCTest JSON과 원본 `.xcresult`의 정확한 host 사례가 모두 통과해야 계획된 테스트를 시작합니다. host XCTest 결과와 DeviceHub·Simulator screenshot 자료는 계획된 결과와 분리해 보존합니다.
 
 ## 전체 CI와 제품 재사용
 
-Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. Questions의 Conversation은 composer·화면 모드 전환 메서드를, Accessibility는 키보드·큰 글자 및 제목·스와이프 메서드를 완전한 단위로 나누어 실행합니다. 모든 27개 cohort를 실행하고 auth suite를 별도 job으로 마친 뒤 전체 receipt를 검증합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 시간이며, 취소나 미실행은 통과로 집계하지 않습니다.
+Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. Questions의 Conversation은 composer·화면 모드 전환 메서드를, Accessibility는 키보드·큰 글자 및 제목·스와이프 메서드를 완전한 단위로 나누어 실행합니다. 모든 28개 cohort를 실행하고 auth suite를 별도 job으로 마친 뒤 전체 receipt를 검증합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 시간이며, 취소나 미실행은 통과로 집계하지 않습니다.
 
 `E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 dispatch도 `main`에서만 Full 검증을 시작합니다. PR, main push, 다른 브랜치의 수동 dispatch는 Mac E2E 작업을 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
 
-Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 27개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
+Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 28개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
 
 Production 빌드는 기본 entry·flags의 앱, 실제 Apple SDK 연결, 기본 Keychain 설정을 검증합니다. OAuth 빌드는 별도 DerivedData에서 Simulator harness와 macOS XCTest bundle을 컴파일하고 정확한 test inventory·내장 fixture·source·run·attempt·toolchain·digest를 함께 전달합니다. OAuth 실행은 이를 검증한 뒤 별도 VM에서 68개 package 테스트를 컴파일 없이 실행합니다. 실행 결과와 두 빌드 의무는 Linux의 Build 상태가 함께 검증합니다. Production과 OAuth는 Debug·Release producer의 선행 조건이 아니며 모두 최종 통과 조건으로 남습니다. 독립 iOS 컴파일이나 테스트 실패가 완료된 생산용 결과를 지우지 않습니다.
 

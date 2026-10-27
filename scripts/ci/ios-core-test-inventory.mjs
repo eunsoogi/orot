@@ -1,0 +1,65 @@
+import { statePersistenceTests } from './state-persistence-test-phases.mjs';
+import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
+import { medicalDocumentCoreTests } from './medical-document-test-inventory.mjs';
+import { windowPresentationAnchorTests } from './window-presentation-anchor-test-inventory.mjs';
+import {
+  encounterReviewPersistenceTests,
+  encounterReviewUiTests,
+} from './encounter-review-test-inventory.mjs';
+
+export const coreTests = [
+  // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFractionalTimestampsNeverRoundDeliveryEarlierThanTheSelectedOffset',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testPendingReplacementUsesOneRequestAndCancellationRemovesIt',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
+  // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs',
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testMissingAndDetachedTargetsRemainExplicit',
+  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testSnapshotPreservesFocusAndOmitsTextAndHierarchy',
+  'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
+  ...statePersistenceTests,
+  ...encounterReviewPersistenceTests,
+  ...encounterReviewUiTests,
+  ...fixtureIsolationTests,
+  ...recordingPersistenceTests,
+  ...medicalDocumentCoreTests,
+  'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
+  'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testWorkflowProgressProjectsBufferedRuntimeEvents',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeHealthLibraryUsesDefaultPagesAndStableCursors',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLongitudinalHealthContextPreservesCoverageAndInvalidatesDeletion',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testComputedPeriodSummaryRestoresAndPurgesDeletedInputs',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeMixedLibraryMeasuresBoundedAiPreparation',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeCalendarClassificationReportsProgressAndCancellation',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testEncryptedSourceEvidenceAndRagRelationships',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence',
+  'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
+  'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandWaitsForCancellation',
+  'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testUnverifiedFullScreenPresentationRetainsExportUntilDismissal',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal',
+  ...windowPresentationAnchorTests,
+  'OrotUITests/TestHostConnectionTests/testHostLaunches',
+  'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
+  'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
+  'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
+  'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
+  'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+];
