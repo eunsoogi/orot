@@ -6,13 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import {
-  Alert,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -44,7 +38,10 @@ jest.mock('react-native-safe-area-context', () => {
 
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
-const measuredBounds = new Map<string, { readonly x: number; readonly width: number }>();
+const measuredBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
 const measurableView = View as unknown as {
   prototype: {
     measureInWindow: (

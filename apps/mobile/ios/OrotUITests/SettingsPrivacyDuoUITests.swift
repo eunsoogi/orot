@@ -46,7 +46,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         let confirmation = app.alerts["외부 전송 동의 내역을 지울까요?"]
         XCTAssertTrue(UITestConditions.exists(confirmation), app.debugDescription)
         XCTAssertTrue(confirmation.staticTexts[
-            "저장된 동의 내역을 지우고 진행 중인 자동 승인을 무효화해요. 진료 기록이나 다른 앱 자료는 삭제되지 않아요. 다음 전송 때 다시 확인해요."
+            "저장된 동의 내역을 지우고 진행 중인 자동 승인을 무효화해요. 진료 기록이나 다른 앱 자료는 삭제되지 않아요. 다음 전송 때 다시 확인해요.",
         ].exists)
 
         XCUIDevice.shared.orientation = .landscapeLeft

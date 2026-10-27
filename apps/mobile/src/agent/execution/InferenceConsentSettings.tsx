@@ -45,9 +45,7 @@ export function InferenceConsentSettings({
         {
           text: t('medicalAppointments.inferenceDisclosure.clearConfirmAction'),
           style: 'destructive',
-          onPress: () => {
-            void clear();
-          },
+          onPress: clear,
         },
       ],
     );
@@ -63,7 +61,10 @@ export function InferenceConsentSettings({
         testID="inference-consent-clear"
       />
       {status === 'clearing' ? (
-        <AppText accessibilityRole="progressbar" testID="inference-consent-clearing">
+        <AppText
+          accessibilityRole="progressbar"
+          testID="inference-consent-clearing"
+        >
           {t('medicalAppointments.inferenceDisclosure.clearing')}
         </AppText>
       ) : null}

@@ -30,7 +30,9 @@ test('asks before revocation and allows retry when receipt deletion fails', asyn
   expect(alert).toHaveBeenCalledTimes(1);
   expect(reset).not.toHaveBeenCalled();
   expect(alert.mock.calls[0]?.[0]).toBe('외부 전송 동의 내역을 지울까요?');
-  expect(alert.mock.calls[0]?.[1]).toContain('진료 기록이나 다른 앱 자료는 삭제되지 않아요.');
+  expect(alert.mock.calls[0]?.[1]).toContain(
+    '진료 기록이나 다른 앱 자료는 삭제되지 않아요.',
+  );
 
   await fireEvent.press(screen.getByTestId('inference-consent-clear'));
   const cancelAction = alert.mock.calls[1]?.[2]?.[0];
