@@ -93,6 +93,114 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-result")))
     }
 
+    /// Exercises the saved-source route with real keyboard input while native window geometry changes.
+    @MainActor
+    func testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow() {
+        let fixture = "recording-review-duo-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
+        defer {
+            cleanReviewFixture(app)
+            XCUIDevice.shared.orientation = originalOrientation
+        }
+        XCUIDevice.shared.orientation = .portrait
+        launchReviewFixture(app, fixture: fixture)
+
+        let primary = UITestConditions.element(app, "recording-review-layout-primary")
+        let secondary = UITestConditions.element(app, "recording-review-layout-secondary")
+        let transcript = UITestConditions.element(app, "transcript-panel")
+        let review = UITestConditions.element(app, "encounter-review-panel")
+        for panel in [primary, secondary, transcript, review,
+                      UITestConditions.element(app, "recording-playback-controls"),
+                      UITestConditions.element(app, "recording-export-panel")]
+        {
+            XCTAssertTrue(UITestConditions.exists(panel), panel.identifier)
+        }
+
+        let start = UITestConditions.element(app, "encounter-start")
+        FormUITestConditions.reveal(start, in: app, scrollID: "navigation-route-scroll")
+        start.tap()
+        let selection = UITestConditions.element(app, "encounter-select-candidate-0")
+        FormUITestConditions.reveal(selection, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(selection.isSelected)
+        selection.tap()
+        XCTAssertFalse(selection.isSelected)
+
+        let edit = UITestConditions.element(app, "transcript-edit-0")
+        FormUITestConditions.reveal(edit, in: app, scrollID: "navigation-route-scroll")
+        edit.tap()
+        let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
+        let draft = "Duo reflow draft"
+        FormUITestConditions.replace(input, with: draft, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
+
+        let firstWidth = app.windows.firstMatch.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForReviewReflow(app, widthDifferentFrom: firstWidth, primary: primary, secondary: secondary)
+        UITestConditions.value(input, equals: draft)
+        XCTAssertFalse(selection.isSelected)
+
+        let secondWidth = app.windows.firstMatch.frame.width
+        XCUIDevice.shared.orientation = .portrait
+        waitForReviewReflow(app, widthDifferentFrom: secondWidth, primary: primary, secondary: secondary)
+        UITestConditions.value(input, equals: draft)
+        XCTAssertFalse(selection.isSelected)
+    }
+
+    @MainActor
+    private func launchReviewFixture(_ app: XCUIApplication, fixture: String) {
+        // Seed an owned local review so this geometry case never requests a remote model or approval.
+        app.launchArguments = [
+            "-OROT_TEST_PROFILE", "speech",
+            "-OROT_TRANSCRIPTION_PROBE_MODE", "encounter-review",
+            "-OROT_REVIEW_FIXTURE", fixture,
+            "-OROT_REVIEW_MODE", "seed",
+        ]
+        app.launch()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+        let row = app.buttons.matching(identifier: "recording-details-\(fixture):ui-review").firstMatch
+        FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(row.isHittable)
+        row.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-review-panel")))
+    }
+
+    @MainActor
+    private func cleanReviewFixture(_ app: XCUIApplication) {
+        XCUIDevice.shared.orientation = .portrait
+        let cancel = UITestConditions.element(app, "transcript-cancel-0")
+        if cancel.exists {
+            FormUITestConditions.reveal(cancel, in: app, scrollID: "navigation-route-scroll")
+            cancel.tap()
+        }
+        let cleanup = UITestConditions.element(app, "encounter-probe-cleanup")
+        XCTAssertTrue(UITestConditions.exists(cleanup))
+        XCTAssertTrue(cleanup.isHittable)
+        cleanup.tap()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "cleaned")
+        app.terminate()
+    }
+
+    @MainActor
+    private func waitForReviewReflow(
+        _ app: XCUIApplication,
+        widthDifferentFrom previousWidth: CGFloat,
+        primary: XCUIElement,
+        secondary: XCUIElement,
+    ) {
+        let window = app.windows.firstMatch
+        // Accept reflow only after UIKit reports a new window width and separate panel frames.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard window.exists, primary.exists, secondary.exists else { return false }
+            let primaryFrame = primary.frame
+            let secondaryFrame = secondary.frame
+            return abs(window.frame.width - previousWidth) > 0.5 &&
+                primaryFrame.width > 0 && secondaryFrame.width > 0 &&
+                !primaryFrame.intersects(secondaryFrame)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+    }
+
     @MainActor
     private func waitForPermissionOrRecording(_ app: XCUIApplication, status: XCUIElement) {
         let alert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
