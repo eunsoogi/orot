@@ -120,10 +120,9 @@ public extension RecordingModule {
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
-            let activity = UIActivityViewController(
-                activityItems: [operation.file],
-                applicationActivities: nil,
-            )
+            // Only this typed, explicitly automatic phone workflow delegates activity configuration to UIKit.
+            let presentation = ActivityPresentation(items: [operation.file])
+            let activity = presentation.controller
             // UIKit distinguishes a user cancel from an activity failure; always remove the temporary copy after dismissal.
             let completeExport: (Bool, Error?) -> Void = { completed, error in
                 #if OROT_TESTS
@@ -140,26 +139,28 @@ public extension RecordingModule {
             activity.completionWithItemsHandler = { _, completed, _, error in
                 completeExport(completed, error)
             }
-            let popoverConfiguration = anchor.apply(to: activity)
+            let popoverConfiguration = anchor.apply(to: presentation)
             guard anchor.isCurrent, popoverConfiguration != false else {
                 guard lifecycle.finishIfNeeded() else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
-            let popoverConfigured = popoverConfiguration == true
             #if OROT_TESTS
                 TestLifecycleObservation.record(
                     "export-presentation-anchor",
                     fields: anchor.testObservation(
                         popoverAvailable: activity.popoverPresentationController != nil,
-                        popoverConfigured: popoverConfigured,
+                        popoverConfigured: popoverConfiguration == true,
+                        systemManagedPhoneActivity: presentation.usesSystemManagedPhonePolicy(in: anchor.window),
+                        requestedActivityStyle: presentation.requestedStyle.rawValue,
+                        activityIdiom: activity.traitCollection.userInterfaceIdiom.rawValue,
                     ),
                 )
             #endif
             #if OROT_TESTS
                 TestLifecycleObservation.record("export-present-called")
             #endif
-            anchor.present(activity, animated: true) { didPresent in
+            anchor.present(presentation, animated: true) { didPresent in
                 let disposition = lifecycle.completePresentation(
                     didPresent: didPresent,
                     controllerIsLive: activity.presentingViewController != nil || activity.viewIfLoaded?.window != nil,

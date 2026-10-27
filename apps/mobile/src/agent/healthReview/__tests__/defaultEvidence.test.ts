@@ -19,6 +19,13 @@ import {
   syntheticHealthReview,
   syntheticReviewSafety,
 } from '../syntheticFixture';
+import {
+  currentPeriodEnd,
+  currentPeriodSampleAt,
+  measurementContext,
+  setCurrentPeriodBoundary,
+  withFixedDate,
+} from '../testing/currentPeriodEvidenceFixture';
 
 describe('Default health review tools and durable original evidence identity', () => {
   let connection: ReturnType<typeof openSqliteTestDatabase>;
@@ -143,22 +150,45 @@ describe('Default health review tools and durable original evidence identity', (
   );
 
   it('uses real current-period samples as trend evidence without treating missing calendar days as zero', async () => {
-    const now = new Date().toISOString();
-    for (const row of await repository().list('health_observation'))
-      await repository().put('health_observation', {
-        ...row,
-        effectiveAt: now,
-      });
-    const current = setup(checkpointer());
-    const batch = await current.port.collect(new AbortController().signal);
-    expect(batch.coverage.flatMap(coverage => coverage.gaps)).toEqual([]);
-    expect(
-      batch.items.some(
-        item =>
-          item.content.startsWith('health_context: ') &&
-          item.content.includes('unrecorded_days_are_unknown'),
-      ),
-    ).toBe(true);
+    await withFixedDate(currentPeriodEnd, async () => {
+      for (const row of await repository().list('health_observation'))
+        await repository().put('health_observation', {
+          ...row,
+          effectiveAt: currentPeriodSampleAt,
+        });
+      const current = setup(checkpointer());
+      const batch = await current.port.collect(new AbortController().signal);
+      expect(batch.coverage.flatMap(coverage => coverage.gaps)).toEqual([]);
+      expect(
+        batch.items.some(
+          item =>
+            item.content.startsWith('health_context: ') &&
+            item.content.includes('unrecorded_days_are_unknown'),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it('includes an observation just before the current period end and excludes one at the end', async () => {
+    await withFixedDate(currentPeriodEnd, async () => {
+      await setCurrentPeriodBoundary(repository(), sourceId);
+      const batch = await setup(checkpointer()).port.collect(
+        new AbortController().signal,
+      );
+      const context = measurementContext(batch);
+      expect(context.period.toExclusive).toBe(currentPeriodEnd);
+      expect(context.quantities).toEqual([
+        expect.objectContaining({
+          concept: 'heart_rate',
+          sampleCount: 1,
+          latest: {
+            amount: 70,
+            occurredAt: currentPeriodSampleAt,
+          },
+        }),
+      ]);
+      expect(batch.coverage.flatMap(coverage => coverage.gaps)).toEqual([]);
+    });
   });
 
   it.each([

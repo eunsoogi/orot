@@ -1,7 +1,7 @@
 /** Canonical native inventory for the window-anchor invariants required by UIKit presenters and popovers. */
 export const windowPresentationAnchorTests = [
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
+  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewKeepsSystemFilePickerInItsOwningWindow',
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackRejectsMultipleKeyWindowCandidates',
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testPopoverAnchorRejectsARegionOutsideItsWindow',
   'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testMovingTheSourceRegionOutOfWindowInvalidatesTheAnchor',
