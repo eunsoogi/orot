@@ -64,6 +64,8 @@ export const unifiedImportStyles = StyleSheet.create({
     lineHeight: 22,
   },
   section: { gap: 12 },
+  // Pair the panel's 12-point gap with 8 points to keep the 20-point header rhythm.
+  headerSection: { gap: 12, marginBottom: 8 },
   candidate: {
     padding: 16,
     gap: 8,

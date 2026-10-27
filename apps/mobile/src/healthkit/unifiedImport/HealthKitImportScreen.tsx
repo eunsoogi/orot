@@ -108,31 +108,40 @@ export function HealthKitImportScreen({
       style={styles.scroll}
       testID="unified-import-scroll"
     >
-      {onBack && !hasSharedAction ? (
-        <AppButton
-          onPress={onBack}
-          testID="healthkit-unified-import-back"
-          title={t('healthkit.unifiedImport.back')}
-          variant="secondary"
-        />
-      ) : null}
-      <View style={styles.section}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {reviewingCalendar
-            ? t('healthkit.unifiedImport.reviewTitle')
-            : copy.title}
-        </Text>
-        <Text style={styles.description}>
-          {reviewingCalendar ? t('calendar.confirmPrompt') : copy.description}
-        </Text>
-      </View>
-      {/* Source choices and outcomes remain mounted in separate panels during measured reflow. */}
+      {/* Keep page identity and fallback actions inside their measured usable regions. */}
       <AdaptiveColumns
         active
         routeKey="unified-import"
         testID="unified-import-columns"
         primary={
           <View style={styles.panel} testID="unified-import-source-selection">
+            {onBack && !hasSharedAction ? (
+              <AppButton
+                onPress={onBack}
+                testID="healthkit-unified-import-back"
+                title={t('healthkit.unifiedImport.back')}
+                variant="secondary"
+              />
+            ) : null}
+            <View style={styles.headerSection} testID="unified-import-header">
+              <Text
+                accessibilityRole="header"
+                style={styles.title}
+                testID="unified-import-title"
+              >
+                {reviewingCalendar
+                  ? t('healthkit.unifiedImport.reviewTitle')
+                  : copy.title}
+              </Text>
+              <Text
+                style={styles.description}
+                testID="unified-import-description"
+              >
+                {reviewingCalendar
+                  ? t('calendar.confirmPrompt')
+                  : copy.description}
+              </Text>
+            </View>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
               {copy.sourceSelectionTitle}
             </Text>
@@ -191,28 +200,28 @@ export function HealthKitImportScreen({
               }
               onSavingChange={setCandidateSaving}
             />
+            {!hasSharedAction ? (
+              <>
+                <AppButton
+                  accessibilityState={{ busy: isRunning }}
+                  disabled={!hasSelection || isRunning}
+                  onPress={state.startImport}
+                  title={copy.importButton}
+                  testID="unified-import-start"
+                />
+                {run && isRunning ? (
+                  <AppButton
+                    onPress={() => run.cancel()}
+                    title={copy.cancelButton}
+                    testID="unified-import-cancel"
+                    variant="secondary"
+                  />
+                ) : null}
+              </>
+            ) : null}
           </View>
         }
       />
-      {!hasSharedAction ? (
-        <>
-          <AppButton
-            accessibilityState={{ busy: isRunning }}
-            disabled={!hasSelection || isRunning}
-            onPress={state.startImport}
-            title={copy.importButton}
-            testID="unified-import-start"
-          />
-          {run && isRunning ? (
-            <AppButton
-              onPress={() => run.cancel()}
-              title={copy.cancelButton}
-              testID="unified-import-cancel"
-              variant="secondary"
-            />
-          ) : null}
-        </>
-      ) : null}
     </ScrollView>
   );
 }

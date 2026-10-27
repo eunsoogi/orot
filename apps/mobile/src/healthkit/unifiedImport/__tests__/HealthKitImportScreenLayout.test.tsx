@@ -158,21 +158,37 @@ test('reflows Duo regions and falls back for narrow hosts', async () => {
   });
   const baseCoordinator = createUnifiedImportCoordinator(services.services);
   const start = jest.fn(baseCoordinator.start);
+  const onBack = jest.fn();
   await render(
     <NavigationGeometryProvider>
       <HealthKitImportScreen
         copy={unifiedHealthImportCopy}
         coordinator={{ start }}
+        onBack={onBack}
       />
     </NavigationGeometryProvider>,
   );
 
+  const primaryRegion = screen.getByTestId('unified-import-columns-primary');
+  const secondaryRegion = screen.getByTestId(
+    'unified-import-columns-secondary',
+  );
+  const primaryContent = within(primaryRegion);
+  const activityContent = within(secondaryRegion);
   const sourcePanel = screen.getByTestId('unified-import-source-selection');
   const activityPanel = screen.getByTestId('unified-import-activity');
+  expect(
+    primaryContent.getAllByTestId(/unified-import-(title|description)/),
+  ).toHaveLength(2);
+  expect(
+    primaryContent.getByTestId('healthkit-unified-import-back'),
+  ).toBeTruthy();
+  expect(activityContent.getByTestId('unified-import-start')).toBeTruthy();
   await fireEvent.press(
     within(sourcePanel).getByTestId('unified-import-toggle-heartRate'),
   );
-  await fireEvent.press(screen.getByTestId('unified-import-start'));
+  await fireEvent.press(activityContent.getByTestId('unified-import-start'));
+  expect(activityContent.getByTestId('unified-import-cancel')).toBeTruthy();
   const featureStatus = await within(activityPanel).findByTestId(
     'unified-import-feature-status-heartRate',
   );
@@ -189,6 +205,7 @@ test('reflows Duo regions and falls back for narrow hosts', async () => {
   );
   await remeasure(1700);
   expect(axis()).toBe('row');
+  expect(activityContent.getByTestId('unified-import-cancel')).toBeTruthy();
   expect(
     StyleSheet.flatten(
       screen.getByTestId('unified-import-columns-primary').props.style,

@@ -31,6 +31,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
         XCTAssertTrue(node(app, "unified-import-source-selection").exists, app.debugDescription)
         XCTAssertTrue(node(app, "unified-import-activity").exists, app.debugDescription)
+        assertSupportingContentStaysInMeasuredRegions(app)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
         tap(app, "unified-import-toggle-heartRate")
         capture(app, "health-import-library-light")
@@ -70,6 +71,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(activityPanel.descendants(matching: .any).matching(identifier: "unified-import-feature-status-heartRate").firstMatch.exists, app.debugDescription)
         XCTAssertFalse(sourcePanel.descendants(matching: .any).matching(identifier: "unified-import-feature-status-heartRate").firstMatch.exists, app.debugDescription)
         assertPanelsDoNotOverlap(app)
+        assertSupportingContentStaysInMeasuredRegions(app)
         capture(app, "health-import-before-geometry-change")
 
         let scroll = node(app, "unified-import-scroll")
@@ -78,6 +80,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         waitForWidthChange(scroll, from: portraitWidth)
         assertSelectedRunIsRetained(app)
         assertPanelsDoNotOverlap(app)
+        assertSupportingContentStaysInMeasuredRegions(app)
         capture(app, "health-import-landscape-pending")
 
         let landscapeWidth = scroll.frame.width
@@ -85,6 +88,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         waitForWidthChange(scroll, from: landscapeWidth)
         assertSelectedRunIsRetained(app)
         assertPanelsDoNotOverlap(app)
+        assertSupportingContentStaysInMeasuredRegions(app)
 
         tap(app, "unified-import-cancel")
         UITestConditions.value(node(app, "unified-import-status"), equals: "cancelled")
@@ -111,6 +115,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(source.exists && activity.exists, app.debugDescription)
         XCTAssertLessThanOrEqual(abs(source.frame.minX - activity.frame.minX), 1, app.debugDescription)
         XCTAssertGreaterThanOrEqual(activity.frame.minY, source.frame.maxY, app.debugDescription)
+        assertSupportingContentStaysInMeasuredRegions(app)
         capture(app, "health-import-large-text-pending")
 
         tap(app, "unified-import-cancel")
@@ -131,6 +136,27 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         let activity = node(app, "unified-import-columns-secondary")
         XCTAssertTrue(source.exists && activity.exists, app.debugDescription)
         XCTAssertFalse(source.frame.intersects(activity.frame), app.debugDescription)
+    }
+
+    @MainActor
+    private func assertSupportingContentStaysInMeasuredRegions(_ app: XCUIApplication) {
+        let sourceRegion = node(app, "unified-import-columns-primary")
+        let activityRegion = node(app, "unified-import-columns-secondary")
+        let title = node(app, "unified-import-title")
+        let description = node(app, "unified-import-description")
+        XCTAssertTrue(title.exists && description.exists, app.debugDescription)
+        // Header and fallback controls must stay inside the same measured regions as their panels.
+        XCTAssertTrue(sourceRegion.frame.contains(title.frame), app.debugDescription)
+        XCTAssertTrue(sourceRegion.frame.contains(description.frame), app.debugDescription)
+        // Shared navigation actions live outside this panel; inspect only screen fallbacks.
+        let start = activityRegion.descendants(matching: .any).matching(identifier: "unified-import-start").firstMatch
+        if start.exists {
+            XCTAssertTrue(activityRegion.frame.contains(start.frame), app.debugDescription)
+        }
+        let cancel = activityRegion.descendants(matching: .any).matching(identifier: "unified-import-cancel").firstMatch
+        if cancel.exists {
+            XCTAssertTrue(activityRegion.frame.contains(cancel.frame), app.debugDescription)
+        }
     }
 
     @MainActor
