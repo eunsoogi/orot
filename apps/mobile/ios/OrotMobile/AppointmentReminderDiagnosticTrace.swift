@@ -86,6 +86,7 @@
         private static var callSequence = 0
         private static var nextOperation = 0
         private static var writerFailed = false
+        private static var healthSequence = 0
         @TaskLocal static var operationSequence: Int?
 
         /// Child Tasks inherit this opaque bridge invocation; it is not a link to a JS action.
@@ -223,6 +224,8 @@
             let initial = readiness
             return lock.withLock {
                 var value = initial
+                healthSequence += 1
+                value["healthSequence"] = healthSequence
                 if writerFailed {
                     value["status"] = "writer-failed"
                 }

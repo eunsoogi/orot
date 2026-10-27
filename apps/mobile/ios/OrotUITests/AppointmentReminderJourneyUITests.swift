@@ -106,6 +106,9 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         try ReminderJourneyObservation.assertPending(app, id: selectedID, start: coldTime, stage: "cold-schedule", testCase: self)
         try ReminderJourneyObservation.tapActualNotification(app, cold: true, testCase: self)
         ReminderJourneyForm.inspectPreparation(app, name: "cold-selected-visit", testCase: self)
+        if diagnosticRunID != nil {
+            try ReminderJourneyDiagnostic.finishHealthy(app, testCase: self)
+        }
     }
 
     @MainActor

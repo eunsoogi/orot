@@ -14,16 +14,48 @@ enum ReminderJourneyDiagnostic {
 
     static func requireDiagnostic(_ app: XCUIApplication, runID: String, testCase: XCTestCase) throws {
         let marker = UITestConditions.element(app, "reminder-diagnostic-readiness")
+        var observationError: Error?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard let value = try? diagnosticValue(marker) else { return false }
-            return value["status"] as? String != nil
+            do {
+                let status = try diagnosticValue(marker)["status"] as? String
+                return status != nil && status != "pending"
+            } catch { observationError = error; return true }
         }, object: nil)
-        guard UITestConditions.wait(for: [ready]) == .completed else { throw diagnosticError(2) }
+        let result = UITestConditions.wait(for: [ready])
+        if let observationError {
+            throw observationError
+        }
+        guard result == .completed else { throw diagnosticError(2) }
         let value = try diagnosticValue(marker)
         attach(value, name: "diagnostic-writer-readiness", testCase: testCase)
         guard value["status"] as? String == "ready", value["runID"] as? String == runID,
               (value["processID"] as? Int ?? 0) > 0, (value["sequence"] as? Int ?? 0) > 0
         else { throw diagnosticError(3) }
+    }
+
+    /// A newer health read after the original assertions also detects late writer failures.
+    static func finishHealthy(_ app: XCUIApplication, testCase: XCTestCase) throws {
+        let marker = UITestConditions.element(app, "reminder-diagnostic-readiness")
+        let initial = try diagnosticValue(marker)
+        guard initial["status"] as? String == "ready" else {
+            attach(initial, name: "final-diagnostic-writer-health", testCase: testCase)
+            throw diagnosticError(7)
+        }
+        let baseline = initial["healthSequence"] as? Int ?? 0
+        var observationError: Error?
+        let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            do {
+                let value = try diagnosticValue(marker)
+                return value["status"] as? String != "ready" || (value["healthSequence"] as? Int ?? 0) > baseline
+            } catch { observationError = error; return true }
+        }, object: nil)
+        let result = UITestConditions.wait(for: [fresh])
+        if let observationError {
+            throw observationError
+        }
+        let value = try diagnosticValue(marker)
+        attach(value, name: "final-diagnostic-writer-health", testCase: testCase)
+        guard result == .completed, value["status"] as? String == "ready" else { throw diagnosticError(7) }
     }
 
     static func actionSequence(_ app: XCUIApplication) throws -> Int {
@@ -40,20 +72,26 @@ enum ReminderJourneyDiagnostic {
         let marker = UITestConditions.element(app, "reminder-action-observation")
         var terminal: [String: Any]?
         var writerFailed = false
+        var observationError: Error?
         let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let health = UITestConditions.element(app, "reminder-diagnostic-readiness")
-            if let value = try? diagnosticValue(health), value["status"] as? String != "ready" {
-                writerFailed = true
+            do {
+                let health = UITestConditions.element(app, "reminder-diagnostic-readiness")
+                if try diagnosticValue(health)["status"] as? String != "ready" {
+                    writerFailed = true
+                    return true
+                }
+                let value = try diagnosticValue(marker)
+                guard value["sequence"] as? Int == sequence + 1,
+                      ["resolve", "reject"].contains(value["outcome"] as? String ?? ""),
+                      value["currentBusy"] as? Bool == false else { return false }
+                terminal = value
                 return true
-            }
-            guard let value = try? diagnosticValue(marker),
-                  value["sequence"] as? Int == sequence + 1,
-                  ["resolve", "reject"].contains(value["outcome"] as? String ?? ""),
-                  value["currentBusy"] as? Bool == false else { return false }
-            terminal = value
-            return true
+            } catch { observationError = error; return true }
         }, object: nil)
         let result = UITestConditions.wait(for: [settled])
+        if let observationError {
+            throw observationError
+        }
         // Preserve the actual marker and screen before the original success assertions can run.
         let value = try diagnosticValue(marker)
         attach(value, name: "selected-action-terminal", testCase: testCase)
@@ -80,7 +118,11 @@ enum ReminderJourneyDiagnostic {
 
     private static func diagnosticValue(_ marker: XCUIElement) throws -> [String: Any] {
         let data = try Data(marker.snapshot().label.utf8)
-        guard let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw diagnosticError(6) }
+        let object = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+        if object is NSNull {
+            return [:]
+        }
+        guard let value = object as? [String: Any] else { throw diagnosticError(6) }
         return value
     }
 

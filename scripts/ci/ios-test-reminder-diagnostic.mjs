@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { copyValidatedReminderDiagnosticTrace } from './ios-test-reminder-trace.mjs';
+import { createReminderOwnedGroupObserver } from './ios-test-reminder-owned-groups.mjs';
 import { ownedFixtureCommand } from './ios-test-scoped-reset.mjs';
 
 export const reminderDiagnosticTest =
@@ -21,11 +22,16 @@ export function verifyReminderDiagnosticSelection(profile, identifiers, enabled)
   return true;
 }
 
-export function prepareRun(profile, identifiers, flag) {
+export function prepareRun(profile, identifiers, flag, requestedRunID) {
   if (flag === undefined) return null;
   if (flag !== 'YES') throw new Error('Invalid reminder diagnostic opt-in');
   verifyReminderDiagnosticSelection(profile, identifiers, true);
-  return randomUUID();
+  if (
+    requestedRunID !== undefined &&
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(requestedRunID)
+  )
+    throw new Error('Invalid supervised reminder run UUID');
+  return requestedRunID ?? randomUUID();
 }
 
 /** Persist identity before XCTest launch; exclusive creation prevents replacing a lost run UUID. */
@@ -120,4 +126,28 @@ export function captureBeforeCleanup(runID, owner, outputDirectory, identifier, 
     failures.push({ identifier, stage: 'diagnostic-capture', error: receipt.error });
     throw new Error('Diagnostic trace capture failed; preserve the owned container');
   }
+}
+
+/** One admitted diagnostic owns its manifest, inherited creation observer and pre-removal export. */
+export function fixtureRun(profile, identifiers, owner, directory, input = process.env) {
+  const runID = prepareRun(
+    profile,
+    identifiers,
+    input.OROT_IOS_REMINDER_DIAGNOSTICS,
+    input.OROT_IOS_REMINDER_DIAGNOSTIC_RUN_ID,
+  );
+  if (!runID) return { environment: {}, onOwnedGroupSpawn: undefined, captureBeforeCleanup() {} };
+  persistManifest(directory, runID, input.GITHUB_SHA, identifiers);
+  const onOwnedGroupSpawn = createReminderOwnedGroupObserver({
+    runID,
+    sourceSHA: input.GITHUB_SHA,
+    selector: identifiers[0],
+    udid: owner.udid,
+  });
+  return {
+    environment: environment(runID),
+    onOwnedGroupSpawn,
+    captureBeforeCleanup: (identifier, failures) =>
+      captureBeforeCleanup(runID, owner, directory, identifier, failures),
+  };
 }

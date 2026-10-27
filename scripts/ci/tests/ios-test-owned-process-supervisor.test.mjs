@@ -1,112 +1,155 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { PassThrough } from 'node:stream';
+import { OwnedProcessSupervisor } from '../ios-test-owned-process-supervisor.mjs';
 import {
-  OwnedProcessSupervisor,
-  readProcessSnapshot,
-} from '../ios-test-owned-process-supervisor.mjs';
+  consumeReminderOwnedGroupPipe,
+  createReminderOwnedGroupObserver,
+} from '../ios-test-reminder-owned-groups.mjs';
 
-const row = (pid, parent, group, state = 'S', identity = 'original') => ({
+const original = 'Tue Oct 27 13:18:45 2026';
+const reused = 'Tue Oct 27 13:18:46 2026';
+const row = (pid, group = pid, state = 'S', identity = original) => ({
   pid,
-  parent,
+  parent: 1,
   group,
   state,
   identity,
 });
+const binding = {
+  runID: '9ae30a38-2911-4555-b5a3-948a6ec879d9',
+  sourceSHA: 'a'.repeat(40),
+  selector: 'original-selector',
+  udid: '9ae30a38-2911-4555-b5a3-948a6ec879d8',
+};
+const attempt = { phase: 'attempt', attemptSequence: 1 };
+const spawned = { phase: 'spawned', attemptSequence: 1, ...row(11) };
+function register(owner) {
+  owner.registration(attempt);
+  owner.registration(spawned);
+  owner.closeRegistrations();
+}
 
-test('tracks nested canonical groups, forwards root SIGINT and never signals zombies', () => {
-  const root = row(10, 1, 10);
-  let rows = [root, row(11, 10, 11), row(12, 11, 11), row(99, 1, 99)];
+test('registered reparented writer stays owned after root exit and receives escalation', async () => {
+  let rows = [row(10), row(11), row(99)];
   const signals = [];
-  const owner = new OwnedProcessSupervisor(root, {
-    snapshot: () => rows,
+  const owner = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => rows,
     signal: (...args) => signals.push(args),
   });
-  owner.interrupt();
-  assert.deepEqual(signals, [[10, 'SIGINT']]);
-  rows = [row(11, 1, 11, 'Z'), row(12, 1, 11), row(99, 1, 99)];
-  owner.escalate('SIGTERM');
-  assert.deepEqual(signals, [
-    [10, 'SIGINT'],
-    [12, 'SIGTERM'],
-  ]);
-  assert.equal(owner.cleanupReceipt().writersStopped, false);
-  rows = [row(11, 1, 11, 'Z'), row(99, 1, 99)];
-  assert.equal(owner.cleanupReceipt().writersStopped, true);
+  register(owner);
+  await owner.observe();
+  rows = [row(11), row(99)];
+  assert.equal((await owner.cleanupReceipt()).writersStopped, false);
+  await owner.escalate('SIGTERM');
+  assert.deepEqual(signals, [[11, 'SIGTERM']]);
+  rows = [row(99)];
+  assert.equal((await owner.cleanupReceipt()).writersStopped, true);
 });
 
-test('EPERM preserves ownership and PID reuse never signals unrelated processes', () => {
-  const root = row(10, 1, 10);
-  let rows = [root];
+test('unregistered escaping writer cannot become empty-set termination proof', async () => {
+  const owner = new OwnedProcessSupervisor(row(10), { snapshot: async () => [row(12), row(99)] });
+  owner.closeRegistrations();
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.supervisionUncertain, true);
+});
+
+test('zombies are terminal, unrelated processes untouched, and EPERM never means absence', async () => {
+  let rows = [row(10, 10, 'Z'), row(11, 11, 'Z'), row(99)];
   const signals = [];
-  const owner = new OwnedProcessSupervisor(root, {
-    snapshot: () => rows,
-    signal: (pid) => {
-      signals.push(pid);
-      throw Object.assign(new Error('Synthetic denied signal'), { code: 'EPERM' });
+  const owner = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => rows,
+    signal: (...args) => signals.push(args),
+  });
+  register(owner);
+  await owner.escalate('SIGKILL');
+  assert.deepEqual(signals, []);
+  assert.equal((await owner.cleanupReceipt()).writersStopped, true);
+  const denied = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => rows,
+    signal: () => {
+      throw Object.assign(new Error('Denied'), { code: 'EPERM' });
     },
   });
-  owner.interrupt();
-  rows = [row(10, 1, 10, 'S', 'reused')];
-  owner.escalate('SIGKILL');
-  assert.deepEqual(signals, [10]);
-  assert.deepEqual(owner.cleanupReceipt(), {
-    writersStopped: false,
-    supervisionUncertain: true,
-    livePIDs: [],
-  });
+  register(denied);
+  rows = [row(10), row(11), row(99)];
+  await denied.escalate('SIGTERM');
+  rows = [row(99)];
+  assert.equal((await denied.cleanupReceipt()).writersStopped, false);
 });
 
-test('unavailable snapshots fail closed before cleanup', () => {
-  const owner = new OwnedProcessSupervisor(row(10, 1, 10), {
-    snapshot: () => {
-      throw new Error('Snapshot unavailable');
+test('PID/start identity reuse is never signalled, including between observation and signal', async () => {
+  let calls = 0;
+  const signals = [];
+  const owner = new OwnedProcessSupervisor(row(10), {
+    expectedGroups: 0,
+    snapshot: async () => [row(10, 10, 'S', ++calls === 1 ? original : reused)],
+    signal: (...args) => signals.push(args),
+  });
+  owner.closeRegistrations();
+  await owner.escalate('SIGKILL');
+  assert.deepEqual(signals, []);
+  assert.equal((await owner.cleanupReceipt()).supervisionUncertain, true);
+});
+
+test('unavailable snapshots and unknown members after leader loss retain ownership', async () => {
+  const unavailable = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => {
+      throw new Error('Unavailable');
     },
   });
-  assert.throws(() => owner.cleanupReceipt(), /Snapshot unavailable/);
+  register(unavailable);
+  assert.equal((await unavailable.cleanupReceipt()).writersStopped, false);
+  const orphan = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => [row(12, 11), row(99)],
+  });
+  register(orphan);
+  const receipt = await orphan.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.registeredWritersStopped, false);
 });
 
-test(
-  'real nested group receives canonical root forwarding and writers stop before cleanup',
-  { timeout: 10000 },
-  async () => {
-    const child = spawn(
-      process.execPath,
-      [
-        '-e',
-        `
-    const { spawn } = require('node:child_process');
-    const nested = spawn(process.execPath, ['-e', "process.on('SIGINT', () => process.exit(0)); console.log('ready'); setInterval(() => {}, 1000)"], { detached: true });
-    nested.stdout.once('data', () => console.log('ready'));
-    process.on('SIGINT', () => nested.kill('SIGINT'));
-    nested.once('exit', () => process.exit(0));
-  `,
-      ],
-      { detached: true, stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    let owner;
-    const exited = once(child, 'exit');
-    const watchdog = setTimeout(() => {
-      if (owner) owner.escalate('SIGKILL');
-      else child.kill('SIGKILL');
-    }, 5000);
-    try {
-      await once(child.stdout, 'data');
-      const root = readProcessSnapshot().find((item) => item.pid === child.pid);
-      assert.ok(root, 'Owned root must be visible before control');
-      owner = new OwnedProcessSupervisor(root);
-      assert.ok(
-        owner.observe().some((item) => item.parent === child.pid && item.group !== root.group),
-      );
-      owner.interrupt();
-      const [code, signal] = await exited;
-      assert.equal(code, 0);
-      assert.equal(signal, null);
-      assert.equal(owner.cleanupReceipt().writersStopped, true);
-    } finally {
-      clearTimeout(watchdog);
-      if (owner && !owner.cleanupReceipt().writersStopped) owner.escalate('SIGKILL');
-    }
-  },
-);
+test('pipe registrations require complete frames and every exact binding field', async () => {
+  for (const invalid of [null, ...Object.keys(binding), 'partial', 'private', 'oversized']) {
+    const owner = new OwnedProcessSupervisor(row(10), { snapshot: async () => [row(99)] });
+    const stream = new PassThrough();
+    const done = consumeReminderOwnedGroupPipe(stream, binding, owner);
+    const context =
+      invalid && Object.hasOwn(binding, invalid)
+        ? { ...binding, [invalid]: 'mismatched' }
+        : binding;
+    let bytes =
+      JSON.stringify({ ...context, ...attempt }) +
+      '\n' +
+      JSON.stringify({ ...context, ...spawned, parent: undefined, state: undefined }) +
+      '\n';
+    if (invalid === 'partial') bytes = bytes.trimEnd();
+    if (invalid === 'private')
+      bytes = JSON.stringify({ ...context, ...attempt, userInfo: 'private' }) + '\n';
+    if (invalid === 'oversized') bytes = 'x'.repeat(8193);
+    stream.end(bytes);
+    await done;
+    assert.equal((await owner.cleanupReceipt()).writersStopped, invalid === null);
+  }
+});
+
+test('creation observer records attempt before spawn identity; incomplete identity produces failure', async () => {
+  const frames = [];
+  const observer = createReminderOwnedGroupObserver(binding, {
+    write: (value) => frames.push(JSON.parse(value)),
+    snapshot: async () => [row(11)],
+  });
+  await observer({ phase: 'attempt' });
+  assert.equal(frames[0].phase, 'attempt');
+  await observer({ phase: 'spawned', child: { pid: 11 } });
+  assert.equal(frames[1].group, 11);
+  const failed = [];
+  const missing = createReminderOwnedGroupObserver(binding, {
+    write: (value) => failed.push(JSON.parse(value)),
+    snapshot: async () => [],
+  });
+  await missing({ phase: 'attempt' });
+  await assert.rejects(() => missing({ phase: 'spawned', child: { pid: 11 } }), /incomplete/);
+  assert.equal(failed[1].phase, 'failed');
+});

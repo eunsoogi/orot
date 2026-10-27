@@ -15,9 +15,9 @@ import {
 /** Observes the real OS request center without replacing any production app behavior. */
 export function ReminderTestObservation({ children }: PropsWithChildren) {
   const [action, setAction] = useState<ReminderActionReceipt | null>(null);
-  const [diagnostic, setDiagnostic] = useState<Record<string, unknown> | null>(
-    null,
-  );
+  const [diagnostic, setDiagnostic] = useState<Record<string, unknown>>({
+    status: 'pending',
+  });
   const [receipt, setReceipt] = useState<Record<string, unknown>>({
     status: 'pending',
   });
