@@ -30,7 +30,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         cleared(app)
         tap(app, "provider-selection-auth-success")
         tap(app, "chatgpt-account-action")
-        try ProviderAuthUITestDiagnostics.continueLocalConsent(app, stage: .secondNativeReturn, testCase: self)
+        try ProviderAuthUITestDiagnostics.continueLocalConsentDuringDuoReflow(app, testCase: self)
         try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.", role: .staticText)
         try message(app, "선택한 계정의 모델 목록 불러오기")
         back(app)

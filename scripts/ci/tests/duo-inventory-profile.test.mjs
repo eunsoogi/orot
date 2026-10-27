@@ -50,6 +50,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
   const settingsProvider =
     'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels';
+  const providerAuthReflow =
+    'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit';
   const providerSelectionReflow =
     'OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow';
   const settingsBackup =
@@ -74,12 +76,18 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
   const medicationHistoryReflow =
     'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
+  const keyboardUndoReflow =
+    'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances';
   const syncStatusReflow =
     'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow';
+  const activeTranscriptionReflow =
+    'OrotUITests/AutomaticTranscriptionUITests/testActiveTranscriptionSurvivesDuoReflow';
+  const savedDraftTranscription =
+    'OrotUITests/AutomaticTranscriptionUITests/testScreenStopReachesSavedDraft';
   const savedRecordingsSelectionSummary =
     'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview';
   const duoKeyboardSave =
@@ -100,9 +108,10 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep account, provider, sync, history, disease-summary, manual-appointment,
-  // backup, privacy, and health settings explicit.
-  assert.equal(duoInventory.length, 36);
+  const providerSelectionTests = iosTestInventory('provider-selection');
+  const speechTests = iosTestInventory('speech');
+  // Keep account, provider, transcription, conversation, history, and health cases explicit.
+  assert.equal(duoInventory.length, 39);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -110,6 +119,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     settingsHome,
     settingsAccounts,
     settingsProvider,
+    providerAuthReflow,
     providerSelectionReflow,
     settingsBackup,
     privacySettingsReflow,
@@ -136,9 +146,11 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLargeText,
     healthRecordDetailReflow,
     medicationHistoryReflow,
+    keyboardUndoReflow,
     syncStatusReflow,
     recordingLiveReflow,
     recordingReviewReflow,
+    activeTranscriptionReflow,
     savedRecordingsSelectionSummary,
   ]);
   // Home stays in iPhone fixtures; privacy, feature-entry, manual-appointment,
@@ -154,6 +166,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
+    activeTranscriptionReflow,
     manualAppointmentReflow,
     manualHistoryRecovery,
     settingsAccounts,
@@ -170,6 +183,10 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     assert.ok(!coreTests.includes(duoOnlyCase));
   }
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
+  assert.ok(iPhoneFixtures.includes(keyboardUndoReflow));
+  assert.ok(providerSelectionTests.includes(providerAuthReflow));
+  assert.ok(speechTests.includes(savedDraftTranscription));
+  assert.ok(!speechTests.includes(activeTranscriptionReflow));
   assert.ok(iPhoneFixtures.includes(scheduleReflow));
   assert.ok(iPhoneFixtures.includes(scheduleLargeText));
   assert.ok(iPhoneFixtures.includes(fourSidedOcclusion));

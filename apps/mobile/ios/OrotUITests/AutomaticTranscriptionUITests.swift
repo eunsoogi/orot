@@ -67,6 +67,65 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testActiveTranscriptionSurvivesDuoReflow() throws {
+        // Only capture and source linking are synthetic; the screen-owned operation uses Apple Speech and the saved-draft UI.
+        let originalOrientation = XCUIDevice.shared.orientation
+        let app = XCUIApplication()
+        defer {
+            XCUIDevice.shared.orientation = originalOrientation
+            app.terminate()
+        }
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = [
+            "-OROT_TEST_PROFILE", "duo",
+            "-OROT_TEST_SCENARIO", "automatic-transcription",
+        ]
+        app.launch()
+        waitForPhase(app, "ready")
+        let refusal = try report(app, id: "automatic-transcription-refusal", name: "duo-automatic-save-refusal")
+        XCTAssertEqual(refusal["providerCalls"] as? Int, 0)
+        let fixtureID = try XCTUnwrap(refusal["fixtureId"] as? String)
+
+        tap(app, "recording-consent")
+        tap(app, "recording-microphone-control")
+        let pause = UITestConditions.element(app, "recording-pause")
+        XCTAssertTrue(pause.waitForAppearance(), app.debugDescription)
+        tap(app, "recording-microphone-control")
+        waitForPhase(app, "running")
+
+        let recordingWidth = app.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return frame.width > frame.height && abs(frame.width - recordingWidth) > 0.5
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed, app.debugDescription)
+        waitForPhase(app, "complete")
+
+        let result = try report(app, id: "automatic-transcription-result", name: "duo-automatic-saved-result")
+        XCTAssertEqual(result["providerCalls"] as? Int, 1)
+        XCTAssertEqual(result["events"] as? [String], [
+            "production-save-refused", "screen-start", "screen-stop", "synthetic-source-saved",
+            "speech-provider-start", "speech-provider-complete",
+        ])
+        XCTAssertEqual(result["fileProtection"] as? String, refusal["fileProtection"] as? String)
+        let source = try dictionary(result, "source")
+        let sourceID = try XCTUnwrap(source["id"] as? String)
+        XCTAssertEqual(sourceID, fixtureID)
+        let segments = try XCTUnwrap(result["segments"] as? [[String: Any]])
+        let transcriptText = try XCTUnwrap(segments.first?["text"] as? String)
+        XCTAssertFalse(transcriptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        XCTAssertEqual(try dictionary(result, "nativeObservation")["speechRequests"] as? Int, 1)
+
+        tap(app, "recording-details-\(sourceID)")
+        XCTAssertTrue(UITestConditions.element(app, "recording-detail").waitForAppearance())
+        let transcript = UITestConditions.element(app, "transcript-text-0")
+        FormUITestConditions.reveal(transcript, in: app, scrollID: "recording-controls-scroll")
+        UITestConditions.value(transcript, equals: transcriptText)
+        UITestConditions.value(UITestConditions.element(app, "transcript-review-0"), equals: "검토 전 초안")
+    }
+
+    @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = UITestConditions.element(app, id)
         XCTAssertTrue(UITestConditions.exists(target))
@@ -77,6 +136,15 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     @MainActor
     private func value(_ app: XCUIApplication, _ id: String, _ expected: String) {
         UITestConditions.value(UITestConditions.element(app, id), equals: expected)
+    }
+
+    @MainActor
+    private func waitForPhase(_ app: XCUIApplication, _ expected: String) {
+        let phase = UITestConditions.element(app, "automatic-transcription-phase")
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            UITestConditions.text(phase) == expected
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed, app.debugDescription)
     }
 
     @MainActor
