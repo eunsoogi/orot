@@ -55,7 +55,9 @@ test('shows the empty connection state beside its original sign-in action', asyn
 
   expect(screen.getByTestId('settings-accounts-list')).toBeTruthy();
   expect(screen.getByTestId('settings-accounts-actions')).toBeTruthy();
-  expect(screen.getByText(providerSelectionText.chatGPTNoAccounts)).toBeTruthy();
+  expect(
+    screen.getByText(providerSelectionText.chatGPTNoAccounts),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('chatgpt-account-action'));
   expect(onAction).toHaveBeenCalledTimes(1);
 });
@@ -75,12 +77,18 @@ test('keeps account selection accessible and routes a sign-in action', async () 
     />,
   );
 
-  expect(screen.getByTestId('chatgpt-account-0').props.accessibilityState).toEqual({
+  expect(
+    screen.getByTestId('chatgpt-account-0').props.accessibilityState,
+  ).toEqual({
     disabled: false,
     selected: true,
   });
-  expect(screen.getByText(providerSelectionText.chatGPTAccountSignedOut)).toBeTruthy();
-  expect(screen.getByText(providerSelectionText.chatGPTAccountMissingScope)).toBeTruthy();
+  expect(
+    screen.getByText(providerSelectionText.chatGPTAccountSignedOut),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(providerSelectionText.chatGPTAccountMissingScope),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('chatgpt-account-1'));
   expect(onAccountSelected).toHaveBeenCalledWith(
     missingScopeAccount.issuedClientID,
@@ -106,17 +114,22 @@ test('announces account-load errors and disables stale actions while loading', a
     />,
   );
 
-  expect(screen.getByTestId('chatgpt-account-status').props.accessibilityRole).toBe(
-    'alert',
-  );
-  expect(screen.getByTestId('chatgpt-account-0').props.accessibilityState).toEqual({
+  expect(
+    screen.getByTestId('chatgpt-account-status').props.accessibilityRole,
+  ).toBe('alert');
+  expect(
+    screen.getByTestId('chatgpt-account-0').props.accessibilityState,
+  ).toEqual({
     disabled: true,
     selected: true,
   });
   expect(
-    screen.getByTestId('chatgpt-account-action').props.accessibilityState.disabled,
+    screen.getByTestId('chatgpt-account-action').props.accessibilityState
+      .disabled,
   ).toBe(true);
-  expect(screen.getByText(providerSelectionText.chatGPTAccountReadError)).toBeTruthy();
+  expect(
+    screen.getByText(providerSelectionText.chatGPTAccountReadError),
+  ).toBeTruthy();
   expect(onAction).not.toHaveBeenCalled();
 });
 
@@ -146,9 +159,12 @@ test('preserves the connected account sign-out target and progress label', async
     />,
   );
 
-  expect(screen.getByText(providerSelectionText.chatGPTSigningOut(1))).toBeTruthy();
   expect(
-    screen.getByTestId('chatgpt-account-sign-out').props.accessibilityState.disabled,
+    screen.getByText(providerSelectionText.chatGPTSigningOut(1)),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('chatgpt-account-sign-out').props.accessibilityState
+      .disabled,
   ).toBe(true);
   expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
 });

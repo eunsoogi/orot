@@ -74,9 +74,7 @@ export default function SettingsAccountsPanels({
               // Keep the existing numbered action so multiple saved accounts remain distinguishable.
               <Button
                 disabled={setup.busy}
-                onPress={() =>
-                  setup.onSignOut(selectedAccount.issuedClientID)
-                }
+                onPress={() => setup.onSignOut(selectedAccount.issuedClientID)}
                 testID="chatgpt-account-sign-out"
                 title={
                   setup.signingOut
