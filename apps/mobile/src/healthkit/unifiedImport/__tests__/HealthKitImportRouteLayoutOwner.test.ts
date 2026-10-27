@@ -9,6 +9,11 @@ describe('health import route layout ownership', () => {
       name: 'unified-import',
     };
 
-    expect(appContentLayoutOwner(route)).toBe('screen');
+    const owner =
+      typeof appContentLayoutOwner === 'function'
+        ? appContentLayoutOwner(route)
+        : appContentLayoutOwner;
+
+    expect(owner).toBe('screen');
   });
 });
