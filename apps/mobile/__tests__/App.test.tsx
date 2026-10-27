@@ -85,6 +85,7 @@ test('keeps Home compact and groups calendar and appointment management under Sc
   await renderApp({ loadAppointments, calendarBridge: bridge });
 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
+  expect(screen.getByTestId('navigation-route-columns-route-1')).toBeTruthy();
   expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('settings-open-provider')).toBeNull();
@@ -94,6 +95,7 @@ test('keeps Home compact and groups calendar and appointment management under Sc
   await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(1));
 
   await selectTab('schedule');
+  expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
   expect(screen.getByTestId('schedule-open-appointments')).toBeTruthy();
