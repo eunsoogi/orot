@@ -33,6 +33,7 @@ import {
   createNavigationController,
   NavigationRouteAdapter,
 } from './src/navigation';
+import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
 import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
@@ -148,6 +149,7 @@ function App({
                 if (await appNavigation.requestHome()) setActiveTab('home');
               }}
               rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+              contentLayoutOwner={appContentLayoutOwner}
             >
               {/* Settings and AI use the same account services and persisted selection. */}
               {actions =>

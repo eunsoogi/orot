@@ -157,6 +157,8 @@ export const fixtureTests = [
   'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
   'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
+  'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
+  'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',
   'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
