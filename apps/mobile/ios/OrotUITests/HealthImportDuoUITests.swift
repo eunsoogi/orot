@@ -148,11 +148,12 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         // Header and fallback controls must stay inside the same measured regions as their panels.
         XCTAssertTrue(sourceRegion.frame.contains(title.frame), app.debugDescription)
         XCTAssertTrue(sourceRegion.frame.contains(description.frame), app.debugDescription)
-        let start = node(app, "unified-import-start")
+        // Shared navigation actions live outside this panel; inspect only screen fallbacks.
+        let start = activityRegion.descendants(matching: .any).matching(identifier: "unified-import-start").firstMatch
         if start.exists {
             XCTAssertTrue(activityRegion.frame.contains(start.frame), app.debugDescription)
         }
-        let cancel = node(app, "unified-import-cancel")
+        let cancel = activityRegion.descendants(matching: .any).matching(identifier: "unified-import-cancel").firstMatch
         if cancel.exists {
             XCTAssertTrue(activityRegion.frame.contains(cancel.frame), app.debugDescription)
         }
