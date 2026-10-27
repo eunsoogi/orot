@@ -6,7 +6,7 @@ jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
 
-test('opens saved medical document text and provenance inside one measured panel', async () => {
+test('opens saved medical document text and provenance in measured detail panels', async () => {
   const source = {
     id: 'document-saved',
     sourceKind: 'medical_document' as const,
@@ -33,7 +33,7 @@ test('opens saved medical document text and provenance inside one measured panel
           kind: 'document_range' as const,
           pageNumber: 2,
           startOffset: 0,
-          endOffset: 26,
+          endOffset: 25,
         },
       },
     ],
@@ -61,10 +61,16 @@ test('opens saved medical document text and provenance inside one measured panel
 
   await fireEvent.press(await screen.findByTestId('medical-document-source-0'));
 
-  expect(screen.getByTestId('records-document-source-layout')).toBeTruthy();
   expect(
-    screen.queryByTestId('records-document-source-layout-secondary'),
-  ).toBeNull();
+    screen.getByTestId('medical-document-source-detail-layout'),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('medical-document-source-detail-layout-primary'),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('medical-document-source-detail-layout-secondary'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('records-document-source-layout')).toBeNull();
   expect(service.getDocument).toHaveBeenCalledWith(source.id);
   expect(screen.getByTestId('medical-document-source-title')).toHaveTextContent(
     source.title,
@@ -74,7 +80,7 @@ test('opens saved medical document text and provenance inside one measured panel
   ).toHaveTextContent('아직 검토되지 않았어요.');
   expect(
     screen.getByTestId('medical-document-source-locator-0'),
-  ).toHaveTextContent('2쪽 · 위치 1–26');
+  ).toHaveTextContent('2쪽 · 위치 1–25');
   expect(
     screen.getByTestId('medical-document-source-text-0'),
   ).toHaveTextContent('Synthetic saved page text');

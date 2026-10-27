@@ -94,12 +94,15 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
   const classificationReflow =
     'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification';
+  const manualAppointmentReflow =
+    'OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep account, provider, sync, history, disease-summary, backup, privacy, and health settings explicit.
-  assert.equal(duoInventory.length, 35);
+  // Keep account, provider, sync, history, disease-summary, manual-appointment,
+  // backup, privacy, and health settings explicit.
+  assert.equal(duoInventory.length, 36);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -117,6 +120,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     scheduleLargeText,
     appointmentsReflow,
     classificationReflow,
+    manualAppointmentReflow,
     contextualDeparture,
     manualHistoryRecovery,
     manualHistoryReflow,
@@ -137,8 +141,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     recordingReviewReflow,
     savedRecordingsSelectionSummary,
   ]);
-  // Home stays in iPhone fixtures; privacy, feature-entry, manual-history,
-  // records, and Duo-only health-import regressions use the dedicated destination.
+  // Home stays in iPhone fixtures; privacy, feature-entry, manual-appointment,
+  // manual-history, records, and Duo-only health-import regressions use the dedicated destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(settingsHome));
@@ -150,6 +154,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
+    manualAppointmentReflow,
     manualHistoryRecovery,
     settingsAccounts,
     privacySettingsReflow,

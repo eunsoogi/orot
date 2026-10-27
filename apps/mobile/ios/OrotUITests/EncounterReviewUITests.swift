@@ -11,6 +11,12 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         defer { clean(app) }
         launch(app, fixture: fixture, mode: "seed")
         openRecording(app, fixture: fixture)
+        // The route scroller must span the native usable lane before its own panels choose columns.
+        let contentRegion = UITestConditions.element(app, "navigation-content-region")
+        let reviewScroll = UITestConditions.element(app, "navigation-route-scroll")
+        XCTAssertTrue(UITestConditions.exists(contentRegion))
+        XCTAssertTrue(UITestConditions.exists(reviewScroll))
+        XCTAssertEqual(reviewScroll.frame.width, contentRegion.frame.width, accuracy: 1)
         status(app, contains: "후보 찾기를 누르면")
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
