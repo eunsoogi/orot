@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
+  const settingsAccounts =
+    'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
   const settingsBackup =
     'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable';
   const privacySettingsReflow =
@@ -105,6 +107,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
   const medicationHistoryReflow =
     'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
+  const syncStatusReflow =
+    'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
@@ -127,13 +131,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, backup, privacy, appointments, classification, recording, and health cases explicit.
-  assert.equal(duoInventory.length, 29);
+  // Keep account, sync, backup, privacy, health settings, and existing Duo cases explicit.
+  assert.equal(duoInventory.length, 31);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
+    settingsAccounts,
     settingsBackup,
     privacySettingsReflow,
     aiFeatureEntry,
@@ -156,6 +161,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLargeText,
     healthRecordDetailReflow,
     medicationHistoryReflow,
+    syncStatusReflow,
     recordingLiveReflow,
     recordingReviewReflow,
     savedRecordingsSelectionSummary,
@@ -174,6 +180,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
     manualHistoryRecovery,
+    settingsAccounts,
     privacySettingsReflow,
     healthLibraryReflow,
     healthDataSettingsReflow,

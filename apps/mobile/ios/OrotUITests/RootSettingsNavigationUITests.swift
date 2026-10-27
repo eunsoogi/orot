@@ -157,40 +157,30 @@ extension RootNavigationUITests {
         try backToSettings(app)
     }
 
+    /// Keeps the account panel assertion on the synthetic route and its measured return path.
+    @MainActor
+    func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "settings-accounts-layout", "-OROT_TEST_UI_GEOMETRY", "YES"]
+        app.launch()
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        tap(app, "settings-open-accounts")
+        try verifyAdaptivePanels(app, prefix: "settings-accounts-panels", navigationID: "navigation-back")
+        try backToSettings(app)
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
+    }
+
     /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
     private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked: Bool = false) throws {
-        let primary = UITestConditions.element(app, "settings-layout-primary")
-        let secondary = UITestConditions.element(app, "settings-layout-secondary")
-        XCTAssertTrue(primary.waitForAppearance())
-        XCTAssertTrue(secondary.waitForAppearance())
-        let primaryFrame = primary.frame
-        let secondaryFrame = secondary.frame
-        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
-            primaryFrame.maxX <= secondaryFrame.minX + 1
-        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
-            primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(
-            sideBySide || stacked,
-            "Settings panels must use measured non-overlapping columns: primary=\(primaryFrame), secondary=\(secondaryFrame)",
-        )
+        let stacked = try verifyAdaptivePanels(app, prefix: "settings-layout", navigationID: "navigation-tab-settings")
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)
-        if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
-            if expectsStacked {
-                XCTAssertTrue(stacked, "Large text must keep a single readable Settings column")
-            } else {
-                XCTAssertTrue(sideBySide, "Expanded Duo geometry should use both measured Settings regions")
-            }
-            XCTAssertLessThanOrEqual(
-                max(primaryFrame.maxX, secondaryFrame.maxX),
-                navigation.toolbar.frame.minX + 1,
-                "Settings content must stay clear of the measured right navigation lane",
-            )
-        } else {
-            if expectsStacked {
-                XCTAssertTrue(stacked, "Large text must keep a single readable Settings column")
-            }
+        if expectsStacked || navigation.toolbar.frame.height > navigation.toolbar.frame.width {
+            XCTAssertEqual(stacked, expectsStacked, "Settings panels must match the active text and usable width")
+        }
+        if navigation.toolbar.frame.height <= navigation.toolbar.frame.width {
             try NavigationUITestConditions.contentAboveBar(
                 app,
                 scrollID: "navigation-route-scroll",
@@ -217,5 +207,24 @@ extension RootNavigationUITests {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+}
+
+extension RootNavigationUITests {
+    /// Confirms panel axes, host containment, and clearance from the active navigation rail.
+    @MainActor
+    private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
+        let panels = ["primary", "secondary", "host"].map { UITestConditions.element(app, "\(prefix)-\($0)") }
+        XCTAssertTrue(panels.allSatisfy { $0.waitForAppearance() })
+        let primaryFrame = panels[0].frame, secondaryFrame = panels[1].frame
+        let hostFrame = panels[2].frame.insetBy(dx: -1, dy: -1)
+        XCTAssertTrue(hostFrame.contains(primaryFrame) && hostFrame.contains(secondaryFrame))
+        let columns = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 && primaryFrame.maxX <= secondaryFrame.minX + 1
+        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 && primaryFrame.maxY <= secondaryFrame.minY + 1
+        XCTAssertNotEqual(columns, stacked, "Panels must classify as exactly columns or stacked")
+        let toolbar = try NavigationUITestConditions.navigationAction(app, navigationID).toolbar
+        guard toolbar.frame.height > toolbar.frame.width else { return stacked }
+        XCTAssertLessThanOrEqual(max(primaryFrame.maxX, secondaryFrame.maxX), toolbar.frame.minX + 1)
+        return stacked
     }
 }
