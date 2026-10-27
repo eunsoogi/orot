@@ -122,6 +122,63 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         UITestConditions.value(node(app, "unified-import-status"), equals: "cancelled")
     }
 
+    /// Keeps the selected detail period and saved measurements when usable width changes.
+    @MainActor
+    func testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "paged-records", "-OROT_TEST_UI_GEOMETRY", "YES",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var appearance: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let appearance {
+                do {
+                    try AppearanceUITestConditions.restore(appearance, returningTo: app, testCase: self)
+                } catch {
+                    XCTFail("Could not restore the owned Simulator's appearance: \(error)")
+                }
+            }
+            XCUIDevice.shared.orientation = .portrait
+            app.terminate()
+        }
+
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tap(app, "records-open-health-library")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        tap(app, "health-record-open-detail-heart_rate")
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+
+        let layout = node(app, "health-records-detail-layout")
+        let controls = node(app, "health-records-detail-layout-primary")
+        let records = node(app, "health-records-detail-layout-secondary")
+        let period = node(app, "health-record-period-year"), value = node(app, "health-record-row-0-value")
+        XCTAssertTrue(layout.exists && controls.exists && records.exists, app.debugDescription)
+        XCTAssertTrue(value.waitForAppearance(), app.debugDescription)
+        XCTAssertGreaterThanOrEqual(records.frame.minY, controls.frame.maxY, app.debugDescription)
+        period.tap()
+        XCTAssertTrue(period.isSelected, app.debugDescription)
+        UITestConditions.value(value, equals: "72 count/min")
+        capture(app, "health-record-detail-light")
+
+        let portraitWidth = layout.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWidthChange(layout, from: portraitWidth)
+        XCTAssertGreaterThanOrEqual(records.frame.minX, controls.frame.maxX, app.debugDescription)
+        XCTAssertTrue(period.isSelected, app.debugDescription)
+        UITestConditions.value(value, equals: "72 count/min")
+        _ = try AppearanceUITestConditions.select(
+            true,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: { appearance = $0 },
+        )
+        XCTAssertTrue(period.isSelected, app.debugDescription)
+        XCTAssertTrue(value.exists, app.debugDescription)
+        capture(app, "health-record-detail-dark")
+    }
+
     @MainActor
     private func assertSelectedRunIsRetained(_ app: XCUIApplication) {
         XCTAssertTrue(node(app, "unified-import-toggle-heartRate").exists, app.debugDescription)

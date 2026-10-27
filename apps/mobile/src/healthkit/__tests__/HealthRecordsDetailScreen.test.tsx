@@ -1,8 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Dimensions } from 'react-native';
+import { useState } from 'react';
+import { Dimensions, StyleSheet } from 'react-native';
+import type { HealthObservationPageLoader } from '@orot/storage';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation } from '../bloodPressure/testSupport';
 import { HealthRecordsDetailScreen } from '../HealthRecordsDetailScreen';
+import type { HealthRecordPeriod } from '../healthRecordsLibraryModel';
 
 test('stacks date and pressure values at accessibility text sizes', async () => {
   const original = Dimensions.get('window');
@@ -143,3 +146,69 @@ test('keeps an empty page reachable without automatically scanning remaining his
   expect(screen.getByTestId('health-record-row-0')).toBeTruthy();
   expect(screen.queryByTestId('health-records-load-older')).toBeNull();
 });
+
+test('keeps the period and loaded rows while detail panels reflow', async () => {
+  const original = Dimensions.get('window');
+  const observations = mapBloodPressureCorrelation(
+    correlation('detail-reflow'),
+    '2026-10-05T10:00:00.000Z',
+  ).observations;
+  const loadObservations = jest.fn(async () => ({
+    records: observations,
+    nextCursor: null,
+  }));
+  Dimensions.set({ window: { ...original, width: 900, fontScale: 1 } });
+
+  try {
+    await render(
+      <StatefulHealthRecordsDetailScreen loadObservations={loadObservations} />,
+    );
+    const layout = screen.getByTestId('health-records-detail-layout');
+    const direction = () =>
+      StyleSheet.flatten(layout.props.style)?.flexDirection;
+
+    expect(direction()).toBe('row');
+    expect(screen.getByTestId('health-record-row-0-time')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('health-record-period-year'));
+    expect(
+      screen.getByTestId('health-record-period-year').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+
+    await act(() =>
+      Dimensions.set({ window: { ...original, width: 500, fontScale: 1 } }),
+    );
+    expect(direction()).toBe('column');
+    expect(
+      screen.getByTestId('health-record-period-year').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    expect(screen.getByTestId('health-record-row-0-time')).toBeTruthy();
+    expect(loadObservations).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(() => Dimensions.set({ window: original }));
+  }
+});
+
+function StatefulHealthRecordsDetailScreen({
+  loadObservations,
+}: {
+  readonly loadObservations: HealthObservationPageLoader;
+}) {
+  const [selection, setSelection] = useState<{
+    readonly category: 'blood_pressure';
+    readonly period: HealthRecordPeriod;
+  }>({
+    category: 'blood_pressure',
+    period: 'month',
+  });
+
+  return (
+    <HealthRecordsDetailScreen
+      loadObservations={loadObservations}
+      onBack={jest.fn()}
+      onSelectionChange={next =>
+        setSelection(current => ({ ...current, period: next.period }))
+      }
+      selection={selection}
+    />
+  );
+}
