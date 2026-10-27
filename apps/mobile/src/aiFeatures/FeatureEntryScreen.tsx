@@ -6,6 +6,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { healthReviewText } from '../i18n/healthReview';
 
 export interface FeatureEntryScreenProps {
   readonly embedded?: boolean;
@@ -13,6 +14,7 @@ export interface FeatureEntryScreenProps {
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
   readonly onOpenExternalEvidence: () => void;
+  readonly onOpenHealthReview?: () => void;
 }
 
 /** Keeps all four AI entry actions visible while preserving route and consent ownership. */
@@ -22,6 +24,7 @@ export function FeatureEntryScreen({
   onOpenDiseaseHypotheses,
   onOpenRagConversation,
   onOpenExternalEvidence,
+  onOpenHealthReview,
 }: FeatureEntryScreenProps) {
   const navigationInset = useNavigationContentInset();
   useNavigationLeaveStateRegistration({
@@ -51,6 +54,17 @@ export function FeatureEntryScreen({
     action: actions[index],
     symbol: symbols[index],
   }));
+  if (onOpenHealthReview)
+    entries.push({
+      feature: {
+        id: 'health-review',
+        title: healthReviewText.entry,
+        description: '측정·증상 추이와 최근 기록을 함께 확인해요.',
+        action: healthReviewText.entry,
+      },
+      action: onOpenHealthReview,
+      symbol: 'heart.text.square',
+    });
   const splitIndex = Math.ceil(entries.length / 2);
   const renderEntries = (group: typeof entries) => (
     <View style={styles.list}>

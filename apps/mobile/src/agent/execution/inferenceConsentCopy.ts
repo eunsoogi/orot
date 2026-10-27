@@ -2,6 +2,7 @@ import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { t } from '../../i18n';
 
 const purposes = {
+  health_review: 'healthReview.inferenceDisclosure',
   calendar_classification:
     'medicalAppointments.inferenceDisclosure.forCalendar',
   symptom_summary: 'medicalAppointments.inferenceDisclosure.forSummary',

@@ -15,6 +15,7 @@ export const duoTests = [
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
   'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText',
+  'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges',
   'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute',
   'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges',
   'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport',

@@ -68,9 +68,9 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Settings 측정 패널의 다크 모드·가로 회전·큰 글씨와 카테고리 이동 (`OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText`), 네 개 AI 진입점의 측정 콘텐츠 영역 배치와 동의 없는 근거 화면 진입, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, Records 허브의 적응형 열과 큰 글씨 접근성, 건강 기록에서 통합 가져오기 진입, 선택·진행 상태의 Duo 기하 변화 유지, 큰 글씨 단일 열, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존을 확인하는 열여덟 사례로 구성됩니다.
+`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Settings 측정 패널의 다크 모드·가로 회전·큰 글씨와 카테고리 이동 (`OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText`), 네 개 AI 진입점의 측정 콘텐츠 영역 배치와 동의 없는 근거 화면 진입, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, Records 허브의 적응형 열과 큰 글씨 접근성, 건강 기록 유형과 기간 선택을 회전 후에도 보존하는 동작 (`OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges`), 건강 기록에서 통합 가져오기 진입, 선택·진행 상태의 Duo 기하 변화 유지, 큰 글씨 단일 열, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존을 확인하는 스무 사례로 구성됩니다.
 
-이 열여덟 사례 목록은 [Settings Duo 등록](https://github.com/eunsoogi/orot/issues/277)의 `bcc2d09bd23c0660058ee516f3b08544b59b99f8`와 선행 Duo 등록이 통합된 구성을 설명합니다. 그 소스가 아직 병합되지 않은 체크아웃에서는 준비된 등록 계약이며, 실제 실행 목록은 해당 체크아웃의 `duo-test-inventory.mjs`로 확인하세요. 문서에 목록을 보존하는 것만으로 미병합 UI의 통합이나 실행 성공을 입증하지 않습니다.
+이 스무 사례 목록은 [Settings Duo 등록](https://github.com/eunsoogi/orot/issues/277)의 `bcc2d09bd23c0660058ee516f3b08544b59b99f8`와 선행 Duo 등록에 현재 main의 Library Duo 회귀를 더한 구성을 설명합니다. 그 소스가 아직 병합되지 않은 체크아웃에서는 준비된 등록 계약이며, 실제 실행 목록은 해당 체크아웃의 `duo-test-inventory.mjs`로 확인하세요. 문서에 목록을 보존하는 것만으로 미병합 UI의 통합이나 실행 성공을 입증하지 않습니다.
 
 로컬 Duo 검증도 다른 작업과 겹치지 않는 제품 경로와 새 소유권 파일을 사용합니다. 실행 전후의 `simctl list -j` 결과를 별도로 보존해 소유 기기 외의 UDID·기기 유형·런타임·상태가 유지되는지 비교하세요. 준비는 선택한 런타임이 없으면 실패하며 다른 런타임으로 대체하거나 설치하지 않습니다. 검증 중 오류가 나더라도 마지막 cleanup은 실행해 기록된 소유 기기만 종료하고 삭제하세요.
 
@@ -105,6 +105,17 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-
 OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-ui.xcresult build/ios-core-ui-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
+
+HealthReview의 일곱 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
+
+```sh
+node scripts/ci/build-ios-tests.mjs core build/integration-tests-health-review
+node scripts/ci/ios-test-simulator.mjs prepare-cohort health-review-ui build/ios-health-review-owner.json
+PROFILE=core node scripts/ci/run-ios-test-cohort.mjs health-review-ui build/integration-tests-health-review/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-health-review-owner.json build/ios-health-review-results
+node scripts/ci/ios-test-simulator.mjs cleanup health-review-ui build/ios-health-review-owner.json
+```
+
+실패해도 마지막 cleanup을 실행하고 새 `simctl list -j`로 소유 UDID가 없는지 확인합니다. 이 등록은 실제 빌드·화면 실행·20분 예산 통과의 근거가 아닙니다. provider 응답만 합성하며 App 진입, SQLCipher, graph, safety·consent, citation과 요청 삭제는 production 경로를 사용합니다.
 
 전사 후보 검토의 영속화는 `encounter-review-persistence` 전용 cohort에서 별도로 실행합니다. 기존 state/shared persistence 묶음이 저장한 건강 관찰도 실제 충돌 검사 대상이므로 같은 데이터베이스의 다음 단계로 덧붙이지 않습니다. 다른 작업과 겹치지 않는 제품 경로와 소유권 파일을 사용하세요.
 
@@ -180,7 +191,7 @@ Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하
 
 `E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 dispatch도 `main`에서만 Full 검증을 시작합니다. PR, main push, 다른 브랜치의 수동 dispatch는 Mac E2E 작업을 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
 
-Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 28개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
+Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 29개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
 
 Production 빌드는 기본 entry·flags의 앱, 실제 Apple SDK 연결, 기본 Keychain 설정을 검증합니다. OAuth 빌드는 별도 DerivedData에서 Simulator harness와 macOS XCTest bundle을 컴파일하고 정확한 test inventory·내장 fixture·source·run·attempt·toolchain·digest를 함께 전달합니다. OAuth 실행은 이를 검증한 뒤 별도 VM에서 68개 package 테스트를 컴파일 없이 실행합니다. 실행 결과와 두 빌드 의무는 Linux의 Build 상태가 함께 검증합니다. Production과 OAuth는 Debug·Release producer의 선행 조건이 아니며 모두 최종 통과 조건으로 남습니다. 독립 iOS 컴파일이나 테스트 실패가 완료된 생산용 결과를 지우지 않습니다.
 
@@ -188,7 +199,7 @@ production 캐시는 복원과 저장을 분리합니다. 캐시에 포함되는
 
 cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 결과를 보존하고 소유한 자료를 정리한 뒤 후속 실행을 중단합니다. 실행하지 않은 cohort 단계는 `not-run`, fixture는 `notRun` 목록에 기록하며 성공으로 집계하지 않습니다. 한 `xcodebuild` 호출 내부에서 여러 사례가 실행되는 경계는 별도이며, 이 스케줄링 중단만으로 모든 사례가 첫 실패 순간에 중단됐다고 주장하지 않습니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. Foundation Models 관련 네 사례는 명시적인 mock 응답으로 앱·브리지·workflow를 검증합니다. mock 결과를 실제 Apple 모델 실행으로 표시하거나, 실패한 앱 동작을 skip으로 처리하지 않습니다. Speech와 다른 원래 검증의 실제 실행 요구는 유지합니다.
 
-원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. Full E2E는 27개 cohort의 162개 관측과 별도의 Keychain 인증 두 사례를 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. cohort 결과와 인증 receipt는 동일한 workflow run·attempt로 묶고, 다른 실행 결과를 재사용해 Full 성공으로 처리하지 않습니다.
+원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. Full E2E는 29개 cohort의 178개 관측과 별도의 Keychain 인증 두 사례를 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. cohort 결과와 인증 receipt는 동일한 workflow run·attempt로 묶고, 다른 실행 결과를 재사용해 Full 성공으로 처리하지 않습니다.
 
 Release 검증은 해당 workflow가 실행된 정확한 main SHA에 대해 성공한 nightly Full E2E를 요구합니다. main이 앞서 나가면 새 SHA의 nightly 실행이 성공할 때까지 release가 실패합니다. 이전 SHA 또는 이전 attempt 결과를 새 SHA 증거로 재사용하지 않습니다.
 
@@ -196,7 +207,7 @@ Release 검증은 해당 workflow가 실행된 정확한 main SHA에 대해 성�
 
 PR의 정적 분석, 타입 검사, 단위 테스트는 계속 실행하지만 E2E workflow는 시작하지 않습니다. `main`의 E2E는 nightly schedule과 수동 `workflow_dispatch`에서 Full로 실행합니다.
 
-Full E2E 내부의 `Validate /` 결과는 전체 workflow의 성공을 구성하지만 PR branch protection 필수 상태는 아닙니다. 현재 PR 필수 검사 16개는 Code Quality, Unit Test, Policy Check에 속합니다. Full receipt는 27개 cohort와 162개 관측, OAuth 실행, 별도 Keychain 인증 작업의 두 관측 및 Face ID 입력 근거가 모두 성공해야 생성됩니다.
+Full E2E 내부의 `Validate /` 결과는 전체 workflow의 성공을 구성하지만 PR branch protection 필수 상태는 아닙니다. 현재 PR 필수 검사 16개는 Code Quality, Unit Test, Policy Check에 속합니다. Full receipt는 29개 cohort와 178개 관측, OAuth 실행, 별도 Keychain 인증 작업의 두 관측 및 Face ID 입력 근거가 모두 성공해야 생성됩니다.
 
 `Code Quality`·`Policy Check`·`Unit Test`는 PR과 main push에서 실행합니다. `E2E Test`는 `main`의 매일 03:00 KST schedule과 수동 `workflow_dispatch`만 사용하며 PR이나 push에서는 시작하지 않습니다. PR에서 E2E 필수 상태를 기다리지 않고, release workflow는 exact target SHA의 성공한 nightly E2E receipt를 요구합니다.
 
