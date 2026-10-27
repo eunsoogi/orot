@@ -1,30 +1,51 @@
+import ObjectiveC
 import UIKit
 
-/// Supplies exact popover geometry without retaining a window or accepting a source moved to another scene.
-@available(iOS 17.0, *)
+/// Binds default activity creation intent to the controller; UIKit's style getter does not prove that intent.
 @MainActor
-final class PopoverSourceRegion: NSObject, @MainActor UIPopoverPresentationControllerSourceItem {
-    private weak var view: UIView?
-    private weak var window: UIWindow?
-    private let rect: CGRect
+struct ActivityPresentation {
+    let controller: UIActivityViewController
+    let requestedStyle: UIModalPresentationStyle
 
-    init(view: UIView, rect: CGRect, window: UIWindow) {
-        self.view = view
-        self.rect = rect
-        self.window = window
+    init(items: [Any], requestedStyle: UIModalPresentationStyle = .automatic) {
+        self.requestedStyle = requestedStyle
+        controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.modalPresentationStyle = requestedStyle
     }
 
-    /// UIKit imports frameInView: under this name; callers verify it through the public frame(in:) overlay.
-    func __frame(in referenceView: UIView) -> CGRect {
-        guard let view, let window, view.window === window,
-              referenceView === window || referenceView.window === window,
-              window.windowScene?.activationState == .foregroundActive,
-              window.isKeyWindow, !window.isHidden, window.alpha > 0,
-              !view.isHidden, view.alpha > 0,
-              rect.width > 0, rect.height > 0, rect.intersects(view.bounds),
-              view.convert(rect, to: window).intersects(window.bounds)
-        else { return .null }
-        // Presentation can cover the source controller; presenter ownership is checked separately by the anchor.
-        return view.convert(rect, to: referenceView)
+    /// This is a workflow policy, never proof of a non-popover modality or successful presentation.
+    func usesSystemManagedPhonePolicy(in window: UIWindow) -> Bool {
+        usesSystemManagedPhonePolicy(sourceIdiom: window.traitCollection.userInterfaceIdiom, activityIdiom: controller.traitCollection.userInterfaceIdiom)
+    }
+
+    func usesSystemManagedPhonePolicy(sourceIdiom: UIUserInterfaceIdiom, activityIdiom: UIUserInterfaceIdiom) -> Bool {
+        requestedStyle == .automatic && sourceIdiom == .phone && activityIdiom == .phone
+    }
+}
+
+/// Owns a framework UIView source item; UIKit's activity controller rejects arbitrary protocol conformers.
+@MainActor
+final class PopoverSourceRegion: NSObject {
+    private static var retentionKey: UInt8 = 0
+    let item = UIView()
+
+    init(view: UIView, rect: CGRect) {
+        super.init()
+        item.frame = rect
+        item.backgroundColor = .clear
+        item.isUserInteractionEnabled = false
+        item.isAccessibilityElement = false
+        item.accessibilityElementsHidden = true
+        view.addSubview(item)
+    }
+
+    /// The popover retains the region through presentation after the initiating anchor is released.
+    func retain(on popover: UIPopoverPresentationController) {
+        objc_setAssociatedObject(popover, &Self.retentionKey, self, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+
+    deinit {
+        // UIKit tears down presentations on the main actor; the source must not retain an orphan region.
+        MainActor.assumeIsolated { item.removeFromSuperview() }
     }
 }
