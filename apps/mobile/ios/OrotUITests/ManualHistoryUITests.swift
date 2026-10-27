@@ -148,20 +148,61 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false) {
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        if largeText {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+    func testRouteOpenFailureRetryAndBackAfterDuoReflow() throws {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        launch(app, largeText: true, scenario: "manual-history-recovery", observeAppearance: true)
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let originalAppearance {
+                try? AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
+            }
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
         }
+
+        try openManualHistory(app, expectingFailure: true)
+        let error = UITestConditions.element(app, "route-load-error-content")
+        let retry = UITestConditions.element(app, "route-load-retry")
+        XCTAssertTrue(UITestConditions.exists(error) && retry.isHittable, app.debugDescription)
+        _ = try AppearanceUITestConditions.select(
+            true,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: { originalAppearance = $0 },
+        )
+
+        let portraitWidth = app.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return frame.width > frame.height && abs(frame.width - portraitWidth) > 0.5
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
+        XCTAssertTrue(retry.isHittable, app.debugDescription)
+
+        retry.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-empty")), app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+    }
+
+    @MainActor
+    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false) {
+        app.launchArguments = [
+            scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
+            scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+            + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     @MainActor
-    private func openManualHistory(_ app: XCUIApplication) throws {
+    private func openManualHistory(_ app: XCUIApplication, expectingFailure: Bool = false) throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-open-manual-history", in: "navigation-route-scroll")
-        NavigationUITestConditions.route(app, markers: ["manual-history-title"])
+        NavigationUITestConditions.route(app, markers: [expectingFailure ? "route-load-error-content" : "manual-history-title"])
     }
 
     @MainActor
