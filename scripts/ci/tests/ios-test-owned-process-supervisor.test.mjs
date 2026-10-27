@@ -76,7 +76,32 @@ test('zombies are terminal, unrelated processes untouched, and EPERM never means
   rows = [row(10), row(11), row(99)];
   await denied.escalate('SIGTERM');
   rows = [row(99)];
-  assert.equal((await denied.cleanupReceipt()).writersStopped, false);
+  const deniedReceipt = await denied.cleanupReceipt();
+  assert.equal(deniedReceipt.writersStopped, false);
+  assert.equal(deniedReceipt.firstUncertainty.reason, 'process-signal-permission-denied');
+  assert.equal(deniedReceipt.firstUncertainty.signal, 'SIGTERM');
+});
+
+test('signal-report failures are not diagnosed as operating-system permission denials', async () => {
+  const signals = [];
+  const owner = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => [row(10), row(11)],
+    signal: (...args) => signals.push(args),
+    emit: (event) => {
+      if (event.event === 'owned-process-signal' && event.pid === 11)
+        throw Object.assign(new Error('Report sink denied'), { code: 'EPERM' });
+    },
+  });
+  register(owner);
+  await owner.escalate('SIGTERM');
+  assert.deepEqual(signals, [
+    [10, 'SIGTERM'],
+    [11, 'SIGTERM'],
+  ]);
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.firstUncertainty.reason, 'process-signal-report-failed');
+  assert.equal(receipt.firstUncertainty.signal, 'SIGTERM');
 });
 
 test('PID/start identity reuse is never signalled, including between observation and signal', async () => {
@@ -90,7 +115,16 @@ test('PID/start identity reuse is never signalled, including between observation
   owner.closeRegistrations();
   await owner.escalate('SIGKILL');
   assert.deepEqual(signals, []);
-  assert.equal((await owner.cleanupReceipt()).supervisionUncertain, true);
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.supervisionUncertain, true);
+  assert.deepEqual(receipt.firstUncertainty, {
+    reason: 'process-start-identity-changed-before-signal',
+    expectedGroupCount: 0,
+    attemptCount: 0,
+    registeredGroupCount: 0,
+    signal: 'SIGKILL',
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(receipt)).firstUncertainty, receipt.firstUncertainty);
 });
 
 test('unavailable snapshots and unknown members after leader loss retain ownership', async () => {
@@ -130,8 +164,39 @@ test('pipe registrations require complete frames and every exact binding field',
     if (invalid === 'oversized') bytes = 'x'.repeat(8193);
     stream.end(bytes);
     await done;
-    assert.equal((await owner.cleanupReceipt()).writersStopped, invalid === null);
+    const receipt = await owner.cleanupReceipt();
+    assert.equal(receipt.writersStopped, invalid === null);
+    if (invalid === 'partial')
+      assert.equal(receipt.firstUncertainty.reason, 'registration-frame-incomplete-at-close');
+    if (invalid === 'private')
+      assert.equal(receipt.firstUncertainty.reason, 'unsupported-registration-field');
   }
+});
+
+test('registration-report failures are not diagnosed as malformed frames', async () => {
+  const owner = new OwnedProcessSupervisor(row(10), {
+    expectedGroups: 1,
+    snapshot: async () => [row(99)],
+    emit: (event) => {
+      if (event.event === 'owned-group-registered')
+        throw Object.assign(new Error('Report sink denied'), { code: 'EPERM' });
+    },
+  });
+  const stream = new PassThrough();
+  const done = consumeReminderOwnedGroupPipe(stream, binding, owner);
+  stream.end(
+    [
+      { ...binding, ...attempt },
+      { ...binding, ...spawned, parent: undefined, state: undefined },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join('\n') + '\n',
+  );
+  await done;
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.firstUncertainty.reason, 'registration-event-recording-failed');
+  assert.equal(receipt.firstUncertainty.receivedLength > 0, true);
 });
 
 test('creation observer records attempt before spawn identity; incomplete identity produces failure', async () => {
