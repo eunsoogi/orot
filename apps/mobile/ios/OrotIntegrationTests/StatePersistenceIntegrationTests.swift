@@ -17,6 +17,7 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(encounter["status"] as? String, "pending")
         XCTAssertEqual(encounter["recordCount"] as? Int, 0)
         XCTAssertEqual(encounter["modelCalls"] as? Int, 1)
+        try await verifyHealthReview("seed")
         try attach(fixture, phase: "seed", storeReceipt: memory)
     }
 
@@ -32,6 +33,7 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(checkpoint["note"] as? String, "환자 기록: café 🌱🩺")
         XCTAssertEqual(checkpoint["cleaned"] as? Bool, true)
         try await verifyEncounterRecords("resume")
+        try await verifyHealthReview("resume")
         try attach(fixture, phase: "resume", storeReceipt: memory)
     }
 
@@ -40,7 +42,36 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         try requireNewProcess()
         let memory = try await storeOperation("memory-verify-deletion", phase: "verify-deletion")
         try await verifyEncounterRecords("absence")
+        try await verifyHealthReview("absence")
         try attach(fixture, phase: "absence", storeReceipt: memory)
+    }
+
+    /// Existing cohort phases each launch a new host process against the same encrypted database.
+    private func verifyHealthReview(_ phase: String) async throws {
+        let result = try await operation("health-review-persistence", parameters: ["fixtureIdentifier": fixtureIdentifier(), "mode": phase])
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
+        attachment.name = "health-review-persistence-\(phase)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if phase == "seed" {
+            XCTAssertEqual(result["status"] as? String, "needs_clarification")
+            let pending = try XCTUnwrap(result["pending"] as? [String: Any])
+            let safety = try XCTUnwrap(pending["safety"] as? [String: Any])
+            XCTAssertEqual(safety["category"] as? String, "insufficient_information")
+            XCTAssertEqual(result["modelCalls"] as? Int, 0)
+        } else if phase == "resume" {
+            XCTAssertEqual(result["status"] as? String, "review")
+            XCTAssertEqual(result["modelCalls"] as? Int, 1)
+            XCTAssertEqual(result["toolCalls"] as? Int, 2)
+            let review = try XCTUnwrap(result["review"] as? [String: Any])
+            XCTAssertEqual((review["observedChanges"] as? [[String: Any]])?.count, 1)
+            XCTAssertEqual((review["questions"] as? [String])?.count, 1)
+        } else {
+            XCTAssertEqual(result["status"] as? String, "unavailable")
+            XCTAssertEqual(result["modelCalls"] as? Int, 0)
+            XCTAssertEqual(result["referenceCount"] as? Int, 2)
+            truths(result, ["cleanupVerified", "logicalRemovalVerified"])
+        }
     }
 
     /// Attach actual graph responses so pending state, records and evidence remain inspectable after each process.
