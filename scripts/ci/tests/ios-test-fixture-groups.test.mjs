@@ -11,7 +11,7 @@ test('fixture groups partition UI cases including document-import and orientatio
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [11, 7, 8, 18],
+    [11, 7, 8, 19],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
   assert.equal(original.length, 44);
