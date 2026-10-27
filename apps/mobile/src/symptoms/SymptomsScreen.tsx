@@ -5,6 +5,7 @@ import {
   Platform,
   ScrollView,
   Text,
+  View,
 } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
@@ -14,6 +15,7 @@ import SymptomEntryCard from './SymptomEntryCard';
 import SymptomForm from './SymptomForm';
 import SymptomListPanel from './SymptomListPanel';
 import SymptomSelectionSummary from './SymptomSelectionSummary';
+import symptomFormStyles from './SymptomForm.styles';
 import styles from './SymptomsScreen.styles';
 import useSymptomScrollDiagnostics from './useSymptomScrollDiagnostics';
 import useSymptomFocusReveal from './useSymptomFocusReveal';
@@ -89,23 +91,6 @@ export default function SymptomsScreen({
   }
 
   function renderEntry(entry: SymptomEntry) {
-    if (editing?.id === entry.id) {
-      return (
-        <SymptomForm
-          entry={entry}
-          key={entry.id}
-          mode="edit"
-          onDraftChange={draftChanged}
-          onSavingChange={setSaving}
-          onCancel={() => setEditing(null)}
-          onCreate={onCreate}
-          onUpdate={async (id, changes) => {
-            await onUpdate(id, changes);
-            setEditing(null);
-          }}
-        />
-      );
-    }
     return (
       <SymptomEntryCard
         disabled={saving || creating || editing !== null}
@@ -185,22 +170,11 @@ export default function SymptomsScreen({
                     No symptom entries match these filters.
                   </Text>
                 ) : (
-                  entries.map(renderEntry)
+                  entries
+                    .filter(entry => entry.id !== editing?.id)
+                    .map(renderEntry)
                 )}
-                {creating ? (
-                  <SymptomForm
-                    key="new-symptom"
-                    mode="create"
-                    onDraftChange={draftChanged}
-                    onSavingChange={setSaving}
-                    onCancel={() => setCreating(false)}
-                    onCreate={async draft => {
-                      await onCreate(draft);
-                      setCreating(false);
-                    }}
-                    onUpdate={onUpdate}
-                  />
-                ) : !editing ? (
+                {!creating && !editing ? (
                   <Button
                     disabled={loading || !canWrite || saving}
                     onPress={() => setCreating(true)}
@@ -214,6 +188,42 @@ export default function SymptomsScreen({
             secondary={<SymptomSelectionSummary entry={selectedSymptom} />}
             testID="symptoms-layout"
           />
+          {creating || editing ? (
+            // Keep the active editor outside either adaptive panel's width clamp.
+            <View
+              style={symptomFormStyles.fullContentLane}
+              testID="symptoms-form-lane"
+            >
+              {creating ? (
+                <SymptomForm
+                  key="new-symptom"
+                  mode="create"
+                  onDraftChange={draftChanged}
+                  onSavingChange={setSaving}
+                  onCancel={() => setCreating(false)}
+                  onCreate={async draft => {
+                    await onCreate(draft);
+                    setCreating(false);
+                  }}
+                  onUpdate={onUpdate}
+                />
+              ) : editing ? (
+                <SymptomForm
+                  entry={editing}
+                  key={editing.id}
+                  mode="edit"
+                  onDraftChange={draftChanged}
+                  onSavingChange={setSaving}
+                  onCancel={() => setEditing(null)}
+                  onCreate={onCreate}
+                  onUpdate={async (id, changes) => {
+                    await onUpdate(id, changes);
+                    setEditing(null);
+                  }}
+                />
+              ) : null}
+            </View>
+          ) : null}
         </ScrollView>
       </SymptomFocusRevealContext.Provider>
     </KeyboardAvoidingView>

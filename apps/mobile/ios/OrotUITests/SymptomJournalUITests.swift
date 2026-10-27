@@ -15,6 +15,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try launchJournal(app)
         guard tap(app, "symptom-add") else { return }
+        SymptomJournalUITestObservations.assertFullContentFormLane(app)
         guard replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "create-description-focused")
         if singleOnsetObservation {
@@ -84,6 +85,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let originalOnset = UITestConditions.text(onset)
         XCTAssertEqual(originalOnset, "2025-04-02 at 09:30 (local time)")
         guard tap(app, "symptom-edit-" + entryID) else { return }
+        SymptomJournalUITestObservations.assertFullContentFormLane(app)
         guard replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "before-edit-accessory-wait")
         accessory(app, "symptom-keyboard-save-description")
