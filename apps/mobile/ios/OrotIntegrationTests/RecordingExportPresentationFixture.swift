@@ -8,7 +8,15 @@ extension RecordingExportIntegrationTests {
     @MainActor
     func assertDetachedSourceExport(originalWindow: UIWindow, invalidatesWindowVisibility: Bool) throws {
         let operation = try RecordingExportFiles.transcriptFile(text: "share this transcript")
-        addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
+        var presentedActivity: UIActivityViewController?
+        addTeardownBlock { @MainActor in
+            // A dismissal callback alone cannot release the file while either live UIKit relationship remains.
+            guard presentedActivity?.presentingViewController == nil, presentedActivity?.viewIfLoaded?.window == nil else {
+                XCTFail("The live activity still owns its export after teardown dismissal")
+                return
+            }
+            try RecordingExportFiles.finish(operation.directory)
+        }
         var cleanupCount = 0
         let lifecycle = RecordingExportPresentationLifecycle {
             cleanupCount += 1
@@ -45,6 +53,7 @@ extension RecordingExportIntegrationTests {
         // Request fullscreen sharing, but control detachment because UIKit may retain an activity presenter.
         let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
         let modal = UIActivityViewController(activityItems: [operation.file], applicationActivities: nil)
+        presentedActivity = modal
         modal.modalPresentationStyle = .fullScreen
         // The hook runs inside real UIKit completion, before the anchor evaluates its existing ownership predicate.
         var completionHookCount = 0
@@ -52,7 +61,9 @@ extension RecordingExportIntegrationTests {
             completionHookCount += 1
             source?.removeFromSuperview()
             // Inject visibility loss only in this owned window; the real anchor callback supplies its rejection.
-            if invalidatesWindowVisibility { window?.alpha = 0 }
+            if invalidatesWindowVisibility {
+                window?.alpha = 0
+            }
         }
         // Keep a failed scenario's export alive until the real modal has been dismissed during teardown.
         addTeardownBlock { @MainActor in
