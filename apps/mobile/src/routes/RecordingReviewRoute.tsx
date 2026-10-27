@@ -13,9 +13,13 @@ import { recordingService } from '../recording/recordingService';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import { useAutomaticRecordingTranscription } from '../recording/useAutomaticRecordingTranscription';
+import { EncounterReviewPanel } from '../encounterReview/EncounterReviewPanel';
+import type { EncounterReviewService } from '../encounterReview/controller';
 
 /** Saved-source details retain review, playback and export as sections of one recording flow. */
-export function RecordingReviewRoute() {
+export function RecordingReviewRoute({
+  reviewService,
+}: { readonly reviewService?: EncounterReviewService } = {}) {
   const focused = useIsFocused();
   const { selection } = useRecordingSelection();
   const transcription = useAutomaticRecordingTranscription(
@@ -23,15 +27,17 @@ export function RecordingReviewRoute() {
   );
   const [interaction, setInteraction] = useState({ busy: false, dirty: false });
   const [exportBusy, setExportBusy] = useState(false);
+  const [review, setReview] = useState({ busy: false, dirty: false });
   const [autoPlayConsumed, setAutoPlayConsumed] = useState(false);
-  const busy = interaction.busy || exportBusy;
+  const busy = interaction.busy || exportBusy || review.busy;
+  const dirty = interaction.dirty || review.dirty;
   useNavigationLeaveStateRegistration({
     canLeave: !busy,
-    hasUnsavedChanges: interaction.dirty,
+    hasUnsavedChanges: dirty,
     isRecording: false,
     hasOngoingOperation: busy,
     revision: Number(busy),
-    inputRevision: Number(interaction.dirty),
+    inputRevision: Number(dirty),
   });
   const source = selection?.summary.source;
   return (
@@ -49,7 +55,7 @@ export function RecordingReviewRoute() {
             />
             <TranscriptEvidencePanel
               recordingSourceId={source.id}
-              deletionBusy={exportBusy}
+              deletionBusy={exportBusy || review.busy}
               onInteractionChange={setInteraction}
               automaticTranscriptionStatus={
                 transcription.state?.sourceId === source.id
@@ -57,10 +63,17 @@ export function RecordingReviewRoute() {
                   : undefined
               }
             />
+            <EncounterReviewPanel
+              key={source.id}
+              sourceId={source.id}
+              disabled={interaction.busy || interaction.dirty || exportBusy}
+              onInteractionChange={setReview}
+              service={reviewService}
+            />
             <RecordingExportPanel
               recordingSourceId={source.id}
               onBusyChange={setExportBusy}
-              actionsDisabled={interaction.busy || interaction.dirty}
+              actionsDisabled={busy || dirty}
             />
           </>
         ) : (
