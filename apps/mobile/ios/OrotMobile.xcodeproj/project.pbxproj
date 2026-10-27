@@ -215,6 +215,8 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
+		BCE683BFF6DE47F6B69A41AADB62634C /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */; };
+		C588B7000ADF488292FE20DEF531275E /* ScheduleCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -449,6 +451,8 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
+		740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarAdaptiveLayoutUITestConditions.swift; sourceTree = "<group>"; };
+		FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -751,6 +755,8 @@
 				E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */,
 				1862B9BC72394CB4A17A0580 /* FormFocusedInputConditions.swift */,
 				FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */,
+				740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */,
+				FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */,
 				A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */,
 				B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */,
 				703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */,
@@ -1182,6 +1188,8 @@
 				876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */,
 				D07B0333F0F848AA9E9B56D4 /* FormFocusedInputConditions.swift in Sources */,
 				72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */,
+				BCE683BFF6DE47F6B69A41AADB62634C /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift in Sources */,
+				C588B7000ADF488292FE20DEF531275E /* ScheduleCalendarUITests.swift in Sources */,
 				3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */,
 				2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */,
 				9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */,
