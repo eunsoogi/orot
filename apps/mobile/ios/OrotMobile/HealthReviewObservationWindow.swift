@@ -14,9 +14,17 @@
             let point: [Double]
             let touchCount: Int
             let multipleTouches: Bool
-            let geometry: HealthReviewFormSnapshot
+            let geometry: HealthReviewFormSnapshot?
             let keyboardInScreen: [Double]?
             let keyboardObservedUptime: TimeInterval?
+            var losses: [HealthReviewFormSnapshot.Loss] = []
+            var trackingDiscarded = 0
+        }
+
+        /// Only this synchronous dispatch-local pair references UIKit; the writer receives Record scalars alone.
+        private struct Pending {
+            let touch: UITouch
+            let record: Record
         }
 
         private let launch: UUID
@@ -45,8 +53,9 @@
         }
 
         override func sendEvent(_ event: UIEvent) {
-            FormObservationDispatch.around(before: { self.capture(event, terminal: false) },
-                                           after: { self.capture(event, terminal: true) })
+            var terminals: [Pending] = []
+            FormObservationDispatch.around(before: { terminals = self.prepare(event) },
+                                           after: { self.finish(terminals) })
             {
                 super.sendEvent(event)
             }
@@ -58,48 +67,84 @@
             keyboardUptime = ProcessInfo.processInfo.systemUptime
         }
 
-        /// These are dispatch boundaries, not settled deceleration. Copy scalars now; never retain events, touches or views.
-        private func capture(_ event: UIEvent, terminal: Bool) {
-            guard event.type == .touches, let touches = event.allTouches else { return }
-            // Track overlap before phase/route filtering: a second finger outside the form can leave both endpoints single-touch.
+        /// Copy terminal identity before UIKit can mutate phase, view, timestamp or event membership during dispatch.
+        private func prepare(_ event: UIEvent) -> [Pending] {
+            guard event.type == .touches, let touches = event.allTouches else { return [] }
+            // Overlap outside the form still invalidates a single-touch interpretation.
             if touches.count > 1 {
                 for identity in Array(active.keys) {
                     active[identity]?.multiple = true
                 }
             }
+            var terminals: [Pending] = []
             for touch in touches {
                 let phase: Phase
-                if !terminal, touch.phase == .began {
-                    phase = .began
-                } else if terminal, touch.phase == .ended {
-                    phase = .ended
-                } else if terminal, touch.phase == .cancelled {
-                    phase = .cancelled
-                } else {
-                    continue
+                switch touch.phase {
+                case .began: phase = .began
+                case .ended: phase = .ended
+                case .cancelled: phase = .cancelled
+                default: continue
                 }
                 let identity = ObjectIdentifier(touch)
+                var discarded = 0
                 if phase == .began {
                     touchSequence += 1
-                    // Missing terminal delivery cannot grow bookkeeping indefinitely; discarded pairs remain unmatchable.
                     if active.count >= 32 {
+                        discarded = active.count
                         active.removeAll()
                     }
                     active[identity] = (touchSequence, touches.count > 1)
                 }
                 let tracked = active[identity]
-                if terminal {
+                if phase != .began {
                     active.removeValue(forKey: identity)
                 }
-                guard let tracked, let geometry = HealthReviewFormSnapshot.capture(in: self, receiver: touch.view) else { continue }
+                // Untracked terminal delivery still gets an independent diagnostic number and an incomplete envelope.
+                if tracked == nil {
+                    touchSequence += 1
+                }
                 sequence += 1
                 let screenPoint = convert(touch.location(in: self), to: screen.coordinateSpace)
-                writer.append(Record(launch: launch, sequence: sequence, touch: tracked.number, phase: phase,
-                                     touchUptime: touch.timestamp, capturedUptime: ProcessInfo.processInfo.systemUptime,
-                                     point: HealthReviewFormSnapshot.point(screenPoint), touchCount: touches.count,
-                                     multipleTouches: tracked.multiple, geometry: geometry,
-                                     keyboardInScreen: keyboard, keyboardObservedUptime: keyboardUptime))
+                var record = Record(launch: launch, sequence: sequence, touch: tracked?.number ?? touchSequence, phase: phase,
+                                    touchUptime: touch.timestamp, capturedUptime: ProcessInfo.processInfo.systemUptime,
+                                    point: HealthReviewFormSnapshot.point(screenPoint), touchCount: touches.count,
+                                    multipleTouches: tracked?.multiple ?? (touches.count > 1), geometry: nil,
+                                    keyboardInScreen: keyboard, keyboardObservedUptime: keyboardUptime)
+                if tracked == nil {
+                    record.losses.append(.trackingMissing)
+                }
+                if discarded > 0 {
+                    record.losses.append(.trackingOverflow); record.trackingDiscarded = discarded
+                }
+                if phase == .began {
+                    write(record, receiver: touch.view)
+                } else {
+                    terminals.append(Pending(touch: touch, record: record))
+                }
             }
+            return terminals
+        }
+
+        /// Post geometry is sampled after the exact original dispatch; pre-terminal geometry never fills its absence.
+        private func finish(_ terminals: [Pending]) {
+            for pending in terminals {
+                write(pending.record, receiver: pending.touch.view)
+            }
+        }
+
+        private func write(_ envelope: Record, receiver: UIView?) {
+            let collection = HealthReviewFormSnapshot.capture(in: self, receiver: receiver)
+            var losses = envelope.losses
+            if let loss = collection.loss {
+                losses.append(loss)
+            }
+            var record = Record(launch: envelope.launch, sequence: envelope.sequence, touch: envelope.touch, phase: envelope.phase,
+                                touchUptime: envelope.touchUptime, capturedUptime: ProcessInfo.processInfo.systemUptime,
+                                point: envelope.point, touchCount: envelope.touchCount, multipleTouches: envelope.multipleTouches,
+                                geometry: collection.geometry, keyboardInScreen: keyboard, keyboardObservedUptime: keyboardUptime)
+            record.losses = losses
+            record.trackingDiscarded = envelope.trackingDiscarded
+            writer.append(record)
         }
 
         /// One serial background owner writes a bounded scalar snapshot; capture sequence is independent of file-write time.
