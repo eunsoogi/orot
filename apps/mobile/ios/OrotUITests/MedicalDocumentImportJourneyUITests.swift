@@ -118,9 +118,13 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
 
     @MainActor
     private func assertSavedSource(_ app: XCUIApplication) {
+        // Verify the production native UI exposes each stable detail region after entry or relaunch.
+        XCTAssertTrue(node(app, "medical-document-source-detail-layout-primary").exists, app.debugDescription)
+        XCTAssertTrue(node(app, "medical-document-source-detail-layout-secondary").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-source-title").waitForAppearance(), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-title")).contains("MedicalDocumentTextFixture.pdf"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-review-state")).contains("아직 검토되지 않았어요."))
+        XCTAssertFalse(UITestConditions.text(node(app, "medical-document-source-imported-at")).isEmpty)
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-locator-0")).contains("1쪽 · 위치"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-text-0")).contains("Synthetic medical document page one"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-locator-1")).contains("2쪽 · 위치"))
