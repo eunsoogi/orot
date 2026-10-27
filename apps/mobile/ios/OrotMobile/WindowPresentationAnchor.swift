@@ -112,6 +112,13 @@ struct WindowPresentationAnchor {
     func apply(to controller: UIViewController) -> Bool? {
         guard isCurrent else { return false }
         guard let popover = controller.popoverPresentationController else { return nil }
+        if #available(iOS 17.0, *) {
+            // Activity sheets may not round-trip sourceView; an explicit item preserves the exact source-local region.
+            let item = PopoverSourceRegion(view: sourceView, rect: sourceRect, window: window)
+            popover.sourceItem = item
+            return isCurrent && popover.sourceItem === item
+                && popover.sourceItem?.frame(in: window) == sourceView.convert(sourceRect, to: window)
+        }
         popover.sourceView = sourceView
         popover.sourceRect = sourceRect
         return isCurrent && popover.sourceView?.window === window && popover.sourceRect == sourceRect

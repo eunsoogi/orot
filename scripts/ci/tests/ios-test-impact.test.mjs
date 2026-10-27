@@ -162,6 +162,13 @@ test('source paths include cohorts owning their maintained native dependent test
         'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
     },
     {
+      sourcePath: 'apps/mobile/ios/OrotMobile/PopoverSourceRegion.swift',
+      testPath: 'apps/mobile/ios/OrotIntegrationTests/RecordingExportIntegrationTests.swift',
+      cohort: 'core-integration',
+      identifier:
+        'OrotIntegrationTests/RecordingExportIntegrationTests/testDefaultTranscriptSharePreservesItsExactWindowRegionUntilDismissal',
+    },
+    {
       sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',
       testPath: 'apps/mobile/ios/OrotUITests/OrientationPresentationAnchorUITests.swift',
       cohort: 'navigation-features',
