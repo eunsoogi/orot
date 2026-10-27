@@ -20,8 +20,9 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Account management measures its connection and action panels within the full route lane.
   // Appointment entry routes share the screen that measures list and selected-detail panels.
   // Classification measures its overview and candidate panels from usable geometry.
-  // Health data settings pairs category choices with sync and permission status panels.
   // The saved library owns a measured list and summary that share that usable geometry.
+  // Sync status measures its status and recovery panels against the actual usable regions.
+  // Health data settings pairs category choices with sync and permission status panels.
   return route.name === 'settings-provider' ||
     route.name === 'settings-accounts' ||
     route.name === 'appointments' ||
@@ -37,6 +38,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
     route.name === 'settings-privacy' ||
+    route.name === 'settings-sync-status' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||

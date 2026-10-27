@@ -9,13 +9,13 @@ function ownerFor(route: NavigationRoute<string>) {
 }
 
 describe('settings provider layout ownership', () => {
-  it('keeps measured Settings routes screen-owned and detail routes scene-owned', () => {
+  it('keeps provider, backup, and sync status panels screen-owned', () => {
     expect(ownerFor({ key: 'provider', name: 'settings-provider' })).toBe(
       'screen',
     );
     expect(ownerFor({ key: 'backup', name: 'settings-backup' })).toBe('screen');
     expect(ownerFor({ key: 'sync', name: 'settings-sync-status' })).toBe(
-      'scene',
+      'screen',
     );
   });
 });
