@@ -47,7 +47,8 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
             pendingPromise = (resolve, reject)
             presenter.present(picker, animated: true) {
                 guard picker.presentingViewController === presenter else {
-                    self.finishPicker()
+                    // The request rejects below; finishPicker only clears the active picker state here.
+                    _ = self.finishPicker()
                     reject("IMPORT_FAILED", "The document picker could not be presented.", nil)
                     return
                 }
