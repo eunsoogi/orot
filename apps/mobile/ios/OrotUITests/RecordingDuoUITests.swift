@@ -96,7 +96,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
     /// Exercises the saved-source route with real keyboard input while native window geometry changes.
     @MainActor
     func testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow() {
-        let fixture = "recording-review-duo-" + UUID().uuidString.lowercased()
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
         defer {
