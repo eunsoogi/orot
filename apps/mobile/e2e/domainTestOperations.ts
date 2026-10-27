@@ -3,6 +3,7 @@ import { runAgentMemoryTestOperation } from './agentMemoryTestOperation';
 import { runGraphIntegrationProbe } from './graphIntegrationProbe';
 import { withMockAppleModel } from './appleModelMockBridge';
 import { appleModelMockScript } from './appleModelMockFixtures';
+import { runEncounterTestOperation } from './encounterTestOperations';
 
 /** Each operation keeps its original domain assertions; no UI status is treated as a native result. */
 export async function runDomainTestOperation(
@@ -28,18 +29,13 @@ export async function runDomainTestOperation(
     return runStorePersistenceOperation(operation, memoryIdentifier);
   }
   switch (operation) {
+    case 'encounter-review-persistence':
+    case 'encounter-persistence':
+      return runEncounterTestOperation(operation, parameters);
     case 'health-review-persistence': {
       const { runHealthReviewPersistenceOperation } =
         await import('./healthReviewPersistenceOperation');
       return runHealthReviewPersistenceOperation(
-        parameters.mode,
-        parameters.fixtureIdentifier,
-      );
-    }
-    case 'encounter-persistence': {
-      const { runEncounterPersistenceOperation } =
-        await import('./encounterPersistenceOperation');
-      return runEncounterPersistenceOperation(
         parameters.mode,
         parameters.fixtureIdentifier,
       );

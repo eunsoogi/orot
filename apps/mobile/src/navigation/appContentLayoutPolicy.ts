@@ -14,7 +14,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   route,
   rootTabs,
 ) => {
-  // Root tabs keep the `home` route name while the selected root screen owns layout.
+  // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   return route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||

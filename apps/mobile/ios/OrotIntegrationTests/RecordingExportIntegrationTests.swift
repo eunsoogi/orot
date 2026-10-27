@@ -42,14 +42,11 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         RecordingExportFiles.armCancellation()
         XCTAssertTrue(RecordingExportFiles.consumeSimulatorCancellation())
         XCTAssertFalse(RecordingExportFiles.consumeSimulatorCancellation())
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: report), uniformTypeIdentifier: "public.json")
-        attachment.name = "recording-export-authorization"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        try addExportObservation(report, name: "recording-export-authorization")
     }
 
     @MainActor
-    func testDefaultTranscriptSharePreservesItsExactWindowRegionUntilDismissal() throws {
+    func testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal() throws {
         let operation = try RecordingExportFiles.transcriptFile(text: "synthetic share region")
         addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
         let originalWindow = try foregroundKeyWindow()
@@ -63,10 +60,17 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
             originalWindow.makeKeyAndVisible()
         }
 
-        // Match the bridge-only persistence export: a default activity and the current presenter's central 1x1 region.
         let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve())
-        let activity = UIActivityViewController(activityItems: [operation.file], applicationActivities: nil)
-        // Teardown blocks run in reverse order: even a failed presentation assertion must dismiss before file cleanup.
+        let presentation = ActivityPresentation(items: [operation.file])
+        let activity = presentation.controller
+        // The policy records automatic creation intent; it does not infer modality from UIKit's getter.
+        XCTAssertEqual(presentation.requestedStyle, .automatic)
+        XCTAssertTrue(presentation.usesSystemManagedPhonePolicy(in: window))
+        XCTAssertFalse(presentation.usesSystemManagedPhonePolicy(sourceIdiom: .pad, activityIdiom: .phone))
+        XCTAssertFalse(presentation.usesSystemManagedPhonePolicy(sourceIdiom: .phone, activityIdiom: .pad))
+        let explicit = ActivityPresentation(items: [operation.file], requestedStyle: .popover)
+        XCTAssertFalse(explicit.usesSystemManagedPhonePolicy(sourceIdiom: .phone, activityIdiom: .phone))
+        // Reverse teardown order preserves the live file until even a failed presentation has been dismissed.
         addTeardownBlock { @MainActor in
             if activity.presentingViewController != nil || activity.viewIfLoaded?.window != nil {
                 await withCheckedContinuation { continuation in
@@ -74,15 +78,11 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
                 }
             }
         }
-        XCTAssertEqual(anchor.apply(to: activity), true)
-        let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
-        let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
-        XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
-        let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        XCTAssertNil(item.frame(in: foreignWindow))
-
-        let presented = expectation(description: "The default activity belongs to its initiating window")
-        anchor.present(activity, animated: false) { confirmed in
+        XCTAssertNil(anchor.apply(to: presentation))
+        XCTAssertTrue(anchor.isCurrent)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: operation.file.path))
+        let presented = expectation(description: "The automatic phone activity belongs to its initiating window")
+        anchor.present(presentation, animated: false) { confirmed in
             XCTAssertTrue(confirmed)
             presented.fulfill()
         }
@@ -96,12 +96,16 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         wait(for: [dismissed], timeout: 5)
         XCTAssertNil(activity.presentingViewController)
         XCTAssertNil(activity.viewIfLoaded?.window)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: operation.file.path))
         try RecordingExportFiles.finish(operation.directory)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: operation.directory.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
         XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
-        // A late UIKit geometry request must not reuse a detached source, even while the item itself is retained.
         root.view.removeFromSuperview()
-        XCTAssertNil(item.frame(in: window))
+        XCTAssertFalse(anchor.isCurrent)
+        XCTAssertEqual(anchor.apply(to: presentation), false)
+        var accepted: Bool?
+        anchor.present(presentation, animated: false) { accepted = $0 }
+        XCTAssertEqual(accepted, false)
     }
 
     @MainActor
@@ -216,5 +220,12 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
             .filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0 }
         XCTAssertEqual(windows.count, 1)
         return try XCTUnwrap(windows.first)
+    }
+
+    private func addExportObservation(_ observation: Any, name: String) throws {
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
+        attachment.name = name
+        attachment.lifetime = .keepAlways // Preserve diagnostics when the unchanged app assertion fails.
+        add(attachment)
     }
 }

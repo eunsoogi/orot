@@ -24,6 +24,7 @@ import type { RecordRepository } from '@orot/storage';
 export function createEncounterGraphPort(
   repository: RecordRepository,
   model: EncounterModelOptions,
+  requireCurrentSession = false,
 ): EncounterGraphPort {
   const load: EncounterGraphPort['load'] = async (sourceId, signal) => {
     requireEncounterActive(signal);
@@ -53,17 +54,24 @@ export function createEncounterGraphPort(
       return result;
     },
     persist: (pending, approval, signal) =>
-      persistEncounterApproval(repository, pending, approval, signal),
+      persistEncounterApproval(
+        repository,
+        pending,
+        approval,
+        signal,
+        requireCurrentSession,
+      ),
   };
 }
 
-/** Callable app contract for extraction and restart-safe review. Screen composition remains a separate owner. */
+/** Callable graph adapter for production review and native tests. Session fencing is opt-in for the production composition. */
 export async function runLocalEncounterProcessing(input: {
   threadId: string;
   sourceId: string;
   model: EncounterModelOptions;
   signal?: AbortSignal;
   approval?: EncounterApproval;
+  requireCurrentReviewSession?: boolean;
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const database = await openLocalAgentMemoryDatabase();
@@ -77,6 +85,10 @@ export async function runLocalEncounterProcessing(input: {
       }),
     ),
     store: input.model.store,
-    port: createEncounterGraphPort(await openLocalStorage(), input.model),
+    port: createEncounterGraphPort(
+      await openLocalStorage(),
+      input.model,
+      input.requireCurrentReviewSession,
+    ),
   });
 }
