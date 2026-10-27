@@ -97,7 +97,26 @@ extension RootNavigationUITests {
         try verifySettingsPanels(app, expectsStacked: true)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
         XCTAssertTrue(UITestConditions.element(app, "settings-open-backup").isHittable)
-        captureSettingsLayout(app, "settings-duo-large-text")
+        capture(app, "settings-duo-large-text")
+
+        launchSyntheticSettingsLayoutScenario(app)
+        tap(app, "settings-open-provider")
+        NavigationUITestConditions.route(app, markers: ["settings-provider-screen"])
+        tap(app, "settings-provider-load-models")
+        let option = UITestConditions.element(app, "provider-option-1")
+        XCTAssertTrue(option.waitForAppearance())
+        FormUITestConditions.reveal(option, in: app, scrollID: "settings-provider-screen")
+        option.tap()
+        XCTAssertTrue(option.isSelected)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let providerLandscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.frame.width > app.frame.height }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [providerLandscape]), .completed)
+        XCTAssertTrue(option.isSelected, "A pending provider choice must survive native reflow")
+        try verifyAdaptivePanels(app, prefix: "settings-provider-panels", navigationID: "navigation-back")
+        tap(app, "provider-selection-confirm")
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        XCTAssertTrue(app.staticTexts["Synthetic settings model"].exists)
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
     }
 
     /// Keep integration and recovery routes reachable in Settings after removing redundant import flows.
@@ -120,7 +139,6 @@ extension RootNavigationUITests {
         XCTAssertFalse(app.buttons["unified-import-start"].exists)
         capture(app, "settings-health-data-light")
         try backToSettings(app)
-
         tap(app, "settings-open-sync-status")
         NavigationUITestConditions.route(app, markers: ["settings-sync-status-title"])
         XCTAssertTrue(UITestConditions.element(app, "settings-sync-status-message").exists)
@@ -189,24 +207,19 @@ extension RootNavigationUITests {
             )
         }
 
-        for identifier in [
-            "settings-open-health-data", "settings-open-sync-status", "settings-open-provider",
-            "settings-open-accounts", "settings-open-privacy", "settings-open-backup",
-        ] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
             let control = app.buttons[identifier]
-            XCTAssertTrue(control.exists)
-            XCTAssertGreaterThanOrEqual(control.frame.height, 44)
+            XCTAssertTrue(control.exists && control.frame.height >= 44)
         }
         XCTAssertTrue(UITestConditions.element(app, "settings-app-info").exists)
     }
 
-    /// Retains the actual Settings rendering after native geometry changes.
+    /// Uses synthetic accounts and models with the production Settings provider route adapter.
     @MainActor
-    private func captureSettingsLayout(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+    private func launchSyntheticSettingsLayoutScenario(_ app: XCUIApplication) {
+        app.terminate()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "settings-provider-layout", "-OROT_TEST_UI_GEOMETRY", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
     }
 }
 

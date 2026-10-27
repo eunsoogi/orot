@@ -192,17 +192,18 @@ export default function ProviderSelectionScreen({
         ) : null}
         {/* AI keeps combined controls; Settings exposes provider choices or account actions by route. */}
         <Text accessibilityRole="header" style={styles.title}>
-          {presentation === 'settings-accounts' ? screenTitle : 'AI 선택'}
+          {presentation === 'feature'
+            ? 'AI 선택'
+            : (screenTitle ?? providerSelectionText.title)}
         </Text>
         <Text style={styles.introduction}>
-          {presentation === 'settings-accounts'
-            ? screenIntroduction
-            : '질문에 답할 AI를 선택해 주세요.'}
+          {presentation === 'feature'
+            ? '질문에 답할 AI를 선택해 주세요.'
+            : (screenIntroduction ?? providerSelectionText.introduction)}
         </Text>
         {chatGPTSetup && presentation === 'settings-accounts' ? (
           <ChatGPTAccountSetupCard setup={chatGPTSetup} />
         ) : null}
-
         {presentation !== 'settings-accounts' ? (
           <ProviderSelectionChoices
             chatGPTSetup={chatGPTSetup}
@@ -217,6 +218,7 @@ export default function ProviderSelectionScreen({
             }}
             options={options}
             pendingOption={pendingOption}
+            presentation={presentation}
             requirements={requirements}
             saving={saving}
             selectedOption={selectedOption}
