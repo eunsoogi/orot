@@ -75,6 +75,15 @@
 		C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */; };
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
+		A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */; };
+		A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000002 /* MedicalDocumentFileStore.swift */; };
+		A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000003 /* MedicalDocumentImportModule.swift */; };
+		A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000004 /* MedicalDocumentImportModule.m */; };
+		A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000005 /* MedicalDocumentImportTests.swift */; };
+		80FB7B5097A24412B9D2FD96 /* MedicalDocumentFileOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */; };
+		3265054CF71C4F5BA3483FD5 /* MedicalDocumentPickerTestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A3E27206C24EDA9ED12CCF /* MedicalDocumentPickerTestFixtures.swift */; };
+		98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */; };
+		4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */; };
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
@@ -316,6 +325,15 @@
 		D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManualHistoryUITests.swift; sourceTree = "<group>"; };
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
+		B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentTextExtractor.swift; path = OrotMobile/MedicalDocumentTextExtractor.swift; sourceTree = "<group>"; };
+		B37000000000000000000002 /* MedicalDocumentFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStore.swift; path = OrotMobile/MedicalDocumentFileStore.swift; sourceTree = "<group>"; };
+		B37000000000000000000003 /* MedicalDocumentImportModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportModule.swift; path = OrotMobile/MedicalDocumentImportModule.swift; sourceTree = "<group>"; };
+		B37000000000000000000004 /* MedicalDocumentImportModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MedicalDocumentImportModule.m; path = OrotMobile/MedicalDocumentImportModule.m; sourceTree = "<group>"; };
+		B37000000000000000000005 /* MedicalDocumentImportTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportTests.swift; sourceTree = "<group>"; };
+		16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileOperations.swift; path = OrotMobile/MedicalDocumentFileOperations.swift; sourceTree = "<group>"; };
+		80A3E27206C24EDA9ED12CCF /* MedicalDocumentPickerTestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPickerTestFixtures.swift; path = OrotMobile/MedicalDocumentPickerTestFixtures.swift; sourceTree = "<group>"; };
+		ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentFileOperationsTests.swift; sourceTree = "<group>"; };
+		9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportJourneyUITests.swift; sourceTree = "<group>"; };
 		B1810000B1810000B1810001 /* NavigationGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassComponents.swift; sourceTree = "<group>"; };
 		B19500000000000000000001 /* NavigationGlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassButton.swift; sourceTree = "<group>"; };
 		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
@@ -525,6 +543,12 @@
 				B64F0000000000000000000C /* RecordingDeletionPaths.swift */,
 				B11600000000000000000001 /* BackupMigrationModule.swift */,
 				B11600000000000000000002 /* BackupMigrationModule.m */,
+				B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */,
+				B37000000000000000000002 /* MedicalDocumentFileStore.swift */,
+				B37000000000000000000003 /* MedicalDocumentImportModule.swift */,
+				B37000000000000000000004 /* MedicalDocumentImportModule.m */,
+				16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */,
+				80A3E27206C24EDA9ED12CCF /* MedicalDocumentPickerTestFixtures.swift */,
 				C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */,
 				B65F00000000000000000001 /* EventKitCalendarModule.swift */,
 				B65F00000000000000000002 /* EventKitCalendarModule.m */,
@@ -657,6 +681,8 @@
 				AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
 				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
+				B37000000000000000000005 /* MedicalDocumentImportTests.swift */,
+				ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */,
 			);
 			name = OrotIntegrationTests;
 			path = OrotIntegrationTests;
@@ -709,6 +735,7 @@
 				F26700000000000000000004 /* WindowGeometryUITests.swift */,
 				B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */,
 				D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */,
+				9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */,
 				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
 				E19800000000000000000003 /* ExportDismissalGeometry.swift */,
@@ -1079,6 +1106,12 @@
 				A64F0000000000000000000C /* RecordingDeletionPaths.swift in Sources */,
 				A11600000000000000000001 /* BackupMigrationModule.swift in Sources */,
 				A11600000000000000000002 /* BackupMigrationModule.m in Sources */,
+				A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */,
+				A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */,
+				A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */,
+				A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */,
+				80FB7B5097A24412B9D2FD96 /* MedicalDocumentFileOperations.swift in Sources */,
+				3265054CF71C4F5BA3483FD5 /* MedicalDocumentPickerTestFixtures.swift in Sources */,
 				D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */,
 				A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */,
 				A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */,
@@ -1172,6 +1205,7 @@
 				F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */,
 				A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */,
 				C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */,
+				4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */,
 				B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */,
 				6DDA81C6B5654D44AFA384EF /* ConversationHistoryUITestConditions.swift in Sources */,
 				4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */,
@@ -1215,6 +1249,8 @@
 				864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
+				A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */,
+				98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

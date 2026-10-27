@@ -1,8 +1,10 @@
-import type { RecordMap, RecordRepository } from '@orot/storage';
-import type { CompletedRecording } from './recordingTypes';
+import type { RecordRepository } from '@orot/storage';
+import type {
+  CompletedRecording,
+  RecordingSourceRecord,
+} from './recordingTypes';
 
 type RecordingRepositoryLoader = () => Promise<RecordRepository>;
-type SourceRecord = RecordMap['source_record'];
 
 async function loadLocalRepository(): Promise<RecordRepository> {
   const { openLocalStorage } = await import('../storage/secureDatabase');
@@ -13,7 +15,7 @@ export async function saveRecordingSource(
   recording: CompletedRecording,
   loadRepository: RecordingRepositoryLoader = loadLocalRepository,
   now: () => Date = () => new Date(),
-): Promise<SourceRecord> {
+): Promise<RecordingSourceRecord> {
   // The native bridge must explicitly confirm backup inclusion before linking a source record.
   if (
     recording.fileProtection !== 'complete' ||
@@ -51,7 +53,7 @@ export async function saveRecordingSource(
     throw new Error('The recording source identifier is already in use.');
   }
 
-  const source: SourceRecord = {
+  const source: RecordingSourceRecord = {
     id: recording.id,
     effectiveAt: recording.startedAt,
     recordedAt: recording.completedAt,

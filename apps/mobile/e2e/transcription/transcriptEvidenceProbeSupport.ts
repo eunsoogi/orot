@@ -1,10 +1,11 @@
-import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
+import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { AgentMemoryInput } from '@orot/agent-memory';
 import { deterministicProvider } from '../../src/memory/agentMemoryProbe';
 import {
   closeLocalAgentMemory,
   openLocalAgentMemory,
 } from '../../src/memory/localAgentMemory';
+import type { RecordingSourceRecord } from '../../src/recording/recordingTypes';
 import {
   installSyntheticTranscriptionRecording,
   playSyntheticTranscriptionRange,
@@ -31,7 +32,7 @@ type PlaybackReport = {
 };
 
 function transcriptFixture(
-  source: SourceRecord,
+  source: RecordingSourceRecord,
   durationMs: number,
 ): TranscriptEvidenceSegment {
   const recordedAt = new Date().toISOString();
@@ -170,7 +171,7 @@ export async function prepareSyntheticTranscriptRecording() {
   recordingDurations.set(recording.id, recording.durationMs);
   try {
     const timestamp = new Date().toISOString();
-    const source: SourceRecord = {
+    const source: RecordingSourceRecord = {
       id: recording.id,
       sourceKind: 'audio_recording',
       effectiveAt: recording.startedAt,

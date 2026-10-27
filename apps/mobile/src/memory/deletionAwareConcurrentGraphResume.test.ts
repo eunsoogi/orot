@@ -85,7 +85,7 @@ describe('deletion-aware concurrent graph resume', () => {
         evidenceId: span.id,
         evidenceRevision: span.ingestedAt,
         locator: { kind: 'structured_record', recordId: span.id },
-        effectiveTime: span.effectiveAt,
+        effectiveTime: span.effectiveAt ?? null,
         reviewState: 'unreviewed',
       };
       const threadId = '42';

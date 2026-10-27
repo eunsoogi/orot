@@ -48,7 +48,7 @@ describe('deleted evidence checkpoint revalidation', () => {
         evidenceId: span.id,
         evidenceRevision: span.ingestedAt,
         locator: { kind: 'structured_record', recordId: span.id },
-        effectiveTime: span.effectiveAt,
+        effectiveTime: span.effectiveAt ?? null,
         reviewState: 'unreviewed',
       };
 

@@ -10,6 +10,26 @@ export {
 } from './localRecordQueryService';
 export { createLocalRecordQueryTools } from './localRecordQueryTools';
 export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
+export { runEncounterProcessingGraph } from './encounter/graph';
+export {
+  encounterCanonical,
+  encounterReferences,
+  requireEncounterActive,
+  validateEncounterApproval,
+  validateEncounterCandidates,
+} from './encounter/validation';
+export type {
+  EncounterApproval,
+  EncounterCandidate,
+  EncounterConflict,
+  EncounterEvidence,
+  EncounterGraphOptions,
+  EncounterGraphPort,
+  EncounterGraphResult,
+  EncounterPending,
+  EncounterSegment,
+  EncounterTranscript,
+} from './encounter/contracts';
 export { runMultiAgentWorkflow } from './multiAgent/workflow';
 export { extractPartialJsonStringAtPath } from './multiAgent/streamProjection';
 export {

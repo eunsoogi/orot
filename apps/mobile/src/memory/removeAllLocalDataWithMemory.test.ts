@@ -16,6 +16,17 @@ jest.mock('../rag/localE5RagService', () => ({
   createLocalE5RagService: jest.fn(),
 }));
 
+jest.mock('../medicalDocuments/medicalDocumentNativeBridge', () => ({
+  getProtectedMedicalDocumentSourceIds: jest.fn(async () => []),
+  medicalDocumentFileDeletion: {
+    reconcile: jest.fn().mockResolvedValue(undefined),
+    stage: jest.fn().mockResolvedValue(undefined),
+    restore: jest.fn().mockResolvedValue(undefined),
+    commit: jest.fn().mockResolvedValue(undefined),
+    discard: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 describe('removeAllLocalDataWithMemory', () => {
   const sourceRecordIds = ['synthetic-source-1', 'synthetic-source-2'];
   const deletionReferenceIds = [
@@ -73,9 +84,9 @@ describe('removeAllLocalDataWithMemory', () => {
     jest.mocked(openLocalStorage).mockResolvedValue({
       list: jest
         .fn()
-        .mockResolvedValue(
-          sourceRecordIds.map(id => ({ id, sourceKind: 'audio_recording' })),
-        ),
+        .mockResolvedValue([
+          ...sourceRecordIds.map(id => ({ id, sourceKind: 'audio_recording' })),
+        ]),
       listAllLocalDeletionReferences: jest
         .fn()
         .mockResolvedValue(deletionReferenceIds),
@@ -98,20 +109,32 @@ describe('removeAllLocalDataWithMemory', () => {
     });
   });
 
-  it('forgets memory before clearing local records and shared-transaction RAG state', async () => {
-    const memory = {
-      forgetAll: jest.fn(async () => {
-        events.push('memory-forget-all');
-        return 3;
-      }),
-    } as unknown as AgentMemoryService;
+  // Keep memory deletion deterministic; selected cases can inject its storage failure.
+  function makeMemory(failure?: Error): AgentMemoryService {
+    const forgetAll = failure
+      ? jest.fn().mockRejectedValue(failure)
+      : jest.fn(async () => {
+          events.push('memory-forget-all');
+          return 3;
+        });
+    return { forgetAll } as unknown as AgentMemoryService;
+  }
 
-    await expect(
-      removeAllLocalDataWithMemory(memory, { audioDeletion }),
-    ).resolves.toEqual({
+  // Exercise audio cleanup through the shared data-removal boundary.
+  function deleteAllWithAudio(memory: AgentMemoryService) {
+    return removeAllLocalDataWithMemory(memory, {
+      audioDeletion,
+    });
+  }
+
+  it('forgets memory before clearing local records and shared-transaction RAG state', async () => {
+    const memory = makeMemory();
+
+    await expect(deleteAllWithAudio(memory)).resolves.toEqual({
       ...deleted,
       memoriesDeleted: 3,
       audioCleanupPending: false,
+      medicalDocumentCleanupPending: false,
     });
 
     expect(events).toEqual([
@@ -130,15 +153,11 @@ describe('removeAllLocalDataWithMemory', () => {
   });
 
   it('keeps source records when persistent memory removal fails', async () => {
-    const memory = {
-      forgetAll: jest
-        .fn()
-        .mockRejectedValue(new Error('Synthetic memory-storage failure.')),
-    } as unknown as AgentMemoryService;
+    const memory = makeMemory(new Error('Synthetic memory-storage failure.'));
 
-    await expect(
-      removeAllLocalDataWithMemory(memory, { audioDeletion }),
-    ).rejects.toThrow('Synthetic memory-storage failure.');
+    await expect(deleteAllWithAudio(memory)).rejects.toThrow(
+      'Synthetic memory-storage failure.',
+    );
 
     expect(audioDeletion.restore).toHaveBeenNthCalledWith(
       1,
@@ -153,9 +172,7 @@ describe('removeAllLocalDataWithMemory', () => {
   });
 
   it('restores every staged recording when the local-data transaction fails', async () => {
-    const memory = {
-      forgetAll: jest.fn(async () => 3),
-    } as unknown as AgentMemoryService;
+    const memory = makeMemory();
     deleteAllLocalData.mockImplementationOnce(async clearRelatedData => {
       events.push('local-delete');
       await clearRelatedData(
@@ -166,9 +183,9 @@ describe('removeAllLocalDataWithMemory', () => {
       throw new Error('Synthetic local-store failure.');
     });
 
-    await expect(
-      removeAllLocalDataWithMemory(memory, { audioDeletion }),
-    ).rejects.toThrow('Synthetic local-store failure.');
+    await expect(deleteAllWithAudio(memory)).rejects.toThrow(
+      'Synthetic local-store failure.',
+    );
 
     expect(audioDeletion.restore).toHaveBeenNthCalledWith(
       1,
@@ -182,19 +199,16 @@ describe('removeAllLocalDataWithMemory', () => {
   });
 
   it('reports pending audio cleanup without restoring files after data deletion', async () => {
-    const memory = {
-      forgetAll: jest.fn(async () => 3),
-    } as unknown as AgentMemoryService;
+    const memory = makeMemory();
     jest
       .mocked(audioDeletion.commit)
       .mockRejectedValueOnce(new Error('Synthetic file cleanup failure.'));
 
-    await expect(
-      removeAllLocalDataWithMemory(memory, { audioDeletion }),
-    ).resolves.toEqual({
+    await expect(deleteAllWithAudio(memory)).resolves.toEqual({
       ...deleted,
       memoriesDeleted: 3,
       audioCleanupPending: true,
+      medicalDocumentCleanupPending: false,
     });
 
     expect(audioDeletion.restore).not.toHaveBeenCalled();
@@ -202,17 +216,15 @@ describe('removeAllLocalDataWithMemory', () => {
   });
 
   it('restores already staged audio when a later file cannot be staged', async () => {
-    const memory = {
-      forgetAll: jest.fn(async () => 3),
-    } as unknown as AgentMemoryService;
+    const memory = makeMemory();
     jest
       .mocked(audioDeletion.stage)
       .mockImplementationOnce(async () => {})
       .mockRejectedValueOnce(new Error('Synthetic stage failure.'));
 
-    await expect(
-      removeAllLocalDataWithMemory(memory, { audioDeletion }),
-    ).rejects.toThrow('Synthetic stage failure.');
+    await expect(deleteAllWithAudio(memory)).rejects.toThrow(
+      'Synthetic stage failure.',
+    );
 
     expect(audioDeletion.restore).toHaveBeenCalledTimes(1);
     expect(audioDeletion.restore).toHaveBeenCalledWith('synthetic-source-1');
