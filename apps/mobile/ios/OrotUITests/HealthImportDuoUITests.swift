@@ -44,6 +44,63 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure() throws {
+        let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES"]
+            + AppearanceUITestConditions.observationArguments
+        var appearance: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let appearance {
+                do {
+                    try AppearanceUITestConditions.restore(appearance, returningTo: app, testCase: self)
+                } catch {
+                    XCTFail("Could not restore the owned Simulator's appearance: \(error)")
+                }
+            }
+            XCUIDevice.shared.orientation = originalOrientation
+            app.terminate()
+        }
+        app.launch()
+
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        tap(app, "settings-open-health-data")
+        NavigationUITestConditions.route(app, markers: ["health-data-title"])
+
+        let feature = node(app, "health-data-feature-heartRate")
+        let permission = node(app, "health-data-permission-status")
+        XCTAssertTrue(feature.waitForAppearance(), app.debugDescription)
+        // Observe RN's localized checkbox value without saving or starting HealthKit work.
+        let initialValue = try XCTUnwrap(feature.value as? String)
+        feature.tap()
+        let selectedValue = try XCTUnwrap(feature.value as? String)
+        XCTAssertNotEqual(selectedValue, initialValue, app.debugDescription)
+
+        let layout = node(app, "health-data-layout")
+        let primary = node(app, "health-data-layout-primary")
+        let secondary = node(app, "health-data-layout-secondary")
+        XCTAssertTrue(layout.exists && primary.exists && secondary.exists, app.debugDescription)
+        XCTAssertTrue(primary.frame.contains(feature.frame), app.debugDescription)
+        XCTAssertTrue(permission.exists && secondary.frame.contains(permission.frame), app.debugDescription)
+        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        _ = try AppearanceUITestConditions.select(
+            false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 },
+        )
+        XCTAssertEqual(feature.value as? String, selectedValue, app.debugDescription)
+        _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
+        XCTAssertEqual(feature.value as? String, selectedValue, app.debugDescription)
+        XCTAssertTrue(permission.exists, app.debugDescription)
+        capture(app, "health-data-settings-dark")
+
+        let portraitWidth = layout.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWidthChange(layout, from: portraitWidth)
+        XCTAssertEqual(feature.value as? String, selectedValue, app.debugDescription)
+        XCTAssertTrue(permission.exists, app.debugDescription)
+        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+    }
+
+    @MainActor
     func testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges() {
         let app = XCUIApplication()
         app.launchArguments = [
