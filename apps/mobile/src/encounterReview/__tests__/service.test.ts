@@ -1,91 +1,21 @@
-const { mkdtempSync, rmSync } = require('node:fs') as {
-  mkdtempSync(prefix: string): string;
-  rmSync(path: string, options: { recursive: boolean; force: boolean }): void;
-};
-const { tmpdir } = require('node:os') as { tmpdir(): string };
-const { join } = require('node:path') as { join(...parts: string[]): string };
-const { randomFillSync } = require('node:crypto') as {
-  randomFillSync(value: Uint8Array): Uint8Array;
-};
-import { createRecordRepository, runMigrations } from '@orot/storage';
-import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import {
-  openLocalStorage,
-  openLocalAgentMemoryDatabase,
-} from '../../storage/secureDatabase';
-import {
-  seedSyntheticEncounter,
-  syntheticEncounterModel,
-} from '../../agent/encounter/syntheticFixture';
-import { createEncounterReviewService } from '../service';
-import { EncounterReviewController } from '../controller';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 import { persistEncounterApproval } from '../../agent/encounter/persistence';
 import { createEncounterReviewSessions } from '../../agent/encounter/reviewSession';
 import { createLangGraphCheckpointStorage } from '@orot/storage';
 
-jest.mock('../../agent/polyfills', () => ({}));
-jest.mock('../../agent/execution/consentFingerprint', () => ({
-  fingerprintConsentSnapshot: async (text: string) =>
-    require('node:crypto').createHash('sha256').update(text).digest('hex'),
-}));
-jest.mock('../../storage/secureDatabase', () => ({
-  openLocalStorage: jest.fn(),
-  openLocalAgentMemoryDatabase: jest.fn(),
-}));
-jest.mock('../../aiFeatures/integration/provider', () => ({
-  resolveSelectedAiProvider: jest.fn(),
-}));
-let directory: string;
-let handle: ReturnType<typeof openSqliteTestDatabase>;
-const sourceId = 'synthetic-review-recording';
-const repository = () => createRecordRepository(handle.database);
-const controllerFor = (remote = false, allowModel = true) => {
-  const synthetic = syntheticEncounterModel(sourceId, allowModel);
-  const service = createEncounterReviewService(async () => ({
-    status: 'ready',
-    selection: {
-      providerId: synthetic.model.provider.id,
-      modelId: 'synthetic',
-    },
-    option: {
-      provider: synthetic.model.provider,
-      modelId: 'synthetic',
-      displayName: 'Synthetic',
-      privacyBoundary: remote ? 'selected-context-remote' : 'on-device',
-      availability: { status: 'available' },
-    },
-    provider: synthetic.model.provider,
-    modelId: 'synthetic',
-    recipient: remote ? 'selected-account' : 'on-device',
-    remoteProcessing: remote,
-  }));
-  return {
-    service,
-    synthetic,
-    controller: new EncounterReviewController(sourceId, service, jest.fn()),
-  };
-};
-const rows = async () => repository().list('health_observation');
-beforeEach(async () => {
-  directory = mkdtempSync(join(tmpdir(), 'orot-review-'));
-  handle = openSqliteTestDatabase(join(directory, 'records.sqlite'));
-  await runMigrations(handle.database);
-  jest.mocked(openLocalStorage).mockImplementation(async () => repository());
-  jest
-    .mocked(openLocalAgentMemoryDatabase)
-    .mockImplementation(async () => handle.database);
-  Object.defineProperty(globalThis, 'crypto', {
-    configurable: true,
-    value: { getRandomValues: randomFillSync },
-  });
-  await seedSyntheticEncounter(repository(), sourceId);
-});
-afterEach(() => {
-  handle.close();
-  rmSync(directory, { recursive: true, force: true });
-});
-const consent = { authorize: jest.fn(async () => 'authorized' as const) };
+import {
+  sqliteReviewFixture,
+  sourceId,
+  consent,
+} from '../__fixtures__/sqliteReview';
+const {
+  controllerFor,
+  repository,
+  rows,
+  reopen,
+  database,
+  openSecondConnection,
+} = sqliteReviewFixture();
 
 test('source discovery survives closed database and fresh controller without re-extraction or approval', async () => {
   const first = controllerFor();
@@ -98,8 +28,7 @@ test('source discovery survives closed database and fresh controller without re-
   expect(first.synthetic.calls()).toBe(1);
   expect(await rows()).toHaveLength(0);
   first.controller.dispose();
-  handle.close();
-  handle = openSqliteTestDatabase(join(directory, 'records.sqlite'));
+  reopen();
   const second = controllerFor(false, false);
   await second.controller.restore();
   expect(second.controller.state.pending).toEqual(original);
@@ -171,9 +100,7 @@ test('correction and logical deletion fence stale approval and remove discovery 
   await controller.decide('approve');
   expect(controller.state.status).toBe('unavailable');
   expect(await rows()).toHaveLength(0);
-  await new SqlCipherAgentMemoryStorage(handle.database).markSourceRemoved(
-    sourceId,
-  );
+  await new SqlCipherAgentMemoryStorage(database()).markSourceRemoved(sourceId);
   expect(await service.restore(sourceId, new AbortController().signal)).toEqual(
     { status: 'unavailable' },
   );
@@ -198,7 +125,7 @@ test('another database connection replaces a preview attempt before approval ent
   await first.controller.start(consent);
   const pending = first.controller.state.pending!;
   // A already read the descriptor. B replaces it through a separate connection before A commits.
-  const other = openSqliteTestDatabase(join(directory, 'records.sqlite'));
+  const other = openSecondConnection();
   try {
     await createEncounterReviewSessions(
       createLangGraphCheckpointStorage(other.database, {

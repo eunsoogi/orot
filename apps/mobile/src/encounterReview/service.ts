@@ -1,8 +1,12 @@
 import '../agent/polyfills';
 import { createLangGraphCheckpointStorage } from '@orot/storage';
 import { requireLiveCheckpointSource } from '@orot/storage';
-import type { EncounterApproval } from '@orot/agent-runtime';
-import { SqliteCheckpointSaver } from '@orot/agent-runtime';
+import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
+import {
+  SqliteCheckpointSaver,
+  validateEncounterApproval,
+} from '@orot/agent-runtime';
+import { persistEncounterApproval } from '../agent/encounter/persistence';
 import {
   openLocalAgentMemoryDatabase,
   openLocalStorage,
@@ -57,6 +61,11 @@ async function readSessionResult(
     },
   });
   if (!checkpoint) return { status: 'unavailable' };
+  if (approval)
+    validateEncounterApproval(
+      checkpoint.checkpoint.channel_values.pending as EncounterPending,
+      approval,
+    );
   const result = await runLocalEncounterProcessing({
     sourceId,
     threadId: session.threadId,
@@ -66,6 +75,20 @@ async function readSessionResult(
     requireCurrentReviewSession: true,
   });
   if ((await discovery.read())?.threadId !== session.threadId)
+    return { status: 'unavailable' };
+  if (approval && result.status === 'saved') {
+    // A completed graph is history, not proof that this caller's decision committed.
+    // Revalidate the exact receipt on the canonical transaction, including for concurrent controllers.
+    const recordIds = await persistEncounterApproval(
+      repository,
+      approval.pending,
+      approval,
+      signal,
+      true,
+    );
+    return { status: 'saved', recordIds };
+  }
+  if (approval?.decision === 'approve' && result.status === 'denied')
     return { status: 'unavailable' };
   return result;
 }
