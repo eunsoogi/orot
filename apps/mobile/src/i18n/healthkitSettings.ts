@@ -33,7 +33,8 @@ export const healthkitSettingsKo = {
     '마지막 동기화 중 문제가 있었어요. 권한과 저장소 상태를 확인한 뒤 다시 시도해 주세요.',
   'settings.syncStatus.skipped':
     '이번 시도에서는 선택한 기록을 확인하지 않았어요. 선택 상태를 확인해 주세요.',
-  'settings.syncStatus.attemptedFeatures': '이번 시도에서 확인한 항목: {features}',
+  'settings.syncStatus.attemptedFeatures':
+    '이번 시도에서 확인한 항목: {features}',
   'settings.syncStatus.readbackError':
     '시도 결과는 확인했지만 저장된 상태를 다시 읽지 못했어요.',
   'settings.syncStatus.recovery': '복구 작업',

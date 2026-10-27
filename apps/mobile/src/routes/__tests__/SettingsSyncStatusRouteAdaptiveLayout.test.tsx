@@ -30,7 +30,10 @@ const measurableView = View as unknown as {
     ) => void;
   };
 };
-const hostBounds = new Map<string, { readonly x: number; readonly width: number }>();
+const hostBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
 jest
   .spyOn(measurableView.prototype, 'measureInWindow')
   .mockImplementation(function (
@@ -131,7 +134,10 @@ function routeProps(): Omit<AppRouteContentProps, 'actions'> {
     openExternalEvidence: jest.fn(),
     openRecording: jest.fn(),
     loadHealthObservations: async () => ({ records: [], nextCursor: null }),
-    loadHealthRecordMedications: async () => ({ definitions: [], doseEvents: [] }),
+    loadHealthRecordMedications: async () => ({
+      definitions: [],
+      doseEvents: [],
+    }),
     healthRecordDetailSelection: null,
     onHealthRecordDetailSelectionChange: jest.fn(),
   };
@@ -157,8 +163,10 @@ test('adapts the production Settings sync route to native usable regions and tex
   await fireEvent.press(screen.getByTestId('settings-open-sync-status'));
 
   const routeKey = controller.getSnapshot().currentRoute.key;
-  expect(await screen.findByTestId('settings-sync-status-message')).toHaveTextContent(
-    '마지막 동기화 중 문제가 있었어요.',
+  expect(
+    await screen.findByTestId('settings-sync-status-message'),
+  ).toHaveTextContent(
+    '마지막 동기화 중 문제가 있었어요. 권한과 저장소 상태를 확인한 뒤 다시 시도해 주세요.',
   );
   expect(
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
@@ -175,15 +183,17 @@ test('adapts the production Settings sync route to native usable regions and tex
     StyleSheet.flatten(layout().props.style)?.flexDirection;
   expect(direction()).toBe('row');
   expectDuoPanelsInsideNativeRegions('settings-sync-status-layout', payload);
-  expect(screen.getByTestId('settings-sync-retry').props.disabled).toBe(false);
+  expect(
+    screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
+  ).toBe(false);
 
   await act(async () => {
     Dimensions.set({ window: viewport(900, 1.5), screen: viewport(900, 1.5) });
   });
   expect(direction()).toBe('column');
-  expect(screen.getByTestId('settings-sync-selected-features')).toHaveTextContent(
-    '수면',
-  );
+  expect(
+    screen.getByTestId('settings-sync-selected-features'),
+  ).toHaveTextContent('수면');
 
   const compact = geometry(500, false);
   hostBounds.set('settings-sync-status-layout-host', { x: 0, width: 500 });

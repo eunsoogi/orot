@@ -81,18 +81,20 @@ test('shows saved sync state and refreshes it after an explicit retry', async ()
   expect(
     await screen.findByTestId('settings-sync-status-message'),
   ).toHaveTextContent('마지막 동기화에서 선택한 기록을 확인했어요.');
-  expect(screen.getByTestId('settings-sync-attempted-features')).toHaveTextContent(
-    '이번 시도에서 확인한 항목: 수면',
-  );
+  expect(
+    screen.getByTestId('settings-sync-attempted-features'),
+  ).toHaveTextContent('이번 시도에서 확인한 항목: 수면');
 });
 
 test('keeps retry disabled while saved selection is loading and when it is empty', async () => {
   let resolveSelection!: (
     selection: readonly HealthKitAutoSyncFeature[],
   ) => void;
-  const selection = new Promise<readonly HealthKitAutoSyncFeature[]>(resolve => {
-    resolveSelection = resolve;
-  });
+  const selection = new Promise<readonly HealthKitAutoSyncFeature[]>(
+    resolve => {
+      resolveSelection = resolve;
+    },
+  );
   const retrySync = jest.fn();
 
   await render(
@@ -111,17 +113,21 @@ test('keeps retry disabled while saved selection is loading and when it is empty
   expect(screen.getByTestId('settings-sync-status-message')).toHaveTextContent(
     '저장한 동기화 설정을 불러오는 중…',
   );
-  expect(screen.getByTestId('settings-sync-retry').props.disabled).toBe(true);
+  expect(
+    screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
+  ).toBe(true);
 
   await act(async () => {
     resolveSelection([]);
     await selection;
   });
 
-  expect(await screen.findByTestId('settings-sync-status-message')).toHaveTextContent(
-    '자동 동기화할 건강 기록이 선택되지 않았어요.',
-  );
-  expect(screen.getByTestId('settings-sync-retry').props.disabled).toBe(true);
+  expect(
+    await screen.findByTestId('settings-sync-status-message'),
+  ).toHaveTextContent('자동 동기화할 건강 기록이 선택되지 않았어요.');
+  expect(
+    screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
+  ).toBe(true);
   expect(retrySync).not.toHaveBeenCalled();
 });
 
@@ -165,9 +171,13 @@ test('preserves the retry result when saved status cannot be reread during progr
     fireEvent.press(retryButton);
   });
   expect(retrySync).toHaveBeenCalledTimes(1);
-  expect(retryButton.props.disabled).toBe(true);
-  expect(retryButton.props.accessibilityState).toMatchObject({ busy: true });
-  expect(jest.mocked(useNavigationLeaveStateRegistration)).toHaveBeenLastCalledWith(
+  expect(retryButton.props.accessibilityState).toMatchObject({
+    disabled: true,
+    busy: true,
+  });
+  expect(
+    jest.mocked(useNavigationLeaveStateRegistration),
+  ).toHaveBeenLastCalledWith(
     expect.objectContaining({ canLeave: false, hasOngoingOperation: true }),
   );
 
@@ -176,16 +186,22 @@ test('preserves the retry result when saved status cannot be reread during progr
     await pendingRetry;
   });
 
-  expect(await screen.findByTestId('settings-sync-status-message')).toHaveTextContent(
-    '마지막 동기화에서 선택한 기록을 확인했어요.',
-  );
-  expect(screen.getByTestId('settings-sync-status-readback-error')).toHaveTextContent(
+  expect(
+    await screen.findByTestId('settings-sync-status-message'),
+  ).toHaveTextContent('마지막 동기화에서 선택한 기록을 확인했어요.');
+  expect(
+    screen.getByTestId('settings-sync-status-readback-error'),
+  ).toHaveTextContent(
     '시도 결과는 확인했지만 저장된 상태를 다시 읽지 못했어요.',
   );
   expect(screen.queryByTestId('settings-sync-status-updated-at')).toBeNull();
-  expect(retryButton.props.disabled).toBe(false);
-  expect(retryButton.props.accessibilityState).toMatchObject({ busy: false });
-  expect(jest.mocked(useNavigationLeaveStateRegistration)).toHaveBeenLastCalledWith(
+  expect(retryButton.props.accessibilityState).toMatchObject({
+    disabled: false,
+    busy: false,
+  });
+  expect(
+    jest.mocked(useNavigationLeaveStateRegistration),
+  ).toHaveBeenLastCalledWith(
     expect.objectContaining({ canLeave: true, hasOngoingOperation: false }),
   );
 });
@@ -209,8 +225,12 @@ test('reports a local settings load failure instead of claiming that no health r
   const status = await screen.findByTestId('settings-sync-status-message');
   expect(status).toHaveTextContent('동기화 상태를 불러오지 못했어요.');
   expect(status.props.accessibilityRole).toBe('alert');
-  expect(status).not.toHaveTextContent('자동 동기화할 건강 기록이 선택되지 않았어요.');
-  expect(screen.getByTestId('settings-sync-retry').props.disabled).toBe(true);
+  expect(status).not.toHaveTextContent(
+    '자동 동기화할 건강 기록이 선택되지 않았어요.',
+  );
+  expect(
+    screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
+  ).toBe(true);
 });
 
 test('reports a retryable outcome when the local sync operation rejects', async () => {

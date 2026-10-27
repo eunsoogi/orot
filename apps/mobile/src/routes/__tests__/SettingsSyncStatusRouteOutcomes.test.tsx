@@ -28,51 +28,55 @@ jest.mock('../../layout/AdaptiveColumns', () => {
 
 test.each([
   {
-    status: 'retryable',
+    status: 'retryable' as const,
     attemptedFeatures: ['sleep'] as const,
-    message: '마지막 동기화 중 문제가 있었어요.',
+    message:
+      '마지막 동기화 중 문제가 있었어요. 권한과 저장소 상태를 확인한 뒤 다시 시도해 주세요.',
     attemptedText: '이번 시도에서 확인한 항목: 수면',
   },
   {
-    status: 'skipped',
+    status: 'skipped' as const,
     attemptedFeatures: [] as const,
-    message: '이번 시도에서는 선택한 기록을 확인하지 않았어요. 선택 상태를 확인해 주세요.',
+    message:
+      '이번 시도에서는 선택한 기록을 확인하지 않았어요. 선택 상태를 확인해 주세요.',
     attemptedText: null,
   },
-])('shows the returned $status retry outcome and attempted categories', async ({
-  status,
-  attemptedFeatures,
-  message,
-  attemptedText,
-}) => {
-  const retrySync = jest.fn(async () => ({ status, attemptedFeatures }));
-  await render(
-    <SettingsSyncStatusRoute
-      loadSelection={async () => ['sleep'] as readonly HealthKitAutoSyncFeature[]}
-      loadStatus={async () => null}
-      retrySync={retrySync}
-      calendarSync={{
-        ...emptyCalendarAutoSyncState,
-        requestAccess: jest.fn(async () => 'notDetermined' as const),
-        refresh: jest.fn(async () => undefined),
-      }}
-    />,
-  );
-
-  await screen.findByTestId('settings-sync-selected-features');
-  await act(async () => {
-    fireEvent.press(screen.getByTestId('settings-sync-retry'));
-  });
-
-  expect(retrySync).toHaveBeenCalledTimes(1);
-  expect(screen.getByTestId('settings-sync-status-message')).toHaveTextContent(
-    message,
-  );
-  if (attemptedText) {
-    expect(screen.getByTestId('settings-sync-attempted-features')).toHaveTextContent(
-      attemptedText,
+])(
+  'shows the returned $status retry outcome and attempted categories',
+  async ({ status, attemptedFeatures, message, attemptedText }) => {
+    const retrySync = jest.fn(async () => ({ status, attemptedFeatures }));
+    await render(
+      <SettingsSyncStatusRoute
+        loadSelection={async () =>
+          ['sleep'] as readonly HealthKitAutoSyncFeature[]
+        }
+        loadStatus={async () => null}
+        retrySync={retrySync}
+        calendarSync={{
+          ...emptyCalendarAutoSyncState,
+          requestAccess: jest.fn(async () => 'notDetermined' as const),
+          refresh: jest.fn(async () => undefined),
+        }}
+      />,
     );
-  } else {
-    expect(screen.queryByTestId('settings-sync-attempted-features')).toBeNull();
-  }
-});
+
+    await screen.findByTestId('settings-sync-selected-features');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('settings-sync-retry'));
+    });
+
+    expect(retrySync).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByTestId('settings-sync-status-message'),
+    ).toHaveTextContent(message);
+    if (attemptedText) {
+      expect(
+        screen.getByTestId('settings-sync-attempted-features'),
+      ).toHaveTextContent(attemptedText);
+    } else {
+      expect(
+        screen.queryByTestId('settings-sync-attempted-features'),
+      ).toBeNull();
+    }
+  },
+);

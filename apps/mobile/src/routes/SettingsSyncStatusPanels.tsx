@@ -46,7 +46,10 @@ export function SettingsSyncStatusHealthPanel({
           {t('settings.syncStatus.healthData')}
         </Text>
         {selected.length > 0 ? (
-          <Text style={styles.featureList} testID="settings-sync-selected-features">
+          <Text
+            style={styles.featureList}
+            testID="settings-sync-selected-features"
+          >
             {selected
               .map(feature => t(`healthkit.unifiedImport.feature.${feature}`))
               .join(' · ')}
@@ -61,7 +64,10 @@ export function SettingsSyncStatusHealthPanel({
           {message}
         </Text>
         {attemptedFeatures.length > 0 ? (
-          <Text style={styles.featureList} testID="settings-sync-attempted-features">
+          <Text
+            style={styles.featureList}
+            testID="settings-sync-attempted-features"
+          >
             {t('settings.syncStatus.attemptedFeatures', {
               features: attemptedFeatures
                 .map(feature => t(`healthkit.unifiedImport.feature.${feature}`))
@@ -70,7 +76,10 @@ export function SettingsSyncStatusHealthPanel({
           </Text>
         ) : null}
         {snapshot && !retryReadbackFailed ? (
-          <Text style={styles.timestamp} testID="settings-sync-status-updated-at">
+          <Text
+            style={styles.timestamp}
+            testID="settings-sync-status-updated-at"
+          >
             {t('settings.syncStatus.updatedAt', {
               timestamp: formatDateTime(new Date(snapshot.updatedAt)),
             })}
