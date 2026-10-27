@@ -58,6 +58,9 @@ if (geometryObservation || appearanceObservation || reminderObservation) {
 // call the production services without starting an unrelated JS Speech probe.
 if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
+} else if (route === 'manual-history-recovery') {
+  // Keep the one-shot opener failure isolated to this explicitly admitted test entry.
+  require('./manualHistoryRecoveryEntry');
 } else if (route === 'speech') {
   require('./transcriptionProbeEntry');
 } else if (route === 'openai-provider') {

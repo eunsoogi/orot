@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 
-/** Keeps recoverable opening errors scrollable above the floating menu at large text sizes. */
+/** Keeps route-opening errors readable and retryable inside the current usable route area. */
 export function RouteLoadError({
   title,
   message,
@@ -25,7 +25,7 @@ export function RouteLoadError({
   });
   return (
     <NavigationRouteScrollView>
-      <View style={styles.container}>
+      <View style={styles.container} testID="route-load-error-content">
         <Text accessibilityRole="header">{title}</Text>
         <Text accessibilityRole="alert">{message}</Text>
         <AppButton
@@ -39,5 +39,13 @@ export function RouteLoadError({
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, gap: 12, padding: 24 },
+  // The scroll view owns changing safe-area and rail insets; this cap only limits long reading lines.
+  container: {
+    alignSelf: 'center',
+    flexGrow: 1,
+    gap: 12,
+    maxWidth: 640,
+    padding: 24,
+    width: '100%',
+  },
 });

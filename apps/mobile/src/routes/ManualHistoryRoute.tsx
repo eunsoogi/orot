@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
@@ -6,6 +12,17 @@ import ManualHistoryScreen from '../manualHistory/ManualHistoryScreen';
 import type { ManualHistoryScreenRepository } from '../manualHistory/types';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { RouteLoadError } from './RouteLoadError';
+
+type ManualHistoryRepositoryOpener =
+  () => Promise<ManualHistoryScreenRepository>;
+
+/** Keeps production on the real encrypted repository while the admitted test entry can fail one open. */
+export const ManualHistoryRepositoryOpenerContext =
+  createContext<ManualHistoryRepositoryOpener>(async () => {
+    const { openLocalManualHistoryRepository } =
+      require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
+    return openLocalManualHistoryRepository();
+  });
 
 /** Opens the existing encrypted repository before showing the manual history screen. */
 export function ManualHistoryRoute({
@@ -17,19 +34,18 @@ export function ManualHistoryRoute({
     useState<ManualHistoryScreenRepository | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const openRepository = useContext(ManualHistoryRepositoryOpenerContext);
   const load = useCallback(async () => {
     setLoading(true);
     setFailed(false);
     try {
-      const { openLocalManualHistoryRepository } =
-        require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
-      setRepository(await openLocalManualHistoryRepository());
+      setRepository(await openRepository());
     } catch {
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [openRepository]);
 
   useEffect(() => {
     load().catch(() => undefined);
