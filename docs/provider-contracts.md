@@ -38,13 +38,14 @@ Foundation Models stopped underlying inference. ChatGPT Simulator cancellation
 uses a synthetic account and intercepted HTTP responses, so it does not prove a
 live service stopped processing a request.
 
-## Minimum visit-question graph requirements
+## Visit-question workflow boundaries
 
-[`createLanguageModelProviderGraph`](../packages/agent-runtime/src/modelProviderGraph.ts)
-currently has one `generate` node: it passes a typed request to the selected
-provider and returns the normalized result. The graph does not itself validate
-recommendation content or provenance. A visit-question workflow built on it
-must preserve these boundaries:
+The app's visit-question route enters `runVisitQuestionWorkflow`, which invokes
+the shared `runMultiAgentWorkflow`. Model calls use the LangChain chat-model
+adapter from `createProductionChatModel` and `invokeProductionRequest`. The
+adapter converts the provider-neutral messages and tool calls at the native
+provider boundary; the graph remains responsible for consent, budgets, allowed
+evidence, citation validation, and result policy. Keep these boundaries:
 
 1. Put only the intended visit evidence in the request and retain its existing
    source identifiers. Do not treat model-generated text as a source record.
@@ -61,10 +62,10 @@ must preserve these boundaries:
    execute an explicitly allowed local function, and its result must return
    with the same tool-call ID. A provider does not perform a tool's side effect.
 
-These are graph and product requirements, not guarantees made by a language
-model adapter. The current graph test verifies provider invocation and
-pass-through of its normalized result; it does not establish recommendation
-validation or clinical safety.
+These are workflow and product requirements, not guarantees made by a language
+model adapter. The package graph test verifies direct LangGraph composition
+with the standard chat-model interface; app task and citation tests establish
+their own validation behavior.
 
 ## What each verification surface proves
 

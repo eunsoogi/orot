@@ -1,5 +1,11 @@
+import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
 import { providerSuccess, type LanguageModelProvider } from '@orot/model-runtime';
-import { createLanguageModelProviderGraph, createStatefulTwoNodeGraph } from '../src';
+import { createProductionChatModel, createStatefulTwoNodeGraph } from '../src';
+
+const ChatState = Annotation.Root({
+  request: Annotation<string>(),
+  answer: Annotation<string>({ default: () => '' }),
+});
 
 describe('stateful LangGraph', () => {
   it('invokes both nodes once and exposes each completed state on the value stream', async () => {
@@ -23,8 +29,7 @@ describe('stateful LangGraph', () => {
     expect(states[2]).toMatchObject({ value: 8, nodeRuns: expectedNodes });
   });
 
-  it('invokes a normalized language-model provider from a LangGraph node', async () => {
-    const request = { messages: [{ role: 'user' as const, content: 'Suggest one question.' }] };
+  it('invokes the standard LangChain model directly from a LangGraph node', async () => {
     const response = {
       text: '무엇을 더 말씀드리면 좋을까요?',
       toolCalls: [],
@@ -42,11 +47,24 @@ describe('stateful LangGraph', () => {
       },
       generate: jest.fn(async () => providerSuccess(response)),
     };
-    const graph = createLanguageModelProviderGraph(provider);
+    const model = createProductionChatModel(provider);
+    // Keep graph callers on LangChain's chat-model interface without a provider-shaped graph wrapper.
+    const graph = new StateGraph(ChatState)
+      .addNode('generate_answer', async ({ request }) => {
+        const message = await model.invoke(request);
+        if (typeof message.content !== 'string') throw new Error('Expected text model output.');
+        return { answer: message.content };
+      })
+      .addEdge(START, 'generate_answer')
+      .addEdge('generate_answer', END)
+      .compile();
 
-    const result = await graph.invoke({ request });
+    const result = await graph.invoke({ request: 'Suggest one question.' });
 
-    expect(provider.generate).toHaveBeenCalledWith(request, { signal: undefined });
-    expect(result.result).toEqual(providerSuccess(response));
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+    expect(provider.generate.mock.calls[0]?.[0]).toEqual({
+      messages: [{ role: 'user', content: 'Suggest one question.' }],
+    });
+    expect(result.answer).toBe(response.text);
   });
 });
