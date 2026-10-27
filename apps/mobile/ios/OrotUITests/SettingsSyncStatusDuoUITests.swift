@@ -1,6 +1,6 @@
 import XCTest
 
-/// Keeps synthetic sync status and recovery controls inside the measured Duo content regions.
+/// Keeps the sync-status scenario in Duo's measured regions; the launch helper follows the appearance flags' `MainActor` isolation.
 final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -13,7 +13,9 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         let originalOrientation = XCUIDevice.shared.orientation
         var appearance: AppearanceUITestConditions.Snapshot?
         XCUIDevice.shared.orientation = .portrait
-        app.launchArguments = launchArguments(largeText: false)
+        let regularArguments = launchArguments(largeText: false)
+        XCTAssertEqual(Array(regularArguments.suffix(4)), AppearanceUITestConditions.observationArguments)
+        app.launchArguments = regularArguments
         app.launch()
         defer {
             if let appearance, app.state == .runningForeground {
@@ -58,7 +60,9 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         }
         app.terminate()
         XCUIDevice.shared.orientation = .portrait
-        app.launchArguments = launchArguments(largeText: true)
+        let largeTextArguments = launchArguments(largeText: true)
+        XCTAssertEqual(Array(largeTextArguments.suffix(4)), AppearanceUITestConditions.observationArguments)
+        app.launchArguments = largeTextArguments
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
@@ -231,6 +235,7 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         UITestConditions.element(app, identifier)
     }
 
+    @MainActor
     private func launchArguments(largeText: Bool) -> [String] {
         var arguments = [
             "-OROT_TEST_SCENARIO", "blood-pressure",
