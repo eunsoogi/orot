@@ -27,16 +27,16 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         let title = UITestConditions.element(app, "manual-history-title-input")
         XCTAssertTrue(UITestConditions.exists(form), app.debugDescription)
         XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
-        let portraitSize = app.frame.size
+        let formPortraitSize = app.frame.size
         XCUIDevice.shared.orientation = .landscapeLeft
-        waitForOrientation(app, landscape: true, changedFrom: portraitSize)
+        waitForOrientation(app, landscape: true, changedFrom: formPortraitSize)
         XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
         XCTAssertTrue(title.isHittable, app.debugDescription)
         XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
 
-        let landscapeSize = app.frame.size
+        let formLandscapeSize = app.frame.size
         XCUIDevice.shared.orientation = .portrait
-        waitForOrientation(app, landscape: false, changedFrom: landscapeSize)
+        waitForOrientation(app, landscape: false, changedFrom: formLandscapeSize)
         XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
         XCTAssertTrue(title.isHittable, app.debugDescription)
 
