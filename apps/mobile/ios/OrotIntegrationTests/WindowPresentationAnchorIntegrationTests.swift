@@ -7,9 +7,14 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
     @MainActor
     func testBridgeFallbackUsesTheSingleForegroundKeyWindow() throws {
         let window = try foregroundKeyWindow()
-        let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(foregroundKeyWindows: [window]))
-        XCTAssertTrue(anchor.window === window)
-        XCTAssertTrue(anchor.isCurrent)
+        let source = try XCTUnwrap(window.rootViewController?.viewIfLoaded)
+        let originalSubviewCount = source.subviews.count
+        var anchor = WindowPresentationAnchor.resolve(foregroundKeyWindows: [window])
+        XCTAssertTrue(try XCTUnwrap(anchor).window === window)
+        XCTAssertTrue(try XCTUnwrap(anchor).isCurrent)
+        XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+        anchor = nil
+        XCTAssertEqual(source.subviews.count, originalSubviewCount)
     }
 
     @MainActor

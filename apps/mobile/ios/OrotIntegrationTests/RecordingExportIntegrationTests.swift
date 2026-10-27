@@ -119,6 +119,11 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         root.view.removeFromSuperview()
         XCTAssertFalse(anchor.isCurrent)
         XCTAssertEqual(anchor.apply(to: activity), false)
+        let detachedObservation = ["detachedFrameIsNil": item.frame(in: window) == nil]
+        let detachedAttachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: detachedObservation), uniformTypeIdentifier: "public.json")
+        detachedAttachment.name = "detached-framework-source-item-control"
+        detachedAttachment.lifetime = .keepAlways
+        add(detachedAttachment)
     }
 
     @MainActor

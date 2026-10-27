@@ -2,7 +2,6 @@ import ObjectiveC
 import UIKit
 
 /// Owns a framework UIView source item; UIKit's activity controller rejects arbitrary protocol conformers.
-@available(iOS 17.0, *)
 @MainActor
 final class PopoverSourceRegion: NSObject {
     private static var retentionKey: UInt8 = 0
