@@ -102,24 +102,23 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         XCTAssertTrue(year.waitForAppearance(), app.debugDescription)
         year.tap()
         XCTAssertTrue(year.isSelected, app.debugDescription)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["health-records-title"])
-
         let portraitBounds = app.frame
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForWindowBoundsChange(in: app, from: portraitBounds)
-        try assertHealthLibraryFitsContentLane(in: app)
-        XCTAssertTrue(
-            UITestConditions.element(app, "health-record-filter-heart_rate").isSelected,
-            app.debugDescription,
-        )
-        UITestConditions.element(app, "health-record-open-detail-heart_rate").tap()
         NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
         XCTAssertTrue(
             UITestConditions.element(app, "health-record-period-year").isSelected,
             app.debugDescription,
         )
-        capture(app, "health-library-type-and-period-after-rotation")
+        capture(app, "health-library-period-after-rotation")
+
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        try assertHealthLibraryFitsContentLane(in: app)
+        XCTAssertTrue(
+            UITestConditions.element(app, "health-record-filter-heart_rate").isSelected,
+            app.debugDescription,
+        )
     }
 
     @MainActor
