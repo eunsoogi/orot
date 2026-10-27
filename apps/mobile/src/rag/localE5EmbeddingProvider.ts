@@ -25,6 +25,13 @@ export class LocalE5EmbeddingProvider implements EmbeddingProvider {
     request: EmbeddingRequest,
   ): Promise<ProviderResult<EmbeddingResponse>> {
     try {
+      // Validate the raw request before copying: strings must not become character documents.
+      if (!Array.isArray(request.input)) {
+        throw new LocalEmbeddingJobError(
+          'invalid_request',
+          'Embedding input must contain non-empty text.',
+        );
+      }
       return {
         ok: true,
         value: {

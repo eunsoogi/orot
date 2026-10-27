@@ -36,6 +36,22 @@ describe('LocalE5EmbeddingProvider', () => {
     );
   });
 
+  it.each(['not-an-array', null, ['']])(
+    'rejects malformed embedding input before native inference: %p',
+    async input => {
+      const { backend } = createBackend();
+      const provider = new LocalE5EmbeddingProvider(backend);
+      await expect(
+        provider.embed({ input: input as never }),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { code: 'invalid_request', retryable: false },
+      });
+      expect(backend.prepare).not.toHaveBeenCalled();
+      expect(backend.embedBatch).not.toHaveBeenCalled();
+    },
+  );
+
   it('returns a retryable provider error when the native runtime is unavailable', async () => {
     const { backend } = createBackend(async () => {
       throw new Error('CoreML session unavailable.');
