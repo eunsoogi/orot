@@ -92,7 +92,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const settingsProvider =
     'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels';
   const providerSelectionReflow =
-    'OrotUITests/ProviderSelectionDuoUITests/testProviderSelectionOverlayReflowsWithinMeasuredDuoRegionsAndKeepsConfirmationReachable';
+    'OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow';
   const settingsBackup =
     'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable';
   const privacySettingsReflow =

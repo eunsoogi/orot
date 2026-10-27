@@ -6,7 +6,7 @@ export const duoTests = [
   'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
   'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels',
   'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels',
-  'OrotUITests/ProviderSelectionDuoUITests/testProviderSelectionOverlayReflowsWithinMeasuredDuoRegionsAndKeepsConfirmationReachable',
+  'OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow',
   'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable',
   'OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow',
   'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange',
