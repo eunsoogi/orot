@@ -85,7 +85,12 @@ test('large-text navigation has an independent hard-limited job', () => {
 // Whole original journeys keep their own setup/reset/cleanup; only independent methods change VM ownership.
 test('recording leaves schedule controls, transcript review and playback with complete method coverage', () => {
   const { jobs } = workflow('.github/workflows/ios-recording-tests.yml');
-  assert.deepEqual(Object.keys(jobs), ['controls', 'review', 'playback']);
+  assert.deepEqual(Object.keys(jobs), [
+    'encounter_review_persistence',
+    'controls',
+    'review',
+    'playback',
+  ]);
   for (const [id, count] of [
     ['controls', 3],
     ['review', 2],
@@ -101,4 +106,15 @@ test('recording leaves schedule controls, transcript review and playback with co
     assert.equal(executor.with.cohort, cohort);
     assert.equal(executor.with.profile, 'fixtures');
   }
+  const review = jobs.encounter_review_persistence;
+  assert.equal(
+    review.if,
+    "${{ contains(fromJSON(inputs.cohorts), 'encounter-review-persistence') }}",
+  );
+  const executor = review.steps.find(
+    (step) => step.uses === './.github/actions/ios-test-cohort-executor',
+  );
+  assert.equal(executor.with.cohort, 'encounter-review-persistence');
+  assert.equal(executor.with.profile, 'core');
+  assert.equal(review['timeout-minutes'], 20);
 });

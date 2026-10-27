@@ -7,13 +7,37 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
     @MainActor
     func testBridgeFallbackUsesTheSingleForegroundKeyWindow() throws {
         let window = try foregroundKeyWindow()
-        let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(foregroundKeyWindows: [window]))
-        XCTAssertTrue(anchor.window === window)
-        XCTAssertTrue(anchor.isCurrent)
+        let source = try XCTUnwrap(window.rootViewController?.viewIfLoaded)
+        let originalSubviewCount = source.subviews.count
+        let item = try autoreleasepool { () throws -> UIView in
+            var anchor = WindowPresentationAnchor.resolve(foregroundKeyWindows: [window])
+            XCTAssertTrue(try XCTUnwrap(anchor).window === window)
+            XCTAssertTrue(try XCTUnwrap(anchor).isCurrent)
+            XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+            // Explicit popovers keep exact geometry and retain one region after the initiating anchor is released.
+            var controller: UIViewController? = UIViewController()
+            controller?.modalPresentationStyle = .popover
+            XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+            let item = try XCTUnwrap(controller?.popoverPresentationController?.sourceItem as? UIView)
+            XCTAssertTrue(type(of: item) == UIView.self)
+            XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+            XCTAssertTrue(controller?.popoverPresentationController?.sourceItem === item)
+            XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+            let region = CGRect(x: source.bounds.midX, y: source.bounds.midY, width: 1, height: 1)
+            XCTAssertEqual(item.frame(in: window), source.convert(region, to: window))
+            let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
+            XCTAssertNil(WindowPresentationAnchor.resolve(from: foreignWindow))
+            anchor = nil
+            XCTAssertTrue(item.superview === source)
+            controller = nil
+            return item
+        }
+        XCTAssertNil(item.superview)
+        XCTAssertEqual(source.subviews.count, originalSubviewCount)
     }
 
     @MainActor
-    func testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow() throws {
+    func testAttachedCallerViewKeepsSystemFilePickerInItsOwningWindow() throws {
         let (window, originalWindow) = try isolatedKeyWindow()
         defer {
             window.isHidden = true
@@ -41,10 +65,11 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.modalPresentationStyle = .popover
-            XCTAssertEqual(anchor.apply(to: picker), true)
-            let item = try XCTUnwrap(picker.popoverPresentationController?.sourceItem)
-            XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window))
-
+            let configured = anchor.apply(to: picker)
+            // UIKit keeps this picker as a form sheet even when a popover is requested; nil means no popover was configured.
+            XCTAssertEqual(picker.modalPresentationStyle, .formSheet)
+            XCTAssertNil(picker.popoverPresentationController)
+            XCTAssertNil(configured)
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")
             anchor.present(picker, animated: false) { result in
@@ -66,13 +91,16 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             root.view.setNeedsLayout()
             root.view.layoutIfNeeded()
             XCTAssertTrue(picker.presentingViewController?.viewIfLoaded?.window === window)
-            let resizedRegion = try XCTUnwrap(item.frame(in: window))
-            XCTAssertEqual(resizedRegion, source.convert(sourceRect, to: window))
-            XCTAssertTrue(resizedRegion.intersects(window.bounds))
+            XCTAssertTrue(anchor.presentedControllerSharesWindow(picker))
+            XCTAssertTrue(window.isKeyWindow)
+            XCTAssertTrue(source.window === window)
+            XCTAssertTrue(source.convert(sourceRect, to: window).intersects(window.bounds))
 
             let dismissed = expectation(description: "The document picker closes before testing the other window side")
             picker.dismiss(animated: false) { dismissed.fulfill() }
             wait(for: [dismissed], timeout: 5)
+            XCTAssertNil(picker.presentingViewController)
+            XCTAssertNil(picker.viewIfLoaded?.window)
         }
     }
 

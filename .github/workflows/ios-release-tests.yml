@@ -181,7 +181,7 @@ jobs:
       cohorts: ${{ inputs.cohorts }}
   recordings:
     name: Recordings
-    if: ${{ contains(inputs.cohorts, 'recordings-') }}
+    if: ${{ contains(inputs.cohorts, 'recordings-') || contains(fromJSON(inputs.cohorts), 'encounter-review-persistence') }}
     uses: ./.github/workflows/ios-recording-tests.yml
     with:
       artifact_name: ${{ inputs.artifact_name }}
