@@ -104,7 +104,7 @@ test('keeps existing Records actions and medical document import available', asy
   expect(props.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
 });
 
-test('shows extracted text for review before saving medical evidence', async () => {
+test('shows extracted text in the measured single panel before saving medical evidence', async () => {
   const selected = document('document-1', 'Synthetic document text');
   const service = importService({
     selectDocument: jest.fn().mockResolvedValue(selected),
@@ -113,6 +113,7 @@ test('shows extracted text for review before saving medical evidence', async () 
 
   await fireEvent.press(screen.getByTestId('records-import-medical-document'));
   expect(await screen.findByText('Synthetic document text')).toBeTruthy();
+  expect(screen.getByTestId('records-document-review-layout')).toBeTruthy();
   expect(
     screen.getByText(
       '내용을 확인한 뒤 저장해 주세요. 진단과 약 변경은 자동으로 확정되지 않아요.',

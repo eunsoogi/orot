@@ -26,7 +26,7 @@ export interface RecordsRouteProps {
   readonly onOpenManualHistory: () => void;
 }
 
-/** Reuses Home's loaded audio snapshot while keeping medical import review full-screen. */
+/** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
   recordings,
   recordingState,
@@ -54,23 +54,34 @@ export function RecordsRoute({
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
 
+  // Screen-owned Records content still needs measured bounds for single-panel workflows.
   if (stagedDocument) {
     return (
-      <MedicalDocumentReview
-        document={stagedDocument}
-        busy={activity !== null}
-        message={message}
-        onSave={saveMedicalDocument}
-        onCancel={discardMedicalDocument}
+      <AdaptiveColumns
+        primary={
+          <MedicalDocumentReview
+            document={stagedDocument}
+            busy={activity !== null}
+            message={message}
+            onSave={saveMedicalDocument}
+            onCancel={discardMedicalDocument}
+          />
+        }
+        testID="records-document-review-layout"
       />
     );
   }
 
   if (sourceDetail) {
     return (
-      <MedicalDocumentSourceView
-        document={sourceDetail}
-        onBack={closeSavedDocument}
+      <AdaptiveColumns
+        primary={
+          <MedicalDocumentSourceView
+            document={sourceDetail}
+            onBack={closeSavedDocument}
+          />
+        }
+        testID="records-document-source-layout"
       />
     );
   }
