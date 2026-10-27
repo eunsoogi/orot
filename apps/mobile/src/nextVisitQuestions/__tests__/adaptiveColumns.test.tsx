@@ -1,7 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { StyleSheet, View } from 'react-native';
 import { NextVisitQuestionsScreen } from '../NextVisitQuestionsScreen';
-import { makeProps } from '../testSupport/fixtures';
+import { appointment, makeProps, source } from '../testSupport/fixtures';
 
 const measurableView = View as unknown as {
   prototype: {
@@ -33,6 +38,10 @@ function setWindowBounds(testID: string, x: number, width: number) {
 
 test('reflows the active question editor without replaying generation', async () => {
   const props = makeProps();
+  const evidenceExcerpt = source.content ?? '';
+  const appointmentLabel = appointment.clinicLabel ?? '';
+  expect(evidenceExcerpt).not.toBe('');
+  expect(appointmentLabel).not.toBe('');
   await render(<NextVisitQuestionsScreen {...props} />);
 
   const columns = screen.getByTestId('next-visit-question-columns');
@@ -40,20 +49,49 @@ test('reflows the active question editor without replaying generation', async ()
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
   const question = await screen.findByTestId('next-visit-question-text-0');
   await fireEvent.changeText(question, 'edited visit question');
+  await fireEvent.press(screen.getByTestId('next-visit-source-0-0'));
+  expect(screen.getByTestId('next-visit-source-content')).toHaveTextContent(
+    evidenceExcerpt,
+  );
+
+  const expectRetainedState = () => {
+    // A Duo division must not separate the page heading from its measured primary content panel.
+    expect(
+      within(
+        screen.getByTestId('next-visit-question-columns-primary'),
+      ).getByTestId('next-visit-title'),
+    ).toBeTruthy();
+    expect(screen.getByText(appointmentLabel)).toBeTruthy();
+    expect(screen.getByTestId('next-visit-question-text-0').props.value).toBe(
+      'edited visit question',
+    );
+    expect(screen.getByTestId('next-visit-source-content')).toHaveTextContent(
+      evidenceExcerpt,
+    );
+    expect(props.onGenerate).toHaveBeenCalledTimes(1);
+    expect(props.onGenerate).toHaveBeenCalledWith(
+      appointment,
+      { providerId: 'synthetic-provider', modelId: 'fixture-model' },
+      expect.any(AbortSignal),
+      expect.objectContaining({
+        onProgress: expect.any(Function),
+        onTaskStreamEvent: expect.any(Function),
+      }),
+    );
+  };
+
   setWindowBounds('next-visit-question-columns-host', 24, 1400);
   await fireEvent(host, 'layout', {
     nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
   });
 
   expect(StyleSheet.flatten(columns.props.style)?.flexDirection).toBe('row');
-  expect(question.props.value).toBe('edited visit question');
-  expect(props.onGenerate).toHaveBeenCalledTimes(1);
+  expectRetainedState();
 
   setWindowBounds('next-visit-question-columns-host', 24, 1200);
   await fireEvent(host, 'layout', {
     nativeEvent: { layout: { width: 1200, height: 600, x: 0, y: 0 } },
   });
   expect(StyleSheet.flatten(columns.props.style)?.flexDirection).toBe('column');
-  expect(question.props.value).toBe('edited visit question');
-  expect(props.onGenerate).toHaveBeenCalledTimes(1);
+  expectRetainedState();
 });

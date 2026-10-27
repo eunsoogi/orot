@@ -89,6 +89,14 @@ export function NextVisitQuestionsScreenView<
   };
   const contextPanel = (
     <View style={styles.adaptivePanel}>
+      {/* Keep the heading inside its measured region so it cannot span a Duo division. */}
+      <Text
+        accessibilityRole="header"
+        style={[styles.title, styles.contextHeading]}
+        testID="next-visit-title"
+      >
+        {isReviewing ? copy.review.heading : copy.title}
+      </Text>
       {!isReviewing ? (
         <ProviderSection
           provider={props.provider}
@@ -201,16 +209,6 @@ export function NextVisitQuestionsScreenView<
           style={styles.fill}
           testID="next-visit-questions-scroll"
         >
-          <View>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="next-visit-title"
-            >
-              {isReviewing ? copy.review.heading : copy.title}
-            </Text>
-          </View>
-
           <AdaptiveColumns
             active={activeRoute}
             primary={contextPanel}
