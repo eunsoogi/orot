@@ -212,7 +212,7 @@ test('a verified candidate dispatch records its exact PR head and full selection
       headSha: candidate.headSha,
     });
     assert.equal(report.sourceSha, candidate.headSha);
-    assert.equal(report.selectedCohorts.length, 28);
+    assert.equal(report.selectedCohorts.length, 29);
     assert.equal(report.oauthSelected, true);
     assert.match(summary, /full candidate validation for the verified Draft PR head/);
   } finally {

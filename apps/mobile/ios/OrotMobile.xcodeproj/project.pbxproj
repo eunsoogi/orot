@@ -227,6 +227,8 @@
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
 		BCE683BFF6DE47F6B69A41AADB62634C /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */; };
 		C588B7000ADF488292FE20DEF531275E /* ScheduleCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */; };
+		0DFC3A5C23C04ADE8C60C526 /* HealthReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */; };
+		501578B7DAC3477AA37CEEE9 /* HealthReviewJourney.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1A570509274DB09372A94F /* HealthReviewJourney.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -473,6 +475,8 @@
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
 		740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarAdaptiveLayoutUITestConditions.swift; sourceTree = "<group>"; };
 		FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarUITests.swift; sourceTree = "<group>"; };
+		8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthReviewUITests.swift; sourceTree = "<group>"; };
+		DA1A570509274DB09372A94F /* HealthReviewJourney.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthReviewJourney.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -758,6 +762,8 @@
 				A89139838EEBFC807829E10F /* UITestConditions.swift */,
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				D40E9817CB8A4FAF92E6B211 /* EncounterReviewUITests.swift */,
+				DA1A570509274DB09372A94F /* HealthReviewJourney.swift */,
+				8D88B09680CC469ABF61234E /* HealthReviewUITests.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
 				0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */,
@@ -1203,6 +1209,8 @@
 				32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */,
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				D40E9817CB8A4FAF92E6B210 /* EncounterReviewUITests.swift in Sources */,
+				501578B7DAC3477AA37CEEE9 /* HealthReviewJourney.swift in Sources */,
+				0DFC3A5C23C04ADE8C60C526 /* HealthReviewUITests.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,

@@ -8,7 +8,10 @@ import {
   encounterReviewUiTests,
 } from './encounter-review-test-inventory.mjs';
 
+import { healthReviewUiTests } from './health-review-test-inventory.mjs';
+
 export const coreTests = [
+  ...healthReviewUiTests,
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',

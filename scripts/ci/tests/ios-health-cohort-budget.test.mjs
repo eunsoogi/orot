@@ -58,7 +58,7 @@ test('Health cohorts retain their four cases while both import profiles cover do
   assert.deepEqual(iosTestCohortTasks(cohorts[1])[0].identifiers, [original[0], original[3]]);
   const full = iosTestExecutionPlan();
   assert.deepEqual(
-    full.filter(({ cohort }) => cohort.startsWith('health-')).map(({ cohort }) => cohort),
+    full.filter(({ cohort }) => cohorts.includes(cohort)).map(({ cohort }) => cohort),
     cohorts,
   );
   for (const selection of [

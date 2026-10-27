@@ -60,6 +60,15 @@ jobs:
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
         with: { cohort: core-ui }
+  health_review:
+    name: Health review
+    if: ${{ contains(fromJSON(inputs.cohorts), 'health-review-ui') }}
+    uses: ./.github/workflows/ios-health-review-tests.yml
+    with:
+      artifact_name: ${{ inputs.artifact_name }}
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   recording_evidence:
     name: Recording evidence
     if: ${{ contains(fromJSON(inputs.cohorts), 'recording-evidence') }}
