@@ -9,6 +9,10 @@ final class EncounterReviewPersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["status"] as? String, "pending")
         XCTAssertEqual(result["recordCount"] as? Int, 0)
         XCTAssertEqual(result["modelCalls"] as? Int, 1)
+        let diagnostic = try XCTUnwrap(result["diagnostic"] as? [String: Any])
+        XCTAssertEqual(diagnostic["status"] as? String, result["status"] as? String)
+        XCTAssertEqual(diagnostic["recordCount"] as? Int, 0)
+        XCTAssertEqual(diagnostic["modelCalls"] as? Int, 1)
         let pending = try XCTUnwrap(result["pending"] as? [String: Any])
         try verifyPending(pending)
     }
@@ -64,7 +68,22 @@ final class EncounterReviewPersistenceIntegrationTests: OrotFailFastTestCase {
     }
 
     private func phase(_ mode: String) async throws -> [String: Any] {
-        let result = try await TestOperationBroker.shared.request("encounter-review-persistence", parameters: ["mode": mode, "fixtureIdentifier": fixture()])
+        let result: [String: Any]
+        do {
+            result = try await TestOperationBroker.shared.request("encounter-review-persistence", parameters: ["mode": mode, "fixtureIdentifier": fixture()])
+        } catch let TestOperationBroker.Failure.javascript(message) {
+            // Only the fixture's sanitized JSON suffix is retained; never attach a raw broker error.
+            if let marker = message.range(of: "EncounterReviewDiagnostic "),
+               let data = String(message[marker.upperBound...]).data(using: .utf8),
+               let snapshot = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            {
+                let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: snapshot), uniformTypeIdentifier: "public.json")
+                attachment.name = "encounter-review-\(mode)-diagnostic"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+            throw TestOperationBroker.Failure.javascript(message)
+        }
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         var receipt = result

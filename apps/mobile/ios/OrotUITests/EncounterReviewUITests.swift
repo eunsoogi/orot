@@ -116,7 +116,14 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         launch(app, fixture: fixture, mode: "seed")
         openRecording(app, fixture: fixture)
         tap(app, "encounter-start")
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
+        let saveAvailable = UITestConditions.exists(UITestConditions.element(app, "encounter-save"))
+        // Preserve the original predicate and attach only the bounded synthetic diagnostic before it fails.
+        let diagnostic = try XCTUnwrap(report(app)["diagnostic"] as? [String: Any])
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: diagnostic), uniformTypeIdentifier: "public.json")
+        attachment.name = "encounter-review-start-diagnostic"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertTrue(saveAvailable)
         let remove = UITestConditions.element(app, "encounter-probe-remove-source")
         XCTAssertTrue(remove.isHittable)
         remove.tap()

@@ -21,6 +21,7 @@ import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { runLocalEncounterProcessing } from '../agent/encounter/workflow';
 import { readEncounterTranscript } from '../agent/encounter/transcript';
 import type { EncounterReviewService, ReviewResult } from './controller';
+import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
 
 async function sessions(sourceId: string) {
   const database = await openLocalAgentMemoryDatabase();
@@ -39,7 +40,9 @@ async function readSessionResult(
   sourceId: string,
   signal: AbortSignal,
   approval?: EncounterApproval,
+  diagnostics?: ReviewDiagnosticAttempt,
 ): Promise<ReviewResult> {
+  diagnostics?.stage('source_lookup');
   const repository = await openLocalStorage();
   await repository.transaction(async (writer, sql) => {
     if (!sql) throw new Error('Canonical storage required.');
@@ -50,22 +53,33 @@ async function readSessionResult(
     )
       throw new Error('Recording source unavailable.');
   });
+  diagnostics?.stage('session_read');
   const { storage, discovery } = await sessions(sourceId);
   const session = await discovery.read();
-  if (!session) return { status: approval ? 'unavailable' : 'idle' };
-  if (approval && approval.pending.threadId !== session.threadId)
+  if (!session) {
+    if (approval) diagnostics?.unavailable('session_read');
+    return { status: approval ? 'unavailable' : 'idle' };
+  }
+  if (approval && approval.pending.threadId !== session.threadId) {
+    diagnostics?.unavailable('session_read');
     return { status: 'unavailable' };
+  }
+  diagnostics?.stage('checkpoint_lookup');
   const checkpoint = await new SqliteCheckpointSaver(storage).getTuple({
     configurable: {
       thread_id: 'encounter:' + encodeURIComponent(session.threadId),
     },
   });
-  if (!checkpoint) return { status: 'unavailable' };
+  if (!checkpoint) {
+    diagnostics?.unavailable('checkpoint_lookup');
+    return { status: 'unavailable' };
+  }
   if (approval)
     validateEncounterApproval(
       checkpoint.checkpoint.channel_values.pending as EncounterPending,
       approval,
     );
+  diagnostics?.stage('graph_setup');
   const result = await runLocalEncounterProcessing({
     sourceId,
     threadId: session.threadId,
@@ -73,12 +87,17 @@ async function readSessionResult(
     approval,
     model: encounterReadOnlyModel(sourceId),
     requireCurrentReviewSession: true,
+    onDiagnostic: diagnostics?.capture,
   });
-  if ((await discovery.read())?.threadId !== session.threadId)
+  diagnostics?.stage('session_readback');
+  if ((await discovery.read())?.threadId !== session.threadId) {
+    diagnostics?.unavailable('session_readback');
     return { status: 'unavailable' };
+  }
   if (approval && result.status === 'saved') {
     // A completed graph is history, not proof that this caller's decision committed.
     // Revalidate the exact receipt on the canonical transaction, including for concurrent controllers.
+    diagnostics?.stage('approval_receipt');
     const recordIds = await persistEncounterApproval(
       repository,
       approval.pending,
@@ -88,8 +107,10 @@ async function readSessionResult(
     );
     return { status: 'saved', recordIds };
   }
-  if (approval?.decision === 'approve' && result.status === 'denied')
+  if (approval?.decision === 'approve' && result.status === 'denied') {
+    diagnostics?.unavailable('approval_receipt');
     return { status: 'unavailable' };
+  }
   return result;
 }
 
@@ -97,10 +118,12 @@ async function resume(
   sourceId: string,
   signal: AbortSignal,
   approval?: EncounterApproval,
+  diagnostics?: ReviewDiagnosticAttempt,
 ): Promise<ReviewResult> {
   try {
-    return await readSessionResult(sourceId, signal, approval);
-  } catch {
+    return await readSessionResult(sourceId, signal, approval, diagnostics);
+  } catch (error) {
+    diagnostics?.caught(error);
     return { status: signal.aborted ? 'cancelled' : 'unavailable' };
   }
 }
@@ -108,31 +131,46 @@ async function resume(
 /** Production composition shares the selected model and consent UI, while approvals remain local explicit gestures. */
 export function createEncounterReviewService(
   resolveSelected = resolveSelectedAiProvider,
+  observations?: ReviewDiagnostics,
 ): EncounterReviewService {
   return {
-    restore: resume,
-    decide: (sourceId, approval, signal) => resume(sourceId, signal, approval),
+    diagnostics: observations,
+    restore: (sourceId, signal) =>
+      resume(sourceId, signal, undefined, observations?.current()),
+    decide: (sourceId, approval, signal) =>
+      resume(sourceId, signal, approval, observations?.current()),
     async start(sourceId, consent, signal) {
+      const diagnostics = observations?.current();
+      diagnostics?.stage('source_lookup');
       const repository = await openLocalStorage();
       const source = await repository.get('source_record', sourceId);
-      if (!source || source.sourceKind !== 'audio_recording')
+      if (!source || source.sourceKind !== 'audio_recording') {
+        diagnostics?.unavailable('source_lookup');
         return { status: 'unavailable' };
+      }
+      diagnostics?.stage('transcript_list');
       const transcripts =
         await repository.transcripts.listForRecording(sourceId);
       if (!transcripts.length) return { status: 'no-transcript' };
+      diagnostics?.stage('transcript_read');
       await repository.transaction(async (writer, sql) => {
         if (!sql) throw new Error('Canonical storage required.');
         await readEncounterTranscript(writer, sql, sourceId);
       });
+      diagnostics?.stage('provider_selection');
       const selected = await resolveSelected();
-      if (selected.status !== 'ready')
+      if (selected.status !== 'ready') {
+        if (selected.status !== 'selection-required')
+          diagnostics?.unavailable('provider_selection');
         return {
           status:
             selected.status === 'selection-required'
               ? 'selection-required'
               : 'unavailable',
         };
+      }
       if (signal.aborted) return { status: 'cancelled' };
+      diagnostics?.stage('session_begin');
       const { discovery } = await sessions(sourceId);
       const session = await discovery.begin();
       let denied = false;
@@ -148,15 +186,20 @@ export function createEncounterReviewService(
           },
         },
       );
+      diagnostics?.stage('graph_setup');
       const result = await runLocalEncounterProcessing({
         sourceId,
         threadId: session.threadId,
         model,
         signal,
+        onDiagnostic: diagnostics?.capture,
       });
       if (signal.aborted) return { status: 'cancelled' };
-      if ((await discovery.read())?.threadId !== session.threadId)
+      diagnostics?.stage('session_readback');
+      if ((await discovery.read())?.threadId !== session.threadId) {
+        diagnostics?.unavailable('session_readback');
         return { status: 'unavailable' };
+      }
       return denied && !signal.aborted ? { status: 'consent-denied' } : result;
     },
   };

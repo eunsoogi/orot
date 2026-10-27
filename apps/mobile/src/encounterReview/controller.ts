@@ -5,6 +5,7 @@ import type {
   EncounterPending,
   ExecutionConsentPort,
 } from '@orot/agent-runtime';
+import type { ReviewDiagnostics } from './diagnostics';
 
 export type ReviewResult =
   | EncounterGraphResult
@@ -13,6 +14,7 @@ export type ReviewResult =
         'idle' | 'no-transcript' | 'selection-required' | 'consent-denied';
     };
 export interface EncounterReviewService {
+  diagnostics?: ReviewDiagnostics;
   restore(sourceId: string, signal: AbortSignal): Promise<ReviewResult>;
   start(
     sourceId: string,
@@ -60,11 +62,14 @@ export class EncounterReviewController {
     if (this.operation || this.disposed) return;
     const operation = new AbortController();
     this.operation = operation;
+    this.service.diagnostics?.begin(status, this.sourceId);
+    const diagnostics = this.service.diagnostics?.current();
     this.set({ ...this.state, status });
     let result: ReviewResult;
     try {
       result = await action(operation.signal);
-    } catch {
+    } catch (error) {
+      diagnostics?.caught(error);
       result = { status: 'unavailable' };
     }
     if (this.operation !== operation || this.disposed) return;
@@ -82,6 +87,7 @@ export class EncounterReviewController {
         selected: pending.candidates.map(candidate => candidate.id),
       });
     } else this.set({ status: result.status, candidates: [], selected: [] });
+    diagnostics?.settled(this.state.status);
   }
   restore() {
     return this.run('loading', signal =>

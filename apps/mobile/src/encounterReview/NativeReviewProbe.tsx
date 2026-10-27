@@ -17,6 +17,7 @@ import {
   syntheticEncounterModel,
 } from '../agent/encounter/syntheticFixture';
 import { createEncounterReviewService } from './service';
+import { createNativeReviewDiagnostics } from './nativeDiagnostics';
 function settings() {
   const manager = NativeModules.SettingsManager;
   return manager?.settings ?? manager?.getConstants?.().settings ?? {};
@@ -51,26 +52,30 @@ function ProbeRoute() {
   );
   const service = useMemo(
     () =>
-      createEncounterReviewService(async () => ({
-        status: 'ready',
-        selection: {
-          providerId: synthetic.model.provider.id,
-          modelId: 'synthetic',
-        },
-        option: {
+      createEncounterReviewService(
+        async () => ({
+          status: 'ready',
+          selection: {
+            providerId: synthetic.model.provider.id,
+            modelId: 'synthetic',
+          },
+          option: {
+            provider: synthetic.model.provider,
+            modelId: 'synthetic',
+            displayName: 'Synthetic',
+            privacyBoundary:
+              mode === 'remote' ? 'selected-context-remote' : 'on-device',
+            availability: { status: 'available' },
+          },
           provider: synthetic.model.provider,
           modelId: 'synthetic',
-          displayName: 'Synthetic',
-          privacyBoundary:
-            mode === 'remote' ? 'selected-context-remote' : 'on-device',
-          availability: { status: 'available' },
-        },
-        provider: synthetic.model.provider,
-        modelId: 'synthetic',
-        recipient: mode === 'remote' ? 'Synthetic test recipient' : 'on-device',
-        remoteProcessing: mode === 'remote',
-      })),
-    [synthetic, mode],
+          recipient:
+            mode === 'remote' ? 'Synthetic test recipient' : 'on-device',
+          remoteProcessing: mode === 'remote',
+        }),
+        createNativeReviewDiagnostics(sourceId, synthetic.calls),
+      ),
+    [synthetic, mode, sourceId],
   );
   useEffect(() => {
     let active = true;
@@ -109,6 +114,7 @@ function ProbeRoute() {
         records,
         evidence,
         modelCalls: synthetic.calls(),
+        diagnostic: await service.diagnostics?.snapshot(),
       }),
     );
   }
