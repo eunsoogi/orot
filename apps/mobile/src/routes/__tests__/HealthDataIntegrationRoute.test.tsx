@@ -29,7 +29,16 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   const loadSelection = jest.fn(
     async () => ['medications', 'bloodPressure'] as const,
   );
-  const loadIntegrationStatus = jest.fn(async () => availableIntegrationStatus);
+  const loadIntegrationStatus = jest
+    .fn()
+    .mockResolvedValueOnce(availableIntegrationStatus)
+    .mockResolvedValueOnce({
+      ...availableIntegrationStatus,
+      lastSync: {
+        status: 'complete' as const,
+        updatedAt: '2026-10-27T00:00:00.000Z',
+      },
+    });
   let finishSave:
     ((result: { readonly status: 'complete' }) => void) | undefined;
   const saveSelection = jest.fn(
@@ -79,6 +88,10 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   expect(await screen.findByTestId('health-data-status')).toHaveTextContent(
     '자동 동기화 설정을 저장했어요.',
   );
+  expect(
+    await screen.findByText('마지막 동기화에서 선택한 기록을 확인했어요.'),
+  ).toBeTruthy();
+  expect(loadIntegrationStatus).toHaveBeenCalledTimes(2);
 });
 
 test('keeps an unsaved selection visible when preference persistence fails', async () => {

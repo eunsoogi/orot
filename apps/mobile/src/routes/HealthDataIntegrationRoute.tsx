@@ -118,6 +118,8 @@ export function HealthDataIntegrationRoute({
       setNotice(result.status);
       if (result.status !== 'selection_save_failed') {
         setSaved(new Set(features));
+        // Saving can run a refresh that updates this screen's aggregate status snapshot.
+        setStatusRevision(value => value + 1);
       }
     } catch {
       setNotice('selection_save_failed');

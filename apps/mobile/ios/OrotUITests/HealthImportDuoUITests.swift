@@ -70,18 +70,18 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         let feature = node(app, "health-data-feature-heartRate")
         let permission = node(app, "health-data-permission-status")
         XCTAssertTrue(feature.waitForAppearance(), app.debugDescription)
-        XCTAssertTrue(permission.exists, app.debugDescription)
-        // Change only the unsaved category choice; this test must not start HealthKit work.
+        // Observe RN's localized checkbox value without saving or starting HealthKit work.
+        let initialValue = try XCTUnwrap(feature.value as? String)
         feature.tap()
-        let selectedValue = feature.value as? String
-        XCTAssertTrue(selectedValue == "0" || selectedValue == "1", app.debugDescription)
+        let selectedValue = try XCTUnwrap(feature.value as? String)
+        XCTAssertNotEqual(selectedValue, initialValue, app.debugDescription)
 
         let layout = node(app, "health-data-layout")
         let primary = node(app, "health-data-layout-primary")
         let secondary = node(app, "health-data-layout-secondary")
         XCTAssertTrue(layout.exists && primary.exists && secondary.exists, app.debugDescription)
         XCTAssertTrue(primary.frame.contains(feature.frame), app.debugDescription)
-        XCTAssertTrue(secondary.frame.contains(permission.frame), app.debugDescription)
+        XCTAssertTrue(permission.exists && secondary.frame.contains(permission.frame), app.debugDescription)
         XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
         _ = try AppearanceUITestConditions.select(
             false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 },
