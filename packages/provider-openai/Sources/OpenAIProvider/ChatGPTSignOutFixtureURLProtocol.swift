@@ -1,4 +1,5 @@
-#if DEBUG
+// Keep synthetic sign-out networking for Debug tests and Simulator test products only.
+#if DEBUG || (OROT_TESTS && targetEnvironment(simulator))
     import Foundation
 
     /// Keeps native Simulator sign-out proof offline and scoped to the synthetic fixture client.
