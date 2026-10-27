@@ -157,6 +157,20 @@ extension RootNavigationUITests {
         try backToSettings(app)
     }
 
+    /// Keeps the account panel assertion on the synthetic route and its measured return path.
+    @MainActor
+    func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "settings-accounts-layout", "-OROT_TEST_UI_GEOMETRY", "YES"]
+        app.launch()
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        tap(app, "settings-open-accounts")
+        try verifyAdaptivePanels(app, prefix: "settings-accounts-panels", navigationID: "navigation-back")
+        try backToSettings(app)
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
+    }
+
     /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
     private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked: Bool = false) throws {
@@ -197,20 +211,6 @@ extension RootNavigationUITests {
 }
 
 extension RootNavigationUITests {
-    /// Keeps the account panel assertion on the synthetic route and its measured return path.
-    @MainActor
-    func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
-        let app = XCUIApplication()
-        defer { app.terminate() }
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "settings-accounts-layout", "-OROT_TEST_UI_GEOMETRY", "YES"]
-        app.launch()
-        NavigationUITestConditions.route(app, markers: ["settings-title"])
-        tap(app, "settings-open-accounts")
-        try verifyAdaptivePanels(app, prefix: "settings-accounts-panels", navigationID: "navigation-back")
-        try backToSettings(app)
-        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
-    }
-
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
     @MainActor
     private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
