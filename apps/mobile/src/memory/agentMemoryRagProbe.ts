@@ -3,7 +3,7 @@ import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import type { SqlDatabase } from '@orot/storage';
 import { createLocalE5RagService } from '../rag/localE5RagService';
 
-export const AGENT_MEMORY_PROBE_CHUNK_ID = 'agent-memory-synthetic-chunk';
+import { AGENT_MEMORY_PROBE_CHUNK_ID } from './agentMemoryProbeFixtures';
 
 const staleWorkflowChunkText =
   '사용자는 외래 일정 알림을 오전 10시에 받고 싶어 한다.';
