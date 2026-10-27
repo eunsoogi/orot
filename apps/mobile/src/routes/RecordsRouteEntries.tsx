@@ -3,6 +3,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
+import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 
 interface RecordsRouteEntriesProps {
   readonly onOpenSymptoms: () => void;
@@ -87,30 +88,7 @@ export function RecordsRouteEntries({
         <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
       </Pressable>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenManualHistory}
-        style={styles.healthCard}
-        testID="records-open-manual-history"
-      >
-        <View
-          style={[
-            styles.healthIcon,
-            { backgroundColor: appColors.primarySoft },
-          ]}
-        >
-          <AppSymbol
-            name="text.book.closed"
-            size={28}
-            color={appColors.primaryAction}
-          />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('manualHistory.title')}</Text>
-          <Text style={styles.cardSummary}>{t('manualHistory.subtitle')}</Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
+      <ManualHistoryAction onPress={onOpenManualHistory} />
 
       <Pressable
         accessibilityRole="button"

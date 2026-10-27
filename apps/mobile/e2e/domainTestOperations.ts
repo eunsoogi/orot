@@ -28,6 +28,14 @@ export async function runDomainTestOperation(
     return runStorePersistenceOperation(operation, memoryIdentifier);
   }
   switch (operation) {
+    case 'encounter-persistence': {
+      const { runEncounterPersistenceOperation } =
+        await import('./encounterPersistenceOperation');
+      return runEncounterPersistenceOperation(
+        parameters.mode,
+        parameters.fixtureIdentifier,
+      );
+    }
     case 'standard-adapters': {
       const { runStandardAdaptersProbe } =
         await import('./standardAdaptersProbe');

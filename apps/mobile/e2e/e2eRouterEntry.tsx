@@ -28,6 +28,10 @@ switch (selectEntryRoute(launchSettings)) {
     // Exercise #108 through App with deterministic local fixtures and no provider inference.
     require('./medicalAppointmentNavigationProbeEntry');
     break;
+  case 'medical-document-import':
+    // Run the production Records route so the UI test must choose through UIKit's document picker.
+    require('./medicalDocumentImportProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;

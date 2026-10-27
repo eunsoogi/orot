@@ -30,6 +30,23 @@ describe('source content hashes and evidence locators', () => {
     expect(source.sourceKind).toBe('audio_recording');
   });
 
+  it('accepts an imported medical document as a distinct source kind', () => {
+    const source = SourceRecordSchema.parse({
+      id: 'medical-document-source',
+      ingestedAt: '2026-10-01T10:00:00.000Z',
+      provenance: { origin: 'imported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      sourceKind: 'medical_document',
+      title: 'synthetic-visit-note.pdf',
+      contentHash: 'sha256:' + 'a'.repeat(64),
+    });
+
+    expect(source.sourceKind).toBe('medical_document');
+    expect(source.effectiveAt).toBeUndefined();
+    expect(source.recordedAt).toBeUndefined();
+    expect(source.reviewState).toEqual({ status: 'unreviewed' });
+  });
+
   it('stores a measured duration only on audio recording sources', () => {
     const audio = SourceRecordSchema.parse({
       ...metadata('audio-duration-1'),
@@ -104,6 +121,17 @@ describe('source content hashes and evidence locators', () => {
     };
 
     expect(EvidenceSpanSchema.safeParse(legacySpan).success).toBe(true);
+    const importedSpan = EvidenceSpanSchema.parse({
+      id: 'evidence-without-event-time',
+      ingestedAt: '2026-10-01T10:00:00.000Z',
+      provenance: { origin: 'imported', sourceRecordIds: ['source-1'] },
+      reviewState: { status: 'unreviewed' },
+      sourceRecordId: 'source-1',
+      text: 'Synthetic imported excerpt.',
+      locator: { kind: 'text_range', startOffset: 0, endOffset: 27 },
+    });
+    expect(importedSpan.effectiveAt).toBeUndefined();
+    expect(importedSpan.recordedAt).toBeUndefined();
     expect(EvidenceSpanSchema.parse(locatedSpan).locator).toEqual(locatedSpan.locator);
     expect(
       SourceRecordSchema.safeParse({

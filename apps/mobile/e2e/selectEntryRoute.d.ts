@@ -4,6 +4,7 @@ export type E2EEntryRoute =
   | 'appointments'
   | 'medical-appointment-classification'
   | 'medical-appointment-app-navigation'
+  | 'medical-document-import'
   | 'graph'
   | 'checkpoint'
   | 'safe-area'

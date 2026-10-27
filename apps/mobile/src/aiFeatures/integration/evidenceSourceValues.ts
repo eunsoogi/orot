@@ -141,6 +141,7 @@ const enumLabels: Record<string, Record<string, string>> = {
     device_export: '기기 내보내기',
     imaging_report: '영상 검사 결과',
     lab_report: '검사 결과',
+    medical_document: '의료 문서',
     other: '기타',
     prescription: '처방전',
     user_note: '사용자 메모',

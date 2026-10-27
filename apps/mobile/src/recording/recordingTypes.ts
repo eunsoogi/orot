@@ -1,6 +1,10 @@
 import type { RecordMap } from '@orot/storage';
 
-export type RecordingSourceRecord = RecordMap['source_record'];
+// Recording flows need dates; imported medical documents may not have reliable source times.
+export type RecordingSourceRecord = Extract<
+  RecordMap['source_record'],
+  { sourceKind: 'audio_recording' }
+>;
 
 export type RecordingStatus =
   'idle' | 'recording' | 'paused' | 'interrupted' | 'completed';

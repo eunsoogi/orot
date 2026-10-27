@@ -1,9 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import type { RecordingSourceRecord } from '../../recording/recordingTypes';
-import { RecordsRoute, type RecordsRouteProps } from '../RecordsRoute';
+import {
+  RecordsRoute,
+  type RecordsRouteProps,
+} from '../RecordsRoute';
+import type { MedicalDocumentImportService } from '../../medicalDocuments/medicalDocumentImportService';
 
-// Layout thresholds are covered by AdaptiveColumns tests; this suite exercises route content and state.
+// Render both adaptive panels together; real width and text thresholds are covered natively.
 jest.mock('../../layout/AdaptiveColumns', () => {
   const ReactRuntime = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
@@ -24,24 +27,39 @@ jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
 
-function source(
-  id: string,
-  title: string,
-  recordedAt: string,
-): RecordingSourceRecord {
+function document(id: string, text: string) {
   return {
     id,
-    sourceKind: 'audio_recording',
-    effectiveAt: recordedAt,
-    recordedAt,
-    ingestedAt: recordedAt,
-    provenance: { origin: 'user_reported', sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' },
-    title,
+    displayName: `${id}.pdf`,
+    contentHash: `sha256:${'a'.repeat(64)}` as const,
+    sections: [
+      {
+        id: `span-${id}`,
+        text,
+        pageNumber: 1,
+        startOffset: 0,
+        endOffset: text.length,
+      },
+    ],
   };
 }
 
-function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
+function importService(
+  overrides: Partial<MedicalDocumentImportService> = {},
+): MedicalDocumentImportService {
+  return {
+    listDocuments: jest.fn().mockResolvedValue([]),
+    getDocument: jest.fn().mockResolvedValue(null),
+    selectDocument: jest.fn().mockResolvedValue(null),
+    saveDocument: jest.fn().mockResolvedValue('saved'),
+    discardDocument: jest.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function routeProps(
+  overrides: Partial<RecordsRouteProps> = {},
+): RecordsRouteProps {
   return {
     recordings: [],
     recordingState: 'ready',
@@ -55,94 +73,122 @@ function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
   };
 }
 
-test('keeps one primary recording action and every existing Records destination', async () => {
-  const routeProps = props();
-  await render(<RecordsRoute {...routeProps} />);
+async function renderRecordsRoute(
+  overrides: Partial<RecordsRouteProps> = {},
+): Promise<RecordsRouteProps> {
+  const props = routeProps(overrides);
+  await render(<RecordsRoute {...props} />);
+  return props;
+}
 
-  expect(screen.getAllByTestId('records-new-recording')).toHaveLength(1);
+test('keeps existing Records actions and medical document import available', async () => {
+  const props = await renderRecordsRoute({
+    documentImportService: importService(),
+  });
+
   expect(screen.getByTestId('records-new-recording')).toHaveTextContent(
     '새 상담 녹음',
   );
-  expect(screen.getByTestId('records-recent-sources-empty')).toHaveTextContent(
-    '저장된 녹음이 없어요.',
-  );
   expect(screen.getByText('가져온 건강 기록', { exact: true })).toBeTruthy();
-  expect(screen.queryByTestId('records-health-import')).toBeNull();
-  expect(screen.queryByTestId('records-open-common-observations')).toBeNull();
-  expect(screen.queryByTestId('records-open-blood-pressure')).toBeNull();
-
+  expect(screen.getByTestId('records-import-medical-document')).toBeTruthy();
+  expect(
+    await screen.findByTestId('medical-document-source-empty-list'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('symptoms-open'));
   await fireEvent.press(screen.getByTestId('records-open-saved-recordings'));
   await fireEvent.press(screen.getByTestId('records-open-manual-history'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
 
-  expect(routeProps.onOpenRecording).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenSymptoms).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenManualHistory).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
+  expect(props.onOpenRecording).toHaveBeenCalledTimes(1);
+  expect(props.onOpenSymptoms).toHaveBeenCalledTimes(1);
+  expect(props.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
+  expect(props.onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(props.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
 });
 
-test('shows the newest loaded sources and opens their existing saved-recordings destination', async () => {
-  const recordings = [
-    source(
-      '123e4567-e89b-12d3-a456-426614174001',
-      '최근 상담',
-      '2026-10-25T10:00:00.000Z',
-    ),
-    source(
-      '123e4567-e89b-12d3-a456-426614174002',
-      '이전 상담',
-      '2026-10-24T10:00:00.000Z',
-    ),
-    source(
-      '123e4567-e89b-12d3-a456-426614174003',
-      '세 번째 상담',
-      '2026-10-23T10:00:00.000Z',
-    ),
-    source(
-      '123e4567-e89b-12d3-a456-426614174004',
-      '더 오래된 상담',
-      '2026-10-22T10:00:00.000Z',
-    ),
-  ];
-  const routeProps = props({ recordings });
-  await render(<RecordsRoute {...routeProps} />);
+test('shows extracted text for review before saving medical evidence', async () => {
+  const selected = document('document-1', 'Synthetic document text');
+  const service = importService({
+    selectDocument: jest.fn().mockResolvedValue(selected),
+  });
+  await renderRecordsRoute({ documentImportService: service });
 
-  expect(screen.getByText('최근 상담', { exact: true })).toBeTruthy();
-  expect(screen.getByText('이전 상담', { exact: true })).toBeTruthy();
-  expect(screen.getByText('세 번째 상담', { exact: true })).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('records-import-medical-document'));
+  expect(await screen.findByText('Synthetic document text')).toBeTruthy();
   expect(
-    screen.queryByTestId(
-      'records-recent-source-123e4567-e89b-12d3-a456-426614174004',
+    screen.getByText(
+      '내용을 확인한 뒤 저장해 주세요. 진단과 약 변경은 자동으로 확정되지 않아요.',
     ),
-  ).toBeNull();
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
 
-  await fireEvent.press(
-    screen.getByTestId(
-      'records-recent-source-123e4567-e89b-12d3-a456-426614174001',
-    ),
-  );
-  expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
+  expect(service.saveDocument).toHaveBeenCalledWith(selected);
+  expect(screen.queryByTestId('medical-document-save')).toBeNull();
+  expect(screen.getByText('문서와 출처를 저장했어요.')).toBeTruthy();
 });
 
-test('shows loading feedback while the existing recording summary request is pending', async () => {
-  await render(<RecordsRoute {...props({ recordingState: 'loading' })} />);
+test('discards a reviewed document when the user cancels import', async () => {
+  const selected = document('document-2', 'Synthetic note');
+  const service = importService({
+    selectDocument: jest.fn().mockResolvedValue(selected),
+  });
+  await renderRecordsRoute({ documentImportService: service });
 
+  await fireEvent.press(screen.getByTestId('records-import-medical-document'));
+  await fireEvent.press(screen.getByTestId('medical-document-cancel'));
+
+  expect(service.discardDocument).toHaveBeenCalledWith(selected);
+  expect(service.saveDocument).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('medical-document-save')).toBeNull();
+});
+
+test('retries a failed save while keeping the selected document available', async () => {
+  const service = importService({
+    selectDocument: jest
+      .fn()
+      .mockResolvedValue(document('document-retry', 'Synthetic retry note')),
+    saveDocument: jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Synthetic write failure.'))
+      .mockResolvedValue('saved'),
+  });
+  await renderRecordsRoute({ documentImportService: service });
+
+  await fireEvent.press(screen.getByTestId('records-import-medical-document'));
+  await screen.findByText('Synthetic retry note');
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
   expect(
-    screen.getByTestId('records-recent-sources-loading'),
-  ).toHaveTextContent('녹음 목록을 불러오는 중…');
-  expect(screen.queryByTestId('records-recent-sources-empty')).toBeNull();
+    await screen.findByText(
+      '문서를 불러오지 못했어요. 파일이 열리는지 확인해 주세요.',
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText('Synthetic retry note')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
+
+  expect(service.saveDocument).toHaveBeenCalledTimes(2);
+  expect(service.discardDocument).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('medical-document-save')).toBeNull();
 });
 
-test('offers the existing retry action when recording summaries fail to load', async () => {
-  const routeProps = props({ recordingState: 'failed' });
-  await render(<RecordsRoute {...routeProps} />);
+test('lets the user cancel and clean up after a failed save', async () => {
+  const selected = document('document-cancel', 'Synthetic cancel note');
+  const service = importService({
+    selectDocument: jest.fn().mockResolvedValue(selected),
+    saveDocument: jest
+      .fn()
+      .mockRejectedValue(new Error('Synthetic write failure.')),
+  });
+  await renderRecordsRoute({ documentImportService: service });
 
-  expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
-    '녹음 목록을 불러오지 못했어요.',
+  await fireEvent.press(screen.getByTestId('records-import-medical-document'));
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
+  await screen.findByText(
+    '문서를 불러오지 못했어요. 파일이 열리는지 확인해 주세요.',
   );
-  await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
-  expect(routeProps.onRetryRecordings).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('medical-document-cancel'));
+
+  expect(service.saveDocument).toHaveBeenCalledTimes(1);
+  expect(service.discardDocument).toHaveBeenCalledWith(selected);
+  expect(screen.queryByTestId('medical-document-save')).toBeNull();
 });

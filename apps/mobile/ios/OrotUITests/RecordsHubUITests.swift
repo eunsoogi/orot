@@ -26,20 +26,22 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         record.tap()
         NavigationUITestConditions.route(standard, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.tapNavigation(standard, "navigation-back")
-        try assertRecordsLane(in: standard)
+        try assertRecordsPrimaryLane(in: standard)
 
         let portraitBounds = standard.frame
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForWindowBoundsChange(in: standard, from: portraitBounds)
-        try assertRecordsLane(in: standard)
+        try assertRecordsPrimaryLane(in: standard)
         let landscapeBounds = standard.frame
         XCUIDevice.shared.orientation = .portrait
         waitForWindowBoundsChange(in: standard, from: landscapeBounds)
-        try assertRecordsLane(in: standard)
+        try assertRecordsPrimaryLane(in: standard)
 
         _ = try AppearanceUITestConditions.select(true, returningTo: standard, testCase: self)
-        try assertRecordsLane(in: standard)
+        try assertRecordsPrimaryLane(in: standard)
         capture(standard, "records-duo-dark-appearance")
+        try assertRecentSourcesLane(in: standard)
+        capture(standard, "records-duo-dark-recent-sources")
 
         if let capturedAppearance = originalAppearance {
             try AppearanceUITestConditions.restore(capturedAppearance, returningTo: standard, testCase: self)
@@ -65,7 +67,8 @@ final class RecordsHubUITests: OrotFailFastTestCase {
             defaultTitleHeight,
             "The Records title must reflect the active accessibility text size.",
         )
-        try assertRecordsLane(in: largeText)
+        try assertRecordsPrimaryLane(in: largeText)
+        try assertRecentSourcesLane(in: largeText)
         capture(largeText, "records-duo-large-text-content-lane")
     }
 
@@ -90,31 +93,46 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(
             app,
             "records",
-            markers: ["records-recent-sources"],
+            markers: ["records-title"],
         )
-        try assertRecordsLane(in: app)
+        try assertRecordsPrimaryLane(in: app)
     }
 
     @MainActor
-    private func assertRecordsLane(in app: XCUIApplication) throws {
+    private func assertRecordsPrimaryLane(in app: XCUIApplication) throws {
         NavigationUITestConditions.route(
             app,
-            markers: ["records-recent-sources"],
+            markers: ["records-title"],
         )
         let rail = try NavigationUITestConditions.navigationAction(
             app,
             "navigation-tab-records",
         )
         let primary = UITestConditions.element(app, "records-new-recording")
-        let recentSources = UITestConditions.element(
-            app,
-            "records-recent-sources",
-        )
         XCTAssertTrue(primary.exists && primary.isHittable)
-        XCTAssertTrue(recentSources.exists && !recentSources.frame.isEmpty)
         XCTAssertEqual(rail.toolbar.frame.width, 48, accuracy: 0.5)
 
         // Compare to UIKit's rendered rail; a fixed device width would miss Split View and text scaling.
+        XCTAssertLessThanOrEqual(primary.frame.maxX, rail.toolbar.frame.minX)
+    }
+
+    @MainActor
+    private func assertRecentSourcesLane(in app: XCUIApplication) throws {
+        // Use the persistent heading as readiness, then scroll the real route to the lower panel.
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
+        NavigationUITestConditions.route(app, markers: ["records-recent-sources"])
+
+        let rail = try NavigationUITestConditions.navigationAction(
+            app,
+            "navigation-tab-records",
+        )
+        let primary = UITestConditions.element(app, "records-new-recording")
+        let recentSources = UITestConditions.element(app, "records-recent-sources")
+        XCTAssertTrue(recentSources.exists && recentSources.frame.intersects(app.frame))
+        XCTAssertEqual(rail.toolbar.frame.width, 48, accuracy: 0.5)
+
+        // Both columns must remain inside the measured content lane after scrolling.
         XCTAssertLessThanOrEqual(primary.frame.maxX, rail.toolbar.frame.minX)
         XCTAssertLessThanOrEqual(recentSources.frame.maxX, rail.toolbar.frame.minX)
     }

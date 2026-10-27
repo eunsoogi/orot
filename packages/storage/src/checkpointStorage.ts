@@ -1,5 +1,9 @@
 import type { SqlDatabase, SqlExecutor, SqlValue } from './sql';
 import { createSchema, readCheckpoint, readText, readWrite } from './checkpointStorageCodec';
+import {
+  bindCheckpointSource,
+  createSourceLinkedCheckpointIntegrity,
+} from './sourceLinkedCheckpoints';
 
 export interface StoredCheckpoint {
   checkpointId: string;
@@ -50,15 +54,21 @@ export interface LangGraphCheckpointStorage {
 
 export function createLangGraphCheckpointStorage(
   database: SqlDatabase,
+  options: { sourceRecordId?: string } = {},
 ): LangGraphCheckpointStorage {
   let schema: Promise<void> | undefined;
 
   async function ensureSchema(): Promise<void> {
     if (!schema) {
-      schema = createSchema(database).catch((error) => {
-        schema = undefined;
-        throw error;
-      });
+      schema = createSchema(database)
+        .then(async () => {
+          if (options.sourceRecordId !== undefined)
+            await createSourceLinkedCheckpointIntegrity(database);
+        })
+        .catch((error) => {
+          schema = undefined;
+          throw error;
+        });
     }
     await schema;
   }
@@ -91,6 +101,7 @@ export function createLangGraphCheckpointStorage(
     async saveCheckpoint(threadId, namespace, checkpoint) {
       await ensureSchema();
       await database.transaction(async (transaction) => {
+        await bindCheckpointSource(transaction, threadId, options.sourceRecordId);
         await transaction.execute(
           `INSERT INTO langgraph_checkpoints
              (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
@@ -120,6 +131,7 @@ export function createLangGraphCheckpointStorage(
       if (writes.length === 0) return;
       await ensureSchema();
       await database.transaction(async (transaction) => {
+        await bindCheckpointSource(transaction, threadId, options.sourceRecordId);
         for (const write of writes) {
           const conflict = write.replaceExisting
             ? `DO UPDATE SET channel = excluded.channel,

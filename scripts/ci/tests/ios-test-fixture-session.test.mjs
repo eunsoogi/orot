@@ -43,7 +43,7 @@ test('an original failed case withholds later preparation in the same runner and
 });
 
 for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-selection', 'backup']) {
-  test(`${profile} uses the same session while retaining its explicit reset policy`, () => {
+  test(`${profile} keeps its explicit profile and reset policy in a shared session`, () => {
     const identifiers =
       profile === 'fixtures'
         ? iosTestInventory(profile, 'calendar').filter(
@@ -51,6 +51,14 @@ for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-sele
               id.includes('/StorageMigrationUITests/') || id.includes('/CalendarSelectionUITests/'),
           )
         : iosTestInventory(profile).slice(0, profile === 'backup' ? 3 : undefined);
+    // All three picker journeys overlap with `fixtures`; the complete selection must keep its requested profile.
+    if (profile === 'health-import')
+      assert.equal(
+        identifiers.filter((identifier) =>
+          identifier.includes('/MedicalDocumentImportJourneyUITests/'),
+        ).length,
+        3,
+      );
     const value = fixture({ profile, selectedIdentifiers: identifiers, failFirst: false });
     try {
       assert.equal(value.outcome.status, 0, value.outcome.stderr);

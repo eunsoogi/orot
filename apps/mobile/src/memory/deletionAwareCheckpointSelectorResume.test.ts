@@ -65,7 +65,7 @@ describe('deletion-aware checkpoint selector resume', () => {
         evidenceId: span.id,
         evidenceRevision: span.ingestedAt,
         locator: { kind: 'structured_record', recordId: span.id },
-        effectiveTime: span.effectiveAt,
+        effectiveTime: span.effectiveAt ?? null,
         reviewState: 'unreviewed',
       };
       const threadId = 'checkpoint-map-resume-run';
