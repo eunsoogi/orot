@@ -118,7 +118,13 @@ struct WindowPresentationAnchor {
             // A UIKit-supported class preserves the original source-local rectangle without a whole-view fallback.
             let item = sourceRegion.item
             sourceRegion.retain(on: popover)
+            #if OROT_TESTS
+                sourceRegion.recordTestObservation(.before, controller: controller, popover: popover, source: sourceView, rect: sourceRect, window: window, current: isCurrent)
+            #endif
             popover.sourceItem = item
+            #if OROT_TESTS
+                sourceRegion.recordTestObservation(.after, controller: controller, popover: popover, source: sourceView, rect: sourceRect, window: window, current: isCurrent)
+            #endif
             return isCurrent && popover.sourceItem === item
                 && popover.sourceItem?.frame(in: window) == sourceView.convert(sourceRect, to: window)
         }

@@ -74,7 +74,15 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
                 }
             }
         }
-        XCTAssertEqual(anchor.apply(to: activity), true)
+        PopoverSourceRegion.testObservations = []
+        let currentBeforeApply = anchor.isCurrent
+        let configured = anchor.apply(to: activity)
+        let boundary: [String: Any] = ["anchorCurrentBeforeApply": currentBeforeApply, "setterBoundary": PopoverSourceRegion.testObservations]
+        let boundaryAttachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: boundary), uniformTypeIdentifier: "public.json")
+        boundaryAttachment.name = "default-share-popover-setter-boundary"
+        boundaryAttachment.lifetime = .keepAlways
+        add(boundaryAttachment)
+        XCTAssertEqual(configured, true)
         let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
         XCTAssertTrue(try type(of: XCTUnwrap(item as? UIView)) == UIView.self)
         let sourceSubviewCount = root.view.subviews.count
