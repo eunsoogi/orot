@@ -109,81 +109,12 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testUnverifiedFullScreenPresentationRetainsExportUntilDismissal() throws {
-        let operation = try RecordingExportFiles.transcriptFile(text: "share this transcript")
-        addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
-        var cleanupCount = 0
-        let lifecycle = RecordingExportPresentationLifecycle {
-            cleanupCount += 1
-            do {
-                try RecordingExportFiles.finish(operation.directory)
-                return true
-            } catch {
-                XCTFail("Unexpected export cleanup error: \(error)")
-                return false
-            }
-        }
-
+    func testDetachedSourceActivityKeepsExportUntilDismissal() throws {
         let originalWindow = try foregroundKeyWindow()
-        let scene = try XCTUnwrap(originalWindow.windowScene)
-        let window = UIWindow(windowScene: scene)
-        window.frame = originalWindow.frame
-        let root = UIViewController()
-        window.rootViewController = root
-        window.makeKeyAndVisible()
-        defer {
-            window.isHidden = true
-            originalWindow.makeKeyAndVisible()
+        // Separate owned windows prove source detachment with both eligible and deliberately ineligible completion.
+        for invalidatesWindowVisibility in [false, true] {
+            try assertDetachedSourceExport(originalWindow: originalWindow, invalidatesWindowVisibility: invalidatesWindowVisibility)
         }
-
-        let child = UIViewController()
-        root.addChild(child)
-        child.view.frame = CGRect(x: 0, y: 0, width: window.bounds.width / 2, height: window.bounds.height)
-        root.view.addSubview(child.view)
-        child.didMove(toParent: root)
-        let source = UIView(frame: CGRect(x: 8, y: 8, width: 12, height: 12))
-        child.view.addSubview(source)
-
-        // UIKit forwards this full-screen request from the partial child to the window root.
-        let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
-        let modal = UIActivityViewController(activityItems: [operation.file], applicationActivities: nil)
-        modal.modalPresentationStyle = .fullScreen
-        var didPresent: Bool?
-        let presented = expectation(description: "The full-screen controller remains in the source window")
-        anchor.present(modal, animated: false) { result in
-            didPresent = result
-            presented.fulfill()
-        }
-        wait(for: [presented], timeout: 5)
-
-        XCTAssertEqual(didPresent, true)
-        XCTAssertTrue(modal.presentingViewController === root)
-        XCTAssertTrue(root.presentedViewController === modal)
-        XCTAssertTrue(modal.viewIfLoaded?.window === window)
-        // UIKit removes the covered child hierarchy after a full-screen presentation completes.
-        XCTAssertNil(source.window)
-
-        var unavailableRejections = 0
-        let disposition = lifecycle.completePresentation(
-            didPresent: false,
-            controllerIsLive: modal.presentingViewController != nil || modal.viewIfLoaded?.window != nil,
-            rejectUnavailable: { unavailableRejections += 1 },
-        )
-        XCTAssertEqual(disposition, .liveButUnverified)
-        XCTAssertEqual(cleanupCount, 0)
-        XCTAssertEqual(unavailableRejections, 0)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: operation.file.path))
-
-        let dismissed = expectation(description: "The full-screen controller is dismissed")
-        modal.dismiss(animated: false) { dismissed.fulfill() }
-        wait(for: [dismissed], timeout: 5)
-
-        XCTAssertTrue(lifecycle.finishIfNeeded())
-        XCTAssertEqual(cleanupCount, 1)
-        XCTAssertTrue(lifecycle.finishIfNeeded())
-        XCTAssertEqual(cleanupCount, 1)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
-        XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
 
         let unavailableOperation = try RecordingExportFiles.transcriptFile(text: "unavailable share")
         addTeardownBlock { try RecordingExportFiles.finish(unavailableOperation.directory) }
