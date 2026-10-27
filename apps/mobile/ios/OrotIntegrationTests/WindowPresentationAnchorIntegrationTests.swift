@@ -13,7 +13,23 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(anchor).window === window)
         XCTAssertTrue(try XCTUnwrap(anchor).isCurrent)
         XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+        // Explicit popovers keep exact geometry and retain one region after the initiating anchor is released.
+        var controller: UIViewController? = UIViewController()
+        controller?.modalPresentationStyle = .popover
+        XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+        let item = try XCTUnwrap(controller?.popoverPresentationController?.sourceItem as? UIView)
+        XCTAssertTrue(type(of: item) == UIView.self)
+        XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+        XCTAssertTrue(controller?.popoverPresentationController?.sourceItem === item)
+        XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+        let region = CGRect(x: source.bounds.midX, y: source.bounds.midY, width: 1, height: 1)
+        XCTAssertEqual(item.frame(in: window), source.convert(region, to: window))
+        let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
+        XCTAssertNil(WindowPresentationAnchor.resolve(from: foreignWindow))
         anchor = nil
+        XCTAssertTrue(item.superview === source)
+        controller = nil
+        XCTAssertNil(item.superview)
         XCTAssertEqual(source.subviews.count, originalSubviewCount)
     }
 
@@ -51,20 +67,6 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             XCTAssertEqual(picker.modalPresentationStyle, .formSheet)
             XCTAssertNil(picker.popoverPresentationController)
             XCTAssertNil(configured)
-            let observation: [String: Any] = [
-                "controllerClass": String(describing: type(of: picker)),
-                "modalStyle": picker.modalPresentationStyle.rawValue,
-                "horizontalSizeClass": picker.traitCollection.horizontalSizeClass.rawValue,
-                "verticalSizeClass": picker.traitCollection.verticalSizeClass.rawValue,
-                "popoverAvailable": picker.popoverPresentationController != nil,
-                "applyReturnedNil": configured == nil,
-                "applyReturnedFalse": configured == false,
-            ]
-            let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
-            attachment.name = "attached-picker-modality-control"
-            attachment.lifetime = .keepAlways
-            add(attachment)
-
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")
             anchor.present(picker, animated: false) { result in

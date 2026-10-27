@@ -77,7 +77,15 @@ struct WindowPresentationAnchor {
 
     /// Validates the source before presenting, then confirms UIKit kept the presented view in the destination window.
     func present(_ controller: UIViewController, animated: Bool = true, completion: @escaping (Bool) -> Void) {
-        guard isCurrent, apply(to: controller) != false else {
+        present(controller, configuration: apply(to: controller), animated: animated, completion: completion)
+    }
+
+    func present(_ activity: ActivityPresentation, animated: Bool = true, completion: @escaping (Bool) -> Void) {
+        present(activity.controller, configuration: apply(to: activity), animated: animated, completion: completion)
+    }
+
+    private func present(_ controller: UIViewController, configuration: Bool?, animated: Bool, completion: @escaping (Bool) -> Void) {
+        guard isCurrent, configuration != false else {
             completion(false)
             return
         }
@@ -109,7 +117,15 @@ struct WindowPresentationAnchor {
         controller.viewIfLoaded?.window === window
     }
 
-    /// Sets the UIKit popover source in the same window used for presentation.
+    /// Applies automatic phone activity policy only after the full source preflight; this does not confirm presentation.
+    @discardableResult
+    func apply(to activity: ActivityPresentation) -> Bool? {
+        guard isCurrent else { return false }
+        // Default automatic phone activities delegate configuration to UIKit; completion still verifies ownership.
+        return activity.usesSystemManagedPhonePolicy(in: window) ? nil : apply(to: activity.controller)
+    }
+
+    /// Other controllers and explicit popovers retain exact source-item identity and geometry requirements.
     @discardableResult
     func apply(to controller: UIViewController) -> Bool? {
         guard isCurrent else { return false }
@@ -118,13 +134,7 @@ struct WindowPresentationAnchor {
             // A UIKit-supported class preserves the original source-local rectangle without a whole-view fallback.
             let item = sourceRegion.item
             sourceRegion.retain(on: popover)
-            #if OROT_TESTS
-                sourceRegion.recordTestObservation(.before, controller: controller, popover: popover, source: sourceView, rect: sourceRect, window: window, current: isCurrent)
-            #endif
             popover.sourceItem = item
-            #if OROT_TESTS
-                sourceRegion.recordTestObservation(.after, controller: controller, popover: popover, source: sourceView, rect: sourceRect, window: window, current: isCurrent)
-            #endif
             return isCurrent && popover.sourceItem === item
                 && popover.sourceItem?.frame(in: window) == sourceView.convert(sourceRect, to: window)
         }
@@ -135,7 +145,7 @@ struct WindowPresentationAnchor {
 
     #if OROT_TESTS
         /// Records only public geometry and identity relationships for native presentation regression tests.
-        func testObservation(popoverAvailable: Bool, popoverConfigured: Bool) -> [String: Any] {
+        func testObservation(popoverAvailable: Bool, popoverConfigured: Bool, systemManagedPhoneActivity: Bool = false, requestedActivityStyle: Int = -99, activityIdiom: Int = -99) -> [String: Any] {
             let rect = sourceView.convert(sourceRect, to: window)
             return [
                 "presenterSharesWindow": presenter.viewIfLoaded?.window === window,
@@ -144,6 +154,9 @@ struct WindowPresentationAnchor {
                 "windowSceneIsForegroundActive": window.windowScene?.activationState == .foregroundActive,
                 "popoverAvailable": popoverAvailable,
                 "popoverConfigured": popoverConfigured,
+                "systemManagedPhoneActivity": systemManagedPhoneActivity,
+                "requestedActivityStyle": requestedActivityStyle,
+                "activityIdiom": activityIdiom,
                 "sourceRectIntersectsWindow": rect.intersects(window.bounds),
             ]
         }

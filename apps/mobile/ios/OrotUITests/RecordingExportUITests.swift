@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 final class RecordingExportUITests: OrotFailFastTestCase {
@@ -199,7 +200,11 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         XCTAssertEqual(observation["windowIsKey"] as? Bool, true)
         XCTAssertEqual(observation["windowSceneIsForegroundActive"] as? Bool, true)
         XCTAssertEqual(observation["sourceRectIntersectsWindow"] as? Bool, true)
-        if observation["popoverAvailable"] as? Bool == true {
+        if observation["systemManagedPhoneActivity"] as? Bool == true {
+            XCTAssertEqual(observation["requestedActivityStyle"] as? Int, UIModalPresentationStyle.automatic.rawValue)
+            XCTAssertEqual(observation["activityIdiom"] as? Int, UIUserInterfaceIdiom.phone.rawValue)
+            XCTAssertEqual(observation["popoverConfigured"] as? Bool, false)
+        } else if observation["popoverAvailable"] as? Bool == true {
             XCTAssertEqual(observation["popoverConfigured"] as? Bool, true)
         }
         XCTAssertEqual(presentation["presentationDisposition"] as? String, "confirmed")
