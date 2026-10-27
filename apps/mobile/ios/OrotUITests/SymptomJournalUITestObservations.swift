@@ -4,6 +4,19 @@ import XCTest
 /// Journal observations preserve original evidence while keeping per-field focus probes separate from gesture control.
 @MainActor
 enum SymptomJournalUITestObservations {
+    /// Checks the editor against the route viewport while preserving the screen's existing side padding.
+    static func assertFullContentFormLane(_ app: XCUIApplication) {
+        let description = UITestConditions.element(app, "symptom-description")
+        let scroll = UITestConditions.element(app, "symptoms-scroll")
+        XCTAssertTrue(UITestConditions.exists(description))
+        XCTAssertTrue(UITestConditions.exists(scroll))
+        let descriptionWidth = description.frame.width
+        // The description spans the route width after 20-point screen and 14-point form padding.
+        let usableWidth = scroll.frame.width - 68
+        XCTAssertGreaterThan(usableWidth, 0)
+        XCTAssertEqual(descriptionWidth, usableWidth, accuracy: 1)
+    }
+
     /// Bracket the existing post-refocus drag to distinguish focus acquisition from later loss, without another action or wait.
     static func onsetFocusObserver(_ app: XCUIApplication, input: XCUIElement, identifier: String, forwarding observer: ((String, CGRect?) -> Void)?) -> ((String, CGRect?) -> Void)? {
         guard identifier == "symptom-onset-date" else { return observer }
