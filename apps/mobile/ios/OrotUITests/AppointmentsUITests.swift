@@ -50,12 +50,98 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
+    /// Keeps the selected record through native size and appearance changes.
     @MainActor
-    private func launch(_ app: XCUIApplication) throws {
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+    func testAppointmentSelectionDetailsReflowAcrossDuoGeometry() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let originalAppearance {
+                do {
+                    try AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
+                } catch {
+                    XCTFail("Could not restore the owned Simulator's appearance: \(error)")
+                }
+            }
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+        try launch(app, extra: AppearanceUITestConditions.observationArguments)
+        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
+        createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15")
+
+        let selection = UITestConditions.element(app, "appointment-select-manual-2")
+        XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
+        selection.tap()
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        let clinic = UITestConditions.element(app, "appointment-clinic-manual-2")
+        XCTAssertTrue(clinic.waitForAppearance(), app.debugDescription)
+        XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
+
+        let portraitBounds = app.frame
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWindowBoundsChange(in: app, from: portraitBounds)
+        let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app)
+        XCTAssertTrue(expandedUsesTwoColumns, "Expanded Duo geometry should place the list and details side by side")
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
+        _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        capture(app, "appointments-duo-dark-expanded-selection")
+
+        let landscapeBounds = app.frame
+        XCUIDevice.shared.orientation = .portrait
+        waitForWindowBoundsChange(in: app, from: landscapeBounds)
+        let compactUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
+        XCTAssertFalse(compactUsesTwoColumns)
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
+        capture(app, "appointments-duo-light-compact-selection")
+    }
+
+    /// Confirms accessibility text scaling keeps the complete appointment view stacked.
+    @MainActor
+    func testLargeTextKeepsAppointmentDetailsInOneReadableColumn() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        defer {
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+        try launch(app, largeText: true)
+        createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        let selection = UITestConditions.element(app, "appointment-select-manual-1")
+        XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+
+        let portraitBounds = app.frame
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWindowBoundsChange(in: app, from: portraitBounds)
+        let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
+        XCTAssertFalse(expandedUsesTwoColumns, "Large text must keep both panels in one readable column")
+        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        XCTAssertEqual(
+            UITestConditions.text(UITestConditions.element(app, "appointment-clinic-manual-1")),
+            "Cardiology clinic",
+        )
+        let edit = UITestConditions.element(app, "appointment-edit-manual-1")
+        FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
+        XCTAssertTrue(edit.exists && edit.isHittable, app.debugDescription)
+        capture(app, "appointments-large-text-details")
+    }
+
+    @MainActor
+    private func launch(_ app: XCUIApplication, largeText: Bool = false, extra: [String] = []) throws {
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "appointments-title"), equals: "예약")
-        XCTAssertTrue(UITestConditions.element(app, "appointment-add").isHittable)
+        let add = UITestConditions.element(app, "appointment-add")
+        XCTAssertTrue(add.exists)
+        if !largeText {
+            XCTAssertTrue(add.isHittable)
+        }
         let root = UITestConditions.element(app, "safe-area-root")
         let scroll = UITestConditions.element(app, "appointments-scroll")
         let title = UITestConditions.element(app, "appointments-title")
@@ -69,6 +155,57 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(action.control.frame.maxY, action.toolbar.frame.maxY)
         XCTAssertFalse(UITestConditions.element(app, "appointments-top-back").exists)
         capture(app, "manual-appointments-bottom-back-safe-area")
+    }
+
+    @MainActor
+    private func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String) {
+        tap(app, "appointment-add")
+        fill(app, clinic: clinic, date: date, time: time, note: "")
+        visible(app, clinic)
+    }
+
+    @MainActor
+    private func assertAppointmentPanelsFollowGeometry(_ app: XCUIApplication, expectsStacked: Bool? = nil) throws -> Bool {
+        let primary = UITestConditions.element(app, "appointments-columns-primary")
+        let secondary = UITestConditions.element(app, "appointments-columns-secondary")
+        XCTAssertTrue(primary.exists && !primary.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(secondary.exists && !secondary.frame.isEmpty, app.debugDescription)
+        let primaryFrame = primary.frame
+        let secondaryFrame = secondary.frame
+        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
+            primaryFrame.maxX <= secondaryFrame.minX + 1
+        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
+            primaryFrame.maxY <= secondaryFrame.minY + 1
+        XCTAssertTrue(
+            sideBySide || stacked,
+            "Appointment panels must follow one readable measured column or two non-overlapping columns: primary=\(primaryFrame), secondary=\(secondaryFrame)",
+        )
+        if expectsStacked == true {
+            XCTAssertTrue(stacked, "The active geometry must keep appointment details below the list")
+        }
+        let navigation = try NavigationUITestConditions.navigationAction(app, "appointments-back")
+        if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
+            XCTAssertLessThanOrEqual(max(primaryFrame.maxX, secondaryFrame.maxX), navigation.toolbar.frame.minX + 1)
+        }
+        return sideBySide
+    }
+
+    @MainActor
+    private func waitForWindowBoundsChange(in app: XCUIApplication, from previous: CGRect) {
+        var current = CGRect.zero
+        let boundsChanged = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                current = app.frame
+                return abs(current.width - previous.width) > 0.5 ||
+                    abs(current.height - previous.height) > 0.5
+            },
+            object: nil,
+        )
+        XCTAssertEqual(
+            UITestConditions.wait(for: [boundsChanged]),
+            .completed,
+            "Appointments must observe the device's updated UIKit bounds.",
+        )
     }
 
     @MainActor
