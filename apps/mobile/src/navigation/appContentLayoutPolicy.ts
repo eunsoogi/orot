@@ -18,10 +18,12 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Health detail panels resolve against the actual native usable regions.
   // Account management measures its connection and action panels within the full route lane.
   // Appointment entry routes share the screen that measures list and selected-detail panels.
+  // Classification measures its overview and candidate panels from usable geometry.
   // The saved library owns a measured list and summary that share that usable geometry.
   return route.name === 'settings-accounts' ||
     route.name === 'appointments' ||
     route.name === 'medical-manual' ||
+    route.name === 'medical' ||
     route.name === 'health-records' ||
     route.name === 'health-records-detail' ||
     route.name === 'saved-recordings' ||
