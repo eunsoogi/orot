@@ -50,7 +50,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
-    /// Keeps the selected record through native size and appearance changes.
+    /// Keeps selected details and the form through native size and appearance changes.
     @MainActor
     func testAppointmentSelectionDetailsReflowAcrossDuoGeometry() throws {
         XCUIDevice.shared.orientation = .portrait
@@ -99,9 +99,11 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
         capture(app, "appointments-duo-light-compact-selection")
+        tap(app, "appointment-edit-manual-2")
+        ReminderJourneyForm.assertAppointmentForm(app, clinic: "Neurology clinic")
     }
 
-    /// Confirms accessibility text scaling keeps the complete appointment view stacked.
+    /// Confirms large text keeps details stacked and the appointment form reachable.
     @MainActor
     func testLargeTextKeepsAppointmentDetailsInOneReadableColumn() throws {
         XCUIDevice.shared.orientation = .portrait
@@ -130,6 +132,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
         XCTAssertTrue(edit.exists && edit.isHittable, app.debugDescription)
         capture(app, "appointments-large-text-details")
+        edit.tap()
+        ReminderJourneyForm.assertAppointmentForm(app, clinic: "Cardiology clinic")
     }
 
     @MainActor
