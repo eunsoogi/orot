@@ -77,15 +77,11 @@ export function RecordsRoute({
   }
 
   if (sourceDetail) {
+    // The saved detail owns its measured panels so reflow keeps the text and Back state in place.
     return (
-      <AdaptiveColumns
-        primary={
-          <MedicalDocumentSourceView
-            document={sourceDetail}
-            onBack={closeSavedDocument}
-          />
-        }
-        testID="records-document-source-layout"
+      <MedicalDocumentSourceView
+        document={sourceDetail}
+        onBack={closeSavedDocument}
       />
     );
   }
