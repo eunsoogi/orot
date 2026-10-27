@@ -7,6 +7,8 @@ import {
   within,
 } from '@testing-library/react-native';
 import { StyleSheet, View } from 'react-native';
+import { NavigationGeometryProvider } from '../../../navigation/NavigationGeometryProvider';
+import type { NavigationGeometryPayload } from '../../../navigation/navigationGeometry';
 import { createUnifiedImportCoordinator } from '../coordinator';
 import { HealthKitImportScreen } from '../HealthKitImportScreen';
 import { unifiedHealthImportCopy } from '../copy';
@@ -23,6 +25,21 @@ const windowBounds = new Map<
   string,
   { readonly x: number; readonly width: number }
 >();
+const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+const duoGeometry: NavigationGeometryPayload = {
+  windowBounds: { x: 0, y: 0, width: 1700, height: 900 },
+  safeAreaInsets: noInsets,
+  reservedRegionsSupported: true,
+  reservedRegions: [
+    {
+      id: 'display-division',
+      kind: 'division',
+      frame: { x: 820, y: 0, width: 40, height: 900 },
+      margins: noInsets,
+      isActive: true,
+    },
+  ],
+};
 
 beforeEach(() => windowBounds.clear());
 
@@ -38,8 +55,8 @@ const measureSpy = jest
 
 afterAll(() => measureSpy.mockRestore());
 
-function remeasure(width: number) {
-  windowBounds.set('unified-import-columns-host', { x: 0, width });
+function remeasure(width: number, x = 0) {
+  windowBounds.set('unified-import-columns-host', { x, width });
   return fireEvent(
     screen.getByTestId('unified-import-columns-host'),
     'layout',
@@ -129,4 +146,84 @@ test('keeps source scope and live import progress in separate mounted panels dur
     ),
   );
   expect(start).toHaveBeenCalledTimes(1);
+});
+
+test('reflows Duo regions and falls back for narrow hosts', async () => {
+  const query = deferred<void>();
+  const services = createTestServices({
+    async runFeature(_feature, _authorization, _repository, instrumentation) {
+      await instrumentation.query(async () => query.promise);
+      return { status: 'complete', importedCount: 1, deletedCount: 0 };
+    },
+  });
+  const baseCoordinator = createUnifiedImportCoordinator(services.services);
+  const start = jest.fn(baseCoordinator.start);
+  await render(
+    <NavigationGeometryProvider>
+      <HealthKitImportScreen
+        copy={unifiedHealthImportCopy}
+        coordinator={{ start }}
+      />
+    </NavigationGeometryProvider>,
+  );
+
+  const sourcePanel = screen.getByTestId('unified-import-source-selection');
+  const activityPanel = screen.getByTestId('unified-import-activity');
+  await fireEvent.press(
+    within(sourcePanel).getByTestId('unified-import-toggle-heartRate'),
+  );
+  await fireEvent.press(screen.getByTestId('unified-import-start'));
+  const featureStatus = await within(activityPanel).findByTestId(
+    'unified-import-feature-status-heartRate',
+  );
+  await waitFor(() =>
+    expect(featureStatus).toHaveTextContent(
+      unifiedHealthImportCopy.featureStatuses.querying,
+    ),
+  );
+
+  await fireEvent(
+    screen.getByTestId('navigation-window-geometry-sensor'),
+    'geometryChange',
+    { nativeEvent: duoGeometry },
+  );
+  await remeasure(1700);
+  expect(axis()).toBe('row');
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('unified-import-columns-primary').props.style,
+    )?.width,
+  ).toBeGreaterThan(0);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('unified-import-columns-secondary').props.style,
+    )?.width,
+  ).toBeGreaterThan(0);
+  expect(featureStatus).toHaveTextContent(
+    unifiedHealthImportCopy.featureStatuses.querying,
+  );
+
+  // Check a narrow host in each usable region without crossing the display division.
+  for (const x of [0, 860]) {
+    await remeasure(700, x);
+    expect(axis()).toBe('column');
+    expect(
+      within(sourcePanel).getByTestId('unified-import-toggle-heartRate').props
+        .accessibilityState.checked,
+    ).toBe(true);
+    expect(featureStatus).toHaveTextContent(
+      unifiedHealthImportCopy.featureStatuses.querying,
+    );
+    expect(start).toHaveBeenCalledTimes(1);
+  }
+
+  await act(async () => {
+    query.resolve();
+    await query.promise;
+  });
+  await waitFor(() =>
+    expect(featureStatus).toHaveTextContent(
+      unifiedHealthImportCopy.featureStatuses.complete,
+    ),
+  );
 });
