@@ -5,6 +5,11 @@ import { appColors } from '../layout/appColors';
 export const healthReviewStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   container: { padding: 24, gap: 16 },
+  heading: { gap: 8 },
+  panel: { minWidth: 0, gap: 16 },
+  actions: { gap: 12 },
+  requests: { gap: 12 },
+  request: { gap: 8 },
   section: { gap: 12 },
   form: { gap: 16 },
   reading: { gap: 8 },
