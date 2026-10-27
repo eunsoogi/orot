@@ -73,6 +73,12 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let cardID = String(description.identifier.dropLast("-description".count))
         // Remove only the card's wrapper; the stored entry ID retains its own symptom- prefix.
         let entryID = String(cardID.dropFirst("symptom-".count))
+        // The selected summary is local to this existing journal route.
+        guard tap(app, "symptom-select-" + entryID) else { return }
+        UITestConditions.value(
+            UITestConditions.element(app, "symptoms-selected-description"),
+            equals: "Synthetic intermittent tingling",
+        )
         let onset = UITestConditions.element(app, cardID + "-onset")
         XCTAssertTrue(onset.exists)
         let originalOnset = UITestConditions.text(onset)
