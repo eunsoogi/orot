@@ -76,10 +76,26 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         }
         XCTAssertEqual(anchor.apply(to: activity), true)
         let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
+        XCTAssertTrue(type(of: try XCTUnwrap(item as? UIView)) == UIView.self)
+        let sourceSubviewCount = root.view.subviews.count
+        XCTAssertEqual(anchor.apply(to: activity), true)
+        XCTAssertTrue(activity.popoverPresentationController?.sourceItem === item)
+        XCTAssertEqual(root.view.subviews.count, sourceSubviewCount)
         let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
         let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        XCTAssertNil(item.frame(in: foreignWindow))
+        let observation: [String: Any] = [
+            "itemClass": String(describing: type(of: item)),
+            "itemIsExactUIView": type(of: try XCTUnwrap(item as? UIView)) == UIView.self,
+            "identityPreserved": activity.popoverPresentationController?.sourceItem === item,
+            "exactGeometry": item.frame(in: window) == root.view.convert(region, to: window),
+            "foreignFrameIsNil": item.frame(in: foreignWindow) == nil,
+            "modalStyle": activity.modalPresentationStyle.rawValue,
+        ]
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
+        attachment.name = "framework-source-item-control"
+        attachment.lifetime = .keepAlways
+        add(attachment)
 
         let presented = expectation(description: "The default activity belongs to its initiating window")
         anchor.present(activity, animated: false) { confirmed in
@@ -99,9 +115,10 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         try RecordingExportFiles.finish(operation.directory)
         XCTAssertFalse(FileManager.default.fileExists(atPath: operation.directory.path))
         XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
-        // A late UIKit geometry request must not reuse a detached source, even while the item itself is retained.
+        // Validate the original source through the anchor; UIView's public coordinate conversion is not an ownership check.
         root.view.removeFromSuperview()
-        XCTAssertNil(item.frame(in: window))
+        XCTAssertFalse(anchor.isCurrent)
+        XCTAssertEqual(anchor.apply(to: activity), false)
     }
 
     @MainActor

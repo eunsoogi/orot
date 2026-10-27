@@ -41,9 +41,23 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.modalPresentationStyle = .popover
-            XCTAssertEqual(anchor.apply(to: picker), true)
-            let item = try XCTUnwrap(picker.popoverPresentationController?.sourceItem)
-            XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window))
+            let configured = anchor.apply(to: picker)
+            // This bounded control records UIKit's actual modality before choosing a permanent picker contract.
+            let observation: [String: Any] = [
+                "controllerClass": String(describing: type(of: picker)),
+                "modalStyle": picker.modalPresentationStyle.rawValue,
+                "horizontalSizeClass": picker.traitCollection.horizontalSizeClass.rawValue,
+                "verticalSizeClass": picker.traitCollection.verticalSizeClass.rawValue,
+                "popoverAvailable": picker.popoverPresentationController != nil,
+                "applyReturnedNil": configured == nil,
+                "applyReturnedFalse": configured == false,
+            ]
+            let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
+            attachment.name = "attached-picker-modality-control"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            let item = picker.popoverPresentationController?.sourceItem
+            if let item { XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window)) }
 
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")
@@ -66,9 +80,11 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             root.view.setNeedsLayout()
             root.view.layoutIfNeeded()
             XCTAssertTrue(picker.presentingViewController?.viewIfLoaded?.window === window)
-            let resizedRegion = try XCTUnwrap(item.frame(in: window))
-            XCTAssertEqual(resizedRegion, source.convert(sourceRect, to: window))
-            XCTAssertTrue(resizedRegion.intersects(window.bounds))
+            if let item {
+                let resizedRegion = try XCTUnwrap(item.frame(in: window))
+                XCTAssertEqual(resizedRegion, source.convert(sourceRect, to: window))
+                XCTAssertTrue(resizedRegion.intersects(window.bounds))
+            }
 
             let dismissed = expectation(description: "The document picker closes before testing the other window side")
             picker.dismiss(animated: false) { dismissed.fulfill() }

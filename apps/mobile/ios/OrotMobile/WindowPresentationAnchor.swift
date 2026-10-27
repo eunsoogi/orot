@@ -8,6 +8,7 @@ struct WindowPresentationAnchor {
     private let eligiblePresenterIdentifiers: Set<ObjectIdentifier>
     private let sourceView: UIView
     private let sourceRect: CGRect
+    private let sourceRegion: PopoverSourceRegion
 
     /// Prefer the caller's attached view; bridge-only callers use the sole key window in the active scene.
     static func resolve(from sourceView: UIView? = nil, sourceRect: CGRect? = nil) -> Self? {
@@ -57,6 +58,7 @@ struct WindowPresentationAnchor {
             eligiblePresenterIdentifiers: presentationPresenterIdentifiers(from: presenter, root: root),
             sourceView: resolvedView,
             sourceRect: resolvedRect,
+            sourceRegion: PopoverSourceRegion(view: resolvedView, rect: resolvedRect),
         )
     }
 
@@ -113,8 +115,9 @@ struct WindowPresentationAnchor {
         guard isCurrent else { return false }
         guard let popover = controller.popoverPresentationController else { return nil }
         if #available(iOS 17.0, *) {
-            // Activity sheets may not round-trip sourceView; an explicit item preserves the exact source-local region.
-            let item = PopoverSourceRegion(view: sourceView, rect: sourceRect, window: window)
+            // A UIKit-supported class preserves the original source-local rectangle without a whole-view fallback.
+            let item = sourceRegion.item
+            sourceRegion.retain(on: popover)
             popover.sourceItem = item
             return isCurrent && popover.sourceItem === item
                 && popover.sourceItem?.frame(in: window) == sourceView.convert(sourceRect, to: window)
