@@ -9,6 +9,7 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
