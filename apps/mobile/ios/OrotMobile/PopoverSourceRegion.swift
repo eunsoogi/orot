@@ -26,9 +26,16 @@ final class PopoverSourceRegion: NSObject {
         enum ObservationStage: String { case before, after }
         static var testObservations: [[String: Any]] = []
 
+        /// Reset scalar diagnostics and capture validity before the setter path can return early.
+        static func beginTestObservations(anchor: WindowPresentationAnchor) -> Bool {
+            testObservations = []
+            return anchor.isCurrent
+        }
+
         @available(iOS 17.0, *)
-        static func testReadbackObservation(item: UIView, controller: UIActivityViewController, window: UIWindow, foreignWindow: UIWindow, expected: CGRect) -> [String: Any] {
-            [
+        static func testReadbackObservation(item: UIView, controller: UIActivityViewController, window: UIWindow, scene: UIWindowScene, expected: CGRect) -> [String: Any] {
+            let foreignWindow = UIWindow(windowScene: scene)
+            return [
                 "itemClass": String(describing: type(of: item)),
                 "itemIsExactUIView": type(of: item) == UIView.self,
                 "identityPreserved": controller.popoverPresentationController?.sourceItem === item,

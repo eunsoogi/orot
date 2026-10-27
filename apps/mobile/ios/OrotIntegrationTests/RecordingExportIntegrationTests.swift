@@ -75,20 +75,22 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
             let finished = expectation(description: "UIKit reference diagnostic completes dismissal")
             PopoverSourceRegion.runTestReference(root: root, window: window, activity: activity, applyResult: anchor.apply(to: activity), fileIsLive: { FileManager.default.fileExists(atPath: operation.file.path) }) { observation in
                 XCTAssertEqual(observation["referenceSucceeded"] as? Bool, true)
-                XCTAssertNoThrow(try RecordingExportFiles.finish(operation.directory))
-                XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
-                XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
-                XCTAssertNoThrow(try self.addExportObservation(observation.merging(["cleanupFileAbsent": !FileManager.default.fileExists(atPath: operation.file.path), "cleanupResidueCount": RecordingExportFiles.residueCount()]) { _, new in new }, name: "UIKit-reference-only"))
+                do {
+                    try RecordingExportFiles.finish(operation.directory)
+                    XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
+                    XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
+                    try self.addExportObservation(observation.merging(["cleanupFileAbsent": !FileManager.default.fileExists(atPath: operation.file.path), "cleanupResidueCount": RecordingExportFiles.residueCount()]) { _, new in new }, name: "UIKit-reference-only")
+                } catch {
+                    XCTFail("UIKit reference cleanup or diagnostic attachment failed.")
+                }
                 finished.fulfill()
             }
             wait(for: [finished], timeout: 5)
             return
         }
-        PopoverSourceRegion.testObservations = []
-        let currentBeforeApply = anchor.isCurrent
+        let currentBeforeApply = PopoverSourceRegion.beginTestObservations(anchor: anchor)
         let configured = anchor.apply(to: activity)
-        let boundary: [String: Any] = ["anchorCurrentBeforeApply": currentBeforeApply, "setterBoundary": PopoverSourceRegion.testObservations]
-        try addExportObservation(boundary, name: "default-share-popover-setter-boundary")
+        try addExportObservation(["anchorCurrentBeforeApply": currentBeforeApply, "setterBoundary": PopoverSourceRegion.testObservations] as [String: Any], name: "default-share-popover-setter-boundary")
         XCTAssertEqual(configured, true)
         let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
         XCTAssertTrue(try type(of: XCTUnwrap(item as? UIView)) == UIView.self)
@@ -98,9 +100,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(root.view.subviews.count, sourceSubviewCount)
         let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
-        let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        let observation = try PopoverSourceRegion.testReadbackObservation(item: XCTUnwrap(item as? UIView), controller: activity, window: window, foreignWindow: foreignWindow, expected: root.view.convert(region, to: window))
-        try addExportObservation(observation, name: "framework-source-item-control")
+        try addExportObservation(PopoverSourceRegion.testReadbackObservation(item: XCTUnwrap(item as? UIView), controller: activity, window: window, scene: XCTUnwrap(window.windowScene), expected: root.view.convert(region, to: window)), name: "framework-source-item-control")
 
         let presented = expectation(description: "The default activity belongs to its initiating window")
         anchor.present(activity, animated: false) { confirmed in
