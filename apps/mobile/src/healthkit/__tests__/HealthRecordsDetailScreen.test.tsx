@@ -7,6 +7,13 @@ import { correlation } from '../bloodPressure/testSupport';
 import { HealthRecordsDetailScreen } from '../HealthRecordsDetailScreen';
 import type { HealthRecordPeriod } from '../healthRecordsLibraryModel';
 
+// Period filtering uses the app's Date constructor, so keep test time fixed too.
+const healthRecordReferenceTime = '2035-06-15T12:00:00.000Z';
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 test('stacks date and pressure values at accessibility text sizes', async () => {
   const original = Dimensions.get('window');
   Dimensions.set({ window: { ...original, width: 402, fontScale: 2 } });
@@ -36,10 +43,14 @@ test('stacks date and pressure values at accessibility text sizes', async () => 
 });
 
 test('shows the selected period as paired source values with exact units', async () => {
+  jest.useFakeTimers({ now: Date.parse(healthRecordReferenceTime) });
   const observations = mapBloodPressureCorrelation(
     correlation('detail-pressure'),
-    '2026-10-05T10:00:00.000Z',
-  ).observations;
+    healthRecordReferenceTime,
+  ).observations.map(item => ({
+    ...item,
+    effectiveAt: healthRecordReferenceTime,
+  }));
   const loadObservations = jest.fn(async () => ({
     records: observations,
     nextCursor: null,
