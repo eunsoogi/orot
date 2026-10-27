@@ -25,6 +25,7 @@ import type {
 } from '../src/providers/selection/types';
 import type { NextVisitQuestion } from '../src/nextVisitQuestions/types';
 import { createVisitGenerationVisualRun } from './visitGenerationVisualState';
+import { selectAiFeatureProbeDependencies } from './evidenceSourceDuoProbeFixture';
 
 const launchSettings =
   NativeModules.SettingsManager?.settings ??
@@ -95,8 +96,10 @@ const syntheticAiFeatureDependencies: AiFeatureServiceDependencies = {
   externalEvidence: { search: async () => ({ status: 'unavailable' }) },
   diseaseRunner: syntheticDiseaseRunner,
 };
-const syntheticDiseaseFixtureEnabled =
-  launchSettings.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic';
+const aiFeatureServiceDependencies = selectAiFeatureProbeDependencies(
+  launchSettings,
+  syntheticAiFeatureDependencies,
+);
 // Keep this callback stable so route-state rerenders do not abort generation as a provider change.
 const resolveSyntheticSelectedAi: VisitQuestionsRenderInput['resolveSelectedAi'] =
   () => resolveSelectedAiProvider(syntheticAiFeatureDependencies.selectedAi);
@@ -210,11 +213,7 @@ function AiFeatureVisitQuestionsProbeEntry() {
   return (
     <View style={styles.container}>
       <App
-        aiFeatureServiceDependencies={
-          syntheticDiseaseFixtureEnabled
-            ? syntheticAiFeatureDependencies
-            : undefined
-        }
+        aiFeatureServiceDependencies={aiFeatureServiceDependencies}
         renderVisitQuestions={renderVisitQuestions}
       />
       <View pointerEvents="none" style={styles.keyboardMarker}>
