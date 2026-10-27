@@ -1,16 +1,16 @@
 import XCTest
 
-/// Keeps the health-detail XCTest selector stable while separating its scenario from import tests.
+/// Keeps health-detail XCTest selectors stable while separating their scenarios from import tests.
 extension HealthImportDuoUITests {
     /// Retains the selected period and saved measurements when the native usable regions change.
     @MainActor
     func testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges() throws {
         let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "paged-records", "-OROT_TEST_UI_GEOMETRY", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + AppearanceUITestConditions.observationArguments
-        app.launch()
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {
             if let appearance {
@@ -20,9 +20,13 @@ extension HealthImportDuoUITests {
                     XCTFail("Could not restore the owned Simulator's appearance: \(error)")
                 }
             }
-            XCUIDevice.shared.orientation = .portrait
+            XCUIDevice.shared.orientation = originalOrientation
             app.terminate()
         }
+
+        // Start in portrait so the initial vertical layout assertion is deterministic.
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
 
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tapHealthDetail(app, "records-open-health-library")
@@ -58,6 +62,66 @@ extension HealthImportDuoUITests {
         XCTAssertTrue(period.isSelected, app.debugDescription)
         XCTAssertTrue(value.exists, app.debugDescription)
         captureHealthDetail(app, "health-record-detail-dark")
+    }
+
+    /// Retains the selected period and source label when medication history reflows on Duo.
+    @MainActor
+    func testMedicationHistoryAndPeriodSurviveDuoReflow() throws {
+        let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
+        defer {
+            XCUIDevice.shared.orientation = originalOrientation
+            app.terminate()
+        }
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "blood-pressure", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        // Start in portrait so the initial vertical layout assertion is deterministic.
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        tapHealthDetail(app, "settings-open-health-data")
+        NavigationUITestConditions.route(app, markers: ["health-data-title"])
+        tapHealthDetail(app, "health-data-feature-bloodPressure")
+        tapHealthDetail(app, "health-data-feature-medications")
+        tapHealthDetail(app, "health-data-save")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        tapHealthDetail(app, "settings-open-sync-status")
+        NavigationUITestConditions.route(app, markers: ["settings-sync-status-title"])
+        UITestConditions.value(
+            healthDetailNode(app, "settings-sync-status-message"),
+            equals: "마지막 동기화에서 선택한 기록을 확인했어요.",
+        )
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tapHealthDetail(app, "records-open-health-library")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        tapHealthDetail(app, "health-record-filter-medications")
+        tapHealthDetail(app, "health-record-open-detail-medications")
+
+        let period = healthDetailNode(app, "health-record-period-three_months")
+        XCTAssertTrue(period.waitForAppearance(), app.debugDescription)
+        period.tap()
+        XCTAssertTrue(period.isSelected, app.debugDescription)
+        let source = healthDetailNode(app, "health-record-medication-row-0-source")
+        XCTAssertTrue(source.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(source).contains("HealthKit"), app.debugDescription)
+        let primary = healthDetailNode(app, "health-records-medication-detail-layout-primary")
+        let secondary = healthDetailNode(app, "health-records-medication-detail-layout-secondary")
+        XCTAssertTrue(primary.exists && secondary.exists, app.debugDescription)
+
+        let before = app.windows.firstMatch.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForHealthDetailWidthChange(app.windows.firstMatch, from: before)
+        XCTAssertTrue(healthDetailNode(app, "health-record-period-three_months").isSelected, app.debugDescription)
+        XCTAssertTrue(healthDetailNode(app, "health-record-medication-row-0-source").exists, app.debugDescription)
+        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        XCTAssertLessThanOrEqual(abs(primary.frame.minY - secondary.frame.minY), 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(primary.frame.maxX, secondary.frame.minX + 1, app.debugDescription)
+        captureHealthDetail(app, "medication-history-landscape")
+        let landscapeWidth = app.windows.firstMatch.frame.width
+        XCUIDevice.shared.orientation = .portrait
+        waitForHealthDetailWidthChange(app.windows.firstMatch, from: landscapeWidth)
+        XCTAssertTrue(healthDetailNode(app, "health-record-period-three_months").isSelected, app.debugDescription)
+        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
     }
 
     @MainActor
