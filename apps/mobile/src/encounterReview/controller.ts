@@ -126,9 +126,15 @@ export class EncounterReviewController {
       candidates:
         decision === 'deny'
           ? []
-          : this.state.candidates.filter(candidate =>
-              this.state.selected.includes(candidate.id),
-            ),
+          : this.state.candidates
+              .filter(candidate => this.state.selected.includes(candidate.id))
+              .map(candidate =>
+                // Removing an optional description must not submit an invalid empty dosage string.
+                candidate.dosageInstruction !== undefined &&
+                !candidate.dosageInstruction.trim()
+                  ? { ...candidate, dosageInstruction: undefined }
+                  : candidate,
+              ),
       reviewerId: 'local-user',
       reviewedAt: new Date().toISOString(),
     };

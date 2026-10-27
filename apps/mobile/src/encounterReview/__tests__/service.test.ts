@@ -106,9 +106,15 @@ test('source discovery survives closed database and fresh controller without re-
   expect(second.synthetic.calls()).toBe(0);
   expect(await rows()).toHaveLength(0);
   second.controller.edit('candidate-0', 'text', '사용자가 검토한 내용');
+  second.controller.edit('candidate-0', 'dosageInstruction', '');
   await second.controller.decide('approve');
   expect(second.controller.state.status).toBe('saved');
   expect(await rows()).toHaveLength(2);
+  expect(
+    (await rows()).find(
+      record => record.concept === 'encounter_medication_statement',
+    )?.value,
+  ).toEqual({ kind: 'text', text: '사용자가 검토한 내용' });
   expect(
     (await rows()).every(
       record =>
