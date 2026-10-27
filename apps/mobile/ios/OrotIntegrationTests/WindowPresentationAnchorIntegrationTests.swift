@@ -62,7 +62,9 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
             let item = picker.popoverPresentationController?.sourceItem
-            if let item { XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window)) }
+            if let item {
+                XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window))
+            }
 
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")

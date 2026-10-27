@@ -76,7 +76,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         }
         XCTAssertEqual(anchor.apply(to: activity), true)
         let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
-        XCTAssertTrue(type(of: try XCTUnwrap(item as? UIView)) == UIView.self)
+        XCTAssertTrue(try type(of: XCTUnwrap(item as? UIView)) == UIView.self)
         let sourceSubviewCount = root.view.subviews.count
         XCTAssertEqual(anchor.apply(to: activity), true)
         XCTAssertTrue(activity.popoverPresentationController?.sourceItem === item)
@@ -84,9 +84,9 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
         let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        let observation: [String: Any] = [
+        let observation: [String: Any] = try [
             "itemClass": String(describing: type(of: item)),
-            "itemIsExactUIView": type(of: try XCTUnwrap(item as? UIView)) == UIView.self,
+            "itemIsExactUIView": type(of: XCTUnwrap(item as? UIView)) == UIView.self,
             "identityPreserved": activity.popoverPresentationController?.sourceItem === item,
             "exactGeometry": item.frame(in: window) == root.view.convert(region, to: window),
             "foreignFrameIsNil": item.frame(in: foreignWindow) == nil,
