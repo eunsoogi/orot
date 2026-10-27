@@ -18,7 +18,7 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
     );
     const overlap = window.slice(
       window.indexOf('            if touches.count > 1'),
-      window.indexOf('            for touch in touches'),
+      window.indexOf('            var terminals:'),
     );
     const scalars = snapshot.slice(
       snapshot.indexOf('    struct HealthReviewFormSnapshot'),
@@ -30,7 +30,7 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
     );
     const records = window.slice(
       window.indexOf('        enum Phase'),
-      window.indexOf('        private let launch'),
+      window.indexOf('        /// Only this synchronous'),
     );
     let writer = window.slice(
       window.indexOf('        private final class Writer'),
@@ -42,7 +42,7 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
       .replace('func append(', 'func drain() { queue.sync {} }\n            func append(');
     writer = writer.replace(
       /url = FileManager\.default\.urls[\s\S]*?\.appendingPathComponent\([^\n]+\)/,
-      `url = URL(fileURLWithPath: ${JSON.stringify(join(directory, 'record.json'))})`,
+      `url = URL(fileURLWithPath: ProcessInfo.processInfo.environment["WRITER_DESTINATION"] ?? ${JSON.stringify(join(directory, 'record.json'))})`,
     );
     assert.ok(writer.includes('url = URL('));
     writeFileSync(
@@ -103,6 +103,16 @@ ${overlap}
       { timeout: 60000 },
     );
     execFileSync(binary, [], { timeout: 10000 });
+    const failed = execFileSync(binary, [], {
+      encoding: 'utf8',
+      timeout: 10000,
+      env: {
+        ...process.env,
+        WRITER_DESTINATION: join(directory, 'private-health-path', 'missing.json'),
+      },
+    });
+    assert.match(failed, /OROT_FORM_NATIVE_UNKNOWN/);
+    assert.equal(failed.includes('private-health-path'), false);
     const payload = JSON.parse(readFileSync(join(directory, 'record.json'), 'utf8'));
     assert.equal(payload.captured, 130);
     assert.equal(payload.dropped, 2);
@@ -113,6 +123,7 @@ ${overlap}
       'capturedUptime',
       'geometry',
       'launch',
+      'losses',
       'multipleTouches',
       'phase',
       'point',
@@ -120,6 +131,7 @@ ${overlap}
       'touch',
       'touchCount',
       'touchUptime',
+      'trackingDiscarded',
     ]);
     assert.deepEqual(Object.keys(payload.records[0].geometry).sort(), [
       'focusMatches',
