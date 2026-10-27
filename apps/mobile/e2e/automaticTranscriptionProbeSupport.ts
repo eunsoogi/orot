@@ -1,4 +1,3 @@
-import type { SourceRecord } from '@orot/domain';
 import { NativeModules } from 'react-native';
 import {
   installSyntheticTranscriptionRecording,
@@ -8,6 +7,7 @@ import { saveRecordingSource } from '../src/recording/recordingPersistence';
 import { isSyntheticTranscriptionFixtureUnchanged } from '../src/recording/syntheticRecordingExportProbeBridge';
 import type {
   RecordingService,
+  RecordingSourceRecord,
   RecordingSnapshot,
 } from '../src/recording/recordingTypes';
 import type { RecordingLibraryService } from '../src/recording/recordingLibraryService';
@@ -122,7 +122,7 @@ export async function prepareAutomaticProbe(
   const library: RecordingLibraryService = {
     async list() {
       const source = await repository.get('source_record', recording.id);
-      return source ? [source] : [];
+      return source?.sourceKind === 'audio_recording' ? [source] : [];
     },
     async deleteRecording() {
       throw new Error('PROBE_DELETION_DISABLED');
@@ -182,7 +182,7 @@ export async function prepareAutomaticProbe(
       if (value !== recording || snapshot.status !== 'completed')
         throw new Error('PROBE_SAVE_INVALID');
       await assertFixture(value.id);
-      const source: SourceRecord = {
+      const source: RecordingSourceRecord = {
         id: value.id,
         sourceKind: 'audio_recording',
         title: syntheticTitle,

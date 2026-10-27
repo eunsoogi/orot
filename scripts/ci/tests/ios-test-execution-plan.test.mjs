@@ -44,8 +44,13 @@ test('independent feature suites have distinct jobs and preserve all registered 
   const original = ['release', 'debug', 'speech'].flatMap((name) =>
     iosTestCohortTasks(name).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 142);
-  assert.deepEqual(actual.slice().sort(), original.slice().sort());
+  // Debug shares the three import journeys with Release, while the full Release graph schedules each case once.
+  const uniqueOriginal = [...new Set(original)];
+  assert.equal(original.length, 161);
+  assert.equal(uniqueOriginal.length, 158);
+  assert.equal(actual.length, uniqueOriginal.length);
+  assert.equal(new Set(actual).size, actual.length);
+  assert.deepEqual(actual.slice().sort(), uniqueOriginal.slice().sort());
 });
 
 test('Questions partitions complete stateful cases into five independently scheduled jobs', () => {
