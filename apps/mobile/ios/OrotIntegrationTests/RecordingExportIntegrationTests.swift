@@ -167,7 +167,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         let presented = expectation(description: "The full-screen controller remains in the source window")
         anchor.present(modal, animated: false) { result in
             didPresent = result
-            XCTAssertNoThrow(try observePresentation("completion"))
+            XCTAssertNotNil(try? observePresentation("completion"), "Presentation diagnostics must serialize")
             presented.fulfill()
         }
         wait(for: [presented], timeout: 5)
