@@ -58,6 +58,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         XCTAssertFalse(UITestConditions.element(app, "inference-consent-cleared").exists)
 
         UITestConditions.scrollTo(clear, in: app)
+        XCTAssertTrue(clear.isHittable, "The clear action must remain reachable after reflow")
         clear.tap()
         let secondConfirmation = app.alerts["외부 전송 동의 내역을 지울까요?"]
         XCTAssertTrue(UITestConditions.exists(secondConfirmation), app.debugDescription)
@@ -77,7 +78,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(cleared.exists, "The completed receipt state must survive reflow")
     }
 
-    /// Compares live panel frames with each other, their scroll host, and the native right rail.
+    /// Checks horizontal viewport containment while allowing vertical scroll overflow.
     @MainActor
     private func verifyPrivacyPanels(_ app: XCUIApplication) throws {
         let scroll = UITestConditions.element(app, "settings-privacy-scroll")
@@ -92,7 +93,8 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         let contentFrame = columns.frame
         let primaryFrame = primary.frame
         let secondaryFrame = secondary.frame
-        XCTAssertTrue(scroll.frame.contains(contentFrame))
+        XCTAssertGreaterThanOrEqual(contentFrame.minX, scroll.frame.minX - 1)
+        XCTAssertLessThanOrEqual(contentFrame.maxX, scroll.frame.maxX + 1)
         XCTAssertTrue(contentFrame.contains(primaryFrame))
         XCTAssertTrue(contentFrame.contains(secondaryFrame))
         let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
