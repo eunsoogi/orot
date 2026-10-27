@@ -40,9 +40,19 @@ export function HealthDataFeatureSelection({
             style={styles.row}
             testID={`health-data-feature-${feature}`}
           >
-            <Text style={styles.rowTitle}>
-              {t(`healthkit.unifiedImport.feature.${feature}`)}
-            </Text>
+            <View style={styles.label}>
+              <Text style={styles.rowTitle}>
+                {t(`healthkit.unifiedImport.feature.${feature}`)}
+              </Text>
+              <Text
+                style={styles.rowStatus}
+                testID={`health-data-feature-status-${feature}`}
+              >
+                {selected.has(feature)
+                  ? t('settings.healthData.autoSyncEnabled')
+                  : t('settings.healthData.autoSyncDisabled')}
+              </Text>
+            </View>
             <AppSymbol
               color={
                 selected.has(feature) ? appColors.primary : appColors.secondary
@@ -73,8 +83,12 @@ const styles = StyleSheet.create({
   row: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
-    minHeight: 54,
+    minHeight: 68,
+    paddingVertical: 10,
   },
+  label: { flex: 1, gap: 3, minWidth: 0 },
   rowTitle: { color: appColors.text, fontSize: 15, fontWeight: '500' },
+  rowStatus: { color: appColors.secondary, fontSize: 12, lineHeight: 18 },
 });

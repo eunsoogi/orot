@@ -18,10 +18,12 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Health detail panels resolve against the actual native usable regions.
   // Appointment entry routes share the screen that measures list and selected-detail panels.
   // The saved library owns a measured list and summary that share that usable geometry.
+  // Health data settings pairs category choices with sync and permission status panels.
   return route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'health-records' ||
     route.name === 'health-records-detail' ||
+    route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
