@@ -186,11 +186,56 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
     screen.queryByTestId(`navigation-route-columns-${questionsKey}`),
   ).toBeNull();
 
+  // Recording owns its live-session and consent panels as one reflowing screen.
   await act(async () => {
     controller.push('recording');
   });
   const recordingKey = controller.getSnapshot().currentRoute.key;
   expect(
     screen.queryByTestId(`navigation-route-columns-${recordingKey}`),
+  ).toBeNull();
+});
+
+test('lets the Records root tab own the full lane for its adaptive panels', async () => {
+  const controller = createNavigationController<TestRoute>('home');
+  const rootTabs = { activeTab: 'records' as const, onSelect: jest.fn() };
+  const homeKey = controller.getSnapshot().currentRoute.key;
+
+  await render(
+    <NavigationRouteAdapter
+      contentLayoutOwner={appContentLayoutOwner}
+      controller={controller}
+      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+    >
+      {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
+    </NavigationRouteAdapter>,
+  );
+
+  // The Records root tab is presented by `home`, so its selected tab owns layout.
+  expect(screen.getByTestId('route-home')).toBeTruthy();
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${homeKey}`),
+  ).toBeNull();
+});
+
+test('lets the Home root tab own the full lane for its adaptive panels', async () => {
+  const controller = createNavigationController<TestRoute>('home');
+  const rootTabs = { activeTab: 'home' as const, onSelect: jest.fn() };
+  const homeKey = controller.getSnapshot().currentRoute.key;
+
+  await render(
+    <NavigationRouteAdapter
+      contentLayoutOwner={appContentLayoutOwner}
+      controller={controller}
+      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+    >
+      {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
+    </NavigationRouteAdapter>,
+  );
+
+  // Home root content shares the `home` route with sibling tabs but owns adaptive layout itself.
+  expect(screen.getByTestId('route-home')).toBeTruthy();
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${homeKey}`),
   ).toBeNull();
 });

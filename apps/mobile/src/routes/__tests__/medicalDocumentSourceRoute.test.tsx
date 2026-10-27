@@ -6,7 +6,7 @@ jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
 
-test('opens saved medical document text and page provenance from Records', async () => {
+test('opens saved medical document text and provenance inside one measured panel', async () => {
   const source = {
     id: 'document-saved',
     sourceKind: 'medical_document' as const,
@@ -47,6 +47,9 @@ test('opens saved medical document text and page provenance from Records', async
   };
   await render(
     <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={jest.fn()}
       onOpenSymptoms={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
@@ -58,6 +61,10 @@ test('opens saved medical document text and page provenance from Records', async
 
   await fireEvent.press(await screen.findByTestId('medical-document-source-0'));
 
+  expect(screen.getByTestId('records-document-source-layout')).toBeTruthy();
+  expect(
+    screen.queryByTestId('records-document-source-layout-secondary'),
+  ).toBeNull();
   expect(service.getDocument).toHaveBeenCalledWith(source.id);
   expect(screen.getByTestId('medical-document-source-title')).toHaveTextContent(
     source.title,
