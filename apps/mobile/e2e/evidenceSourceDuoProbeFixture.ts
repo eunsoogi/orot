@@ -60,7 +60,9 @@ export async function seedEvidenceSourceDuoRecords(
   const excerpt = evidenceSourceDuoFixtureRecords.excerpt;
   const savedExcerpt = await records.get('evidence_span', excerpt.id);
   if (savedExcerpt && fingerprint(savedExcerpt) !== fingerprint(excerpt)) {
-    throw new Error('The reserved evidence excerpt fixture ID is already used.');
+    throw new Error(
+      'The reserved evidence excerpt fixture ID is already used.',
+    );
   }
   if (!savedExcerpt) await records.put('evidence_span', excerpt);
 }
@@ -136,8 +138,7 @@ async function loadEvidenceSourceDuoLocalData(): Promise<AiFeatureLocalData> {
         throw new Error('The synthetic evidence request was cancelled.');
       return identities.some(
         identity =>
-          identity.kind === 'evidence_span' &&
-          identity.id === EVIDENCE_SPAN_ID,
+          identity.kind === 'evidence_span' && identity.id === EVIDENCE_SPAN_ID,
       )
         ? [sourceChunk]
         : [];
@@ -159,7 +160,9 @@ async function loadEvidenceSourceDuoLocalData(): Promise<AiFeatureLocalData> {
 const runEvidenceSourceDuoDisease: NonNullable<
   AiFeatureServiceDependencies['diseaseRunner']
 > = async (workflow, _inventory, invocation, _resolve, task) => {
-  const tool = workflow.tools.find(value => value.id === 'local-personal-records');
+  const tool = workflow.tools.find(
+    value => value.id === 'local-personal-records',
+  );
   if (!tool) throw new Error('The local evidence search tool is unavailable.');
   const result = await tool.search({
     operationRunId: workflow.execution.operationRunId,
@@ -173,7 +176,9 @@ const runEvidenceSourceDuoDisease: NonNullable<
   if ('status' in result) {
     throw new Error('The local synthetic evidence search was not available.');
   }
-  const item = result.items.find(value => value.evidenceId === EVIDENCE_SPAN_ID);
+  const item = result.items.find(
+    value => value.evidenceId === EVIDENCE_SPAN_ID,
+  );
   if (!item) throw new Error('The synthetic evidence citation was not found.');
   const citation = referenceOnly(item);
   return {

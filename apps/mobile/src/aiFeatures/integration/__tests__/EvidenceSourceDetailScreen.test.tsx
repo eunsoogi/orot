@@ -77,7 +77,10 @@ const measurableView = View as unknown as {
     ) => void;
   };
 };
-const windowBounds = new Map<string, { readonly x: number; readonly width: number }>();
+const windowBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
 
@@ -181,8 +184,9 @@ describe('EvidenceSourceDetailScreen', () => {
       )?.flexDirection,
     ).toBe('column');
     expect(
-      StyleSheet.flatten(screen.getByTestId('ai-feature-source-row-0').props.style)
-        ?.flexDirection,
+      StyleSheet.flatten(
+        screen.getByTestId('ai-feature-source-row-0').props.style,
+      )?.flexDirection,
     ).toBe('column');
     expect(screen.getByText('HealthKit import')).toBeTruthy();
 
