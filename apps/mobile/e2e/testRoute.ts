@@ -20,6 +20,7 @@ export const capabilityScenarios = [
   'local-e5',
   'local-query',
   'provider-selection',
+  'settings-accounts-layout',
   'visit-questions',
   'openai-tools',
 ] as const;
