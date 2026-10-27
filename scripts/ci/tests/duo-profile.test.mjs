@@ -77,6 +77,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const coreTests = iosTestInventory('core');
   const contextualDeparture =
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
+  const manualHistoryRecovery =
+    'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow';
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const aiFeatureEntry =
@@ -116,6 +118,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     scheduleReflow,
     scheduleLargeText,
     contextualDeparture,
+    manualHistoryRecovery,
     duoKeyboardSave,
     fourSidedOcclusion,
     recordingShareDismissal,
