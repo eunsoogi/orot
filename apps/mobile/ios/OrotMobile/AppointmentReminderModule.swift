@@ -1,6 +1,92 @@
 import Foundation
 import React
 
+enum AppointmentReminderDiagnosticStage: String, Codable {
+    case diagnosticReady = "diagnostic-ready"
+    case bridgeEnter = "bridge-enter"
+    case bridgeResolve = "bridge-resolve"
+    case bridgeReject = "bridge-reject"
+    case selectionWriteEnter = "selection-write-enter"
+    case selectionWriteResolve = "selection-write-resolve"
+    case selectionWriteReject = "selection-write-reject"
+    case requestAuthorizationEnter = "request-authorization-enter"
+    case requestAuthorizationResolve = "request-authorization-resolve"
+    case requestAuthorizationReject = "request-authorization-reject"
+    case permissionRequestEnter = "permission-request-enter"
+    case permissionRequestResolve = "permission-request-resolve"
+    case permissionRequestReject = "permission-request-reject"
+    case authorizationObserved = "authorization-observed"
+    case planValidationEnter = "plan-validation-enter"
+    case planValidationResolve = "plan-validation-resolve"
+    case planValidationReject = "plan-validation-reject"
+    case expiryCheck = "expiry-check"
+    case expiryReject = "expiry-reject"
+    case authorizationCheck = "authorization-check"
+    case authorizationReject = "authorization-reject"
+    case triggerCheck = "trigger-check"
+    case triggerResolve = "trigger-resolve"
+    case triggerReject = "trigger-reject"
+    case centerAddEnter = "center-add-enter"
+    case centerAddResolve = "center-add-resolve"
+    case centerAddReject = "center-add-reject"
+    case cancel
+}
+
+enum AppointmentReminderDiagnosticAuthorization: String, Codable {
+    case authorized
+    case notDetermined
+    case denied
+    case unknown
+
+    init(status: String) {
+        switch status {
+        case "authorized": self = .authorized
+        case "notDetermined": self = .notDetermined
+        case "denied": self = .denied
+        default: self = .unknown
+        }
+    }
+}
+
+/// Ordinary products compile this boundary to a no-op; diagnostic writes also require the explicit launch flag.
+@inline(__always)
+func recordAppointmentReminderDiagnostic(
+    _ stage: AppointmentReminderDiagnosticStage,
+    nullPlan: Bool? = nil,
+    authorization: AppointmentReminderDiagnosticAuthorization? = nil,
+    error: Error? = nil,
+) {
+    #if OROT_TESTS
+        AppointmentReminderDiagnosticTrace.record(
+            stage,
+            nullPlan: nullPlan,
+            authorization: authorization,
+            error: error,
+        )
+    #endif
+}
+
+/// Keep opaque invocation ownership task-local across actor calls without changing bridge arguments.
+func withAppointmentReminderDiagnosticOperation(_ operation: () async -> Void) async {
+    #if OROT_TESTS
+        await AppointmentReminderDiagnosticTrace.withOperation(operation)
+    #else
+        await operation()
+    #endif
+}
+
+extension AppointmentReminderNotifications {
+    /// Keep fixed test-trace forwarding out of the scheduling flow; ordinary builds reduce it to a no-op.
+    func trace(
+        _ stage: AppointmentReminderDiagnosticStage,
+        nullPlan: Bool? = nil,
+        authorization: AppointmentReminderDiagnosticAuthorization? = nil,
+        error: Error? = nil,
+    ) {
+        recordAppointmentReminderDiagnostic(stage, nullPlan: nullPlan, authorization: authorization, error: error)
+    }
+}
+
 @objc(AppointmentReminderModule)
 public final class AppointmentReminderModule: RCTEventEmitter {
     private var observer: NSObjectProtocol?
@@ -63,16 +149,27 @@ public final class AppointmentReminderModule: RCTEventEmitter {
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         Task {
-            do {
-                try await AppointmentReminderNotifications.shared.writeSelection(value as? [String: Any])
-                resolve(nil)
-            } catch { reject("REMINDER_SELECTION_FAILED", "The reminder preference could not be saved.", nil) }
+            await withAppointmentReminderDiagnosticOperation {
+                recordAppointmentReminderDiagnostic(.selectionWriteEnter)
+                do {
+                    try await AppointmentReminderNotifications.shared.writeSelection(value as? [String: Any])
+                    resolve(nil)
+                    recordAppointmentReminderDiagnostic(.selectionWriteResolve)
+                } catch {
+                    recordAppointmentReminderDiagnostic(.selectionWriteReject, error: error)
+                    reject("REMINDER_SELECTION_FAILED", "The reminder preference could not be saved.", nil)
+                }
+            }
         }
     }
 
     @objc(authorizationStatus:rejecter:)
     public func authorizationStatus(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
-        Task { await resolve(AppointmentReminderNotifications.shared.authorizationStatus()) }
+        Task {
+            await withAppointmentReminderDiagnosticOperation {
+                await resolve(AppointmentReminderNotifications.shared.authorizationStatus())
+            }
+        }
     }
 
     @objc(requestAuthorization:rejecter:)
@@ -80,8 +177,20 @@ public final class AppointmentReminderModule: RCTEventEmitter {
         _ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         Task {
-            do { try await resolve(AppointmentReminderNotifications.shared.requestAuthorization()) }
-            catch { reject("REMINDER_PERMISSION_FAILED", "Notification authorization could not be checked.", nil) }
+            await withAppointmentReminderDiagnosticOperation {
+                recordAppointmentReminderDiagnostic(.requestAuthorizationEnter)
+                do {
+                    let status = try await AppointmentReminderNotifications.shared.requestAuthorization()
+                    resolve(status)
+                    recordAppointmentReminderDiagnostic(
+                        .requestAuthorizationResolve,
+                        authorization: .init(status: status),
+                    )
+                } catch {
+                    recordAppointmentReminderDiagnostic(.requestAuthorizationReject, error: error)
+                    reject("REMINDER_PERMISSION_FAILED", "Notification authorization could not be checked.", nil)
+                }
+            }
         }
     }
 
@@ -91,11 +200,28 @@ public final class AppointmentReminderModule: RCTEventEmitter {
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         Task {
-            do {
-                let plan = try value.map(AppointmentReminderNotificationPlan.init)
-                try await AppointmentReminderNotifications.shared.replace(plan)
-                resolve(nil)
-            } catch { reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", nil) }
+            await withAppointmentReminderDiagnosticOperation {
+                recordAppointmentReminderDiagnostic(.bridgeEnter, nullPlan: value == nil)
+                recordAppointmentReminderDiagnostic(.planValidationEnter, nullPlan: value == nil)
+                let plan: AppointmentReminderNotificationPlan?
+                do {
+                    plan = try value.map(AppointmentReminderNotificationPlan.init)
+                    recordAppointmentReminderDiagnostic(.planValidationResolve, nullPlan: value == nil)
+                } catch {
+                    recordAppointmentReminderDiagnostic(.planValidationReject, error: error)
+                    recordAppointmentReminderDiagnostic(.bridgeReject, error: error)
+                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", nil)
+                    return
+                }
+                do {
+                    try await AppointmentReminderNotifications.shared.replace(plan)
+                    resolve(nil)
+                    recordAppointmentReminderDiagnostic(.bridgeResolve, nullPlan: value == nil)
+                } catch {
+                    recordAppointmentReminderDiagnostic(.bridgeReject, error: error)
+                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", nil)
+                }
+            }
         }
     }
 

@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
+		A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */; };
 		A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000002 /* AppointmentReminderTestObservation.m */; };
 		A68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */; };
 		A68F00000000000000000004 /* ReminderJourneyObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000004 /* ReminderJourneyObservation.swift */; };
 		A68F00000000000000000005 /* ReminderJourneyForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000005 /* ReminderJourneyForm.swift */; };
+		A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */; };
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
@@ -148,6 +150,7 @@
 		A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000003 /* AppointmentReminderNotifications.swift */; };
 		A67F00000000000000000004 /* AppointmentReminderDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000004 /* AppointmentReminderDelivery.swift */; };
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
+		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
@@ -244,10 +247,12 @@
 
 /* Begin PBXFileReference section */
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
+		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
 		B68F00000000000000000002 /* AppointmentReminderTestObservation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppointmentReminderTestObservation.m; path = OrotMobile/AppointmentReminderTestObservation.m; sourceTree = "<group>"; };
 		B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderJourneyUITests.swift; path = AppointmentReminderJourneyUITests.swift; sourceTree = "<group>"; };
 		B68F00000000000000000004 /* ReminderJourneyObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReminderJourneyObservation.swift; path = ReminderJourneyObservation.swift; sourceTree = "<group>"; };
 		B68F00000000000000000005 /* ReminderJourneyForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReminderJourneyForm.swift; path = ReminderJourneyForm.swift; sourceTree = "<group>"; };
+		B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderJourneyDiagnostic.swift; sourceTree = "<group>"; };
 		096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHistoryView.swift; sourceTree = "<group>"; };
 		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
 		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
@@ -402,6 +407,7 @@
 		B67F00000000000000000003 /* AppointmentReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderNotifications.swift; path = OrotMobile/AppointmentReminderNotifications.swift; sourceTree = "<group>"; };
 		B67F00000000000000000004 /* AppointmentReminderDelivery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderDelivery.swift; path = OrotMobile/AppointmentReminderDelivery.swift; sourceTree = "<group>"; };
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
+		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SymptomScrollTrace.swift; path = OrotMobile/SymptomScrollTrace.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -572,6 +578,7 @@
 				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
 				B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */,
+				B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */,
 				B68F00000000000000000002 /* AppointmentReminderTestObservation.m */,
 				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
 				B67F00000000000000000002 /* AppointmentReminderModule.m */,
@@ -674,6 +681,7 @@
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
 				E17A00000000000000000014 /* MedicationDoseCursorTests.swift */,
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
+				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				84B32B25A66940F5B8E52E61 /* SymptomAccessorySnapshotTests.swift */,
@@ -767,6 +775,7 @@
 				B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */,
 				B68F00000000000000000004 /* ReminderJourneyObservation.swift */,
 				B68F00000000000000000005 /* ReminderJourneyForm.swift */,
+				B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */,
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
 				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
@@ -1143,6 +1152,7 @@
 				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
 				A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */,
+				A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */,
 				A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */,
 				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
 				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
@@ -1205,6 +1215,7 @@
 				A68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift in Sources */,
 				A68F00000000000000000004 /* ReminderJourneyObservation.swift in Sources */,
 				A68F00000000000000000005 /* ReminderJourneyForm.swift in Sources */,
+				A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */,
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
 				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,
@@ -1257,6 +1268,7 @@
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
 				E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */,
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
+				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				F9A40EB1180C4A2AB69881C5 /* SymptomAccessorySnapshotTests.swift in Sources */,

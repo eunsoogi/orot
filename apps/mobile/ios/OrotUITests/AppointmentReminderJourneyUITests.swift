@@ -7,11 +7,44 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// This native control proves confirmed rejection cannot fall through into original success checks.
+    @MainActor
+    func testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions() throws {
+        var order: [String] = []
+        do {
+            try ReminderJourneyDiagnostic.failConfirmedRejection([
+                "outcome": "reject", "status": "error", "busy": false,
+                "currentStatus": "error", "currentBusy": false,
+            ]) { order.append("failure-evidence") }
+            order.append("success-assertion")
+        } catch {
+            XCTAssertEqual((error as NSError).domain, "ReminderDiagnosticProductRejection")
+            order.append("thrown")
+        }
+        XCTAssertEqual(order, ["failure-evidence", "thrown"])
+        // A queued reconciliation that is still busy cannot establish the diagnostic terminal outcome.
+        try ReminderJourneyDiagnostic.failConfirmedRejection([
+            "outcome": "reject", "status": "error", "busy": false,
+            "currentStatus": "error", "currentBusy": true,
+        ]) { XCTFail("Busy coordinator must retain execution ownership") }
+    }
+
     @MainActor
     func testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps() throws {
         let app = XCUIApplication()
-        defer { UITestConditions.terminateStandaloneApp(app) }
-        try ReminderJourneyForm.start(app, session: UUID().uuidString)
+        let diagnosticRunID = try ReminderJourneyDiagnostic.diagnosticRunID()
+        defer {
+            // Diagnostic export waits for the app writer to stop; ordinary fixture lifecycle stays canonical.
+            if diagnosticRunID != nil {
+                app.terminate()
+            } else {
+                UITestConditions.terminateStandaloneApp(app)
+            }
+        }
+        try ReminderJourneyForm.start(app, session: UUID().uuidString, diagnosticRunID: diagnosticRunID)
+        if let diagnosticRunID {
+            try ReminderJourneyDiagnostic.requireDiagnostic(app, runID: diagnosticRunID, testCase: self)
+        }
         var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
             if let originalAppearance, app.state == .runningForeground {
@@ -25,8 +58,13 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         _ = try ReminderJourneyForm.create(app, clinic: "먼저 있는 합성 예약", start: ReminderJourneyForm.time(minutesAhead: 30), note: "합성 자료")
         let originalTime = ReminderJourneyForm.time(minutesAhead: 120)
         let id = try ReminderJourneyForm.create(app, clinic: ReminderJourneyForm.clinic, start: originalTime)
+        let action = diagnosticRunID == nil ? nil : try ReminderJourneyDiagnostic.actionSequence(app)
         ReminderJourneyForm.tap(app, "appointment-reminder-\(id)-60")
-        try ReminderJourneyObservation.allowFirstNotification(app, testCase: self)
+        if let action {
+            try ReminderJourneyObservation.allowFirstNotification(app, testCase: self, diagnosticAction: action)
+        } else {
+            try ReminderJourneyObservation.allowFirstNotification(app, testCase: self)
+        }
         try ReminderJourneyObservation.assertPending(app, id: id, start: originalTime, stage: "initial-schedule", testCase: self)
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
@@ -68,6 +106,9 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         try ReminderJourneyObservation.assertPending(app, id: selectedID, start: coldTime, stage: "cold-schedule", testCase: self)
         try ReminderJourneyObservation.tapActualNotification(app, cold: true, testCase: self)
         ReminderJourneyForm.inspectPreparation(app, name: "cold-selected-visit", testCase: self)
+        if diagnosticRunID != nil {
+            try ReminderJourneyDiagnostic.finishHealthy(app, testCase: self)
+        }
     }
 
     @MainActor
