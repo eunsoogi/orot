@@ -165,7 +165,7 @@ extension RootNavigationUITests {
         app.launch()
         NavigationUITestConditions.route(app, markers: ["settings-title"])
         tap(app, "settings-open-accounts")
-        try verifyAdaptivePanels(app, prefix: "settings-accounts-panels", navigationID: "navigation-back")
+        _ = try verifyAdaptivePanels(app, prefix: "settings-accounts-panels", navigationID: "navigation-back")
         try backToSettings(app)
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
     }
@@ -193,7 +193,7 @@ extension RootNavigationUITests {
         let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.frame.width > app.frame.height }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
         XCTAssertTrue(option.isSelected, "A pending provider choice must survive native reflow")
-        try verifyAdaptivePanels(app, prefix: "settings-provider-panels", navigationID: "navigation-back")
+        _ = try verifyAdaptivePanels(app, prefix: "settings-provider-panels", navigationID: "navigation-back")
         tap(app, "provider-selection-confirm")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
         XCTAssertTrue(app.staticTexts["Synthetic settings model (ChatGPT plan)"].exists)
