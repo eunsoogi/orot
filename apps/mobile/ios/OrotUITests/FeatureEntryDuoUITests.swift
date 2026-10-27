@@ -126,13 +126,16 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         let columns = node(app, "external-medical-evidence-columns")
         let primary = node(app, "external-medical-evidence-columns-primary")
         let secondary = node(app, "external-medical-evidence-columns-secondary")
+        // Shell geometry is only a measurement prerequisite; missing product panels must fail.
         guard UITestConditions.exists(viewport), !viewport.frame.isEmpty,
-              UITestConditions.exists(rail), !rail.frame.isEmpty,
-              UITestConditions.exists(columns), !columns.frame.isEmpty,
-              UITestConditions.exists(primary), !primary.frame.isEmpty,
-              UITestConditions.exists(secondary), !secondary.frame.isEmpty
+              UITestConditions.exists(rail), !rail.frame.isEmpty
         else {
             throw XCTSkip("Medical-literature panel geometry is unavailable in this window.")
+        }
+
+        for panel in [columns, primary, secondary] {
+            XCTAssertTrue(UITestConditions.exists(panel), app.debugDescription)
+            XCTAssertFalse(panel.frame.isEmpty, panel.debugDescription)
         }
 
         let horizontalGap = secondary.frame.minX - primary.frame.maxX
