@@ -5,7 +5,8 @@ import XCTest
 final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
     @MainActor
     func testGeometryPayloadSeparatesActualWindowFromContractedSensor() throws {
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 951, height: 669))
+        let scene = try foregroundScene()
+        let window = makeSceneWindow(in: scene, frame: CGRect(x: 0, y: 0, width: 951, height: 669))
         let host = UIView(frame: CGRect(x: 24, y: 10, width: 843, height: 625))
         window.addSubview(host)
         let sensor = NavigationGeometryView(frame: host.bounds)
@@ -29,7 +30,8 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
     func testNativeRailFramesUseWindowSideSpaceAndClearExpandedIndicators() async throws {
         // These are geometry fixtures, not a claim of measured Duo runtime acceptance.
         // Convert actual UIKit frames through an offset host to catch local/window confusion.
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 951, height: 669))
+        let scene = try foregroundScene()
+        let window = makeSceneWindow(in: scene, frame: CGRect(x: 0, y: 0, width: 951, height: 669))
         let controller = UIViewController()
         window.rootViewController = controller
         controller.view.frame = window.bounds
@@ -126,7 +128,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertNotNil(portal.superview)
         surface.removeFromSuperview()
         XCTAssertNil(portal.superview)
-        let nextWindow = UIWindow(frame: window.frame)
+        let nextWindow = makeSceneWindow(in: scene, frame: window.frame)
         let nextController = UIViewController()
         nextWindow.rootViewController = nextController
         nextController.view.frame = nextWindow.bounds
@@ -153,5 +155,23 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(frame.minY - systemRegion.maxY, 12)
         XCTAssertFalse(frame.intersects(systemRegion))
         XCTAssertGreaterThan(frame.minX, content.maxX)
+    }
+
+    /// Uses the integration host's connected foreground scene for real UIKit window ownership.
+    @MainActor
+    private func foregroundScene() throws -> UIWindowScene {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        return try XCTUnwrap(scene, "The integration host must have a foreground window scene.")
+    }
+
+    /// Keeps deterministic geometry while avoiding UIKit's deprecated frame-only window initializer.
+    @MainActor
+    private func makeSceneWindow(in scene: UIWindowScene, frame: CGRect) -> UIWindow {
+        let window = UIWindow(windowScene: scene)
+        window.frame = frame
+        XCTAssertTrue(window.windowScene === scene)
+        return window
     }
 }
