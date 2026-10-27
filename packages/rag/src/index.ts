@@ -16,7 +16,7 @@ export { buildPersistedEvidenceChunks } from './persistedRecords';
 export type { PersistedEvidenceReader } from './persistedRecords';
 // Expose conversion at the package boundary while retaining evidence IDs and citation metadata.
 export { documentToEvidenceChunk, evidenceChunkToDocument } from './langchain/documents';
-// Local embedding exports keep E5 batching, index persistence, and cosine search in the RAG boundary.
+// Native E5 batching and model identity remain shared by standard embedding adapters.
 export {
   LOCAL_EMBEDDING_IDENTITY,
   LOCAL_EMBEDDING_MODEL,
@@ -24,32 +24,22 @@ export {
   runLocalEmbeddingJob,
 } from './localEmbeddings';
 export type {
-  DocumentQueryEmbeddingProvider,
   LocalEmbeddingBackend,
-  LocalEmbeddingFailure,
   LocalEmbeddingModelIdentity,
   LocalEmbeddingProgress,
-  LocalEmbeddingRequest,
   LocalEmbeddingResponse,
-  LocalEmbeddingResult,
   LocalEmbeddingRole,
   LocalEmbeddingRunOptions,
 } from './localEmbeddings';
-export {
-  clearEvidenceIndex,
-  deleteEvidenceChunks,
-  indexEvidenceChunks,
-  searchEvidenceChunks,
-} from './embeddingRetrieval';
+export { clearEvidenceIndex, deleteEvidenceChunks } from './embeddingRetrieval';
 export type {
   EmbeddingIndexOptions,
   EmbeddingIndexProgress,
   LocalEmbeddingWrite,
-  LocalEmbeddingSearchHit,
   LocalEmbeddingVectorStore,
   PersistedLocalEmbedding,
 } from './embeddingRetrieval';
-export { searchHybridEvidenceChunks, DEFAULT_HYBRID_SEARCH_RANKING } from './hybridRetrieval';
+export { DEFAULT_HYBRID_SEARCH_RANKING } from './hybridRetrieval';
 export type {
   HybridEvidenceSearchHit,
   HybridSearchOptions,

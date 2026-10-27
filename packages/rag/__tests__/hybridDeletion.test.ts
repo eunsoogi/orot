@@ -1,10 +1,6 @@
-import { LOCAL_EMBEDDING_IDENTITY, deleteEvidenceChunks, searchHybridEvidenceChunks } from '../src';
-import type {
-  DocumentQueryEmbeddingProvider,
-  EvidenceChunk,
-  LocalEmbeddingVectorStore,
-  LocalFullTextSearchStore,
-} from '../src';
+import { searchFixtureEvidence, type FixtureEmbeddings } from './standardRetrievalFixtures';
+import { LOCAL_EMBEDDING_IDENTITY, deleteEvidenceChunks } from '../src';
+import type { EvidenceChunk, LocalEmbeddingVectorStore, LocalFullTextSearchStore } from '../src';
 
 const removedChunk: EvidenceChunk = {
   id: 'removed-chunk',
@@ -55,27 +51,18 @@ describe('hybrid evidence deletion', () => {
     const textStore: LocalFullTextSearchStore = {
       search: jest.fn(async () => [{ chunkId: removedChunk.id }]),
     };
-    const provider: DocumentQueryEmbeddingProvider = {
+    const provider: FixtureEmbeddings = {
       modelIdentity: LOCAL_EMBEDDING_IDENTITY,
-      embedDocuments: jest.fn(async () => ({ ok: true as const, value: { vectors: [] } })),
-      embedQueries: jest.fn(async () => ({
-        ok: true as const,
-        value: { vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)] },
-      })),
+      embedDocuments: jest.fn(async () => []),
+      embedQuery: jest.fn(async () => new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)),
     };
     await deleteEvidenceChunks([removedChunk], vectorStore);
 
     await expect(
-      searchHybridEvidenceChunks(
-        '복용 약물 기록',
-        [removedChunk],
-        provider,
-        vectorStore,
-        textStore,
-      ),
+      searchFixtureEvidence('복용 약물 기록', [removedChunk], provider, vectorStore, textStore),
     ).resolves.toEqual([]);
     expect(textStore.search).not.toHaveBeenCalled();
-    expect(provider.embedQueries).not.toHaveBeenCalled();
+    expect(provider.embedQuery).not.toHaveBeenCalled();
   });
 
   it('keeps a live source searchable when provenance points at a transcript revision', async () => {
@@ -92,17 +79,14 @@ describe('hybrid evidence deletion', () => {
     const textStore: LocalFullTextSearchStore = {
       search: jest.fn(async () => [{ chunkId: correctedTranscriptChunk.id }]),
     };
-    const provider: DocumentQueryEmbeddingProvider = {
+    const provider: FixtureEmbeddings = {
       modelIdentity: LOCAL_EMBEDDING_IDENTITY,
-      embedDocuments: jest.fn(async () => ({ ok: true as const, value: { vectors: [] } })),
-      embedQueries: jest.fn(async () => ({
-        ok: true as const,
-        value: { vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)] },
-      })),
+      embedDocuments: jest.fn(async () => []),
+      embedQuery: jest.fn(async () => new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)),
     };
 
     await expect(
-      searchHybridEvidenceChunks(
+      searchFixtureEvidence(
         '수정된 전사',
         [correctedTranscriptChunk],
         provider,
@@ -136,17 +120,14 @@ describe('hybrid evidence deletion', () => {
     const textStore: LocalFullTextSearchStore = {
       search: jest.fn(async () => [{ chunkId: manualChunk.id }]),
     };
-    const provider: DocumentQueryEmbeddingProvider = {
+    const provider: FixtureEmbeddings = {
       modelIdentity: LOCAL_EMBEDDING_IDENTITY,
-      embedDocuments: jest.fn(async () => ({ ok: true as const, value: { vectors: [] } })),
-      embedQueries: jest.fn(async () => ({
-        ok: true as const,
-        value: { vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)] },
-      })),
+      embedDocuments: jest.fn(async () => []),
+      embedQuery: jest.fn(async () => new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)),
     };
 
     await expect(
-      searchHybridEvidenceChunks('수기 방문 기록', [manualChunk], provider, vectorStore, textStore),
+      searchFixtureEvidence('수기 방문 기록', [manualChunk], provider, vectorStore, textStore),
     ).resolves.toMatchObject([{ chunk: { id: manualChunk.id } }]);
     expect(textStore.search).toHaveBeenCalledWith(
       '수기 방문 기록',

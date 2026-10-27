@@ -1,6 +1,9 @@
-import { chunkStructuredRecord, searchHybridEvidenceChunks } from '@orot/rag';
+import {
+  searchFixtureEvidence,
+  type FixtureEmbeddings,
+} from '../../../../../../packages/rag/__tests__/standardRetrievalFixtures';
+import { chunkStructuredRecord } from '@orot/rag';
 import type {
-  DocumentQueryEmbeddingProvider,
   LocalEmbeddingModelIdentity,
   LocalEmbeddingVectorStore,
 } from '@orot/rag';
@@ -43,16 +46,10 @@ describe('personal evidence semantic search identity', () => {
       modelSha256: 'model-hash',
       tokenizerSha256: 'tokenizer-hash',
     };
-    const provider: DocumentQueryEmbeddingProvider = {
+    const provider: FixtureEmbeddings = {
       modelIdentity: identity,
-      embedDocuments: jest.fn(async () => ({
-        ok: true as const,
-        value: { vectors: [[1]] },
-      })),
-      embedQueries: jest.fn(async () => ({
-        ok: true as const,
-        value: { vectors: [[1]] },
-      })),
+      embedDocuments: jest.fn(async () => [[1]]),
+      embedQuery: jest.fn(async () => [1]),
     };
     const vectors: LocalEmbeddingVectorStore = {
       // Match the SQLCipher guard: a claimed root source must exist in local storage.
@@ -74,7 +71,7 @@ describe('personal evidence semantic search identity', () => {
       {
         index: async () => undefined,
         search: (query, chunks, limit, options) =>
-          searchHybridEvidenceChunks(
+          searchFixtureEvidence(
             query,
             chunks,
             provider,

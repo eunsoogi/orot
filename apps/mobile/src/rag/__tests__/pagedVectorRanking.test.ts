@@ -1,9 +1,7 @@
-import { searchHybridEvidenceChunks } from '@orot/rag';
 import { localE5NativeBackend } from '../localE5NativeBackend';
 import { createLocalE5RagService } from '../localE5RagService';
 import { LocalE5Embeddings } from '../localE5Embeddings';
 import { SqlCipherVectorStore } from '../../storage/sqlCipherVectorStore';
-import { SqlCipherRagEmbeddingStorage } from '../../storage/ragEmbeddingStorage';
 import { SqlCipherRagFullTextSearchStore } from '../../storage/ragFullTextSearch';
 import {
   chunk,
@@ -81,15 +79,7 @@ it.each([500, 501, 1001])(
           rrfConstant: 1,
         },
       };
-      const expected = await searchHybridEvidenceChunks(
-        'consultation',
-        page,
-        rag.provider,
-        new SqlCipherRagEmbeddingStorage(database),
-        new SqlCipherRagFullTextSearchStore(database),
-        4,
-        options,
-      );
+
       const vector = jest.spyOn(
         SqlCipherVectorStore.prototype,
         'similaritySearchVectorWithScore',
@@ -100,6 +90,37 @@ it.each([500, 501, 1001])(
       );
       const embed = jest.spyOn(LocalE5Embeddings.prototype, 'embedQuery');
       const actual = await rag.search('consultation', page, 4, options);
+      // Independent ranks: all lexical scores tie by ID; only the three winner texts
+      // share the query's vector, including winners beyond the first storage page.
+      const winnerIds = [0, 500, count - 1].filter(
+        (value, index, values) =>
+          value < count && values.indexOf(value) === index,
+      );
+      const vectorOrder = [
+        ...winnerIds,
+        ...page.map((_, i) => i).filter(i => !winnerIds.includes(i)),
+      ];
+      const expected = page
+        .flatMap((value, i) => {
+          const lexicalRank = i < 4 ? i + 1 : null;
+          const position = vectorOrder.indexOf(i);
+          const vectorRank = position < 4 ? position + 1 : null;
+          if (lexicalRank === null && vectorRank === null) return [];
+          return [
+            {
+              chunk: value,
+              lexicalRank,
+              vectorRank,
+              score:
+                (lexicalRank === null ? 0 : 0.25 / (1 + lexicalRank)) +
+                (vectorRank === null ? 0 : 0.75 / (1 + vectorRank)),
+            },
+          ];
+        })
+        .sort(
+          (a, b) => b.score - a.score || a.chunk.id.localeCompare(b.chunk.id),
+        )
+        .slice(0, 4);
       expect(actual).toEqual(expected);
       expect(actual[0]).toMatchObject({
         chunk: page[0],
