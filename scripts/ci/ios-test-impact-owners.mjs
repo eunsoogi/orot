@@ -1,6 +1,8 @@
 // Maintained native tests can span non-obvious cohorts, so explicit inventory ownership takes precedence over filename heuristics.
 export const maintainedNativeTestOwners = new Map([
   ['apps/mobile/ios/orotintegrationtests/standardadapterintegrationtests.swift', ['provider']],
+  ['apps/mobile/ios/orotuitests/healthreviewuitests.swift', ['health-review-ui']],
+  ['apps/mobile/ios/orotuitests/healthreviewjourney.swift', ['health-review-ui']],
   ['apps/mobile/ios/orotuitests/recordingexportuitests.swift', ['recording-evidence']],
   ['apps/mobile/ios/orotuitests/transcriptevidenceuitests.swift', ['recording-evidence']],
   [
@@ -14,7 +16,7 @@ export const maintainedNativeTestOwners = new Map([
   ['apps/mobile/ios/orotuitests/pagedhealthrecordsuitests.swift', ['navigation-routes']],
   [
     'apps/mobile/ios/orotuitests/unifiedimportuitests.swift',
-    ['core-ui', 'health', 'navigation-imports'],
+    ['core-ui', 'health-observations', 'health-recovery', 'navigation-imports'],
   ],
   ['apps/mobile/ios/orotuitests/storagemigrationuitests.swift', ['calendar-appointments']],
   ['apps/mobile/ios/orotuitests/manualhistoryuitests.swift', ['calendar-appointments']],

@@ -53,7 +53,7 @@ test('scheduled cohort jobs use one consistent role and target', () => {
     for (const leaf of leaves) {
       const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
       if (
-        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/.test(
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording|health-review)-tests\.yml$/.test(
           leaf.uses ?? '',
         )
       ) {
@@ -84,9 +84,9 @@ test('full integration execution preserves profile observations and every regist
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   // The three picker journeys repeat across Debug health-import and Release fixtures.
-  assert.equal(scheduled.length, 174);
+  assert.equal(scheduled.length, 181);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 171);
+  assert.equal(identifiers.size, 178);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
