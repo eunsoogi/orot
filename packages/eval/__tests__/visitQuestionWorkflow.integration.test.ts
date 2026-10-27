@@ -20,12 +20,10 @@ const {
 } = require('../../../scripts/evaluation/visit-questions/workflow-harness.cjs');
 const {
   createScriptedProvider,
-  responseFor,
 } = require('../../../scripts/evaluation/visit-questions/scripted-provider.cjs');
 const {
-  makePreparedContext,
-  referenceMapForEvidence,
-} = require('../../../scripts/evaluation/visit-questions/synthetic-evidence.cjs');
+  createOpenAITestFetch,
+} = require('../../../scripts/evaluation/visit-questions/openai-test-adapter.cjs');
 const {
   ensureSyntheticDataset,
 } = require('../../../scripts/evaluation/visit-questions/langsmith-dataset.cjs');
@@ -81,7 +79,7 @@ async function uploadSyntheticResults(
       data: dataset.datasetId,
       evaluators: [evaluateVisitQuestionWithLangSmith],
       experimentPrefix: 'orot-visit-questions-synthetic',
-      description: `Actual #30 workflow with the ${providerMode} evaluation provider.`,
+      description: `Actual visit-question workflow with the ${providerMode} evaluation provider.`,
       client,
       disableEvaluatorTracing: true,
       metadata: {
@@ -101,39 +99,17 @@ async function uploadSyntheticResults(
 describe('manual synthetic visit-question graph evaluation', () => {
   it('passes mocked OpenAI response usage through the actual graph result', async () => {
     disableAmbientTracing(process.env);
-    const testCase = createSyntheticVisitQuestionFixture(FIXTURE_SEED).cases[0];
-    const workflowRoot = path.join(
-      getWorkflowSourceRoot(repoRoot),
-      'apps/mobile/src/agent/visitQuestions',
-    );
-    const { createVisitQuestionEvidenceAliases } = require(
-      path.join(workflowRoot, 'evidenceAliases'),
-    );
-    const { prepared, supplementalBatch } = makePreparedContext(testCase);
-    const aliases = createVisitQuestionEvidenceAliases(prepared.evidence.batch);
-    aliases.aliasBatch(supplementalBatch);
-    const scripted = createScriptedProvider(
-      testCase,
-      responseFor(testCase, referenceMapForEvidence(testCase, aliases)),
-    );
-    const calls: Array<{ url: string; authorization: string }> = [];
-    // Keep the graph response deterministic while wrapping it in the production OpenAI response shape.
-    const fetchImpl = async (url: string, options: any) => {
-      calls.push({ url, authorization: options.headers.authorization });
-      const response = await scripted.provider.generate({
-        messages: JSON.parse(options.body).messages,
-      });
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          choices: [
-            { message: { role: 'assistant', content: response.value.text }, finish_reason: 'stop' },
-          ],
-          usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
-        }),
-      };
-    };
+    const fixture = createSyntheticVisitQuestionFixture(FIXTURE_SEED);
+    const testCase = fixture.cases[0];
+    const scripted = createScriptedProvider(testCase);
+    const calls: Array<{
+      url: string;
+      authorization: string;
+      providerOutcome?: string;
+      providerError?: string;
+      providerErrorCode?: string;
+    }> = [];
+    const fetchImpl = createOpenAITestFetch(scripted.provider, calls);
     const environment = {
       OROT_VISIT_QUESTION_PROVIDER: 'openai-api',
       OROT_VISIT_QUESTION_MODEL: 'synthetic-model',
@@ -147,16 +123,28 @@ describe('manual synthetic visit-question graph evaluation', () => {
     };
     let output;
     try {
-      output = await runSyntheticCase(testCase, { environment, fetchImpl });
+      output = await runSyntheticCase(testCase, { environment, fetchImpl, fixture });
     } finally {
       globalThis.fetch = originalFetch;
     }
 
+    expect(output.status).toBe('ready');
     expect(calls).toHaveLength(3);
     expect(calls.every((call) => call.url === 'https://api.openai.com/v1/chat/completions')).toBe(
       true,
     );
     expect(calls.every((call) => call.authorization === 'Bearer synthetic-test-key')).toBe(true);
+    // Fetch attempts are recorded before the scripted provider returns, so verify its outcome too.
+    expect(
+      calls.map((call) => ({
+        outcome: call.providerOutcome,
+        error: call.providerError ?? call.providerErrorCode ?? null,
+      })),
+    ).toEqual([
+      { outcome: 'returned', error: null },
+      { outcome: 'returned', error: null },
+      { outcome: 'returned', error: null },
+    ]);
     expect(output.execution).toEqual({
       providerMode: 'openai-api',
       latencyMs: expect.any(Number),
@@ -165,22 +153,31 @@ describe('manual synthetic visit-question graph evaluation', () => {
     expect(JSON.stringify(output)).not.toContain('synthetic-test-key');
   });
 
-  it('runs the actual #30 graph and optionally uploads allowlisted results', async () => {
+  it('runs the visit-question workflow and optionally uploads allowlisted results', async () => {
     disableAmbientTracing(process.env);
     const providerConfig = getVisitQuestionProviderConfig(process.env);
     const fixture = createSyntheticVisitQuestionFixture(FIXTURE_SEED);
     const workflowSourceRoot = getWorkflowSourceRoot(repoRoot);
     const revisions = getEvaluationRevisionMetadata(repoRoot, workflowSourceRoot);
-    const examples = fixture.cases.map(toLangSmithExample);
     const outputs = new Map<string, any>();
+    const evaluatedCases: any[] = [];
+    const traces: any[] = [];
     const report = [];
 
     for (const testCase of fixture.cases) {
-      const output = await runSyntheticCase(testCase);
+      let evaluationCase: any;
+      const output = await runSyntheticCase(testCase, {
+        fixture,
+        onContext: (context: any) => {
+          evaluationCase = context.evaluationCase;
+          traces.push(context.trace);
+        },
+      });
+      evaluatedCases.push(evaluationCase);
       const expectedStatus =
         testCase.expected.resultMode === 'suggestions' ? 'ready' : 'needs_clarification';
       outputs.set(testCase.caseId, output);
-      const example = examples.find((item) => item.inputs.caseId === testCase.caseId)!;
+      const example = toLangSmithExample(evaluationCase);
       const scores = evaluateVisitQuestionWithLangSmith({
         inputs: example.inputs,
         outputs: output,
@@ -200,7 +197,7 @@ describe('manual synthetic visit-question graph evaluation', () => {
 
     const uploaded = isLangSmithUploadEnabled(process.env);
     const langSmithDataset = uploaded
-      ? await uploadSyntheticResults(fixture.cases, outputs, revisions, providerConfig.mode)
+      ? await uploadSyntheticResults(evaluatedCases, outputs, revisions, providerConfig.mode)
       : null;
     process.stdout.write(
       `${JSON.stringify(
@@ -230,7 +227,22 @@ describe('manual synthetic visit-question graph evaluation', () => {
         );
       }),
     ).toBe(true);
-    expect(report).toHaveLength(fixture.cases.length);
+    // Pin reproducible fixture outcomes while keeping below-target rubric scores visible in the manual report.
+    expect(report.every(({ status, expectedStatus }) => status === expectedStatus)).toBe(true);
+    expect(report.map(({ caseId, failedDimensions }) => ({ caseId, failedDimensions }))).toEqual([
+      { caseId: 'confirmed-next-visit-with-memory', failedDimensions: [] },
+      { caseId: 'conflicting-medication-needs-clarification', failedDimensions: [] },
+      {
+        caseId: 'historical-measurement-without-current-reading',
+        failedDimensions: ['useful_questions'],
+      },
+    ]);
+    expect(traces[0]).toMatchObject({
+      ragIndexCalls: 1,
+      ragSearchCalls: 1,
+      memoryStoreSearches: 1,
+    });
+    expect(traces[0].memoryQueryServiceSearches).toBeGreaterThan(0);
     if (providerConfig.mode === 'test-adapter') {
       expect(report.every((item) => item.execution.tokenUsage.status === 'unmeasured')).toBe(true);
     }
