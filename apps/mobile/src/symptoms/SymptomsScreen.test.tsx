@@ -108,6 +108,28 @@ describe('SymptomsScreen', () => {
     await waitFor(() => expect(onResolve).toHaveBeenCalledWith(entry.id));
   });
 
+  it('selects an entry and shows its original details without replacing its actions', async () => {
+    const entry = sampleSymptom();
+    await renderScreen({ entries: [entry] });
+
+    expect(screen.getByTestId('symptoms-selection-empty')).toBeTruthy();
+    const selector = screen.getByTestId(`symptom-select-${entry.id}`);
+    await fireEvent.press(selector);
+
+    expect(selector.props.accessibilityState?.selected).toBe(true);
+    expect(
+      screen.getByTestId('symptoms-selected-description').props.children,
+    ).toBe(entry.description);
+    expect(screen.getByTestId('symptoms-selected-status').props.children).toBe(
+      'Active',
+    );
+    expect(
+      screen.getAllByText('User-entered · not clinician-confirmed'),
+    ).toHaveLength(2);
+    expect(screen.getByTestId(`symptom-edit-${entry.id}`)).toBeTruthy();
+    expect(screen.getByTestId(`symptom-resolve-${entry.id}`)).toBeTruthy();
+  });
+
   it('filters by status and an inclusive local onset range', async () => {
     const onFilterChange = jest.fn();
     await renderScreen({ onFilterChange });

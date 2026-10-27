@@ -114,7 +114,11 @@ export default function SymptomFilters({
   return (
     <>
       {error ? (
-        <Text accessibilityRole="alert" testID="symptoms-filter-error">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="symptoms-filter-error"
+        >
           {error}
         </Text>
       ) : null}
@@ -137,7 +141,7 @@ export default function SymptomFilters({
               ]}
               testID={`symptom-filter-${status}`}
             >
-              <Text>
+              <Text style={styles.choiceLabel}>
                 {status === 'all'
                   ? 'All'
                   : status === 'active'
