@@ -75,6 +75,62 @@ enum ConversationHistoryUITestConditions {
         }
     }
 
+    /// Checks that a Duo preview follows selection without exposing source actions; narrow phones keep the original return flow.
+    static func verifySelectedConversationPreview() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "conversation-visual",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ]
+        app.launch()
+        defer { app.terminate() }
+
+        let firstQuestion = "첫 번째 합성 기록 질문"
+        let secondQuestion = "두 번째 합성 기록 질문"
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+
+        func send(_ question: String) {
+            let input = node(app, "rag-conversation-input")
+            input.tap()
+            input.typeText(question)
+            app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
+        }
+
+        send(firstQuestion)
+        node(app, "rag-conversation-new-session").tap()
+        send(secondQuestion)
+        node(app, "rag-conversation-sessions-toggle").tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
+
+        let rows = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "conversation-history-session-"),
+        )
+        XCTAssertEqual(rows.count, 2)
+        let firstConversation = rows.element(boundBy: 1)
+        reveal(firstConversation, in: node(app, "conversation-history-list"))
+        XCTAssertTrue(firstConversation.isHittable)
+        let preview = node(app, "conversation-history-preview")
+        firstConversation.tap()
+
+        if UITestConditions.exists(preview) {
+            XCTAssertTrue(UITestConditions.exists(preview.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", firstQuestion),
+            ).firstMatch))
+            XCTAssertEqual(
+                preview.buttons.matching(
+                    NSPredicate(format: "label BEGINSWITH %@", "원문 근거 열기"),
+                ).count,
+                0,
+            )
+            XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
+        } else {
+            // Compact layouts have no preview and return to the selected conversation.
+            XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+            XCTAssertTrue(app.staticTexts[firstQuestion].exists)
+        }
+    }
+
     private static func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
     }
