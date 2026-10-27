@@ -18,6 +18,8 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       fontSize: tokens.typography.sizes.title,
       fontWeight: tokens.typography.weights.bold,
     },
+    // Offset the panel gap so moving the heading preserves its former spacing above the provider.
+    contextHeading: { marginBottom: -tokens.spacing.sm },
     introduction: {
       color: colors.textMuted,
       fontSize: tokens.typography.sizes.body,
