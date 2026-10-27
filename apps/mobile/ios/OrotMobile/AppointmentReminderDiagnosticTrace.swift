@@ -89,11 +89,11 @@
         private static var healthSequence = 0
         @TaskLocal static var operationSequence: Int?
 
-        /// Child Tasks inherit this opaque bridge invocation; it is not a link to a JS action.
+        /// Keep the async operation on its caller's context; child Tasks inherit this opaque invocation, not a JS action link.
         static func withOperation(_ operation: () async -> Void) async {
             guard enabledRunID != nil else { await operation(); return }
             let sequence = lock.withLock { nextOperation += 1; return nextOperation }
-            await $operationSequence.withValue(sequence, operation: operation)
+            await $operationSequence.withValue(sequence) { await operation() }
         }
 
         private static var enabledRunID: String? {
