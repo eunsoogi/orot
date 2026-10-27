@@ -42,10 +42,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         RecordingExportFiles.armCancellation()
         XCTAssertTrue(RecordingExportFiles.consumeSimulatorCancellation())
         XCTAssertFalse(RecordingExportFiles.consumeSimulatorCancellation())
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: report), uniformTypeIdentifier: "public.json")
-        attachment.name = "recording-export-authorization"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        try addExportObservation(report, name: "recording-export-authorization")
     }
 
     @MainActor
@@ -74,14 +71,24 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
                 }
             }
         }
+        if ProcessInfo.processInfo.environment["OROT_TEST_UIKIT_REFERENCE"] == "YES" {
+            let finished = expectation(description: "UIKit reference diagnostic completes dismissal")
+            PopoverSourceRegion.runTestReference(root: root, window: window, activity: activity, applyResult: anchor.apply(to: activity), fileIsLive: { FileManager.default.fileExists(atPath: operation.file.path) }) { observation in
+                XCTAssertEqual(observation["referenceSucceeded"] as? Bool, true)
+                XCTAssertNoThrow(try RecordingExportFiles.finish(operation.directory))
+                XCTAssertFalse(FileManager.default.fileExists(atPath: operation.file.path))
+                XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
+                XCTAssertNoThrow(try self.addExportObservation(observation.merging(["cleanupFileAbsent": !FileManager.default.fileExists(atPath: operation.file.path), "cleanupResidueCount": RecordingExportFiles.residueCount()]) { _, new in new }, name: "UIKit-reference-only"))
+                finished.fulfill()
+            }
+            wait(for: [finished], timeout: 5)
+            return
+        }
         PopoverSourceRegion.testObservations = []
         let currentBeforeApply = anchor.isCurrent
         let configured = anchor.apply(to: activity)
         let boundary: [String: Any] = ["anchorCurrentBeforeApply": currentBeforeApply, "setterBoundary": PopoverSourceRegion.testObservations]
-        let boundaryAttachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: boundary), uniformTypeIdentifier: "public.json")
-        boundaryAttachment.name = "default-share-popover-setter-boundary"
-        boundaryAttachment.lifetime = .keepAlways
-        add(boundaryAttachment)
+        try addExportObservation(boundary, name: "default-share-popover-setter-boundary")
         XCTAssertEqual(configured, true)
         let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
         XCTAssertTrue(try type(of: XCTUnwrap(item as? UIView)) == UIView.self)
@@ -92,18 +99,8 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
         let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        let observation: [String: Any] = try [
-            "itemClass": String(describing: type(of: item)),
-            "itemIsExactUIView": type(of: XCTUnwrap(item as? UIView)) == UIView.self,
-            "identityPreserved": activity.popoverPresentationController?.sourceItem === item,
-            "exactGeometry": item.frame(in: window) == root.view.convert(region, to: window),
-            "foreignFrameIsNil": item.frame(in: foreignWindow) == nil,
-            "modalStyle": activity.modalPresentationStyle.rawValue,
-        ]
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
-        attachment.name = "framework-source-item-control"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        let observation = try PopoverSourceRegion.testReadbackObservation(item: XCTUnwrap(item as? UIView), controller: activity, window: window, foreignWindow: foreignWindow, expected: root.view.convert(region, to: window))
+        try addExportObservation(observation, name: "framework-source-item-control")
 
         let presented = expectation(description: "The default activity belongs to its initiating window")
         anchor.present(activity, animated: false) { confirmed in
@@ -127,11 +124,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         root.view.removeFromSuperview()
         XCTAssertFalse(anchor.isCurrent)
         XCTAssertEqual(anchor.apply(to: activity), false)
-        let detachedObservation = ["detachedFrameIsNil": item.frame(in: window) == nil]
-        let detachedAttachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: detachedObservation), uniformTypeIdentifier: "public.json")
-        detachedAttachment.name = "detached-framework-source-item-control"
-        detachedAttachment.lifetime = .keepAlways
-        add(detachedAttachment)
+        try addExportObservation(["detachedFrameIsNil": item.frame(in: window) == nil], name: "detached-framework-source-item-control")
     }
 
     @MainActor
@@ -246,5 +239,12 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
             .filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0 }
         XCTAssertEqual(windows.count, 1)
         return try XCTUnwrap(windows.first)
+    }
+
+    private func addExportObservation(_ observation: Any, name: String) throws {
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
+        attachment.name = name
+        attachment.lifetime = .keepAlways // Preserve diagnostics when the unchanged app assertion fails.
+        add(attachment)
     }
 }
