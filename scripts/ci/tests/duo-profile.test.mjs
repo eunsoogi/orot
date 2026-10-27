@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
+  const healthLibraryReflow =
+    'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges';
   const healthImportLibrary =
     'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute';
   const healthImportReflow =
@@ -105,7 +107,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 18);
+  assert.equal(duoInventory.length, 19);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -121,21 +123,29 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     fourSidedOcclusion,
     recordingShareDismissal,
     recordsHub,
+    healthLibraryReflow,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
     recordingLiveReflow,
   ]);
-  // Home remains part of the iPhone fixture profile; Records runs only on the dedicated Duo destination.
+  // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
+  // health-import regressions run only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!coreTests.includes(homeSummary));
   assert.ok(!coreTests.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
-  for (const healthImportCase of [healthImportLibrary, healthImportReflow, healthImportLargeText]) {
-    assert.ok(!iPhoneFixtures.includes(healthImportCase));
-    assert.ok(!coreTests.includes(healthImportCase));
+  for (const duoOnlyCase of [
+    manualHistoryRecovery,
+    healthLibraryReflow,
+    healthImportLibrary,
+    healthImportReflow,
+    healthImportLargeText,
+  ]) {
+    assert.ok(!iPhoneFixtures.includes(duoOnlyCase));
+    assert.ok(!coreTests.includes(duoOnlyCase));
   }
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(iPhoneFixtures.includes(scheduleReflow));

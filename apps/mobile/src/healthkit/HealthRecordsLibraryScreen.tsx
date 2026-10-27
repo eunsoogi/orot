@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthObservationPageLoader } from '@orot/storage';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -86,8 +87,35 @@ export function HealthRecordsLibraryScreen({
     categories,
     selectedCategory,
   );
-
-  return (
+  // Reflow the mounted filters and result list without restarting route-owned paging.
+  const navigationPanel = (
+    <ScrollView
+      contentContainerStyle={[styles.container, navigationInset]}
+      style={styles.panelScroll}
+      testID="health-records-navigation-scroll"
+    >
+      <View style={styles.listHeader}>
+        <HealthRecordsLibraryHeader
+          hasSharedNavigation={hasSharedNavigation}
+          loadState={loadState}
+          observationCount={observationCount}
+          hasMore={hasMore}
+          onBack={onBack}
+          onRetry={() => {
+            for (const category of observationCategories) reload(category);
+          }}
+          onSelectCategory={setSelectedCategory}
+          selectedCategory={selectedCategory}
+        />
+        <AppButton
+          onPress={onOpenHealthImport}
+          testID="health-records-open-health-import"
+          title={t('healthRecords.importHealthData')}
+        />
+      </View>
+    </ScrollView>
+  );
+  const recordsPanel = (
     <FlatList
       data={displayedCategories}
       keyExtractor={category => category}
@@ -115,27 +143,6 @@ export function HealthRecordsLibraryScreen({
           )
         ) : undefined
       }
-      ListHeaderComponent={
-        <View style={styles.listHeader}>
-          <HealthRecordsLibraryHeader
-            hasSharedNavigation={hasSharedNavigation}
-            loadState={loadState}
-            observationCount={observationCount}
-            hasMore={hasMore}
-            onBack={onBack}
-            onRetry={() => {
-              for (const category of observationCategories) reload(category);
-            }}
-            onSelectCategory={setSelectedCategory}
-            selectedCategory={selectedCategory}
-          />
-          <AppButton
-            onPress={onOpenHealthImport}
-            testID="health-records-open-health-import"
-            title={t('healthRecords.importHealthData')}
-          />
-        </View>
-      }
       onEndReached={() => {
         if (!loadingMore && !failed) loadNext();
       }}
@@ -156,13 +163,24 @@ export function HealthRecordsLibraryScreen({
           />
         )
       }
+      style={styles.panelScroll}
       testID="health-records-scroll"
+    />
+  );
+
+  return (
+    <AdaptiveColumns
+      primary={navigationPanel}
+      routeKey="health-records-library"
+      secondary={recordsPanel}
+      testID="health-records-layout"
     />
   );
 }
 
 const styles = StyleSheet.create({
   listHeader: { gap: 14 },
+  panelScroll: { flex: 1, minHeight: 0 },
   container: {
     gap: 16,
     paddingHorizontal: 20,
