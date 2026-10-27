@@ -12,7 +12,7 @@ import {
 import {
   openGeometry,
   rotatedGeometry,
-} from './navigationOpenGeometry.fixture';
+} from '../__fixtures__/navigationOpenGeometry';
 
 /** Exposes only the native presentation contract; this is not native UI proof. */
 function Surface({

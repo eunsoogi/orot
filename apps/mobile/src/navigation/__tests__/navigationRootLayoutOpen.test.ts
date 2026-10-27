@@ -7,7 +7,7 @@ import { resolveNavigationRootLayout } from '../navigationRootLayout';
 import {
   openGeometry,
   rotatedGeometry,
-} from './navigationOpenGeometry.fixture';
+} from '../__fixtures__/navigationOpenGeometry';
 
 function layout(payload: NavigationGeometryPayload) {
   const geometry = createNavigationGeometrySnapshot(payload);
