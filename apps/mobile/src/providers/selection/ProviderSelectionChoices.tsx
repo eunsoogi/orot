@@ -1,11 +1,13 @@
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { ProviderCatalogAccount } from './ProviderCatalogAccount';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import type {
   ProviderSelectionOption,
   ChatGPTAccountSetup,
+  ProviderSelectionPresentation,
   ProviderSelectionRequirements,
 } from './types';
 
@@ -16,11 +18,12 @@ interface ProviderSelectionChoicesProps {
   readonly selectedOption: ProviderSelectionOption | undefined;
   readonly pendingOption: ProviderSelectionOption | null;
   readonly requirements: ProviderSelectionRequirements;
+  readonly presentation?: ProviderSelectionPresentation;
   readonly onChoose: (option: ProviderSelectionOption) => void;
   readonly chatGPTSetup?: ChatGPTAccountSetup;
 }
 
-/** Keeps provider cards and their explicit privacy confirmation together. */
+/** Keeps selection state in the parent while settings reflows local and connected providers. */
 export function ProviderSelectionChoices({
   options,
   loading,
@@ -28,6 +31,7 @@ export function ProviderSelectionChoices({
   selectedOption,
   pendingOption,
   requirements,
+  presentation = 'feature',
   onChoose,
   chatGPTSetup,
 }: ProviderSelectionChoicesProps) {
@@ -42,6 +46,7 @@ export function ProviderSelectionChoices({
           onPress={() => onChoose(option)}
           option={option}
           requirements={requirements}
+          showCapabilities={presentation === 'settings-provider'}
           selected={
             selected?.provider.id === option.provider.id &&
             selected.modelId === option.modelId
@@ -49,24 +54,54 @@ export function ProviderSelectionChoices({
         />
       ) : null,
     );
+  const localPanel = (
+    <View
+      style={styles.section}
+      testID={
+        presentation === 'settings-provider'
+          ? 'settings-provider-local-panel'
+          : undefined
+      }
+    >
+      <Text style={styles.heading}>이 기기에서</Text>
+      {cards(true)}
+    </View>
+  );
+  const showConnectedPanel =
+    chatGPTSetup !== undefined ||
+    options.some(option => option.privacyBoundary !== 'on-device');
+  const connectedPanel = showConnectedPanel ? (
+    <View
+      style={styles.section}
+      testID={
+        presentation === 'settings-provider'
+          ? 'settings-provider-connected-panel'
+          : undefined
+      }
+    >
+      <Text style={styles.heading}>연결한 계정</Text>
+      <View style={styles.account}>
+        {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
+        {cards(false)}
+      </View>
+    </View>
+  ) : null;
+
+  if (presentation === 'settings-provider') {
+    // The route-level owner removes the scene width clamp so both panels see the same native regions.
+    return (
+      <AdaptiveColumns
+        primary={localPanel}
+        secondary={connectedPanel}
+        testID="settings-provider-panels"
+      />
+    );
+  }
+
   return (
     <>
-      <View style={styles.section}>
-        <Text style={styles.heading}>이 기기에서</Text>
-        {cards(true)}
-      </View>
-      {chatGPTSetup ||
-      options.some(option => option.privacyBoundary !== 'on-device') ? (
-        <View style={styles.section}>
-          <Text style={styles.heading}>연결한 계정</Text>
-          <View style={styles.account}>
-            {chatGPTSetup ? (
-              <ProviderCatalogAccount setup={chatGPTSetup} />
-            ) : null}
-            {cards(false)}
-          </View>
-        </View>
-      ) : null}
+      {localPanel}
+      {connectedPanel}
     </>
   );
 }

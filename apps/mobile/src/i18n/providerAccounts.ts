@@ -29,6 +29,14 @@ export const providerAccountsKo = {
   'provider.selection.remoteHeading': 'OpenAI로 선택한 내용 전송',
   'provider.selection.remotePrivacy':
     '질문과 직접 선택한 기록이 OpenAI로 전송돼 처리돼요. 전송할 기록을 확인하고 OpenAI 서비스 정책을 확인해 주세요.',
+  'provider.selection.capabilitiesSummary': '지원 기능',
+  'provider.selection.noDeclaredCapabilities': '지원 정보 없음',
+  'provider.selection.capability.audio': '음성 입력',
+  'provider.selection.capability.image': '이미지 입력',
+  'provider.selection.capability.text': '텍스트 입력',
+  'provider.selection.capability.streaming': '실시간 응답',
+  'provider.selection.capability.structuredOutput': '구조화된 응답',
+  'provider.selection.capability.toolCalling': '도구 호출',
   'provider.selection.unsupportedCapabilities':
     '이 AI는 추천 흐름에 필요한 기능을 지원하지 않아 선택할 수 없어요.',
   'provider.selection.storageLoadError': '저장된 AI 선택을 불러오지 못했어요.',
