@@ -174,7 +174,7 @@ private final class FailureInjectingFileManager: FileManager {
         try super.copyItem(at: sourceURL, to: destinationURL)
     }
 
-    // Keep the override aligned with FileManager so failure injection sees the actual attributes request.
+    /// Mirrors FileManager's required attributes type and injects failure only for the selected path.
     override func setAttributes(
         _ attributes: [FileAttributeKey: Any],
         ofItemAtPath path: String,
