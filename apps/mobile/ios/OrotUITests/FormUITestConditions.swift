@@ -11,14 +11,14 @@ enum FormUITestConditions {
     /// AX can mark a keyboard-covered control hittable; require measured viewport containment before a tap.
     /// Journal callers also exclude floating navigation buttons; noninteractive text must prove rendered visibility separately.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil) -> CGRect? {
         let scroll = UITestConditions.element(app, scrollID)
-        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding, keyboardMayBeVisible: keyboardMayBeVisible, observeFocusGesture: observeFocusGesture)
+        return reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction, avoiding: avoiding, keyboardMayBeVisible: keyboardMayBeVisible, observeFocusGesture: observeFocusGesture, scrollObservation: scrollObservation)
     }
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         let journalScroll = scroll.identifier == "symptoms-scroll"
@@ -43,6 +43,7 @@ enum FormUITestConditions {
                 // Reuse this exact successful observation if focus later clips the AX frame.
                 return targetFrame
             }
+            scrollObservation?.observed(targetFrame, completedSteps: attempt)
             if attempt == 16 {
                 observeFocusGesture?("reveal-exhausted", focusedKeyboardFrame)
                 break
@@ -79,7 +80,12 @@ enum FormUITestConditions {
                 // Observe the same reserved boundary around the existing gesture, without changing its coordinates or budget.
                 observeFocusGesture?("before-scroll-\(attempt + 1)", focusedKeyboardFrame)
                 observeFirstDrag?(applicationFrame, geometry.viewport, targetFrame, controls ?? [], gesture.start, gesture.end)
-                start.press(forDuration: 0.05, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
+                FormScrollObservation.around(scrollObservation, step: attempt + 1, target: targetFrame,
+                                             start: CGPoint(x: gesture.start.dx + applicationFrame.minX, y: gesture.start.dy + applicationFrame.minY),
+                                             end: CGPoint(x: gesture.end.dx + applicationFrame.minX, y: gesture.end.dy + applicationFrame.minY))
+                {
+                    start.press(forDuration: 0.05, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
+                }
                 observeFocusGesture?("after-scroll-\(attempt + 1)", focusedKeyboardFrame)
             }
             // Opt-in measurement ends after this unchanged gesture; nil prevents refocus, editing, or another loop iteration.

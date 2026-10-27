@@ -6,10 +6,16 @@ final class HealthReviewJourney {
     let app = XCUIApplication()
     let fixture = "test-persistence-" + UUID().uuidString.lowercased()
     private var sequence = 0
+    private var diagnosticLaunch = UUID()
+    private var revealSequence = 0
 
     func launch(_ mode: String = "seed") {
         sequence = 0
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "health-review", "-OROT_REVIEW_FIXTURE", fixture, "-OROT_REVIEW_MODE", mode]
+        diagnosticLaunch = UUID()
+        revealSequence = 0
+        // Diagnostic identity is unrelated to the fixture's real source identifier and never exposes request content.
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "health-review", "-OROT_REVIEW_FIXTURE", fixture, "-OROT_REVIEW_MODE", mode,
+                               "-OROT_TEST_FORM_OBSERVATION", diagnosticLaunch.uuidString]
         app.launch()
         UITestConditions.value(element("health-review-probe-ready"), equals: "ready")
     }
@@ -28,7 +34,12 @@ final class HealthReviewJourney {
         let control = element(id)
         XCTAssertTrue(UITestConditions.exists(control))
         if inForm {
-            FormUITestConditions.reveal(control, in: app, scrollID: scrollID, towardTop: towardTop)
+            var observation: FormScrollObservation?
+            if id == "health-review-start" {
+                revealSequence += 1
+                observation = FormScrollObservation(launch: diagnosticLaunch, reveal: revealSequence)
+            }
+            FormUITestConditions.reveal(control, in: app, scrollID: scrollID, towardTop: towardTop, scrollObservation: observation)
         }
         XCTAssertTrue(control.isHittable)
         control.tap()
