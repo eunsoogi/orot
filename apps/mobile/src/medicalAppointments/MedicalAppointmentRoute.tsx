@@ -144,8 +144,8 @@ export default function MedicalAppointmentRoute({
 
   if (!selectedAi) {
     return (
-      <NavigationRouteScrollView>
-        <View style={styles.status}>
+      <MedicalAppointmentStatus manual={manual}>
+        <>
           <ClassificationLeaveState />
           <Text accessibilityRole="header" style={styles.title}>
             {copy.title}
@@ -156,8 +156,8 @@ export default function MedicalAppointmentRoute({
             testID="medical-appointment-manual"
             title={copy.manual}
           />
-        </View>
-      </NavigationRouteScrollView>
+        </>
+      </MedicalAppointmentStatus>
     );
   }
 
@@ -180,7 +180,7 @@ export default function MedicalAppointmentRoute({
   );
 }
 
-/** Keeps manual-route boot states inside one native region until its screen can measure panels. */
+/** Keeps both appointment routes' boot states inside one native region until their screen is ready. */
 function MedicalAppointmentStatus({
   manual,
   children,
@@ -191,15 +191,11 @@ function MedicalAppointmentStatus({
   const status = <View style={styles.status}>{children}</View>;
   return (
     <NavigationRouteScrollView>
-      {manual ? (
-        <AdaptiveColumns
-          primary={status}
-          routeKey="medical-manual"
-          testID="medical-appointment-status-columns"
-        />
-      ) : (
-        status
-      )}
+      <AdaptiveColumns
+        primary={status}
+        routeKey={manual ? 'medical-manual' : 'medical'}
+        testID="medical-appointment-status-columns"
+      />
     </NavigationRouteScrollView>
   );
 }
