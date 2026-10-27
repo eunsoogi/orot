@@ -76,7 +76,10 @@ test('zombies are terminal, unrelated processes untouched, and EPERM never means
   rows = [row(10), row(11), row(99)];
   await denied.escalate('SIGTERM');
   rows = [row(99)];
-  assert.equal((await denied.cleanupReceipt()).writersStopped, false);
+  const deniedReceipt = await denied.cleanupReceipt();
+  assert.equal(deniedReceipt.writersStopped, false);
+  assert.equal(deniedReceipt.firstUncertainty.reason, 'process-signal-permission-denied');
+  assert.equal(deniedReceipt.firstUncertainty.signal, 'SIGTERM');
 });
 
 test('PID/start identity reuse is never signalled, including between observation and signal', async () => {
@@ -90,7 +93,16 @@ test('PID/start identity reuse is never signalled, including between observation
   owner.closeRegistrations();
   await owner.escalate('SIGKILL');
   assert.deepEqual(signals, []);
-  assert.equal((await owner.cleanupReceipt()).supervisionUncertain, true);
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.supervisionUncertain, true);
+  assert.deepEqual(receipt.firstUncertainty, {
+    reason: 'process-start-identity-changed-before-signal',
+    expectedGroupCount: 0,
+    attemptCount: 0,
+    registeredGroupCount: 0,
+    signal: 'SIGKILL',
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(receipt)).firstUncertainty, receipt.firstUncertainty);
 });
 
 test('unavailable snapshots and unknown members after leader loss retain ownership', async () => {
@@ -130,7 +142,12 @@ test('pipe registrations require complete frames and every exact binding field',
     if (invalid === 'oversized') bytes = 'x'.repeat(8193);
     stream.end(bytes);
     await done;
-    assert.equal((await owner.cleanupReceipt()).writersStopped, invalid === null);
+    const receipt = await owner.cleanupReceipt();
+    assert.equal(receipt.writersStopped, invalid === null);
+    if (invalid === 'partial')
+      assert.equal(receipt.firstUncertainty.reason, 'registration-frame-incomplete-at-close');
+    if (invalid === 'private')
+      assert.equal(receipt.firstUncertainty.reason, 'unsupported-registration-field');
   }
 });
 

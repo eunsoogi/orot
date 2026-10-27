@@ -54,20 +54,23 @@ export function createReminderOwnedGroupObserver(
   };
 }
 
-/** A bounded, exact-binding pipe frame can register only the canonical creation attempt being supervised. */
+/** A bounded, exact-binding frame registers only the canonical attempt; diagnostics retain fixed reasons and lengths, never frame contents. */
 export function consumeReminderOwnedGroupPipe(stream, binding, supervisor) {
   let input = '';
   let bytes = 0;
   let invalid = !validBinding(binding);
-  const invalidate = () => {
+  const invalidate = (reason = 'invalid-registration-frame') => {
     invalid = true;
-    supervisor.uncertain = true;
+    supervisor.markUncertain(reason, {
+      receivedLength: bytes,
+      bufferedFrameLength: Buffer.byteLength(input),
+    });
   };
   return new Promise((resolve) => {
     stream.on('data', (chunk) => {
       bytes += chunk.length;
       if (invalid || bytes > 8192) {
-        invalidate();
+        invalidate(invalid ? 'registration-binding-invalid' : 'registration-pipe-limit-exceeded');
         return;
       }
       input += chunk.toString('utf8');
@@ -75,26 +78,46 @@ export function consumeReminderOwnedGroupPipe(stream, binding, supervisor) {
       while ((newline = input.indexOf('\n')) >= 0) {
         const line = input.slice(0, newline);
         input = input.slice(newline + 1);
+        let reason = 'malformed-registration-frame';
         try {
-          if (!line || Buffer.byteLength(line) > 2048)
+          if (!line) {
+            reason = 'empty-registration-frame';
             throw new Error('Invalid registration frame');
+          }
+          if (Buffer.byteLength(line) > 2048) {
+            reason = 'registration-frame-limit-exceeded';
+            throw new Error('Invalid registration frame');
+          }
           const event = JSON.parse(line);
-          if (
-            Object.keys(event).some((key) => !fields.has(key)) ||
-            bindingKeys.some((key) => event[key] !== binding[key]) ||
-            !['attempt', 'spawned', 'failed'].includes(event.phase) ||
-            (event.phase !== 'spawned' &&
-              ['pid', 'group', 'identity'].some((key) => Object.hasOwn(event, key)))
-          )
+          if (Object.keys(event).some((key) => !fields.has(key))) {
+            reason = 'unsupported-registration-field';
             throw new Error('Mismatched registration');
+          }
+          if (bindingKeys.some((key) => event[key] !== binding[key])) {
+            reason = 'registration-binding-mismatch';
+            throw new Error('Mismatched registration');
+          }
+          if (!['attempt', 'spawned', 'failed'].includes(event.phase)) {
+            reason = 'unsupported-registration-phase';
+            throw new Error('Mismatched registration');
+          }
+          if (
+            event.phase !== 'spawned' &&
+            ['pid', 'group', 'identity'].some((key) => Object.hasOwn(event, key))
+          ) {
+            reason = 'identity-field-on-nonspawn-event';
+            throw new Error('Mismatched registration');
+          }
           supervisor.registration(event);
         } catch {
-          invalidate();
+          invalidate(reason);
         }
       }
     });
-    stream.once('error', invalidate);
+    stream.once('error', () => invalidate('registration-pipe-error'));
     stream.once('close', () => {
+      if (input.length) invalidate('registration-frame-incomplete-at-close');
+      else if (invalid) invalidate('registration-binding-invalid');
       supervisor.closeRegistrations(invalid || input.length > 0);
       resolve();
     });
