@@ -18,6 +18,14 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+
+        let visitQuestions = node(app, "ai-feature-visit-questions")
+        FormUITestConditions.reveal(visitQuestions, in: app, scrollID: "ai-features-screen")
+        visitQuestions.tap()
+        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+
         let originalFrame = app.frame
         try assertActionsFitContentLane(app)
 
