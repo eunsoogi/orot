@@ -87,6 +87,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
   const settingsAccounts =
     'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
+  const privacySettingsReflow =
+    'OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
   const healthLibraryReflow =
@@ -123,14 +125,15 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, recording library/review, appointment, classification, and health-detail coverage explicit.
-  assert.equal(duoInventory.length, 27);
+  // Keep account/privacy settings, recording library/review, appointments, classification, and health details explicit.
+  assert.equal(duoInventory.length, 28);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
     settingsAccounts,
+    privacySettingsReflow,
     aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
@@ -154,8 +157,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     recordingReviewReflow,
     savedRecordingsSelectionSummary,
   ]);
-  // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
-  // health-import regressions run only on the dedicated Duo destination.
+  // Home stays in iPhone fixtures; privacy, feature-entry, manual-history,
+  // records, and Duo-only health-import regressions use the dedicated destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(settingsHome));
@@ -166,6 +169,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
     manualHistoryRecovery,
+    settingsAccounts,
+    privacySettingsReflow,
     healthLibraryReflow,
     healthImportLibrary,
     healthImportReflow,
