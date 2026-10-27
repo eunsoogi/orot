@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
+  const settingsAccounts =
+    'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
   const healthLibraryReflow =
@@ -122,12 +124,13 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep Settings, recording library/review, appointment, classification, and health-detail coverage explicit.
-  assert.equal(duoInventory.length, 26);
+  assert.equal(duoInventory.length, 27);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
+    settingsAccounts,
     aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
