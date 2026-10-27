@@ -197,7 +197,7 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
   ).toBeNull();
 });
 
-test.each(['home', 'records', 'ai'] as const)(
+test.each(['home', 'records', 'ai', 'settings'] as const)(
   'lets the %s root tab own the full lane for its adaptive panels',
   async activeTab => {
     const controller = createNavigationController<TestRoute>('home');
