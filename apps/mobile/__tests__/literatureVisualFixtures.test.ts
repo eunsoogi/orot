@@ -1,6 +1,7 @@
 import {
   syntheticLiteratureService,
   syntheticPublication,
+  syntheticSecondPublication,
 } from '../e2e/literatureVisualFixtures';
 
 test('synthetic literature still requires explicit query consent', async () => {
@@ -13,7 +14,13 @@ test('synthetic literature still requires explicit query consent', async () => {
 
 test('synthetic result, empty and failure states remain distinct', async () => {
   for (const [query, expected] of [
-    ['sleep', { status: 'available', publications: [syntheticPublication] }],
+    [
+      'sleep',
+      {
+        status: 'available',
+        publications: [syntheticPublication, syntheticSecondPublication],
+      },
+    ],
     ['empty', { status: 'empty' }],
     ['failure', { status: 'unavailable' }],
   ] as const) {
