@@ -23,7 +23,7 @@ interface ProviderSelectionChoicesProps {
   readonly chatGPTSetup?: ChatGPTAccountSetup;
 }
 
-/** Keeps selection state in the parent while settings reflows local and connected providers. */
+/** Keeps selection state in the screen while provider panels adapt to measured usable regions. */
 export function ProviderSelectionChoices({
   options,
   loading,
@@ -46,7 +46,9 @@ export function ProviderSelectionChoices({
           onPress={() => onChoose(option)}
           option={option}
           requirements={requirements}
-          showCapabilities={presentation === 'settings-provider'}
+          showCapabilities={
+            presentation === 'feature' || presentation === 'settings-provider'
+          }
           selected={
             selected?.provider.id === option.provider.id &&
             selected.modelId === option.modelId
@@ -87,13 +89,17 @@ export function ProviderSelectionChoices({
     </View>
   ) : null;
 
-  if (presentation === 'settings-provider') {
-    // The route-level owner removes the scene width clamp so both panels see the same native regions.
+  if (presentation === 'settings-provider' || presentation === 'feature') {
+    // Both routes provide their measured content region; separate IDs keep their UI coverage distinct.
     return (
       <AdaptiveColumns
         primary={localPanel}
         secondary={connectedPanel}
-        testID="settings-provider-panels"
+        testID={
+          presentation === 'settings-provider'
+            ? 'settings-provider-panels'
+            : 'provider-selection-feature-panels'
+        }
       />
     );
   }

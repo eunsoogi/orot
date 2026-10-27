@@ -79,6 +79,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
   const manualHistoryRecovery =
     'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow';
+  const mergedManualHistoryReflow =
+    'OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow';
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const aiFeatureEntry =
@@ -89,6 +91,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
   const settingsProvider =
     'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels';
+  const providerSelectionReflow =
+    'OrotUITests/ProviderSelectionDuoUITests/testProviderSelectionOverlayReflowsWithinMeasuredDuoRegionsAndKeepsConfirmationReachable';
   const settingsBackup =
     'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable';
   const privacySettingsReflow =
@@ -134,7 +138,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep account, provider, sync, backup, privacy, health settings, and existing Duo cases explicit.
-  assert.equal(duoInventory.length, 32);
+  // The PR merge ref may also contain this independently merged main case.
+  assert.equal(duoInventory.length, 33 + Number(duoInventory.includes(mergedManualHistoryReflow)));
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -142,6 +147,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     settingsHome,
     settingsAccounts,
     settingsProvider,
+    providerSelectionReflow,
     settingsBackup,
     privacySettingsReflow,
     aiFeatureEntry,
@@ -153,6 +159,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     classificationReflow,
     contextualDeparture,
     manualHistoryRecovery,
+    ...(duoInventory.includes(mergedManualHistoryReflow) ? [mergedManualHistoryReflow] : []),
     duoKeyboardSave,
     fourSidedOcclusion,
     recordingShareDismissal,
