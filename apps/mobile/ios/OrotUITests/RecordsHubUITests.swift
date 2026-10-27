@@ -72,6 +72,56 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         capture(largeText, "records-duo-large-text-content-lane")
     }
 
+    /// Keeps the selected record type and period when the measured content lane changes.
+    @MainActor
+    func testHealthRecordTypeAndPeriodSurviveOrientationChanges() throws {
+        let app = launch([
+            "-OROT_TEST_SCENARIO", "paged-records",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+        ])
+        defer {
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+
+        try openRecords(in: app)
+        let library = UITestConditions.element(app, "records-open-health-library")
+        XCTAssertTrue(library.waitForAppearance(), app.debugDescription)
+        library.tap()
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        let heartFilter = UITestConditions.element(app, "health-record-filter-heart_rate")
+        XCTAssertTrue(heartFilter.waitForAppearance(), app.debugDescription)
+        heartFilter.tap()
+        XCTAssertTrue(heartFilter.isSelected, app.debugDescription)
+
+        let detail = UITestConditions.element(app, "health-record-open-detail-heart_rate")
+        XCTAssertTrue(detail.waitForAppearance(), app.debugDescription)
+        detail.tap()
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        let year = UITestConditions.element(app, "health-record-period-year")
+        XCTAssertTrue(year.waitForAppearance(), app.debugDescription)
+        year.tap()
+        XCTAssertTrue(year.isSelected, app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+
+        let portraitBounds = app.frame
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWindowBoundsChange(in: app, from: portraitBounds)
+        try assertHealthLibraryFitsContentLane(in: app)
+        XCTAssertTrue(
+            UITestConditions.element(app, "health-record-filter-heart_rate").isSelected,
+            app.debugDescription,
+        )
+        UITestConditions.element(app, "health-record-open-detail-heart_rate").tap()
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        XCTAssertTrue(
+            UITestConditions.element(app, "health-record-period-year").isSelected,
+            app.debugDescription,
+        )
+        capture(app, "health-library-type-and-period-after-rotation")
+    }
+
     @MainActor
     private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
@@ -114,6 +164,23 @@ final class RecordsHubUITests: OrotFailFastTestCase {
 
         // Compare to UIKit's rendered rail; a fixed device width would miss Split View and text scaling.
         XCTAssertLessThanOrEqual(primary.frame.maxX, rail.toolbar.frame.minX)
+    }
+
+    @MainActor
+    private func assertHealthLibraryFitsContentLane(in app: XCUIApplication) throws {
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        let rail = try NavigationUITestConditions.navigationAction(
+            app,
+            "navigation-tab-records",
+        )
+        for identifier in [
+            "health-records-layout-primary",
+            "health-records-layout-secondary",
+        ] {
+            let panel = UITestConditions.element(app, identifier)
+            XCTAssertTrue(panel.exists && !panel.frame.isEmpty, app.debugDescription)
+            XCTAssertLessThanOrEqual(panel.frame.maxX, rail.toolbar.frame.minX)
+        }
     }
 
     @MainActor
