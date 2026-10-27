@@ -80,3 +80,31 @@ test.each([
     }
   },
 );
+
+// A rejected retry stays retryable and must not claim attempted categories.
+test('reports a retryable outcome when the local sync operation rejects', async () => {
+  const retrySync = jest.fn(async () => {
+    throw new Error('local sync failed');
+  });
+  await render(
+    <SettingsSyncStatusRoute
+      loadSelection={async () => ['sleep']}
+      loadStatus={async () => null}
+      retrySync={retrySync}
+      calendarSync={{
+        ...emptyCalendarAutoSyncState,
+        requestAccess: jest.fn(async () => 'notDetermined' as const),
+        refresh: jest.fn(async () => undefined),
+      }}
+    />,
+  );
+
+  await screen.findByTestId('settings-sync-selected-features');
+  await fireEvent.press(screen.getByTestId('settings-sync-retry'));
+
+  expect(retrySync).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('settings-sync-status-message')).toHaveTextContent(
+    '마지막 동기화 중 문제가 있었어요. 권한과 저장소 상태를 확인한 뒤 다시 시도해 주세요.',
+  );
+  expect(screen.queryByTestId('settings-sync-attempted-features')).toBeNull();
+});
