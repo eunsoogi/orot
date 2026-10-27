@@ -63,6 +63,7 @@ const cohorts = {
     minutes: 20,
     cases: [
       'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
+      'HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

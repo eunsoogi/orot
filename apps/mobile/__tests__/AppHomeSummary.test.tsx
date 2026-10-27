@@ -1,4 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { Appointment } from '@orot/storage';
 import App from '../App';
 import { savedSource } from '../src/recording/recordingScreenSupport';
@@ -42,6 +47,11 @@ test('shows the next saved appointment and recent recording on Home', async () =
   await waitFor(() =>
     expect(screen.getByTestId('home-next-appointment')).toBeTruthy(),
   );
+  expect(screen.getByTestId('home-adaptive-columns-primary')).toBeTruthy();
+  expect(screen.getByTestId('home-adaptive-columns-secondary')).toBeTruthy();
+  expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
+  expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
+  expect(screen.getAllByTestId('home-prepare-visit')).toHaveLength(1);
   expect(screen.getByText('새봄의원')).toBeTruthy();
   expect(screen.getByText('상담 녹음')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
@@ -76,4 +86,49 @@ test('keeps an ongoing calendar appointment visible and shows its end time', asy
   expect(screen.getByTestId('home-next-appointment')).toHaveTextContent(
     new RegExp(formatTime(new Date(endsAt))),
   );
+  expect(screen.getByTestId('home-empty-recordings')).toBeTruthy();
+});
+
+test('keeps Home summaries independent while each loader recovers from failure', async () => {
+  const now = new Date();
+  const store = createAppointmentStore([
+    {
+      id: 'next-visit',
+      effectiveAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      recordedAt: now.toISOString(),
+      ingestedAt: now.toISOString(),
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      status: 'scheduled',
+      clinicLabel: '새봄의원',
+    },
+  ]);
+  const loadAppointments = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('Appointment load failed'))
+    .mockResolvedValue(store.repository);
+  const loadRecordings = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('Recording load failed'))
+    .mockResolvedValue([savedSource]);
+
+  await render(
+    <App loadAppointments={loadAppointments} loadRecordings={loadRecordings} />,
+  );
+
+  expect(await screen.findByTestId('home-appointments-retry')).toBeTruthy();
+  expect(await screen.findByTestId('home-recordings-retry')).toBeTruthy();
+  expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
+  expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
+
+  // Each panel owns its retry path, so recovering one summary cannot replace the other.
+  fireEvent.press(screen.getByTestId('home-appointments-retry'));
+  fireEvent.press(screen.getByTestId('home-recordings-retry'));
+
+  await waitFor(() => {
+    expect(screen.getByText('새봄의원')).toBeTruthy();
+    expect(screen.getByText('상담 녹음')).toBeTruthy();
+  });
+  expect(loadAppointments).toHaveBeenCalledTimes(2);
+  expect(loadRecordings).toHaveBeenCalledTimes(2);
 });
