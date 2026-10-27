@@ -50,13 +50,26 @@ export class OwnedProcessSupervisor {
     this.expectedGroups = expectedGroups;
     this.closed = false;
     this.uncertain = false;
+    this.firstUncertainty = null;
     this.rootVerified = false;
     if (root) this.registerRoot(root);
   }
 
+  /** Preserve the first actual branch and scalar context so later cleanup failures cannot mask it. */
+  markUncertain(reason, context = {}) {
+    this.uncertain = true;
+    this.firstUncertainty ??= Object.freeze({
+      reason,
+      expectedGroupCount: this.expectedGroups,
+      attemptCount: this.attempts.size,
+      registeredGroupCount: this.registered.size,
+      ...context,
+    });
+  }
+
   registerRoot(root) {
     if (!this.validIdentity(root)) {
-      this.uncertain = true;
+      this.markUncertain('invalid-root-identity');
       return;
     }
     this.rootVerified = true;
@@ -86,7 +99,7 @@ export class OwnedProcessSupervisor {
   registration(event) {
     const sequence = event.attemptSequence;
     if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence > this.expectedGroups) {
-      this.uncertain = true;
+      this.markUncertain('registration-sequence-out-of-range');
       return;
     }
     if (event.phase === 'attempt' && !this.attempts.has(sequence)) this.attempts.add(sequence);
@@ -110,7 +123,10 @@ export class OwnedProcessSupervisor {
         members: new Map([[event.pid, event]]),
         retired: false,
       });
-    } else this.uncertain = true;
+    } else {
+      const phase = ['attempt', 'spawned', 'failed'].includes(event.phase) ? event.phase : 'other';
+      this.markUncertain('registration-event-rejected', { phase });
+    }
   }
 
   closeRegistrations(partial = false) {
@@ -120,7 +136,7 @@ export class OwnedProcessSupervisor {
       this.attempts.size !== this.expectedGroups ||
       this.registered.size !== this.expectedGroups
     )
-      this.uncertain = true;
+      this.markUncertain('registrations-incomplete', { partial });
   }
 
   async observe() {
@@ -129,7 +145,7 @@ export class OwnedProcessSupervisor {
     try {
       rows = await this.snapshot();
     } catch {
-      this.uncertain = true;
+      this.markUncertain('process-snapshot-unavailable');
       this.unverifiedLive = true;
       return [];
     }
@@ -142,7 +158,11 @@ export class OwnedProcessSupervisor {
         leader &&
         (leader.identity !== group.leader.identity || leader.group !== group.leader.group)
       ) {
-        this.uncertain = true;
+        this.markUncertain(
+          leader.identity !== group.leader.identity
+            ? 'leader-start-identity-changed'
+            : 'leader-process-group-changed',
+        );
         this.unverifiedLive ||= rows.some(
           (row) => row.group === group.leader.group && !row.state.startsWith('Z'),
         );
@@ -156,7 +176,9 @@ export class OwnedProcessSupervisor {
       for (const row of members) {
         const known = group.members.get(row.pid);
         if ((known && known.identity !== row.identity) || (!known && !leader)) {
-          this.uncertain = true;
+          this.markUncertain(
+            known ? 'member-start-identity-changed' : 'member-unregistered-after-leader-exit',
+          );
           this.unverifiedLive ||= !row.state.startsWith('Z');
           continue;
         }
@@ -175,7 +197,7 @@ export class OwnedProcessSupervisor {
     try {
       fresh = await this.snapshot();
     } catch {
-      this.uncertain = true;
+      this.markUncertain('escalation-snapshot-unavailable', { signal });
       return;
     }
     for (const row of owned) {
@@ -183,18 +205,30 @@ export class OwnedProcessSupervisor {
       const current = fresh.find((item) => item.pid === row.pid);
       if (!current) continue;
       if (current.identity !== row.identity || current.group !== row.group) {
-        this.uncertain = true;
+        this.markUncertain(
+          current.identity !== row.identity
+            ? 'process-start-identity-changed-before-signal'
+            : 'process-group-changed-before-signal',
+          { signal },
+        );
         continue;
       }
       if (current.state.startsWith('Z')) continue;
       try {
         this.signal(row.pid, signal);
-        this.emit({ event: 'owned-process-signal', pid: row.pid, signal });
       } catch (error) {
-        if (error.code !== 'ESRCH') {
-          this.uncertain = true;
-          this.emit({ event: 'owned-signal-failed', pid: row.pid, signal, code: error.code });
-        }
+        if (error.code === 'ESRCH') continue;
+        const reason =
+          error.code === 'EPERM' ? 'process-signal-permission-denied' : 'process-signal-failed';
+        this.markUncertain(reason, { signal });
+        this.emit({ event: 'owned-signal-failed', pid: row.pid, signal, code: error.code });
+        continue;
+      }
+      try {
+        this.emit({ event: 'owned-process-signal', pid: row.pid, signal });
+      } catch {
+        // Reporting failed after the signal call; preserve that boundary instead of claiming the OS denied the signal.
+        this.markUncertain('process-signal-report-failed', { signal });
       }
     }
   }
@@ -208,6 +242,7 @@ export class OwnedProcessSupervisor {
       writersStopped: complete && !this.uncertain && registeredWritersStopped,
       registeredWritersStopped,
       supervisionUncertain: this.uncertain || !complete,
+      firstUncertainty: this.firstUncertainty,
       livePIDs: live.map((row) => row.pid),
       registeredGroups: this.registered.size,
     };

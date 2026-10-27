@@ -93,7 +93,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         try verifyKeyboardSavePosition(expectsRightRail: true)
     }
 
-    /// The Duo inventory selects right-rail assertions; the shared iPhone fixture checks keyboard reachability only.
+    /// Duo keeps the heading and save action in content; the shared iPhone fixture checks keyboard reachability only.
     @MainActor
     private func verifyKeyboardSavePosition(expectsRightRail: Bool) throws {
         let app = XCUIApplication()
@@ -107,6 +107,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
         if expectsRightRail {
+            XCTAssertTrue(node(app, "next-visit-question-columns-primary").frame.contains(node(app, "next-visit-title").frame))
             XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
             XCTAssertGreaterThan(back.toolbar.frame.midX, app.frame.midX)
         }

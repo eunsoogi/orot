@@ -2,12 +2,8 @@ import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { publicMedicalQueryConsent } from '../agent/execution/publicMedicalQueryConsent';
 import type { ReactNode } from 'react';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { AppButton as Button } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { navigationText } from '../i18n/navigation';
-import { appColors } from '../layout/appColors';
+import { ScrollView, StyleSheet } from 'react-native';
 import { getExternalMedicalEvidenceCopy } from './copy';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -16,6 +12,11 @@ import type {
   EuropePmcSearchResult,
   ExternalMedicalPublication,
 } from './europePmc';
+import {
+  ExternalMedicalEvidencePresentation,
+  externalMedicalEvidencePublicationKey,
+} from './ExternalMedicalEvidencePresentation';
+import type { ExternalMedicalEvidenceSearchState } from './ExternalMedicalEvidencePresentation';
 
 interface ExternalMedicalEvidenceScreenProps {
   readonly providerSelection?: ReactNode;
@@ -26,15 +27,7 @@ interface ExternalMedicalEvidenceScreenProps {
   readonly onOpenArticle: (publication: ExternalMedicalPublication) => void;
 }
 
-type SearchState =
-  | { readonly status: 'idle' | 'loading' }
-  | {
-      readonly status: 'available';
-      readonly publications: readonly ExternalMedicalPublication[];
-    }
-  | { readonly status: 'empty' | 'unavailable' | 'consent_required' };
-
-/** Requires separate query-only opt-in before calling the public literature service. */
+/** Owns consent, request progress, and selected literature for the adaptive screen. */
 export function ExternalMedicalEvidenceScreen({
   providerSelection,
   navigationRouteKey,
@@ -49,7 +42,9 @@ export function ExternalMedicalEvidenceScreen({
   const [inputFocused, setInputFocused] = useState(false);
   const { consent, disclosureSheet } = useInferenceConsent();
   const queryConsent = publicMedicalQueryConsent(consent);
-  const [state, setState] = useState<SearchState>({ status: 'idle' });
+  const [state, setState] = useState<ExternalMedicalEvidenceSearchState>({
+    status: 'idle',
+  });
   const operationController = useRef<AbortController | null>(null);
   const inputRevision = useRef(0);
 
@@ -104,11 +99,7 @@ export function ExternalMedicalEvidenceScreen({
         },
       );
       if (controller.signal.aborted) return;
-      setState(
-        result.status === 'available'
-          ? { status: 'available', publications: result.publications }
-          : { status: result.status === 'empty' ? 'empty' : 'unavailable' },
-      );
+      setState(searchResultState(result));
     } catch {
       if (!controller.signal.aborted) setState({ status: 'unavailable' });
     } finally {
@@ -118,6 +109,26 @@ export function ExternalMedicalEvidenceScreen({
     }
   }
 
+  function selectPublication(publication: ExternalMedicalPublication) {
+    const selectedKey = externalMedicalEvidencePublicationKey(publication);
+    setState(current => {
+      if (
+        current.status !== 'available' ||
+        !current.publications.some(
+          item => externalMedicalEvidencePublicationKey(item) === selectedKey,
+        )
+      ) {
+        return current;
+      }
+      // Selection stays with response state so measured reflow cannot reset the chosen source.
+      return { ...current, selectedKey };
+    });
+  }
+
+  function handleSearch() {
+    search().catch(() => setState({ status: 'unavailable' }));
+  }
+
   return (
     <>
       <ScrollView
@@ -125,121 +136,46 @@ export function ExternalMedicalEvidenceScreen({
         keyboardShouldPersistTaps="handled"
         testID="external-medical-evidence-screen"
       >
-        {navigationRouteKey ? null : (
-          <Button
-            accessibilityLabel={navigationText.back.accessibilityLabel}
-            onPress={onBack}
-            title={navigationText.back.label}
-          />
-        )}
-        <Text accessibilityRole="header" style={styles.heading}>
-          {copy.title}
-        </Text>
-        {providerSelection}
-        <Text>{copy.description}</Text>
-        <TextInput
-          accessibilityLabel={copy.placeholder}
-          editable={state.status !== 'loading'}
-          maxLength={240}
-          onChangeText={value => {
+        <ExternalMedicalEvidencePresentation
+          copy={copy}
+          inputFocused={inputFocused}
+          onBack={onBack}
+          onInputBlur={() => setInputFocused(false)}
+          onInputFocus={() => setInputFocused(true)}
+          onOpenArticle={onOpenArticle}
+          onQueryChange={value => {
             inputRevision.current += 1;
             setQuery(value);
           }}
-          placeholder={copy.placeholder}
-          placeholderTextColor={appColors.secondary}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          style={[styles.input, inputFocused && styles.inputFocused]}
-          testID="external-evidence-query"
-          value={query}
+          onSearch={handleSearch}
+          onSelectPublication={selectPublication}
+          providerSelection={providerSelection}
+          query={query}
+          showBack={!navigationRouteKey}
+          state={state}
         />
-        <Button
-          disabled={!query.trim() || state.status === 'loading'}
-          accessibilityState={{ busy: state.status === 'loading' }}
-          onPress={() => {
-            search().catch(() => setState({ status: 'unavailable' }));
-          }}
-          testID="external-evidence-search"
-          title={copy.search}
-        />
-        {state.status === 'consent_required' ? (
-          <Text>{copy.consentRequired}</Text>
-        ) : null}
-        {state.status === 'loading' ? (
-          <Text testID="external-evidence-loading">{copy.loading}</Text>
-        ) : null}
-        {state.status === 'empty' ? (
-          <Text testID="external-evidence-empty">{copy.empty}</Text>
-        ) : null}
-        {state.status === 'unavailable' ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {copy.unavailable}
-          </Text>
-        ) : null}
-        {state.status === 'available'
-          ? state.publications.map(publication => (
-              <View
-                key={`${publication.source}:${publication.recordId}`}
-                testID={`external-evidence-publication-${publication.source}-${publication.recordId}`}
-                style={styles.card}
-              >
-                <Text accessibilityRole="header" style={styles.title}>
-                  {publication.title}
-                </Text>
-                <Text>{publication.authors ?? copy.authorUnknown}</Text>
-                <Text>{publication.journal ?? ''}</Text>
-                <Text>
-                  {copy.publicationDate(
-                    publication.publicationDate ?? copy.unknownDate,
-                  )}
-                </Text>
-                <Text>
-                  {copy.updatedDate(
-                    publication.updatedDate ?? copy.unknownDate,
-                  )}
-                </Text>
-                <Text>{copy.retrievedAt(publication.retrievedAt)}</Text>
-                <Text>{copy.source(publication.provider)}</Text>
-                <Text selectable>{publication.originalUrl}</Text>
-                {publication.abstract ? (
-                  <Text>{publication.abstract}</Text>
-                ) : null}
-                <Button
-                  onPress={() => onOpenArticle(publication)}
-                  title={copy.open}
-                />
-              </View>
-            ))
-          : null}
       </ScrollView>
       {disclosureSheet}
     </>
   );
 }
 
+function searchResultState(
+  result: EuropePmcSearchResult,
+): ExternalMedicalEvidenceSearchState {
+  if (result.status === 'available') {
+    const firstPublication = result.publications[0];
+    return firstPublication
+      ? {
+          status: 'available',
+          publications: result.publications,
+          selectedKey: externalMedicalEvidencePublicationKey(firstPublication),
+        }
+      : { status: 'empty' };
+  }
+  return { status: result.status === 'empty' ? 'empty' : 'unavailable' };
+}
+
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  input: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: appColors.text,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  error: { color: appColors.danger },
-  // Focus remains visible for keyboard users in both system appearances.
-  inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
-  // A result is a surface above the canvas, rather than a transparent outline.
-  card: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
+  container: { flexGrow: 1, padding: 20 },
 });

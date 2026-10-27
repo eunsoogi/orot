@@ -150,6 +150,7 @@ const featureScreens = [
       'externalMedicalEvidence.placeholder',
       'externalMedicalEvidence.search',
       'externalMedicalEvidence.loading',
+      'externalMedicalEvidence.selectResult',
       'externalMedicalEvidence.consent',
       'externalMedicalEvidence.consentRequired',
       'externalMedicalEvidence.empty',
