@@ -93,6 +93,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
     'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport';
+  const healthDetailReflow =
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
@@ -110,7 +112,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep the integrated Duo-only coverage count explicit so missing registrations cannot shrink silently.
-  assert.equal(duoInventory.length, 20);
+  assert.equal(duoInventory.length, 21);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -130,6 +132,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    healthDetailReflow,
     recordingLiveReflow,
     recordingReviewReflow,
   ]);
