@@ -18,7 +18,10 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
     );
     const overlap = window.slice(
       window.indexOf('            if touches.count > 1'),
-      window.indexOf('            var terminals:'),
+      window.indexOf(
+        '            var terminals:',
+        window.indexOf('            if touches.count > 1'),
+      ),
     );
     const scalars = snapshot.slice(
       snapshot.indexOf('    struct HealthReviewFormSnapshot'),
