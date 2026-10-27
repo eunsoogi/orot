@@ -6,20 +6,23 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('all four hosted fixture groups partition all maintained UI cases including appearance and saved-summary journeys', () => {
+test('fixture groups partition UI cases including document-import and orientation journeys', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [11, 7, 8, 13],
+    [10, 7, 8, 16],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 39);
+  assert.equal(original.length, 41);
   const manualHistory = [
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
   ];
+  const documentImportJourneys = original.filter((identifier) =>
+    identifier.startsWith('OrotUITests/MedicalDocumentImportJourneyUITests/'),
+  );
   assert.deepEqual(
     original.filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
     manualHistory,
@@ -35,6 +38,14 @@ test('all four hosted fixture groups partition all maintained UI cases including
       .flatMap(({ identifiers }) => identifiers)
       .filter((identifier) => identifier.startsWith('OrotUITests/ManualHistoryUITests/')),
     manualHistory,
+  );
+  assert.deepEqual(
+    iosTestCohortTasks('calendar-appointments')
+      .flatMap(({ identifiers }) => identifiers)
+      .filter((identifier) =>
+        identifier.startsWith('OrotUITests/MedicalDocumentImportJourneyUITests/'),
+      ),
+    documentImportJourneys,
   );
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);

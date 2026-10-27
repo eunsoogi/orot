@@ -67,7 +67,7 @@ describe('deletion-aware pending graph resume', () => {
         evidenceId: span.id,
         evidenceRevision: span.ingestedAt,
         locator: { kind: 'structured_record', recordId: span.id },
-        effectiveTime: span.effectiveAt,
+        effectiveTime: span.effectiveAt ?? null,
         reviewState: 'unreviewed',
       };
       jest.mocked(openLocalStorage).mockResolvedValue(repository);
@@ -139,7 +139,7 @@ describe('deletion-aware pending graph resume', () => {
         evidenceId: span.id,
         evidenceRevision: span.ingestedAt,
         locator: { kind: 'structured_record', recordId: span.id },
-        effectiveTime: span.effectiveAt,
+        effectiveTime: span.effectiveAt ?? null,
         reviewState: 'unreviewed',
       };
       const threadId = 'checkpoint-replay-run';

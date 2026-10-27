@@ -1,6 +1,16 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
 import {
+  getProtectedMedicalDocumentSourceIds,
+  medicalDocumentFileDeletion,
+  type MedicalDocumentFileDeletion,
+} from '../medicalDocuments/medicalDocumentNativeBridge';
+import {
+  endMedicalDocumentDeletion,
+  retireDeletedMedicalDocumentSources,
+  startMedicalDocumentDeletion,
+} from '../medicalDocuments/medicalDocumentLifecycle';
+import {
   nativeAudioDeletion,
   type RecordingAudioDeletion,
 } from '../recording/recordingLibraryService';
@@ -15,6 +25,7 @@ export type AllLocalDataDeletionResult = Awaited<
 > & {
   readonly memoriesDeleted: number;
   readonly audioCleanupPending: boolean;
+  readonly medicalDocumentCleanupPending: boolean;
 };
 
 export interface AllLocalDataDeletionDependencies {
@@ -23,9 +34,11 @@ export interface AllLocalDataDeletionDependencies {
     RecordingAudioDeletion,
     'reconcile' | 'stage' | 'restore' | 'commit'
   >;
+  /** Allows tests to verify protected-original recovery around the record transaction. */
+  readonly medicalDocumentDeletion?: MedicalDocumentFileDeletion;
 }
 
-/** Clears memory and records while reversible audio staging preserves files on failure. */
+/** Clears local data while reversible media staging preserves originals on failure. */
 export async function removeAllLocalDataWithMemory(
   memory: AgentMemoryService,
   dependencies: AllLocalDataDeletionDependencies = {},
@@ -38,17 +51,36 @@ export async function removeAllLocalDataWithMemory(
   await rag.prepare();
 
   const audioDeletion = dependencies.audioDeletion ?? nativeAudioDeletion;
-  const sources = await repository.list('source_record');
-  const recordingSourceIds = sources
-    .filter(source => source.sourceKind === 'audio_recording')
-    .map(source => source.id);
-  const stagedSourceIds: string[] = [];
+  const documentDeletion =
+    dependencies.medicalDocumentDeletion ?? medicalDocumentFileDeletion;
+  const deletionGeneration = startMedicalDocumentDeletion();
+  const stagedRecordingIds: string[] = [];
+  const stagedDocumentIds: string[] = [];
 
   try {
+    const sources = await repository.list('source_record');
+    const recordingSourceIds = sources
+      .filter(source => source.sourceKind === 'audio_recording')
+      .map(source => source.id);
+    const documentSourceIds = sources
+      .filter(source => source.sourceKind === 'medical_document')
+      .map(source => source.id);
     await audioDeletion.reconcile(recordingSourceIds);
+    // Only saved rows clear bridge tracking; active picks are added after reconcile for deletion staging.
+    await documentDeletion.reconcile(documentSourceIds, deletionGeneration);
+    const documentFileSourceIds = [
+      ...new Set([
+        ...documentSourceIds,
+        ...(await getProtectedMedicalDocumentSourceIds()),
+      ]),
+    ];
     for (const sourceId of recordingSourceIds) {
       await audioDeletion.stage(sourceId);
-      stagedSourceIds.push(sourceId);
+      stagedRecordingIds.push(sourceId);
+    }
+    for (const sourceId of documentFileSourceIds) {
+      await documentDeletion.stage(sourceId);
+      stagedDocumentIds.push(sourceId);
     }
 
     // Fence every saved record before Rememori clears its rows, including manual records without sources.
@@ -59,8 +91,10 @@ export async function removeAllLocalDataWithMemory(
         rag.clear(deletedLocalRecordIds, transaction),
     );
 
+    // Database deletion owns the lifecycle; retire the whole batch before any asynchronous file cleanup.
+    retireDeletedMedicalDocumentSources(stagedDocumentIds);
     let audioCleanupPending = false;
-    for (const sourceId of stagedSourceIds) {
+    for (const sourceId of stagedRecordingIds) {
       try {
         await audioDeletion.commit(sourceId);
       } catch {
@@ -68,10 +102,31 @@ export async function removeAllLocalDataWithMemory(
         audioCleanupPending = true;
       }
     }
-    return { ...deleted, memoriesDeleted, audioCleanupPending };
+    let medicalDocumentCleanupPending = false;
+    for (const sourceId of stagedDocumentIds) {
+      try {
+        await documentDeletion.commit(sourceId);
+      } catch {
+        // Hidden staged originals remain excluded from backup and reconcile on the next import.
+        medicalDocumentCleanupPending = true;
+      }
+    }
+    return {
+      ...deleted,
+      memoriesDeleted,
+      audioCleanupPending,
+      medicalDocumentCleanupPending,
+    };
   } catch (error) {
     const restoreFailures: unknown[] = [];
-    for (const sourceId of [...stagedSourceIds].reverse()) {
+    for (const sourceId of [...stagedDocumentIds].reverse()) {
+      try {
+        await documentDeletion.restore(sourceId);
+      } catch (restoreError) {
+        restoreFailures.push(restoreError);
+      }
+    }
+    for (const sourceId of [...stagedRecordingIds].reverse()) {
       try {
         await audioDeletion.restore(sourceId);
       } catch (restoreError) {
@@ -83,9 +138,11 @@ export async function removeAllLocalDataWithMemory(
         failure instanceof Error ? failure.message : String(failure),
       );
       throw new Error(
-        `All-local deletion failed and audio recovery was incomplete: ${messages.join('; ')}`,
+        `All-local deletion failed and local-file recovery was incomplete: ${messages.join('; ')}`,
       );
     }
     throw error;
+  } finally {
+    endMedicalDocumentDeletion();
   }
 }

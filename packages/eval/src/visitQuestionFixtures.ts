@@ -75,7 +75,7 @@ export function createSyntheticVisitQuestionFixture(seed: string): SyntheticVisi
       evidenceId: span.id,
       evidenceRevision: span.ingestedAt,
       locator: { kind: 'synthetic_record', recordId: source.id },
-      effectiveTime: span.effectiveAt,
+      effectiveTime: span.effectiveAt ?? null,
       reviewState: span.reviewState.status === 'reviewed' ? 'reviewed' : 'unreviewed',
       content: span.text,
     };

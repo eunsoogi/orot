@@ -106,7 +106,8 @@ export function chunkEvidenceSpan(span: EvidenceSpan): EvidenceChunk {
       sourceRecordIds: [...span.provenance.sourceRecordIds],
       evidenceId: span.id,
       evidenceLocator: { ...span.locator },
-      effectiveTime: span.effectiveAt,
+      // Keep imported excerpts date-unknown when the source has no reliable clinical date.
+      effectiveTime: span.effectiveAt ?? null,
       recordType: 'evidence_span',
       reviewState: { ...span.reviewState },
     },

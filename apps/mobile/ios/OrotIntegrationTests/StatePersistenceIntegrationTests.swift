@@ -13,6 +13,10 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(checkpoint["value"] as? Int, 4)
         XCTAssertEqual(checkpoint["nodeRuns"] as? [String], ["increment"])
         XCTAssertEqual(checkpoint["note"] as? String, "환자 기록: café 🌱🩺")
+        let encounter = try await encounterOperation("seed")
+        XCTAssertEqual(encounter["status"] as? String, "pending")
+        XCTAssertEqual(encounter["recordCount"] as? Int, 0)
+        XCTAssertEqual(encounter["modelCalls"] as? Int, 1)
         try attach(fixture, phase: "seed", storeReceipt: memory)
     }
 
@@ -27,6 +31,7 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(checkpoint["nodeRuns"] as? [String], ["increment", "double"])
         XCTAssertEqual(checkpoint["note"] as? String, "환자 기록: café 🌱🩺")
         XCTAssertEqual(checkpoint["cleaned"] as? Bool, true)
+        try await verifyEncounterRecords("resume")
         try attach(fixture, phase: "resume", storeReceipt: memory)
     }
 
@@ -34,7 +39,47 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         let fixture = try fixtureIdentifier()
         try requireNewProcess()
         let memory = try await storeOperation("memory-verify-deletion", phase: "verify-deletion")
+        try await verifyEncounterRecords("absence")
         try attach(fixture, phase: "absence", storeReceipt: memory)
+    }
+
+    /// Attach actual graph responses so pending state, records and evidence remain inspectable after each process.
+    private func encounterOperation(_ phase: String) async throws -> [String: Any] {
+        let result = try await operation("encounter-persistence", parameters: ["fixtureIdentifier": fixtureIdentifier(), "mode": phase])
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
+        attachment.name = "encounter-persistence-\(phase)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        return result
+    }
+
+    /// These existing cohort methods run in separate real processes, preserving the graph's encrypted checkpoint and domain records.
+    private func verifyEncounterRecords(_ phase: String) async throws {
+        let result = try await encounterOperation(phase)
+        if phase == "absence" {
+            XCTAssertEqual(result["cleanupVerified"] as? Bool, true)
+            XCTAssertEqual(result["logicalRemovalVerified"] as? Bool, true)
+        }
+        XCTAssertEqual(result["status"] as? String, "saved")
+        XCTAssertEqual(result["modelCalls"] as? Int, 0)
+        let records = try XCTUnwrap(result["records"] as? [[String: Any]])
+        XCTAssertEqual(records.count, 2)
+        XCTAssertEqual(Set(records.compactMap { $0["concept"] as? String }), ["encounter_medication_statement", "encounter_plan"])
+        let medication = try XCTUnwrap(records.first { $0["concept"] as? String == "encounter_medication_statement" })
+        let value = try XCTUnwrap(medication["value"] as? [String: String])
+        XCTAssertEqual(value["text"], "사용자가 검토한 합성약 언급\n5 mg 논의")
+        for record in records {
+            let review = try XCTUnwrap(record["reviewState"] as? [String: String])
+            XCTAssertEqual(review["status"], "reviewed")
+            XCTAssertEqual(review["reviewerId"], "synthetic-user")
+            let provenance = try XCTUnwrap(record["provenance"] as? [String: Any])
+            XCTAssertEqual(provenance["origin"] as? String, "derived")
+            XCTAssertEqual((provenance["source"] as? [String: String])?["sourceName"], "speaker:unknown")
+        }
+        let evidence = try XCTUnwrap(result["evidence"] as? [[String: Any]])
+        XCTAssertEqual(evidence.count, 4)
+        XCTAssertEqual(evidence.compactMap { ($0["locator"] as? [String: Any])?["kind"] as? String }.filter { $0 == "text_range" }.count, 2)
+        XCTAssertEqual(evidence.compactMap { ($0["locator"] as? [String: Any])?["kind"] as? String }.filter { $0 == "audio_time_range" }.count, 2)
     }
 
     /// Every phase returns observed Store identifiers, timestamps and provenance, rather than driver success constants.

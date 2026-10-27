@@ -79,14 +79,34 @@ test('scheduled cohort jobs use one consistent role and target', () => {
   }
 });
 
-test('full integration execution preserves 143 observations and every registered provider case', () => {
+test('full integration execution preserves profile observations and every registered provider case', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Release 106 + Debug 28 + Speech 9 retain each release case and the added regressions.
-  assert.equal(scheduled.length, 143);
+  // The three picker journeys repeat across Debug health-import and Release fixtures.
+  assert.equal(scheduled.length, 161);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 143);
+  assert.equal(identifiers.size, 158);
+  const frequencies = new Map();
+  for (const identifier of scheduled)
+    frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
+  const repeated = [...frequencies]
+    .filter(([, count]) => count > 1)
+    .sort(([left], [right]) => left.localeCompare(right));
+  assert.deepEqual(repeated, [
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+      2,
+    ],
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+      2,
+    ],
+    [
+      'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+      2,
+    ],
+  ]);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',

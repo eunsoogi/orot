@@ -4,9 +4,12 @@ import {
   speechJourneyTests,
 } from './ios-test-config.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
+import { duoTests } from './duo-test-inventory.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { medicalDocumentCoreTests } from './medical-document-test-inventory.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
+import { windowPresentationAnchorTests } from './window-presentation-anchor-test-inventory.mjs';
 
 const coreTests = [
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
@@ -26,6 +29,7 @@ const coreTests = [
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
+  ...medicalDocumentCoreTests,
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
@@ -51,15 +55,7 @@ const coreTests = [
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUnverifiedFullScreenPresentationRetainsExportUntilDismissal',
-  // Presenters and popover sources must stay attached to the foreground window selected for UIKit.
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackUsesTheSingleForegroundKeyWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testBridgeFallbackRejectsMultipleKeyWindowCandidates',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testPopoverAnchorRejectsARegionOutsideItsWindow',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testMovingTheSourceRegionOutOfWindowInvalidatesTheAnchor',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testDetachedSourceViewInvalidatesTheResolvedAnchorBeforePresentation',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingTheKeyWindowInvalidatesTheResolvedAnchor',
-  'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testChangingThePresentationStackInvalidatesTheResolvedPresenter',
+  ...windowPresentationAnchorTests,
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
@@ -105,6 +101,10 @@ export const healthImportTests = [
   'OrotUITests/HealthImportUITests/testCommonObservationsUseEncryptedStorageAndIdempotentReplay',
   'OrotUITests/UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation',
   'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
+  // Real document-picker journeys run in both the Debug import suite and Release fixture suite.
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
 ];
 export const localModelTests = [
   'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation',
@@ -127,8 +127,6 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
-  // Fixture-owned Home coverage runs on the ordinary iPhone and the opt-in Duo destination.
-  'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
   'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
@@ -162,6 +160,9 @@ export const fixtureTests = [
   'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
   'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
@@ -192,19 +193,8 @@ export function iosTestInventory(profile, suite = 'all') {
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
-  // Keep Duo's dedicated native cases opt-in; unknown Release profiles must not fall through to provider tests.
-  if (profile === 'duo')
-    return [
-      'OrotUITests/TestHostConnectionTests/testHostLaunches',
-      'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
-      'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
-      'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
-      'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
-      'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
-      'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
-      'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
-      'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
-    ];
+  // Do not let an unknown Release profile fall through to the provider inventory.
+  if (profile === 'duo') return duoTests.slice();
   if (suite === 'journey') return speechJourneyTests.slice();
   if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();

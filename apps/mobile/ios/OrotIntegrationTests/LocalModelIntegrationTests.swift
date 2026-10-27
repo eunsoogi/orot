@@ -64,6 +64,8 @@ final class LocalModelIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["sqlCipherEnabled"] as? Bool, true)
         XCTAssertEqual(try number(result, "tempStoreMode"), 2)
         XCTAssertEqual(try number(result, "remainingVectorCount"), 1)
+        // The fresh pass removes the medication vector; restart must not restore it by re-indexing.
+        XCTAssertEqual(result["remainingVectorIds"] as? [String], ["hybrid-synthetic-sleep"])
         let fts = try XCTUnwrap(result["ftsOnly"] as? [String: Any])
         XCTAssertEqual(try number(fts, "lexicalRank"), 1)
         XCTAssertTrue(fts["vectorRank"] is NSNull)

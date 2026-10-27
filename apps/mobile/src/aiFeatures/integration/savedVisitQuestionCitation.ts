@@ -111,7 +111,8 @@ export async function registerSavedCitation(input: {
     evidenceId: span.id,
     evidenceRevision,
     locator: span.locator ?? { kind: 'evidence_span', evidenceSpanId: span.id },
-    effectiveTime: span.effectiveAt,
+    // An imported excerpt's ingestion time must not become a clinical effective time.
+    effectiveTime: span.effectiveAt ?? null,
     reviewState: referenceReviewState(span.reviewState.status),
   };
 
