@@ -86,7 +86,9 @@ export function SettingsBackupRoute({
                 style={styles.settingsAction}
                 testID="backup-open-system-settings"
               >
-                <Text style={styles.actionTitle}>{t('backup.openSettings')}</Text>
+                <Text style={styles.actionTitle}>
+                  {t('backup.openSettings')}
+                </Text>
                 <Text accessibilityElementsHidden style={styles.chevron}>
                   ›
                 </Text>

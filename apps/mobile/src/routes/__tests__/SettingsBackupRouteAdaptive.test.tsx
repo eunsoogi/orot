@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Dimensions, Linking, StyleSheet, View } from 'react-native';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
@@ -143,12 +149,14 @@ test('production backup route reflows by usable region and retains recovery acti
 
   const routeKey = controller.getSnapshot().currentRoute.key;
   expect(screen.getByTestId('settings-backup-title')).toBeTruthy();
-  expect(screen.queryByTestId(`navigation-route-columns-${routeKey}`)).toBeNull();
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${routeKey}`),
+  ).toBeNull();
   expect(screen.getByTestId('settings-backup-status-panel')).toBeTruthy();
   expect(screen.getByTestId('settings-backup-recovery-panel')).toBeTruthy();
-  expect(screen.getByTestId('settings-backup-recovery-state')).toHaveTextContent(
-    t('backup.recoveryNotChecked'),
-  );
+  expect(
+    screen.getByTestId('settings-backup-recovery-state'),
+  ).toHaveTextContent(t('backup.recoveryNotChecked'));
   expect(screen.getByTestId('backup-status-message')).toHaveTextContent(
     t('backup.status.checking'),
   );
