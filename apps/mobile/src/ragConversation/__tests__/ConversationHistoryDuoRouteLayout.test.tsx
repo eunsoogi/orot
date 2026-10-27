@@ -133,12 +133,31 @@ test('uses the production history route lane for a selected Duo preview and comp
     });
     await waitFor(() => expect(direction()).toBe('row'));
     expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
+    const previewScroll = screen.getByTestId(
+      'conversation-history-preview-messages',
+    );
+    await fireEvent.scroll(previewScroll, {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 240 },
+        contentSize: { width: 600, height: 1600 },
+        layoutMeasurement: { width: 500, height: 720 },
+      },
+    });
 
     await act(async () => {
       Dimensions.set({ window: windowSize(900, 2) });
     });
     await waitFor(() => expect(direction()).toBe('column'));
     expect(screen.queryByTestId('conversation-history-preview')).toBeNull();
+
+    await act(async () => {
+      Dimensions.set({ window: windowSize(900) });
+    });
+    await waitFor(() => expect(direction()).toBe('row'));
+    expect(
+      screen.getByTestId('conversation-history-preview-messages').props
+        .contentOffset,
+    ).toEqual({ x: 0, y: 240 });
 
     await act(async () => {
       setMeasuredHistoryHost(0, 500);

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HostInstance, ViewStyle } from 'react-native';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
@@ -42,6 +49,12 @@ export function ConversationHistoryLayout({
     readonly x: number;
     readonly width: number;
   } | null>(null);
+  const [savedPreviewScroll, setSavedPreviewScroll] = useState({
+    sessionId: selectedSession?.id ?? null,
+    offset: 0,
+  });
+  const previewScrollOffset = useRef(0);
+  const selectedSessionId = selectedSession?.id ?? null;
   const measureHost = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -79,6 +92,7 @@ export function ConversationHistoryLayout({
       }),
     [fontScale, geometry, measuredBounds, occlusion, width],
   );
+  const previousColumnCount = useRef(plan.columns);
 
   useEffect(() => {
     measureHost();
@@ -92,6 +106,32 @@ export function ConversationHistoryLayout({
     occlusion.viewportInsets.right,
     width,
   ]);
+
+  useLayoutEffect(() => {
+    previewScrollOffset.current = 0;
+    setSavedPreviewScroll(previous =>
+      previous.sessionId === selectedSessionId && previous.offset === 0
+        ? previous
+        : { sessionId: selectedSessionId, offset: 0 },
+    );
+  }, [selectedSessionId]);
+
+  useLayoutEffect(() => {
+    const previousColumns = previousColumnCount.current;
+    previousColumnCount.current = plan.columns;
+    if (previousColumns === 2 && plan.columns === 1) {
+      // The layout owner survives reflow, so save the preview offset before its ScrollView unmounts.
+      setSavedPreviewScroll({
+        sessionId: selectedSessionId,
+        offset: previewScrollOffset.current,
+      });
+    }
+  }, [plan.columns, selectedSessionId]);
+
+  const rememberPreviewScrollOffset = useCallback((offset: number) => {
+    if (Number.isFinite(offset))
+      previewScrollOffset.current = Math.max(0, offset);
+  }, []);
 
   const layoutStyle = useMemo<ViewStyle>(
     () => ({
@@ -164,7 +204,15 @@ export function ConversationHistoryLayout({
               style={[styles.panel, secondaryStyle]}
               testID="conversation-history-layout-secondary"
             >
-              <ConversationHistoryPreview session={selectedSession} />
+              <ConversationHistoryPreview
+                onScrollOffsetChange={rememberPreviewScrollOffset}
+                scrollOffset={
+                  savedPreviewScroll.sessionId === selectedSessionId
+                    ? savedPreviewScroll.offset
+                    : 0
+                }
+                session={selectedSession}
+              />
             </View>
           ) : null}
         </View>

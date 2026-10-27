@@ -11,8 +11,12 @@ const ignoreLinkError = () => undefined;
 
 /** Reads the selected in-memory thread without resolving source records or exposing another send action. */
 export function ConversationHistoryPreview({
+  onScrollOffsetChange,
+  scrollOffset,
   session,
 }: {
+  readonly onScrollOffsetChange: (offset: number) => void;
+  readonly scrollOffset: number;
   readonly session: ConversationSession | null;
 }) {
   const visibleMessages: readonly DisplayMessage[] = session?.pendingMessage
@@ -32,8 +36,13 @@ export function ConversationHistoryPreview({
         {session?.title ?? '대화 미리보기'}
       </Text>
       <ScrollView
+        contentOffset={{ x: 0, y: scrollOffset }}
         contentContainerStyle={styles.messages}
         keyboardShouldPersistTaps="handled"
+        onScroll={event =>
+          onScrollOffsetChange(event.nativeEvent.contentOffset.y)
+        }
+        scrollEventThrottle={16}
         style={styles.scroll}
         testID="conversation-history-preview-messages"
       >
