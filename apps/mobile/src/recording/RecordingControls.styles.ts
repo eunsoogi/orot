@@ -26,6 +26,8 @@ export const recordingControlStyles = StyleSheet.create({
   },
   consentSelected: { backgroundColor: appColors.primarySoft },
   consentCopy: { flex: 1, gap: 4 },
+  // Consent and its supporting guidance stay grouped when the screen widens.
+  guidancePanel: { gap: 16 },
   consentTitle: {
     color: appColors.text,
     fontSize: 16,

@@ -1,4 +1,5 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
@@ -19,6 +20,8 @@ import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
 import { useRecordingNavigationLeaveState } from './useRecordingNavigationLeaveState';
 import RecordingSessionPanel from './RecordingSessionPanel';
+import RecordingGuidancePanel from './RecordingGuidancePanel';
+import RecordingScreenHeader from './RecordingScreenHeader';
 import RecordingTranscriptionFeedback from './RecordingTranscriptionFeedback';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
 
@@ -133,22 +136,41 @@ export default function RecordingControls({
           />
         </View>
       ) : null}
-      <RecordingSessionPanel
+      <RecordingScreenHeader
+        controlsBusy={controlsBusy}
         onOpenSavedRecordings={onOpenSavedRecordings}
-        historyDisabled={controlsBusy || sourceRetryPending || !stateReady}
-        status={status}
-        durationMs={durationMs}
-        amplitude={amplitude}
-        consentAcknowledged={consentAcknowledged}
-        onToggleConsent={onToggleConsent}
-        controlsBusy={
-          controlsBusy || automaticTranscription?.status === 'running'
-        }
         sourceRetryPending={sourceRetryPending}
-        onStart={onStart}
-        onPause={onPause}
-        onResume={onResume}
-        onStop={onStop}
+        stateReady={stateReady}
+        status={status}
+      />
+      {/* Stable route-owned panels let the screen reflow without restarting capture or consent state. */}
+      <AdaptiveColumns
+        primary={
+          <RecordingSessionPanel
+            status={status}
+            durationMs={durationMs}
+            amplitude={amplitude}
+            controlsBusy={
+              controlsBusy || automaticTranscription?.status === 'running'
+            }
+            sourceRetryPending={sourceRetryPending}
+            consentAcknowledged={consentAcknowledged}
+            onStart={onStart}
+            onPause={onPause}
+            onResume={onResume}
+            onStop={onStop}
+          />
+        }
+        secondary={
+          <RecordingGuidancePanel
+            status={status}
+            consentAcknowledged={consentAcknowledged}
+            controlsBusy={controlsBusy}
+            onToggleConsent={onToggleConsent}
+          />
+        }
+        routeKey="recording"
+        testID="recording-content-columns"
       />
       {lastRecording ? (
         <View style={recordingControlStyles.result} testID="recording-result">

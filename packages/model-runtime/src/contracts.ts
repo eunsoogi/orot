@@ -200,15 +200,6 @@ export interface EmbeddingProvider {
   embed(request: EmbeddingRequest): Promise<ProviderResult<EmbeddingResponse>>;
 }
 
-export interface ProviderByKind {
-  readonly 'language-model': LanguageModelProvider;
-  readonly transcription: TranscriptionProvider;
-  readonly embedding: EmbeddingProvider;
-}
-
-export type ProviderKind = keyof ProviderByKind;
-export type RegisteredProvider = ProviderByKind[ProviderKind];
-
 export interface ProviderCredential {
   readonly scheme: 'api-key' | 'bearer';
   readonly secret: string;

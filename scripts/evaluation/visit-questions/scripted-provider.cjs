@@ -2,15 +2,109 @@
 
 const { buildSyntheticClarificationResponse } = require('./clarification-response.cjs');
 
-/** Keeps fixture answers deterministic while following the app's task/research/task protocol. */
-function responseFor(testCase, referencesByOriginalId) {
-  const clarificationResponse = buildSyntheticClarificationResponse(testCase);
-  if (clarificationResponse) return clarificationResponse;
+function parsedToolResult(message) {
+  if (typeof message.result !== 'string') return message.result;
+  try {
+    return JSON.parse(message.result);
+  } catch {
+    return undefined;
+  }
+}
+
+function appointmentContextFromRequest(request) {
+  const prefix = 'Appointment and user context: ';
+  const content = request.messages.find(
+    (message) => message.role === 'user' && message.content?.includes(prefix),
+  )?.content;
+  const contextLine = content?.split('\n').find((line) => line.startsWith(prefix));
+  if (!contextLine) throw new Error('The model request omitted the appointment context.');
+  return JSON.parse(contextLine.slice(prefix.length));
+}
+
+// The standard app tool message carries an EvidenceBatch directly in this harness's default result mode.
+function searchedKinds(request) {
+  return new Set(
+    request.messages.flatMap((message) => {
+      if (message.role !== 'tool') return [];
+      const result = parsedToolResult(message);
+      return Array.isArray(result?.coverage)
+        ? result.coverage.map((coverage) => coverage.sourceKind)
+        : [];
+    }),
+  );
+}
+
+function evidenceFromRequest(request) {
+  return request.messages.flatMap((message) => {
+    if (message.role !== 'tool') return [];
+    const result = parsedToolResult(message);
+    return Array.isArray(result?.items) ? result.items : [];
+  });
+}
+
+// Keep failure diagnostics to tool names and evidence-batch metadata; fixture content stays out of logs.
+function toolResultSummary(request) {
+  return request.messages.flatMap((message) => {
+    if (message.role !== 'tool') return [];
+    const result = parsedToolResult(message);
+    return [
+      {
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+        itemCount: Array.isArray(result?.items) ? result.items.length : null,
+        coverage: Array.isArray(result?.coverage)
+          ? result.coverage.map((item) => ({
+              sourceKind: item.sourceKind,
+              returnedCount: item.returnedCount,
+              gapCount: Array.isArray(item.gaps) ? item.gaps.length : null,
+              truncated: item.truncated,
+            }))
+          : null,
+        conflictCount: Array.isArray(result?.conflicts) ? result.conflicts.length : null,
+      },
+    ];
+  });
+}
+
+// Compare required citations by source kind and content without logging fixture payloads.
+function citationAvailability(testCase, evidenceItems) {
+  const requiredSuffixes = [
+    ':evidence-appointment-rescheduled',
+    ':evidence-sleep-hours',
+    ':evidence-reviewed-memory-visit-intent',
+    ':evidence-sleep-minutes',
+  ];
+  return requiredSuffixes.map((suffix) => {
+    const expected = testCase.evidence.find((item) => item.evidenceId.endsWith(suffix));
+    const candidates = evidenceItems.filter((item) => item.content === expected?.content);
+    return {
+      suffix,
+      expectedPresent: Boolean(expected),
+      sourceKindMatches: evidenceItems.some((item) => item.sourceKind === expected?.sourceKind),
+      contentMatches: candidates.length > 0,
+      exactMatch: candidates.some((item) => item.sourceKind === expected?.sourceKind),
+    };
+  });
+}
+
+/** Cites only opaque references returned by the runtime's actual evidence-search tool messages. */
+function responseFor(testCase, evidenceItems) {
+  const clarification = buildSyntheticClarificationResponse(testCase);
+  if (clarification) return clarification;
+
+  const availability = citationAvailability(testCase, evidenceItems);
+  const missing = availability.filter((item) => !item.exactMatch);
+  if (missing.length > 0) {
+    throw new Error(`Required synthetic citations were not returned: ${JSON.stringify(missing)}.`);
+  }
 
   const referenceFor = (suffix) => {
-    const original = testCase.evidence.find((item) => item.evidenceId.endsWith(suffix));
-    const reference = original && referencesByOriginalId.get(original.evidenceId);
-    if (!reference) throw new Error('Synthetic response evidence is missing.');
+    const expected = testCase.evidence.find((item) => item.evidenceId.endsWith(suffix));
+    const reference =
+      expected &&
+      evidenceItems.find(
+        (item) => item.sourceKind === expected.sourceKind && item.content === expected.content,
+      );
+    if (!reference) throw new Error('The runtime did not return a required synthetic citation.');
     return reference;
   };
   const appointment = referenceFor(':evidence-appointment-rescheduled');
@@ -43,22 +137,15 @@ function responseFor(testCase, referencesByOriginalId) {
         },
       ],
     },
-    citations: [appointment, memory, sleepHours, minutes],
+    // Let the shared runtime bind each opaque ID to the active batch's exact provenance reference.
+    citations: [appointment, memory, sleepHours, minutes].map((item) => item.evidenceId),
   });
 }
 
-function requestText(request) {
-  return request.messages
-    .map((message) =>
-      message.role !== 'tool' && typeof message.content === 'string' ? message.content : '',
-    )
-    .join('\n');
-}
-
-function createScriptedProvider(testCase, finalResponse) {
+function createScriptedProvider(testCase) {
   let calls = 0;
-  let taskResponses = 0;
   const providerTurns = [];
+  const providerInputs = [];
   const provider = {
     kind: 'language-model',
     id: 'orot-synthetic-evaluation-adapter',
@@ -71,47 +158,62 @@ function createScriptedProvider(testCase, finalResponse) {
     },
     async generate(request) {
       calls += 1;
-      const requestBody = requestText(request);
-
-      if (requestBody.includes('Role: EvidenceResearcher')) {
-        providerTurns.push('researcher-search');
+      const appointmentContext = appointmentContextFromRequest(request);
+      const query = appointmentContext.note;
+      if (query !== testCase.query) {
+        throw new Error('The model-facing appointment note does not match the fixture query.');
+      }
+      providerInputs.push({ query, appointmentContext });
+      const kinds = searchedKinds(request);
+      const toolResults = toolResultSummary(request);
+      const offeredTools = (request.tools ?? []).map((tool) => tool.name);
+      const nextSource = !kinds.has('personal_record')
+        ? 'personal_record'
+        : testCase.expected.resultMode === 'suggestions' && !kinds.has('reviewed_memory')
+          ? 'reviewed_memory'
+          : undefined;
+      if (nextSource) {
+        const name =
+          nextSource === 'personal_record'
+            ? 'visit-question-personal-record-search'
+            : 'visit-question-reviewed-memory-search';
+        if (!offeredTools.includes(name)) {
+          providerTurns.push(JSON.stringify({ missingTool: name, offeredTools, toolResults }));
+          throw new Error(`The standard runtime did not offer ${name}.`);
+        }
+        providerTurns.push(JSON.stringify({ requestedTool: name, offeredTools, toolResults }));
         return {
           ok: true,
           value: {
-            text: JSON.stringify({
-              toolId: 'visit-question-personal-record-search',
-              sourceKind: 'personal_record',
-              input: { query: testCase.query },
-            }),
-            toolCalls: [],
-            finishReason: 'complete',
+            text: '',
+            toolCalls: [{ id: `synthetic-tool-call-${calls}`, name, arguments: { query } }],
+            finishReason: 'tool_calls',
           },
         };
       }
-      if (testCase.expected.resultMode === 'suggestions' && taskResponses++ === 0) {
-        providerTurns.push('request-search');
-        return {
-          ok: true,
-          value: {
-            text: JSON.stringify({
-              type: 'request_evidence',
-              need: 'missing_coverage',
-            }),
-            toolCalls: [],
-            finishReason: 'complete',
-          },
-        };
-      }
-      providerTurns.push('scripted-result');
+      const items = evidenceFromRequest(request);
+      providerTurns.push(
+        JSON.stringify({
+          requestedTool: 'final-answer',
+          offeredTools,
+          toolResults,
+          citationAvailability: citationAvailability(testCase, items),
+        }),
+      );
       return {
         ok: true,
-        value: { text: finalResponse, toolCalls: [], finishReason: 'complete' },
+        value: {
+          text: responseFor(testCase, items),
+          toolCalls: [],
+          finishReason: 'complete',
+        },
       };
     },
   };
 
   return {
     provider,
+    providerInputs,
     get callCount() {
       return calls;
     },
@@ -119,4 +221,10 @@ function createScriptedProvider(testCase, finalResponse) {
   };
 }
 
-module.exports = { createScriptedProvider, responseFor };
+module.exports = {
+  citationAvailability,
+  createScriptedProvider,
+  evidenceFromRequest,
+  responseFor,
+  toolResultSummary,
+};

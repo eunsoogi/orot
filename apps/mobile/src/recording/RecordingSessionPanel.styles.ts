@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** Session actions follow the generated microphone-and-icon mockup while keeping large touch targets. */
+/** Session status stays separate from consent guidance while preserving the current microphone and Glass controls. */
 export const recordingSessionStyles = StyleSheet.create({
-  heading: { textAlign: 'center' },
+  panel: { gap: 16 },
   compactMicrophone: { width: 128, height: 128 },
   compactMicrophoneInner: { width: 112, height: 112 },
   compactSecondaryAction: { width: 48, height: 48 },
@@ -42,17 +42,12 @@ export const recordingSessionStyles = StyleSheet.create({
     textAlign: 'center',
   },
   duration: {
+    alignSelf: 'stretch',
     fontSize: 52,
     lineHeight: 68,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     color: appColors.text,
-    textAlign: 'center',
-  },
-  hint: {
-    color: appColors.secondary,
-    fontSize: 14,
-    lineHeight: 21,
     textAlign: 'center',
   },
   actions: {

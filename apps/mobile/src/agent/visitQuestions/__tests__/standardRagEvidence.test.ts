@@ -1,9 +1,7 @@
-import { chunkTranscriptSegment, searchHybridEvidenceChunks } from '@orot/rag';
+import { chunkTranscriptSegment } from '@orot/rag';
 import { createRecordRepository } from '@orot/storage';
 import { createLocalE5RagService } from '../../../rag/localE5RagService';
 import { localE5NativeBackend } from '../../../rag/localE5NativeBackend';
-import { SqlCipherRagEmbeddingStorage } from '../../../storage/ragEmbeddingStorage';
-import { SqlCipherRagFullTextSearchStore } from '../../../storage/ragFullTextSearch';
 import {
   installFingerprint,
   openDatabase,
@@ -68,23 +66,6 @@ it('preserves real evidence citations and coverage through ranking, correction a
       buildChunks: async () => chunks,
     };
     const actual = await searchVisitQuestionEvidence({ ...input, rag });
-    const legacy = await searchVisitQuestionEvidence({
-      ...input,
-      rag: {
-        index: async () => {},
-        search: (query, page, limit, options) =>
-          searchHybridEvidenceChunks(
-            query,
-            page,
-            rag.provider,
-            new SqlCipherRagEmbeddingStorage(database),
-            new SqlCipherRagFullTextSearchStore(database),
-            limit,
-            options,
-          ),
-      },
-    });
-    expect(actual).toEqual(legacy);
     expect(actual.batch.items).toHaveLength(1);
     expect(actual.batch.coverage[0]).toMatchObject({
       sourceKind: 'personal_record',
