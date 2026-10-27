@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 
 /** One loopback connection binds each XCTest boundary to host preparation; host exit closes the waiting client. */
-export async function executeIosFixtureSession({ identifiers, command, handle, environment = {} }) {
+export async function executeIosFixtureSession({
+  identifiers,
+  command,
+  handle,
+  environment = {},
+  onOwnedGroupSpawn,
+}) {
   // The runner's lifecycle barrier uses XCUIApplication; app-hosted integration targets must not enter this session.
   if (
     !identifiers.length ||
@@ -132,6 +138,11 @@ export async function executeIosFixtureSession({ identifiers, command, handle, e
     });
     process.once('SIGINT', interrupt);
     process.once('SIGTERM', terminate);
+    // Only admitted reminder diagnostics observe creation; ordinary sessions keep their existing path.
+    if (onOwnedGroupSpawn) {
+      await onOwnedGroupSpawn({ phase: 'attempt' });
+      if (failure) throw failure;
+    }
     child = spawn(command[0], command.slice(1), {
       stdio: 'inherit',
       detached: true,
@@ -143,13 +154,23 @@ export async function executeIosFixtureSession({ identifiers, command, handle, e
         TEST_RUNNER_OROT_IOS_FIXTURE_PORT: String(server.address().port),
       },
     });
-    const status = await new Promise((resolve) => {
+    const completion = new Promise((resolve) => {
       child.once('error', (error) => {
         failure ??= error;
         resolve(1);
       });
       child.once('exit', (code, signal) => resolve(signal ? 1 : code));
     });
+    // Install error/exit handlers before the observer awaits process identity.
+    if (onOwnedGroupSpawn) {
+      try {
+        await onOwnedGroupSpawn({ phase: 'spawned', child });
+      } catch (error) {
+        failure ??= error;
+        cancel('SIGINT');
+      }
+    }
+    const status = await completion;
     finished = true;
     for (const socket of sockets) socket.destroy();
     // Host cleanup already in flight must finish before ownership can be released.

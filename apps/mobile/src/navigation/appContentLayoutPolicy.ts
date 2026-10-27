@@ -9,19 +9,20 @@ export type NavigationRouteLayoutPolicy<Name extends string> =
       rootTabs?: NavigationRootTabs,
     ) => 'scene' | 'screen');
 
-/** Gives screen-owned panels, including unified health import, the full usable content lane. */
+/** Gives screens with their own measured panels the full usable content lane. */
 export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   route,
   rootTabs,
 ) => {
-  // Root tabs retain the `home` route name while Home, Records, or Schedule is selected.
+  // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   return route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||
-        rootTabs?.activeTab === 'schedule'))
+        rootTabs?.activeTab === 'schedule' ||
+        rootTabs?.activeTab === 'ai'))
     ? 'screen'
     : 'scene';
 };

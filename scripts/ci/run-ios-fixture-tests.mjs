@@ -18,6 +18,7 @@ import {
   runIosFixtureCommand,
 } from './ios-test-scoped-reset.mjs';
 
+import * as reminderDiagnostics from './ios-test-reminder-diagnostic.mjs';
 import { executeIosFixtureSession } from './ios-test-fixture-session.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
@@ -56,6 +57,7 @@ const app = join(dirname(resolve(runFile)), spec.configuration + '-iphonesimulat
 if (!existsSync(app)) throw new Error('The verified fixture application is missing');
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
+const diagnostic = reminderDiagnostics.fixtureRun(profile, expected, owner, directory);
 const observations = [];
 const failures = [];
 const attempted = new Set();
@@ -68,6 +70,7 @@ async function cleanup(passed) {
   if (!current?.setupComplete) return;
   const { identifier, mode } = current;
   try {
+    diagnostic.captureBeforeCleanup(identifier, failures);
     const result =
       mode === 'fresh-install'
         ? removeIosTestFixtureContainer(profile, owner)
@@ -106,7 +109,9 @@ let session;
 try {
   session = await executeIosFixtureSession({
     identifiers: expected,
+    onOwnedGroupSpawn: diagnostic.onOwnedGroupSpawn,
     environment: {
+      ...diagnostic.environment,
       TEST_RUNNER_OROT_IOS_SIMULATOR_LIFECYCLE_EXTERNAL_CAPTURE: '1',
       TEST_RUNNER_OROT_IOS_TEST_INVOCATION: invocationId,
     },
