@@ -53,7 +53,7 @@ export const coreTests = [
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
-  'OrotIntegrationTests/RecordingExportIntegrationTests/testUnverifiedFullScreenPresentationRetainsExportUntilDismissal',
+  'OrotIntegrationTests/RecordingExportIntegrationTests/testDetachedSourceActivityKeepsExportUntilDismissal',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal',
   ...windowPresentationAnchorTests,
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
