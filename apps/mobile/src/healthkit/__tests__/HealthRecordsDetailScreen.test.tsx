@@ -159,11 +159,15 @@ test('keeps an empty page reachable without automatically scanning remaining his
 });
 
 test('keeps the period and loaded rows while detail panels reflow', async () => {
+  jest.useFakeTimers({ now: Date.parse(healthRecordReferenceTime) });
   const original = Dimensions.get('window');
   const observations = mapBloodPressureCorrelation(
     correlation('detail-reflow'),
-    '2026-10-05T10:00:00.000Z',
-  ).observations;
+    healthRecordReferenceTime,
+  ).observations.map(item => ({
+    ...item,
+    effectiveAt: healthRecordReferenceTime,
+  }));
   const loadObservations = jest.fn(async () => ({
     records: observations,
     nextCursor: null,
