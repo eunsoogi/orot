@@ -47,6 +47,9 @@ test('opens saved medical document text and page provenance from Records', async
   };
   await render(
     <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={jest.fn()}
       onOpenSymptoms={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}

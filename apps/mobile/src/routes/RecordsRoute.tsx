@@ -128,7 +128,11 @@ export function RecordsRoute({
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, minWidth: 0, backgroundColor: appColors.background },
+  container: {
+    flexGrow: 1,
+    minWidth: 0,
+    backgroundColor: appColors.background,
+  },
   primaryPanel: { flexGrow: 1, minWidth: 0 },
   medicalDocuments: {
     gap: 16,

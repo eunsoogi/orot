@@ -1,9 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import {
-  RecordsRoute,
-  type RecordsRouteProps,
-} from '../RecordsRoute';
+import { RecordsRoute, type RecordsRouteProps } from '../RecordsRoute';
 import type { MedicalDocumentImportService } from '../../medicalDocuments/medicalDocumentImportService';
 
 // Render both adaptive panels together; real width and text thresholds are covered natively.
