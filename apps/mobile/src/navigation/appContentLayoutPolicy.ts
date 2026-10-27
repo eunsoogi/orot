@@ -36,6 +36,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
+    // Literature search measures query and selected-source panels across the usable regions.
+    route.name === 'external-evidence' ||
     route.name === 'recording' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||

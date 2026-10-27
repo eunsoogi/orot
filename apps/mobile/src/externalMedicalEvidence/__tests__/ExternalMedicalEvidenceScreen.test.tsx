@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
@@ -20,6 +25,14 @@ const publication: ExternalMedicalPublication = {
   abstract: 'Study summary',
   originalUrl: 'https://europepmc.org/article/MED/12345',
   retrievedAt: '2026-10-07T03:00:00.000Z',
+};
+
+const secondPublication: ExternalMedicalPublication = {
+  ...publication,
+  recordId: '67890',
+  title: 'Exercise and sleep quality',
+  authors: 'Kim S',
+  originalUrl: 'https://europepmc.org/article/MED/67890',
 };
 
 test('declining the shared query permission does not call the literature service', async () => {
@@ -58,7 +71,7 @@ test('requires query consent and presents provenance and dates', async () => {
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({
       status: 'available' as const,
-      publications: [publication],
+      publications: [publication, secondPublication],
     })),
   };
   const onOpenArticle = jest.fn();
@@ -103,19 +116,47 @@ test('requires query consent and presents provenance and dates', async () => {
     externalQueryConsented: true,
     signal: expect.any(AbortSignal),
   });
-  expect(await screen.findByText('Sleep and blood pressure')).toBeTruthy();
+  const firstResult = await screen.findByTestId(
+    'external-evidence-publication-MED-12345',
+  );
+  expect(firstResult.props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  const selectedSource = screen.getByTestId(
+    'external-evidence-selected-source',
+  );
+  const sourceDetails = within(selectedSource);
+  expect(sourceDetails.getByText(publication.title)).toBeTruthy();
+  expect(StyleSheet.flatten(firstResult.props.style).backgroundColor).toEqual(
+    appColors.surface,
+  );
+  expect(sourceDetails.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();
   expect(
-    StyleSheet.flatten(
-      screen.getByTestId('external-evidence-publication-MED-12345').props.style,
-    ).backgroundColor,
-  ).toEqual(appColors.surface);
-  expect(screen.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();
-  expect(screen.getByText(/자료 수정 날짜: 확인할 수 없어요./)).toBeTruthy();
-  expect(
-    screen.getByText('가져온 시각: 2026-10-07T03:00:00.000Z'),
+    sourceDetails.getByText(/자료 수정 날짜: 확인할 수 없어요./),
   ).toBeTruthy();
-  await fireEvent.press(screen.getByText('원문 열기'));
-  expect(onOpenArticle).toHaveBeenCalledWith(publication);
+  expect(
+    sourceDetails.getByText('가져온 시각: 2026-10-07T03:00:00.000Z'),
+  ).toBeTruthy();
+
+  const secondResult = screen.getByTestId(
+    'external-evidence-publication-MED-67890',
+  );
+  await fireEvent.press(secondResult);
+  expect(firstResult.props.accessibilityState).toMatchObject({
+    selected: false,
+  });
+  expect(secondResult.props.accessibilityState).toMatchObject({
+    selected: true,
+  });
+  expect(StyleSheet.flatten(secondResult.props.style)).toMatchObject({
+    borderColor: appColors.primaryText,
+    borderWidth: 2,
+  });
+  expect(sourceDetails.getByText(secondPublication.title)).toBeTruthy();
+  await fireEvent.press(
+    screen.getByTestId('external-evidence-open-selected-source'),
+  );
+  expect(onOpenArticle).toHaveBeenCalledWith(secondPublication);
 });
 
 test('shows a localized fallback when publication authors are absent', async () => {
