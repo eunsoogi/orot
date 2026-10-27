@@ -42,6 +42,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
     route.name === 'external-evidence' ||
+    // Conversation history measures its list and selected preview as one screen-owned layout.
+    route.name === 'conversation-history' ||
     // Conversation history and evidence panels map directly onto the native usable regions.
     route.name === 'rag-conversation' ||
     route.name === 'recording' ||

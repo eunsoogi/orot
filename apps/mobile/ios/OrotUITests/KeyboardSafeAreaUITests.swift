@@ -190,6 +190,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     @MainActor
     func testConversationLongTitlesAndFullSwipeAcrossTextSizes() throws {
         try ConversationHistoryUITestConditions.verifyLongTitlesAndFullSwipe(testCase: self)
+        ConversationHistoryUITestConditions.verifySelectedConversationPreview()
     }
 
     /// Reopen the actual latest row and retain its identity independently of UIKit's grouped text labels.

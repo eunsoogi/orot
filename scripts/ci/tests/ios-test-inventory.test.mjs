@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 
 function assertTestMethodDeclared(identifier) {
   const [target, suite, method] = identifier.split('/');
@@ -139,12 +140,6 @@ test('each profile declares unique existing cases and every test method is sched
   }
   assert.throws(() => iosTestInventory('unknown'));
 });
-
-const swiftSuiteExtensions = new Map([
-  ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
-  ['OrotUITests/SettingsBackupDuoUITests.swift', 'RootNavigationUITests'],
-  ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'], // Multiple files may extend one suite.
-]);
 
 function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
   const code = maskSwiftCommentsAndStrings(source);
