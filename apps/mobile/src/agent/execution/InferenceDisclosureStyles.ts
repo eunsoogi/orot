@@ -40,6 +40,9 @@ export const disclosureStyles = StyleSheet.create({
   compactContent: { paddingHorizontal: 14, paddingBottom: 16, gap: 12 },
   header: { gap: 12 },
   compactHeader: { gap: 8 },
+  // Give the shared sticky summary an opaque backing while details pass beneath it.
+  summary: { gap: 14, backgroundColor: appColors.background },
+  compactSummary: { gap: 12 },
   icon: {
     width: 48,
     height: 48,

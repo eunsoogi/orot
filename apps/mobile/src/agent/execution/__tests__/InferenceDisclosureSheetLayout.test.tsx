@@ -47,6 +47,7 @@ test('reflows from measured modal geometry while keeping the consent summary and
     'inference-disclosure-recipient-card',
   );
   const scopeCard = screen.getByTestId('inference-disclosure-scope-card');
+  const summary = screen.getByTestId('inference-disclosure-summary');
   const footer = screen.getByTestId('inference-disclosure-footer');
   const content = screen.getByTestId('inference-disclosure-content');
   const grabber = screen.getByTestId('inference-disclosure-grabber', {
@@ -54,7 +55,13 @@ test('reflows from measured modal geometry while keeping the consent summary and
   });
 
   expect(modal.props.presentationStyle).toBe('pageSheet');
-  expect(content.props.stickyHeaderIndices).toEqual([1, 2]);
+  expect(content.props.stickyHeaderIndices).toEqual([1]);
+  expect(
+    within(summary).getByTestId('inference-disclosure-recipient-card'),
+  ).toBeTruthy();
+  expect(
+    within(summary).getByTestId('inference-disclosure-scope-card'),
+  ).toBeTruthy();
   expect(
     within(recipientCard).getByTestId('inference-disclosure-recipient'),
   ).toBeTruthy();
@@ -85,6 +92,7 @@ test('reflows from measured modal geometry while keeping the consent summary and
   await fireEvent(window, 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 800 } },
   });
+  expect(summary).toHaveStyle({ gap: 12 });
   expect(recipientCard).toHaveStyle({ padding: 14 });
   expect(scopeCard).toHaveStyle({ padding: 14 });
   expect(footer).toHaveStyle({ paddingHorizontal: 14, gap: 8 });
@@ -98,6 +106,7 @@ test('reflows from measured modal geometry while keeping the consent summary and
   await fireEvent(window, 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 430, height: 800 } },
   });
+  expect(summary).toHaveStyle({ gap: 14 });
   expect(recipientCard).toHaveStyle({ padding: 18 });
   expect(scopeCard).toHaveStyle({ padding: 18 });
   expect(footer).toHaveStyle({ paddingHorizontal: 20, gap: 10 });

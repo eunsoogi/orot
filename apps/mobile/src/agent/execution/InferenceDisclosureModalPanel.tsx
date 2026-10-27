@@ -77,14 +77,14 @@ export default function InferenceDisclosureModalPanel({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       />
-      {/* Keep the recipient and transmitted scope visible while detailed input scrolls. */}
+      {/* Keep both consent facts in one sticky child so neither displaces the other. */}
       <ScrollView
         contentContainerStyle={[
           styles.content,
           compact && styles.compactContent,
         ]}
         keyboardShouldPersistTaps="handled"
-        stickyHeaderIndices={[1, 2]}
+        stickyHeaderIndices={[1]}
         testID="inference-disclosure-content"
       >
         <View style={[styles.header, compact && styles.compactHeader]}>
@@ -97,49 +97,57 @@ export default function InferenceDisclosureModalPanel({
           <Text style={styles.subtitle}>{copy.subtitle}</Text>
         </View>
         <View
-          style={[styles.card, compact && styles.compactCard]}
-          testID="inference-disclosure-recipient-card"
+          style={[styles.summary, compact && styles.compactSummary]}
+          testID="inference-disclosure-summary"
         >
-          <View style={styles.row}>
-            <Text style={styles.label}>
-              {t('medicalAppointments.inferenceDisclosure.recipient')}
-            </Text>
-            <Text style={styles.value} testID="inference-disclosure-recipient">
-              {chatGPT
-                ? t('medicalAppointments.inferenceDisclosure.account')
-                : request.recipient}
-            </Text>
-            {!chatGPT && !copy.publicSearch ? (
-              <Text style={styles.label}>{request.providerId}</Text>
+          <View
+            style={[styles.card, compact && styles.compactCard]}
+            testID="inference-disclosure-recipient-card"
+          >
+            <View style={styles.row}>
+              <Text style={styles.label}>
+                {t('medicalAppointments.inferenceDisclosure.recipient')}
+              </Text>
+              <Text
+                style={styles.value}
+                testID="inference-disclosure-recipient"
+              >
+                {chatGPT
+                  ? t('medicalAppointments.inferenceDisclosure.account')
+                  : request.recipient}
+              </Text>
+              {!chatGPT && !copy.publicSearch ? (
+                <Text style={styles.label}>{request.providerId}</Text>
+              ) : null}
+            </View>
+            {!copy.publicSearch ? (
+              <>
+                <View style={styles.separator} />
+                <View style={styles.row}>
+                  <Text style={styles.label}>
+                    {t('medicalAppointments.inferenceDisclosure.selectedModel')}
+                  </Text>
+                  <Text style={styles.value}>{model}</Text>
+                </View>
+              </>
             ) : null}
           </View>
-          {!copy.publicSearch ? (
-            <>
-              <View style={styles.separator} />
-              <View style={styles.row}>
-                <Text style={styles.label}>
-                  {t('medicalAppointments.inferenceDisclosure.selectedModel')}
-                </Text>
-                <Text style={styles.value}>{model}</Text>
-              </View>
-            </>
-          ) : null}
-        </View>
-        <View
-          style={[styles.card, compact && styles.compactCard]}
-          testID="inference-disclosure-scope-card"
-        >
-          <Text style={styles.label}>
-            {t('medicalAppointments.inferenceDisclosure.information')}
-          </Text>
-          <Text style={styles.value} testID="inference-disclosure-scope">
-            {copy.information}
-          </Text>
-          <Text style={styles.noticeBody}>
-            {calendar
-              ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
-              : t('medicalAppointments.inferenceDisclosure.reviewHint')}
-          </Text>
+          <View
+            style={[styles.card, compact && styles.compactCard]}
+            testID="inference-disclosure-scope-card"
+          >
+            <Text style={styles.label}>
+              {t('medicalAppointments.inferenceDisclosure.information')}
+            </Text>
+            <Text style={styles.value} testID="inference-disclosure-scope">
+              {copy.information}
+            </Text>
+            <Text style={styles.noticeBody}>
+              {calendar
+                ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
+                : t('medicalAppointments.inferenceDisclosure.reviewHint')}
+            </Text>
+          </View>
         </View>
         <Pressable
           accessibilityRole="button"
