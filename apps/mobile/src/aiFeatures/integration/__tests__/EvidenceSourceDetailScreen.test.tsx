@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { LocalHealthEvidenceRecord } from '../../../healthEvidence/localEvidenceRepository';
 import { EvidenceSourceDetailScreen } from '../EvidenceSourceDetailScreen';
@@ -69,6 +70,36 @@ const savedRecords: readonly LocalHealthEvidenceRecord[] = [
   },
 ];
 
+const measurableView = View as unknown as {
+  prototype: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  };
+};
+const windowBounds = new Map<
+  string,
+  { readonly x: number; readonly width: number }
+>();
+const originalWindow = Dimensions.get('window');
+const originalScreen = Dimensions.get('screen');
+
+beforeEach(() => windowBounds.clear());
+afterEach(() =>
+  Dimensions.set({ window: originalWindow, screen: originalScreen }),
+);
+
+// AdaptiveColumns uses native window coordinates, so the test injects its measured host frame.
+jest
+  .spyOn(measurableView.prototype, 'measureInWindow')
+  .mockImplementation(function (
+    this: { readonly props: { readonly testID?: string } },
+    callback,
+  ) {
+    const bounds = windowBounds.get(this.props.testID ?? '');
+    if (bounds) callback(bounds.x, 0, bounds.width, 600);
+  });
+
 describe('EvidenceSourceDetailScreen', () => {
   it('shows current saved values, units, times, and source provenance', async () => {
     const readSource = jest.fn(async (): Promise<EvidenceSourceReadResult> => ({
@@ -96,6 +127,91 @@ describe('EvidenceSourceDetailScreen', () => {
     expect(screen.getByText('HealthKit import')).toBeTruthy();
     expect(screen.queryByText('private-observation')).toBeNull();
     expect(screen.queryByText('opaque-source-id')).toBeNull();
+    await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the selected source and reader when measured panels reflow', async () => {
+    const readSource = jest.fn(async (): Promise<EvidenceSourceReadResult> => ({
+      status: 'available',
+      document: { sourceKind: 'personal_record', records: savedRecords },
+    }));
+    const onBack = jest.fn();
+    await render(
+      <EvidenceSourceDetailScreen
+        onBack={onBack}
+        readSource={readSource}
+        reference={reference}
+      />,
+    );
+
+    expect(await screen.findByText('70.5 kg')).toBeTruthy();
+    const layoutHost = screen.getByTestId(
+      'ai-feature-source-detail-columns-host',
+    );
+    windowBounds.set('ai-feature-source-detail-columns-host', {
+      x: 0,
+      width: 1400,
+    });
+    await fireEvent(layoutHost, 'layout', {
+      nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
+    });
+
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('ai-feature-source-detail-columns').props.style,
+      )?.flexDirection,
+    ).toBe('row');
+    await fireEvent.press(screen.getByRole('tab', { name: '저장된 출처 3' }));
+    expect(screen.getByText('HealthKit import')).toBeTruthy();
+
+    windowBounds.set('ai-feature-source-detail-columns-host', {
+      x: 0,
+      width: 1000,
+    });
+    await act(async () => {
+      Dimensions.set({
+        window: { ...originalWindow, width: 1000, height: 900, fontScale: 2 },
+        screen: { ...originalScreen, width: 1000, height: 900, fontScale: 2 },
+      });
+    });
+    await fireEvent(layoutHost, 'layout', {
+      nativeEvent: { layout: { width: 1000, height: 900, x: 0, y: 0 } },
+    });
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('ai-feature-source-detail-columns').props.style,
+      )?.flexDirection,
+    ).toBe('column');
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('ai-feature-source-row-0').props.style,
+      )?.flexDirection,
+    ).toBe('column');
+    expect(screen.getByText('HealthKit import')).toBeTruthy();
+
+    windowBounds.set('ai-feature-source-detail-columns-host', {
+      x: 0,
+      width: 360,
+    });
+    await act(async () => {
+      Dimensions.set({
+        window: { ...originalWindow, width: 360, height: 900, fontScale: 1 },
+        screen: { ...originalScreen, width: 360, height: 900, fontScale: 1 },
+      });
+    });
+    await fireEvent(layoutHost, 'layout', {
+      nativeEvent: { layout: { width: 360, height: 600, x: 0, y: 0 } },
+    });
+
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('ai-feature-source-detail-columns').props.style,
+      )?.flexDirection,
+    ).toBe('column');
+    expect(screen.getByText('HealthKit import')).toBeTruthy();
+    expect(screen.getByTestId('ai-feature-source-detail')).toBeTruthy();
+    expect(readSource).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
     expect(onBack).toHaveBeenCalledTimes(1);
   });

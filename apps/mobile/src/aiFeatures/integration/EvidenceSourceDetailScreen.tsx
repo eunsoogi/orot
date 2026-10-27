@@ -131,7 +131,10 @@ export function EvidenceSourceDetailScreen({
         </View>
       ) : null}
       {state.status === 'available' ? (
-        <EvidenceSourceSections sections={presentation} />
+        <EvidenceSourceSections
+          routeKey={navigationRouteKey}
+          sections={presentation}
+        />
       ) : null}
     </ScrollView>
   );

@@ -25,6 +25,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Health data settings pairs category choices with sync and permission status panels.
   // The symptom journal shares native usable regions between its list and selected summary.
   // Disease hypotheses keeps its summary actions and evidence on the screen's full usable lane.
+  // Source detail measures its selector and saved-content panels against native usable regions.
   // Health review keeps observations and follow-up controls within measured usable regions.
   return route.name === 'settings-provider' ||
     route.name === 'settings-accounts' ||
@@ -52,6 +53,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||
     route.name === 'disease-hypotheses' ||
+    route.name === 'source-detail' ||
+    route.name === 'health-review-source' ||
     route.name === 'health-review' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||
