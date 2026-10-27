@@ -1,12 +1,9 @@
 import {
-  LOCAL_EMBEDDING_IDENTITY,
-  chunkStructuredRecord,
-  searchHybridEvidenceChunks,
-} from '@orot/rag';
-import type {
-  DocumentQueryEmbeddingProvider,
-  LocalFullTextSearchStore,
-} from '@orot/rag';
+  searchFixtureEvidence,
+  type FixtureEmbeddings,
+} from '../../../../../packages/rag/__tests__/standardRetrievalFixtures';
+import { LOCAL_EMBEDDING_IDENTITY, chunkStructuredRecord } from '@orot/rag';
+import type { LocalFullTextSearchStore } from '@orot/rag';
 import { openEncryptedStorage } from '@orot/storage';
 import {
   createDatabase,
@@ -22,19 +19,13 @@ import {
 } from '../../healthkit/sleep/sleepImporterFixtures';
 import { SqlCipherRagEmbeddingStorage } from '../ragEmbeddingStorage';
 
-function queryProvider(): DocumentQueryEmbeddingProvider {
+function queryProvider(): FixtureEmbeddings {
   return {
     modelIdentity: LOCAL_EMBEDDING_IDENTITY,
-    embedDocuments: jest.fn(async () => ({
-      ok: true as const,
-      value: { vectors: [] },
-    })),
-    embedQueries: jest.fn(async () => ({
-      ok: true as const,
-      value: {
-        vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)],
-      },
-    })),
+    embedDocuments: jest.fn(async () => []),
+    embedQuery: jest.fn(async () =>
+      new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0),
+    ),
   };
 }
 
@@ -62,7 +53,7 @@ describe('HealthKit structured-record retrieval identity', () => {
       const provider = queryProvider();
 
       await expect(
-        searchHybridEvidenceChunks(
+        searchFixtureEvidence(
           '합성 수면 기록',
           [chunk],
           provider,
@@ -87,7 +78,7 @@ describe('HealthKit structured-record retrieval identity', () => {
       };
 
       await expect(
-        searchHybridEvidenceChunks(
+        searchFixtureEvidence(
           '합성 수면 기록',
           [chunk],
           queryProvider(),

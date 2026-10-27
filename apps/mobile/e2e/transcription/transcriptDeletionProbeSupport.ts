@@ -2,7 +2,8 @@ import type { AgentMemoryInput } from '@orot/agent-memory';
 import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import {
   assertAgentMemoryRagProbeSearch,
-  createAgentMemoryProbeRagVector,
+  createAgentMemoryProbeChunk,
+  createAgentMemoryProbeRag,
 } from '../../src/memory/agentMemoryRagProbe';
 import {
   closeLocalAgentMemory,
@@ -51,16 +52,9 @@ export async function seedTranscriptDeletionEvidence(
   ) {
     throw new Error('The transcript deletion memory fixture was not recalled.');
   }
-  await new SqlCipherRagEmbeddingStorage(database).upsertBatch(
-    LOCAL_EMBEDDING_IDENTITY,
-    [
-      {
-        chunkId,
-        vector: createAgentMemoryProbeRagVector(),
-        sourceRecordIds: [sourceId],
-      },
-    ],
-  );
+  await createAgentMemoryProbeRag(database).index([
+    createAgentMemoryProbeChunk(sourceId, chunkId),
+  ]);
   await assertAgentMemoryRagProbeSearch(database, sourceId, true, chunkId);
   // Staging must stay backup-eligible without polluting the permanent UUID-only recording scan.
   await stageRecordingDeletion(sourceId);

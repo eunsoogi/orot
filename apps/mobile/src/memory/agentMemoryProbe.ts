@@ -1,7 +1,8 @@
 import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import {
   assertAgentMemoryRagProbeSearch,
-  createAgentMemoryProbeRagVector,
+  createAgentMemoryProbeChunk,
+  createAgentMemoryProbeRag,
 } from './agentMemoryRagProbe';
 import {
   closeLocalAgentMemory,
@@ -58,16 +59,9 @@ export async function runAgentMemoryProbe(
       const repository = await openLocalStorage();
       await repository.sourceRecords.create(sourceRecord);
       // Seed one deterministic vector so deletion is exercised without model download or network access.
-      const embeddingStorage = new SqlCipherRagEmbeddingStorage(
+      await createAgentMemoryProbeRag(
         await openLocalAgentMemoryDatabase(),
-      );
-      await embeddingStorage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
-        {
-          chunkId,
-          vector: createAgentMemoryProbeRagVector(),
-          sourceRecordIds: [sourceRecord.id],
-        },
-      ]);
+      ).index([createAgentMemoryProbeChunk(sourceRecord.id, chunkId)]);
       const originalId = await memory.remember({
         ...memoryInput,
         text: originalText,
