@@ -10,6 +10,8 @@ enum NavigationUITestConditions {
     struct SafeAreaObservation {
         let frame: CGRect
         let top: CGFloat
+        // Keep the trailing edge from this same native observation, not a device-size assumption.
+        let right: CGFloat
         let bottom: CGFloat
     }
 
@@ -58,7 +60,7 @@ enum NavigationUITestConditions {
         let insets = try XCTUnwrap(report["insets"] as? [String: Double])
         return try SafeAreaObservation(
             frame: CGRect(x: XCTUnwrap(frame["x"]), y: XCTUnwrap(frame["y"]), width: XCTUnwrap(frame["width"]), height: XCTUnwrap(frame["height"])),
-            top: XCTUnwrap(insets["top"]), bottom: XCTUnwrap(insets["bottom"]),
+            top: XCTUnwrap(insets["top"]), right: XCTUnwrap(insets["right"]), bottom: XCTUnwrap(insets["bottom"]),
         )
     }
 

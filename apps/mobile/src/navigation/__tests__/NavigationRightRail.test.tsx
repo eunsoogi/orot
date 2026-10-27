@@ -167,7 +167,7 @@ test('moves root actions into the right lane without losing route state or botto
     StyleSheet.flatten(
       screen.getByTestId('navigation-content-region').props.style,
     ),
-  ).toEqual(expect.objectContaining({ paddingBottom: 30, right: 82 }));
+  ).toEqual(expect.objectContaining({ paddingBottom: 30, right: 60 }));
   expect(
     screen.getByTestId('navigation-safe-area-content').props.accessibilityHint,
   ).toBe('top,left');
@@ -175,7 +175,7 @@ test('moves root actions into the right lane without losing route state or botto
     StyleSheet.flatten(
       screen.getByTestId('navigation-right-rail-host').props.style,
     ),
-  ).toEqual(expect.objectContaining({ height: 900, width: 82 }));
+  ).toEqual(expect.objectContaining({ height: 900, width: 60 }));
   expect(
     screen.getByTestId('navigation-right-rail').props.accessibilityHint,
   ).toBe('right');

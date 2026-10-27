@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
 import { NavigationActionBarPresentation } from '../NavigationActionBarPresentation';
 import { createNavigationGeometrySnapshot } from '../navigationGeometry';
@@ -19,6 +19,8 @@ function Surface({
   actions = [],
   children,
   layoutMode,
+  railRightInset,
+  railTopInset,
   testID,
 }: NavigationSurfaceProps) {
   return (
@@ -29,6 +31,9 @@ function Surface({
           .join(',')}
       </Text>
       {children}
+      <Text
+        testID={`${testID}-insets`}
+      >{`${railRightInset},${railTopInset}`}</Text>
     </View>
   );
 }
@@ -93,6 +98,16 @@ function Fixture({
 test('retains draft and disabled primary action across continuous Open geometry and keyboard fallback', async () => {
   const { rerender } = await render(<Fixture geometry={openGeometry} />);
   await fireEvent.press(screen.getByTestId('edit-draft'));
+  // The native surface's trailing anchor is local to this edge-aligned lane;
+  // content's 84pt system reservation must not become another native inset.
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('navigation-right-rail-host').props.style,
+    ),
+  ).toEqual(expect.objectContaining({ width: 60, height: 669, right: 0 }));
+  expect(
+    screen.getByTestId('navigation-right-rail-insets').props.children,
+  ).toBe('12,136');
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');
