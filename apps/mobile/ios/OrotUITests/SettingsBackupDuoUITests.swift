@@ -175,7 +175,7 @@ extension RootNavigationUITests {
         let marker = UITestConditions.element(app, "navigation-test-observation")
         guard marker.exists,
               let observation = try? JSONSerialization.jsonObject(
-                with: Data(UITestConditions.text(marker).utf8),
+                    with: Data(UITestConditions.text(marker).utf8),
               ) as? [String: Any],
               let lifecycle = observation["lifecycle"] as? [[String: Any]],
               let context = lifecycle.last(where: { $0["event"] as? String == "window-geometry-context" }),
