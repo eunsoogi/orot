@@ -18,8 +18,8 @@ import {
   type RecordingLibrarySummary,
 } from './recordingLibraryPanelHelpers';
 import RecordingExportPanel from './RecordingExportPanel';
-import RecordingLibraryList from './RecordingLibraryList';
 import RecordingLibraryDetail from './RecordingLibraryDetail';
+import RecordingLibraryContent from './RecordingLibraryContent';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
 
 interface RecordingLibraryPanelProps {
@@ -33,6 +33,7 @@ interface RecordingLibraryPanelProps {
   readonly automaticTranscription?: AutomaticTranscriptionSnapshot | null;
   readonly fallbackExportSourceId?: string | null;
   readonly refreshKey?: string | null;
+  readonly selectedSummarySourceId?: string | null;
   readonly onSourceDeleted?: (sourceId: string) => void;
   readonly actionsDisabled?: boolean;
   readonly onBusyChange?: (busy: boolean) => void;
@@ -48,6 +49,7 @@ export default function RecordingLibraryPanel({
   automaticTranscription = null,
   fallbackExportSourceId,
   refreshKey,
+  selectedSummarySourceId = null,
   onSourceDeleted,
   actionsDisabled = false,
   onBusyChange,
@@ -102,6 +104,10 @@ export default function RecordingLibraryPanel({
   ]);
 
   const selected = recordings.find(item => item.source.id === selectedSourceId);
+  // The route context retains only identity; visible metadata comes from the currently loaded library.
+  const selectionSummary = selectedSummarySourceId
+    ? recordings.find(item => item.source.id === selectedSummarySourceId)
+    : undefined;
 
   function requestDelete(source: RecordingSourceRecord): void {
     setDeleteNotice(null);
@@ -189,14 +195,15 @@ export default function RecordingLibraryPanel({
 
   return (
     <View style={styles.container} testID="recording-library-panel">
-      <RecordingLibraryList
-        onNewRecording={onNewRecording}
-        recordings={recordings}
-        loading={loading}
-        loadError={loadError}
+      <RecordingLibraryContent
         disabled={disabled}
-        onOpen={selectSource}
+        loadError={loadError}
+        loading={loading}
         onDelete={requestDelete}
+        onNewRecording={onNewRecording}
+        onOpen={selectSource}
+        recordings={recordings}
+        selectionSummary={selectionSummary}
       />
       {selected ? (
         <RecordingLibraryDetail
