@@ -23,7 +23,9 @@ test('shows saved dose events, exact status and period controls on a separate li
     />,
   );
 
-  expect(await screen.findByText('Synthetic medication')).toBeTruthy();
+  expect(
+    await screen.findByTestId('health-records-medication-selected'),
+  ).toHaveTextContent(/Synthetic medication/u);
   expect(
     screen.getByTestId('health-record-medication-row-0-status'),
   ).toHaveTextContent('복용함');
@@ -37,6 +39,65 @@ test('shows saved dose events, exact status and period controls on a separate li
     category: 'medications',
     period: 'three_months',
   });
+});
+
+test('selects a medication history and shows its readable source without source IDs', async () => {
+  const timestamp = new Date().toISOString();
+  const secondDefinition = {
+    ...medicationDefinition('medication-2', timestamp),
+    displayText: 'Second medication',
+    generalForm: 'capsule',
+  };
+  const secondDose = {
+    ...importedDoseEvent('dose-2', timestamp, 'skipped'),
+    medicationDefinitionId: 'medication-2',
+    provenance: {
+      origin: 'imported' as const,
+      sourceRecordIds: ['source-private-record'],
+      source: {
+        system: 'healthkit',
+        sourceIdentifier: 'private-source-identifier',
+        sourceName: 'Synthetic pharmacy',
+      },
+    },
+  };
+
+  await render(
+    <HealthRecordsMedicationDetailScreen
+      loadMedicationData={async () => ({
+        definitions: [
+          medicationDefinition('medication-1', timestamp),
+          secondDefinition,
+        ],
+        doseEvents: [
+          importedDoseEvent('dose-1', timestamp, 'taken'),
+          secondDose,
+        ],
+      })}
+      onBack={jest.fn()}
+      onSelectionChange={jest.fn()}
+      selection={{ category: 'medications', period: 'month' }}
+    />,
+  );
+
+  const secondOption = await screen.findByTestId(
+    'health-record-medication-option-1',
+  );
+  await fireEvent.press(secondOption);
+
+  expect(secondOption.props.accessibilityState.selected).toBe(true);
+  expect(
+    screen.getByTestId('health-records-medication-selected'),
+  ).toHaveTextContent(/Second medication/u);
+  expect(
+    screen.getByTestId('health-record-medication-row-0-status'),
+  ).toHaveTextContent('건너뜀');
+  expect(
+    screen.getByTestId('health-record-medication-row-0-source'),
+  ).toHaveTextContent('출처: Synthetic pharmacy');
+  expect(
+    screen.queryByText(/private-source-identifier|source-private-record/u),
+  ).toBeNull();
 });
 
 test('shows an empty period and recovers after a local read failure', async () => {
