@@ -67,6 +67,14 @@ final class DiseaseHypothesesDuoUITests: OrotFailFastTestCase {
         message(app, "합성 가능성 평가")
         XCTAssertTrue(UITestConditions.exists(citation))
         XCTAssertTrue(UITestConditions.exists(summary))
+
+        // This production fixture has empty summary storage but keeps history as a separate route.
+        node(app, "symptom-summary-history-open").tap()
+        NavigationUITestConditions.route(app, markers: ["summary-history-screen"])
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts["저장된 요약이 없어요."]))
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
+        message(app, "합성 가능성 평가")
     }
 
     @MainActor
