@@ -1,9 +1,10 @@
-import { NativeModules, Pressable, StyleSheet, View } from 'react-native';
+import { NativeModules, StyleSheet, View } from 'react-native';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 
 interface SettingsRouteProps {
   readonly selectedProvider: string;
@@ -15,7 +16,7 @@ interface SettingsRouteProps {
   readonly onOpenSyncStatus: () => void;
 }
 
-/** Separates automatic integrations from provider, privacy, and backup settings. */
+/** Keeps Settings actions in place while its content follows measured usable space. */
 export function SettingsRoute({
   selectedProvider,
   onOpenProviderSettings,
@@ -38,152 +39,118 @@ export function SettingsRoute({
   )?.version;
   return (
     <View style={styles.container}>
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="settings-title"
-      >
-        {t('settings.title')}
-      </Text>
+      {/* AdaptiveColumns clips panels to live usable regions and leaves the shell rail clear. */}
+      <AdaptiveColumns
+        primary={
+          <View style={styles.panel}>
+            <Text
+              accessibilityRole="header"
+              style={styles.title}
+              testID="settings-title"
+            >
+              {t('settings.title')}
+            </Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.integrations')}</Text>
-        <View style={styles.group}>
-          <SettingRow
-            symbol="heart.fill"
-            tone="pink"
-            onPress={onOpenHealthData}
-            summary={t('settings.healthDataSummary')}
-            testID="settings-open-health-data"
-            title={t('settings.healthData')}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            symbol="arrow.triangle.2.circlepath"
-            onPress={onOpenSyncStatus}
-            summary={t('settings.syncStatusSummary')}
-            testID="settings-open-sync-status"
-            title={t('settings.syncStatus')}
-          />
-        </View>
-      </View>
+            <View style={styles.section} testID="settings-section-integrations">
+              <Text style={styles.sectionTitle}>
+                {t('settings.integrations')}
+              </Text>
+              <View style={styles.group}>
+                <SettingsRouteRow
+                  symbol="heart.fill"
+                  tone="pink"
+                  onPress={onOpenHealthData}
+                  summary={t('settings.healthDataSummary')}
+                  testID="settings-open-health-data"
+                  title={t('settings.healthData')}
+                />
+                <View style={styles.divider} />
+                <SettingsRouteRow
+                  symbol="arrow.triangle.2.circlepath"
+                  onPress={onOpenSyncStatus}
+                  summary={t('settings.syncStatusSummary')}
+                  testID="settings-open-sync-status"
+                  title={t('settings.syncStatus')}
+                />
+              </View>
+            </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.otherSettings')}</Text>
-        <View style={styles.group}>
-          <SettingRow
-            symbol="sparkles"
-            tone="purple"
-            onPress={onOpenProviderSettings}
-            summary={selectedProvider || t('settings.providerSummary')}
-            testID="settings-open-provider"
-            title={t('settings.provider')}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            symbol="person"
-            tone="neutral"
-            onPress={onOpenAccounts}
-            testID="settings-open-accounts"
-            title={t('settings.accounts')}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            symbol="checkmark.shield"
-            tone="green"
-            onPress={onOpenPrivacy}
-            testID="settings-open-privacy"
-            title={t('settings.permissions')}
-          />
-        </View>
-      </View>
+            <View style={styles.section} testID="settings-section-other">
+              <Text style={styles.sectionTitle}>
+                {t('settings.otherSettings')}
+              </Text>
+              <View style={styles.group}>
+                <SettingsRouteRow
+                  symbol="sparkles"
+                  tone="purple"
+                  onPress={onOpenProviderSettings}
+                  summary={selectedProvider || t('settings.providerSummary')}
+                  testID="settings-open-provider"
+                  title={t('settings.provider')}
+                />
+                <View style={styles.divider} />
+                <SettingsRouteRow
+                  symbol="person"
+                  tone="neutral"
+                  onPress={onOpenAccounts}
+                  testID="settings-open-accounts"
+                  title={t('settings.accounts')}
+                />
+                <View style={styles.divider} />
+                <SettingsRouteRow
+                  symbol="checkmark.shield"
+                  tone="green"
+                  onPress={onOpenPrivacy}
+                  testID="settings-open-privacy"
+                  title={t('settings.permissions')}
+                />
+              </View>
+            </View>
+          </View>
+        }
+        secondary={
+          <View style={styles.panel}>
+            <View
+              style={styles.section}
+              testID="settings-section-data-management"
+            >
+              <Text style={styles.sectionTitle}>
+                {t('settings.dataManagement')}
+              </Text>
+              <View style={styles.group}>
+                <SettingsRouteRow
+                  symbol="externaldrive"
+                  onPress={onOpenBackup}
+                  testID="settings-open-backup"
+                  title={t('backup.pageTitle')}
+                />
+              </View>
+            </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.dataManagement')}</Text>
-        <View style={styles.group}>
-          <SettingRow
-            symbol="externaldrive"
-            onPress={onOpenBackup}
-            testID="settings-open-backup"
-            title={t('backup.pageTitle')}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.appInfo')}</Text>
-        <View style={[styles.group, styles.row]} testID="settings-app-info">
-          <AppSymbol name="info.circle" size={24} color={appColors.text} />
-          <Text style={styles.rowTitle}>
-            {t('app.welcome.title')}
-            {version ? ` ${version}` : ''}
-          </Text>
-        </View>
-      </View>
+            <View style={styles.section} testID="settings-section-app-info">
+              <Text style={styles.sectionTitle}>{t('settings.appInfo')}</Text>
+              <View style={styles.group}>
+                <SettingsRouteAppInfo version={version} />
+              </View>
+            </View>
+          </View>
+        }
+        routeKey="settings"
+        testID="settings-layout"
+      />
     </View>
   );
 }
 
-function SettingRow({
-  onPress,
-  summary,
-  testID,
-  title,
-  symbol,
-  tone = 'blue',
-}: {
-  readonly onPress: () => void;
-  readonly summary?: string;
-  readonly testID: string;
-  readonly title: string;
-  readonly symbol: string;
-  readonly tone?: 'blue' | 'green' | 'pink' | 'purple' | 'neutral';
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={styles.row}
-      testID={testID}
-    >
-      <View style={[styles.icon, { backgroundColor: tones[tone].background }]}>
-        <AppSymbol name={symbol} size={24} color={tones[tone].foreground} />
-      </View>
-      <View style={styles.rowCopy}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        {summary ? <Text style={styles.summary}>{summary}</Text> : null}
-      </View>
-      <AppSymbol name="chevron.right" size={14} />
-    </Pressable>
-  );
-}
-
-// Semantic icon colors follow system appearance, including the tinted backgrounds.
-const tones = {
-  blue: {
-    foreground: appColors.primaryText,
-    background: appColors.primarySoft,
-  },
-  green: { foreground: appColors.green, background: appColors.greenSoft },
-  pink: { foreground: appColors.pink, background: appColors.pinkSoft },
-  purple: { foreground: appColors.purple, background: appColors.purpleSoft },
-  neutral: {
-    foreground: appColors.secondary,
-    background: appColors.background,
-  },
-};
-
 const styles = StyleSheet.create({
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   container: {
     flexGrow: 1,
+    minWidth: 0,
     backgroundColor: appColors.background,
+  },
+  panel: {
+    flexGrow: 1,
+    minWidth: 0,
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 24,
@@ -209,15 +176,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
   },
-  row: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    flexDirection: 'row',
-    gap: 16,
-    minHeight: 60,
-    paddingHorizontal: 16,
-  },
-  rowCopy: { flex: 1, gap: 4, paddingVertical: 10 },
-  rowTitle: { color: appColors.text, fontSize: 16, fontWeight: '500' },
-  summary: { color: appColors.secondary, fontSize: 13 },
 });

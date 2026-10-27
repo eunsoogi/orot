@@ -24,7 +24,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||
         rootTabs?.activeTab === 'schedule' ||
-        rootTabs?.activeTab === 'ai'))
+        rootTabs?.activeTab === 'ai' ||
+        rootTabs?.activeTab === 'settings'))
     ? 'screen'
     : 'scene';
 };
