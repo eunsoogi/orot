@@ -11,10 +11,14 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
     func testRecordingCaptureAndConsentSurviveLiveWindowReflow() throws {
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
+        let startingOrientation: UIDeviceOrientation = .portrait
+        let changedOrientation: UIDeviceOrientation = .landscapeLeft
         defer {
             XCUIDevice.shared.orientation = originalOrientation
             UITestConditions.terminateStandaloneApp(app)
         }
+        // Start in a known orientation so every run observes two distinct window sizes.
+        XCUIDevice.shared.orientation = startingOrientation
         app.launch()
 
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
@@ -51,7 +55,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         let guidance = UITestConditions.element(app, "recording-guidance-panel")
         let sessionFrame = session.frame
         let guidanceFrame = guidance.frame
-        XCUIDevice.shared.orientation = .landscapeLeft
+        XCUIDevice.shared.orientation = changedOrientation
         waitForRecordingReflow(
             app,
             status: status,
@@ -66,21 +70,21 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         XCTAssertEqual(UITestConditions.text(consentStatus), "동의 확인됨")
         XCTAssertFalse(consent.isEnabled)
 
-        let landscapeWidth = app.windows.firstMatch.frame.width
-        let landscapeDuration = UITestConditions.text(duration)
-        let landscapeSessionFrame = session.frame
-        let landscapeGuidanceFrame = guidance.frame
-        XCUIDevice.shared.orientation = originalOrientation
+        let changedWidth = app.windows.firstMatch.frame.width
+        let changedDuration = UITestConditions.text(duration)
+        let changedSessionFrame = session.frame
+        let changedGuidanceFrame = guidance.frame
+        XCUIDevice.shared.orientation = startingOrientation
         waitForRecordingReflow(
             app,
             status: status,
             duration: duration,
             session: session,
             guidance: guidance,
-            widthDifferentFrom: landscapeWidth,
-            durationDifferentFrom: landscapeDuration,
-            sessionFrameDifferentFrom: landscapeSessionFrame,
-            guidanceFrameDifferentFrom: landscapeGuidanceFrame,
+            widthDifferentFrom: changedWidth,
+            durationDifferentFrom: changedDuration,
+            sessionFrameDifferentFrom: changedSessionFrame,
+            guidanceFrameDifferentFrom: changedGuidanceFrame,
         )
         XCTAssertEqual(UITestConditions.text(consentStatus), "동의 확인됨")
         XCTAssertFalse(consent.isEnabled)
