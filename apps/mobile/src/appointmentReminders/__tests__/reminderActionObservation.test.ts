@@ -35,6 +35,7 @@ it('binds each existing promise result to its own action and excludes visit/erro
     'busy',
     'currentBusy',
     'currentStatus',
+    'origin',
     'outcome',
     'sequence',
     'status',

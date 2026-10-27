@@ -157,7 +157,7 @@ public final class AppointmentReminderModule: RCTEventEmitter {
                     recordAppointmentReminderDiagnostic(.selectionWriteResolve)
                 } catch {
                     recordAppointmentReminderDiagnostic(.selectionWriteReject, error: error)
-                    reject("REMINDER_SELECTION_FAILED", "The reminder preference could not be saved.", nil)
+                    reject("REMINDER_SELECTION_FAILED", "The reminder preference could not be saved.", appointmentReminderFailureOriginCarrier())
                 }
             }
         }
@@ -188,7 +188,7 @@ public final class AppointmentReminderModule: RCTEventEmitter {
                     )
                 } catch {
                     recordAppointmentReminderDiagnostic(.requestAuthorizationReject, error: error)
-                    reject("REMINDER_PERMISSION_FAILED", "Notification authorization could not be checked.", nil)
+                    reject("REMINDER_PERMISSION_FAILED", "Notification authorization could not be checked.", appointmentReminderFailureOriginCarrier())
                 }
             }
         }
@@ -205,12 +205,15 @@ public final class AppointmentReminderModule: RCTEventEmitter {
                 recordAppointmentReminderDiagnostic(.planValidationEnter, nullPlan: value == nil)
                 let plan: AppointmentReminderNotificationPlan?
                 do {
+                    #if OROT_TESTS
+                        try AppointmentReminderFailureOrigin.failControlReplaceIfEnabled()
+                    #endif
                     plan = try value.map(AppointmentReminderNotificationPlan.init)
                     recordAppointmentReminderDiagnostic(.planValidationResolve, nullPlan: value == nil)
                 } catch {
                     recordAppointmentReminderDiagnostic(.planValidationReject, error: error)
                     recordAppointmentReminderDiagnostic(.bridgeReject, error: error)
-                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", nil)
+                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", appointmentReminderFailureOriginCarrier())
                     return
                 }
                 do {
@@ -219,7 +222,7 @@ public final class AppointmentReminderModule: RCTEventEmitter {
                     recordAppointmentReminderDiagnostic(.bridgeResolve, nullPlan: value == nil)
                 } catch {
                     recordAppointmentReminderDiagnostic(.bridgeReject, error: error)
-                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", nil)
+                    reject("REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", appointmentReminderFailureOriginCarrier())
                 }
             }
         }

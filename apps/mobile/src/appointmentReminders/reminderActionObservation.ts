@@ -1,3 +1,7 @@
+import {
+  reminderFailureOrigin,
+  type ReminderFailureOrigin,
+} from './reminderFailureOrigin';
 import type {
   AppointmentReminderCoordinator,
   AppointmentReminderState,
@@ -5,6 +9,7 @@ import type {
 
 export interface ReminderActionReceipt {
   readonly sequence: number;
+  readonly origin?: ReminderFailureOrigin | 'unknown';
   readonly outcome: 'begin' | 'resolve' | 'reject';
   readonly status: AppointmentReminderState['status'];
   readonly busy: boolean;
@@ -42,10 +47,14 @@ export function beginReminderAction(
   const emit = (
     outcome: ReminderActionReceipt['outcome'],
     value: AppointmentReminderState,
+    error?: unknown,
   ) => {
     const live = current?.getSnapshot() ?? value;
     receipt = {
       sequence: action,
+      ...(outcome === 'reject'
+        ? { origin: reminderFailureOrigin(error) ?? 'unknown' }
+        : {}),
       outcome,
       status: value.status,
       busy: value.busy,
@@ -73,6 +82,9 @@ export function beginReminderAction(
       };
       publish();
     }) ?? (() => {});
-  return (outcome: 'resolve' | 'reject', value: AppointmentReminderState) =>
-    emit(outcome, value);
+  return (
+    outcome: 'resolve' | 'reject',
+    value: AppointmentReminderState,
+    error?: unknown,
+  ) => emit(outcome, value, error);
 }

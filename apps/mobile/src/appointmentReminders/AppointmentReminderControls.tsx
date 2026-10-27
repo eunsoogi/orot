@@ -47,7 +47,7 @@ function Controls({
       )
       .then(
         () => settle('resolve', coordinator.getSnapshot()),
-        () => settle('reject', coordinator.getSnapshot()),
+        error => settle('reject', coordinator.getSnapshot(), error),
       );
   };
   return (
