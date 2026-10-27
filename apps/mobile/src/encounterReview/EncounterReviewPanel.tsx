@@ -98,7 +98,9 @@ export function EncounterReviewPanel({
               : copy.restart
           }
           disabled={disabled}
-          onPress={() => controller.start(consent)}
+          onPress={() => {
+            controller.start(consent);
+          }}
           testID="encounter-start"
         />
       ) : null}
