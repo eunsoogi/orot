@@ -57,13 +57,18 @@ test('source discovery survives closed database and fresh controller without re-
   expect(third.controller.state.status).toBe('saved');
 });
 
-test.each([':review', ':ui-review'])(
+test.each([':review', ':ui-review', '%3Areview'])(
   'native-shaped %s source uses a private execution ID and waits for approval',
   async suffix => {
     const nativeSourceId =
       'test-persistence-00000000-0000-4000-8000-000000000001' + suffix;
     await seedSource(nativeSourceId);
-    const { controller, synthetic } = controllerFor(true, true, nativeSourceId);
+    const { controller, synthetic } = controllerFor(
+      true,
+      true,
+      undefined,
+      nativeSourceId,
+    );
     const authorized = {
       authorize: jest.fn(async () => 'authorized' as const),
     };
@@ -87,7 +92,7 @@ test.each([':review', ':ui-review'])(
       'encounter-review-session:' + encodeURIComponent(nativeSourceId) + ':';
     expect(session?.threadId).toBe(pending.threadId);
     expect(pending.threadId.startsWith(threadPrefix)).toBe(true);
-    expect(pending.threadId).toContain('%3A');
+    expect(pending.threadId).toContain(encodeURIComponent(suffix));
 
     const executionId =
       'encounter-extraction-' + pending.threadId.slice(threadPrefix.length);

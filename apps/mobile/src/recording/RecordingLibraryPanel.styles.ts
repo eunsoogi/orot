@@ -94,6 +94,21 @@ export const recordingLibraryStyles = StyleSheet.create({
     paddingTop: 12,
   },
   detailMetadata: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+  selectionSummary: {
+    flexGrow: 1,
+    gap: 10,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.border,
+    padding: 16,
+    backgroundColor: appColors.surface,
+  },
+  selectionSummaryTitle: {
+    color: appColors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 29,
+  },
   playbackCard: {
     gap: 10,
     borderWidth: StyleSheet.hairlineWidth,

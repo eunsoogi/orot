@@ -1,6 +1,105 @@
 import XCTest
 
 extension RootNavigationUITests {
+    /// Verifies Settings panels follow live Duo geometry without moving route actions or the right navigation lane.
+    @MainActor
+    func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-OROT_TEST_PROFILE", "core",
+            "-OROT_TEST_UI_GEOMETRY", "YES",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var appearanceSnapshot: AppearanceUITestConditions.Snapshot?
+        var regularTitleHeight: CGFloat = 0
+        defer {
+            if let appearanceSnapshot, app.state == .runningForeground {
+                do {
+                    try AppearanceUITestConditions.restore(
+                        appearanceSnapshot,
+                        returningTo: app,
+                        testCase: self,
+                    )
+                } catch {
+                    XCTFail("Could not restore the original system appearance: \(error)")
+                }
+            }
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
+        try verifySettingsPanels(app)
+
+        appearanceSnapshot = try AppearanceUITestConditions.select(
+            true,
+            returningTo: app,
+            testCase: self,
+        )
+        try verifySettingsPanels(app)
+        if let snapshot = appearanceSnapshot {
+            try AppearanceUITestConditions.restore(
+                snapshot,
+                returningTo: app,
+                testCase: self,
+            )
+            appearanceSnapshot = nil
+        }
+
+        let portraitWidth = app.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return frame.width > frame.height && abs(frame.width - portraitWidth) > 0.5
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
+        try verifySettingsPanels(app)
+
+        XCUIDevice.shared.orientation = .portrait
+        let portrait = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return frame.height > frame.width && abs(frame.width - portraitWidth) <= 0.5
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [portrait]), .completed)
+        try verifySettingsPanels(app)
+
+        FormUITestConditions.reveal(
+            UITestConditions.element(app, "settings-open-health-data"),
+            in: app,
+            scrollID: "navigation-route-scroll",
+        )
+        tap(app, "settings-open-health-data")
+        NavigationUITestConditions.route(app, markers: ["health-data-title"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
+
+        app.terminate()
+        app.launchArguments = [
+            "-OROT_TEST_PROFILE", "core",
+            "-OROT_TEST_UI_GEOMETRY", "YES",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ]
+        app.launch()
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        XCTAssertGreaterThan(
+            UITestConditions.element(app, "settings-title").frame.height,
+            regularTitleHeight,
+            "The native title must reflect the requested large text size",
+        )
+        try verifySettingsPanels(app, expectsStacked: true)
+        try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
+        XCTAssertTrue(UITestConditions.element(app, "settings-open-backup").isHittable)
+        captureSettingsLayout(app, "settings-duo-large-text")
+    }
+
     /// Keep integration and recovery routes reachable in Settings after removing redundant import flows.
     @MainActor
     func verifySettingsRoutes() throws {
@@ -56,5 +155,67 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.element(app, "privacy-open-system-settings").isHittable)
         capture(app, "settings-privacy-light")
         try backToSettings(app)
+    }
+
+    /// Compares rendered Settings panels with each other and the active native navigation surface.
+    @MainActor
+    private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked: Bool = false) throws {
+        let primary = UITestConditions.element(app, "settings-layout-primary")
+        let secondary = UITestConditions.element(app, "settings-layout-secondary")
+        XCTAssertTrue(primary.waitForAppearance())
+        XCTAssertTrue(secondary.waitForAppearance())
+        let primaryFrame = primary.frame
+        let secondaryFrame = secondary.frame
+        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
+            primaryFrame.maxX <= secondaryFrame.minX + 1
+        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
+            primaryFrame.maxY <= secondaryFrame.minY + 1
+        XCTAssertTrue(
+            sideBySide || stacked,
+            "Settings panels must use measured non-overlapping columns: primary=\(primaryFrame), secondary=\(secondaryFrame)",
+        )
+        let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
+        XCTAssertTrue(navigation.control.isSelected)
+        if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
+            if expectsStacked {
+                XCTAssertTrue(stacked, "Large text must keep a single readable Settings column")
+            } else {
+                XCTAssertTrue(sideBySide, "Expanded Duo geometry should use both measured Settings regions")
+            }
+            XCTAssertLessThanOrEqual(
+                max(primaryFrame.maxX, secondaryFrame.maxX),
+                navigation.toolbar.frame.minX + 1,
+                "Settings content must stay clear of the measured right navigation lane",
+            )
+        } else {
+            if expectsStacked {
+                XCTAssertTrue(stacked, "Large text must keep a single readable Settings column")
+            }
+            try NavigationUITestConditions.contentAboveBar(
+                app,
+                scrollID: "navigation-route-scroll",
+                contentID: "settings-app-info",
+                navigationID: "navigation-tab-settings",
+            )
+        }
+
+        for identifier in [
+            "settings-open-health-data", "settings-open-sync-status", "settings-open-provider",
+            "settings-open-accounts", "settings-open-privacy", "settings-open-backup",
+        ] {
+            let control = app.buttons[identifier]
+            XCTAssertTrue(control.exists)
+            XCTAssertGreaterThanOrEqual(control.frame.height, 44)
+        }
+        XCTAssertTrue(UITestConditions.element(app, "settings-app-info").exists)
+    }
+
+    /// Retains the actual Settings rendering after native geometry changes.
+    @MainActor
+    private func captureSettingsLayout(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

@@ -16,6 +16,7 @@ import {
 } from '../../agent/encounter/syntheticFixture';
 import { createEncounterReviewService } from '../service';
 import { EncounterReviewController } from '../controller';
+import type { ReviewDiagnostics } from '../diagnostics';
 
 jest.mock('../../agent/polyfills', () => ({}));
 jest.mock('../../agent/execution/consentFingerprint', () => ({
@@ -50,27 +51,32 @@ export function sqliteReviewFixture() {
   const controllerFor = (
     remote = false,
     allowModel = true,
+    observe?: (calls: () => number) => ReviewDiagnostics,
     recordingId = sourceId,
   ) => {
+    // Keep the observer slot stable; the selected source also scopes the provider payload.
     const synthetic = syntheticEncounterModel(recordingId, allowModel);
-    const service = createEncounterReviewService(async () => ({
-      status: 'ready',
-      selection: {
-        providerId: synthetic.model.provider.id,
-        modelId: 'synthetic',
-      },
-      option: {
+    const service = createEncounterReviewService(
+      async () => ({
+        status: 'ready',
+        selection: {
+          providerId: synthetic.model.provider.id,
+          modelId: 'synthetic',
+        },
+        option: {
+          provider: synthetic.model.provider,
+          modelId: 'synthetic',
+          displayName: 'Synthetic',
+          privacyBoundary: remote ? 'selected-context-remote' : 'on-device',
+          availability: { status: 'available' },
+        },
         provider: synthetic.model.provider,
         modelId: 'synthetic',
-        displayName: 'Synthetic',
-        privacyBoundary: remote ? 'selected-context-remote' : 'on-device',
-        availability: { status: 'available' },
-      },
-      provider: synthetic.model.provider,
-      modelId: 'synthetic',
-      recipient: remote ? 'selected-account' : 'on-device',
-      remoteProcessing: remote,
-    }));
+        recipient: remote ? 'selected-account' : 'on-device',
+        remoteProcessing: remote,
+      }),
+      observe?.(synthetic.calls),
+    );
     return {
       service,
       synthetic,

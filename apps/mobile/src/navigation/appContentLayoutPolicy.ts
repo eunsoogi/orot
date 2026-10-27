@@ -17,6 +17,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // The nested health-record panels need the full lane to resolve native regions.
   return route.name === 'health-records' ||
+    // The saved library owns a measured list and summary that must share native usable geometry.
+    route.name === 'saved-recordings' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
@@ -24,7 +26,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||
         rootTabs?.activeTab === 'schedule' ||
-        rootTabs?.activeTab === 'ai'))
+        rootTabs?.activeTab === 'ai' ||
+        rootTabs?.activeTab === 'settings'))
     ? 'screen'
     : 'scene';
 };
