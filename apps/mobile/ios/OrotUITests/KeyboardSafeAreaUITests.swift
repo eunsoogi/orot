@@ -172,7 +172,15 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-undo")))
             XCTAssertFalse(node(app, rowID).exists)
             RecordingFixtureUITestConditions.capture(app, "conversation-deleted-\(suffix)", testCase: self)
-            node(app, "conversation-history-undo").tap()
+            // Keep the reversible deletion available across a measured window-width change.
+            let pendingUndoWidth = app.frame.width
+            XCUIDevice.shared.orientation = .landscapeLeft
+            let pendingUndoReflow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - pendingUndoWidth) > 0.5 }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [pendingUndoReflow]), .completed)
+            let undo = node(app, "conversation-history-undo")
+            XCTAssertTrue(UITestConditions.exists(undo) && undo.isHittable && app.frame.contains(undo.frame))
+            undo.tap()
+            XCUIDevice.shared.orientation = .portrait
             XCTAssertTrue(UITestConditions.exists(node(app, rowID)))
             RecordingFixtureUITestConditions.capture(app, "conversation-history-restored-\(suffix)", testCase: self)
             node(app, rowID).tap()

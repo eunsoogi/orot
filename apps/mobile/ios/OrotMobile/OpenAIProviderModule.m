@@ -15,8 +15,9 @@ RCT_EXTERN_METHOD(signOut : (NSString *)issuedClientID resolver : (RCTPromiseRes
 RCT_EXTERN_METHOD(startResponse : (NSDictionary *)request requestId : (NSString *)
                       requestId issuedClientID : (NSString *)issuedClientID)
 RCT_EXTERN_METHOD(cancelResponse : (NSString *)requestId)
-// Synthetic keychain fixtures stay unavailable on devices and production builds.
-#if DEBUG && TARGET_OS_SIMULATOR
+// Keep fixture bridge methods out of devices and ordinary Release apps; simulator test builds opt
+// in with OROT_TESTS.
+#if (DEBUG || OROT_TESTS) && TARGET_OS_SIMULATOR
 RCT_EXTERN_METHOD(prepareSyntheticFixture : (NSString *)scenario resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(probeAuthSessionCancellation : (RCTPromiseResolveBlock)

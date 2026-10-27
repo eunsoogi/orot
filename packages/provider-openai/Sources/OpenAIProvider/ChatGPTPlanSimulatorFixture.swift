@@ -1,4 +1,5 @@
-#if DEBUG
+// Preserve Debug package tests; Release products opt in only when targeting a Simulator.
+#if DEBUG || (OROT_TESTS && targetEnvironment(simulator))
     import Foundation
 
     public final class ChatGPTPlanSimulatorFixture: @unchecked Sendable {

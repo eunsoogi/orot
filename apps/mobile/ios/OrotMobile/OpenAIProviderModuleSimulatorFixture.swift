@@ -1,9 +1,10 @@
-#if DEBUG && targetEnvironment(simulator)
+// The simulator fixture bridge is available to Debug and explicitly flagged test builds only.
+#if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
     import Foundation
     import OpenAIProvider
     import React
 
-    /// Exposes synthetic auth return and offline account fixtures only to Debug Simulators.
+    /// Exposes synthetic auth return and offline account fixtures only to Simulator test builds.
     public extension OpenAIProviderModule {
         @objc(probeAuthSessionCancellation:rejecter:)
         func probeAuthSessionCancellation(

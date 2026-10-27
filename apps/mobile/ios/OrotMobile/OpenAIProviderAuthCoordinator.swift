@@ -28,7 +28,8 @@ final class OpenAIProviderAuthCoordinator {
         try await (clientOverride ?? client).signOut(issuedClientID: issuedClientID)
     }
 
-    #if DEBUG && targetEnvironment(simulator)
+    // Keep synthetic callback probes limited to Debug and explicitly flagged Simulator builds.
+    #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
         func probeAuthSessionReturn() async throws {
             guard signInTask == nil, callbackServer == nil else {
                 throw OpenAIProviderAuthError.alreadyInProgress
@@ -184,7 +185,8 @@ public extension OpenAIProviderModule {
         Task { @MainActor in
             defer { finishSignOut(for: issuedClientID) }
             do {
-                #if DEBUG && targetEnvironment(simulator)
+                // The synthetic sign-out client is available only to Simulator test products.
+                #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
                     let result = try await OpenAIProviderAuthCoordinator.shared.signOut(
                         issuedClientID: issuedClientID,
                         using: activeSimulatorFixtureClient,
