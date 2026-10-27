@@ -14,7 +14,7 @@ test('fixture groups partition UI cases including document-import and orientatio
     [11, 7, 8, 19],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 44);
+  assert.equal(original.length, 45);
   const manualHistory = [
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
