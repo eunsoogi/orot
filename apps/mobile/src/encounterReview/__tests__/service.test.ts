@@ -198,7 +198,8 @@ test('another database connection replaces a preview attempt before approval ent
       createLangGraphCheckpointStorage(other.database, {
         sourceRecordId: sourceId,
       }),
-    ).begin(sourceId);
+      sourceId,
+    ).begin();
     await expect(
       persistEncounterApproval(
         repository(),

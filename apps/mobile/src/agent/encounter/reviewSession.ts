@@ -64,17 +64,18 @@ export async function requireCurrentEncounterReviewSession(
  */
 export function createEncounterReviewSessions(
   storage: LangGraphCheckpointStorage,
+  sourceId: string,
 ) {
   const key = sessionKey;
   return {
-    async read(sourceId: string): Promise<ReviewSession | null> {
+    async read(): Promise<ReviewSession | null> {
       const stored = await storage.loadCheckpoint(key(sourceId), '', 'session');
       if (!stored) return null;
       if (stored.checkpointType !== 'json')
         throw new Error('Invalid session encoding.');
       return decodeSession(stored.checkpoint, sourceId);
     },
-    async begin(sourceId: string): Promise<ReviewSession> {
+    async begin(): Promise<ReviewSession> {
       // Secure randomness is supplied by the app's existing native crypto polyfill.
       const bytes = crypto.getRandomValues(new Uint8Array(16));
       const attempt = Array.from(bytes, byte =>

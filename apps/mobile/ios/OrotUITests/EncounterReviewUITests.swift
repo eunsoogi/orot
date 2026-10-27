@@ -10,13 +10,13 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         defer { clean(app) }
         launch(app, fixture: fixture, mode: "seed")
         openRecording(app, fixture: fixture)
-        XCTAssertTrue(text(app, "encounter-status").contains("후보 찾기를 누르면"))
+        status(app, contains: "후보 찾기를 누르면")
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         tap(app, "encounter-start")
         let evidence = reveal(app, "encounter-evidence-candidate-0-0", requireHittable: false)
         XCTAssertTrue(evidence.exists)
-        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("근거와 충돌"))
+        status(app, contains: "근거와 충돌")
         let input = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
         FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll")
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -28,17 +28,17 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         app.terminate()
         launch(app, fixture: fixture, mode: "restore")
         openRecording(app, fixture: fixture)
-        XCTAssertTrue(text(app, "encounter-status").contains("근거와 충돌"))
+        status(app, contains: "근거와 충돌")
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
         FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll")
         reveal(app, "encounter-save", avoiding: restoredInput).tap()
-        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("저장했어요"))
+        status(app, contains: "저장했어요")
         app.terminate()
         launch(app, fixture: fixture, mode: "restore")
         openRecording(app, fixture: fixture)
-        XCTAssertTrue(text(app, "encounter-status").contains("저장했어요"))
+        status(app, contains: "저장했어요")
         let readback = try report(app)
         XCTAssertEqual(readback["modelCalls"] as? Int, 0)
         let records = try XCTUnwrap(readback["records"] as? [[String: Any]])
@@ -77,7 +77,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(cancel))
         XCTAssertTrue(cancel.isHittable)
         cancel.tap()
-        XCTAssertTrue(text(app, "encounter-status").contains("전송에 동의하지 않아"))
+        status(app, contains: "전송에 동의하지 않아")
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         app.terminate()
@@ -85,7 +85,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         openRecording(app, fixture: fixture)
         tap(app, "encounter-start")
         tap(app, "encounter-deny")
-        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("거절했어요"))
+        status(app, contains: "거절했어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
     }
 
@@ -102,8 +102,9 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
         FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll")
         reveal(app, "transcript-save-0", avoiding: input).tap()
+        UITestConditions.value(UITestConditions.element(app, "transcript-text-0"), equals: "수정한 전사")
         tap(app, "encounter-save")
-        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("사용할 수 없어요"))
+        status(app, contains: "사용할 수 없어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
     }
 
@@ -121,7 +122,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         remove.tap()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "removed")
         tap(app, "encounter-save")
-        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("사용할 수 없어요"))
+        status(app, contains: "사용할 수 없어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
     }
 
@@ -155,8 +156,12 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func text(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> String {
-        UITestConditions.text(reveal(app, id, upward: upward, requireHittable: false))
+    private func status(_ app: XCUIApplication, contains expected: String) {
+        let element = UITestConditions.element(app, "encounter-status")
+        let updated = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", expected), object: element)
+        XCTAssertEqual(UITestConditions.wait(for: [updated]), .completed)
+        FormUITestConditions.reveal(element, in: app, scrollID: "navigation-route-scroll", towardTop: true, requireHittable: false)
+        XCTAssertTrue(UITestConditions.text(element).contains(expected))
     }
 
     @MainActor

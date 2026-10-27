@@ -24,7 +24,10 @@ async function sessions(sourceId: string) {
   const storage = createLangGraphCheckpointStorage(database, {
     sourceRecordId: sourceId,
   });
-  return { storage, discovery: createEncounterReviewSessions(storage) };
+  return {
+    storage,
+    discovery: createEncounterReviewSessions(storage, sourceId),
+  };
 }
 
 /** Known-source discovery precedes graph invocation; missing checkpoints must never initiate extraction on restore. */
@@ -44,7 +47,7 @@ async function readSessionResult(
       throw new Error('Recording source unavailable.');
   });
   const { storage, discovery } = await sessions(sourceId);
-  const session = await discovery.read(sourceId);
+  const session = await discovery.read();
   if (!session) return { status: approval ? 'unavailable' : 'idle' };
   if (approval && approval.pending.threadId !== session.threadId)
     return { status: 'unavailable' };
@@ -62,7 +65,7 @@ async function readSessionResult(
     model: encounterReadOnlyModel(sourceId),
     requireCurrentReviewSession: true,
   });
-  if ((await discovery.read(sourceId))?.threadId !== session.threadId)
+  if ((await discovery.read())?.threadId !== session.threadId)
     return { status: 'unavailable' };
   return result;
 }
@@ -108,7 +111,7 @@ export function createEncounterReviewService(
         };
       if (signal.aborted) return { status: 'cancelled' };
       const { discovery } = await sessions(sourceId);
-      const session = await discovery.begin(sourceId);
+      const session = await discovery.begin();
       let denied = false;
       const model = composeEncounterModel(
         sourceId,
