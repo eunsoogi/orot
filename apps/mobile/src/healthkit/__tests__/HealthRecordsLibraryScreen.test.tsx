@@ -28,6 +28,7 @@ test('shows imported pressure as a chart-first category and opens a separate per
     <HealthRecordsLibraryScreen
       loadObservations={loadObservations}
       onBack={onBack}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={onOpenDetail}
     />,
   );
@@ -85,6 +86,7 @@ test('keeps other record types visible when a filter selects its chart first', a
         nextCursor: null,
       })}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -112,6 +114,7 @@ test('shows stored HealthKit medication counts and opens its separate detail lis
       })}
       loadObservations={async () => ({ records: [], nextCursor: null })}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={onOpenDetail}
     />,
   );
@@ -139,6 +142,7 @@ test('recovers the medication summary after a local read failure', async () => {
       loadMedicationData={loadMedicationData}
       loadObservations={async () => ({ records: [], nextCursor: null })}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -151,4 +155,21 @@ test('recovers the medication summary after a local read failure', async () => {
     await screen.findByTestId('health-record-medications-summary'),
   ).toHaveTextContent('저장된 약 및 복용 기록이 없어요.');
   expect(loadMedicationData).toHaveBeenCalledTimes(2);
+});
+
+test('opens unified import from the health records library action', async () => {
+  const onOpenHealthImport = jest.fn();
+  await render(
+    <HealthRecordsLibraryScreen
+      loadObservations={async () => ({ records: [], nextCursor: null })}
+      onBack={jest.fn()}
+      onOpenHealthImport={onOpenHealthImport}
+      onOpenDetail={jest.fn()}
+    />,
+  );
+
+  await fireEvent.press(
+    await screen.findByTestId('health-records-open-health-import'),
+  );
+  expect(onOpenHealthImport).toHaveBeenCalledTimes(1);
 });

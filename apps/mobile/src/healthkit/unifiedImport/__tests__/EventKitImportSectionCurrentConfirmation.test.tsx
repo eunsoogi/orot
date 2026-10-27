@@ -26,7 +26,6 @@ test('the current confirmation failure remains visible', async () => {
   const view = await render(
     <EventKitImportSection
       disabled={false}
-      onToggle={jest.fn()}
       progress={progressFor(calendarEvent)}
       run={run}
       selected
