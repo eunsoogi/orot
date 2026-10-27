@@ -15,6 +15,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   rootTabs?: NavigationRootTabs,
 ): 'scene' | 'screen' => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
+  // Provider settings reflows local and connected models within measured regions.
   // Health detail panels resolve against the actual native usable regions.
   // Account management measures its connection and action panels within the full route lane.
   // Appointment entry routes share the screen that measures list and selected-detail panels.
@@ -23,7 +24,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Sync status measures its status and recovery panels against the actual usable regions.
   // Health data settings pairs category choices with sync and permission status panels.
   // The symptom journal shares native usable regions between its list and selected summary.
-  return route.name === 'settings-accounts' ||
+  return route.name === 'settings-provider' ||
+    route.name === 'settings-accounts' ||
     route.name === 'symptoms' ||
     route.name === 'appointments' ||
     route.name === 'medical-manual' ||
@@ -38,6 +40,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
     route.name === 'external-evidence' ||
+    // Conversation history and evidence panels map directly onto the native usable regions.
+    route.name === 'rag-conversation' ||
     route.name === 'recording' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||

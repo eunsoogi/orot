@@ -2,6 +2,7 @@ import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
+import type { ProviderInputType } from '@orot/model-runtime';
 import { isProviderSelectionOptionSelectable } from './providerSelection';
 import { providerSelectionText } from './text';
 import type {
@@ -12,6 +13,7 @@ import type {
 interface ProviderSelectionOptionCardProps {
   readonly option: ProviderSelectionOption;
   readonly requirements: ProviderSelectionRequirements;
+  readonly showCapabilities: boolean;
   readonly selected: boolean;
   readonly disabled: boolean;
   readonly index: number;
@@ -21,12 +23,14 @@ interface ProviderSelectionOptionCardProps {
 export default function ProviderSelectionOptionCard({
   option,
   requirements,
+  showCapabilities,
   selected,
   disabled,
   index,
   onPress,
 }: ProviderSelectionOptionCardProps) {
   const blockedMessage = getBlockedMessage(option, requirements);
+  const capabilityLabels = showCapabilities ? getCapabilityLabels(option) : [];
   const selectable = blockedMessage === null && !disabled;
   return (
     <Pressable
@@ -52,6 +56,14 @@ export default function ProviderSelectionOptionCard({
             ? '기기 안에서 처리'
             : option.modelId}
         </Text>
+        {showCapabilities ? (
+          <Text
+            style={styles.capabilities}
+            testID={`provider-option-${index}-capabilities`}
+          >
+            {`${providerSelectionText.capabilitiesSummary}: ${capabilityLabels.length > 0 ? capabilityLabels.join(' · ') : providerSelectionText.noDeclaredCapabilities}`}
+          </Text>
+        ) : null}
         {blockedMessage ? (
           <Text accessibilityRole="alert" style={styles.unavailable}>
             {blockedMessage}
@@ -63,6 +75,26 @@ export default function ProviderSelectionOptionCard({
       </View>
     </Pressable>
   );
+}
+
+/** Exposes only adapter-declared features because this catalog has no per-model capability metadata. */
+function getCapabilityLabels(option: ProviderSelectionOption): string[] {
+  const capabilities = option.provider.capabilities;
+  return [
+    ...capabilities.inputTypes.map(
+      (inputType: ProviderInputType) =>
+        providerSelectionText.capabilityInput[inputType],
+    ),
+    ...(capabilities.streaming
+      ? [providerSelectionText.capabilityStreaming]
+      : []),
+    ...(capabilities.structuredOutput
+      ? [providerSelectionText.capabilityStructuredOutput]
+      : []),
+    ...(capabilities.toolCalling
+      ? [providerSelectionText.capabilityToolCalling]
+      : []),
+  ];
 }
 
 function getBlockedMessage(
@@ -125,5 +157,6 @@ const styles = StyleSheet.create({
   },
   optionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   privacyHeading: { color: appColors.secondary, fontSize: 14 },
+  capabilities: { color: appColors.secondary, fontSize: 13, flexWrap: 'wrap' },
   unavailable: { color: appColors.danger },
 });
