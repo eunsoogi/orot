@@ -1,11 +1,12 @@
 import { HealthRecordsDetailHeader } from './HealthRecordsDetailHeader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, ScrollView } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type {
   HealthObservationCursor,
   HealthObservationPageLoader,
 } from '@orot/storage';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -33,7 +34,7 @@ interface HealthRecordsDetailScreenProps {
 
 type LoadState = 'loading' | 'ready' | 'failed';
 
-/** Lists exact saved rows for one selected record type and time period. */
+/** Keeps the selected period and loaded rows mounted while the detail panels reflow. */
 export function HealthRecordsDetailScreen({
   loadObservations,
   onBack,
@@ -122,8 +123,29 @@ export function HealthRecordsDetailScreen({
   }, [reload]);
 
   const title = healthRecordCategoryTitle(selection.category) + ' 기록 상세';
-
-  return (
+  const controlsPanel = (
+    <ScrollView
+      contentContainerStyle={[styles.container, navigationInset]}
+      style={styles.panelScroll}
+      testID="health-records-detail-controls-scroll"
+    >
+      <HealthRecordsDetailHeader
+        title={title}
+        hasSharedNavigation={hasSharedNavigation}
+        onBack={onBack}
+        selection={selection}
+        onSelectionChange={onSelectionChange}
+        recordCount={rows.length}
+        observationCount={observations.length}
+        loadState={loadState}
+        onRetry={() => {
+          reload(null);
+        }}
+        hasMore={cursor !== null}
+      />
+    </ScrollView>
+  );
+  const recordsPanel = (
     <FlatList
       data={rows}
       keyExtractor={row =>
@@ -164,22 +186,6 @@ export function HealthRecordsDetailScreen({
           )
         ) : undefined
       }
-      ListHeaderComponent={
-        <HealthRecordsDetailHeader
-          title={title}
-          hasSharedNavigation={hasSharedNavigation}
-          onBack={onBack}
-          selection={selection}
-          onSelectionChange={onSelectionChange}
-          recordCount={rows.length}
-          observationCount={observations.length}
-          loadState={loadState}
-          onRetry={() => {
-            reload(null);
-          }}
-          hasMore={cursor !== null}
-        />
-      }
       onEndReached={() => {
         if (cursor && loadState === 'ready') reload(cursor);
       }}
@@ -187,7 +193,17 @@ export function HealthRecordsDetailScreen({
       renderItem={({ item, index }) => (
         <HealthRecordsDetailRecordRow index={index} row={item} />
       )}
+      style={styles.panelScroll}
       testID="health-records-detail-scroll"
+    />
+  );
+
+  return (
+    <AdaptiveColumns
+      primary={controlsPanel}
+      routeKey="health-records-detail"
+      secondary={recordsPanel}
+      testID="health-records-detail-layout"
     />
   );
 }
