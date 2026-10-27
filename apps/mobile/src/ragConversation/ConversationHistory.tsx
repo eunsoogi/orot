@@ -16,6 +16,7 @@ export function ConversationHistory({
   onLinkError,
   bottomInset = 0,
   header,
+  citationsInPanelForMessageId,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
@@ -28,6 +29,7 @@ export function ConversationHistory({
   readonly onLinkError: () => void;
   readonly bottomInset?: number;
   readonly header?: ReactNode;
+  readonly citationsInPanelForMessageId?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   // A single keyed list preserves the mounted answer across draft validation and cancellation.
@@ -68,6 +70,8 @@ export function ConversationHistory({
             message={message}
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}
+            // Keep one source action per latest answer; older answers retain inline citations.
+            showCitations={message.id !== citationsInPanelForMessageId}
           />
         ))}
         {error ? (

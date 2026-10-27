@@ -36,6 +36,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
     route.name === 'external-evidence' ||
+    // Conversation history and evidence panels map directly onto the native usable regions.
+    route.name === 'rag-conversation' ||
     route.name === 'recording' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||

@@ -9,7 +9,9 @@ import { ConversationComposer } from './ConversationComposer';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
+import { ConversationEvidencePanel } from './ConversationEvidencePanel';
 import { navigationText } from '../i18n/navigation';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
@@ -51,8 +53,14 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const latestAssistantMessageId = messages
+    .slice()
+    .reverse()
+    .find(message => message.role === 'assistant')?.id;
   const [composerHeight, setComposerHeight] = useState(0);
   const cancel = () => store.cancel(id);
+  const onLinkError = () =>
+    store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
   // App-owned sessions keep drafts and requests alive when this route is removed.
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -122,29 +130,41 @@ export function ConversationScreen({
       style={styles.screen}
       testID="rag-conversation-screen"
     >
-      <View style={styles.history}>
-        <ConversationHistory
-          header={header}
-          messages={messages}
-          pendingMessage={pendingMessage}
-          error={error}
-          bottomInset={composerHeight}
-          onOpenSource={onOpenSource}
-          onLinkError={() =>
-            store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.')
-          }
-        />
-        <ConversationComposer
-          onLayout={event => setComposerHeight(event.nativeEvent.layout.height)}
-          value={draft}
-          busy={busy}
-          onChangeText={value => store.setDraft(id, value)}
-          onSend={() => {
-            store.send(id, onSend);
-          }}
-          onCancel={cancel}
-        />
-      </View>
+      <AdaptiveColumns
+        primary={
+          <ConversationHistory
+            header={header}
+            messages={messages}
+            pendingMessage={pendingMessage}
+            error={error}
+            bottomInset={composerHeight}
+            onOpenSource={onOpenSource}
+            onLinkError={onLinkError}
+            citationsInPanelForMessageId={latestAssistantMessageId}
+          />
+        }
+        secondary={
+          <ConversationEvidencePanel
+            messages={messages}
+            bottomInset={composerHeight}
+            onOpenSource={onOpenSource}
+            onLinkError={onLinkError}
+          />
+        }
+        routeKey={navigationRouteKey}
+        testID="rag-conversation-columns"
+      />
+      {/* The composer stays anchored to the route while its panels reflow around it. */}
+      <ConversationComposer
+        onLayout={event => setComposerHeight(event.nativeEvent.layout.height)}
+        value={draft}
+        busy={busy}
+        onChangeText={value => store.setDraft(id, value)}
+        onSend={() => {
+          store.send(id, onSend);
+        }}
+        onCancel={cancel}
+      />
     </KeyboardAvoidingView>
   );
 }
