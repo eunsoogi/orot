@@ -8,7 +8,10 @@ import {
   MedicalDocumentSourceLibrary,
   MedicalDocumentSourceView,
 } from '../medicalDocuments/MedicalDocumentSourceView';
-import { MedicalDocumentReview } from '../medicalDocuments/MedicalDocumentReview';
+import {
+  MedicalDocumentReview,
+  MedicalDocumentReviewPreview,
+} from '../medicalDocuments/MedicalDocumentReview';
 import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocumentImport';
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
 import { RecordsRecentSources } from './RecordsRecentSources';
@@ -54,7 +57,7 @@ export function RecordsRoute({
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
 
-  // Screen-owned Records content still needs measured bounds for single-panel workflows.
+  // One measured wrapper reflows review details and preview without replacing the staged request.
   if (stagedDocument) {
     return (
       <AdaptiveColumns
@@ -67,6 +70,7 @@ export function RecordsRoute({
             onCancel={discardMedicalDocument}
           />
         }
+        secondary={<MedicalDocumentReviewPreview document={stagedDocument} />}
         testID="records-document-review-layout"
       />
     );
