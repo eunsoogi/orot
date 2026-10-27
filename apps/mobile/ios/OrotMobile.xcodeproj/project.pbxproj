@@ -71,6 +71,7 @@
 		9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */; };
 		CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */; };
 		9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */; };
+		C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */; };
 		A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
@@ -315,6 +316,7 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OrotMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHostConnectionTests.swift; sourceTree = "<group>"; };
 		703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentConsentUITests.swift; sourceTree = "<group>"; };
+		828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DisclosureLayoutUITestObservations.swift; sourceTree = "<group>"; };
 		71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechIntegrationTests.swift; sourceTree = "<group>"; };
 		722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestOperationBroker.swift; path = OrotMobile/TestOperationBroker.swift; sourceTree = "<group>"; };
 		75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StorageMigrationUITests.swift; sourceTree = "<group>"; };
@@ -850,6 +852,7 @@
 				A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */,
 				B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */,
 				703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */,
+				828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */,
 				A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */,
 				9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */,
 				39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */,
@@ -1308,6 +1311,7 @@
 				3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */,
 				2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */,
 				9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */,
+				C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */,
 				BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */,
 				2594B796D49220F636D98934 /* DebugUITestConditions.swift in Sources */,
 				E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */,

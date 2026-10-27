@@ -16,8 +16,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         }
         launch(app, probe: "medical-appointment-classification")
         tap(app, "medical-appointment-import")
-        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
-        assertDisclosureControlsFitModal(app)
+        DisclosureLayoutUITestObservations.waitForAndAssertControlsFitModal(app, in: self)
         tap(app, "inference-disclosure-expand")
         let preview = node(app, "inference-disclosure-message-1")
         XCTAssertTrue(preview.exists)
@@ -26,10 +25,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         let request = UITestConditions.text(preview)
         XCTAssertTrue(request.contains("SENTINEL_HEALTH_VALUE"), request)
         XCTAssertFalse(request.contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"), request)
-        assertDisclosureControlsFitModal(app)
-        tap(app, "inference-disclosure-cancel")
-        failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
-        UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
+        DisclosureLayoutUITestObservations.cancelDisclosure(app, in: self)
 
         // Keep the original import action and manual route reachable through native width changes.
         let page = node(app, "medical-appointment-review-scroll")
@@ -41,12 +37,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         UITestConditions.scrollTo(manual, in: app)
         XCTAssertTrue(manual.isHittable)
         capture(app, "classification-actions-after-rotation")
-        tap(app, "medical-appointment-import")
-        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
-        assertDisclosureControlsFitModal(app)
-        tap(app, "inference-disclosure-cancel")
-        failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
-        UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
+        DisclosureLayoutUITestObservations.presentAndCancelDisclosure(app, in: self)
         let expandedWidth = page.frame.width
         XCUIDevice.shared.orientation = .portrait
         waitForWidthChange(page, from: expandedWidth)
@@ -216,8 +207,9 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         app.launch()
     }
 
+    /// Shares the fixture's failure-copy assertion with the disclosure observation helper.
     @MainActor
-    private func failureNotice(_ app: XCUIApplication, reason: String) {
+    func failureNotice(_ app: XCUIApplication, reason: String) {
         // The batch summary includes measured duration; assert its stable failure category, not the retired generic fallback.
         let notice = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
                                                           "1번째 묶음 처리 중 ", reason)).firstMatch
@@ -226,35 +218,12 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+    func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
     }
 
-    /// Uses the Modal-owned frame so caller-screen width cannot make clipped consent controls appear valid.
     @MainActor
-    private func assertDisclosureControlsFitModal(_ app: XCUIApplication) {
-        let modal = node(app, "inference-disclosure-sheet")
-        XCTAssertTrue(modal.frame.width > 0 && modal.frame.height > 0, modal.debugDescription)
-        let controls = [
-            node(app, "inference-disclosure-recipient"),
-            node(app, "inference-disclosure-scope"),
-            node(app, "inference-disclosure-allow"),
-            node(app, "inference-disclosure-cancel"),
-        ]
-        for control in controls {
-            XCTAssertTrue(control.exists, control.debugDescription)
-            XCTAssertFalse(control.frame.isEmpty, control.debugDescription)
-            XCTAssertTrue(modal.frame.contains(control.frame), control.debugDescription)
-            XCTAssertTrue(control.isHittable, control.debugDescription)
-        }
-        XCTAssertFalse(
-            controls[2].frame.intersects(controls[3].frame),
-            "Allow and decline actions must retain separate measured hit regions",
-        )
-    }
-
-    @MainActor
-    private func tap(_ app: XCUIApplication, _ id: String) {
+    func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
         XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         UITestConditions.scrollTo(target, in: app)
