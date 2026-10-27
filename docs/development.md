@@ -68,7 +68,7 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 Home 요약과 진료 준비 이동, 네이티브 호스트 시작, Duo 기하 브리지와 root/right rail 접근성, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨에서 확인 버튼 접근성, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존을 확인하는 열한 사례로 구성됩니다.
+`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, Records 허브의 적응형 열과 큰 글씨 접근성, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존을 확인하는 열두 사례로 구성됩니다.
 
 로컬 Duo 검증도 다른 작업과 겹치지 않는 제품 경로와 새 소유권 파일을 사용합니다. 실행 전후의 `simctl list -j` 결과를 별도로 보존해 소유 기기 외의 UDID·기기 유형·런타임·상태가 유지되는지 비교하세요. 준비는 선택한 런타임이 없으면 실패하며 다른 런타임으로 대체하거나 설치하지 않습니다. 검증 중 오류가 나더라도 마지막 cleanup은 실행해 기록된 소유 기기만 종료하고 삭제하세요.
 

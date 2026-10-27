@@ -45,5 +45,7 @@ export function evidenceSpan(
     ...metadata(id, effectiveAt, 'derived', [sourceRecordId], '2030-05-10T12:00:00Z'),
     sourceRecordId,
     text,
+    // Domain offsets are UTF-16 code units, matching JavaScript string length for these fixture spans.
+    locator: { kind: 'text_range', startOffset: 0, endOffset: text.length },
   };
 }
