@@ -13,18 +13,15 @@ function assertTestMethodDeclared(identifier) {
   if (sourcePath.endsWith('.swift')) {
     const source = readFileSync(sourcePath, 'utf8');
     const methods = swiftTestMethodsInDeclaration(source, suite, 'class');
-    // A test suite may be split across multiple source files, and each adds selectors.
-    const extensionFiles = [...swiftSuiteExtensions]
-      .filter(([path, extensionSuite]) => path.startsWith(`${target}/`) && extensionSuite === suite)
-      .map(([path]) => path);
-    for (const extensionFile of extensionFiles) {
-      methods.push(
-        ...swiftTestMethodsInDeclaration(
-          readFileSync(`apps/mobile/ios/${extensionFile}`, 'utf8'),
-          suite,
-          'extension',
-        ),
-      );
+    for (const [extensionFile, extensionSuite] of swiftSuiteExtensions) {
+      if (extensionFile.startsWith(`${target}/`) && extensionSuite === suite)
+        methods.push(
+          ...swiftTestMethodsInDeclaration(
+            readFileSync(`apps/mobile/ios/${extensionFile}`, 'utf8'),
+            suite,
+            'extension',
+          ),
+        );
     }
     assert.ok(methods.includes(method), identifier);
     return;
@@ -146,7 +143,7 @@ test('each profile declares unique existing cases and every test method is sched
 const swiftSuiteExtensions = new Map([
   ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
   ['OrotUITests/SettingsBackupDuoUITests.swift', 'RootNavigationUITests'],
-  ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'], // Maps split suite files.
+  ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'], // Multiple files may extend one suite.
 ]);
 
 function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
