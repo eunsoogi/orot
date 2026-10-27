@@ -56,7 +56,9 @@ if (geometryObservation || appearanceObservation || reminderObservation) {
 
 // This entry is bundled only for integration test products. An app-hosted XCTest must
 // call the production services without starting an unrelated JS Speech probe.
-if (route === 'test-host') {
+if (route === 'health-review') {
+  require('./healthReviewProbeEntry');
+} else if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
 } else if (route === 'speech') {
   require('./transcriptionProbeEntry');
