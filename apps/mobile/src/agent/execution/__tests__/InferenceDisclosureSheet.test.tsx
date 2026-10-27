@@ -1,8 +1,24 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { LanguageModelInputPart } from '@orot/model-runtime';
 import InferenceDisclosureSheet from '../InferenceDisclosureSheet';
 import { appColors } from '../../../layout/appColors';
+
+/** Provides the caller's safe-area context so the sheet's nested Modal provider can initialize in Jest. */
+async function renderWithSafeArea(children: ReactNode) {
+  return render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 430, height: 800 },
+        insets: { top: 0, right: 0, bottom: 24, left: 0 },
+      }}
+    >
+      {children}
+    </SafeAreaProvider>,
+  );
+}
 
 function request(
   content:
@@ -27,15 +43,15 @@ function request(
 describe('InferenceDisclosureSheet', () => {
   it('keeps a visible top grabber outside scrolling content without intercepting native gestures', async () => {
     const onDecision = jest.fn();
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet request={request()} onDecision={onDecision} />,
     );
     const grabber = screen.getByTestId('inference-disclosure-grabber', {
       includeHiddenElements: true,
     });
     expect(grabber).toHaveStyle({
-      marginTop: 8,
-      marginBottom: 13,
+      marginTop: 6,
+      marginBottom: 8,
       alignSelf: 'center',
       width: 36,
       height: 5,
@@ -46,7 +62,7 @@ describe('InferenceDisclosureSheet', () => {
     expect(onDecision).not.toHaveBeenCalled();
   });
   it('immediately previews unclassified web text and makes no reusable-consent promise', async () => {
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet
         request={{
           ...request('Synthetic unclassified exact query'),
@@ -67,7 +83,7 @@ describe('InferenceDisclosureSheet', () => {
     ).toBe(true);
   });
   it('discloses the selected model and exact public-web query without claiming to send record originals', async () => {
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet
         request={{
           ...request('Synthetic public topic'),
@@ -90,7 +106,7 @@ describe('InferenceDisclosureSheet', () => {
   });
   it('uses a native downward-dismissible sheet and treats dismissal as cancellation', async () => {
     const onDecision = jest.fn();
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet request={request()} onDecision={onDecision} />,
     );
     const modal = screen.getByTestId('inference-disclosure-modal');
@@ -102,7 +118,7 @@ describe('InferenceDisclosureSheet', () => {
     expect(onDecision).toHaveBeenCalledWith(false);
   });
   it('describes a reusable public-search permission without presenting Europe PMC as an AI model', async () => {
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet
         request={{
           ...request('synthetic search terms'),
@@ -130,7 +146,7 @@ describe('InferenceDisclosureSheet', () => {
     const selected = request();
     const onDecision = jest.fn();
 
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet request={selected} onDecision={onDecision} />,
     );
 
@@ -158,7 +174,7 @@ describe('InferenceDisclosureSheet', () => {
       },
     ]);
 
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet request={selected} onDecision={jest.fn()} />,
     );
 
@@ -215,7 +231,7 @@ describe('InferenceDisclosureSheet', () => {
       },
     };
 
-    await render(
+    await renderWithSafeArea(
       <InferenceDisclosureSheet request={selected} onDecision={jest.fn()} />,
     );
 
