@@ -104,6 +104,68 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         try inspect(extra: ["-OROT_RECORDING_VISUAL_WIDTH", "320"], suffix: "320pt", dark: false, liveTheme: false, editTranscript: false)
     }
 
+    /// Checks the selected source summary in the real saved route after returning from review.
+    @MainActor
+    func testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview() {
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
+        defer {
+            XCUIDevice.shared.orientation = .portrait
+            let cleanup = app.buttons["encounter-probe-cleanup"]
+            if cleanup.exists {
+                // Wait for persisted fixture removal before terminating its owning host.
+                cleanup.tap()
+                UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "cleaned")
+            }
+            app.terminate()
+            XCUIDevice.shared.orientation = originalOrientation
+        }
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = [
+            "-OROT_TEST_PROFILE", "speech",
+            "-OROT_TRANSCRIPTION_PROBE_MODE", "encounter-review",
+            "-OROT_REVIEW_FIXTURE", fixture,
+            "-OROT_REVIEW_MODE", "seed",
+        ]
+        app.launch()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+        let row = app.buttons.matching(identifier: "recording-details-\(fixture):ui-review").firstMatch
+        FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
+        row.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-review-panel")))
+        UITestConditions.element(app, "navigation-back").tap()
+        let summary = UITestConditions.element(app, "saved-recordings-selection-summary")
+        XCTAssertTrue(UITestConditions.exists(summary))
+        assertSavedRecordingAxis(app, horizontal: false)
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        assertSavedRecordingAxis(app, horizontal: true)
+        XCTAssertTrue(UITestConditions.exists(summary))
+        XCUIDevice.shared.orientation = .portrait
+        assertSavedRecordingAxis(app, horizontal: false)
+        XCTAssertTrue(UITestConditions.exists(summary))
+    }
+
+    @MainActor
+    private func assertSavedRecordingAxis(_ app: XCUIApplication, horizontal: Bool) {
+        let primary = UITestConditions.element(app, "saved-recordings-layout-primary")
+        let secondary = UITestConditions.element(app, "saved-recordings-layout-secondary")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard primary.exists, secondary.exists else { return false }
+            let first = primary.frame
+            let second = secondary.frame
+            // Non-overlap alone permits zero-sized panes; require area and overlap on the other axis.
+            let hasArea = first.width > 0 && first.height > 0 && second.width > 0 && second.height > 0
+            let followsAxis = horizontal ? first.maxX <= second.minX : first.maxY <= second.minY
+            let overlapsOtherAxis = horizontal
+                ? first.minY < second.maxY && second.minY < first.maxY
+                : first.minX < second.maxX && second.minX < first.maxX
+            return hasArea && overlapsOtherAxis && !first.intersects(second) && followsAxis
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+    }
+
     @MainActor
     private func inspect(extra: [String], suffix: String, dark: Bool, liveTheme: Bool, editTranscript: Bool) throws {
         let app = XCUIApplication()
