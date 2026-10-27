@@ -17,11 +17,16 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
 
         XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        let reviewedFilename = node(app, "medical-document-review-filename")
+        XCTAssertTrue(reviewedFilename.exists, app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(reviewedFilename).contains("MedicalDocumentTextFixture.pdf"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-description")).contains("자동으로 확정되지 않아요."))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-page-0")).contains("1쪽"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-text-0")).contains("Synthetic medical document page one"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-page-1")).contains("2쪽"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-text-1")).contains("Synthetic medical document page two"))
+        XCTAssertTrue(node(app, "medical-document-save").exists, app.debugDescription)
+        XCTAssertTrue(node(app, "medical-document-cancel").exists, app.debugDescription)
         capture(app, "medical-document-review-before-save")
 
         tap(app, "medical-document-save")

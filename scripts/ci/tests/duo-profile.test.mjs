@@ -79,7 +79,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
   const manualHistoryRecovery =
     'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow';
-  const mergedManualHistoryReflow =
+  const manualHistoryReflow =
     'OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow';
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
@@ -138,8 +138,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep account, provider, sync, backup, privacy, health settings, and existing Duo cases explicit.
-  // The PR merge ref may also contain this independently merged main case.
-  assert.equal(duoInventory.length, 33 + Number(duoInventory.includes(mergedManualHistoryReflow)));
+  assert.equal(duoInventory.length, 34);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -159,7 +158,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     classificationReflow,
     contextualDeparture,
     manualHistoryRecovery,
-    ...(duoInventory.includes(mergedManualHistoryReflow) ? [mergedManualHistoryReflow] : []),
+    manualHistoryReflow,
     duoKeyboardSave,
     fourSidedOcclusion,
     recordingShareDismissal,

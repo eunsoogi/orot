@@ -196,6 +196,12 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["알림이 설정되었어요."]))
         }
         try ReminderJourneyObservation.assertPending(app, id: id, start: initialTime, stage: "large-initial-schedule", testCase: self)
+        // Large Dynamic Type must keep the privacy preview visually separate from its action.
+        let privacyPreview = app.staticTexts["잠금 화면에는 예약 내용 없이 준비 안내만 표시해요."]
+        let firstReminderAction = UITestConditions.element(app, "appointment-reminder-\(id)-60")
+        XCTAssertTrue(UITestConditions.exists(privacyPreview))
+        XCTAssertTrue(UITestConditions.exists(firstReminderAction))
+        XCTAssertFalse(privacyPreview.frame.intersects(firstReminderAction.frame))
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if original == nil {

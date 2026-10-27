@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
+  fullContentLane: { minWidth: 0, width: '100%' },
   form: { backgroundColor: 'white', borderRadius: 10, gap: 10, padding: 14 },
   formTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
   fieldLabel: { color: '#17212b', fontSize: 14, fontWeight: '500' },

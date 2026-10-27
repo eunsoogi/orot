@@ -47,12 +47,15 @@ const styles = StyleSheet.create({
   clinic: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   actions: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16 },
   form: {
+    alignSelf: 'center',
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,
     borderWidth: 1,
     gap: 12,
+    maxWidth: 560,
     padding: 16,
+    width: '100%',
   },
   formTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   input: {

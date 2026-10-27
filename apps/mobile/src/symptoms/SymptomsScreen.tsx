@@ -8,11 +8,14 @@ import {
   View,
 } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import SymptomEntryCard from './SymptomEntryCard';
-import SymptomFilters from './SymptomFilters';
 import SymptomForm from './SymptomForm';
+import SymptomListPanel from './SymptomListPanel';
+import SymptomSelectionSummary from './SymptomSelectionSummary';
+import symptomFormStyles from './SymptomForm.styles';
 import styles from './SymptomsScreen.styles';
 import useSymptomScrollDiagnostics from './useSymptomScrollDiagnostics';
 import useSymptomFocusReveal from './useSymptomFocusReveal';
@@ -48,6 +51,10 @@ export default function SymptomsScreen({
 }: SymptomsScreenProps) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<SymptomEntry | null>(null);
+  // Keep the selected entry local so reflow changes only the panel geometry.
+  const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [inputRevision, setInputRevision] = useState(0);
@@ -66,6 +73,8 @@ export default function SymptomsScreen({
     revision: Number(creating) + Number(editing !== null) + Number(saving),
     inputRevision,
   });
+  const selectedSymptom =
+    entries.find(entry => entry.id === selectedSymptomId) ?? null;
   // New typing invalidates a pending discard confirmation from the shared toolbar.
   const draftChanged = () => setInputRevision(value => value + 1);
 
@@ -82,28 +91,13 @@ export default function SymptomsScreen({
   }
 
   function renderEntry(entry: SymptomEntry) {
-    if (editing?.id === entry.id) {
-      return (
-        <SymptomForm
-          entry={entry}
-          key={entry.id}
-          mode="edit"
-          onDraftChange={draftChanged}
-          onSavingChange={setSaving}
-          onCancel={() => setEditing(null)}
-          onCreate={onCreate}
-          onUpdate={async (id, changes) => {
-            await onUpdate(id, changes);
-            setEditing(null);
-          }}
-        />
-      );
-    }
     return (
       <SymptomEntryCard
         disabled={saving || creating || editing !== null}
         entry={entry}
         key={entry.id}
+        onSelect={() => setSelectedSymptomId(entry.id)}
+        selected={entry.id === selectedSymptomId}
         onEdit={() => setEditing(entry)}
         onResolve={() => {
           resolve(entry);
@@ -142,76 +136,93 @@ export default function SymptomsScreen({
           keyboardShouldPersistTaps="handled"
           testID="symptoms-scroll"
         >
-          <View style={styles.topBar}>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="symptoms-title"
-            >
-              Symptoms
-            </Text>
-            {!hasSharedNavigation ? (
-              <Button onPress={onBack} testID="symptoms-back" title="Back" />
-            ) : null}
-          </View>
-          <Text style={styles.message}>
-            Record what you notice in your own words.
-          </Text>
-          <Text style={styles.hint}>
-            Journal entries are user-entered and not clinician-confirmed.
-          </Text>
-          {error ? (
-            <Text accessibilityRole="alert" testID="symptoms-error">
-              {error}
-            </Text>
-          ) : null}
-          {/* Filtering an edited row out must not silently discard its draft. */}
-          <SymptomFilters
-            disabled={creating || editing !== null || saving}
-            filter={filter}
-            onFilterChange={onFilterChange}
+          {/* Both panels stay mounted so selection survives geometry changes. */}
+          <AdaptiveColumns
+            primary={
+              <SymptomListPanel
+                backButtonVisible={!hasSharedNavigation}
+                disabled={creating || editing !== null || saving}
+                error={error}
+                filter={filter}
+                onBack={onBack}
+                onFilterChange={onFilterChange}
+              >
+                {loadError ? (
+                  <>
+                    <Text
+                      accessibilityRole="alert"
+                      style={styles.error}
+                      testID="symptoms-load-error"
+                    >
+                      {loadError}
+                    </Text>
+                    <Button
+                      disabled={loading}
+                      onPress={onRetry}
+                      testID="symptoms-retry-list"
+                      title="Try again"
+                    />
+                  </>
+                ) : loading ? (
+                  <Text testID="symptoms-loading">Loading symptoms…</Text>
+                ) : entries.length === 0 ? (
+                  <Text testID="symptoms-empty">
+                    No symptom entries match these filters.
+                  </Text>
+                ) : (
+                  entries
+                    .filter(entry => entry.id !== editing?.id)
+                    .map(renderEntry)
+                )}
+                {!creating && !editing ? (
+                  <Button
+                    disabled={loading || !canWrite || saving}
+                    onPress={() => setCreating(true)}
+                    testID="symptom-add"
+                    title="Add symptom"
+                  />
+                ) : null}
+              </SymptomListPanel>
+            }
+            routeKey="symptoms"
+            secondary={<SymptomSelectionSummary entry={selectedSymptom} />}
+            testID="symptoms-layout"
           />
-          {loadError ? (
-            <>
-              <Text accessibilityRole="alert" testID="symptoms-load-error">
-                {loadError}
-              </Text>
-              <Button
-                disabled={loading}
-                onPress={onRetry}
-                testID="symptoms-retry-list"
-                title="Try again"
-              />
-            </>
-          ) : loading ? (
-            <Text testID="symptoms-loading">Loading symptoms…</Text>
-          ) : entries.length === 0 ? (
-            <Text testID="symptoms-empty">
-              No symptom entries match these filters.
-            </Text>
-          ) : (
-            entries.map(renderEntry)
-          )}
-          {creating ? (
-            <SymptomForm
-              key="new-symptom"
-              mode="create"
-              onDraftChange={draftChanged}
-              onSavingChange={setSaving}
-              onCancel={() => setCreating(false)}
-              onCreate={async draft => {
-                await onCreate(draft);
-                setCreating(false);
-              }}
-              onUpdate={onUpdate}
-            />
-          ) : !editing ? (
-            <Button
-              disabled={loading || !canWrite || saving}
-              onPress={() => setCreating(true)}
-              testID="symptom-add"
-              title="Add symptom"
-            />
+          {creating || editing ? (
+            // Keep the active editor outside either adaptive panel's width clamp.
+            <View
+              style={symptomFormStyles.fullContentLane}
+              testID="symptoms-form-lane"
+            >
+              {creating ? (
+                <SymptomForm
+                  key="new-symptom"
+                  mode="create"
+                  onDraftChange={draftChanged}
+                  onSavingChange={setSaving}
+                  onCancel={() => setCreating(false)}
+                  onCreate={async draft => {
+                    await onCreate(draft);
+                    setCreating(false);
+                  }}
+                  onUpdate={onUpdate}
+                />
+              ) : editing ? (
+                <SymptomForm
+                  entry={editing}
+                  key={editing.id}
+                  mode="edit"
+                  onDraftChange={draftChanged}
+                  onSavingChange={setSaving}
+                  onCancel={() => setEditing(null)}
+                  onCreate={onCreate}
+                  onUpdate={async (id, changes) => {
+                    await onUpdate(id, changes);
+                    setEditing(null);
+                  }}
+                />
+              ) : null}
+            </View>
           ) : null}
         </ScrollView>
       </SymptomFocusRevealContext.Provider>
