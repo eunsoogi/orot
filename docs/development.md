@@ -199,7 +199,7 @@ production 캐시는 복원과 저장을 분리합니다. 캐시에 포함되는
 
 cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 결과를 보존하고 소유한 자료를 정리한 뒤 후속 실행을 중단합니다. 실행하지 않은 cohort 단계는 `not-run`, fixture는 `notRun` 목록에 기록하며 성공으로 집계하지 않습니다. 한 `xcodebuild` 호출 내부에서 여러 사례가 실행되는 경계는 별도이며, 이 스케줄링 중단만으로 모든 사례가 첫 실패 순간에 중단됐다고 주장하지 않습니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. Foundation Models 관련 네 사례는 명시적인 mock 응답으로 앱·브리지·workflow를 검증합니다. mock 결과를 실제 Apple 모델 실행으로 표시하거나, 실패한 앱 동작을 skip으로 처리하지 않습니다. Speech와 다른 원래 검증의 실제 실행 요구는 유지합니다.
 
-원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. Full E2E는 29개 cohort의 178개 관측과 별도의 Keychain 인증 두 사례를 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. cohort 결과와 인증 receipt는 동일한 workflow run·attempt로 묶고, 다른 실행 결과를 재사용해 Full 성공으로 처리하지 않습니다.
+원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. Full E2E는 29개 cohort의 180개 관측과 별도의 Keychain 인증 두 사례를 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. cohort 결과와 인증 receipt는 동일한 workflow run·attempt로 묶고, 다른 실행 결과를 재사용해 Full 성공으로 처리하지 않습니다.
 
 Release 검증은 해당 workflow가 실행된 정확한 main SHA에 대해 성공한 nightly Full E2E를 요구합니다. main이 앞서 나가면 새 SHA의 nightly 실행이 성공할 때까지 release가 실패합니다. 이전 SHA 또는 이전 attempt 결과를 새 SHA 증거로 재사용하지 않습니다.
 
@@ -207,7 +207,7 @@ Release 검증은 해당 workflow가 실행된 정확한 main SHA에 대해 성�
 
 PR의 정적 분석, 타입 검사, 단위 테스트는 계속 실행하지만 E2E workflow는 시작하지 않습니다. `main`의 E2E는 nightly schedule과 수동 `workflow_dispatch`에서 Full로 실행합니다.
 
-Full E2E 내부의 `Validate /` 결과는 전체 workflow의 성공을 구성하지만 PR branch protection 필수 상태는 아닙니다. 현재 PR 필수 검사 16개는 Code Quality, Unit Test, Policy Check에 속합니다. Full receipt는 29개 cohort와 178개 관측, OAuth 실행, 별도 Keychain 인증 작업의 두 관측 및 Face ID 입력 근거가 모두 성공해야 생성됩니다.
+Full E2E 내부의 `Validate /` 결과는 전체 workflow의 성공을 구성하지만 PR branch protection 필수 상태는 아닙니다. 현재 PR 필수 검사 16개는 Code Quality, Unit Test, Policy Check에 속합니다. Full receipt는 29개 cohort와 180개 관측, OAuth 실행, 별도 Keychain 인증 작업의 두 관측 및 Face ID 입력 근거가 모두 성공해야 생성됩니다.
 
 `Code Quality`·`Policy Check`·`Unit Test`는 PR과 main push에서 실행합니다. `E2E Test`는 `main`의 매일 03:00 KST schedule과 수동 `workflow_dispatch`만 사용하며 PR이나 push에서는 시작하지 않습니다. PR에서 E2E 필수 상태를 기다리지 않고, release workflow는 exact target SHA의 성공한 nightly E2E receipt를 요구합니다.
 

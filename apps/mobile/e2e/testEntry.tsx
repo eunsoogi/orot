@@ -108,7 +108,11 @@ function TestObservationWrapper({ children }: PropsWithChildren) {
     content
   );
   return reminderObservation ? (
-    <ReminderTestObservation>{observed}</ReminderTestObservation>
+    <ReminderTestObservation
+      originControl={settings.OROT_TEST_REMINDER_ORIGIN_CONTROL === 'YES'}
+    >
+      {observed}
+    </ReminderTestObservation>
   ) : (
     observed
   );

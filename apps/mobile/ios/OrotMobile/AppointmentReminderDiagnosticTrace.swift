@@ -96,7 +96,7 @@
             await $operationSequence.withValue(sequence) { await operation() }
         }
 
-        private static var enabledRunID: String? {
+        static var enabledRunID: String? {
             let environment = ProcessInfo.processInfo.environment
             guard environment["OROT_TEST_REMINDER_DIAGNOSTICS"] == "YES",
                   let runID = environment["OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID"],

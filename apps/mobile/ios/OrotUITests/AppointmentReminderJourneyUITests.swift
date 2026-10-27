@@ -7,6 +7,63 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// First postmerge control must cross RN itself before any original diagnostic journey rerun.
+    @MainActor
+    func testActualRNFailureOriginSurvivesCleanupAndQueuedReconciliation() throws {
+        let runID = UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_REMINDER_OBSERVATION", "YES",
+                               "-OROT_TEST_REMINDER_ORIGIN_CONTROL", "YES"]
+        app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTICS"] = "YES"
+        app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID"] = runID
+        app.launchEnvironment["OROT_TEST_REMINDER_ORIGIN_CONTROL"] = "YES"
+        app.launch()
+        try ReminderJourneyDiagnostic.requireDiagnostic(app, runID: runID, testCase: self)
+        let button = UITestConditions.element(app, "appointment-reminder-synthetic-origin-control-60")
+        XCTAssertTrue(UITestConditions.exists(button))
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+        let marker = UITestConditions.element(app, "reminder-origin-control")
+        var terminal: [String: Any]?
+        var observationError: Error?
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            do {
+                let value = try JSONSerialization.jsonObject(with: Data(marker.snapshot().label.utf8)) as? [String: Any]
+                if value?["done"] as? Bool == true {
+                    terminal = value; return true
+                }
+                return false
+            } catch { observationError = error; return true }
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [settled]), .completed)
+        if let observationError {
+            throw observationError
+        }
+        let value = try XCTUnwrap(terminal)
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]), uniformTypeIdentifier: "public.json")
+        attachment.name = "actual-rn-origin-control"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertEqual(value["normalized"] as? Bool, true)
+        let expected = try XCTUnwrap(value["expected"] as? [String: [String: Any]])
+        XCTAssertEqual(Set(expected.keys), ["selected", "cleanup", "reconcile", "reconcile-cleanup"])
+        let sequences = expected.values.compactMap { $0["operationSequence"] as? Int }
+        XCTAssertEqual(Set(sequences).count, 4)
+        XCTAssertTrue(sequences.allSatisfy { $0 > 0 })
+        XCTAssertTrue(expected.values.allSatisfy { $0["runID"] as? String == runID })
+        let action = try XCTUnwrap(value["action"] as? [String: Any])
+        XCTAssertEqual(action["sequence"] as? Int, 1)
+        XCTAssertEqual(action["outcome"] as? String, "reject")
+        XCTAssertEqual(action["status"] as? String, "error")
+        XCTAssertEqual(action["busy"] as? Bool, false)
+        XCTAssertEqual(action["currentBusy"] as? Bool, false)
+        let origin = try XCTUnwrap(action["origin"] as? [String: Any])
+        XCTAssertEqual(Set(origin.keys), ["runID", "operationSequence"])
+        XCTAssertEqual(origin["runID"] as? String, runID)
+        XCTAssertEqual(origin["operationSequence"] as? Int, expected["selected"]?["operationSequence"] as? Int)
+        try ReminderJourneyDiagnostic.finishHealthy(app, testCase: self)
+    }
+
     /// This native control proves confirmed rejection cannot fall through into original success checks.
     @MainActor
     func testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions() throws {
