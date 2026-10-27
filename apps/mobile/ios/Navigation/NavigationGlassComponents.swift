@@ -1,4 +1,87 @@
+import React
 import UIKit
+
+/// Hosts a persistent adapter's rail inside its owning full-window controller,
+/// below UIKit presentations. Only controls consume hits; gaps reach the route.
+final class NavigationWindowRailHost: UIView {
+    private weak var owner: UIView?
+
+    func mount(for owner: UIView, availableHeight: CGFloat) -> UIView? {
+        guard let window = owner.window, availableHeight > 0, owner.bounds.width > 0 else {
+            removeFromSuperview()
+            return nil
+        }
+        var responder: UIResponder? = owner.next
+        while responder != nil, !(responder is UIViewController) {
+            responder = responder?.next
+        }
+        guard let controller = responder as? UIViewController else { return nil }
+        let root = controller.view!
+        let windowFrame = CGRect(x: window.bounds.maxX - owner.bounds.width, y: window.bounds.minY,
+                                 width: owner.bounds.width, height: min(availableHeight, window.bounds.height))
+        let target = root.convert(windowFrame, from: window)
+        // A contracted controller is not a window host. Never move controls past
+        // its touch ancestry merely because an overflow frame could be drawn.
+        guard root.bounds.contains(target) else { return nil }
+        if superview !== root {
+            var branch = owner
+            while branch.superview !== root {
+                guard let parent = branch.superview else { return nil }
+                branch = parent
+            }
+            root.insertSubview(self, aboveSubview: branch)
+        }
+        self.owner = owner
+        frame = target
+        isHidden = !ownerIsVisible
+        return self
+    }
+
+    private var ownerIsVisible: Bool {
+        guard let owner, owner.window === window else { return false }
+        var ancestor: UIView? = owner
+        while let view = ancestor {
+            if view.isHidden || view.alpha <= 0.01 {
+                return false
+            }
+            ancestor = view.superview
+        }
+        return true
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard ownerIsVisible else { return nil }
+        let hit = super.hitTest(point, with: event)
+        return hit is UIControl ? hit : nil
+    }
+}
+
+@objc(NavigationGlassViewManager)
+final class NavigationGlassViewManager: RCTViewManager {
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        NavigationGlassSurfaceView()
+    }
+}
+
+/// The same fixed controls can bind to a local bottom surface or the window rail host.
+enum NavigationRailConstraints {
+    static func make(rootBar: NavigationRootGlassBar, innerActions: UIStackView, host: UIView) -> [NSLayoutConstraint] {
+        [
+            rootBar.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            rootBar.widthAnchor.constraint(equalToConstant: NavigationRootGlassBar.exteriorWidth),
+            rootBar.heightAnchor.constraint(equalToConstant: NavigationRootGlassBar.railHeight),
+            rootBar.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            innerActions.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            innerActions.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            innerActions.topAnchor.constraint(equalTo: host.topAnchor),
+            innerActions.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+        ]
+    }
+}
 
 /// Decodes the React Native toolbar payload and supplies defaults for optional action flags.
 struct NavigationActionDescriptor: Equatable {

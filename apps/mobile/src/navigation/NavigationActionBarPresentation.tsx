@@ -29,6 +29,7 @@ import {
   NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
   NAVIGATION_ROOT_RAIL_GUTTER,
+  NAVIGATION_ROOT_RAIL_WIDTH,
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
@@ -106,7 +107,9 @@ export function NavigationActionBarPresentation({
         height: railHeight,
         position: 'absolute' as const,
         right: 0,
-        width: rightLayout.reservedRightWidth,
+        // Content may already end before this lane; the native window host
+        // still needs the complete fixed-width rail and its trailing gap.
+        width: NAVIGATION_ROOT_RAIL_WIDTH + rightLayout.railRightInset,
       }
     : undefined;
   const primaryActions = primaryAction ? (
@@ -136,6 +139,7 @@ export function NavigationActionBarPresentation({
         railBottomInset,
         railRightInset: rightLayout.railRightInset,
         railTopInset: rightLayout.railTopInset,
+        railAvailableHeight: railHeight,
       }
     : { layoutMode: 'bottom' as const };
   const nativeSurfaceStyle: StyleProp<ViewStyle> = isRightRail

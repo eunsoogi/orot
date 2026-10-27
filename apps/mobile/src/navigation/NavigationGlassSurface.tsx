@@ -48,6 +48,8 @@ export interface NavigationGlassSurfaceProps {
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
+  /** Explicit window extent after keyboard avoidance, independent of React host bounds. */
+  readonly railAvailableHeight?: number;
 }
 
 interface NavigationGlassNativeProps extends ViewProps {
@@ -57,6 +59,7 @@ interface NavigationGlassNativeProps extends ViewProps {
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
+  readonly railAvailableHeight?: number;
 }
 
 const NativeNavigationGlassSurface =
@@ -72,6 +75,7 @@ export function NavigationGlassSurface({
   railBottomInset,
   railRightInset,
   railTopInset,
+  railAvailableHeight,
   style,
   testID,
 }: NavigationGlassSurfaceProps) {
@@ -87,6 +91,7 @@ export function NavigationGlassSurface({
         railBottomInset={railBottomInset}
         railRightInset={railRightInset}
         railTopInset={railTopInset}
+        railAvailableHeight={railAvailableHeight}
         style={[styles.surface, hasRootTabs && styles.rootTabSurface, style]}
         testID={testID}
       />

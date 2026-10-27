@@ -96,3 +96,38 @@ test('rejects invalid native measurements instead of publishing stale geometry',
     }),
   ).toBeNull();
 });
+
+test('clips content to the measured viewport without relabeling it as the window', () => {
+  const geometry = createNavigationGeometrySnapshot({
+    windowBounds: { x: 0, y: 0, width: 951, height: 669 },
+    viewportBounds: { x: 24, y: 10, width: 843, height: 625 },
+    safeAreaInsets: { top: 0, right: 84, bottom: 34, left: 0 },
+    reservedRegionsSupported: true,
+    reservedRegions: [],
+  });
+  expect(geometry?.safeAreaFrame).toEqual({
+    x: 0,
+    y: 0,
+    width: 867,
+    height: 635,
+  });
+  expect(geometry?.usableRegions).toEqual([
+    { x: 24, y: 10, width: 843, height: 625 },
+  ]);
+  expect(geometry?.windowBounds.width).toBe(951);
+});
+
+test.each([
+  { x: 0, y: 0, width: Number.NaN, height: 10 },
+  { x: 0, y: 0, width: -1, height: 10 },
+])('rejects malformed explicit viewport bounds', viewportBounds => {
+  expect(
+    createNavigationGeometrySnapshot({
+      windowBounds: bounds,
+      viewportBounds,
+      safeAreaInsets: noInsets,
+      reservedRegionsSupported: true,
+      reservedRegions: [],
+    }),
+  ).toBeNull();
+});

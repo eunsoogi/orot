@@ -85,8 +85,10 @@ final class NavigationGeometryView: UIView {
         }
 
         return [
-            "windowBounds": rectPayload(convert(bounds, to: window)),
-            "safeAreaInsets": insetsPayload(safeAreaInsets),
+            // Keep the physical window domain distinct from a nested or safe-area-contracted sensor.
+            "windowBounds": rectPayload(window.bounds),
+            "viewportBounds": rectPayload(convert(bounds, to: window)),
+            "safeAreaInsets": insetsPayload(window.safeAreaInsets),
             "reservedRegionsSupported": reservedRegionsSupported,
             "reservedRegions": reservedRegionEntries,
         ]
