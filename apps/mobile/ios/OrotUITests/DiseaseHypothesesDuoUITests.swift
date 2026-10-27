@@ -39,7 +39,7 @@ final class DiseaseHypothesesDuoUITests: OrotFailFastTestCase {
         ).firstMatch
         XCTAssertTrue(UITestConditions.exists(citation))
         XCTAssertTrue(citation.isHittable)
-        XCTAssertEqual(citation.label, "원문 근거 열기 · 건강 기록")
+        XCTAssertEqual(citation.label, "원문 근거 열기 · 건강 기록 · 2035-05-20")
 
         let previousFrame = app.frame
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -59,7 +59,7 @@ final class DiseaseHypothesesDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "disease-hypotheses-columns-secondary")))
         message(app, "합성 증상 요약")
         XCTAssertTrue(UITestConditions.exists(citation))
-        XCTAssertEqual(citation.label, "원문 근거 열기 · 건강 기록")
+        XCTAssertEqual(citation.label, "원문 근거 열기 · 건강 기록 · 2035-05-20")
         XCTAssertTrue(UITestConditions.exists(summary))
         XCTAssertTrue(UITestConditions.exists(assessment))
 
@@ -67,5 +67,17 @@ final class DiseaseHypothesesDuoUITests: OrotFailFastTestCase {
         message(app, "합성 가능성 평가")
         XCTAssertTrue(UITestConditions.exists(citation))
         XCTAssertTrue(UITestConditions.exists(summary))
+    }
+
+    @MainActor
+    private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        UITestConditions.element(app, id)
+    }
+
+    @MainActor
+    private func message(_ app: XCUIApplication, _ text: String) {
+        let message = app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
+        XCTAssertTrue(UITestConditions.exists(message), app.debugDescription)
+        XCTAssertTrue(message.isHittable, message.debugDescription)
     }
 }

@@ -14,18 +14,21 @@ test('disease visual output stays opt-in, synthetic, and isolated', () => {
   assert.match(entry, /launchSettings\.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic'/);
   assert.match(
     entry,
-    /syntheticDiseaseFixtureEnabled\s*\?\s*syntheticDiseaseDependencies\s*:\s*undefined/,
+    /syntheticDiseaseFixtureEnabled\s*\?\s*syntheticAiFeatureDependencies\s*:\s*undefined/,
   );
 
   const runnerStart = entry.indexOf('const syntheticDiseaseRunner:');
-  const dependenciesStart = entry.indexOf('const syntheticDiseaseDependencies:', runnerStart);
+  const dependenciesStart = entry.indexOf('const syntheticAiFeatureDependencies:', runnerStart);
   assert.ok(runnerStart >= 0 && dependenciesStart > runnerStart);
   const runner = entry.slice(runnerStart, dependenciesStart);
   assert.match(runner, /status: 'result'/);
   assert.match(runner, /syntheticCitation/);
   assert.doesNotMatch(runner, /\bfetch\b|\.provider\b|\.tools\b|\.search\b|readRecord|listRecords/);
 
-  const dependenciesEnd = entry.indexOf('const syntheticDiseaseFixtureEnabled:', dependenciesStart);
+  const dependenciesEnd = entry.indexOf(
+    'const syntheticDiseaseFixtureEnabled =',
+    dependenciesStart,
+  );
   const dependencies = entry.slice(dependenciesStart, dependenciesEnd);
   assert.match(
     dependencies,

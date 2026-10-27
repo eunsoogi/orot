@@ -52,12 +52,6 @@ const selectionStore: ProviderSelectionStore = {
   save: async () => undefined,
   clear: async () => undefined,
 };
-const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
-  selectedAi: {
-    selectionStore,
-    loadAppleOption: async () => syntheticOption,
-  },
-};
 // This opt-in runner supplies fixed output without dispatching a model or evidence tool.
 const syntheticDiseaseRunner: NonNullable<
   AiFeatureServiceDependencies['diseaseRunner']
@@ -83,9 +77,12 @@ const syntheticDiseaseRunner: NonNullable<
     checkpoint: {} as never,
   },
 });
-const syntheticDiseaseDependencies: AiFeatureServiceDependencies = {
-  ...aiFeatureServiceDependencies,
-  // Empty local services and inert storage keep the opt-in fixture away from SQLCipher.
+const syntheticAiFeatureDependencies: AiFeatureServiceDependencies = {
+  selectedAi: {
+    selectionStore,
+    loadAppleOption: async () => syntheticOption,
+  },
+  // The opt-in fixture stays in memory and never dispatches an external model or reads encrypted records.
   loadLocalData: async () =>
     ({
       rag: { index: async () => undefined, search: async () => [] },
@@ -102,7 +99,7 @@ const syntheticDiseaseFixtureEnabled =
   launchSettings.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic';
 // Keep this callback stable so route-state rerenders do not abort generation as a provider change.
 const resolveSyntheticSelectedAi: VisitQuestionsRenderInput['resolveSelectedAi'] =
-  () => resolveSelectedAiProvider(aiFeatureServiceDependencies.selectedAi);
+  () => resolveSelectedAiProvider(syntheticAiFeatureDependencies.selectedAi);
 
 const syntheticAppointment: Appointment = {
   id: 'synthetic-appointment-ai-feature-e2e',
@@ -215,7 +212,7 @@ function AiFeatureVisitQuestionsProbeEntry() {
       <App
         aiFeatureServiceDependencies={
           syntheticDiseaseFixtureEnabled
-            ? syntheticDiseaseDependencies
+            ? syntheticAiFeatureDependencies
             : undefined
         }
         renderVisitQuestions={renderVisitQuestions}
@@ -247,4 +244,5 @@ const styles = StyleSheet.create({
   keyboardMarker: { position: 'absolute', left: 0, top: 0 },
   keyboardMarkerText: { fontSize: 1 },
 });
+
 AppRegistry.registerComponent(appName, () => AiFeatureVisitQuestionsProbeEntry);
