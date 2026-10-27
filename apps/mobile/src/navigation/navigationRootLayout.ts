@@ -1,5 +1,8 @@
 import { createContext } from 'react';
-import type { NavigationGeometrySnapshot } from './navigationGeometry';
+import {
+  createNavigationGeometrySnapshot,
+  type NavigationGeometrySnapshot,
+} from './navigationGeometry';
 
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
@@ -79,13 +82,28 @@ export function resolveNavigationRootLayout(
 ): NavigationRootLayout {
   if (!geometry?.reservedRegionsSupported) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
 
-  const railRightInset =
-    geometry.safeAreaInsets.right + NAVIGATION_ROOT_RAIL_GUTTER;
-  const reservedRightWidth = NAVIGATION_ROOT_RAIL_WIDTH + railRightInset;
-  const railLeft =
-    geometry.windowBounds.x + geometry.windowBounds.width - reservedRightWidth;
-  const railRight = railLeft + NAVIGATION_ROOT_RAIL_WIDTH;
+  // Custom bars use window-side space, independently of content safe-area
+  // containment. UIKit reserved frames already include their margins.
+  const railRightInset = NAVIGATION_ROOT_RAIL_GUTTER;
+  const railLaneWidth = NAVIGATION_ROOT_RAIL_WIDTH + railRightInset;
+  const viewport = geometry.viewportBounds ?? geometry.windowBounds;
   const windowRight = geometry.windowBounds.x + geometry.windowBounds.width;
+  const contentRight = Math.min(
+    viewport.x + viewport.width,
+    windowRight - Math.max(geometry.safeAreaInsets.right, railLaneWidth),
+  );
+  const reservedRightWidth = Math.max(
+    0,
+    viewport.x + viewport.width - contentRight,
+  );
+  const railGeometry = createNavigationGeometrySnapshot({
+    ...geometry,
+    viewportBounds: geometry.windowBounds,
+    safeAreaInsets: { ...geometry.safeAreaInsets, left: 0, right: 0 },
+  });
+  if (!railGeometry) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+  const railLeft = windowRight - railLaneWidth;
+  const railRight = railLeft + NAVIGATION_ROOT_RAIL_WIDTH;
   const windowBottom = geometry.windowBounds.y + geometry.windowBounds.height;
   const usableBottom = geometry.safeAreaFrame.y + geometry.safeAreaFrame.height;
   const reachesBottom = (
@@ -117,8 +135,9 @@ export function resolveNavigationRootLayout(
         (division.isActive
           ? region.x + region.width <= dividerLeft + 1 &&
             region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH
-          : Math.min(region.x + region.width, railLeft) - region.x >=
-            NAVIGATION_MINIMUM_COLUMN_WIDTH) && reachesBottom(region),
+          : region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH + railLaneWidth &&
+            Math.min(region.x + region.width, railLeft) - region.x >=
+              NAVIGATION_MINIMUM_COLUMN_WIDTH) && reachesBottom(region),
     );
     const rightPanelFitsRail =
       !division.isActive ||
@@ -131,7 +150,7 @@ export function resolveNavigationRootLayout(
       );
     if (!leftPanelIsReadable || !rightPanelFitsRail) continue;
 
-    const topRailRegion = geometry.usableRegions
+    const topRailRegion = railGeometry.usableRegions
       .filter(
         region =>
           region.x <= railLeft + 1 &&
@@ -159,12 +178,15 @@ export function resolveNavigationRootLayout(
     return {
       placement: 'right',
       reservedRightWidth,
-      contentWidth: geometry.windowBounds.width - reservedRightWidth,
+      contentWidth: Math.max(0, contentRight - viewport.x),
       windowHeight: geometry.windowBounds.height,
       railTopInset,
       railBottomInset,
       railRightInset,
-      systemBottomInset: windowBottom - usableBottom,
+      systemBottomInset: Math.max(
+        0,
+        viewport.y + viewport.height - usableBottom,
+      ),
     };
   }
 

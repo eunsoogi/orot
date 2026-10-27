@@ -40,6 +40,7 @@ RCT_EXPORT_VIEW_PROPERTY(layoutMode, NSString)
 RCT_EXPORT_VIEW_PROPERTY(railTopInset, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(railBottomInset, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(railRightInset, CGFloat)
+RCT_EXPORT_VIEW_PROPERTY(railAvailableHeight, CGFloat)
 @end
 
 // Deliver window and reserved-region changes from the full-window geometry sensor.

@@ -26,7 +26,8 @@ jest.mock('react-native-safe-area-context', () => {
 test.each([
   ['settings-accounts', false],
   ['settings-backup', false],
-  ['settings-health-data', true],
+  ['settings-health-data', false],
+  ['settings-sync-status', true],
 ] as const)(
   '%s uses the expected measured-content owner',
   async (routeName, sceneOwnsColumns) => {
@@ -48,7 +49,7 @@ test.each([
     expect(screen.getByTestId('settings-route-content').props.children).toBe(
       routeName,
     );
-    // Account and backup screens measure their panels; ordinary detail routes keep scene sizing.
+    // Account, backup, and health-data screens measure panels; sync status stays scene-owned.
     const sceneColumns = screen.queryByTestId(
       `navigation-route-columns-${routeKey}`,
     );

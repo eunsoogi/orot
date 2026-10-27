@@ -34,7 +34,9 @@ final class FormScrollObservation {
         let point: [Double]
         let touchCount: Int
         let multipleTouches: Bool
-        let geometry: Geometry
+        let geometry: Geometry?
+        let losses: [String]?
+        let trackingDiscarded: Int?
     }
 
     /// An offline consumer must retain UNKNOWN unless one complete native pair fits this exact runner bracket.
@@ -54,8 +56,11 @@ final class FormScrollObservation {
             guard pair.count == 2, let first = pair.first(where: { $0.phase == "began" }),
                   let last = pair.first(where: { $0.phase == "ended" }), first.sequence < last.sequence,
                   first.touchCount == 1, last.touchCount == 1, !first.multipleTouches, !last.multipleTouches,
-                  !first.geometry.truncated, !last.geometry.truncated,
-                  first.geometry.startMatches == 1, last.geometry.startMatches == 1
+                  let firstGeometry = first.geometry, let lastGeometry = last.geometry,
+                  (first.losses ?? []).isEmpty, (last.losses ?? []).isEmpty,
+                  (first.trackingDiscarded ?? 0) == 0, (last.trackingDiscarded ?? 0) == 0,
+                  !firstGeometry.truncated, !lastGeometry.truncated,
+                  firstGeometry.startMatches == 1, lastGeometry.startMatches == 1
             else { return false }
             let times = [before.uptime, first.touchUptime, first.capturedUptime, last.touchUptime, last.capturedUptime, after.uptime]
             guard times.allSatisfy(\.isFinite), zip(times, times.dropFirst()).allSatisfy({ $0 <= $1 }) else { return false }

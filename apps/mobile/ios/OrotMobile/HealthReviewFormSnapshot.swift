@@ -14,6 +14,17 @@
     struct HealthReviewFormSnapshot: Codable, Sendable {
         enum Role: String, Codable, Sendable { case control, textInput, scroll, other }
         enum Owner: String, Codable, Sendable { case start, focus, receiver }
+        enum Loss: String, Codable, Sendable {
+            case formMissing, formAmbiguous, receiverMissing, receiverOutsideForm, traversalLimit
+            case trackingMissing, trackingOverflow
+        }
+
+        /// A rejected post-dispatch traversal is evidence of collection loss, never replacement geometry.
+        struct Collection {
+            let geometry: HealthReviewFormSnapshot?
+            let loss: Loss?
+        }
+
         struct Region: Codable, Sendable {
             let role: Role
             let frame: [Double]
@@ -41,7 +52,7 @@
         let focusMatches: Int
 
         /// Traverse at most 512 existing views, never force layout or read a text/accessibility value.
-        @MainActor static func capture(in window: UIWindow, receiver: UIView?) -> Self? {
+        @MainActor static func capture(in window: UIWindow, receiver: UIView?) -> Collection {
             var pending = window.subviews
             var views: [UIView] = []
             while views.count < 512, let view = pending.popLast() {
@@ -49,14 +60,17 @@
                 pending.append(contentsOf: view.subviews)
             }
             let forms = views.filter { $0.accessibilityIdentifier == "health-review-screen" }
-            guard forms.count == 1, let form = forms.first else { return nil }
+            guard pending.isEmpty else { return Collection(geometry: nil, loss: .traversalLimit) }
+            guard !forms.isEmpty else { return Collection(geometry: nil, loss: .formMissing) }
+            guard forms.count == 1, let form = forms.first else { return Collection(geometry: nil, loss: .formAmbiguous) }
             let starts = views.filter { $0.accessibilityIdentifier == "health-review-start" && $0.isDescendant(of: form) }
             let focused = views.filter { $0.isFirstResponder && $0.isDescendant(of: form) }
             let start = starts.count == 1 ? starts.first : nil
             let focus = focused.count == 1 ? focused.first : nil
             // A system keyboard window is outside this sink. Never substitute a fresh hitTest for UITouch.view.
-            let actualReceiver = receiver.flatMap { $0.isDescendant(of: form) ? $0 : nil }
-            guard actualReceiver != nil else { return nil }
+            guard let receiver else { return Collection(geometry: nil, loss: .receiverMissing) }
+            guard receiver.isDescendant(of: form) else { return Collection(geometry: nil, loss: .receiverOutsideForm) }
+            let actualReceiver: UIView? = receiver
             let owners: [(Owner, UIView?)] = [(.start, start), (.focus, focus), (.receiver, actualReceiver)]
             var scrolls: [Scroll] = []
             var truncated = !pending.isEmpty
@@ -76,9 +90,10 @@
                 }
                 truncated = truncated || ancestor != nil
             }
-            return Self(start: start.map { Region(role: .control, frame: frame($0, in: window)) },
-                        focusedInput: focus.map { region($0, in: window) }, receiver: actualReceiver.map { region($0, in: window) },
-                        scrolls: scrolls, truncated: truncated, startMatches: starts.count, focusMatches: focused.count)
+            let geometry = Self(start: start.map { Region(role: .control, frame: frame($0, in: window)) },
+                                focusedInput: focus.map { region($0, in: window) }, receiver: actualReceiver.map { region($0, in: window) },
+                                scrolls: scrolls, truncated: truncated, startMatches: starts.count, focusMatches: focused.count)
+            return Collection(geometry: geometry, loss: truncated ? .traversalLimit : nil)
         }
 
         @MainActor private static func region(_ view: UIView, in window: UIWindow) -> Region {

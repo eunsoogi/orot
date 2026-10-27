@@ -22,9 +22,11 @@ export interface NavigationReservedRegion {
   readonly isActive: boolean;
 }
 
-/** Window bounds and region frames share window coordinates; insets apply to the full-window sensor. */
+/** Window, viewport and region frames share window coordinates; insets describe the window. */
 export interface NavigationGeometryPayload {
   readonly windowBounds: NavigationGeometryRect;
+  /** Older full-window payloads omit this; a contracted host must report its own bounds explicitly. */
+  readonly viewportBounds?: NavigationGeometryRect;
   readonly safeAreaInsets: NavigationGeometryInsets;
   readonly reservedRegionsSupported: boolean;
   readonly reservedRegions: readonly NavigationReservedRegion[];
@@ -129,6 +131,8 @@ export function createNavigationGeometrySnapshot(
     !isFiniteRect(payload.windowBounds) ||
     payload.windowBounds.width <= 0 ||
     payload.windowBounds.height <= 0 ||
+    (payload.viewportBounds !== undefined &&
+      !isFiniteRect(payload.viewportBounds)) ||
     !isNonNegativeInsets(payload.safeAreaInsets) ||
     typeof payload.reservedRegionsSupported !== 'boolean' ||
     !Array.isArray(payload.reservedRegions)
@@ -167,8 +171,13 @@ export function createNavigationGeometrySnapshot(
     ),
   };
 
-  let usableRegions =
-    safeAreaFrame.width > 0 && safeAreaFrame.height > 0 ? [safeAreaFrame] : [];
+  // A route host may already exclude a safe edge. Clip once in window space,
+  // retaining the actual window safe frame for consumers that place custom bars.
+  const contentFrame = intersect(
+    safeAreaFrame,
+    payload.viewportBounds ?? windowBounds,
+  );
+  let usableRegions = contentFrame ? [contentFrame] : [];
   for (const region of reservedRegions) {
     if (!region.isActive) continue;
     usableRegions = usableRegions.flatMap(rect =>

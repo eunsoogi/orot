@@ -52,11 +52,17 @@ enum ScheduleCalendarAdaptiveLayoutUITestConditions {
         XCTAssertGreaterThanOrEqual(secondary.frame.minX, viewport.frame.minX - 0.5, file: file, line: line)
         XCTAssertLessThanOrEqual(secondary.frame.maxX, viewport.frame.maxX + 0.5, file: file, line: line)
 
-        let rail = UITestConditions.element(app, "navigation-right-rail")
-        if rail.exists {
-            XCTAssertLessThanOrEqual(viewport.frame.maxX, rail.frame.minX + 0.5, file: file, line: line)
-            XCTAssertFalse(primary.frame.intersects(rail.frame), file: file, line: line)
-            XCTAssertFalse(secondary.frame.intersects(rail.frame), file: file, line: line)
+        if UITestConditions.element(app, "navigation-right-rail").exists {
+            do {
+                // Measure UIKit's bar after reparenting, not the React event placeholder.
+                let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-schedule").toolbar
+                XCTAssertEqual(rail.frame.width, 48, accuracy: 0.5, file: file, line: line)
+                XCTAssertLessThanOrEqual(viewport.frame.maxX, rail.frame.minX + 0.5, file: file, line: line)
+                XCTAssertFalse(primary.frame.intersects(rail.frame), file: file, line: line)
+                XCTAssertFalse(secondary.frame.intersects(rail.frame), file: file, line: line)
+            } catch {
+                XCTFail("The native Schedule rail is unavailable: \(error)", file: file, line: line)
+            }
         }
         XCTAssertTrue((1 ... 2).contains(layout.columns), "Unsupported Schedule column count", file: file, line: line)
         if layout.columns == 2 {
