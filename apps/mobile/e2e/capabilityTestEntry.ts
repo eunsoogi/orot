@@ -63,6 +63,9 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
     case 'provider-selection':
       require('./providerSelectionProbeEntry');
       break;
+    case 'settings-accounts-layout':
+      require('./settingsAccountsLayoutProbeEntry');
+      break;
     case 'visit-questions':
       require('./visitQuestionsProbeEntry');
       break;

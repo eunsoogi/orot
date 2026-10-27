@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
+  const settingsAccounts =
+    'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels';
   const settingsBackup =
     'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable';
   const privacySettingsReflow =
@@ -127,13 +129,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, backup, privacy, appointments, classification, recording, and health cases explicit.
-  assert.equal(duoInventory.length, 29);
+  // Keep account, health settings, backup, privacy, appointments, classification, and health cases explicit.
+  assert.equal(duoInventory.length, 30);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
+    settingsAccounts,
     settingsBackup,
     privacySettingsReflow,
     aiFeatureEntry,
@@ -174,6 +177,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
     manualHistoryRecovery,
+    settingsAccounts,
     privacySettingsReflow,
     healthLibraryReflow,
     healthDataSettingsReflow,
