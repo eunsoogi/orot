@@ -96,7 +96,7 @@ final class HealthReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testCancellationRejectsLateModelPublication() throws {
+    func testCancellationRejectsLateModelPublication() {
         let journey = HealthReviewJourney()
         defer { journey.clean() }
         journey.launch("waiting")
