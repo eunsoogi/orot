@@ -52,8 +52,10 @@ export function sqliteReviewFixture() {
     remote = false,
     allowModel = true,
     observe?: (calls: () => number) => ReviewDiagnostics,
+    recordingId = sourceId,
   ) => {
-    const synthetic = syntheticEncounterModel(sourceId, allowModel);
+    // Keep the observer slot stable; the selected source also scopes the provider payload.
+    const synthetic = syntheticEncounterModel(recordingId, allowModel);
     const service = createEncounterReviewService(
       async () => ({
         status: 'ready',
@@ -78,7 +80,11 @@ export function sqliteReviewFixture() {
     return {
       service,
       synthetic,
-      controller: new EncounterReviewController(sourceId, service, jest.fn()),
+      controller: new EncounterReviewController(
+        recordingId,
+        service,
+        jest.fn(),
+      ),
     };
   };
   beforeEach(async () => {
@@ -104,6 +110,8 @@ export function sqliteReviewFixture() {
   });
   return {
     controllerFor,
+    seedSource: (recordingId: string) =>
+      seedSyntheticEncounter(repository(), recordingId),
     repository,
     database,
     openSecondConnection,

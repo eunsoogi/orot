@@ -9,6 +9,7 @@ import {
   requireCurrentEncounterReviewSession,
 } from '../../agent/encounter/reviewSession';
 import { persistEncounterApproval } from '../../agent/encounter/persistence';
+import { seedSyntheticEncounter } from '../../agent/encounter/syntheticFixture';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 
 const fixture = sqliteEncounterFixture();
@@ -26,6 +27,69 @@ const storage = () =>
     sourceRecordId: sourceId,
   });
 const sessions = () => createEncounterReviewSessions(storage(), sourceId);
+
+test('execution identity is stable per validated attempt and independent of checkpoint length', async () => {
+  const longSourceId = 'private-source-' + 'a'.repeat(160) + ':review';
+  await seedSyntheticEncounter(fixture.repository(), longSourceId);
+  const discovery = createEncounterReviewSessions(
+    createLangGraphCheckpointStorage(fixture.database(), {
+      sourceRecordId: longSourceId,
+    }),
+    longSourceId,
+  );
+  const first = await discovery.begin();
+  const prefix =
+    'encounter-review-session:' + encodeURIComponent(longSourceId) + ':';
+
+  // Checkpoint identity remains source-bound even when it exceeds the workflow ID limit.
+  expect(first.threadId.length).toBeGreaterThan(128);
+  const firstExecutionId = discovery.executionId(first);
+  expect(firstExecutionId).toBe(
+    'encounter-extraction-' + first.threadId.slice(prefix.length),
+  );
+  expect(firstExecutionId).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
+  expect(firstExecutionId).not.toContain(longSourceId);
+
+  const restored = await discovery.read();
+  expect(restored).toEqual(first);
+  expect(discovery.executionId(restored!)).toBe(firstExecutionId);
+  const next = await discovery.begin();
+  expect(discovery.executionId(next)).not.toBe(firstExecutionId);
+});
+
+test('execution identity rejects mismatched, malformed, or wrong-length descriptors without echoing source data', async () => {
+  const privateSourceId = 'private-source-sentinel:review';
+  await seedSyntheticEncounter(fixture.repository(), privateSourceId);
+  const discovery = createEncounterReviewSessions(
+    createLangGraphCheckpointStorage(fixture.database(), {
+      sourceRecordId: privateSourceId,
+    }),
+    privateSourceId,
+  );
+  const session = await discovery.begin();
+  const prefix =
+    'encounter-review-session:' + encodeURIComponent(privateSourceId) + ':';
+  const invalid: unknown[] = [
+    { ...session, sourceId: 'another-source' },
+    { ...session, threadId: prefix + 'a'.repeat(31) },
+    { ...session, threadId: prefix + 'a'.repeat(33) },
+    { ...session, threadId: prefix + 'g'.repeat(32) },
+    { ...session, unexpected: true },
+  ];
+
+  for (const value of invalid) {
+    let thrown: unknown;
+    try {
+      discovery.executionId(value as typeof session);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe('Invalid recording review session.');
+    expect((thrown as Error).message).not.toContain(privateSourceId);
+    expect((thrown as Error).message).not.toContain(session.threadId);
+  }
+});
 
 test('malformed descriptor versions and encodings fail before a write or discovery result', async () => {
   const session = await sessions().begin();
@@ -67,6 +131,25 @@ test('malformed descriptor versions and encodings fail before a write or discove
         ),
     ).rejects.toThrow();
   }
+  await storage().saveCheckpoint(
+    'encounter-review-session:' + encodeURIComponent(sourceId),
+    '',
+    {
+      ...stored!,
+      checkpoint: new TextEncoder().encode(
+        'malformed ' + sourceId + ' ' + session.threadId,
+      ),
+    },
+  );
+  const readError = await sessions()
+    .read()
+    .then(
+      () => undefined,
+      error => error as Error,
+    );
+  expect(readError?.message).toBe('Invalid recording review session.');
+  expect(readError?.message).not.toContain(sourceId);
+  expect(readError?.message).not.toContain(session.threadId);
   expect(await fixture.repository().list('health_observation')).toHaveLength(0);
 });
 
