@@ -56,7 +56,7 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-type TestRoute = 'home' | 'editor' | 'visit-questions';
+type TestRoute = 'home' | 'editor' | 'recording' | 'visit-questions';
 
 function RegisterLeaveState({
   register,
@@ -151,7 +151,7 @@ test('preserves the previous route scene state while opening and leaving a child
   ).toHaveTextContent('preserved');
 });
 
-test('only Schedule and Visit Questions bypass scene-owned columns', async () => {
+test('Schedule, Recording and Visit Questions bypass scene-owned columns', async () => {
   const controller = createNavigationController<TestRoute>('home');
   const rootTabs = { activeTab: 'schedule' as const, onSelect: jest.fn() };
   const homeKey = controller.getSnapshot().currentRoute.key;
@@ -184,5 +184,13 @@ test('only Schedule and Visit Questions bypass scene-owned columns', async () =>
   const questionsKey = controller.getSnapshot().currentRoute.key;
   expect(
     screen.queryByTestId(`navigation-route-columns-${questionsKey}`),
+  ).toBeNull();
+
+  await act(async () => {
+    controller.push('recording');
+  });
+  const recordingKey = controller.getSnapshot().currentRoute.key;
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${recordingKey}`),
   ).toBeNull();
 });

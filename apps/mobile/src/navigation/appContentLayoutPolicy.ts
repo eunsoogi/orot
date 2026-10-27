@@ -9,13 +9,15 @@ export type NavigationRouteLayoutPolicy<Name extends string> =
       rootTabs?: NavigationRootTabs,
     ) => 'scene' | 'screen');
 
-/** Gives Schedule and Visit Questions the full usable lane for their own panel layouts. */
+/** Gives Schedule, Recording and Visit Questions the full usable lane for their own panel layouts. */
 export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   route,
   rootTabs,
 ) => {
   // The root route stays named `home` while Schedule is selected in the tab bar.
+  // Recording owns both live-session and consent panels, so it needs the full usable width to reflow.
   return route.name === 'visit-questions' ||
+    route.name === 'recording' ||
     (route.name === 'home' && rootTabs?.activeTab === 'schedule')
     ? 'screen'
     : 'scene';
