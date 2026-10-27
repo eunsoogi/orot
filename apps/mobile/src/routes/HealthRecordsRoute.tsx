@@ -59,11 +59,13 @@ export function HealthRecordsRoute({
       />
     );
   }
+  // The library reuses the existing manual-import route and preserves its coordinator boundary.
   return (
     <HealthRecordsLibraryScreen
       loadMedicationData={loadMedicationData}
       loadObservations={loadObservations}
       onBack={actions.onBack}
+      onOpenHealthImport={() => actions.push('unified-import')}
       onOpenDetail={detail => {
         onSelectionChange(detail);
         actions.push('health-records-detail');

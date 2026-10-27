@@ -1,10 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton as Button } from '../../layout/AppButton';
-import { AppSymbol } from '../../layout/AppSymbol';
-import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
-import { appColors } from '../../layout/appColors';
 import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
 import { unifiedImportStyles as styles } from './unifiedImportStyles';
 import { t } from '../../i18n';
@@ -18,7 +15,6 @@ interface EventKitImportSectionProps {
   disabled: boolean;
   progress: UnifiedEventKitProgress | null;
   run: UnifiedImportRun | null;
-  onToggle: () => void;
   onPrimaryActionChange?: (action: NavigationPrimaryAction | undefined) => void;
   onSavingChange?: (saving: boolean) => void;
 }
@@ -35,7 +31,6 @@ export function EventKitImportSection({
   disabled,
   progress,
   run,
-  onToggle,
   onPrimaryActionChange,
   onSavingChange,
 }: EventKitImportSectionProps) {
@@ -112,41 +107,16 @@ export function EventKitImportSection({
     disabled,
   ]);
 
+  if (!selected) return null;
+
   return (
     <View style={styles.card}>
-      {!reviewing ? (
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{
-            checked: selected,
-            disabled: disabled || saving,
-          }}
-          disabled={disabled || saving}
-          onPress={onToggle}
-          style={styles.provider}
-          testID="unified-import-toggle-eventKit"
-        >
-          <View style={styles.providerIcon}>
-            <AppSymbol name="calendar" color={appColors.primaryText} />
-          </View>
-          <View style={styles.providerText}>
-            <Text style={styles.sectionTitle}>캘린더</Text>
-            <Text style={styles.caption}>
-              {t('healthkit.unifiedImport.calendarLabel')}
-            </Text>
-          </View>
-          <CheckboxIndicator
-            checked={selected}
-            disabled={disabled || saving}
-            testID="unified-import-indicator-eventKit"
-          />
-        </Pressable>
-      ) : (
-        <Text style={styles.caption}>
-          {t('healthkit.unifiedImport.reviewSource')}
-        </Text>
-      )}
-      {selected && progress ? (
+      <Text style={styles.sectionTitle}>
+        {reviewing
+          ? t('healthkit.unifiedImport.reviewSource')
+          : t('healthkit.unifiedImport.calendarLabel')}
+      </Text>
+      {progress ? (
         <Text
           accessibilityLiveRegion="polite"
           style={styles.status}
@@ -155,7 +125,7 @@ export function EventKitImportSection({
           {statusMessage(progress)}
         </Text>
       ) : null}
-      {selected && !progress?.appointmentConfirmed
+      {!progress?.appointmentConfirmed
         ? candidates.map((event, index) => (
             <View
               style={[

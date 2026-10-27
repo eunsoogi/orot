@@ -85,6 +85,7 @@ test('shows the first page before requesting more current-period records', async
     <HealthRecordsLibraryScreen
       loadObservations={loader}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -118,6 +119,7 @@ test('a pending library read registers safe leave state', async () => {
       <HealthRecordsLibraryScreen
         loadObservations={() => request.promise}
         onBack={jest.fn()}
+        onOpenHealthImport={jest.fn()}
         onOpenDetail={jest.fn()}
       />
     </NavigationLeaveStateRegistrationProvider>,
@@ -139,6 +141,7 @@ test('late loader responses cannot overwrite a new library request', async () =>
     <HealthRecordsLibraryScreen
       loadObservations={() => old.promise}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -146,6 +149,7 @@ test('late loader responses cannot overwrite a new library request', async () =>
     <HealthRecordsLibraryScreen
       loadObservations={() => current.promise}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
@@ -173,6 +177,7 @@ test('coalesces repeated end events while the next page is pending', async () =>
     <HealthRecordsLibraryScreen
       loadObservations={loader}
       onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
     />,
   );
