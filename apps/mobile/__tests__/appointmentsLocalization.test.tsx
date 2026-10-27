@@ -22,7 +22,9 @@ test('opens editing without the list above the form and restores the list on can
     'Draft',
   );
   await fireEvent.press(screen.getByTestId('appointment-form-cancel'));
-  expect(await screen.findByText('Cardiology clinic')).toBeTruthy();
+  expect(
+    await screen.findByTestId('appointment-clinic-manual-1'),
+  ).toHaveTextContent('Cardiology clinic');
   expect(screen.queryByTestId('appointment-clinic-input')).toBeNull();
   expect(store.update).not.toHaveBeenCalled();
 });

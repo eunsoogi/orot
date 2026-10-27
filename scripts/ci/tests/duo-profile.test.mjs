@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
+  const privacySettingsReflow =
+    'OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
   const healthLibraryReflow =
@@ -95,6 +97,10 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
     'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport';
+  const healthRecordDetailReflow =
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
+  const medicationHistoryReflow =
+    'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
@@ -109,22 +115,29 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation';
   const scheduleLargeText =
     'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
+  const appointmentsReflow =
+    'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
+  const classificationReflow =
+    'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, recording library and review coverage explicit in the Duo profile.
-  assert.equal(duoInventory.length, 22);
+  // Keep settings, recording library/review, appointment classification, and health-detail coverage explicit.
+  assert.equal(duoInventory.length, 27);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
+    privacySettingsReflow,
     aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     scheduleReflow,
     scheduleLargeText,
+    appointmentsReflow,
+    classificationReflow,
     contextualDeparture,
     manualHistoryRecovery,
     duoKeyboardSave,
@@ -135,12 +148,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    healthRecordDetailReflow,
+    medicationHistoryReflow,
     recordingLiveReflow,
     recordingReviewReflow,
     savedRecordingsSelectionSummary,
   ]);
-  // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
-  // health-import regressions run only on the dedicated Duo destination.
+  // Home stays in iPhone fixtures; privacy, feature-entry, manual-history,
+  // records, and Duo-only health-import regressions use the dedicated destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(settingsHome));
@@ -151,10 +166,12 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
     manualHistoryRecovery,
+    privacySettingsReflow,
     healthLibraryReflow,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    medicationHistoryReflow,
   ]) {
     assert.ok(!iPhoneFixtures.includes(duoOnlyCase));
     assert.ok(!coreTests.includes(duoOnlyCase));

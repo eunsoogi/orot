@@ -47,6 +47,11 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
   expect(screen.queryByTestId('navigation-tab-settings')).toBeNull();
   await fireEvent.press(screen.getByTestId('privacy-open-system-settings'));
   await waitFor(() => expect(openSettings).toHaveBeenCalledTimes(1));
+  openSettings.mockRejectedValueOnce(new Error('Settings unavailable'));
+  await fireEvent.press(screen.getByTestId('privacy-open-system-settings'));
+  expect(
+    await screen.findByTestId('privacy-open-system-settings-error'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),

@@ -86,6 +86,15 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.inferenceDisclosure.settingsHint':
     '동의 내역은 설정에서 지울 수 있어요.',
   'medicalAppointments.inferenceDisclosure.clear': '외부 전송 동의 내역 지우기',
+  'medicalAppointments.inferenceDisclosure.clearConfirmationTitle':
+    '외부 전송 동의 내역을 지울까요?',
+  'medicalAppointments.inferenceDisclosure.clearConfirmationBody':
+    '저장된 동의 내역을 지우고 진행 중인 자동 승인을 무효화해요. 진료 기록이나 다른 앱 자료는 삭제되지 않아요. 다음 전송 때 다시 확인해요.',
+  'medicalAppointments.inferenceDisclosure.clearConfirmAction':
+    '동의 내역 지우기',
+  'medicalAppointments.inferenceDisclosure.clearCancelAction': '취소',
+  'medicalAppointments.inferenceDisclosure.clearing':
+    '동의 내역을 지우고 있어요.',
   'medicalAppointments.inferenceDisclosure.cleared':
     '동의 내역을 지웠어요. 다음 전송 때 다시 확인해요.',
   'medicalAppointments.inferenceDisclosure.clearFailed':

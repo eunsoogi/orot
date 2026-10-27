@@ -1,4 +1,5 @@
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
@@ -16,6 +17,7 @@ import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import MedicalAppointmentClassificationScreen from './MedicalAppointmentClassificationScreen';
 import { medicalAppointmentCopy as copy } from './copy.ko';
@@ -109,34 +111,30 @@ export default function MedicalAppointmentRoute({
 
   if (repositoryLoadError) {
     return (
-      <NavigationRouteScrollView>
-        <View style={styles.status}>
-          <ClassificationLeaveState />
-          <Text accessibilityRole="header" style={styles.title}>
-            {copy.title}
-          </Text>
-          <Text accessibilityRole="alert">{t('appointments.openError')}</Text>
-          <Button
-            onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
-            testID="medical-appointments-retry"
-            title={t('appointments.retry')}
-          />
-        </View>
-      </NavigationRouteScrollView>
+      <MedicalAppointmentStatus manual={manual}>
+        <ClassificationLeaveState />
+        <Text accessibilityRole="header" style={styles.title}>
+          {copy.title}
+        </Text>
+        <Text accessibilityRole="alert">{t('appointments.openError')}</Text>
+        <Button
+          onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
+          testID="medical-appointments-retry"
+          title={t('appointments.retry')}
+        />
+      </MedicalAppointmentStatus>
     );
   }
 
   if (!repository) {
     return (
-      <NavigationRouteScrollView>
-        <View style={styles.status}>
-          <ClassificationLeaveState />
-          <Text accessibilityRole="header" style={styles.title}>
-            {copy.title}
-          </Text>
-          <Text>{t('appointments.opening')}</Text>
-        </View>
-      </NavigationRouteScrollView>
+      <MedicalAppointmentStatus manual={manual}>
+        <ClassificationLeaveState />
+        <Text accessibilityRole="header" style={styles.title}>
+          {copy.title}
+        </Text>
+        <Text>{t('appointments.opening')}</Text>
+      </MedicalAppointmentStatus>
     );
   }
 
@@ -146,8 +144,8 @@ export default function MedicalAppointmentRoute({
 
   if (!selectedAi) {
     return (
-      <NavigationRouteScrollView>
-        <View style={styles.status}>
+      <MedicalAppointmentStatus manual={manual}>
+        <>
           <ClassificationLeaveState />
           <Text accessibilityRole="header" style={styles.title}>
             {copy.title}
@@ -158,8 +156,8 @@ export default function MedicalAppointmentRoute({
             testID="medical-appointment-manual"
             title={copy.manual}
           />
-        </View>
-      </NavigationRouteScrollView>
+        </>
+      </MedicalAppointmentStatus>
     );
   }
 
@@ -179,6 +177,26 @@ export default function MedicalAppointmentRoute({
         onOpenManual={onOpenManual}
       />
     </>
+  );
+}
+
+/** Keeps both appointment routes' boot states inside one native region until their screen is ready. */
+function MedicalAppointmentStatus({
+  manual,
+  children,
+}: {
+  readonly manual: boolean;
+  readonly children: ReactNode;
+}) {
+  const status = <View style={styles.status}>{children}</View>;
+  return (
+    <NavigationRouteScrollView>
+      <AdaptiveColumns
+        primary={status}
+        routeKey={manual ? 'medical-manual' : 'medical'}
+        testID="medical-appointment-status-columns"
+      />
+    </NavigationRouteScrollView>
   );
 }
 

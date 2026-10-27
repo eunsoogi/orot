@@ -10,7 +10,10 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
     @MainActor
     func testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification() {
         let app = XCUIApplication()
-        defer { app.terminate() }
+        defer {
+            XCUIDevice.shared.orientation = .portrait
+            app.terminate()
+        }
         launch(app, probe: "medical-appointment-classification")
         tap(app, "medical-appointment-import")
         XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
@@ -25,6 +28,21 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         tap(app, "inference-disclosure-cancel")
         failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
         UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
+
+        // Keep the original import action and manual route reachable through native width changes.
+        let page = node(app, "medical-appointment-review-scroll")
+        let compactWidth = page.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWidthChange(page, from: compactWidth)
+        XCTAssertTrue(node(app, "medical-appointment-import").isHittable)
+        let manual = node(app, "medical-appointment-manual")
+        UITestConditions.scrollTo(manual, in: app)
+        XCTAssertTrue(manual.isHittable)
+        capture(app, "classification-actions-after-rotation")
+        let expandedWidth = page.frame.width
+        XCUIDevice.shared.orientation = .portrait
+        waitForWidthChange(page, from: expandedWidth)
+
         tap(app, "medical-appointment-import")
         XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
         tap(app, "inference-disclosure-allow")
@@ -139,5 +157,14 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    @MainActor
+    private func waitForWidthChange(_ element: XCUIElement, from width: CGFloat) {
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in abs(element.frame.width - width) > 1 },
+            object: nil,
+        )
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
     }
 }

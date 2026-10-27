@@ -1,28 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
-import { AppButton } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
-import { t } from '../i18n';
-import { navigationText } from '../i18n/navigation';
+import { useCallback, useMemo, useState } from 'react';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
-import {
-  healthRecordCategoryTitle,
-  healthRecordPeriodTitle,
-  healthRecordPeriodStart,
-} from './healthRecordsLibraryModel';
-import { buildHealthRecordsMedicationDetailRows } from './healthRecordsMedicationDetailModel';
-import { healthRecordPeriods } from './healthRecordsDetailModel';
-import { HealthRecordsMedicationRecordRow } from './HealthRecordsMedicationRecordRow';
-import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
+import { HealthRecordsMedicationHistoryPanel } from './HealthRecordsMedicationHistoryPanel';
+import { HealthRecordsMedicationSelectionPanel } from './HealthRecordsMedicationSelectionPanel';
+import { buildHealthRecordsMedicationOptions } from './healthRecordsMedicationDetailModel';
 import type { HealthRecordsMedicationLoader } from './healthRecordsMedicationLibrary';
-import type { HealthObservationCursor } from '@orot/storage';
-import {
-  emptyHealthRecordsMedicationData,
-  loadEmptyHealthRecordsMedicationData,
-} from './healthRecordsMedicationLibrary';
+import { useHealthRecordsMedicationDetailData } from './useHealthRecordsMedicationDetailData';
 
 interface HealthRecordsMedicationDetailScreenProps {
   readonly loadMedicationData?: HealthRecordsMedicationLoader;
@@ -31,26 +17,36 @@ interface HealthRecordsMedicationDetailScreenProps {
   readonly selection: HealthRecordsDetailSelection;
 }
 
-type LoadState = 'loading' | 'ready' | 'failed';
-
-/** Lists saved medication dose events for a selected period without charting them. */
+/** Keeps medication summaries and their selected saved-event history as measured route panels. */
 export function HealthRecordsMedicationDetailScreen({
-  loadMedicationData = loadEmptyHealthRecordsMedicationData,
+  loadMedicationData,
   onBack,
   onSelectionChange,
   selection,
 }: HealthRecordsMedicationDetailScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const [data, setData] = useState(emptyHealthRecordsMedicationData);
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [revision, setRevision] = useState(0);
-  const generation = useRef(0);
-  const pending = useRef(false);
-  const [cursor, setCursor] = useState<HealthObservationCursor | null>(null);
-  const now = useRef(new Date().toISOString()).current;
-  const rows = useMemo(
-    () => buildHealthRecordsMedicationDetailRows(data, selection.period, now),
-    [data, now, selection.period],
+  const { cursor, data, loadState, reload, revision, rows } =
+    useHealthRecordsMedicationDetailData(selection.period, loadMedicationData);
+  const [selectedMedicationId, setSelectedMedicationId] = useState<
+    string | null
+  >(null);
+  const options = useMemo(
+    () => buildHealthRecordsMedicationOptions(data, rows),
+    [data, rows],
+  );
+  const selectedMedication =
+    options.find(option => option.id === selectedMedicationId) ??
+    options[0] ??
+    null;
+  const selectedRows = useMemo(
+    () =>
+      selectedMedication
+        ? rows.filter(
+            row =>
+              row.doseEvent.medicationDefinitionId === selectedMedication.id,
+          )
+        : [],
+    [rows, selectedMedication],
   );
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -60,178 +56,44 @@ export function HealthRecordsMedicationDetailScreen({
     revision,
     inputRevision: 0,
   } satisfies NavigationLeaveState);
+  const onRetry = useCallback(() => reload(cursor), [cursor, reload]);
+  const onLoadMore = useCallback(() => {
+    if (cursor && loadState === 'ready') {
+      reload(cursor).catch(() => undefined);
+    }
+  }, [cursor, loadState, reload]);
 
-  const reload = useCallback(
-    async (after: HealthObservationCursor | null = null) => {
-      if (pending.current) return;
-      pending.current = true;
-      const request = ++generation.current;
-      setLoadState('loading');
-      try {
-        const start = healthRecordPeriodStart(
-          selection.period,
-          now,
-        )?.toISOString();
-        const next = await loadMedicationData({
-          cursor: after,
-          fromInclusive: start,
-          toInclusive: now,
-          includeTotals: false,
-        });
-        if (request !== generation.current) return;
-        // Keep earlier names and rows while appending a bounded page of actual dose events.
-        setData(previous =>
-          after
-            ? {
-                ...next,
-                definitions: [
-                  ...new Map(
-                    [...previous.definitions, ...next.definitions].map(item => [
-                      item.id,
-                      item,
-                    ]),
-                  ).values(),
-                ],
-                doseEvents: [
-                  ...new Map(
-                    [...previous.doseEvents, ...next.doseEvents].map(item => [
-                      item.id,
-                      item,
-                    ]),
-                  ).values(),
-                ],
-              }
-            : next,
-        );
-        setCursor(next.nextCursor ?? null);
-        setLoadState('ready');
-      } catch {
-        if (request === generation.current) setLoadState('failed');
-      } finally {
-        if (request === generation.current) {
-          pending.current = false;
-          setRevision(value => value + 1);
-        }
-      }
-    },
-    [loadMedicationData, now, selection.period],
-  );
-
-  useEffect(() => {
-    reload();
-    return () => {
-      // A result for an old route or period must not replace the active record list.
-      generation.current += 1;
-      pending.current = false;
-    };
-  }, [reload]);
-
-  const title = healthRecordCategoryTitle('medications') + ' 기록 상세';
+  // The route owns selection so geometry changes reflow mounted panels without losing it.
   return (
-    <FlatList
-      data={rows}
-      onEndReached={() => {
-        if (cursor && loadState === 'ready') reload(cursor);
-      }}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={
-        cursor ? (
-          <AppButton
-            onPress={() => reload(cursor)}
-            testID="health-records-detail-more"
-            title={t('healthRecords.loadOlder')}
-            variant="secondary"
-          />
-        ) : undefined
+    <AdaptiveColumns
+      primary={
+        <HealthRecordsMedicationSelectionPanel
+          cursor={cursor}
+          hasSharedNavigation={hasSharedNavigation}
+          loadState={loadState}
+          navigationInset={navigationInset}
+          onBack={onBack}
+          onRetry={onRetry}
+          onSelectMedication={setSelectedMedicationId}
+          onSelectionChange={onSelectionChange}
+          options={options}
+          rowCount={rows.length}
+          selectedMedicationId={selectedMedication?.id ?? null}
+          selection={selection}
+        />
       }
-      keyExtractor={row => row.doseEvent.id}
-      contentContainerStyle={[styles.container, navigationInset]}
-      ListEmptyComponent={
-        loadState === 'ready' ? (
-          <Text testID="health-records-detail-empty">
-            {t('healthRecords.detailEmpty')}
-          </Text>
-        ) : undefined
+      routeKey="health-records-medication-detail"
+      secondary={
+        <HealthRecordsMedicationHistoryPanel
+          cursor={cursor}
+          loadState={loadState}
+          navigationInset={navigationInset}
+          onLoadMore={onLoadMore}
+          rows={selectedRows}
+          selectedMedication={selectedMedication}
+        />
       }
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <View style={styles.topBar}>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="health-records-detail-title"
-            >
-              {title}
-            </Text>
-            {hasSharedNavigation ? null : (
-              <AppButton
-                accessibilityLabel={navigationText.back.accessibilityLabel}
-                onPress={onBack}
-                testID="health-records-detail-back"
-                title={navigationText.back.label}
-                variant="secondary"
-              />
-            )}
-          </View>
-          <Text style={styles.description}>
-            {t('healthRecords.detailDescription')}
-          </Text>
-          <View accessibilityRole="radiogroup" style={styles.periods}>
-            {healthRecordPeriods.map(period => (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ selected: selection.period === period }}
-                key={period}
-                onPress={() => onSelectionChange({ ...selection, period })}
-                style={[
-                  styles.period,
-                  selection.period === period && styles.selectedPeriod,
-                ]}
-                testID={'health-record-period-' + period}
-              >
-                <Text
-                  style={[
-                    styles.periodText,
-                    selection.period === period && styles.selectedPeriodText,
-                  ]}
-                >
-                  {healthRecordPeriodTitle(period)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.count}>
-            {t(
-              cursor
-                ? 'healthRecords.loadedRecordCount'
-                : 'healthRecords.recordCount',
-              { count: rows.length },
-            )}
-          </Text>
-          {loadState === 'loading' ? (
-            <Text testID="health-records-detail-loading">
-              {t('healthRecords.loading')}
-            </Text>
-          ) : null}
-          {loadState === 'failed' ? (
-            <View>
-              <Text accessibilityRole="alert" style={styles.error}>
-                {t('healthRecords.error')}
-              </Text>
-              <AppButton
-                onPress={() => reload(cursor)}
-                testID="health-records-detail-retry"
-                title={t('healthRecords.retry')}
-                variant="secondary"
-              />
-            </View>
-          ) : null}
-        </View>
-      }
-      renderItem={({ item, index }) => (
-        <HealthRecordsMedicationRecordRow index={index} row={item} />
-      )}
-      testID="health-records-detail-scroll"
+      testID="health-records-medication-detail-layout"
     />
   );
 }

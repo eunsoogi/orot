@@ -40,8 +40,22 @@ export function HealthRecordsMedicationRecordRow({
       >
         {formatRecordedAt(row.doseEvent.effectiveAt)}
       </Text>
+      <Text
+        style={styles.date}
+        testID={'health-record-medication-row-' + index + '-source'}
+      >
+        {t('healthRecords.medicationSource', { source: sourceLabel(row) })}
+      </Text>
     </View>
   );
+}
+
+function sourceLabel(row: HealthRecordsMedicationDetailRow): string {
+  const source = row.doseEvent.provenance.source;
+  // Source identifiers are import keys, so display only a readable name or the known system label.
+  if (source?.sourceName) return source.sourceName;
+  if (source?.system === 'healthkit') return 'HealthKit';
+  return t('healthRecords.medicationSourceUnavailable');
 }
 
 function statusLabel(status: DoseObservationStatus): string {
