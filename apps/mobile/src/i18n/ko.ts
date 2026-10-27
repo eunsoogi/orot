@@ -128,6 +128,8 @@ export const ko = {
   'appointments.openError': '예약을 열지 못했어요. 다시 시도해 주세요.',
   'appointments.retry': '다시 시도',
   'appointments.description': '진료 예약 정보를 이 기기에 저장해요.',
+  'appointments.detail.title': '예약 상세',
+  'appointments.detail.selectPrompt': '예약을 선택하면 상세 정보가 표시돼요.',
   'appointments.loadError': '예약을 불러오지 못했어요. 다시 시도해 주세요.',
   'appointments.loading': '예약을 불러오는 중…',
   'appointments.empty': '등록된 예약이 없어요.',
