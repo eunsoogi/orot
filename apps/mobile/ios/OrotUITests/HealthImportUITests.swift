@@ -155,7 +155,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(
             categoryFilter,
             in: app,
-            scrollID: "health-records-scroll",
+            scrollID: "health-records-navigation-scroll",
             towardTop: true,
         )
         for _ in 0 ..< 8 {
