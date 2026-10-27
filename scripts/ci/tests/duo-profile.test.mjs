@@ -81,6 +81,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
+  const healthLibraryReflow =
+    'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges';
   const healthImportLibrary =
     'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute';
   const healthImportReflow =
@@ -101,7 +103,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 16);
+  assert.equal(duoInventory.length, 17);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -115,6 +117,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     fourSidedOcclusion,
     recordingShareDismissal,
     recordsHub,
+    healthLibraryReflow,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
@@ -125,9 +128,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!coreTests.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
-  for (const healthImportCase of [healthImportLibrary, healthImportReflow, healthImportLargeText]) {
-    assert.ok(!iPhoneFixtures.includes(healthImportCase));
-    assert.ok(!coreTests.includes(healthImportCase));
+  for (const duoOnlyCase of [
+    healthLibraryReflow,
+    healthImportLibrary,
+    healthImportReflow,
+    healthImportLargeText,
+  ]) {
+    assert.ok(!iPhoneFixtures.includes(duoOnlyCase));
+    assert.ok(!coreTests.includes(duoOnlyCase));
   }
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(iPhoneFixtures.includes(scheduleReflow));
