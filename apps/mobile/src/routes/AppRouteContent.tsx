@@ -1,21 +1,11 @@
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
-import type { AiFeatureServices } from '../aiFeatures/integration/featureServices';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
-import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
-import type { AppointmentRepository } from '@orot/storage';
-import type { Appointment } from '@orot/storage';
-import type { HealthObservationPageLoader } from '@orot/storage';
-import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
-import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
 import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
-import type { RecordingSourceRecord } from '../recording/recordingTypes';
-import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
-import type { HealthRecordsMedicationLoader } from '../healthkit/healthRecordsMedicationLibrary';
 import WelcomeRoute from './WelcomeRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
 import { RecordsRoute } from './RecordsRoute';
@@ -24,56 +14,12 @@ import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
 import { HealthRecordsRoute } from './HealthRecordsRoute';
 import { ManualHistoryRoute } from './ManualHistoryRoute';
-import type { AppNavigationRoute } from './appNavigationRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
-import type { CalendarBridge } from '../calendar/types';
-import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
-import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
-import type { AiFeatureServiceDependencies } from '../aiFeatures/integration/featureServices';
-import type {
-  ProviderSelection,
-  ProviderSelectionOption,
-} from '../providers/selection';
+import type { AppRouteContentProps } from './AppProps';
+import { HealthReviewRoute } from '../healthReview/route';
 
 export type { AppNavigationRoute } from './appNavigationRoute';
-
-interface AppRouteContentProps {
-  readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
-  readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
-  readonly actions: NavigationRouteActions<AppNavigationRoute>;
-  readonly activeTab: AppRootTab;
-  readonly selectTab: (tab: AppRootTab) => void;
-  readonly appointmentRepository: AppointmentRepository | null;
-  readonly backupPreparationState: BackupPreparationDisplayState;
-  readonly retryBackupPreparation: () => Promise<void>;
-  readonly appointmentState: 'loading' | 'ready' | 'failed';
-  readonly nextAppointment: Appointment | null;
-  readonly recordings: readonly RecordingSourceRecord[];
-  readonly recordingState: 'loading' | 'ready' | 'failed';
-  readonly refreshAppointments: () => Promise<void>;
-  readonly refreshRecordings: () => Promise<void>;
-  readonly calendarBridge: CalendarBridge;
-  readonly calendarSync: CalendarAutoSyncActions;
-  readonly selectedProvider: string;
-  readonly serviceDependencies?: AiFeatureServiceDependencies;
-  readonly onProviderSelectionCommitted: (
-    selection: ProviderSelection,
-    provider: ProviderSelectionOption['provider'],
-  ) => void;
-  readonly openProviderSettings: () => void;
-  readonly openVisitQuestions: () => void;
-  readonly openDiseaseHypotheses: () => void;
-  readonly openRagConversation: () => void;
-  readonly openExternalEvidence: () => void;
-  readonly openRecording: () => void;
-  readonly loadHealthObservations: HealthObservationPageLoader;
-  readonly loadHealthRecordMedications: HealthRecordsMedicationLoader;
-  readonly healthRecordDetailSelection: HealthRecordsDetailSelection | null;
-  readonly onHealthRecordDetailSelectionChange: (
-    selection: HealthRecordsDetailSelection,
-  ) => void;
-}
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
@@ -156,6 +102,7 @@ export function AppRouteContent({
             onOpenDiseaseHypotheses={openDiseaseHypotheses}
             onOpenRagConversation={openRagConversation}
             onOpenExternalEvidence={openExternalEvidence}
+            onOpenHealthReview={() => actions.push('health-review')}
           />
         );
       case 'settings':
@@ -174,6 +121,9 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
+    case 'health-review':
+    case 'health-review-source':
+      return <HealthReviewRoute actions={actions} />;
     case 'appointment-preparation':
       return (
         <AppointmentPreparationRoute

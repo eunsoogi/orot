@@ -5,6 +5,7 @@ import { iosTestBuildSpec } from './ios-test-config.mjs';
 const names = [
   ['core-integration', 'Core'],
   ['core-ui', 'UI'],
+  ['health-review-ui', 'Health review / UI'],
   ['recording-evidence', 'Recording evidence'],
   ['persistence', 'Persistence'],
   ['encounter-review-persistence', 'Recordings / Encounter review persistence'],

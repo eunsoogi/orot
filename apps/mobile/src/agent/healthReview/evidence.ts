@@ -34,8 +34,8 @@ function hasTrendObservations(batch: EvidenceBatch): boolean {
 /** The existing local tool implementations own SQL selection, projection, redaction and freshness. */
 export function createHealthReviewEvidence(
   data: AiFeatureLocalData,
+  registry = new LocalEvidenceReferenceRegistry(),
 ): HealthReviewEvidence | undefined {
-  const registry = new LocalEvidenceReferenceRegistry();
   const tools = toolsFor(undefined, data, registry, 4, true);
   const trends = tools.find(tool => tool.id === 'local-health-context');
   const records = tools.find(tool => tool.id === 'local-personal-records');

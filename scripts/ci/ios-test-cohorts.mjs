@@ -34,6 +34,13 @@ const cohorts = {
     minutes: 20,
     classes: ['RootNavigationUITests', 'TestHostConnectionTests'],
   },
+  // Full App journeys retain their own fixture and fresh-process restoration inside each method.
+  'health-review-ui': {
+    profiles: ['core'],
+    suites: ['ui'],
+    minutes: 20,
+    classes: ['HealthReviewUITests'],
+  },
   'recording-evidence': {
     profiles: ['core'],
     suites: ['ui'],

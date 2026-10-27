@@ -51,7 +51,7 @@ export function cohortJobs(jobs) {
       ...caller.with,
     };
     const leaves = Object.entries(definition.jobs).flatMap(([id, leaf]) =>
-      /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/.test(
+      /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording|health-review)-tests\.yml$/.test(
         leaf.uses ?? '',
       )
         ? Object.entries(workflow(leaf.uses).jobs)
