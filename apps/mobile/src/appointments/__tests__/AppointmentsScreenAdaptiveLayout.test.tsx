@@ -113,6 +113,10 @@ test('lets the appointments screen own its complete measured route lane', () => 
     key: 'appointment-route',
     name: 'appointments',
   };
+  const manualRoute: NavigationRoute<string> = {
+    key: 'manual-appointment-route',
+    name: 'medical-manual',
+  };
   const medicalRoute: NavigationRoute<string> = {
     key: 'medical-route',
     name: 'medical',
@@ -122,5 +126,6 @@ test('lets the appointments screen own its complete measured route lane', () => 
     throw new Error('The application route layout policy must be a resolver');
   }
   expect(appContentLayoutOwner(appointmentRoute)).toBe('screen');
+  expect(appContentLayoutOwner(manualRoute)).toBe('screen');
   expect(appContentLayoutOwner(medicalRoute)).toBe('scene');
 });
