@@ -136,13 +136,13 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
 
         let firstWidth = app.windows.firstMatch.frame.width
         XCUIDevice.shared.orientation = .landscapeLeft
-        waitForReviewReflow(app, widthDifferentFrom: firstWidth, primary: primary, secondary: secondary)
+        waitForReviewReflow(app, previousWidth: firstWidth, primary: primary, secondary: secondary, isExpanded: true)
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
 
         let secondWidth = app.windows.firstMatch.frame.width
         XCUIDevice.shared.orientation = .portrait
-        waitForReviewReflow(app, widthDifferentFrom: secondWidth, primary: primary, secondary: secondary)
+        waitForReviewReflow(app, previousWidth: secondWidth, primary: primary, secondary: secondary, isExpanded: false)
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
     }
@@ -184,19 +184,23 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
     @MainActor
     private func waitForReviewReflow(
         _ app: XCUIApplication,
-        widthDifferentFrom previousWidth: CGFloat,
+        previousWidth: CGFloat,
         primary: XCUIElement,
         secondary: XCUIElement,
+        isExpanded: Bool,
     ) {
         let window = app.windows.firstMatch
-        // Accept reflow only after UIKit reports a new window width and separate panel frames.
+        // A width change and separate frames can still describe the wrong layout axis.
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard window.exists, primary.exists, secondary.exists else { return false }
             let primaryFrame = primary.frame
             let secondaryFrame = secondary.frame
+            let panelsFollowExpectedAxis = isExpanded
+                ? primaryFrame.maxX <= secondaryFrame.minX
+                : primaryFrame.maxY <= secondaryFrame.minY
             return abs(window.frame.width - previousWidth) > 0.5 &&
                 primaryFrame.width > 0 && secondaryFrame.width > 0 &&
-                !primaryFrame.intersects(secondaryFrame)
+                !primaryFrame.intersects(secondaryFrame) && panelsFollowExpectedAxis
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
     }
