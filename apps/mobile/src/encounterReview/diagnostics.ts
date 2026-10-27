@@ -47,6 +47,7 @@ export function createReviewDiagnostics(
   let stage: Stage = 'controller';
   let failure: Failure | undefined;
   let latest: Promise<ReviewDiagnosticSnapshot> | undefined;
+  let deliver: ((snapshot: ReviewDiagnosticSnapshot) => void) | undefined;
   let bound = false;
   const capture = (value: Failure) => {
     if (bound) failure ??= value;
@@ -79,7 +80,12 @@ export function createReviewDiagnostics(
       phase = value;
       stage = 'controller';
       failure = undefined;
-      latest = undefined;
+      latest = bound
+        ? new Promise(resolve => {
+            deliver = resolve;
+          })
+        : undefined;
+      if (!bound) deliver = undefined;
     },
     stage(value: Stage) {
       stage = value;
@@ -111,6 +117,7 @@ export function createReviewDiagnostics(
         modelCalls: modelCalls(),
         failure: failure && { ...failure },
       };
+      const resolveSnapshot = deliver;
       latest = (async (): Promise<ReviewDiagnosticSnapshot> => {
         let count: number | 'UNKNOWN' = 'UNKNOWN';
         try {
@@ -118,6 +125,8 @@ export function createReviewDiagnostics(
         } catch {
           /* Missing SQL evidence is never zero rows. */
         }
+        // A later gesture may approve while this SQL read is queued. Never attribute its rows to this attempt.
+        if (frozen.attempt !== attempt) count = 'UNKNOWN';
         const snapshot = {
           ...frozen,
           recordCount: count,
@@ -132,6 +141,7 @@ export function createReviewDiagnostics(
         } catch {
           /* Diagnostics cannot replace the original result. */
         }
+        resolveSnapshot?.(snapshot);
         return snapshot;
       })();
     },

@@ -36,33 +36,44 @@ test('unavailable captures rows despite status, sanitized earliest cause, and th
 
 test('overlapping SQL completion cannot relabel a previous attempt and mismatched source cannot emit', async () => {
   let resolve!: (count: number) => void;
-  const rows = jest.fn(
-    () =>
-      new Promise<number>(done => {
-        resolve = done;
-      }),
-  );
+  const rows = jest
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<number>(done => {
+          resolve = done;
+        }),
+    )
+    .mockResolvedValueOnce(2);
   const emit = jest.fn();
   const diagnostics = createReviewDiagnostics('owned', rows, () => 0, emit);
   diagnostics.begin('running', 'owned');
   const oldAttempt = diagnostics.current();
-  diagnostics.capture({ stage: 'extract_candidates', category: 'error' });
-  diagnostics.capture({ stage: 'graph_invoke', category: 'type_error' });
-  diagnostics.settled('unavailable');
   const first = diagnostics.snapshot();
-  diagnostics.begin('loading', 'foreign');
-  oldAttempt.capture({ stage: 'graph_invoke', category: 'type_error' });
   diagnostics.settled('pending');
-  expect(diagnostics.snapshot()).toBeUndefined();
-  resolve(0);
+  diagnostics.begin('saving', 'owned');
+  oldAttempt.capture({ stage: 'graph_invoke', category: 'type_error' });
+  diagnostics.settled('saved');
+  resolve(2);
   expect(await first).toMatchObject({
     attempt: 1,
     phase: 'running',
-    status: 'unavailable',
-    failure: { stage: 'extract_candidates', category: 'error' },
+    status: 'pending',
+    recordCount: 'UNKNOWN',
+    failure: { stage: 'record_count', category: 'UNKNOWN' },
   });
-  expect(rows).toHaveBeenCalledTimes(1);
-  expect(emit).toHaveBeenCalledTimes(1);
+  expect(await diagnostics.snapshot()).toMatchObject({
+    attempt: 2,
+    phase: 'saving',
+    status: 'saved',
+    recordCount: 2,
+    failure: { stage: 'UNKNOWN', category: 'UNKNOWN' },
+  });
+  diagnostics.begin('loading', 'foreign');
+  diagnostics.settled('pending');
+  expect(diagnostics.snapshot()).toBeUndefined();
+  expect(rows).toHaveBeenCalledTimes(2);
+  expect(emit).toHaveBeenCalledTimes(2);
 });
 
 test('missing SQL and unknown cause stay UNKNOWN; a broken sink cannot change outcome', async () => {

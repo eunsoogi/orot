@@ -6,10 +6,23 @@ import {
 import { runEncounterReviewFixture } from '../nativeFixture';
 import { createNativeReviewDiagnostics } from '../nativeDiagnostics';
 import { openLocalStorage } from '../../storage/secureDatabase';
+import * as composition from '../../agent/encounter/modelComposition';
 
 const { repository, controllerFor } = sqliteReviewFixture();
 const fixture = 'test-persistence-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const source = fixture + ':review';
+const compose = composition.composeEncounterModel;
+function injectInvalidOperation() {
+  jest
+    .spyOn(composition, 'composeEncounterModel')
+    .mockImplementation((...args) => {
+      const model = compose(...args);
+      return {
+        ...model,
+        execution: { ...model.execution, operationRunId: 'invalid%synthetic' },
+      };
+    });
+}
 let log: jest.SpyInstance;
 beforeEach(() => {
   log = jest.spyOn(console, 'info').mockImplementation(() => {});
@@ -56,7 +69,8 @@ test('a valid production review stays pending until explicit approval and snapsh
   );
 });
 
-test('ORIGINAL native-shaped seed retains its assertion failure and independently measures zero rows and dispatches', async () => {
+test('an injected invalid operation retains the original seed assertion and independently measures zero rows and dispatches', async () => {
+  injectInvalidOperation();
   let failure: Error | undefined;
   try {
     await runEncounterReviewFixture('seed', fixture);
@@ -97,6 +111,7 @@ test('scripted provider failure records its actual dispatch without approving or
 });
 
 test('independent row evidence still runs when the ORIGINAL assertion short-circuits on unavailable', async () => {
+  injectInvalidOperation();
   const canonical = repository();
   const list = canonical.list.bind(canonical);
   jest.spyOn(canonical, 'list').mockImplementation(async kind => {
