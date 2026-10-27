@@ -24,6 +24,10 @@ export const maintainedNativeTestOwners = new Map([
     'apps/mobile/ios/orotintegrationtests/navigationlayoutintegrationtests.swift',
     ['core-integration'],
   ],
+  [
+    'apps/mobile/ios/orotintegrationtests/navigationrailframeintegrationtests.swift',
+    ['core-integration'],
+  ],
 ]);
 
 // Shared UI and recording sources retain all of their independently scheduled test dependents.

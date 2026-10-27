@@ -96,7 +96,8 @@ final class HealthReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testCancellationRejectsLateModelPublication() {
+    func testCancellationRejectsLateModelPublication() throws {
+        try verifyIncompleteObservationBinding()
         let journey = HealthReviewJourney()
         defer { journey.clean() }
         journey.launch("waiting")
@@ -128,5 +129,33 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         UITestConditions.value(journey.element("health-review-probe-report"), equals: "observation-removed")
         journey.tap("health-review-citation-e1", towardTop: true)
         XCTAssertTrue(UITestConditions.exists(journey.element("ai-feature-source-changed")))
+    }
+
+    /// Decode the exported envelope shape on the native XCTest target; unavailable post geometry cannot prove a gesture.
+    private func verifyIncompleteObservationBinding() throws {
+        let launch = UUID()
+        let before = FormScrollObservation.Record(launch: launch, reveal: 1, step: 1, phase: .before,
+                                                  uptime: 100, target: nil, start: [20, 50], end: [20, 10])
+        let after = FormScrollObservation.Record(launch: launch, reveal: 1, step: 1, phase: .after,
+                                                 uptime: 110, target: nil, start: [20, 50], end: [20, 10])
+        func touch(_ phase: String, loss: String? = nil, missing: Bool = false) throws -> FormScrollObservation.Touch {
+            let began = phase == "began"
+            var value: [String: Any] = ["launch": launch.uuidString, "sequence": began ? 1 : 2, "touch": 1,
+                                        "phase": phase, "touchUptime": began ? 101 : 108, "capturedUptime": began ? 102 : 109,
+                                        "point": [20, began ? 50 : 10], "touchCount": 1, "multipleTouches": false,
+                                        "trackingDiscarded": 0, "losses": loss.map { [$0] } ?? []]
+            if !missing {
+                value["geometry"] = ["truncated": false, "startMatches": 1]
+            }
+            return try JSONDecoder().decode(FormScrollObservation.Touch.self, from: JSONSerialization.data(withJSONObject: value))
+        }
+        let began = try touch("began")
+        XCTAssertEqual(try FormScrollObservation.bind([began, touch("ended")], dropped: 0, before: before, after: after), 1)
+        for loss in ["formMissing", "formAmbiguous", "receiverMissing", "receiverOutsideForm", "trackingMissing", "trackingOverflow", "traversalLimit"] {
+            XCTAssertNil(try FormScrollObservation.bind([began, touch("ended", loss: loss, missing: true)], dropped: 0, before: before, after: after))
+            XCTAssertNil(try FormScrollObservation.bind([began, touch("ended", loss: loss)], dropped: 0, before: before, after: after))
+        }
+        XCTAssertNil(FormScrollObservation.bind([began], dropped: 0, before: before, after: after))
+        XCTAssertNil(try FormScrollObservation.bind([began, touch("ended", missing: true)], dropped: 0, before: before, after: after))
     }
 }

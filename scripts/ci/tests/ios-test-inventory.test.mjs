@@ -32,7 +32,7 @@ function assertTestMethodDeclared(identifier) {
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 61, 17],
+    ['core', 63, 17],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);

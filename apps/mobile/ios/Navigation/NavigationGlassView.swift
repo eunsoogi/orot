@@ -28,7 +28,16 @@ final class NavigationGlassSurfaceView: UIView {
         didSet { updatePresentation() }
     }
 
+    @objc var railAvailableHeight: CGFloat = 0 {
+        didSet { updatePresentation() }
+    }
+
     private let rootBar = NavigationRootGlassBar()
+    private let windowRailHost = NavigationWindowRailHost()
+    override var isHidden: Bool {
+        didSet { windowRailHost.isHidden = isHidden }
+    }
+
     private let innerActions = UIStackView()
     private let innerActionsSpacer = UIView()
     private var renderedActions: [NavigationActionDescriptor] = []
@@ -76,17 +85,25 @@ final class NavigationGlassSurfaceView: UIView {
             innerActions.centerYAnchor.constraint(equalTo: centerYAnchor),
             innerActions.heightAnchor.constraint(equalToConstant: 48),
         ]
-        railPlacementConstraints = [
-            rootBar.trailingAnchor.constraint(equalTo: trailingAnchor),
-            rootBar.widthAnchor.constraint(equalToConstant: NavigationRootGlassBar.exteriorWidth),
-            rootBar.heightAnchor.constraint(equalToConstant: NavigationRootGlassBar.railHeight),
-            rootBar.bottomAnchor.constraint(equalTo: bottomAnchor),
-            innerActions.leadingAnchor.constraint(equalTo: leadingAnchor),
-            innerActions.trailingAnchor.constraint(equalTo: trailingAnchor),
-            innerActions.topAnchor.constraint(equalTo: topAnchor),
-            innerActions.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ]
+        configureRailConstraints(in: self)
         updatePresentation()
+    }
+
+    private func configureRailConstraints(in host: UIView) {
+        railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: host)
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        updatePresentation()
+    }
+
+    override func layoutSubviews() {
+        let host = layoutMode == "right" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) : nil
+        if rootBar.superview !== (host ?? self) {
+            updatePresentation()
+        }
+        super.layoutSubviews()
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
@@ -112,9 +129,20 @@ final class NavigationGlassSurfaceView: UIView {
         }
     }
 
-    /// Applies only the measured rail insets; the React Native host remains the source of window size.
+    /// Reparents existing controls into a window-coordinate host without changing action identity.
     private func updatePresentation() {
         let usesRightRail = layoutMode == "right"
+        NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
+        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) ?? self : self
+        if rootBar.superview !== host {
+            for view in [rootBar, innerActions] {
+                host.addSubview(view)
+            }
+            configureRailConstraints(in: host)
+        }
+        if host === self {
+            windowRailHost.removeFromSuperview()
+        }
         bottomPlacementConstraints.forEach { $0.isActive = !usesRightRail }
         railPlacementConstraints.forEach { $0.isActive = usesRightRail }
         railPlacementConstraints[0].constant = -railRightInset
@@ -214,16 +242,5 @@ final class NavigationGlassSurfaceView: UIView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
         return hit is UIControl ? hit : nil
-    }
-}
-
-@objc(NavigationGlassViewManager)
-final class NavigationGlassViewManager: RCTViewManager {
-    override static func requiresMainQueueSetup() -> Bool {
-        true
-    }
-
-    override func view() -> UIView! {
-        NavigationGlassSurfaceView()
     }
 }

@@ -16,16 +16,20 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
 ): 'scene' | 'screen' => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // Provider settings reflows local and connected models within measured regions.
-  // Appointment entry routes share one screen that measures list and selected-detail panels.
-  // Classification measures its overview and candidate panels from usable geometry.
   // Health detail panels resolve against the actual native usable regions.
+  // Account management measures its connection and action panels within the full route lane.
+  // Appointment entry routes share the screen that measures list and selected-detail panels.
+  // Classification measures its overview and candidate panels from usable geometry.
+  // Health data settings pairs category choices with sync and permission status panels.
   // The saved library owns a measured list and summary that share that usable geometry.
   return route.name === 'settings-provider' ||
+    route.name === 'settings-accounts' ||
     route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'medical' ||
     route.name === 'health-records' ||
     route.name === 'health-records-detail' ||
+    route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
     // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
     route.name === 'settings-backup' ||

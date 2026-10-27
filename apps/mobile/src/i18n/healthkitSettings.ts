@@ -9,6 +9,18 @@ export const healthkitSettingsKo = {
   'settings.healthData.title': '건강 데이터',
   'settings.healthData.description':
     '자동으로 동기화할 건강 기록을 선택해 주세요. 앱을 열거나 다시 실행하면 새 기록을 확인해요.',
+  'settings.healthData.autoSyncEnabled': '자동 동기화 켜짐',
+  'settings.healthData.autoSyncDisabled': '자동 동기화 꺼짐',
+  'settings.healthData.connection': 'HealthKit 연결 상태',
+  'settings.healthData.connectionAvailable':
+    '이 기기에서 HealthKit을 사용할 수 있어요.',
+  'settings.healthData.connectionUnavailable':
+    '이 기기에서 HealthKit을 사용할 수 없어요.',
+  'settings.healthData.connectionUnknown':
+    'HealthKit 연결 상태를 확인하지 못했어요.',
+  'settings.healthData.lastSync': '최근 동기화',
+  'settings.healthData.statusLoading': '연동 상태를 확인하는 중…',
+  'settings.healthData.statusLoadError': '연동 상태를 모두 확인하지 못했어요.',
   'settings.healthData.localOnly':
     '선택한 기록은 이 기기의 암호화된 저장소에 보관하며 AI 제공자에게 자동 전송하지 않아요.',
   'settings.healthData.permissionNote':

@@ -33,8 +33,9 @@
             }
 
             return [
-                "windowBounds": rect(window.convert(rootView.bounds, from: rootView)),
-                "safeAreaInsets": insets(rootView.safeAreaInsets),
+                // Compare the actual window contract; a root or sensor may be smaller.
+                "windowBounds": rect(window.bounds),
+                "safeAreaInsets": insets(window.safeAreaInsets),
                 "reservedRegionsSupported": regionsSupported,
                 "reservedRegions": regions,
             ]
