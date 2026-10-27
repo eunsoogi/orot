@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
@@ -44,38 +45,48 @@ export function RecordingReviewRoute({
     <NavigationRouteScrollView>
       <View style={styles.page}>
         {source && selection ? (
-          <>
-            <RecordingPlaybackControls
-              active={focused}
-              recordingId={source.id}
-              durationMs={selection.summary.durationMs}
-              playbackService={recordingService}
-              autoPlay={selection.autoPlay && !autoPlayConsumed}
-              onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
-            />
-            <TranscriptEvidencePanel
-              recordingSourceId={source.id}
-              deletionBusy={exportBusy || review.busy}
-              onInteractionChange={setInteraction}
-              automaticTranscriptionStatus={
-                transcription.state?.sourceId === source.id
-                  ? transcription.state.status
-                  : undefined
-              }
-            />
-            <EncounterReviewPanel
-              key={source.id}
-              sourceId={source.id}
-              disabled={interaction.busy || interaction.dirty || exportBusy}
-              onInteractionChange={setReview}
-              service={reviewService}
-            />
-            <RecordingExportPanel
-              recordingSourceId={source.id}
-              onBusyChange={setExportBusy}
-              actionsDisabled={busy || dirty}
-            />
-          </>
+          /* Stable route-owned panel slots keep transcript drafts and review requests mounted through window reflow. */
+          <AdaptiveColumns
+            primary={
+              <View style={styles.group}>
+                <RecordingPlaybackControls
+                  active={focused}
+                  recordingId={source.id}
+                  durationMs={selection.summary.durationMs}
+                  playbackService={recordingService}
+                  autoPlay={selection.autoPlay && !autoPlayConsumed}
+                  onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
+                />
+                <TranscriptEvidencePanel
+                  recordingSourceId={source.id}
+                  deletionBusy={exportBusy || review.busy}
+                  onInteractionChange={setInteraction}
+                  automaticTranscriptionStatus={
+                    transcription.state?.sourceId === source.id
+                      ? transcription.state.status
+                      : undefined
+                  }
+                />
+              </View>
+            }
+            secondary={
+              <View style={styles.group}>
+                <EncounterReviewPanel
+                  key={source.id}
+                  sourceId={source.id}
+                  disabled={interaction.busy || interaction.dirty || exportBusy}
+                  onInteractionChange={setReview}
+                  service={reviewService}
+                />
+                <RecordingExportPanel
+                  recordingSourceId={source.id}
+                  onBusyChange={setExportBusy}
+                  actionsDisabled={busy || dirty}
+                />
+              </View>
+            }
+            testID="recording-review-layout"
+          />
         ) : (
           <AppText>{t('recording.transcript.noRecording')}</AppText>
         )}
@@ -91,4 +102,5 @@ const styles = StyleSheet.create({
     gap: 20,
     backgroundColor: appColors.background,
   },
+  group: { minWidth: 0, gap: 20 },
 });
