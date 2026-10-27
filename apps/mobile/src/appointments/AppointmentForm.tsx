@@ -35,11 +35,15 @@ export default function AppointmentForm({
   onClose,
 }: AppointmentFormProps) {
   return (
-    <View style={styles.form}>
+    // Apply the reading-width cap inside the screen's measured content region.
+    <View style={styles.form} testID="appointment-form">
       <Text accessibilityRole="header" style={styles.formTitle}>
         {editing
           ? t('appointments.form.editTitle')
           : t('appointments.form.newTitle')}
+      </Text>
+      <Text style={styles.message} testID="appointment-form-explanation">
+        {t('appointments.description')}
       </Text>
       <TextInput
         accessibilityLabel={t('appointments.form.clinicLabel')}
