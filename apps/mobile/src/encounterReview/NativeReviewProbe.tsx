@@ -17,7 +17,10 @@ import {
   syntheticEncounterModel,
 } from '../agent/encounter/syntheticFixture';
 import { createEncounterReviewService } from './service';
-import { createNativeReviewDiagnostics } from './nativeDiagnostics';
+import {
+  createNativeReviewDiagnostics,
+  readNativeReviewReport,
+} from './nativeDiagnostics';
 function settings() {
   const manager = NativeModules.SettingsManager;
   return manager?.settings ?? manager?.getConstants?.().settings ?? {};
@@ -102,19 +105,14 @@ function ProbeRoute() {
   }, [sourceId, mode]);
   async function readback() {
     const sequence = ++readbackSequence.current;
-    const repository = await openLocalStorage();
-    const records = (await repository.list('health_observation')).filter(
-      record => record.provenance.sourceRecordIds.includes(sourceId),
-    );
-    const evidence =
-      await repository.evidenceSpans.listForSourceRecord(sourceId);
     setReport(
       JSON.stringify({
         readback: sequence,
-        records,
-        evidence,
-        modelCalls: synthetic.calls(),
-        diagnostic: await service.diagnostics?.snapshot(),
+        ...(await readNativeReviewReport(
+          sourceId,
+          synthetic.calls,
+          service.diagnostics,
+        )),
       }),
     );
   }

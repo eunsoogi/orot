@@ -4,7 +4,10 @@ import {
   consent,
 } from '../__fixtures__/sqliteReview';
 import { runEncounterReviewFixture } from '../nativeFixture';
-import { createNativeReviewDiagnostics } from '../nativeDiagnostics';
+import {
+  createNativeReviewDiagnostics,
+  readNativeReviewReport,
+} from '../nativeDiagnostics';
 import { openLocalStorage } from '../../storage/secureDatabase';
 import * as composition from '../../agent/encounter/modelComposition';
 
@@ -108,6 +111,24 @@ test('scripted provider failure records its actual dispatch without approving or
     modelCalls: 1,
     status: 'unavailable',
   });
+});
+
+test('failed SQL readback resolves UNKNOWN even while the actual attempt is unsettled', async () => {
+  const diagnostics = createNativeReviewDiagnostics(sourceId, () => 0);
+  diagnostics.begin('running', sourceId);
+  jest
+    .mocked(openLocalStorage)
+    .mockRejectedValue(new Error('private transcript SQL userinfo'));
+  expect(await readNativeReviewReport(sourceId, () => 0, diagnostics)).toEqual({
+    modelCalls: 0,
+    diagnostic: {
+      status: 'UNKNOWN',
+      recordCount: 'UNKNOWN',
+      modelCalls: 0,
+      failure: { stage: 'record_count', category: 'UNKNOWN' },
+    },
+  });
+  expect(log).not.toHaveBeenCalled();
 });
 
 test('independent row evidence still runs when the ORIGINAL assertion short-circuits on unavailable', async () => {
