@@ -1,6 +1,12 @@
 # 전사 기록 추출과 확인
 
-앱의 `runLocalEncounterProcessing`은 녹음 source ID, 고유한 thread ID, 선택한 모델의 기존 execution·consent·Store 계약을 받습니다. `model.execution.allowedScope`는 해당 녹음 하나의 `personal_record` 범위여야 합니다. 모델을 선택하고 원격 전송 동의를 받는 호스트가 이 값을 구성합니다. 확인 화면의 최종 조합은 이 모듈의 범위 밖입니다.
+저장 녹음 목록에서 녹음을 열면 `RecordingReviewRoute`가 기존 재생·전사 수정·내보내기와 함께 `encounterReview/EncounterReviewPanel`을 표시합니다. `encounterReview/service`는 사용자가 후보 찾기를 눌렀을 때만 저장된 AI 선택을 확인하고 `runLocalEncounterProcessing`을 호출합니다. `model.execution.allowedScope`는 해당 녹음 하나의 `personal_record` 범위입니다. 원격 모델은 기존 전송 동의 화면을 거치며, 전송 동의 자체는 건강 기록 저장 승인이 아닙니다. 모델을 선택하지 않았거나 사용할 수 없을 때 임의의 모델로 바꾸지 않습니다.
+
+후보 화면에는 전사 버전, 정확한 인용과 텍스트 범위, 녹음 시간 범위 및 기존 기록과의 충돌이 표시됩니다. 후보 제외와 내용·약물 설명 수정은 원래 snapshot과 분리해 보관합니다. 저장 버튼을 누를 때만 표시했던 원래 snapshot과 선택한 수정 후보로 승인을 구성합니다. 모두 거절하면 건강 기록을 쓰지 않습니다. 대기 중인 검토와 편집은 기존 화면 이탈 확인에 포함되고, 크기 변경으로 controller를 다시 만들지 않습니다. 처리·저장 중에는 작업 취소를 제공하며, 취소가 저장 완료와 경합했을 수 있으므로 복원으로 실제 상태를 다시 확인할 수 있습니다.
+
+재시작 후에는 사용자가 저장 목록에서 같은 녹음을 다시 선택합니다. 메모리의 화면 선택을 복원 수단으로 사용하지 않습니다. 녹음 source ID로 찾는 `encounter-review-session:<encoded source ID>` descriptor는 기존 SQLCipher의 source-linked checkpoint 저장소에 별도 thread로 저장됩니다. version 1의 payload에는 source ID와 현재 시도의 무작위 thread ID만 있으며, 전사·승인·모델 자격 증명을 복사하지 않습니다. 고정 `session` checkpoint는 LangGraph serializer에 넘기지 않습니다. 현재 source가 실제 녹음인지 확인하고 descriptor를 엄격히 파싱한 뒤, 그 thread의 기존 그래프 checkpoint만 복원합니다. 그래프 checkpoint가 없거나 추출 중 중단된 경우 사용할 수 없는 검토로 표시하고 자동으로 추출하지 않습니다. 복원용 모델은 호출을 거부하며 전송과 승인도 발생하지 않습니다. 새 시도는 명시적인 새 검토 시작으로만 만들어지고, 마지막으로 저장한 descriptor가 현재 시도를 정합니다. 저장하지 않은 후보 편집은 재실행 후 원래 대기 snapshot으로 돌아갑니다.
+
+production 승인 경로는 정규 저장 트랜잭션의 같은 SQL executor에서 현재 descriptor의 source·version·thread를 다시 검사합니다. 다른 프로세스의 새 시도가 descriptor를 바꿨으면 기록 저장과 기존 승인 receipt 반환보다 먼저 실패합니다. 로컬 잠금만으로 다른 프로세스를 보호한다고 가정하지 않습니다. 기존 source-linked 삭제 trigger와 삭제 marker 초기화를 재사용하므로 source 삭제는 descriptor와 그래프 checkpoint를 함께 제거하고 늦은 쓰기를 거부합니다. 새 테이블·인덱스·스토리지 API는 추가하지 않습니다. 기존 graph-only 호출은 별도 descriptor 없이 기존 계약을 유지합니다.
 
 그래프는 최신 전사 revision 로딩, 후보 추출, 기존 기록과의 충돌 확인, `user_confirmation` 앞의 LangGraph interrupt, 정규 도메인 저장 순서로 실행합니다. `pending` 결과의 전체 snapshot을 화면에 표시하고, 실제 사용자 확인 시 `EncounterApproval`에 그 snapshot과 선택한 후보, 사용자 ID와 확인 시각을 전달합니다. `deny`는 저장하지 않습니다. 후보를 제외하거나 텍스트·약물 설명을 수정할 수 있지만 ID, 종류, 화자, 근거는 바꿀 수 없습니다. 수정으로 새로운 충돌이 생기면 새 thread에서 다시 검토해야 합니다.
 
@@ -12,4 +18,4 @@
 
 추출은 기존 `runMultiAgentWorkflow`의 LangChain 모델·prompt·parser·동의·취소·호출 및 payload 예산을 사용합니다. 최대 8개의 최신 segment로 구성된 전사를 처리하며, 초과하거나 payload 예산을 넘으면 일부 내용을 조용히 버리지 않고 실패합니다. 체크포인트에는 검토용 후보와 인용이 포함되므로 앱에서는 반드시 기존 SQLCipher saver를 사용합니다. 복사된 callback manager와 하위 실행에서도 주변 configure hook·환경 추적 handler를 받지 않도록 격리합니다. 원격 telemetry나 일반 로그에 이 내용을 쓰지 않습니다.
 
-검증은 [개발 안내](development.md)를 따릅니다. `StatePersistenceIntegrationTests`의 기존 세 테스트와 `state-persistence`/공유 persistence cohort에 실제 그래프의 대기 저장, 새 프로세스에서 수정 승인·중복 재개, 세 번째 프로세스에서 기록·근거 readback과 fixture 정리가 포함됩니다. 테스트 전용 모델 응답은 합성 자료이며 실제 모델 품질의 근거가 아닙니다. Jest의 파일 재개 테스트도 SQLCipher·Hermes·프로세스 재시작 검증을 대신하지 않습니다.
+검증은 [개발 안내](development.md)를 따릅니다. 기존 `StatePersistenceIntegrationTests`는 graph-only 호출의 대기 저장과 승인·readback을 검증합니다. 새 `EncounterReviewPersistenceIntegrationTests`는 production service/controller의 source 기반 발견, 세 프로세스의 대기 복원·명시적 저장·readback과 fixture 삭제를 대상으로 합니다. `EncounterReviewUITests`는 실제 저장 녹음 목록과 navigation을 통해 production 검토 화면을 열고 전송 거절, 후보 거절, 전사 수정·삭제 후 오래된 저장 거부, 회전과 재실행을 검증합니다. 모델 응답과 녹음은 합성 자료이며 실제 모델 품질의 근거가 아닙니다. 테스트 소스와 canonical 등록은 실제 Simulator 실행 성공과 구분해야 합니다. Jest의 파일 재개와 두 SQLite 연결 테스트도 SQLCipher·Hermes·프로세스 재시작 검증을 대신하지 않습니다.

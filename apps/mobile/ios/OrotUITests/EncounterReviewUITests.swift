@@ -1,0 +1,184 @@
+import XCTest
+
+/// Synthetic recordings and model replies enter the actual saved library, native navigation and production review route.
+final class EncounterReviewUITests: OrotFailFastTestCase {
+    private var readbackSequence = 0
+    @MainActor
+    func testSavedRecordingReviewRestoresWithoutAutomaticExtractionOrApproval() throws {
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        defer { clean(app) }
+        launch(app, fixture: fixture, mode: "seed")
+        openRecording(app, fixture: fixture)
+        XCTAssertTrue(text(app, "encounter-status").contains("후보 찾기를 누르면"))
+        XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+        tap(app, "encounter-start")
+        let evidence = reveal(app, "encounter-evidence-candidate-0-0", requireHittable: false)
+        XCTAssertTrue(evidence.exists)
+        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("근거와 충돌"))
+        let input = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
+        FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertEqual(input.value as? String, "회전 중 유지할 검토")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertEqual(input.value as? String, "회전 중 유지할 검토")
+        XCTAssertEqual(try report(app)["modelCalls"] as? Int, 1)
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+        app.terminate()
+        launch(app, fixture: fixture, mode: "restore")
+        openRecording(app, fixture: fixture)
+        XCTAssertTrue(text(app, "encounter-status").contains("근거와 충돌"))
+        XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+        let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
+        FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll")
+        reveal(app, "encounter-save", avoiding: restoredInput).tap()
+        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("저장했어요"))
+        app.terminate()
+        launch(app, fixture: fixture, mode: "restore")
+        openRecording(app, fixture: fixture)
+        XCTAssertTrue(text(app, "encounter-status").contains("저장했어요"))
+        let readback = try report(app)
+        XCTAssertEqual(readback["modelCalls"] as? Int, 0)
+        let records = try XCTUnwrap(readback["records"] as? [[String: Any]])
+        XCTAssertEqual(records.count, 2)
+        for record in records {
+            XCTAssertEqual((record["reviewState"] as? [String: Any])?["status"] as? String, "reviewed")
+            let provenance = try XCTUnwrap(record["provenance"] as? [String: Any])
+            XCTAssertEqual(provenance["origin"] as? String, "derived")
+            XCTAssertEqual((provenance["source"] as? [String: Any])?["sourceName"] as? String, "speaker:unknown")
+        }
+        let evidenceRows = try XCTUnwrap(readback["evidence"] as? [[String: Any]])
+        XCTAssertEqual(evidenceRows.count, 4)
+        for span in evidenceRows {
+            let provenance = try XCTUnwrap(span["provenance"] as? [String: Any])
+            XCTAssertEqual((provenance["source"] as? [String: Any])?["sourceIdentifier"] as? String, fixture + ":ui-review:segment:r1")
+            let locator = try XCTUnwrap(span["locator"] as? [String: Any])
+            if locator["kind"] as? String == "audio_time_range" {
+                XCTAssertEqual(locator["startMs"] as? Int, 100)
+                XCTAssertEqual(locator["endMs"] as? Int, 2900)
+            } else {
+                XCTAssertEqual(locator["kind"] as? String, "text_range")
+                XCTAssertTrue(try ["합성약 5 mg을 논의했어요.", "다음 주 기록을 확인해요."].contains(XCTUnwrap(span["text"] as? String)))
+            }
+        }
+    }
+
+    @MainActor
+    func testDeniedTransmissionAndExplicitRejectionWriteNoRecords() throws {
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        defer { clean(app) }
+        launch(app, fixture: fixture, mode: "remote")
+        openRecording(app, fixture: fixture)
+        tap(app, "encounter-start")
+        let cancel = UITestConditions.element(app, "inference-disclosure-cancel")
+        XCTAssertTrue(UITestConditions.exists(cancel))
+        XCTAssertTrue(cancel.isHittable)
+        cancel.tap()
+        XCTAssertTrue(text(app, "encounter-status").contains("전송에 동의하지 않아"))
+        XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+        app.terminate()
+        launch(app, fixture: fixture, mode: "seed")
+        openRecording(app, fixture: fixture)
+        tap(app, "encounter-start")
+        tap(app, "encounter-deny")
+        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("거절했어요"))
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+    }
+
+    @MainActor
+    func testTranscriptCorrectionPreventsStaleCandidateApproval() throws {
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        defer { clean(app) }
+        launch(app, fixture: fixture, mode: "seed")
+        openRecording(app, fixture: fixture)
+        tap(app, "encounter-start")
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
+        tap(app, "transcript-edit-0", upward: true)
+        let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
+        FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll")
+        reveal(app, "transcript-save-0", avoiding: input).tap()
+        tap(app, "encounter-save")
+        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("사용할 수 없어요"))
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+    }
+
+    @MainActor
+    func testDeletedRecordingPreventsLateCandidateApproval() throws {
+        let fixture = "test-persistence-" + UUID().uuidString.lowercased()
+        let app = XCUIApplication()
+        defer { clean(app) }
+        launch(app, fixture: fixture, mode: "seed")
+        openRecording(app, fixture: fixture)
+        tap(app, "encounter-start")
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
+        let remove = UITestConditions.element(app, "encounter-probe-remove-source")
+        XCTAssertTrue(remove.isHittable)
+        remove.tap()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "removed")
+        tap(app, "encounter-save")
+        XCTAssertTrue(text(app, "encounter-status", upward: true).contains("사용할 수 없어요"))
+        XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
+    }
+
+    @MainActor
+    private func launch(_ app: XCUIApplication, fixture: String, mode: String) {
+        readbackSequence = 0
+        app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "encounter-review", "-OROT_REVIEW_FIXTURE", fixture, "-OROT_REVIEW_MODE", mode]
+        app.launch()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+    }
+
+    @MainActor
+    private func openRecording(_ app: XCUIApplication, fixture: String) {
+        let row = app.buttons.matching(identifier: "recording-details-\(fixture):ui-review").firstMatch
+        FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(row.isHittable)
+        row.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-review-panel")))
+    }
+
+    @MainActor
+    private func reveal(_ app: XCUIApplication, _ id: String, upward: Bool = false, avoiding: XCUIElement? = nil, requireHittable: Bool = true) -> XCUIElement {
+        let element = UITestConditions.element(app, id)
+        FormUITestConditions.reveal(element, in: app, scrollID: "navigation-route-scroll", towardTop: upward, requireHittable: requireHittable, avoiding: avoiding)
+        return element
+    }
+
+    @MainActor
+    private func tap(_ app: XCUIApplication, _ id: String, upward: Bool = false) {
+        reveal(app, id, upward: upward).tap()
+    }
+
+    @MainActor
+    private func text(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> String {
+        UITestConditions.text(reveal(app, id, upward: upward, requireHittable: false))
+    }
+
+    @MainActor
+    private func report(_ app: XCUIApplication) throws -> [String: Any] {
+        readbackSequence += 1
+        let button = UITestConditions.element(app, "encounter-probe-readback")
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+        let element = UITestConditions.element(app, "encounter-probe-report")
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "\"readback\":\(readbackSequence),"), object: element)
+        XCTAssertEqual(UITestConditions.wait(for: [loaded]), .completed)
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(element).utf8)) as? [String: Any])
+    }
+
+    @MainActor
+    private func clean(_ app: XCUIApplication) {
+        XCUIDevice.shared.orientation = .portrait
+        let button = UITestConditions.element(app, "encounter-probe-cleanup")
+        XCTAssertTrue(UITestConditions.exists(button))
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+        UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "cleaned")
+        app.terminate()
+    }
+}
