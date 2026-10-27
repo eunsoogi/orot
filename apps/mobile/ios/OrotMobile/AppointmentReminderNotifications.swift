@@ -86,7 +86,13 @@ private struct SystemAppointmentReminderNotificationCenter: AppointmentReminderN
     }
 
     func add(_ request: UNNotificationRequest) async throws {
-        try await center.add(request)
+        #if OROT_TESTS
+            try await AppointmentReminderDiagnosticTrace.aroundAdd {
+                try await center.add(request)
+            }
+        #else
+            try await center.add(request)
+        #endif
     }
 }
 
@@ -117,6 +123,7 @@ actor AppointmentReminderNotifications {
     static let requestIdentifier = "com.orot.visit-preparation"
     private let center: UNUserNotificationCenter
     private let requestScheduler: AppointmentReminderRequestScheduler
+
     private let defaults = UserDefaults.standard
     private let selectionKey = "com.orot.visit-preparation.selection"
     private var replacement: Task<Void, Error>?
@@ -152,18 +159,27 @@ actor AppointmentReminderNotifications {
 
     func authorizationStatus() async -> String {
         let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
-        case .authorized, .provisional, .ephemeral: return "authorized"
-        case .notDetermined: return "notDetermined"
-        case .denied: return "denied"
-        @unknown default: return "denied"
+        let status = switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: "authorized"
+        case .notDetermined: "notDetermined"
+        case .denied: "denied"
+        @unknown default: "denied"
         }
+        trace(.authorizationObserved, authorization: .init(status: status))
+        return status
     }
 
     /// This method is reserved for the user's explicit enable-reminder action.
     func requestAuthorization() async throws -> String {
         if await authorizationStatus() == "notDetermined" {
-            _ = try await center.requestAuthorization(options: [.alert])
+            trace(.permissionRequestEnter)
+            do {
+                _ = try await center.requestAuthorization(options: [.alert])
+                trace(.permissionRequestResolve)
+            } catch {
+                trace(.permissionRequestReject, error: error)
+                throw error
+            }
         }
         return await authorizationStatus()
     }
@@ -194,20 +210,34 @@ actor AppointmentReminderNotifications {
 
     private func apply(_ plan: AppointmentReminderNotificationPlan?) async throws {
         guard let plan else {
+            trace(.cancel, nullPlan: true)
             requestScheduler.cancel()
             return
         }
-        guard plan.fireAt > Date() else { throw AppointmentReminderError.expired }
-        guard await authorizationStatus() == "authorized" else {
+        trace(.expiryCheck)
+        guard plan.fireAt > Date() else {
+            trace(.expiryReject, error: AppointmentReminderError.expired)
+            throw AppointmentReminderError.expired
+        }
+        let authorization = await authorizationStatus()
+        let diagnosticAuthorization = AppointmentReminderDiagnosticAuthorization(status: authorization)
+        trace(.authorizationCheck, authorization: diagnosticAuthorization)
+        guard authorization == "authorized" else {
+            trace(.authorizationReject, authorization: .init(status: authorization), error: AppointmentReminderError.permissionDenied)
             throw AppointmentReminderError.permissionDenied
         }
         // Authorization lookup is asynchronous. Do not claim a request was installed
         // if its full calendar date has already passed while awaiting the OS reply.
         let request = plan.request()
+        trace(.triggerCheck)
         guard plan.fireAt > Date(),
               let trigger = request.trigger as? UNCalendarNotificationTrigger,
               let next = trigger.nextTriggerDate(), next > Date()
-        else { throw AppointmentReminderError.expired }
+        else {
+            trace(.triggerReject, error: AppointmentReminderError.expired)
+            throw AppointmentReminderError.expired
+        }
+        trace(.triggerResolve)
         try await requestScheduler.replace(request)
     }
 }

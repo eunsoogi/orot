@@ -173,7 +173,12 @@ test('routes all entry actions through the integration and returns from visit qu
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
 
-  expect(screen.queryByTestId('ai-feature-external-evidence')).toBeNull();
+  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
+  expect(screen.getByTestId('external-medical-evidence-screen')).toBeTruthy();
+  expect(screen.queryByTestId('external-evidence-loading')).toBeNull();
+  expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.getByTestId('ai-features-screen')).toBeTruthy();
 });
 
 /** Models saved selection so the flow can resolve the committed choice again. */

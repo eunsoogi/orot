@@ -6,13 +6,17 @@ enum ReminderJourneyForm {
     static let clinic = "선택한 합성 진료 예약이며 긴 한국어 문장과 준비할 내용을 화면에서 끝까지 확인합니다"
     static let note = "개인 건강 정보가 아닌 합성 메모입니다. 최근 변화와 확인할 질문을 빠뜨리지 않고 읽을 수 있는지 검사합니다."
 
-    static func start(_ app: XCUIApplication, session: String, large: Bool = false) throws {
+    static func start(_ app: XCUIApplication, session: String, large: Bool = false, diagnosticRunID: String? = nil) throws {
         // No E2E/scenario override: the bundled test entry renders the normal App.
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_REMINDER_OBSERVATION", "YES",
                                "-OROT_TEST_REMINDER_SESSION", session, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             + AppearanceUITestConditions.observationArguments
         if large {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        if let diagnosticRunID {
+            app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTICS"] = "YES"
+            app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID"] = diagnosticRunID
         }
         app.launch()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))

@@ -6,6 +6,7 @@ import { AppText } from '../layout/AppText';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import type { AppointmentReminderRuntime } from './AppointmentReminderContext';
 import { appointmentStartTime } from '../calendar/appointmentTime';
+import { beginReminderAction } from './reminderActionObservation';
 
 /** Permission is requested only by an explicit card action; default is off. */
 export function AppointmentReminderControls({
@@ -37,13 +38,17 @@ function Controls({
   );
   const selected = state.selection?.appointmentId === appointment.id;
   const select = (leadMinutes: 60 | 1440 | null) => {
+    const settle = beginReminderAction(coordinator.getSnapshot(), coordinator);
     coordinator
       .select(
         leadMinutes === null
           ? null
           : { appointmentId: appointment.id, leadMinutes },
       )
-      .catch(() => undefined);
+      .then(
+        () => settle('resolve', coordinator.getSnapshot()),
+        () => settle('reject', coordinator.getSnapshot()),
+      );
   };
   return (
     <View>

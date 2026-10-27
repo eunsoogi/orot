@@ -12,6 +12,12 @@
             false
         }
 
+        /// Readiness never queries UserNotifications and must settle before diagnostic scheduling.
+        @objc(diagnosticReadiness:rejecter:)
+        func diagnosticReadiness(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
+            resolve(AppointmentReminderDiagnosticTrace.currentReadiness())
+        }
+
         @objc(snapshot:rejecter:)
         func snapshot(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
             guard UserDefaults.standard.string(forKey: "OROT_TEST_REMINDER_OBSERVATION") == "YES" else {
