@@ -66,7 +66,8 @@ export async function runEncounterReviewFixture(
   await controller.restore();
   if (synthetic.calls() !== 0) throw new Error('Restart dispatched a model.');
   if (mode === 'resume') {
-    if (controller.state.status !== 'pending' || (await records()).length)
+    const restoredRecords = await records();
+    if (controller.state.status !== 'pending' || restoredRecords.length)
       throw new Error('Restart lost pending review or approved automatically.');
     const restored = controller.state.pending!;
     controller.edit(
@@ -80,6 +81,7 @@ export async function runEncounterReviewFixture(
     return {
       status: controller.state.status,
       restored,
+      restoredRecordCount: restoredRecords.length,
       modelCalls: synthetic.calls(),
       recordCount: (await records()).length,
     };
@@ -108,6 +110,7 @@ export async function runEncounterReviewFixture(
   );
   if (
     afterDelete.status !== 'unavailable' ||
+    (await repository.get('source_record', sourceId)) ||
     (await records()).length ||
     (await repository.evidenceSpans.listForSourceRecord(sourceId)).length
   )

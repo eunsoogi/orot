@@ -67,22 +67,27 @@ final class EncounterReviewPersistenceIntegrationTests: OrotFailFastTestCase {
         let result = try await TestOperationBroker.shared.request("encounter-review-persistence", parameters: ["mode": mode, "fixtureIdentifier": fixture()])
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
-        attachment.name = "encounter-review-\(mode)-pid-\(ProcessInfo.processInfo.processIdentifier)"
+        var receipt = result
+        receipt["fixtureIdentifier"] = try fixture()
+        receipt["runId"] = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_ENCOUNTER_REVIEW_RUN_ID"])
+        receipt["phase"] = mode
+        receipt["processIdentifier"] = Int(ProcessInfo.processInfo.processIdentifier)
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt), uniformTypeIdentifier: "public.json")
+        attachment.name = "encounter-review-\(mode)"
         attachment.lifetime = .keepAlways
         add(attachment)
-        return result
+        return receipt
     }
 
     private func fixture() throws -> String {
-        let value = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_STATE_FIXTURE"])
+        let value = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_ENCOUNTER_REVIEW_FIXTURE"])
         XCTAssertTrue(value.hasPrefix("test-persistence-"))
         XCTAssertNotNil(UUID(uuidString: String(value.dropFirst("test-persistence-".count))))
         return value
     }
 
     private func requireNewProcess() throws {
-        let json = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_STATE_PREVIOUS_PIDS"])
+        let json = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_ENCOUNTER_REVIEW_PREVIOUS_PIDS"])
         let previous = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [Int])
         XCTAssertFalse(previous.isEmpty)
         XCTAssertFalse(previous.contains(Int(ProcessInfo.processInfo.processIdentifier)))

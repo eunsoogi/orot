@@ -38,9 +38,14 @@ const cohorts = {
     profiles: ['core'],
     suites: ['ui'],
     minutes: 20,
-    classes: ['RecordingExportUITests', 'TranscriptEvidenceUITests'],
+    classes: ['RecordingExportUITests', 'TranscriptEvidenceUITests', 'EncounterReviewUITests'],
   },
   persistence: { profiles: ['core'], suites: ['shared-persistence'], minutes: 20 },
+  'encounter-review-persistence': {
+    profiles: ['core'],
+    suites: ['encounter-review-persistence'],
+    minutes: 20,
+  },
   isolation: { profiles: ['core'], suites: ['isolation'], minutes: 20 },
   backup: { profiles: ['backup'], minutes: 20 },
   'local-model': { profiles: ['local-model'], minutes: 20 },
@@ -168,6 +173,11 @@ export function iosTestCohortTasks(name) {
           profile === 'core'
             ? [
                 { profile, suite: 'shared-persistence', mode: 'shared-persistence' },
+                {
+                  profile,
+                  suite: 'encounter-review-persistence',
+                  mode: 'encounter-review-persistence',
+                },
                 { profile, suite: 'isolation', mode: 'fixture-isolation' },
                 ...['integration', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' })),
               ]
