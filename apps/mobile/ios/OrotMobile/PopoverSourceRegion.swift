@@ -69,6 +69,7 @@ final class PopoverSourceRegion: NSObject {
                 "diagnosticKind": "UIKitReferenceOnly",
                 "stage": "beforePresentation",
                 "originalApplyResult": applyResult.map { String($0) } ?? "nil",
+                "reportedAdaptiveStyleBeforePresentation": popover?.adaptivePresentationStyle(for: activity.traitCollection).rawValue ?? -99,
                 "candidateClass": String(describing: type(of: candidate)),
                 "candidateAttachedToOriginalSource": candidate.superview === source,
                 "candidateSharesWindow": candidate.window === window,
