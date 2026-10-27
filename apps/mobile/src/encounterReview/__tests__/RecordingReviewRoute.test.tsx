@@ -6,6 +6,9 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
+import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
+import { createNavigationController } from '../../navigation/navigationController';
 import { RecordingReviewRoute } from '../../routes/RecordingReviewRoute';
 import { encounterReviewService } from '../service';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
@@ -13,11 +16,30 @@ import { pending } from '../__fixtures__/pending';
 import { reviewCopy } from '../strings';
 
 // Native playback/transcript/export have their own integration suites; render the actual route and review controller here.
-jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
 jest.mock('../../navigation/NavigationRouteScrollView', () => ({
   NavigationRouteScrollView: ({ children }: { children: ReactNode }) =>
     children,
 }));
+jest.mock('react-native-safe-area-context', () => {
+  const ReactRuntime = require('react') as typeof import('react');
+  return {
+    SafeAreaInsetsContext: ReactRuntime.createContext({
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 34,
+    }),
+    useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 34 }),
+    SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
+      ReactRuntime.createElement(ReactRuntime.Fragment, null, children),
+    SafeAreaView: ({ children }: { children?: ReactNode }) =>
+      ReactRuntime.createElement(ReactRuntime.Fragment, null, children),
+  };
+});
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
@@ -169,4 +191,28 @@ test('empty extraction stays unsaved and progress survives rerender until explic
     ),
   );
   expect(screen.getByTestId('encounter-save')).toBeDisabled();
+});
+
+test('production navigation lets recording review measure its own usable content lane', async () => {
+  const controller =
+    createNavigationController<'recording-review'>('recording-review');
+  const routeKey = controller.getSnapshot().currentRoute.key;
+
+  await render(
+    <NavigationRouteAdapter
+      controller={controller}
+      contentLayoutOwner={appContentLayoutOwner}
+      contentSafeAreaHandledByChild
+    >
+      {() => <RecordingReviewRoute reviewService={encounterReviewService} />}
+    </NavigationRouteAdapter>,
+  );
+  await screen.findByTestId('encounter-save');
+
+  // The route's AdaptiveColumns owns measurement; a scene-level wrapper would clamp it first.
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${routeKey}`),
+  ).toBeNull();
+  expect(screen.getByTestId('recording-review-layout-host')).toBeTruthy();
+  expect(screen.getByTestId('recording-review-layout')).toBeTruthy();
 });
