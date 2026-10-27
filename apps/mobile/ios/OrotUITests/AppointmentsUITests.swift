@@ -129,7 +129,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let edit = UITestConditions.element(app, "appointment-edit-manual-1")
         FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
         XCTAssertTrue(edit.exists && edit.isHittable, app.debugDescription)
-        capture(app, "appointments-duo-large-text-details")
+        capture(app, "appointments-large-text-details")
     }
 
     @MainActor

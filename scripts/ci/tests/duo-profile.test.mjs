@@ -83,6 +83,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const aiFeatureEntry =
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
+  const settingsHome =
+    'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
   const healthLibraryReflow =
@@ -107,25 +109,23 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
   const appointmentsReflow =
     'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
-  const appointmentsLargeText =
-    'OrotUITests/AppointmentsUITests/testLargeTextKeepsAppointmentDetailsInOneReadableColumn';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep the integrated Duo-only coverage count explicit so missing registrations cannot shrink silently.
+  // Keep Settings, Library, Recording Review, and appointment reflow coverage explicit.
   assert.equal(duoInventory.length, 22);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
+    settingsHome,
     aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     scheduleReflow,
     scheduleLargeText,
     appointmentsReflow,
-    appointmentsLargeText,
     contextualDeparture,
     manualHistoryRecovery,
     duoKeyboardSave,
@@ -143,8 +143,10 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   // health-import regressions run only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
+  assert.ok(!iPhoneFixtures.includes(settingsHome));
   assert.ok(!coreTests.includes(homeSummary));
   assert.ok(!coreTests.includes(aiFeatureEntry));
+  assert.ok(!coreTests.includes(settingsHome));
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
