@@ -158,12 +158,10 @@ test('empty extraction stays unsaved and progress survives rerender until explic
     reviewCopy.cancelled,
   );
   expect(encounterReviewService.decide).not.toHaveBeenCalled();
-  jest
-    .mocked(encounterReviewService.start)
-    .mockResolvedValue({
-      status: 'pending',
-      pending: { ...pending, candidates: [] },
-    });
+  jest.mocked(encounterReviewService.start).mockResolvedValue({
+    status: 'pending',
+    pending: { ...pending, candidates: [] },
+  });
   await fireEvent.press(screen.getByTestId('encounter-start'));
   await waitFor(() =>
     expect(screen.getByTestId('encounter-status')).toHaveTextContent(

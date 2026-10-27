@@ -131,6 +131,9 @@ export function createEncounterReviewService(
         model,
         signal,
       });
+      if (signal.aborted) return { status: 'cancelled' };
+      if ((await discovery.read())?.threadId !== session.threadId)
+        return { status: 'unavailable' };
       return denied && !signal.aborted ? { status: 'consent-denied' } : result;
     },
   };
