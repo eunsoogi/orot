@@ -1,3 +1,4 @@
+import { observeReminderRejection } from './reminderFailureOrigin';
 import type {
   AppointmentReminderPort,
   ReminderAuthorization,
@@ -44,11 +45,14 @@ export function createAppointmentReminderPort(
         leadMinutes: choice.leadMinutes,
       };
     },
-    writeSelection: value => native().writeSelection(value),
+    writeSelection: value =>
+      observeReminderRejection(() => native().writeSelection(value)),
     authorizationStatus: async () =>
       authorization(await native().authorizationStatus()),
     requestAuthorization: async () =>
-      authorization(await native().requestAuthorization()),
-    replace: value => native().replace(value),
+      authorization(
+        await observeReminderRejection(() => native().requestAuthorization()),
+      ),
+    replace: value => observeReminderRejection(() => native().replace(value)),
   };
 }

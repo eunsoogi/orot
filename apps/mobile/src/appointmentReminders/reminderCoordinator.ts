@@ -1,3 +1,4 @@
+import { preserveReminderFailureOrigin } from './reminderFailureOrigin';
 import type { Appointment } from '@orot/storage';
 import {
   buildAppointmentReminder,
@@ -104,7 +105,7 @@ export class AppointmentReminderCoordinator {
       this.publish({ ...this.state, busy: true });
       try {
         await operation();
-      } catch {
+      } catch (error) {
         // An unreadable current visit cannot justify retaining an old reminder.
         // Keep an observable error even if clearing the OS request also fails.
         try {
@@ -113,7 +114,10 @@ export class AppointmentReminderCoordinator {
           // Foreground reconciliation retries cleanup; never report a schedule here.
         }
         this.publish({ ...this.state, status: 'error' });
-        throw new Error('Appointment reminders could not be updated.');
+        throw preserveReminderFailureOrigin(
+          error,
+          new Error('Appointment reminders could not be updated.'),
+        );
       } finally {
         this.publish({ ...this.state, busy: false });
       }

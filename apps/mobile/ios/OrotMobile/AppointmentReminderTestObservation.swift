@@ -15,7 +15,19 @@
         /// Readiness never queries UserNotifications and must settle before diagnostic scheduling.
         @objc(diagnosticReadiness:rejecter:)
         func diagnosticReadiness(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
-            resolve(AppointmentReminderDiagnosticTrace.currentReadiness())
+            var readiness = AppointmentReminderDiagnosticTrace.currentReadiness()
+            readiness["originControl"] = AppointmentReminderFailureOrigin.controlEnabled
+            resolve(readiness)
+        }
+
+        /// Independent native-side expected tokens falsify a missing or wrongly attached JS origin.
+        @objc(originControlExpected:rejecter:)
+        func originControlExpected(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
+            guard AppointmentReminderFailureOrigin.controlEnabled else {
+                reject("control_disabled", "Reminder origin control is disabled.", nil)
+                return
+            }
+            resolve(AppointmentReminderFailureOrigin.controlExpected)
         }
 
         @objc(snapshot:rejecter:)

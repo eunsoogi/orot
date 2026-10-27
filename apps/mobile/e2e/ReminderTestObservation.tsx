@@ -1,3 +1,5 @@
+import { enableReminderFailureOrigins } from '../src/appointmentReminders/reminderFailureOrigin';
+import { ReminderOriginControl } from './ReminderOriginControl';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 import {
   observeReminderActions,
@@ -13,7 +15,10 @@ import {
 } from 'react-native';
 
 /** Observes the real OS request center without replacing any production app behavior. */
-export function ReminderTestObservation({ children }: PropsWithChildren) {
+export function ReminderTestObservation({
+  children,
+  originControl = false,
+}: PropsWithChildren<{ readonly originControl?: boolean }>) {
   const [action, setAction] = useState<ReminderActionReceipt | null>(null);
   const [diagnostic, setDiagnostic] = useState<Record<string, unknown>>({
     status: 'pending',
@@ -25,6 +30,7 @@ export function ReminderTestObservation({ children }: PropsWithChildren) {
     let active = true;
     let reading = false;
     let stopActions = () => {};
+    let stopOrigins = () => {};
     let mode: 'unknown' | 'disabled' | 'ready' | 'failed' = 'unknown';
     let checkingHealth = false;
     const health = async () => {
@@ -38,8 +44,10 @@ export function ReminderTestObservation({ children }: PropsWithChildren) {
         setDiagnostic(ready);
         if (ready.status === 'disabled') mode = 'disabled';
         else if (ready.status === 'ready') {
-          if (mode === 'unknown')
+          if (mode === 'unknown') {
+            stopOrigins = enableReminderFailureOrigins(ready.runID ?? '');
             stopActions = observeReminderActions(setAction);
+          }
           mode = 'ready';
         } else mode = 'failed';
       } catch {
@@ -83,11 +91,18 @@ export function ReminderTestObservation({ children }: PropsWithChildren) {
       active = false;
       clearInterval(interval);
       stopActions();
+      stopOrigins();
     };
   }, []);
   return (
     <>
-      {children}
+      {originControl ? (
+        diagnostic.status === 'ready' && diagnostic.originControl === true ? (
+          <ReminderOriginControl action={action} />
+        ) : null
+      ) : (
+        children
+      )}
       <View pointerEvents="none" style={styles.marker}>
         <Text
           testID="reminder-diagnostic-readiness"

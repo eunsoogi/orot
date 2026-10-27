@@ -1,9 +1,31 @@
 import Foundation
 @testable import Orot
+import React
 import XCTest
 
 /// Exercises the actual native encoder and scheduling wrapper without authorizing or mutating the OS.
 final class AppointmentReminderDiagnosticTests: OrotFailFastTestCase {
+    /// RN's actual serializer must carry only the safe origin and keep normalized public errors.
+    func testOriginCarrierSurvivesActualRNSerializationWithoutOriginalNSError() throws {
+        let runID = UUID().uuidString.lowercased()
+        let carrier = AppointmentReminderFailureOrigin.carrier(runID: runID, sequence: 17)
+        let serialized = RCTJSErrorFromCodeMessageAndNSError(
+            "REMINDER_SCHEDULE_FAILED", "The local reminder could not be updated.", carrier,
+        )
+        XCTAssertEqual(serialized["code"] as? String, "REMINDER_SCHEDULE_FAILED")
+        XCTAssertEqual(serialized["message"] as? String, "The local reminder could not be updated.")
+        let info = try XCTUnwrap(serialized["userInfo"] as? [String: Any])
+        XCTAssertEqual(Set(info.keys), ["orotReminderOrigin"])
+        let origin = try XCTUnwrap(info["orotReminderOrigin"] as? [String: Any])
+        XCTAssertEqual(Set(origin.keys), ["runID", "operationSequence"])
+        XCTAssertEqual(origin["runID"] as? String, runID)
+        XCTAssertEqual(origin["operationSequence"] as? Int, 17)
+        XCTAssertNil(carrier.userInfo[NSUnderlyingErrorKey])
+        XCTAssertNil(carrier.userInfo[NSLocalizedDescriptionKey])
+        // Native XCTest has no diagnostic launch opt-in; ordinary rejection stays nil.
+        XCTAssertNil(appointmentReminderFailureOriginCarrier())
+    }
+
     func testSentinelNSErrorIsRedactedAndRethrownByIdentity() async throws {
         let sentinel = NSError(domain: "private-appointment-domain", code: 47, userInfo: [
             NSLocalizedDescriptionKey: "private-health-description", "appointmentId": "private-visit",

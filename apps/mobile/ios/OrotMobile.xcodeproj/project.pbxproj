@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
 		A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */; };
+		AC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */; };
 		A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000002 /* AppointmentReminderTestObservation.m */; };
 		A68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */; };
 		A68F00000000000000000004 /* ReminderJourneyObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000004 /* ReminderJourneyObservation.swift */; };
@@ -252,6 +253,7 @@
 /* Begin PBXFileReference section */
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
 		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
+		BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderFailureOrigin.swift; sourceTree = "<group>"; };
 		B68F00000000000000000002 /* AppointmentReminderTestObservation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppointmentReminderTestObservation.m; path = OrotMobile/AppointmentReminderTestObservation.m; sourceTree = "<group>"; };
 		B68F00000000000000000003 /* AppointmentReminderJourneyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderJourneyUITests.swift; path = AppointmentReminderJourneyUITests.swift; sourceTree = "<group>"; };
 		B68F00000000000000000004 /* ReminderJourneyObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReminderJourneyObservation.swift; path = ReminderJourneyObservation.swift; sourceTree = "<group>"; };
@@ -587,6 +589,7 @@
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
 				B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */,
 				B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */,
+				BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */,
 				B68F00000000000000000002 /* AppointmentReminderTestObservation.m */,
 				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
 				B67F00000000000000000002 /* AppointmentReminderModule.m */,
@@ -1165,6 +1168,7 @@
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
 				A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */,
 				A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */,
+				AC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift in Sources */,
 				A68F00000000000000000002 /* AppointmentReminderTestObservation.m in Sources */,
 				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
 				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
