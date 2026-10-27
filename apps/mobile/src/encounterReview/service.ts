@@ -135,19 +135,16 @@ export function createEncounterReviewService(
       if (signal.aborted) return { status: 'cancelled' };
       const { discovery } = await sessions(sourceId);
       const session = await discovery.begin();
+      // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
+      const executionId = discovery.executionId(session);
       let denied = false;
-      const model = composeEncounterModel(
-        sourceId,
-        session.threadId,
-        selected,
-        {
-          async authorize(request) {
-            const result = await consent.authorize(request);
-            if (result !== 'authorized') denied = true;
-            return result;
-          },
+      const model = composeEncounterModel(sourceId, executionId, selected, {
+        async authorize(request) {
+          const result = await consent.authorize(request);
+          if (result !== 'authorized') denied = true;
+          return result;
         },
-      );
+      });
       const result = await runLocalEncounterProcessing({
         sourceId,
         threadId: session.threadId,

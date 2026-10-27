@@ -15,6 +15,7 @@ const {
   reopen,
   database,
   openSecondConnection,
+  seedSource,
 } = sqliteReviewFixture();
 
 test('source discovery survives closed database and fresh controller without re-extraction or approval', async () => {
@@ -55,6 +56,66 @@ test('source discovery survives closed database and fresh controller without re-
   await third.controller.restore();
   expect(third.controller.state.status).toBe('saved');
 });
+
+test.each([':review', ':ui-review'])(
+  'native-shaped %s source uses a private execution ID and waits for approval',
+  async suffix => {
+    const nativeSourceId =
+      'test-persistence-00000000-0000-4000-8000-000000000001' + suffix;
+    await seedSource(nativeSourceId);
+    const { controller, synthetic } = controllerFor(true, true, nativeSourceId);
+    const authorized = {
+      authorize: jest.fn(async () => 'authorized' as const),
+    };
+
+    await controller.start(authorized);
+    expect({
+      status: controller.state.status,
+      modelCalls: synthetic.calls(),
+      records: await rows(),
+    }).toEqual({ status: 'pending', modelCalls: 1, records: [] });
+
+    const pending = controller.state.pending!;
+    const discovery = createEncounterReviewSessions(
+      createLangGraphCheckpointStorage(database(), {
+        sourceRecordId: nativeSourceId,
+      }),
+      nativeSourceId,
+    );
+    const session = await discovery.read();
+    const threadPrefix =
+      'encounter-review-session:' + encodeURIComponent(nativeSourceId) + ':';
+    expect(session?.threadId).toBe(pending.threadId);
+    expect(pending.threadId.startsWith(threadPrefix)).toBe(true);
+    expect(pending.threadId).toContain('%3A');
+
+    const executionId =
+      'encounter-extraction-' + pending.threadId.slice(threadPrefix.length);
+    expect(executionId).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
+    expect(executionId).not.toContain(nativeSourceId);
+    expect(executionId).not.toContain('%');
+    expect(authorized.authorize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationRunId: executionId,
+        allowedScope: {
+          sourceKinds: ['personal_record'],
+          sourceIds: [nativeSourceId],
+        },
+      }),
+    );
+
+    await controller.decide('approve');
+    const saved = await rows();
+    expect(controller.state.status).toBe('saved');
+    expect(saved).toHaveLength(2);
+    expect(
+      saved.every(record =>
+        record.provenance.sourceRecordIds.includes(nativeSourceId),
+      ),
+    ).toBe(true);
+    expect(synthetic.calls()).toBe(1);
+  },
+);
 
 test('denied transmission never calls the provider; exact single-source scope is disclosed', async () => {
   const { controller, synthetic } = controllerFor(true);
