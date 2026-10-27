@@ -33,6 +33,7 @@ final class FormScrollObservation {
         let capturedUptime: TimeInterval
         let point: [Double]
         let touchCount: Int
+        let multipleTouches: Bool
         let geometry: Geometry
     }
 
@@ -44,10 +45,15 @@ final class FormScrollObservation {
               before.uptime.isFinite, after.uptime.isFinite, before.uptime <= after.uptime,
               let start = before.start, let end = before.end, start == after.start, end == after.end
         else { return nil }
-        let candidates = Dictionary(grouping: touches.filter { $0.launch == before.launch }, by: \.touch).values.filter { pair in
+        let scoped = touches.filter { $0.launch == before.launch }
+        let inside = scoped.filter {
+            (before.uptime ... after.uptime).contains($0.touchUptime) || (before.uptime ... after.uptime).contains($0.capturedUptime)
+        }
+        guard Set(inside.map(\.touch)).count == 1, !inside.contains(where: { $0.touchCount != 1 || $0.multipleTouches }) else { return nil }
+        let candidates = Dictionary(grouping: scoped, by: \.touch).values.filter { pair in
             guard pair.count == 2, let first = pair.first(where: { $0.phase == "began" }),
                   let last = pair.first(where: { $0.phase == "ended" }), first.sequence < last.sequence,
-                  first.touchCount == 1, last.touchCount == 1,
+                  first.touchCount == 1, last.touchCount == 1, !first.multipleTouches, !last.multipleTouches,
                   !first.geometry.truncated, !last.geometry.truncated,
                   first.geometry.startMatches == 1, last.geometry.startMatches == 1
             else { return false }

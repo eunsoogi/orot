@@ -13,6 +13,7 @@
             let capturedUptime: TimeInterval
             let point: [Double]
             let touchCount: Int
+            let multipleTouches: Bool
             let geometry: HealthReviewFormSnapshot
             let keyboardInScreen: [Double]?
             let keyboardObservedUptime: TimeInterval?
@@ -20,7 +21,7 @@
 
         private let launch: UUID
         private let writer: Writer
-        private var active: [ObjectIdentifier: Int] = [:]
+        private var active: [ObjectIdentifier: (number: Int, multiple: Bool)] = [:]
         private var touchSequence = 0
         private var sequence = 0
         private var keyboard: [Double]?
@@ -60,6 +61,12 @@
         /// These are dispatch boundaries, not settled deceleration. Copy scalars now; never retain events, touches or views.
         private func capture(_ event: UIEvent, terminal: Bool) {
             guard event.type == .touches, let touches = event.allTouches else { return }
+            // Track overlap before phase/route filtering: a second finger outside the form can leave both endpoints single-touch.
+            if touches.count > 1 {
+                for identity in Array(active.keys) {
+                    active[identity]?.multiple = true
+                }
+            }
             for touch in touches {
                 let phase: Phase
                 if !terminal, touch.phase == .began {
@@ -78,18 +85,19 @@
                     if active.count >= 32 {
                         active.removeAll()
                     }
-                    active[identity] = touchSequence
+                    active[identity] = (touchSequence, touches.count > 1)
                 }
-                let number = active[identity]
+                let tracked = active[identity]
                 if terminal {
                     active.removeValue(forKey: identity)
                 }
-                guard let number, let geometry = HealthReviewFormSnapshot.capture(in: self, receiver: touch.view) else { continue }
+                guard let tracked, let geometry = HealthReviewFormSnapshot.capture(in: self, receiver: touch.view) else { continue }
                 sequence += 1
                 let screenPoint = convert(touch.location(in: self), to: screen.coordinateSpace)
-                writer.append(Record(launch: launch, sequence: sequence, touch: number, phase: phase,
+                writer.append(Record(launch: launch, sequence: sequence, touch: tracked.number, phase: phase,
                                      touchUptime: touch.timestamp, capturedUptime: ProcessInfo.processInfo.systemUptime,
-                                     point: HealthReviewFormSnapshot.point(screenPoint), touchCount: touches.count, geometry: geometry,
+                                     point: HealthReviewFormSnapshot.point(screenPoint), touchCount: touches.count,
+                                     multipleTouches: tracked.multiple, geometry: geometry,
                                      keyboardInScreen: keyboard, keyboardObservedUptime: keyboardUptime))
             }
         }

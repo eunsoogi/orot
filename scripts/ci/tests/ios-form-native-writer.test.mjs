@@ -16,6 +16,10 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
       'apps/mobile/ios/OrotMobile/HealthReviewObservationWindow.swift',
       'utf8',
     );
+    const overlap = window.slice(
+      window.indexOf('            if touches.count > 1'),
+      window.indexOf('            for touch in touches'),
+    );
     const scalars = snapshot.slice(
       snapshot.indexOf('    struct HealthReviewFormSnapshot'),
       snapshot.indexOf('        /// Traverse'),
@@ -50,6 +54,18 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
       `import Foundation
 @main struct Control {
   @MainActor static func main() {
+    var active: [ObjectIdentifier: (number: Int, multiple: Bool)] = [:]
+    let identity = ObjectIdentifier(NSObject.self)
+    active[identity] = (1, false)
+    func mark(_ count: Int) {
+      let touches = Array(repeating: 0, count: count)
+${overlap}
+    }
+    mark(1)
+    precondition(active[identity]?.multiple == false)
+    mark(2)
+    mark(1)
+    precondition(active[identity]?.multiple == true)
     let launch = UUID()
     let suite = "form-observer-" + UUID().uuidString
     let defaults = UserDefaults(suiteName: suite)!
@@ -64,7 +80,7 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
       receiver: .init(role: .textInput, frame: [5,6,7,8]), scrolls: [], truncated: false, startMatches: 1, focusMatches: 0)
     for sequence in 1...130 {
       writer.append(Window.Record(launch: launch, sequence: sequence, touch: sequence, phase: .began,
-        touchUptime: 1, capturedUptime: 2, point: [3,4], touchCount: 1, geometry: geometry,
+        touchUptime: 1, capturedUptime: 2, point: [3,4], touchCount: 1, multipleTouches: false, geometry: geometry,
         keyboardInScreen: nil, keyboardObservedUptime: nil))
     }
     writer.drain()
@@ -97,6 +113,7 @@ test('native scalar writer bounds storage and compiles its cross-actor record bo
       'capturedUptime',
       'geometry',
       'launch',
+      'multipleTouches',
       'phase',
       'point',
       'sequence',
