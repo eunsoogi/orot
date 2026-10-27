@@ -1,21 +1,26 @@
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
 
-/** Explains existing permission boundaries and sends permission changes to iOS Settings. */
+/** Measures privacy panels while keeping OS-owned permissions and consent scope explicit. */
 export function SettingsPrivacyRoute() {
   const navigationInset = useNavigationContentInset();
   const [settingsError, setSettingsError] = useState(false);
+  const [isClearingConsent, setIsClearingConsent] = useState(false);
+  const handleConsentClearingChange = useCallback((clearing: boolean) => {
+    setIsClearingConsent(clearing);
+  }, []);
   useNavigationLeaveStateRegistration({
-    canLeave: true,
+    canLeave: !isClearingConsent,
     hasUnsavedChanges: false,
     isRecording: false,
-    hasOngoingOperation: false,
+    hasOngoingOperation: isClearingConsent,
     revision: 0,
     inputRevision: 0,
   });
@@ -40,56 +45,81 @@ export function SettingsPrivacyRoute() {
         {t('settings.permissions')}
       </Text>
 
-      <View style={styles.section}>
-        <PermissionRow
-          summary={t('settings.permission.microphone')}
-          title={t('settings.permission.microphoneTitle')}
-        />
-        <PermissionRow
-          summary={t('settings.permission.speechRecognition')}
-          title={t('settings.permission.speechRecognitionTitle')}
-        />
-        <PermissionRow
-          detail={t('healthkit.commonObservations.localOnly')}
-          summary={t('settings.permission.healthData')}
-          title={t('settings.healthPrivacy')}
-        />
-        <PermissionRow
-          detail={t('calendar.permissionExplanation')}
-          summary={t('settings.permission.calendar')}
-          title={t('settings.calendarPrivacy')}
-        />
-      </View>
+      <AdaptiveColumns
+        primary={
+          <View style={styles.section} testID="settings-privacy-permissions">
+            <PermissionRow
+              summary={t('settings.permission.microphone')}
+              title={t('settings.permission.microphoneTitle')}
+            />
+            <PermissionRow
+              summary={t('settings.permission.speechRecognition')}
+              title={t('settings.permission.speechRecognitionTitle')}
+            />
+            <PermissionRow
+              detail={t('healthkit.commonObservations.localOnly')}
+              summary={t('settings.permission.healthData')}
+              title={t('settings.healthPrivacy')}
+            />
+            <PermissionRow
+              detail={t('calendar.permissionExplanation')}
+              summary={t('settings.permission.calendar')}
+              title={t('settings.calendarPrivacy')}
+            />
+          </View>
+        }
+        secondary={
+          <View
+            style={styles.secondaryColumn}
+            testID="settings-privacy-external-transfer"
+          >
+            <View style={styles.externalSection}>
+              <Text style={styles.sectionTitle}>
+                {t('settings.externalTransfer')}
+              </Text>
+              <Text style={styles.body}>
+                {t('settings.externalTransferSummary')}
+              </Text>
+              <Text style={styles.detail}>
+                {t('provider.selection.remotePrivacy')}
+              </Text>
+              <InferenceConsentSettings
+                onClearingChange={handleConsentClearingChange}
+              />
+            </View>
 
-      <View style={styles.externalSection}>
-        <Text style={styles.sectionTitle}>
-          {t('settings.externalTransfer')}
-        </Text>
-        <Text style={styles.body}>{t('settings.externalTransferSummary')}</Text>
-        <Text style={styles.detail}>
-          {t('provider.selection.remotePrivacy')}
-        </Text>
-        <InferenceConsentSettings />
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={openSystemSettings}
-        style={styles.settingsAction}
-        testID="privacy-open-system-settings"
-      >
-        <Text style={styles.settingsActionTitle}>
-          {t('settings.openSystemSettings')}
-        </Text>
-        <Text accessibilityElementsHidden style={styles.chevron}>
-          ›
-        </Text>
-      </Pressable>
-      {settingsError ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {t('settings.openSystemSettingsError')}
-        </Text>
-      ) : null}
+            <Pressable
+              accessibilityState={{ disabled: isClearingConsent }}
+              accessibilityRole="button"
+              disabled={isClearingConsent}
+              onPress={openSystemSettings}
+              style={[
+                styles.settingsAction,
+                isClearingConsent && styles.disabledAction,
+              ]}
+              testID="privacy-open-system-settings"
+            >
+              <Text style={styles.settingsActionTitle}>
+                {t('settings.openSystemSettings')}
+              </Text>
+              <Text accessibilityElementsHidden style={styles.chevron}>
+                ›
+              </Text>
+            </Pressable>
+            {settingsError ? (
+              <Text
+                accessibilityRole="alert"
+                style={styles.error}
+                testID="privacy-open-system-settings-error"
+              >
+                {t('settings.openSystemSettingsError')}
+              </Text>
+            ) : null}
+          </View>
+        }
+        routeKey="settings-privacy"
+        testID="settings-privacy-columns"
+      />
     </ScrollView>
   );
 }
@@ -145,6 +175,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 16,
   },
+  secondaryColumn: { gap: 12, minWidth: 0 },
   sectionTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
   settingsAction: {
     alignItems: 'center',
@@ -155,6 +186,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: 16,
   },
+  disabledAction: { opacity: 0.45 },
   settingsActionTitle: {
     color: appColors.primary,
     fontSize: 15,
