@@ -6,8 +6,8 @@ import React
 public final class OpenAIProviderModule: RCTEventEmitter {
     private let responseRequests = OpenAIProviderRequestRegistry()
     private let defaultClient = ChatGPTOAuthClient()
-    // Synthetic fixtures are compiled only for Debug Simulators, never production builds.
-    #if DEBUG && targetEnvironment(simulator)
+    // Device and ordinary Release builds exclude fixtures; OROT_TESTS opts in only on Simulators.
+    #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
         let fixtureLock = NSLock()
         var simulatorFixture: ChatGPTPlanSimulatorFixture?
     #endif
@@ -123,7 +123,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
     }
 
     var activeClient: ChatGPTOAuthClient {
-        #if DEBUG && targetEnvironment(simulator)
+        #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
             fixtureLock.lock()
             let fixtureClient = simulatorFixture?.client
             fixtureLock.unlock()
@@ -134,7 +134,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         return defaultClient
     }
 
-    #if DEBUG && targetEnvironment(simulator)
+    #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
         var activeSimulatorFixtureClient: ChatGPTOAuthClient? {
             fixtureLock.lock()
             defer { fixtureLock.unlock() }

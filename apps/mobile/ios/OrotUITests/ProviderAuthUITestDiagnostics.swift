@@ -8,7 +8,40 @@ enum ProviderAuthUITestDiagnostics {
         case secondNativeReturn = "second-native-return"
     }
 
-    static func continueLocalConsent(_ app: XCUIApplication, stage: Stage, testCase: XCTestCase) throws {
+    /// Keeps the existing synthetic callback on screen while the app window reports a measured Duo reflow.
+    static func continueLocalConsentDuringDuoReflow(_ app: XCUIApplication, testCase: XCTestCase) throws {
+        let originalOrientation = XCUIDevice.shared.orientation
+        let originalFrame = app.frame
+        let shouldBeLandscape = originalFrame.width <= originalFrame.height
+        let callbackResult = app.staticTexts["로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요."]
+        try continueLocalConsent(app, stage: .secondNativeReturn, testCase: testCase) {
+            defer { XCUIDevice.shared.orientation = originalOrientation }
+            XCUIDevice.shared.orientation = shouldBeLandscape ? .landscapeLeft : .portrait
+            // The callback and width change may finish in either order; both must be visible before this path continues.
+            let returnedDuringReflow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                let frame = app.frame
+                return abs(frame.width - originalFrame.width) > 0.5
+                    && (frame.width > frame.height) == shouldBeLandscape
+                    && callbackResult.exists
+            }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [returnedDuringReflow]), .completed, app.debugDescription)
+
+            XCUIDevice.shared.orientation = originalOrientation
+            let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                let frame = app.frame
+                return abs(frame.width - originalFrame.width) <= 0.5
+                    && abs(frame.height - originalFrame.height) <= 0.5
+            }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [restored]), .completed, app.debugDescription)
+        }
+    }
+
+    static func continueLocalConsent(
+        _ app: XCUIApplication,
+        stage: Stage,
+        testCase: XCTestCase,
+        afterConsentTap: () throws -> Void = {},
+    ) throws {
         let stage = stage.rawValue
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let presented = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -35,6 +68,7 @@ enum ProviderAuthUITestDiagnostics {
         let consent = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Continue", "계속"])).firstMatch
         XCTAssertTrue(consent.exists && consent.isHittable, "Consent must offer a hittable Continue button")
         consent.tap()
+        try afterConsentTap()
     }
 
     /// Observe known process states and allowlisted alert facts, never screenshots, URLs or a web accessibility tree.

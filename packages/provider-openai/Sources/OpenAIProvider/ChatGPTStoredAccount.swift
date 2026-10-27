@@ -70,7 +70,8 @@ public enum ChatGPTSignOutResult: Equatable, Sendable {
     case localCredentialsCleared
 }
 
-#if DEBUG
+// Keep synthetic credentials available to Debug package tests and Simulator test products only.
+#if DEBUG || (OROT_TESTS && targetEnvironment(simulator))
     public extension ChatGPTStoredAccount {
         static func syntheticKeychainFixture() -> ChatGPTStoredAccount {
             ChatGPTStoredAccount(
