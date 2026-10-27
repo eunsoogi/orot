@@ -1,7 +1,27 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
 import { Button } from 'react-native';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useInferenceConsent } from '../useInferenceConsent';
+
+/** Keeps the sheet's nested Modal safe-area provider mounted in Jest's native-view stub. */
+function withRootSafeArea(children: ReactNode) {
+  return (
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 430, height: 800 },
+        insets: { top: 0, right: 0, bottom: 24, left: 0 },
+      }}
+    >
+      {children}
+    </SafeAreaProvider>
+  );
+}
+
+function renderWithSafeArea(children: ReactNode) {
+  return render(withRootSafeArea(children));
+}
 
 function request(
   text: string,
@@ -60,7 +80,7 @@ function ConsentHarness({
 describe('useInferenceConsent', () => {
   it('denies a pull-down dismissal and asks again rather than remembering approval', async () => {
     const onResult = jest.fn();
-    const view = await render(
+    const view = await renderWithSafeArea(
       <ConsentHarness
         outboundRequest={request('Synthetic dismissed transfer.')}
         onResult={onResult}
@@ -83,7 +103,7 @@ describe('useInferenceConsent', () => {
   it('requires a fresh approval when the request payload changes', async () => {
     const original = request('Synthetic selected note A.');
     const onResult = jest.fn();
-    const view = await render(
+    const view = await renderWithSafeArea(
       <ConsentHarness outboundRequest={original} onResult={onResult} />,
     );
 
@@ -96,10 +116,12 @@ describe('useInferenceConsent', () => {
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('authorized'));
 
     await view.rerender(
-      <ConsentHarness
-        outboundRequest={request('Synthetic selected note B.')}
-        onResult={onResult}
-      />,
+      withRootSafeArea(
+        <ConsentHarness
+          outboundRequest={request('Synthetic selected note B.')}
+          onResult={onResult}
+        />,
+      ),
     );
     await fireEvent.press(view.getByTestId('authorize-request'));
     await fireEvent.press(
@@ -115,7 +137,7 @@ describe('useInferenceConsent', () => {
 
   it('denies an explicit user cancellation', async () => {
     const onResult = jest.fn();
-    const view = await render(
+    const view = await renderWithSafeArea(
       <ConsentHarness
         outboundRequest={request('Synthetic cancellation request.')}
         onResult={onResult}
@@ -136,7 +158,7 @@ describe('useInferenceConsent', () => {
   it('denies an open request on abort and when its screen unmounts', async () => {
     const controller = new AbortController();
     const onResult = jest.fn();
-    const view = await render(
+    const view = await renderWithSafeArea(
       <ConsentHarness
         outboundRequest={request('Synthetic request.', controller.signal)}
         onResult={onResult}
@@ -155,13 +177,15 @@ describe('useInferenceConsent', () => {
     const unmountController = new AbortController();
     const onUnmountResult = jest.fn();
     await view.rerender(
-      <ConsentHarness
-        outboundRequest={request(
-          'Synthetic second request.',
-          unmountController.signal,
-        )}
-        onResult={onUnmountResult}
-      />,
+      withRootSafeArea(
+        <ConsentHarness
+          outboundRequest={request(
+            'Synthetic second request.',
+            unmountController.signal,
+          )}
+          onResult={onUnmountResult}
+        />,
+      ),
     );
     await fireEvent.press(view.getByTestId('authorize-request'));
     await fireEvent.press(

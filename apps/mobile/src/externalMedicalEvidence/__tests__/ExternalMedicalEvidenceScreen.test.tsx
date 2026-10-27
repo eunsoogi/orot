@@ -1,10 +1,6 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react-native';
+import { fireEvent, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { renderWithRootSafeArea } from '../../../test-support/safeAreaTestProviders';
 import { appColors } from '../../layout/appColors';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
 import { getExternalMedicalEvidenceCopy } from '../copy';
@@ -39,7 +35,7 @@ test('declining the shared query permission does not call the literature service
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({ status: 'empty' as const })),
   };
-  await render(
+  await renderWithRootSafeArea(
     <ExternalMedicalEvidenceScreen
       onBack={jest.fn()}
       service={service}
@@ -75,7 +71,7 @@ test('requires query consent and presents provenance and dates', async () => {
     })),
   };
   const onOpenArticle = jest.fn();
-  await render(
+  await renderWithRootSafeArea(
     <ExternalMedicalEvidenceScreen
       onBack={jest.fn()}
       service={service}
@@ -166,7 +162,7 @@ test('shows a localized fallback when publication authors are absent', async () 
       publications: [{ ...publication, authors: null }],
     })),
   };
-  await render(
+  await renderWithRootSafeArea(
     <ExternalMedicalEvidenceScreen
       onBack={jest.fn()}
       service={service}
@@ -196,7 +192,7 @@ test('shows loading and empty-result states', async () => {
         }),
     ),
   };
-  await render(
+  await renderWithRootSafeArea(
     <ExternalMedicalEvidenceScreen
       onBack={jest.fn()}
       service={service}
@@ -223,7 +219,7 @@ test('shows an error when the provider is unavailable', async () => {
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({ status: 'unavailable' as const })),
   };
-  await render(
+  await renderWithRootSafeArea(
     <ExternalMedicalEvidenceScreen
       onBack={jest.fn()}
       service={service}

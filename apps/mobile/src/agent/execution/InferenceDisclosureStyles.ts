@@ -1,6 +1,14 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 
+/** Tightens page-sheet spacing from its measured window, including keyboard-shortened height. */
+export function isCompactDisclosureWindow(
+  width: number,
+  height: number,
+): boolean {
+  return width < 380 || height < 560;
+}
+
 /** The selected permission mock uses quiet grouped cards and a fixed, reachable action footer. */
 export const disclosureStyles = StyleSheet.create({
   backdrop: {
@@ -23,12 +31,18 @@ export const disclosureStyles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: appColors.secondary,
   },
+  compactGrabber: { marginTop: 6, marginBottom: 8 },
   content: {
     paddingHorizontal: 20,
     paddingBottom: 20,
     gap: 14,
   },
+  compactContent: { paddingHorizontal: 14, paddingBottom: 16, gap: 12 },
   header: { gap: 12 },
+  compactHeader: { gap: 8 },
+  // Give the shared sticky summary an opaque backing while details pass beneath it.
+  summary: { gap: 14, backgroundColor: appColors.background },
+  compactSummary: { gap: 12 },
   icon: {
     width: 48,
     height: 48,
@@ -47,6 +61,7 @@ export const disclosureStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: appColors.border,
   },
+  compactCard: { padding: 14 },
   row: { gap: 4 },
   label: { color: appColors.secondary, fontSize: 13, lineHeight: 18 },
   value: { fontSize: 16, lineHeight: 24, fontWeight: '600' },
@@ -71,6 +86,7 @@ export const disclosureStyles = StyleSheet.create({
   noticeTitle: { fontSize: 15, lineHeight: 23, fontWeight: '600' },
   noticeBody: { color: appColors.secondary, fontSize: 14, lineHeight: 22 },
   footer: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
+  compactFooter: { paddingHorizontal: 14, paddingTop: 8, gap: 8 },
   footerNote: {
     color: appColors.secondary,
     fontSize: 12,
