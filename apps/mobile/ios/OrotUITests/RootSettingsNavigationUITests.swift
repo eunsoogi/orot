@@ -224,9 +224,7 @@ extension RootNavigationUITests {
         }
         XCTAssertTrue(UITestConditions.element(app, "settings-app-info").exists)
     }
-
 }
-
 
 extension RootNavigationUITests {
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
