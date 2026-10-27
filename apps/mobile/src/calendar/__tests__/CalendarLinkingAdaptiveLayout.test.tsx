@@ -28,7 +28,7 @@ function viewport(width: number, fontScale = 1) {
 
 function layoutAxis() {
   return StyleSheet.flatten(
-    screen.getByTestId('calendar-adaptive-columns').props.style,
+    screen.getByTestId('schedule-adaptive-columns').props.style,
   )?.flexDirection;
 }
 
@@ -65,20 +65,22 @@ test('keeps explicit event confirmation through measured narrow large-text reflo
     })),
   });
   const appointments = repository(async () => []);
-  measuredBounds.set('calendar-adaptive-columns-host', {
+  measuredBounds.set('schedule-adaptive-columns-host', {
     x: 24,
     width: 1500,
   });
 
+  // ScheduleRoute opts into this layout; measure its parent host instead of using window width.
   await render(
     <CalendarLinkingScreen
+      adaptiveScheduleLayout
       repository={appointments}
       bridge={calendarBridge}
       calendarSync={syncedCalendar([selected])}
     />,
   );
   await fireEvent(
-    screen.getByTestId('calendar-adaptive-columns-host'),
+    screen.getByTestId('schedule-adaptive-columns-host'),
     'layout',
     { nativeEvent: { layout: { x: 24, y: 0, width: 1500, height: 800 } } },
   );
@@ -93,14 +95,14 @@ test('keeps explicit event confirmation through measured narrow large-text reflo
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
 
   await act(async () => {
-    measuredBounds.set('calendar-adaptive-columns-host', {
+    measuredBounds.set('schedule-adaptive-columns-host', {
       x: 24,
       width: 552,
     });
     Dimensions.set({ window: viewport(600, 2), screen: viewport(600, 2) });
   });
   await fireEvent(
-    screen.getByTestId('calendar-adaptive-columns-host'),
+    screen.getByTestId('schedule-adaptive-columns-host'),
     'layout',
     { nativeEvent: { layout: { x: 24, y: 0, width: 552, height: 800 } } },
   );
