@@ -91,10 +91,10 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(node(app, "appointment-add").waitForAppearance())
         tap(app, "appointment-add")
         guard
-            replace(app, "appointment-clinic-input", with: "Synthetic Duo clinic"),
-            replace(app, "appointment-date-input", with: "2035-06-02"),
-            replace(app, "appointment-time-input", with: "09:30"),
-            replace(app, "appointment-note-input", with: "Bring the test results.")
+            FormUITestConditions.replace(node(app, "appointment-clinic-input"), with: "Synthetic Duo clinic", in: app, scrollID: "appointments-scroll"),
+            FormUITestConditions.replace(node(app, "appointment-date-input"), with: "2035-06-02", in: app, scrollID: "appointments-scroll"),
+            FormUITestConditions.replace(node(app, "appointment-time-input"), with: "09:30", in: app, scrollID: "appointments-scroll"),
+            FormUITestConditions.replace(node(app, "appointment-note-input"), with: "Bring the test results.", in: app, scrollID: "appointments-scroll")
         else { return }
 
         let panel = node(app, "appointments-columns-primary")
