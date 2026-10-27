@@ -12,16 +12,20 @@ interface MedicalDocumentReviewProps {
   readonly onCancel: () => void;
 }
 
-/** Shows extracted text before the user adds its unconfirmed evidence to local records. */
+interface MedicalDocumentReviewPreviewProps {
+  readonly document: StagedMedicalDocument;
+}
+
+/** Keeps review status and its original actions attached to the staged request. */
 export function MedicalDocumentReview({
+  message,
   document,
   busy,
-  message,
   onSave,
   onCancel,
 }: MedicalDocumentReviewProps) {
   return (
-    <View style={styles.container}>
+    <View style={styles.detailsPanel} testID="medical-document-review-details">
       <Text
         accessibilityRole="header"
         style={styles.title}
@@ -48,6 +52,43 @@ export function MedicalDocumentReview({
         </Text>
       ) : null}
 
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onSave}
+        style={[styles.saveButton, busy && styles.disabled]}
+        testID="medical-document-save"
+      >
+        <Text style={styles.saveText}>
+          {busy
+            ? t('medicalDocument.review.saving')
+            : t('medicalDocument.review.save')}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onCancel}
+        style={[styles.cancelButton, busy && styles.disabled]}
+        testID="medical-document-cancel"
+      >
+        <Text style={styles.cancelText}>
+          {t('medicalDocument.review.cancel')}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Keeps extracted source pages in a separate scrollable adaptive panel. */
+export function MedicalDocumentReviewPreview({
+  document,
+}: MedicalDocumentReviewPreviewProps) {
+  return (
+    <View
+      style={styles.previewPanel}
+      testID="medical-document-review-preview-panel"
+    >
       <ScrollView
         accessibilityLabel={t('medicalDocument.review.content')}
         style={styles.preview}
@@ -78,38 +119,24 @@ export function MedicalDocumentReview({
           </View>
         ))}
       </ScrollView>
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        onPress={onSave}
-        style={[styles.saveButton, busy && styles.disabled]}
-        testID="medical-document-save"
-      >
-        <Text style={styles.saveText}>
-          {busy
-            ? t('medicalDocument.review.saving')
-            : t('medicalDocument.review.save')}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        onPress={onCancel}
-        style={[styles.cancelButton, busy && styles.disabled]}
-        testID="medical-document-cancel"
-      >
-        <Text style={styles.cancelText}>
-          {t('medicalDocument.review.cancel')}
-        </Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  detailsPanel: {
+    flexGrow: 1,
+    minWidth: 0,
+    backgroundColor: appColors.background,
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+  previewPanel: {
     flex: 1,
+    minWidth: 0,
+    minHeight: 0,
     backgroundColor: appColors.background,
     gap: 14,
     paddingHorizontal: 20,
@@ -122,6 +149,7 @@ const styles = StyleSheet.create({
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   preview: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,
