@@ -10,4 +10,5 @@ export const duoTests = [
   'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+  'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText',
 ];

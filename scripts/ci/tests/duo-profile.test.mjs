@@ -89,7 +89,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 10);
+  assert.equal(duoInventory.length, 11);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -101,8 +101,9 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     duoKeyboardSave,
     fourSidedOcclusion,
     recordingShareDismissal,
+    'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText',
   ]);
-  // Keep the iPhone cohorts intact while scheduling the same native regressions on the separate Duo destination.
+  // Keep iPhone fixture membership unchanged; the Records layout case runs only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(iPhoneFixtures.includes(scheduleReflow));
   assert.ok(iPhoneFixtures.includes(scheduleLargeText));

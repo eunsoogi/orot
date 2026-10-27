@@ -29,6 +29,9 @@ function RecordsAndManualHistoryRoutes() {
   }
   return (
     <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={() => undefined}
       onOpenSymptoms={() => undefined}
       onOpenSavedRecordings={() => undefined}
       onOpenRecording={() => undefined}
