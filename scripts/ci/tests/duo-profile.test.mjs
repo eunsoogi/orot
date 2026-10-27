@@ -105,12 +105,16 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation';
   const scheduleLargeText =
     'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
+  const appointmentsReflow =
+    'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
+  const appointmentsLargeText =
+    'OrotUITests/AppointmentsUITests/testLargeTextKeepsAppointmentDetailsInOneReadableColumn';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   // Keep the integrated Duo-only coverage count explicit so missing registrations cannot shrink silently.
-  assert.equal(duoInventory.length, 20);
+  assert.equal(duoInventory.length, 22);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -120,6 +124,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     scheduleReflow,
     scheduleLargeText,
+    appointmentsReflow,
+    appointmentsLargeText,
     contextualDeparture,
     manualHistoryRecovery,
     duoKeyboardSave,

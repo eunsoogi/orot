@@ -16,7 +16,9 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
 ) => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // The nested health-record panels need the full lane to resolve native regions.
-  return route.name === 'health-records' ||
+  // The appointment screen also measures its list and selected-details panels locally.
+  return route.name === 'appointments' ||
+    route.name === 'health-records' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
