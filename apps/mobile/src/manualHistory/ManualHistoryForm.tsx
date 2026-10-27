@@ -1,12 +1,25 @@
-import { useEffect, useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Button,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 import { t } from '../i18n';
+import { ManualHistoryDateControls } from './ManualHistoryDateControls';
 import type {
   ManualHistoryScreenDraft,
   ManualHistoryScreenRecord,
 } from './types';
 import { MANUAL_HISTORY_KINDS } from './types';
 import type { ManualHistoryScreenFormDraft } from './types';
+import {
+  MANUAL_HISTORY_FORM_MAX_WIDTH,
+  manualHistorySupportsInlineDateControls,
+} from './ManualHistoryFormLayout';
 
 interface ManualHistoryFormProps {
   initialValue?: ManualHistoryScreenFormDraft;
@@ -49,6 +62,20 @@ export default function ManualHistoryForm({
     initialValue?.correctionNote ?? '',
   );
   const [validationError, setValidationError] = useState('');
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const inlineDateControls = manualHistorySupportsInlineDateControls(
+    availableWidth,
+    fontScale,
+  );
+
+  const measureAvailableWidth = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width;
+    // Ignore sub-point layout noise so controls reflow only when the lane changes materially.
+    setAvailableWidth(previous =>
+      Math.abs(previous - nextWidth) < 0.5 ? previous : nextWidth,
+    );
+  }, []);
 
   useEffect(() => {
     onDraftChange({
@@ -94,7 +121,11 @@ export default function ManualHistoryForm({
   }
 
   return (
-    <View style={styles.form}>
+    <View
+      onLayout={measureAvailableWidth}
+      style={styles.form}
+      testID="manual-history-form"
+    >
       <Text accessibilityRole="header" style={styles.sectionTitle}>
         {isCorrection
           ? t('manualHistory.form.correctTitle')
@@ -134,35 +165,18 @@ export default function ManualHistoryForm({
         testID="manual-history-details-input"
         value={details}
       />
-      <Text style={styles.fieldLabel}>{t('manualHistory.form.dateLabel')}</Text>
-      {!dateUnknown ? (
-        <TextInput
-          accessibilityLabel={t('manualHistory.form.dateLabel')}
-          onChangeText={value => {
-            setEffectiveDate(value);
-            setDateUnknown(false);
-          }}
-          placeholder={t('manualHistory.form.datePlaceholder')}
-          style={styles.input}
-          testID="manual-history-effective-date-input"
-          value={effectiveDate}
-        />
-      ) : (
-        <Text testID="manual-history-date-unknown-selected">
-          {t('manualHistory.form.dateUnknownSelected')}
-        </Text>
-      )}
-      <Button
-        onPress={() => {
+      <ManualHistoryDateControls
+        dateUnknown={dateUnknown}
+        effectiveDate={effectiveDate}
+        inline={inlineDateControls}
+        onEffectiveDateChange={value => {
+          setEffectiveDate(value);
+          setDateUnknown(false);
+        }}
+        onToggleDateKnowledge={() => {
           setDateUnknown(!dateUnknown);
           if (!dateUnknown) setEffectiveDate('');
         }}
-        testID="manual-history-date-unknown"
-        title={
-          dateUnknown
-            ? t('manualHistory.form.enterKnownDate')
-            : t('manualHistory.form.markDateUnknown')
-        }
       />
       {isCorrection ? (
         <TextInput
@@ -205,7 +219,15 @@ export default function ManualHistoryForm({
 }
 
 const styles = StyleSheet.create({
-  form: { backgroundColor: 'white', borderRadius: 10, gap: 10, padding: 14 },
+  form: {
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    gap: 10,
+    maxWidth: MANUAL_HISTORY_FORM_MAX_WIDTH,
+    padding: 14,
+    width: '100%',
+  },
   sectionTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
   fieldLabel: { color: '#17212b', fontWeight: '600' },
   input: {

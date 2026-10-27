@@ -21,6 +21,28 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         try openManualHistory(app)
         tap(app, "manual-history-add")
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
+
+        // Reflow the real form while its title remains first responder and the keyboard is visible.
+        let form = UITestConditions.element(app, "manual-history-form")
+        let title = UITestConditions.element(app, "manual-history-title-input")
+        XCTAssertTrue(UITestConditions.exists(form), app.debugDescription)
+        XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
+        let portraitSize = app.frame.size
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForOrientation(app, landscape: true, changedFrom: portraitSize)
+        XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
+        XCTAssertTrue(title.isHittable, app.debugDescription)
+        XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
+
+        let landscapeSize = app.frame.size
+        XCUIDevice.shared.orientation = .portrait
+        waitForOrientation(app, landscape: false, changedFrom: landscapeSize)
+        XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
+        XCTAssertTrue(title.isHittable, app.debugDescription)
+
+        tap(app, "manual-history-form-close")
+        tap(app, "manual-history-add")
+        XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
         guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
         tap(app, "manual-history-date-unknown")
         tap(app, "manual-history-save")
