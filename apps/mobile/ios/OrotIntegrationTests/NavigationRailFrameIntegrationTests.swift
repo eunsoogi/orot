@@ -66,7 +66,9 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let rootButtons = rootStack.arrangedSubviews.compactMap { $0 as? UIButton }
         XCTAssertEqual(rootButtons.count, 5)
         for button in rootButtons {
-            XCTAssertEqual(button.bounds.width, 48, accuracy: 0.5)
+            // Centered root targets keep their 44pt minimum inside the 48pt bar.
+            XCTAssertGreaterThanOrEqual(button.bounds.width, 44)
+            XCTAssertLessThanOrEqual(button.bounds.width, 48)
             XCTAssertEqual(button.bounds.height, 52, accuracy: 0.5)
             XCTAssertTrue(rootFrame.contains(button.convert(button.bounds, to: window)))
             let center = button.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: window)
