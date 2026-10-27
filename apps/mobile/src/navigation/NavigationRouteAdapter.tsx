@@ -23,6 +23,7 @@ import {
   NavigationMotionContext,
   useNavigationReduceMotion,
 } from './NavigationMotionContext';
+import type { NavigationRouteLayoutPolicy } from './appContentLayoutPolicy';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -56,6 +57,7 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly primaryAction?: NavigationPrimaryAction;
   readonly contentSafeAreaHandledByChild?:
     boolean | ((route: NavigationRoute<Name>) => boolean);
+  readonly contentLayoutOwner?: NavigationRouteLayoutPolicy<Name>;
   readonly surface?: NavigationSurface;
   readonly rootTabs?:
     | NavigationRootTabs
@@ -73,6 +75,7 @@ export function NavigationRouteAdapter<Name extends string>({
   homeAction,
   primaryAction,
   contentSafeAreaHandledByChild = false,
+  contentLayoutOwner = 'scene',
   surface,
   rootTabs,
   onNativeRouteRemovalComplete,
@@ -164,6 +167,11 @@ export function NavigationRouteAdapter<Name extends string>({
           : contentSafeAreaHandledByChild;
       const routeRootTabs =
         typeof rootTabs === 'function' ? rootTabs(route) : rootTabs;
+      // Route ownership controls horizontal panels separately from safe-area handling.
+      const layoutOwner =
+        typeof contentLayoutOwner === 'function'
+          ? contentLayoutOwner(route, routeRootTabs)
+          : contentLayoutOwner;
 
       return (
         <NavigationRouteScene
@@ -177,6 +185,7 @@ export function NavigationRouteAdapter<Name extends string>({
           rootTabs={routeRootTabs}
           route={route}
           scrollable={routeIsScrollable}
+          contentLayoutOwner={layoutOwner}
         >
           {children}
         </NavigationRouteScene>
@@ -185,6 +194,7 @@ export function NavigationRouteAdapter<Name extends string>({
     [
       children,
       contentSafeAreaHandledByChild,
+      contentLayoutOwner,
       controller,
       getLeaveStateSource,
       primary.host,

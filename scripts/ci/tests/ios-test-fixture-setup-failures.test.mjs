@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fixture } from './fixtures/ios-test-fixture-driver.mjs';
 
-// An uncertain setup must be reported without retrying its mutation as app cleanup.
+// A setup failure retains the remaining inventory without replaying its mutation as cleanup.
 test('every failed setup stage records the case and remaining inventory without entering a case body or replaying cleanup', () => {
   for (const [scoped, setupFailure] of [
     [false, 'get_app_container'],
@@ -28,7 +28,7 @@ test('every failed setup stage records the case and remaining inventory without 
         new RegExp('original-' + setupFailure + '-setup-failure'),
       );
       assert.deepEqual(report.observations, []);
-      assert.deepEqual(report.notRun, [value.identifiers[1]]);
+      assert.deepEqual(report.notRun, value.identifiers.slice(1));
       assert.equal(
         value.calls.filter(
           (call) =>
@@ -63,7 +63,7 @@ test('a later setup failure retains earlier passed observations and never replay
     assert.equal(report.failures.length, 1);
     assert.equal(report.failures[0].identifier, value.identifiers[1]);
     assert.equal(report.failures[0].stage, 'setup');
-    assert.deepEqual(report.notRun, []);
+    assert.deepEqual(report.notRun, value.identifiers.slice(2));
     assert.equal(value.calls.filter((call) => call.name === 'xcodebuild').length, 1);
     assert.equal(value.calls.filter((call) => call.args[1] === 'privacy').length, 2);
     assert.equal(value.calls.filter((call) => call.args[1] === 'launch').length, 1);

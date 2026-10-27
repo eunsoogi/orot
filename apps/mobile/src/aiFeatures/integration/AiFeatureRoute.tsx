@@ -3,6 +3,7 @@ import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { NavigationLeaveStateSource } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
+import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { openEuropePmcArticle } from './articleLinks';
 import { AiFeatureSharedNavigationStateProvider } from './AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from './featureServices';
@@ -96,6 +97,7 @@ export function AiFeatureRoute({
       <>
         <NavigationRouteAdapter
           controller={controller}
+          contentLayoutOwner={appContentLayoutOwner}
           leaveState={rootLeaveState}
           onNativeRouteRemovalComplete={completeNativeExit}
           showHome

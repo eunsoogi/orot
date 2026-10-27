@@ -115,6 +115,7 @@ const cohorts = {
       'AppointmentReminderJourneyUITests',
       'SymptomJournalUITests',
       'CalendarSelectionUITests',
+      'ScheduleCalendarUITests',
       'HealthImportUITests',
       'StorageMigrationUITests',
       'ManualHistoryUITests',

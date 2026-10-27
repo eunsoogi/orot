@@ -48,7 +48,9 @@ for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-sele
       profile === 'fixtures'
         ? iosTestInventory(profile, 'calendar').filter(
             (id) =>
-              id.includes('/StorageMigrationUITests/') || id.includes('/CalendarSelectionUITests/'),
+              id.includes('/StorageMigrationUITests/') ||
+              id.includes('/CalendarSelectionUITests/') ||
+              id.includes('/ScheduleCalendarUITests/'),
           )
         : iosTestInventory(profile).slice(0, profile === 'backup' ? 3 : undefined);
     // All three picker journeys overlap with `fixtures`; the complete selection must keep its requested profile.

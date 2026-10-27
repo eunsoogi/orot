@@ -46,6 +46,7 @@ export function ScheduleRoute({
       <CalendarLinkingScreen
         bridge={bridge}
         calendarSync={calendarSync}
+        adaptiveScheduleLayout
         heading={t('schedule.title')}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}

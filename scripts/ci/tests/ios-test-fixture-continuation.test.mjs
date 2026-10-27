@@ -24,6 +24,7 @@ test('a failed first fixture preserves its result and cleanup without installing
 });
 
 test('cleanup failure preserves the original case failure and withholds all later cases', () => {
+  // A failed scoped case must withhold every later selected calendar case.
   for (const scoped of [false, true]) {
     const value = fixture({ cleanupFailure: true, scoped });
     try {
@@ -35,7 +36,7 @@ test('cleanup failure preserves the original case failure and withholds all late
       assert.equal(report.failures[0].identifier, value.identifiers[0]);
       assert.match(report.failures[0].error, /Original XCTest case failed/);
       assert.equal(report.failures[1].stage, 'cleanup');
-      assert.deepEqual(report.notRun, [value.identifiers[1]]);
+      assert.deepEqual(report.notRun, value.identifiers.slice(1));
     } finally {
       value.dispose();
     }
@@ -85,13 +86,14 @@ test('scoped cases reuse one installation, reset the exact bundle before each ca
       assert.equal(value.calls.filter((call) => call.args[1] === 'install').length, 1);
       assert.ok(!value.calls.some((call) => ['uninstall', 'keychain'].includes(call.args[1])));
       const privacy = value.calls.filter((call) => call.args[1] === 'privacy');
-      assert.equal(privacy.length, failFirst ? 2 : 3);
+      // Successful scoped runs reset once per case and once after the group.
+      assert.equal(privacy.length, failFirst ? 2 : value.identifiers.length + 1);
       assert.ok(
         privacy.every((call) => call.args.slice(3).join(' ') === 'reset all com.orot.mobile'),
       );
       assert.equal(value.calls.filter((call) => call.name === 'xcodebuild').length, 1);
       assert.equal(value.report().passed, !failFirst);
-      assert.equal(value.report().notRun.length, failFirst ? 1 : 0);
+      assert.deepEqual(value.report().notRun, failFirst ? value.identifiers.slice(1) : []);
     } finally {
       value.dispose();
     }
