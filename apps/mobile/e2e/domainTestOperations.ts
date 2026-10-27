@@ -28,6 +28,14 @@ export async function runDomainTestOperation(
     return runStorePersistenceOperation(operation, memoryIdentifier);
   }
   switch (operation) {
+    case 'health-review-persistence': {
+      const { runHealthReviewPersistenceOperation } =
+        await import('./healthReviewPersistenceOperation');
+      return runHealthReviewPersistenceOperation(
+        parameters.mode,
+        parameters.fixtureIdentifier,
+      );
+    }
     case 'encounter-persistence': {
       const { runEncounterPersistenceOperation } =
         await import('./encounterPersistenceOperation');
