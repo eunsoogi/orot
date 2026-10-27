@@ -155,6 +155,7 @@
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
+		BCAE2214CE9B75820591561B /* SettingsBackupDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
@@ -332,6 +333,7 @@
 		A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VisitQuestionConsentUITests.swift; sourceTree = "<group>"; };
 		A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportUITests.swift; sourceTree = "<group>"; };
 		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
+		7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsBackupDuoUITests.swift; sourceTree = "<group>"; };
 		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
 		AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitAuthorizationPlan.swift; path = OrotMobile/HealthKitAuthorizationPlan.swift; sourceTree = "<group>"; };
 		AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticSpeechPersistenceTests.swift; sourceTree = "<group>"; };
@@ -791,6 +793,7 @@
 				D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */,
 				9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */,
 				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
+				7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
 				E19800000000000000000003 /* ExportDismissalGeometry.swift */,
 				E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */,
@@ -1238,6 +1241,7 @@
 				A27415DB31F6D1B47C931A01 /* RecordsHubUITests.swift in Sources */,
 				B27800000000000000000001 /* RecordingDuoUITests.swift in Sources */,
 				A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */,
+				BCAE2214CE9B75820591561B /* SettingsBackupDuoUITests.swift in Sources */,
 				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
 				E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */,
 				E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */,

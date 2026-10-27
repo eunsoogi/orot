@@ -19,6 +19,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   return route.name === 'health-records' ||
     // The saved library owns a measured list and summary that must share native usable geometry.
     route.name === 'saved-recordings' ||
+    // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
+    route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
