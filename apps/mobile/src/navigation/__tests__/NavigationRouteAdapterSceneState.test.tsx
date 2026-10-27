@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
+import { appContentLayoutOwner } from '../appContentLayoutPolicy';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
 import type {
@@ -55,7 +56,7 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-type TestRoute = 'home' | 'editor';
+type TestRoute = 'home' | 'editor' | 'visit-questions';
 
 function RegisterLeaveState({
   register,
@@ -119,19 +120,20 @@ test('preserves the previous route scene state while opening and leaving a child
       )}
     </NavigationRouteAdapter>,
   );
+  const windowWidth = Dimensions.get('window').width;
   expect(
-    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)
-      ?.flexDirection,
-  ).toBe('column');
+    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)?.width,
+  ).toBe(windowWidth);
   await fireEvent.press(screen.getByTestId('home-draft'));
-  setWindowBounds('home-columns-host', 0, 1400);
+  setWindowBounds('home-columns-host', 0, windowWidth);
   await fireEvent(screen.getByTestId('home-columns-host'), 'layout', {
-    nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
+    nativeEvent: {
+      layout: { width: windowWidth, height: 600, x: 0, y: 0 },
+    },
   });
   expect(
-    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)
-      ?.flexDirection,
-  ).toBe('row');
+    StyleSheet.flatten(screen.getByTestId('home-columns').props.style)?.width,
+  ).toBe(windowWidth);
   expect(controller.getSnapshot().currentRoute.key).toBe(rootRouteKey);
   expect(onStartRequest).toHaveBeenCalledTimes(1);
   await act(async () => {
@@ -147,4 +149,40 @@ test('preserves the previous route scene state while opening and leaving a child
   expect(
     screen.getByTestId('home-draft', { includeHiddenElements: true }),
   ).toHaveTextContent('preserved');
+});
+
+test('only Schedule and Visit Questions bypass scene-owned columns', async () => {
+  const controller = createNavigationController<TestRoute>('home');
+  const rootTabs = { activeTab: 'schedule' as const, onSelect: jest.fn() };
+  const homeKey = controller.getSnapshot().currentRoute.key;
+
+  await render(
+    <NavigationRouteAdapter
+      contentLayoutOwner={appContentLayoutOwner}
+      controller={controller}
+      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+    >
+      {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
+    </NavigationRouteAdapter>,
+  );
+
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${homeKey}`),
+  ).toBeNull();
+
+  await act(async () => {
+    controller.push('editor');
+  });
+  const editorKey = controller.getSnapshot().currentRoute.key;
+  expect(
+    screen.getByTestId(`navigation-route-columns-${editorKey}`),
+  ).toBeTruthy();
+
+  await act(async () => {
+    controller.push('visit-questions');
+  });
+  const questionsKey = controller.getSnapshot().currentRoute.key;
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${questionsKey}`),
+  ).toBeNull();
 });

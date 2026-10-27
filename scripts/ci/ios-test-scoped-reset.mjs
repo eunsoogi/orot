@@ -29,6 +29,7 @@ export function iosFixtureResetMode(profile, identifier) {
     'VisitQuestionConsentUITests',
     'AppointmentsUITests',
     'CalendarSelectionUITests',
+    'ScheduleCalendarUITests',
   ];
   return profile === 'fixtures' && scopedClasses.includes(identifier.split('/')[1])
     ? 'scoped'
