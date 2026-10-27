@@ -66,7 +66,7 @@ enum ReminderJourneyObservation {
         XCTAssertEqual(request.body, "준비할 내용을 확인해 보세요.")
     }
 
-    static func allowFirstNotification(_ app: XCUIApplication, testCase: XCTestCase) throws {
+    static func allowFirstNotification(_ app: XCUIApplication, testCase: XCTestCase, diagnosticAction: Int? = nil) throws {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let alert = springboard.alerts.firstMatch
         XCTAssertTrue(UITestConditions.exists(alert))
@@ -76,6 +76,9 @@ enum ReminderJourneyObservation {
         let allow = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "허용"])).firstMatch
         XCTAssertTrue(allow.exists && allow.isHittable)
         allow.tap()
+        if let diagnosticAction {
+            try ReminderJourneyForm.awaitAction(app, after: diagnosticAction, testCase: testCase)
+        }
         let scheduled = app.staticTexts["알림이 설정되었어요."]
         XCTAssertTrue(UITestConditions.exists(scheduled))
     }

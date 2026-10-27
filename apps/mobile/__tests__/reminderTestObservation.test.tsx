@@ -3,13 +3,15 @@ import { AppState, NativeModules, Text } from 'react-native';
 import { ReminderTestObservation } from '../e2e/ReminderTestObservation';
 
 const snapshot = jest.fn();
+const diagnosticReadiness = jest.fn();
 const initialState = AppState.currentState;
 
 beforeEach(() => {
   jest.useFakeTimers();
   AppState.currentState = 'active';
-  NativeModules.OrotReminderTestObservation = { snapshot };
+  NativeModules.OrotReminderTestObservation = { snapshot, diagnosticReadiness };
   snapshot.mockReset();
+  diagnosticReadiness.mockReset().mockResolvedValue({ status: 'disabled' });
 });
 
 afterEach(() => {
@@ -54,4 +56,21 @@ it('reports an unavailable native observation instead of inventing OS success', 
     status: 'failed',
     code: 'os-observation-unavailable',
   });
+});
+
+it('does not query the OS with unready diagnostic evidence', async () => {
+  diagnosticReadiness.mockResolvedValue({ status: 'write-failed' });
+  await render(
+    <ReminderTestObservation>
+      <Text>Real application tree</Text>
+    </ReminderTestObservation>,
+  );
+  await act(async () => {});
+  expect(snapshot).not.toHaveBeenCalled();
+  expect(
+    JSON.parse(
+      screen.getByTestId('reminder-diagnostic-readiness').props
+        .accessibilityLabel,
+    ),
+  ).toEqual({ status: 'write-failed' });
 });
