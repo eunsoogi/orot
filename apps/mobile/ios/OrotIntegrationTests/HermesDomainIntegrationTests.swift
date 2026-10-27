@@ -137,15 +137,18 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["periodRowsAfterDeletion"] as? Int, 0)
     }
 
+    /// Exercises standard indexing and both retrieval children before checking durable deletion fences.
     func testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence() async throws {
         let parameters = ["fixtureIdentifier": "test-memory-\(UUID().uuidString)"]
         _ = try await operation("memory-create", parameters: parameters)
         let deleted = try await operation("memory-delete", parameters: parameters)
         XCTAssertEqual(deleted["removed"] as? Bool, true)
+        XCTAssertEqual(deleted["standardRagPositiveControl"] as? Bool, true)
         let tombstone = try await operation("memory-tombstone", parameters: parameters)
         XCTAssertEqual(tombstone["tombstoneVerified"] as? Bool, true)
         let absent = try await operation("memory-verify-deletion", parameters: parameters)
         XCTAssertEqual(absent["absentFromMemoryAndSearch"] as? Bool, true)
+        XCTAssertEqual(absent["standardRagDeletionFence"] as? Bool, true)
     }
 
     private func operation(_ name: String, parameters: [String: Any] = [:]) async throws -> [String: Any] {

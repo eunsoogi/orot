@@ -1,7 +1,4 @@
-import {
-  LOCAL_EMBEDDING_IDENTITY,
-  searchHybridEvidenceChunks,
-} from '@orot/rag';
+import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import type { SqlDatabase, SqlTransaction } from '@orot/storage';
 import { localE5NativeBackend } from '../localE5NativeBackend';
 import { createLocalE5RagService } from '../localE5RagService';
@@ -9,7 +6,6 @@ import { LocalE5Embeddings } from '../localE5Embeddings';
 import { LocalLexicalRetriever } from '../localLexicalRetriever';
 import { SqlCipherVectorStore } from '../../storage/sqlCipherVectorStore';
 import { SqlCipherRagEmbeddingStorage } from '../../storage/ragEmbeddingStorage';
-import { SqlCipherRagFullTextSearchStore } from '../../storage/ragFullTextSearch';
 import {
   chunk,
   installFingerprint,
@@ -57,7 +53,7 @@ describe('production RAG standard adapters', () => {
     close();
   });
 
-  it('matches the legacy weighted ranking contract while executing real standard adapters once', async () => {
+  it('preserves the weighted ranking contract while executing real standard adapters once', async () => {
     const rag = createLocalE5RagService(database);
     await rag.index(page);
     const options = {
@@ -68,15 +64,7 @@ describe('production RAG standard adapters', () => {
         candidateLimit: 2,
       },
     };
-    const expected = await searchHybridEvidenceChunks(
-      'consultation',
-      page,
-      rag.provider,
-      new SqlCipherRagEmbeddingStorage(database),
-      new SqlCipherRagFullTextSearchStore(database),
-      2,
-      options,
-    );
+
     const embedding = jest.spyOn(LocalE5Embeddings.prototype, 'embedQuery');
     const vector = jest.spyOn(
       SqlCipherVectorStore.prototype,
@@ -87,13 +75,10 @@ describe('production RAG standard adapters', () => {
       '_getRelevantDocuments',
     );
     const actual = await rag.search('consultation', page, 2, options);
-    expect(actual).toEqual(expected);
-    expect(actual.map(hit => hit.chunk.id)).toEqual(['a', 'b']);
-    expect(actual[0]).toMatchObject({
-      lexicalRank: 1,
-      vectorRank: 1,
-      score: 3,
-    });
+    expect(actual).toEqual([
+      { chunk: page[0], lexicalRank: 1, vectorRank: 1, score: 3 },
+      { chunk: page[1], lexicalRank: 2, vectorRank: 2, score: 1.5 },
+    ]);
     expect(embedding).toHaveBeenCalledTimes(1);
     expect(vector).toHaveBeenCalledTimes(1);
     expect(lexical).toHaveBeenCalledTimes(1);
@@ -106,6 +91,17 @@ describe('production RAG standard adapters', () => {
     await expect(rag.search('consultation', page, 0)).rejects.toMatchObject({
       code: 'invalid_request',
     });
+  });
+
+  it('rejects invalid index batches and duplicate IDs before native inference', async () => {
+    const rag = createLocalE5RagService(database);
+    await expect(rag.index(page, { batchSize: 9 })).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+    await expect(rag.index([page[0], page[0]])).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+    expect(localE5NativeBackend.embedBatch).not.toHaveBeenCalled();
   });
 
   it('indexes through embeddings and vector persistence with aggregate progress', async () => {

@@ -4,6 +4,7 @@ import type { HealthKitFeature } from '../types';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
@@ -11,6 +12,8 @@ import { useNavigationPrimaryAction } from '../../navigation/useNavigationPrimar
 import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { EventKitImportSection } from './EventKitImportSection';
+import { EventKitSourceCard } from './EventKitSourceCard';
+import { HealthKitImportActivity } from './HealthKitImportActivity';
 import { HealthKitProviderCard } from './HealthKitProviderCard';
 import { createUnifiedImportCoordinator } from './coordinator';
 import { useUnifiedImportScreen } from './useUnifiedImportScreen';
@@ -24,6 +27,8 @@ import type {
 export interface HealthKitImportScreenCopy {
   readonly title: string;
   readonly description: string;
+  readonly sourceSelectionTitle: string;
+  readonly activityTitle: string;
   readonly localOnly: string;
   readonly readAuthorization: string;
   readonly importButton: string;
@@ -121,33 +126,74 @@ export function HealthKitImportScreen({
           {reviewingCalendar ? t('calendar.confirmPrompt') : copy.description}
         </Text>
       </View>
-      {!reviewingCalendar || selected.size > 0 ? (
-        <HealthKitProviderCard
-          copy={copy}
-          selected={selected}
-          progress={progress}
-          disabled={isRunning || candidateSaving}
-          onToggle={state.toggleHealthKit}
-          onToggleFeature={state.toggleFeature}
-        />
-      ) : null}
-      <EventKitImportSection
-        reviewing={reviewingCalendar}
-        disabled={isRunning}
-        onToggle={state.toggleEventKit}
-        progress={progress?.eventKit ?? null}
-        run={run}
-        selected={eventKitSelected}
-        onPrimaryActionChange={hasSharedAction ? setCandidateAction : undefined}
-        onSavingChange={setCandidateSaving}
+      {/* Source choices and outcomes remain mounted in separate panels during measured reflow. */}
+      <AdaptiveColumns
+        active
+        routeKey="unified-import"
+        testID="unified-import-columns"
+        primary={
+          <View style={styles.panel} testID="unified-import-source-selection">
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {copy.sourceSelectionTitle}
+            </Text>
+            {!reviewingCalendar || selected.size > 0 ? (
+              <HealthKitProviderCard
+                copy={copy}
+                selected={selected}
+                disabled={isRunning || candidateSaving}
+                onToggle={state.toggleHealthKit}
+                onToggleFeature={state.toggleFeature}
+              />
+            ) : null}
+            <EventKitSourceCard
+              reviewing={reviewingCalendar}
+              selected={eventKitSelected}
+              disabled={isRunning || candidateSaving}
+              onToggle={state.toggleEventKit}
+            />
+            <View style={styles.notice}>
+              <AppSymbol
+                name="lock.shield"
+                size={18}
+                color={appColors.secondary}
+              />
+              <Text style={styles.noticeText}>{copy.localOnly}</Text>
+            </View>
+            <Text
+              style={styles.caption}
+              testID="unified-import-read-authorization"
+            >
+              {copy.readAuthorization}
+            </Text>
+          </View>
+        }
+        secondary={
+          <View style={styles.panel} testID="unified-import-activity">
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {copy.activityTitle}
+            </Text>
+            <Text
+              accessibilityLiveRegion="polite"
+              style={styles.status}
+              testID="unified-import-status"
+            >
+              {copy.phaseStatuses[phase]}
+            </Text>
+            <HealthKitImportActivity copy={copy} progress={progress} />
+            <EventKitImportSection
+              reviewing={reviewingCalendar}
+              disabled={isRunning}
+              progress={progress?.eventKit ?? null}
+              run={run}
+              selected={eventKitSelected}
+              onPrimaryActionChange={
+                hasSharedAction ? setCandidateAction : undefined
+              }
+              onSavingChange={setCandidateSaving}
+            />
+          </View>
+        }
       />
-      <View style={styles.notice}>
-        <AppSymbol name="lock.shield" size={18} color={appColors.secondary} />
-        <Text style={styles.noticeText}>{copy.localOnly}</Text>
-      </View>
-      <Text style={styles.caption} testID="unified-import-read-authorization">
-        {copy.readAuthorization}
-      </Text>
       {!hasSharedAction ? (
         <>
           <AppButton
@@ -167,13 +213,6 @@ export function HealthKitImportScreen({
           ) : null}
         </>
       ) : null}
-      <Text
-        accessibilityLiveRegion="polite"
-        style={styles.status}
-        testID="unified-import-status"
-      >
-        {copy.phaseStatuses[phase]}
-      </Text>
     </ScrollView>
   );
 }
