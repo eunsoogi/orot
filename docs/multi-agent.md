@@ -24,7 +24,7 @@ flowchart TD
 - **EvidenceResearcher** is the fallback for providers without native tool calling. It receives the request, the responder's evidence need, the allowed scope, and each allowlisted tool's description and input schema. It selects one tool and returns schema-limited JSON input. The runtime locally parses that input before dispatch; the researcher does not answer the task or execute the search.
 - **Evidence tools** are injected deterministic `local_read_only` functions. When the selected provider advertises tool calling, the runtime offers eligible provided tools and accepts one requested call at a time after validating the response finish reason, tool ID, source kind, parsed input, allowed source scope, identity, and run budgets. It then enters the existing guarded search node. Invalid, unsupported, or multiple calls stop as invalid output. Providers without native tool calling use the bounded `EvidenceResearcher` JSON path.
 
-The default budget caps a run at three model calls, one tool call, one research cycle, eight evidence items, 64 KiB per model payload, 768 output tokens, and 45 seconds. Callers may choose smaller budgets within the hard maxima. The runtime does not retry or switch providers implicitly.
+The default budget caps a run at three model calls, two tool calls, one research cycle, eight evidence items, 64 KiB per model payload, 768 output tokens, and 45 seconds. Callers may choose smaller budgets within the hard maxima. For a conversation-capable task, a factual result without evidence can trigger a mandatory tool-selection call and final answer within the existing model-call budget. The runtime does not switch providers implicitly.
 
 ## Evidence and result checks
 
