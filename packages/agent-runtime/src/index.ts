@@ -9,7 +9,6 @@ export type {
   HealthReviewSafety,
   HealthReviewText,
 } from './health-review/contracts';
-export { createLanguageModelProviderGraph } from './modelProviderGraph';
 export { createProductionChatModel, invokeProductionRequest } from './langchain/production';
 export {
   createLocalRecordQueryService,
