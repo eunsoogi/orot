@@ -26,7 +26,8 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             CGRect(x: screenBounds.minX, y: screenBounds.minY, width: halfWidth, height: screenBounds.height),
             CGRect(x: screenBounds.midX, y: screenBounds.minY, width: halfWidth, height: screenBounds.height),
         ]
-        let source = UIView(frame: CGRect(x: 8, y: 8, width: 1, height: 1))
+        let source = UIView(frame: CGRect(x: 8, y: 8, width: 32, height: 24))
+        let sourceRect = CGRect(x: 3, y: 5, width: 9, height: 7)
         root.view.addSubview(source)
         defer { source.removeFromSuperview() }
 
@@ -35,14 +36,14 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             window.frame = sideFrame
             root.view.setNeedsLayout()
             root.view.layoutIfNeeded()
-            let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
+            let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source, sourceRect: sourceRect))
             XCTAssertTrue(anchor.window === window)
 
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.modalPresentationStyle = .popover
             XCTAssertEqual(anchor.apply(to: picker), true)
-            XCTAssertTrue(picker.popoverPresentationController?.sourceView?.window === window)
-            XCTAssertEqual(picker.popoverPresentationController?.sourceRect, source.bounds)
+            let item = try XCTUnwrap(picker.popoverPresentationController?.sourceItem)
+            XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window))
 
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")
@@ -65,10 +66,9 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             root.view.setNeedsLayout()
             root.view.layoutIfNeeded()
             XCTAssertTrue(picker.presentingViewController?.viewIfLoaded?.window === window)
-            if let popover = picker.popoverPresentationController, let popoverSource = popover.sourceView {
-                XCTAssertTrue(popoverSource.window === window)
-                XCTAssertTrue(popoverSource.convert(popover.sourceRect, to: window).intersects(window.bounds))
-            }
+            let resizedRegion = try XCTUnwrap(item.frame(in: window))
+            XCTAssertEqual(resizedRegion, source.convert(sourceRect, to: window))
+            XCTAssertTrue(resizedRegion.intersects(window.bounds))
 
             let dismissed = expectation(description: "The document picker closes before testing the other window side")
             picker.dismiss(animated: false) { dismissed.fulfill() }

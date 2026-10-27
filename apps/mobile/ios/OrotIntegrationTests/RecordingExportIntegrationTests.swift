@@ -49,6 +49,62 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testDefaultTranscriptSharePreservesItsExactWindowRegionUntilDismissal() throws {
+        let operation = try RecordingExportFiles.transcriptFile(text: "synthetic share region")
+        addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
+        let originalWindow = try foregroundKeyWindow()
+        let window = try UIWindow(windowScene: XCTUnwrap(originalWindow.windowScene))
+        window.frame = originalWindow.frame
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            originalWindow.makeKeyAndVisible()
+        }
+
+        // Match the bridge-only persistence export: a default activity and the current presenter's central 1x1 region.
+        let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve())
+        let activity = UIActivityViewController(activityItems: [operation.file], applicationActivities: nil)
+        // Teardown blocks run in reverse order: even a failed presentation assertion must dismiss before file cleanup.
+        addTeardownBlock { @MainActor in
+            if activity.presentingViewController != nil || activity.viewIfLoaded?.window != nil {
+                await withCheckedContinuation { continuation in
+                    activity.dismiss(animated: false) { continuation.resume() }
+                }
+            }
+        }
+        XCTAssertEqual(anchor.apply(to: activity), true)
+        let item = try XCTUnwrap(activity.popoverPresentationController?.sourceItem)
+        let region = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
+        XCTAssertEqual(item.frame(in: window), root.view.convert(region, to: window))
+        let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
+        XCTAssertNil(item.frame(in: foreignWindow))
+
+        let presented = expectation(description: "The default activity belongs to its initiating window")
+        anchor.present(activity, animated: false) { confirmed in
+            XCTAssertTrue(confirmed)
+            presented.fulfill()
+        }
+        wait(for: [presented], timeout: 5)
+        XCTAssertTrue(anchor.presentationRelationshipMatches(activity))
+        XCTAssertTrue(anchor.presentedControllerSharesWindow(activity))
+        XCTAssertEqual(try String(contentsOf: operation.file, encoding: .utf8), "synthetic share region")
+
+        let dismissed = expectation(description: "The activity closes before its protected copy is removed")
+        activity.dismiss(animated: false) { dismissed.fulfill() }
+        wait(for: [dismissed], timeout: 5)
+        XCTAssertNil(activity.presentingViewController)
+        XCTAssertNil(activity.viewIfLoaded?.window)
+        try RecordingExportFiles.finish(operation.directory)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: operation.directory.path))
+        XCTAssertEqual(RecordingExportFiles.residueCount(), 0)
+        // A late UIKit geometry request must not reuse a detached source, even while the item itself is retained.
+        root.view.removeFromSuperview()
+        XCTAssertNil(item.frame(in: window))
+    }
+
+    @MainActor
     func testUnverifiedFullScreenPresentationRetainsExportUntilDismissal() throws {
         let operation = try RecordingExportFiles.transcriptFile(text: "share this transcript")
         addTeardownBlock { try RecordingExportFiles.finish(operation.directory) }
