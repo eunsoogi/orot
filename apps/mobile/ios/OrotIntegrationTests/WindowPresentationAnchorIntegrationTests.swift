@@ -9,26 +9,29 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
         let window = try foregroundKeyWindow()
         let source = try XCTUnwrap(window.rootViewController?.viewIfLoaded)
         let originalSubviewCount = source.subviews.count
-        var anchor = WindowPresentationAnchor.resolve(foregroundKeyWindows: [window])
-        XCTAssertTrue(try XCTUnwrap(anchor).window === window)
-        XCTAssertTrue(try XCTUnwrap(anchor).isCurrent)
-        XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
-        // Explicit popovers keep exact geometry and retain one region after the initiating anchor is released.
-        var controller: UIViewController? = UIViewController()
-        controller?.modalPresentationStyle = .popover
-        XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
-        let item = try XCTUnwrap(controller?.popoverPresentationController?.sourceItem as? UIView)
-        XCTAssertTrue(type(of: item) == UIView.self)
-        XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
-        XCTAssertTrue(controller?.popoverPresentationController?.sourceItem === item)
-        XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
-        let region = CGRect(x: source.bounds.midX, y: source.bounds.midY, width: 1, height: 1)
-        XCTAssertEqual(item.frame(in: window), source.convert(region, to: window))
-        let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
-        XCTAssertNil(WindowPresentationAnchor.resolve(from: foreignWindow))
-        anchor = nil
-        XCTAssertTrue(item.superview === source)
-        controller = nil
+        let item = try autoreleasepool { () throws -> UIView in
+            var anchor = WindowPresentationAnchor.resolve(foregroundKeyWindows: [window])
+            XCTAssertTrue(try XCTUnwrap(anchor).window === window)
+            XCTAssertTrue(try XCTUnwrap(anchor).isCurrent)
+            XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+            // Explicit popovers keep exact geometry and retain one region after the initiating anchor is released.
+            var controller: UIViewController? = UIViewController()
+            controller?.modalPresentationStyle = .popover
+            XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+            let item = try XCTUnwrap(controller?.popoverPresentationController?.sourceItem as? UIView)
+            XCTAssertTrue(type(of: item) == UIView.self)
+            XCTAssertEqual(try XCTUnwrap(anchor).apply(to: XCTUnwrap(controller)), true)
+            XCTAssertTrue(controller?.popoverPresentationController?.sourceItem === item)
+            XCTAssertEqual(source.subviews.count, originalSubviewCount + 1)
+            let region = CGRect(x: source.bounds.midX, y: source.bounds.midY, width: 1, height: 1)
+            XCTAssertEqual(item.frame(in: window), source.convert(region, to: window))
+            let foreignWindow = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
+            XCTAssertNil(WindowPresentationAnchor.resolve(from: foreignWindow))
+            anchor = nil
+            XCTAssertTrue(item.superview === source)
+            controller = nil
+            return item
+        }
         XCTAssertNil(item.superview)
         XCTAssertEqual(source.subviews.count, originalSubviewCount)
     }
