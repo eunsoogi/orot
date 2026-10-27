@@ -27,6 +27,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'health-records-detail' ||
     route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
+    // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
+    route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||

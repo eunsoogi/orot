@@ -85,6 +85,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
     'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText';
+  const settingsBackup =
+    'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable';
   const privacySettingsReflow =
     'OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow';
   const recordsHub =
@@ -125,13 +127,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, privacy, recording library/review, appointment, classification, and health-detail coverage explicit.
-  assert.equal(duoInventory.length, 28);
+  // Keep Settings, backup, privacy, appointments, classification, recording, and health cases explicit.
+  assert.equal(duoInventory.length, 29);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
     settingsHome,
+    settingsBackup,
     privacySettingsReflow,
     aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
@@ -162,9 +165,11 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(settingsHome));
+  assert.ok(!iPhoneFixtures.includes(settingsBackup));
   assert.ok(!coreTests.includes(homeSummary));
   assert.ok(!coreTests.includes(aiFeatureEntry));
   assert.ok(!coreTests.includes(settingsHome));
+  assert.ok(!coreTests.includes(settingsBackup));
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
