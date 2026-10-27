@@ -18,6 +18,8 @@ import type { UnifiedImportMeasurement, UnifiedImportRun } from '../types';
 const copy: HealthKitImportScreenCopy = {
   title: '가져오기',
   description: '항목 선택',
+  sourceSelectionTitle: '출처',
+  activityTitle: '진행 상황',
   localOnly: '이 기기에 저장',
   readAuthorization: '읽기 권한 상태는 확인할 수 없어요.',
   importButton: '가져오기',

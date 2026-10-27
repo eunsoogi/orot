@@ -1,6 +1,7 @@
 'use strict';
 
-const { indexEvidenceChunks, searchHybridEvidenceChunks } = require('@orot/rag');
+const { HybridRetriever, evidenceChunkToDocument } = require('@orot/rag');
+const { SyntheticVectorStore, SyntheticLexicalRetriever } = require('./synthetic-retrievers.cjs');
 
 const MODEL_IDENTITY = {
   id: 'orot-synthetic-evaluation-embedding',
@@ -69,40 +70,27 @@ function vectorFor(value) {
 }
 
 function createSyntheticEmbeddingProvider() {
-  const embed = async ({ input }) => ({
-    ok: true,
-    value: { vectors: input.map(vectorFor) },
-  });
   return {
-    modelIdentity: MODEL_IDENTITY,
-    embed,
-    embedDocuments: embed,
-    embedQueries: embed,
+    async embed({ input }) {
+      return { ok: true, value: { vectors: input.map(vectorFor) } };
+    },
   };
 }
 
-/** Uses the production hybrid index/search functions over fixture-local stores. */
+/** Uses standard embeddings/vector/retriever APIs with production fusion and deletion guards. */
 function createSyntheticRag(repository, trace) {
-  const embeddings = new Map();
   const chunksById = new Map();
-  const removedSources = new Set();
-  const removedChunks = new Set();
-  const embeddingProvider = createSyntheticEmbeddingProvider();
+  const vectors = new SyntheticVectorStore({
+    async embedDocuments(input) {
+      return input.map(vectorFor);
+    },
+    async embedQuery(query) {
+      return vectorFor(query);
+    },
+  });
 
-  const vectorStore = {
-    async deleteEvidence(sourceIds, chunkIds) {
-      sourceIds.forEach((id) => removedSources.add(id));
-      chunkIds.forEach((id) => {
-        removedChunks.add(id);
-        embeddings.delete(id);
-      });
-    },
-    async clear(sourceIds = []) {
-      sourceIds.forEach((id) => removedSources.add(id));
-      for (const id of embeddings.keys()) removedChunks.add(id);
-      embeddings.clear();
-    },
-    async findRemovedEvidence(sourceIds, chunkIds, rootSourceIds, localRecordIds = []) {
+  const removalReader = {
+    async findRemovedEvidence(_sourceIds, _chunkIds, rootSourceIds, localRecordIds = []) {
       const missingRoots = await Promise.all(
         rootSourceIds.map(async (id) => ((await repository.get('source_record', id)) ? null : id)),
       );
@@ -117,25 +105,10 @@ function createSyntheticRag(repository, trace) {
       );
       return {
         sourceRecordIds: [
-          ...new Set([
-            ...sourceIds.filter((id) => removedSources.has(id)),
-            ...missingRoots.filter(Boolean),
-            ...missingRecords.filter(Boolean),
-          ]),
+          ...new Set([...missingRoots.filter(Boolean), ...missingRecords.filter(Boolean)]),
         ],
-        chunkIds: chunkIds.filter((id) => removedChunks.has(id)),
+        chunkIds: [],
       };
-    },
-    async upsertBatch(model, entries) {
-      if (model.id !== MODEL_IDENTITY.id || model.revision !== MODEL_IDENTITY.revision) return;
-      for (const entry of entries) embeddings.set(entry.chunkId, entry.vector);
-    },
-    async listForModel(model, chunkIds) {
-      if (model.id !== MODEL_IDENTITY.id || model.revision !== MODEL_IDENTITY.revision) return [];
-      const requested = chunkIds ? new Set(chunkIds) : null;
-      return [...embeddings.entries()]
-        .filter(([id]) => requested === null || requested.has(id))
-        .map(([chunkId, vector]) => ({ chunkId, vector }));
     },
   };
 
@@ -161,20 +134,39 @@ function createSyntheticRag(repository, trace) {
     async index(chunks, options = {}) {
       trace.ragIndexCalls += 1;
       chunks.forEach((chunk) => chunksById.set(chunk.id, chunk));
-      await indexEvidenceChunks(chunks, embeddingProvider, vectorStore, options);
+      const batchSize = options.batchSize ?? 4;
+      if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 8)
+        throw new Error('Invalid embedding batch size.');
+      const documents = chunks.map(evidenceChunkToDocument);
+      if (
+        new Set(documents.map((document) => document.id)).size !== documents.length ||
+        documents.some((document) => !document.id || !document.pageContent.trim())
+      )
+        throw new Error('Invalid evidence chunks.');
+      for (let offset = 0; offset < documents.length; offset += batchSize) {
+        if (options.signal?.aborted) throw new Error('Synthetic evidence indexing was cancelled.');
+        await vectors.addDocuments(documents.slice(offset, offset + batchSize));
+        options.onProgress?.({
+          stage: 'persisting',
+          completed: Math.min(offset + batchSize, documents.length),
+          total: documents.length,
+        });
+      }
     },
     async search(query, chunks, limit, options = {}) {
       trace.ragSearchCalls += 1;
       chunks.forEach((chunk) => chunksById.set(chunk.id, chunk));
-      return searchHybridEvidenceChunks(
-        query,
+      return new HybridRetriever({
         chunks,
-        embeddingProvider,
-        vectorStore,
-        textStore,
         limit,
-        options,
-      );
+        filters: options.filters,
+        ranking: options.ranking,
+        removalReader,
+        createLexicalRetriever: (request) =>
+          new SyntheticLexicalRetriever(request, textStore, options.signal),
+        createVectorRetriever: (request) =>
+          vectors.asRetriever({ k: request.limit, filter: request.chunks }),
+      }).searchHits(query, { signal: options.signal });
     },
   };
 }

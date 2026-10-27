@@ -79,8 +79,16 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail';
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
+  const aiFeatureEntry =
+    'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
+  const healthImportLibrary =
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute';
+  const healthImportReflow =
+    'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
+  const healthImportLargeText =
+    'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const duoKeyboardSave =
@@ -95,11 +103,12 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 13);
+  assert.equal(duoInventory.length, 17);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     homeSummary,
+    aiFeatureEntry,
     'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     scheduleReflow,
@@ -109,13 +118,22 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     fourSidedOcclusion,
     recordingShareDismissal,
     recordsHub,
+    healthImportLibrary,
+    healthImportReflow,
+    healthImportLargeText,
     recordingLiveReflow,
   ]);
   // Home remains part of the iPhone fixture profile; Records runs only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
+  assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!coreTests.includes(homeSummary));
+  assert.ok(!coreTests.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
+  for (const healthImportCase of [healthImportLibrary, healthImportReflow, healthImportLargeText]) {
+    assert.ok(!iPhoneFixtures.includes(healthImportCase));
+    assert.ok(!coreTests.includes(healthImportCase));
+  }
   assert.ok(iPhoneFixtures.includes(standardKeyboardSave));
   assert.ok(iPhoneFixtures.includes(scheduleReflow));
   assert.ok(iPhoneFixtures.includes(scheduleLargeText));

@@ -1,4 +1,4 @@
-/** Compares finite, same-dimension vectors; malformed or zero vectors never rank. */
+/** Fixture cosine oracle: malformed or zero vectors never produce a ranked test document. */
 export function cosineSimilarity(left: readonly number[], right: readonly number[]): number {
   if (left.length !== right.length || left.length === 0) return Number.NEGATIVE_INFINITY;
   let dot = 0;

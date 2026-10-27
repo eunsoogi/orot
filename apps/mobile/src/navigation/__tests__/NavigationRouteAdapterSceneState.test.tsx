@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { FeatureEntryScreen } from '../../aiFeatures/FeatureEntryScreen';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { appContentLayoutOwner } from '../appContentLayoutPolicy';
 import { createNavigationController } from '../navigationController';
@@ -196,46 +197,46 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
   ).toBeNull();
 });
 
-test('lets the Records root tab own the full lane for its adaptive panels', async () => {
-  const controller = createNavigationController<TestRoute>('home');
-  const rootTabs = { activeTab: 'records' as const, onSelect: jest.fn() };
-  const homeKey = controller.getSnapshot().currentRoute.key;
+test.each(['home', 'records', 'ai'] as const)(
+  'lets the %s root tab own the full lane for its adaptive panels',
+  async activeTab => {
+    const controller = createNavigationController<TestRoute>('home');
+    const rootTabs = { activeTab, onSelect: jest.fn() };
+    const homeKey = controller.getSnapshot().currentRoute.key;
 
-  await render(
-    <NavigationRouteAdapter
-      contentLayoutOwner={appContentLayoutOwner}
-      controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
-    >
-      {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
-    </NavigationRouteAdapter>,
-  );
+    await render(
+      <NavigationRouteAdapter
+        contentLayoutOwner={appContentLayoutOwner}
+        controller={controller}
+        rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+      >
+        {({ route }) =>
+          route.name === 'home' && activeTab === 'ai' ? (
+            <FeatureEntryScreen
+              onOpenDiseaseHypotheses={jest.fn()}
+              onOpenRagConversation={jest.fn()}
+              onOpenExternalEvidence={jest.fn()}
+            />
+          ) : (
+            <Text testID={`route-${route.name}`}>{route.name}</Text>
+          )
+        }
+      </NavigationRouteAdapter>,
+    );
 
-  // The Records root tab is presented by `home`, so its selected tab owns layout.
-  expect(screen.getByTestId('route-home')).toBeTruthy();
-  expect(
-    screen.queryByTestId(`navigation-route-columns-${homeKey}`),
-  ).toBeNull();
-});
-
-test('lets the Home root tab own the full lane for its adaptive panels', async () => {
-  const controller = createNavigationController<TestRoute>('home');
-  const rootTabs = { activeTab: 'home' as const, onSelect: jest.fn() };
-  const homeKey = controller.getSnapshot().currentRoute.key;
-
-  await render(
-    <NavigationRouteAdapter
-      contentLayoutOwner={appContentLayoutOwner}
-      controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
-    >
-      {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
-    </NavigationRouteAdapter>,
-  );
-
-  // Home root content shares the `home` route with sibling tabs but owns adaptive layout itself.
-  expect(screen.getByTestId('route-home')).toBeTruthy();
-  expect(
-    screen.queryByTestId(`navigation-route-columns-${homeKey}`),
-  ).toBeNull();
-});
+    // Root tabs share the `home` route name while their screens own adaptive panels.
+    expect(
+      screen.getByTestId(
+        activeTab === 'ai' ? 'ai-features-screen' : 'route-home',
+      ),
+    ).toBeTruthy();
+    if (activeTab === 'ai') {
+      expect(screen.getByTestId('ai-feature-columns')).toBeTruthy();
+      expect(screen.getByTestId('ai-feature-columns-primary')).toBeTruthy();
+      expect(screen.getByTestId('ai-feature-columns-secondary')).toBeTruthy();
+    }
+    expect(
+      screen.queryByTestId(`navigation-route-columns-${homeKey}`),
+    ).toBeNull();
+  },
+);

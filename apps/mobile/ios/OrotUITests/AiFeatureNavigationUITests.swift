@@ -27,14 +27,21 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "ai-features-screen", contentID: "ai-feature-rag-conversation", navigationID: "navigation-tab-ai")
-        // Native accessibility groups each Pressable's title and description into its button label.
-        // Retain every original title assertion against the corresponding actual card rather than requiring an unexposed child StaticText.
-        for (identifier, title) in [("visit-questions", "다음 진료 질문"), ("disease-hypotheses", "증상 정리"), ("rag-conversation", "기록과 대화")] {
+        // Native accessibility groups titles and descriptions into button labels, so assert each actual card instead of an unexposed child.
+        for (identifier, title) in [("visit-questions", "다음 진료 질문"), ("disease-hypotheses", "증상 정리"), ("rag-conversation", "기록과 대화"), ("external-evidence", "의학 자료 찾기")] {
             let card = app.buttons.matching(identifier: "ai-feature-\(identifier)").firstMatch
             XCTAssertTrue(card.exists, app.debugDescription)
             XCTAssertTrue(card.label.hasPrefix(title), card.debugDescription)
         }
-        XCTAssertFalse(node(app, "ai-feature-external-evidence").exists)
+        let externalEvidence = node(app, "ai-feature-external-evidence")
+        FormUITestConditions.reveal(externalEvidence, in: app, scrollID: "ai-features-screen")
+        externalEvidence.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "external-medical-evidence-screen")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-search")))
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+        XCTAssertFalse(node(app, "external-evidence-loading").exists)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
         XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-tab-schedule").control.label, "일정 탭")
         let hypotheses = node(app, "ai-feature-disease-hypotheses")
         FormUITestConditions.reveal(hypotheses, in: app, scrollID: "ai-features-screen", towardTop: true)

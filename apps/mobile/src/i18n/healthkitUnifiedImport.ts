@@ -6,6 +6,8 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.reviewSource': '캘린더에서 가져온 일정',
   'healthkit.unifiedImport.description':
     '가져올 건강 기록 유형과 다가오는 캘린더 일정을 선택해 주세요.',
+  'healthkit.unifiedImport.sourceSelectionTitle': '가져올 출처 선택',
+  'healthkit.unifiedImport.activityTitle': '가져오기 진행 상황',
   'healthkit.unifiedImport.calendarLabel': '다가오는 캘린더 일정',
   'healthkit.unifiedImport.eventKitCancelled': '캘린더 일정 확인이 취소됐어요.',
   'healthkit.unifiedImport.localOnly':

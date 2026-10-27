@@ -1,16 +1,11 @@
+import { searchFixtureEvidence, type FixtureEmbeddings } from './standardRetrievalFixtures';
 import type { ReviewState } from '@orot/domain';
 import {
   DEFAULT_HYBRID_SEARCH_RANKING,
   LOCAL_EMBEDDING_IDENTITY,
   LocalEmbeddingJobError,
-  searchHybridEvidenceChunks,
 } from '../src';
-import type {
-  DocumentQueryEmbeddingProvider,
-  EvidenceChunk,
-  LocalFullTextSearchStore,
-  LocalEmbeddingVectorStore,
-} from '../src';
+import type { EvidenceChunk, LocalFullTextSearchStore, LocalEmbeddingVectorStore } from '../src';
 
 function vector(first: number, second = 0): number[] {
   return Array.from({ length: LOCAL_EMBEDDING_IDENTITY.dimension }, (_, index) =>
@@ -50,11 +45,11 @@ function chunk(
   };
 }
 
-function makeProvider(): DocumentQueryEmbeddingProvider {
+function makeProvider(): FixtureEmbeddings {
   return {
     modelIdentity: LOCAL_EMBEDDING_IDENTITY,
     embedDocuments: jest.fn(),
-    embedQueries: jest.fn(async () => ({ ok: true as const, value: { vectors: [vector(1)] } })),
+    embedQuery: jest.fn(async () => vector(1)),
   };
 }
 
@@ -132,7 +127,7 @@ describe('hybrid evidence retrieval', () => {
       { chunkId: vectorOnly.id, vector: vector(0.8, 0.6) },
     ]);
 
-    const hits = await searchHybridEvidenceChunks(
+    const hits = await searchFixtureEvidence(
       'synthetic medication query',
       [lexicalOnly, shared, vectorOnly],
       provider,
@@ -176,7 +171,7 @@ describe('hybrid evidence retrieval', () => {
     const vectorStore = makeVectorStore([{ chunkId: matching.id, vector: vector(1) }]);
     const textStore = makeTextStore([matching.id]);
 
-    const hits = await searchHybridEvidenceChunks(
+    const hits = await searchFixtureEvidence(
       'synthetic medication query',
       [matching, outsideTime, wrongType, wrongEncounter, needsReview],
       provider,
@@ -213,7 +208,7 @@ describe('hybrid evidence retrieval', () => {
     const chunks = [chunk('one')];
 
     await expect(
-      searchHybridEvidenceChunks('query', chunks, provider, vectorStore, textStore, 5, {
+      searchFixtureEvidence('query', chunks, provider, vectorStore, textStore, 5, {
         filters: {
           timeRange: {
             start: '2026-01-03T00:00:00.000Z',
@@ -223,7 +218,7 @@ describe('hybrid evidence retrieval', () => {
       }),
     ).rejects.toThrow('The time-range start must not be after its end.');
     await expect(
-      searchHybridEvidenceChunks('query', chunks, provider, vectorStore, textStore, 5, {
+      searchFixtureEvidence('query', chunks, provider, vectorStore, textStore, 5, {
         ranking: { lexicalWeight: 0, vectorWeight: 0 },
       }),
     ).rejects.toBeInstanceOf(LocalEmbeddingJobError);
@@ -235,7 +230,7 @@ describe('hybrid evidence retrieval', () => {
     const textStore = makeTextStore([]);
 
     await expect(
-      searchHybridEvidenceChunks('  ', [chunk('one')], provider, vectorStore, textStore),
+      searchFixtureEvidence('  ', [chunk('one')], provider, vectorStore, textStore),
     ).resolves.toEqual([]);
 
     expect(DEFAULT_HYBRID_SEARCH_RANKING).toEqual({
@@ -244,7 +239,7 @@ describe('hybrid evidence retrieval', () => {
       rrfConstant: 60,
       candidateLimit: 20,
     });
-    expect(provider.embedQueries).not.toHaveBeenCalled();
+    expect(provider.embedQuery).not.toHaveBeenCalled();
     expect(textStore.search).not.toHaveBeenCalled();
   });
 });

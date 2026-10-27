@@ -36,31 +36,21 @@ describe('LocalE5EmbeddingProvider', () => {
     );
   });
 
-  it('keeps document and query prefixes on the distinct RAG paths and reports progress', async () => {
-    const { backend } = createBackend();
-    const provider = new LocalE5EmbeddingProvider(backend);
-    const progress: string[] = [];
-
-    await provider.embedDocuments({
-      input: ['문서 내용'],
-      onProgress: event => progress.push(event.stage),
-    });
-    await provider.embedQueries({ input: ['진료 일정'] });
-
-    expect(backend.embedBatch).toHaveBeenNthCalledWith(
-      1,
-      ['문서 내용'],
-      'document',
-      expect.stringMatching(/^orot-embedding-/),
-    );
-    expect(backend.embedBatch).toHaveBeenNthCalledWith(
-      2,
-      ['진료 일정'],
-      'query',
-      expect.stringMatching(/^orot-embedding-/),
-    );
-    expect(progress).toEqual(['model_download', 'embedding']);
-  });
+  it.each(['not-an-array', null, ['']])(
+    'rejects malformed embedding input before native inference: %p',
+    async input => {
+      const { backend } = createBackend();
+      const provider = new LocalE5EmbeddingProvider(backend);
+      await expect(
+        provider.embed({ input: input as never }),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { code: 'invalid_request', retryable: false },
+      });
+      expect(backend.prepare).not.toHaveBeenCalled();
+      expect(backend.embedBatch).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns a retryable provider error when the native runtime is unavailable', async () => {
     const { backend } = createBackend(async () => {
@@ -68,9 +58,7 @@ describe('LocalE5EmbeddingProvider', () => {
     });
     const provider = new LocalE5EmbeddingProvider(backend);
 
-    await expect(
-      provider.embedQueries({ input: ['질문'] }),
-    ).resolves.toMatchObject({
+    await expect(provider.embed({ input: ['질문'] })).resolves.toMatchObject({
       ok: false,
       error: {
         code: 'provider_unavailable',

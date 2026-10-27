@@ -1,6 +1,7 @@
 import type { EmbeddingProvider } from '@orot/agent-memory';
 import type { RecordMap } from '@orot/storage';
-import { AGENT_MEMORY_PROBE_CHUNK_ID } from './agentMemoryRagProbe';
+// Fixture identities stay independent of native storage and retrieval initialization.
+export const AGENT_MEMORY_PROBE_CHUNK_ID = 'agent-memory-synthetic-chunk';
 
 const defaultSourceRecord = {
   id: 'agent-memory-synthetic-source',
