@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import App from '../../../App';
@@ -132,6 +138,13 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
   )?.width;
   expect(primaryWidth).toBeLessThanOrEqual(421);
   expect(secondaryWidth).toBeLessThanOrEqual(421);
+  // Route copy must stay inside its measured lane when native geometry reserves
+  // a division.
+  expect(
+    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+      'health-review-heading',
+    ),
+  ).toBeOnTheScreen();
 
   await fireEvent.changeText(
     screen.getByTestId('health-review-name'),
@@ -148,6 +161,11 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
     );
   });
   expect(layout()?.flexDirection).toBe('column');
+  expect(
+    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+      'health-review-heading',
+    ),
+  ).toBeOnTheScreen();
   expect(screen.getByTestId('health-review-name')).toHaveDisplayValue(
     '유지할 요청',
   );
@@ -164,6 +182,11 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
     );
   });
   expect(layout()?.flexDirection).toBe('column');
+  expect(
+    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+      'health-review-heading',
+    ),
+  ).toBeOnTheScreen();
   expect(service.start).not.toHaveBeenCalled();
   expect(service.continue).not.toHaveBeenCalled();
 

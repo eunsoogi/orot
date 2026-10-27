@@ -51,16 +51,16 @@ export function HealthReviewScreen({
       style={styles.screen}
       contentContainerStyle={[styles.container, inset]}
     >
-      <View style={styles.heading}>
-        <Text accessibilityRole="header">{copy.title}</Text>
-        <Text>{copy.scope}</Text>
-        <Text>{copy.privacy}</Text>
-      </View>
-      {/* AdaptiveColumns keeps both panel subtrees mounted as measured widths and text scale change. */}
+      {/* Keep route copy in the measured primary lane during reflow. */}
       <AdaptiveColumns
         testID="health-review-layout"
         primary={
           <View style={styles.panel}>
+            <View style={styles.heading} testID="health-review-heading">
+              <Text accessibilityRole="header">{copy.title}</Text>
+              <Text>{copy.scope}</Text>
+              <Text>{copy.privacy}</Text>
+            </View>
             <ReviewResult
               state={state}
               onSource={reference => {
