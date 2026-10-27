@@ -15,6 +15,14 @@ export const syntheticPublication = {
   retrievedAt: '2035-01-03T00:00:00Z',
 };
 
+export const syntheticSecondPublication = {
+  ...syntheticPublication,
+  recordId: 'SYNTHETIC-SECOND',
+  title: '합성 문헌: 운동과 수면의 질',
+  authors: 'Synthetic Second Author',
+  originalUrl: 'https://europepmc.org/article/MED/SYNTHETIC-SECOND',
+};
+
 /** Local result states only: no fetch, model, real article or patient record is accessed. */
 export const syntheticLiteratureService: EuropePmcMedicalEvidenceService = {
   async search(query, options) {
@@ -32,6 +40,9 @@ export const syntheticLiteratureService: EuropePmcMedicalEvidenceService = {
           );
       });
     }
-    return { status: 'available', publications: [syntheticPublication] };
+    return {
+      status: 'available',
+      publications: [syntheticPublication, syntheticSecondPublication],
+    };
   },
 };

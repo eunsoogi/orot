@@ -94,7 +94,18 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             let title = app.staticTexts["합성 문헌: 활동과 수면 기록 해석"]
             XCTAssertTrue(UITestConditions.exists(title))
             capture(app, "literature-result-\(suffix)")
-            let open = app.buttons["원문 열기"]
+
+            // The synthetic second result proves selection updates the detail pane.
+            let firstResult = node(app, "external-evidence-publication-MED-SYNTHETIC")
+            let secondResult = node(app, "external-evidence-publication-MED-SYNTHETIC-SECOND")
+            XCTAssertTrue(firstResult.isSelected)
+            UITestConditions.scrollTo(secondResult, in: app)
+            secondResult.tap()
+            XCTAssertFalse(firstResult.isSelected)
+            XCTAssertTrue(secondResult.isSelected)
+            XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
+            XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 문헌: 운동과 수면의 질"]))
+            let open = node(app, "external-evidence-open-selected-source")
             UITestConditions.scrollTo(open, in: app)
             open.tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
