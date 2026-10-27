@@ -1,14 +1,15 @@
 # Multi-agent execution
 
-Orot's shared agent runtime defines a bounded handoff between two model roles and a deterministic evidence tool. A task owns its response contract; the shared runtime owns routing, budgets, consent checks, evidence validation, and safe checkpoint metadata.
+Orot's shared agent runtime offers a bounded handoff from task response to evidence search. Providers that support native tool calling can select an eligible evidence tool directly; otherwise, the runtime can use a separate EvidenceResearcher role to return bounded JSON input. A task owns its response contract; the shared runtime owns routing, budgets, consent checks, evidence validation, and safe checkpoint metadata.
 
 ```mermaid
 flowchart TD
     P[Consent for current payload] --> A[TaskResponder]
     A -->|validated result| Z[Local task validator]
-    A -->|evidence need| Q[Consent for researcher payload]
+    A -->|native tool call when supported| C[Local read-only evidence tool]
+    A -->|evidence need without native tools| Q[Consent for researcher payload]
     Q --> B[EvidenceResearcher]
-    B -->|allowlisted tool ID and typed input| C[Local read-only evidence tool]
+    B -->|allowlisted tool ID and typed input| C
     C --> D[Scope, coverage, revision, and freshness checks]
     D -->|current evidence| G[Renew consent for expanded payload]
     G --> E[TaskResponder revision]
@@ -19,11 +20,11 @@ flowchart TD
 
 ## Role boundaries
 
-- **TaskResponder** receives the task contract, user request, task context, and currently allowed evidence. It either returns a task result or asks for one bounded evidence search. Its task-specific result is checked locally before it can be returned.
-- **EvidenceResearcher** receives the request, the responder's evidence need, the allowed scope, and each allowlisted tool's description and input schema. It selects one tool and returns schema-limited JSON input. The runtime locally parses that input before dispatch; the researcher does not answer the task or execute the search.
-- **Evidence tools** are injected deterministic `local_read_only` functions. The runtime dispatches only the selected tool after checking its ID, source kind, and locally parsed input. Model tool calls are not enabled; any provider response containing a tool call is rejected.
+- **TaskResponder** receives the task contract, user request, task context, and currently allowed evidence. It returns a task result, asks for one bounded evidence search, or requests a supplied tool directly when native tool calling is available. Its task-specific result is checked locally before it can be returned.
+- **EvidenceResearcher** is the fallback for providers without native tool calling. It receives the request, the responder's evidence need, the allowed scope, and each allowlisted tool's description and input schema. It selects one tool and returns schema-limited JSON input. The runtime locally parses that input before dispatch; the researcher does not answer the task or execute the search.
+- **Evidence tools** are injected deterministic `local_read_only` functions. When the selected provider advertises tool calling, the runtime offers eligible provided tools and accepts one requested call at a time after validating the response finish reason, tool ID, source kind, parsed input, allowed source scope, identity, and run budgets. It then enters the existing guarded search node. Invalid, unsupported, or multiple calls stop as invalid output. Providers without native tool calling use the bounded `EvidenceResearcher` JSON path.
 
-The default run permits at most three model calls (responder, researcher, responder revision), one tool call, one research cycle, eight evidence items, 64 KiB per model payload, 768 output tokens, and 45 seconds. Callers may choose smaller budgets within the hard maxima. There are no hidden model retries or provider fallbacks.
+The default budget caps a run at three model calls, two tool calls, one research cycle, eight evidence items, 64 KiB per model payload, 768 output tokens, and 45 seconds. Callers may choose smaller budgets within the hard maxima. For a conversation-capable task, a factual result without evidence can trigger a mandatory tool-selection call and final answer within the existing model-call budget. The runtime does not switch providers implicitly.
 
 ## Evidence and result checks
 
@@ -41,7 +42,7 @@ The provider contract does not accept an abort signal for `generate`. If a run i
 
 ## Checkpoint and relaunch behavior
 
-LangGraph state contains only the operation/provider/model IDs, allowed scope and budgets, phase and call counts, evidence references, a small evidence-need enum, selected tool ID, pending-operation key, and terminal flag. It excludes user text, context, evidence content, tool input, model responses, citations, and final results.
+LangGraph checkpoints use the per-thread `BaseCheckpointSaver`; persistent memory items use the separate `BaseStore` contract described in [agent-memory.md](agent-memory.md). State contains only the operation/provider/model IDs, allowed scope and budgets, phase and call counts, evidence references, a small evidence-need enum, selected tool ID, pending-operation key, and terminal flag. It excludes user text, context, evidence content, tool input, model responses, citations, and final results.
 
 An in-flight model or tool operation is marked pending and synchronously persisted before dispatch. If that write fails, the external operation does not start. A saved pending operation is not replayed. After relaunch, a saved graph may resume on its original `thread_id` only when the latest state is a supported non-terminal phase with valid counters, no pending operation, the same run identity and allowed scope, and evidence references that still pass source revision checks. The runtime restores only the exact saved references before invoking the graph from that saved state. Pending, completed, malformed, stale, and search-phase checkpoints fail closed; private search input is intentionally omitted.
 
@@ -49,6 +50,6 @@ The runtime rejects caller-supplied `checkpoint_id` and `checkpoint_map` selecto
 
 ## Current integration boundary
 
-This package provides shared contracts, bounded local-query adapters, and synthetic behavior tests. No feature screen, provider adapter, external search adapter, or automatic memory-writing tool is added here. Visit-question generation (#30), calendar classification (#108), and disease-hypothesis/RAG/external-evidence behavior (#109) retain their feature ownership and are not integrated by this contract alone. The mobile consent registry is an integration point; its caller supplies the explicit confirmation UI.
+This package provides shared contracts, bounded local-query adapters, a generic LangChain model bridge, and synthetic behavior tests. It does not provide a feature screen, source-specific provider or external-search implementation, or automatic memory-writing path. Visit-question generation (#30), calendar classification (#108), and disease-hypothesis/RAG/external-evidence behavior (#109) retain their feature ownership; the shared runtime does not wire their screens or data services. The mobile consent registry is an integration point; its caller supplies the explicit confirmation UI.
 
 The handoff and consent tests use synthetic fixtures. They prove deterministic contract behavior, not a real provider session, personal-record access, or feature-level integration.

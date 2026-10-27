@@ -20,7 +20,7 @@ flowchart LR
   chunks["호출자가 구성한<br/>EvidenceChunk 스냅샷"]
   rag["@orot/rag<br/>기기 안의 E5 + FTS5"]
   reviewed["사용자 확인 또는<br/>사람이 검토한 정보"]
-  memory["Rememori<br/>별도 memory table<br/>LangChain 도구"]
+  memory["Rememori<br/>LangGraph BaseStore<br/>별도 memory table<br/>LangChain 도구"]
   ragConversation["기록과 대화 서비스<br/>로컬 근거 검색"]
   hypotheses["증상 정리<br/>질환 가설 task"]
   home["한국어 홈<br/>네 기능 바로 가기"]
@@ -142,7 +142,9 @@ flowchart LR
 
 Rememori는 호출자가 제공한 근거 조각을 검색하는 로컬 RAG와 별도의 기억 구성요소입니다. 입력에는 출처와 `user_confirmed` 또는 `human_reviewed` 검토 상태가 필요합니다. LangChain memory 쓰기 도구를 사용할 때는 호출자가 제공한 승인 정책이 필요합니다. 모든 앱 기록을 자동으로 색인하거나 모델 응답을 자동 저장하지는 않습니다. #30 질문 추천 workflow는 로컬 RAG와 검토된 memory를 근거로 조회하고, 사용자가 확인해 저장한 질문만 출처 연결 memory로 남깁니다. 이 memory는 같은 SQLCipher 데이터베이스의 별도 테이블에 저장됩니다.
 
-저장된 녹음은 녹음 화면의 라이브러리에서 확인 후 삭제할 수 있습니다. #147의 삭제 경로는 오디오 파일 정리와 SQLCipher의 출처 종속 레코드, 연결된 RAG 청크 및 Rememori memory 삭제를 연결합니다. 삭제된 출처 식별자는 tombstone으로 보존되어 이후 쓰기와 근거 재검증에서 오래된 참조를 거부하는 데 쓰입니다. 이 경로가 전체 체크포인트 삭제를 뜻하지는 않습니다. 모든 종속 데이터와 재개 동작을 포함한 삭제 수용 기준 및 iOS Simulator 종단간 검증은 열린 #34에서 계속 확인해야 합니다.
+LangGraph의 `BaseStore` adapter인 `RememoriLangGraphStore`는 namespace와 key로 지정한 지속 memory 항목을 저장하며 graph `thread_id`에 종속되지 않습니다. `BaseCheckpointSaver`는 별도의 계약으로, thread별 graph 상태와 진행 정보 및 pending write를 저장합니다. 두 저장소는 데이터와 수명 범위가 다릅니다.
+
+저장된 녹음은 녹음 화면의 라이브러리에서 확인 후 삭제할 수 있습니다. #147의 삭제 경로는 오디오 파일 정리와 SQLCipher의 출처 종속 레코드, 연결된 RAG 청크 및 Rememori memory 삭제를 연결합니다. 삭제된 출처 식별자는 tombstone으로 보존되어 이후 쓰기와 근거 재검증에서 오래된 참조를 거부하는 데 쓰입니다. 체크포인트 저장소에서는 해당 출처에 명시적으로 연결된 thread의 checkpoint와 pending write만 삭제하며, 관련 없는 thread는 유지합니다.
 
 ### 제공자 선택과 모델 실행 구성요소
 
@@ -230,7 +232,7 @@ flowchart TB
 flowchart LR
   run["체크포인트 저장기를 제공한 실행"]
   metadata["체크포인트에 저장<br/>식별자, 단계, 예산, 근거 참조"]
-  saver["호출자가 제공하는 저장기<br/>모바일 어댑터는 SQLCipher 사용"]
+  saver["BaseCheckpointSaver<br/>호출자가 제공하는 저장기<br/>모바일 어댑터는 SQLCipher 사용"]
   resume["새 thread_id로 재개 요청"]
   revalidate["같은 실행인지 확인하고<br/>저장된 출처의 최신성 재검증"]
   safe{"미완료 호출이 없고<br/>안전한 단계인가?"}
@@ -241,7 +243,7 @@ flowchart LR
   safe -->|"아니오"| stop
 ```
 
-체크포인트에는 실행 식별자와 단계, 예산, 근거 참조만 저장합니다. 사용자 문장, 건강 기록 본문, 외부 검색어와 검색 결과 본문, 도구 입력, 모델 응답과 최종 결과는 저장하지 않습니다. 새 실행 식별자를 사용해 재개하고 원본 근거가 여전히 같은지 확인합니다. 진행 중이던 외부 호출을 다시 보내지 않으며, 저장된 상태가 안전하지 않으면 중단합니다. 체크포인트 저장기는 호출자가 실행 기반에 전달할 때 사용합니다.
+체크포인트에는 실행 식별자와 단계, 예산, 근거 참조만 저장합니다. 사용자 문장, 건강 기록 본문, 외부 검색어와 검색 결과 본문, 도구 입력, 모델 응답과 최종 결과는 저장하지 않습니다. 이 thread별 진행 상태는 `BaseCheckpointSaver`에 속하며, 지속 memory 항목을 저장하는 별도 `BaseStore`와 구분됩니다. 새 실행 식별자를 사용해 재개하고 원본 근거가 여전히 같은지 확인합니다. 진행 중이던 외부 호출을 다시 보내지 않으며, 저장된 상태가 안전하지 않으면 중단합니다. 체크포인트 저장기는 호출자가 실행 기반에 전달할 때 사용합니다.
 
 `@orot/eval`은 검색, 에이전트, 안전성 평가용 합성 기록과 기대 근거를 제공합니다. 합성 자료는 제품의 건강 기록과 분리되어 있으며 임상적으로 검증된 데이터가 아닙니다. [진료 질문 합성 평가](evaluation/visit-questions.md)는 #30 워크플로를 결정적 테스트 어댑터로 평가하며 기본은 오프라인입니다. 별도 개발 실행에서 `OROT_LANGSMITH_EVAL=1`과 `LANGSMITH_API_KEY`를 지정해 opt-in하면 허용 목록에 지정된 합성 입력, 기대 출력, 그래프 결과, 평가 점수만 LangSmith로 전송합니다. 앱 `TelemetrySink`, 실제 사용자 기록, 운영 trace, Orot backend는 사용하지 않으며, 이 결과는 실제 provider 성능이나 임상 유효성을 입증하지 않습니다.
 
