@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { getAiFeatureCopy } from './copy';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -14,12 +15,13 @@ export interface FeatureEntryScreenProps {
   readonly onOpenExternalEvidence: () => void;
 }
 
-/** Keeps the AI routes with literature available inside conversation as one accessible, settings-free root list. */
+/** Keeps all four AI entry actions visible while preserving route and consent ownership. */
 export function FeatureEntryScreen({
   embedded = false,
   onOpenVisitQuestions,
   onOpenDiseaseHypotheses,
   onOpenRagConversation,
+  onOpenExternalEvidence,
 }: FeatureEntryScreenProps) {
   const navigationInset = useNavigationContentInset();
   useNavigationLeaveStateRegistration({
@@ -35,6 +37,7 @@ export function FeatureEntryScreen({
     onOpenVisitQuestions,
     onOpenDiseaseHypotheses,
     onOpenRagConversation,
+    onOpenExternalEvidence,
   ];
   const symbols = [
     'bubble.left.and.text.bubble.right',
@@ -43,53 +46,74 @@ export function FeatureEntryScreen({
     'book',
   ];
 
-  const content = (
-    <>
-      <View style={styles.headingGroup}>
-        <Text accessibilityRole="header" style={styles.heading}>
-          {copy.heading}
-        </Text>
-        <Text style={styles.subtitle}>{copy.subtitle}</Text>
-      </View>
-      <View style={styles.list}>
-        {copy.features.map((feature, index) => (
-          <View key={feature.id}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !actions[index] }}
-              disabled={!actions[index]}
-              onPress={actions[index]}
-              style={styles.row}
-              testID={`ai-feature-${feature.id}`}
+  const entries = copy.features.map((feature, index) => ({
+    feature,
+    action: actions[index],
+    symbol: symbols[index],
+  }));
+  const splitIndex = Math.ceil(entries.length / 2);
+  const renderEntries = (group: typeof entries) => (
+    <View style={styles.list}>
+      {group.map(({ feature, action, symbol }) => (
+        <View key={feature.id}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !action }}
+            disabled={!action}
+            onPress={action}
+            style={styles.row}
+            testID={`ai-feature-${feature.id}`}
+          >
+            <AppSymbol
+              name={symbol ?? 'sparkle'}
+              size={28}
+              color={appColors.text}
+            />
+            <View style={styles.copy}>
+              <Text style={styles.title}>{feature.title}</Text>
+              <Text style={styles.description}>{feature.description}</Text>
+            </View>
+            <AppSymbol name="chevron.right" size={14} />
+          </Pressable>
+          {feature.id === 'visit-questions' && !action ? (
+            <Text
+              accessibilityRole="alert"
+              style={styles.unavailable}
+              testID="visit-questions-unavailable"
             >
-              <AppSymbol
-                name={symbols[index]}
-                size={28}
-                color={appColors.text}
-              />
-              <View style={styles.copy}>
-                <Text style={styles.title}>{feature.title}</Text>
-                <Text style={styles.description}>{feature.description}</Text>
-              </View>
-              <AppSymbol name="chevron.right" size={14} />
-            </Pressable>
-            {feature.id === 'visit-questions' && !actions[index] ? (
-              <Text
-                accessibilityRole="alert"
-                style={styles.unavailable}
-                testID="visit-questions-unavailable"
-              >
-                {copy.visitQuestionsUnavailable}
-              </Text>
-            ) : null}
+              {copy.visitQuestionsUnavailable}
+            </Text>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+
+  // Keep the action order stable while letting measured shell geometry and text scale choose the layout axis.
+  const content = (
+    <AdaptiveColumns
+      primary={
+        <View style={styles.panel}>
+          <View style={styles.headingGroup}>
+            <Text accessibilityRole="header" style={styles.heading}>
+              {copy.heading}
+            </Text>
+            <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
-        ))}
-      </View>
-      <View style={styles.notice}>
-        <AppSymbol name="info.circle" size={18} />
-        <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-      </View>
-    </>
+          {renderEntries(entries.slice(0, splitIndex))}
+        </View>
+      }
+      secondary={
+        <View style={styles.panel}>
+          {renderEntries(entries.slice(splitIndex))}
+          <View style={styles.notice}>
+            <AppSymbol name="info.circle" size={18} />
+            <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+          </View>
+        </View>
+      }
+      testID="ai-feature-columns"
+    />
   );
 
   if (embedded) {
@@ -121,6 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.background,
   },
   embedded: { alignSelf: 'stretch', gap: 18 },
+  panel: { minWidth: 0, gap: 18 },
   headingGroup: { gap: 8 },
   heading: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
