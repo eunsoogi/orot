@@ -78,23 +78,29 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         // A scene-owned single region is roughly half the Duo lane and fails this ratio check.
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
 
-        // Classify the rendered layout from panel frames; a native division can leave one readable column.
+        // Native divisions may leave host width unused, so panels need containment rather than host filling.
         let minimumColumnWidth: CGFloat = 320
         let columnGap: CGFloat = 24
+        let frameTolerance: CGFloat = 0.5
         let horizontalGap = secondary.frame.minX - primary.frame.maxX
         let panelsShareRow = primary.frame.minY < secondary.frame.maxY &&
             secondary.frame.minY < primary.frame.maxY
+
+        for panel in [primary, secondary] {
+            XCTAssertGreaterThanOrEqual(panel.frame.minX, columns.frame.minX - frameTolerance, panel.debugDescription)
+            XCTAssertLessThanOrEqual(panel.frame.maxX, columns.frame.maxX + frameTolerance, panel.debugDescription)
+            XCTAssertGreaterThanOrEqual(panel.frame.minX, viewport.frame.minX - frameTolerance, panel.debugDescription)
+            XCTAssertLessThanOrEqual(panel.frame.maxX, viewport.frame.maxX + frameTolerance, panel.debugDescription)
+            XCTAssertFalse(panel.frame.intersects(rail.frame), panel.debugDescription)
+        }
+
         if panelsShareRow, horizontalGap >= 0 {
             XCTAssertGreaterThanOrEqual(primary.frame.width, minimumColumnWidth, primary.debugDescription)
             XCTAssertGreaterThanOrEqual(secondary.frame.width, minimumColumnWidth, secondary.debugDescription)
             XCTAssertGreaterThanOrEqual(horizontalGap, columnGap - 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(abs(primary.frame.minX - columns.frame.minX), 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(abs(secondary.frame.maxX - columns.frame.maxX), 1, app.debugDescription)
         } else {
             XCTAssertLessThanOrEqual(abs(primary.frame.minX - secondary.frame.minX), 1, app.debugDescription)
             XCTAssertLessThanOrEqual(abs(primary.frame.width - secondary.frame.width), 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(abs(primary.frame.minX - columns.frame.minX), 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(abs(secondary.frame.maxX - columns.frame.maxX), 1, app.debugDescription)
             XCTAssertGreaterThanOrEqual(secondary.frame.minY - primary.frame.maxY, columnGap - 1, app.debugDescription)
         }
 
