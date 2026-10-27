@@ -114,7 +114,9 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
             XCUIDevice.shared.orientation = .portrait
             let cleanup = app.buttons["encounter-probe-cleanup"]
             if cleanup.exists {
+                // Wait for persisted fixture removal before terminating its owning host.
                 cleanup.tap()
+                UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "cleaned")
             }
             app.terminate()
             XCUIDevice.shared.orientation = originalOrientation

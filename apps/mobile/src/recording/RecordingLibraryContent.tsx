@@ -4,7 +4,7 @@ import RecordingLibrarySelectionSummary from './RecordingLibrarySelectionSummary
 import type { RecordingLibrarySummary } from './recordingLibraryService';
 import type { RecordingSourceRecord } from './recordingTypes';
 
-/** Keeps the selection summary on the same measured axis as its source list. */
+/** Keeps loading, empty, and selected content within measured native usable regions. */
 export default function RecordingLibraryContent({
   disabled,
   loadError,
@@ -36,15 +36,15 @@ export default function RecordingLibraryContent({
     />
   );
 
-  return selectionSummary ? (
+  return (
     <AdaptiveColumns
       primary={list}
       secondary={
-        <RecordingLibrarySelectionSummary summary={selectionSummary} />
+        selectionSummary ? (
+          <RecordingLibrarySelectionSummary summary={selectionSummary} />
+        ) : undefined
       }
       testID="saved-recordings-layout"
     />
-  ) : (
-    list
   );
 }

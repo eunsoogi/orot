@@ -21,6 +21,7 @@ import {
   cleanReviewLeaveState,
   createLibraryService,
   geometry,
+  leftUsableRegionWidth,
   source,
 } from '../testSupport/savedRecordingsRouteAdaptiveTestSupport';
 
@@ -112,6 +113,20 @@ test('preserves the selected summary as usable geometry changes under production
     screen.queryByTestId(`navigation-route-columns-${savedRouteKey}`),
   ).toBeNull();
   await screen.findByTestId('recording-library-item-recording-source');
+  const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+  const direction = () =>
+    StyleSheet.flatten(
+      screen.getByTestId('saved-recordings-layout').props.style,
+    )?.flexDirection;
+  const columnWidth = (side: 'primary' | 'secondary') =>
+    StyleSheet.flatten(
+      screen.getByTestId(`saved-recordings-layout-${side}`).props.style,
+    )?.width;
+  await fireEvent(sensor, 'geometryChange', {
+    nativeEvent: geometry(900, true),
+  });
+  expect(direction()).toBe('column');
+  expect(columnWidth('primary')).toBeLessThanOrEqual(leftUsableRegionWidth);
   await fireEvent.press(
     screen.getByTestId('recording-details-recording-source'),
   );
@@ -137,18 +152,10 @@ test('preserves the selected summary as usable geometry changes under production
   expect(
     screen.getByTestId('saved-recordings-selection-review-state'),
   ).toHaveTextContent('검토 전 초안');
-  const layout = screen.getByTestId('saved-recordings-layout');
-  const direction = () => StyleSheet.flatten(layout.props.style)?.flexDirection;
-  const sensor = screen.getByTestId('navigation-window-geometry-sensor');
-
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
   });
   expect(direction()).toBe('row');
-  const columnWidth = (side: 'primary' | 'secondary') =>
-    StyleSheet.flatten(
-      screen.getByTestId(`saved-recordings-layout-${side}`).props.style,
-    )?.width;
   expect(columnWidth('primary')).toBeGreaterThan(320);
   expect(columnWidth('secondary')).toBeGreaterThan(320);
   expect(screen.getByTestId('saved-recordings-selection-summary')).toBeTruthy();
@@ -198,6 +205,14 @@ test('preserves the selected summary as usable geometry changes under production
       screen.queryByTestId('saved-recordings-selection-summary'),
     ).toBeNull();
   });
+  await act(async () => {
+    Dimensions.set({ window: viewport(900), screen: viewport(900) });
+    await fireEvent(sensor, 'geometryChange', {
+      nativeEvent: geometry(900, true),
+    });
+  });
+  expect(direction()).toBe('column');
+  expect(columnWidth('primary')).toBeLessThanOrEqual(leftUsableRegionWidth);
   expect(service.deleteRecording).toHaveBeenCalledWith(source.id);
   alert.mockRestore();
 });

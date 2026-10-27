@@ -17,6 +17,8 @@ export const source: RecordingSourceRecord = {
   title: 'Saved recording',
 };
 
+export const leftUsableRegionWidth = 445;
+
 const summary: RecordingLibrarySummary = {
   source,
   durationMs: 93_000,
@@ -61,7 +63,7 @@ export function geometry(
           {
             id: 'duo-division',
             kind: 'division',
-            frame: { x: 445, y: 0, width: 10, height: 700 },
+            frame: { x: leftUsableRegionWidth, y: 0, width: 10, height: 700 },
             margins: { top: 0, right: 0, bottom: 0, left: 0 },
             isActive: true,
           },
