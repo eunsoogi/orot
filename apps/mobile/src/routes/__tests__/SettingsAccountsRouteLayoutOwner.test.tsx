@@ -27,7 +27,7 @@ test.each([
   ['settings-accounts', false],
   ['settings-backup', false],
   ['settings-health-data', false],
-  ['settings-sync-status', true],
+  ['settings-sync-status', false],
 ] as const)(
   '%s uses the expected measured-content owner',
   async (routeName, sceneOwnsColumns) => {
@@ -49,7 +49,7 @@ test.each([
     expect(screen.getByTestId('settings-route-content').props.children).toBe(
       routeName,
     );
-    // Account, backup, and health-data screens measure panels; sync status stays scene-owned.
+    // Account, backup, health-data, and sync-status screens measure their own panels.
     const sceneColumns = screen.queryByTestId(
       `navigation-route-columns-${routeKey}`,
     );

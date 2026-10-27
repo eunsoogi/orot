@@ -27,6 +27,7 @@ export const duoTests = [
   'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport',
   'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges',
   'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow',
+  'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow',
   'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow',
   'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow',
   'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview',
