@@ -60,10 +60,12 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     @MainActor
     func testConversationOutputComposerAndSwipeUndoAcrossAppearances() throws {
         let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
+            XCUIDevice.shared.orientation = originalOrientation
             if let original {
                 do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
                 catch { XCTFail("Could not restore Simulator appearance: \(error)") }
@@ -117,6 +119,31 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             // Leaving and reopening must retain the app-owned request and the current input state.
             let pendingRowID = reopenConversation(app)
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
+            if !dark {
+                input.tap()
+                input.typeText("draft while the answer is in progress")
+                XCTAssertEqual(reopenConversation(app), pendingRowID)
+                let primary = node(app, "rag-conversation-columns-primary")
+                let evidence = node(app, "rag-conversation-columns-secondary")
+                // Simulator rotation covers viewport reflow, not Duo hardware or OS Split View.
+                XCUIDevice.shared.orientation = .landscapeLeft
+                let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let first = primary.frame, second = evidence.frame
+                    return !first.isEmpty && !second.isEmpty &&
+                        abs(first.minY - second.minY) < 1 && second.minX >= first.maxX
+                }, object: nil)
+                XCTAssertEqual(UITestConditions.wait(for: [expanded]), .completed)
+                XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
+                XCTAssertTrue(stop.isHittable, stop.debugDescription)
+                XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
+                XCUIDevice.shared.orientation = .portrait
+                let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let first = primary.frame, second = evidence.frame
+                    return !first.isEmpty && !second.isEmpty && second.minY >= first.maxY - 1
+                }, object: nil)
+                XCTAssertEqual(UITestConditions.wait(for: [compact]), .completed)
+                XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
+            }
             let stopFrame = stop.frame
             RecordingFixtureUITestConditions.capture(app, "conversation-streaming-\(suffix)", testCase: self)
             stop.tap()

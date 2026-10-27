@@ -20,10 +20,12 @@ export function ConversationMessage({
   message,
   onOpenSource,
   onLinkError,
+  showCitations = true,
 }: {
   readonly message: DisplayMessage;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
+  readonly showCitations?: boolean;
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
@@ -58,11 +60,13 @@ export function ConversationMessage({
             {message.activity}
           </Text>
         ) : null}
-        <ConversationSources
-          references={message.citations ?? []}
-          onOpenSource={onOpenSource}
-          onLinkError={onLinkError}
-        />
+        {showCitations ? (
+          <ConversationSources
+            references={message.citations ?? []}
+            onOpenSource={onOpenSource}
+            onLinkError={onLinkError}
+          />
+        ) : null}
       </View>
     </View>
   );

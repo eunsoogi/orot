@@ -2,6 +2,10 @@
 export const ragConversationKo = {
   'ragConversation.title': '기록과 대화',
   'ragConversation.description': '내 기록을 바탕으로 궁금한 점을 물어보세요.',
+  'ragConversation.evidenceTitle': '이 답변의 근거',
+  'ragConversation.evidenceDescription':
+    '대화에서 사용한 원문 근거를 선택해 확인할 수 있어요.',
+  'ragConversation.evidenceEmpty': '답변에 사용한 근거가 여기에 표시돼요.',
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
   'ragConversation.sessions': '대화 목록',
