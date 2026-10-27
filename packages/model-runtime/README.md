@@ -13,9 +13,6 @@ requests, responses, and errors at their boundary.
   without vendor-specific payloads.
 - `CredentialProvider` returns generic API-key or bearer credentials. Callers
   must not expose the secret to model input or telemetry.
-- `ProviderRegistry` stores language-model, transcription, and embedding
-  providers by kind and id. `InMemoryProviderRegistry` rejects duplicate ids
-  within one kind and validates advertised streaming methods.
 - `TelemetrySink` receives only an allowlisted operation, outcome, duration,
   and normalized error code. It has no provider, account, operation-run, or
   source identifiers; prompts, media, tool arguments, responses, and secrets
