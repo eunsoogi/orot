@@ -1,5 +1,9 @@
-import { act, render } from '@testing-library/react-native';
+import { act } from '@testing-library/react-native';
 import { providerFailure } from '@orot/model-runtime';
+import {
+  renderWithRootSafeArea,
+  withRootSafeArea,
+} from '../../test-support/safeAreaTestProviders';
 import type { AppointmentRepository } from '@orot/storage';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import type { CalendarBridge, CalendarEvent } from '../calendar/types';
@@ -160,7 +164,7 @@ export async function renderScreen(
     onOpenCalendarSettings,
     onOpenProviderSelection,
   };
-  const view = await render(
+  const view = await renderWithRootSafeArea(
     <MedicalAppointmentClassificationScreen
       {...screenProps}
       calendarSync={calendarSync}
@@ -174,10 +178,12 @@ export async function renderScreen(
     updateCalendarSync: async (next: CalendarAutoSyncState) => {
       await act(async () => {
         view.rerender(
-          <MedicalAppointmentClassificationScreen
-            {...screenProps}
-            calendarSync={next}
-          />,
+          withRootSafeArea(
+            <MedicalAppointmentClassificationScreen
+              {...screenProps}
+              calendarSync={next}
+            />,
+          ),
         );
       });
     },

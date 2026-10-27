@@ -1,17 +1,7 @@
-import { inferenceConsentCopy } from './inferenceConsentCopy';
-import { useContext, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
-import { AppText as Text } from '../../layout/AppText';
-import { AppButton } from '../../layout/AppButton';
-import { AppSymbol } from '../../layout/AppSymbol';
-import { appColors } from '../../layout/appColors';
-import { t } from '../../i18n';
-import {
-  InferenceDisclosurePreview,
-  previewMessage,
-} from './InferenceDisclosurePreview';
+import { KeyboardAvoidingView, Modal, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import InferenceDisclosureModalPanel from './InferenceDisclosureModalPanel';
 import { disclosureStyles as styles } from './InferenceDisclosureStyles';
 
 interface InferenceDisclosureSheetProps {
@@ -56,34 +46,17 @@ function isCalendarRequest(request: OutboundProcessingRequest): boolean {
   });
 }
 
-/** The compact summary opens an exact payload review; incomplete attachment previews remain blocked. */
+/** Incomplete attachment previews stay blocked while every approval remains explicit. */
 export default function InferenceDisclosureSheet({
   request,
   onDecision,
   canRemember = true,
 }: InferenceDisclosureSheetProps) {
-  const [expanded, setExpanded] = useState(false);
-  const insets = useContext(SafeAreaInsetsContext);
-  // Unclassified web queries need an immediate exact review; they never inherit
-  // the app-controlled topic permission or create a reusable approval receipt.
-  useEffect(
-    () =>
-      setExpanded(
-        request?.consentScope?.purpose === 'public_web_search' && !canRemember,
-      ),
-    [request, canRemember],
-  );
   if (!request) return null;
-  const complete = request.payload.messages.every(
-    message => previewMessage(message).complete,
-  );
-  const chatGPT = request.providerId.startsWith('chatgpt-plan:');
-  const model =
-    request.modelId === 'gpt-6-luna' ? 'GPT-6-Luna' : request.modelId;
   const calendar =
     request.consentScope?.purpose === 'calendar_classification' ||
     isCalendarRequest(request);
-  const copy = inferenceConsentCopy(request);
+
   return (
     <Modal
       testID="inference-disclosure-modal"
@@ -95,128 +68,23 @@ export default function InferenceDisclosureSheet({
       onRequestClose={() => onDecision(false)}
       visible
     >
-      <View style={styles.backdrop}>
-        <View
-          accessibilityViewIsModal
-          style={styles.panel}
-          testID="inference-disclosure-sheet"
+      <SafeAreaProvider
+        style={styles.backdrop}
+        testID="inference-disclosure-modal-safe-area"
+      >
+        {/* Modal has its own native window; do not size this sheet from the calling route. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.backdrop}
         >
-          {/* Keep the pull-down cue fixed while reviewing long input. UIKit owns the gesture. */}
-          <View
-            testID="inference-disclosure-grabber"
-            style={styles.grabber}
-            pointerEvents="none"
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
+          <InferenceDisclosureModalPanel
+            request={request}
+            onDecision={onDecision}
+            canRemember={canRemember}
+            calendar={calendar}
           />
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.header}>
-              <View style={styles.icon}>
-                <AppSymbol name="paperplane" size={24} color={appColors.text} />
-              </View>
-              <Text accessibilityRole="header" style={styles.title}>
-                {t('medicalAppointments.inferenceDisclosure.title')}
-              </Text>
-              <Text style={styles.subtitle}>{copy.subtitle}</Text>
-            </View>
-            <View style={styles.card}>
-              <View style={styles.row}>
-                <Text style={styles.label}>
-                  {t('medicalAppointments.inferenceDisclosure.recipient')}
-                </Text>
-                <Text style={styles.value}>
-                  {chatGPT
-                    ? t('medicalAppointments.inferenceDisclosure.account')
-                    : request.recipient}
-                </Text>
-                {!chatGPT && !copy.publicSearch ? (
-                  <Text style={styles.label}>{request.providerId}</Text>
-                ) : null}
-              </View>
-              {!copy.publicSearch ? (
-                <>
-                  <View style={styles.separator} />
-                  <View style={styles.row}>
-                    <Text style={styles.label}>
-                      {t(
-                        'medicalAppointments.inferenceDisclosure.selectedModel',
-                      )}
-                    </Text>
-                    <Text style={styles.value}>{model}</Text>
-                  </View>
-                </>
-              ) : null}
-            </View>
-            <View style={styles.card}>
-              <Text style={styles.label}>
-                {t('medicalAppointments.inferenceDisclosure.information')}
-              </Text>
-              <Text style={styles.value}>{copy.information}</Text>
-              <Text style={styles.noticeBody}>
-                {calendar
-                  ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
-                  : t('medicalAppointments.inferenceDisclosure.reviewHint')}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded }}
-              onPress={() => setExpanded(value => !value)}
-              style={styles.expand}
-              testID="inference-disclosure-expand"
-            >
-              <Text style={styles.expandText}>
-                {t('medicalAppointments.inferenceDisclosure.expand')}
-              </Text>
-              <AppSymbol
-                name={expanded ? 'chevron.down' : 'chevron.right'}
-                size={16}
-              />
-            </Pressable>
-            {expanded ? <InferenceDisclosurePreview request={request} /> : null}
-            <View style={styles.notice}>
-              <Text style={styles.noticeTitle}>
-                {canRemember
-                  ? t('medicalAppointments.inferenceDisclosure.remember')
-                  : t('medicalAppointments.inferenceDisclosure.oneTime')}
-              </Text>
-              <Text style={styles.noticeBody}>
-                {canRemember
-                  ? t('medicalAppointments.inferenceDisclosure.changes')
-                  : t('medicalAppointments.inferenceDisclosure.unavailable')}
-              </Text>
-            </View>
-            {!complete ? (
-              <Text accessibilityRole="alert" style={styles.error}>
-                {t('medicalAppointments.inferenceDisclosure.blockedAttachment')}
-              </Text>
-            ) : null}
-          </ScrollView>
-          <View
-            style={[
-              styles.footer,
-              { paddingBottom: Math.max(insets?.bottom ?? 0, 16) },
-            ]}
-          >
-            <Text style={styles.footerNote}>
-              {t('medicalAppointments.inferenceDisclosure.settingsHint')}
-            </Text>
-            <AppButton
-              disabled={!complete}
-              title={t('medicalAppointments.inferenceDisclosure.allow')}
-              onPress={() => onDecision(true)}
-              testID="inference-disclosure-allow"
-            />
-            <AppButton
-              variant="neutral"
-              title={t('medicalAppointments.inferenceDisclosure.cancel')}
-              onPress={() => onDecision(false)}
-              testID="inference-disclosure-cancel"
-            />
-          </View>
-        </View>
-      </View>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
