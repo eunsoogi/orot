@@ -12,6 +12,7 @@ import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 import { windowPresentationAnchorTests } from './window-presentation-anchor-test-inventory.mjs';
 
 const coreTests = [
+  'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testNotificationContentCannotCopyClinicalBridgeFields',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testZonedRequestUsesANonRepeatingUTCTrigger',
@@ -156,6 +157,7 @@ export const fixtureTests = [
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
+  'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
   'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',
   'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
   'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',

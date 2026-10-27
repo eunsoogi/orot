@@ -1,3 +1,4 @@
+import { environmentForRunner } from './ios-test-reminder-diagnostic.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -199,7 +200,7 @@ try {
     {
       stdio: 'inherit',
       // Xcode forwards this public prefix to the runner, including its automatic restart after a crash.
-      env: { ...process.env, TEST_RUNNER_OROT_IOS_TEST_INVOCATION: invocationId },
+      env: environmentForRunner(profile, tests, invocationId),
     },
   );
   const status = await new Promise((resolveStatus, reject) => {
