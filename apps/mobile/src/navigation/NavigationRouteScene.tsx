@@ -28,6 +28,7 @@ export interface NavigationRouteSceneProps<Name extends string> {
   readonly active: boolean;
   readonly scrollable: boolean;
   readonly childHandlesSafeArea: boolean;
+  readonly contentLayoutOwner: 'scene' | 'screen';
   readonly rootTabs?: NavigationRootTabs;
   readonly primaryActionHost: NavigationPrimaryActionHost | null;
   readonly registerLeaveStateForRoute: (
@@ -46,6 +47,7 @@ export function NavigationRouteScene<Name extends string>({
   active,
   scrollable,
   childHandlesSafeArea,
+  contentLayoutOwner,
   rootTabs,
   primaryActionHost,
   registerLeaveStateForRoute,
@@ -114,17 +116,17 @@ export function NavigationRouteScene<Name extends string>({
       </NavigationPrimaryActionContext.Provider>
     </NavigationLeaveStateRegistrationProvider>
   );
-  // The question editor owns two panels; a scene-level single pane would hide their shared width.
+  // Screen-owned panels must measure the full usable lane without a scene-level width constraint.
   const adaptiveContent =
-    route.name === 'visit-questions' ? (
-      routeContent
-    ) : (
+    contentLayoutOwner === 'scene' ? (
       <AdaptiveColumns
         active={active}
         primary={routeContent}
         routeKey={route.key}
         testID={`navigation-route-columns-${route.key}`}
       />
+    ) : (
+      routeContent
     );
   const body = scrollable ? (
     <NavigationRouteScrollView

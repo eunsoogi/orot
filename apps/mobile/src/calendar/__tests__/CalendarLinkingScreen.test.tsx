@@ -50,9 +50,16 @@ describe('Calendar linking screen', () => {
         event: selected,
       })),
     });
-    const appointments = repository(async () => []);
+    let savedAppointments: ReturnType<typeof appointmentFor>[] = [];
+    const appointments = repository(async () => savedAppointments);
+    appointments.confirmCalendarEvent = jest.fn(async () => {
+      const saved = appointmentFor(selected);
+      savedAppointments = [saved];
+      return saved;
+    });
     await render(
       <CalendarLinkingScreen
+        adaptiveScheduleLayout
         repository={appointments}
         bridge={calendar}
         calendarSync={syncedCalendar([unrelated, selected])}
@@ -70,6 +77,9 @@ describe('Calendar linking screen', () => {
 
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     expect(screen.getByTestId('calendar-selection')).toBeTruthy();
+    expect(
+      screen.getByTestId('schedule-adaptive-columns-secondary'),
+    ).toBeTruthy();
     await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
 
     expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(selected);
@@ -79,6 +89,13 @@ describe('Calendar linking screen', () => {
     expect(
       await screen.findByText('다음 외래 방문을 저장했어요.'),
     ).toBeTruthy();
+    expect(
+      await screen.findByTestId('schedule-next-visit-summary'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('schedule-adaptive-columns-secondary'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('schedule-next-visit-title')).toBeTruthy();
   });
 
   it('does not show the empty candidate state when a saved next visit is reloaded', async () => {
@@ -97,6 +114,7 @@ describe('Calendar linking screen', () => {
 
     expect(await screen.findByTestId('calendar-next-visit')).toBeTruthy();
     expect(screen.queryByTestId('calendar-empty')).toBeNull();
+    expect(screen.queryByTestId('schedule-next-visit-summary')).toBeNull();
   });
 
   it('describes empty upcoming-event results without asserting a date is clear', async () => {

@@ -24,9 +24,11 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
   return {
     NavigationRouteAdapter: ({
       children,
+      contentLayoutOwner,
       controller,
       onNativeRouteRemovalComplete,
     }: {
+      contentLayoutOwner?: unknown;
       children: (actions: {
         route: { key: string; name: string };
       }) => React.ReactNode;
@@ -40,6 +42,12 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
         controller.getSnapshot,
         controller.getSnapshot,
       );
+      const layoutOwner =
+        typeof contentLayoutOwner === 'function'
+          ? (contentLayoutOwner as (mockRoute: { name: string }) => string)(
+              snapshot.currentRoute,
+            )
+          : (contentLayoutOwner ?? 'scene');
       const previousRouteKey = React.useRef(snapshot.currentRoute.key);
       const removedRouteKey = React.useRef<string | null>(null);
       React.useEffect(
@@ -58,6 +66,7 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
       return (
         <View>
           <Text testID="native-route-name">{snapshot.currentRoute.name}</Text>
+          <Text testID="route-layout-owner">{String(layoutOwner)}</Text>
           {children({
             route: snapshot.currentRoute,
             onBack: controller.requestBack,
@@ -91,9 +100,11 @@ test('keeps the AI overlay mounted until the native closing transition completes
   await render(
     <AiFeatureRoute initialRoute="visit-questions" onBack={onBack} />,
   );
+  expect(screen.getByTestId('route-layout-owner')).toHaveTextContent('screen');
 
   await fireEvent.press(screen.getByTestId('request-native-back'));
   expect(screen.getByTestId('native-route-name')).toHaveTextContent('app-home');
+  expect(screen.getByTestId('route-layout-owner')).toHaveTextContent('scene');
   expect(onBack).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('finish-native-removal'));

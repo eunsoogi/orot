@@ -77,6 +77,12 @@ test('shows three explained AI actions and keeps literature inside conversation'
   for (const [actionId, routeId] of aiFeatureRoutes) {
     await fireEvent.press(screen.getByTestId(actionId));
     expect(await screen.findByTestId(routeId)).toBeTruthy();
+    if (actionId === 'ai-feature-visit-questions') {
+      expect(screen.getByTestId('navigation-route-scene-route-2')).toBeTruthy();
+      expect(
+        screen.queryByTestId('navigation-route-columns-route-2'),
+      ).toBeNull();
+    }
     if (routeId === 'rag-conversation-screen') {
       expect(
         screen.getByText(
