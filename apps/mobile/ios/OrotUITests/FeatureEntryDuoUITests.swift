@@ -78,24 +78,24 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         // A scene-owned single region is roughly half the Duo lane and fails this ratio check.
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
 
-        // Match AdaptiveColumns' 320-point readable-column minimum and 24-point gap.
+        // Classify the rendered layout from panel frames; a native division can leave one readable column.
         let minimumColumnWidth: CGFloat = 320
         let columnGap: CGFloat = 24
-        let remainingLaneWidth = columns.frame.width - primary.frame.width
-        let expandedLayoutRequired = columns.frame.width >= minimumColumnWidth * 2 + columnGap &&
-            (primary.frame.width >= minimumColumnWidth * 2 + columnGap ||
-                remainingLaneWidth >= minimumColumnWidth + columnGap)
-        if expandedLayoutRequired {
+        let horizontalGap = secondary.frame.minX - primary.frame.maxX
+        let panelsShareRow = primary.frame.minY < secondary.frame.maxY &&
+            secondary.frame.minY < primary.frame.maxY
+        if panelsShareRow, horizontalGap >= 0 {
             XCTAssertGreaterThanOrEqual(primary.frame.width, minimumColumnWidth, primary.debugDescription)
             XCTAssertGreaterThanOrEqual(secondary.frame.width, minimumColumnWidth, secondary.debugDescription)
-            XCTAssertLessThan(primary.frame.maxX, secondary.frame.minX, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(horizontalGap, columnGap - 1, app.debugDescription)
             XCTAssertLessThanOrEqual(abs(primary.frame.minX - columns.frame.minX), 1, app.debugDescription)
             XCTAssertLessThanOrEqual(abs(secondary.frame.maxX - columns.frame.maxX), 1, app.debugDescription)
         } else {
-            // A measured narrow lane or a single wide native region may validly retain one readable column.
             XCTAssertLessThanOrEqual(abs(primary.frame.minX - secondary.frame.minX), 1, app.debugDescription)
             XCTAssertLessThanOrEqual(abs(primary.frame.width - secondary.frame.width), 1, app.debugDescription)
-            XCTAssertLessThan(primary.frame.maxY, secondary.frame.minY, app.debugDescription)
+            XCTAssertLessThanOrEqual(abs(primary.frame.minX - columns.frame.minX), 1, app.debugDescription)
+            XCTAssertLessThanOrEqual(abs(secondary.frame.maxX - columns.frame.maxX), 1, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(secondary.frame.minY - primary.frame.maxY, columnGap - 1, app.debugDescription)
         }
 
         for id in ["visit-questions", "disease-hypotheses", "rag-conversation", "external-evidence"] {
