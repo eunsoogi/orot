@@ -56,7 +56,11 @@ final class PopoverSourceRegion: NSObject {
                   type(of: candidate) == UIView.self, candidate.window === window,
                   candidate.frame == CGRect(x: source.bounds.midX, y: source.bounds.midY, width: 1, height: 1)
             else {
-                completion(["diagnosticKind": "UIKitReferenceOnly", "referenceSucceeded": false, "fixtureReady": false])
+                let failure: [String: Any] = ["diagnosticKind": "UIKitReferenceOnly", "referenceSucceeded": false, "fixtureReady": false]
+                emitTestReference(failure)
+                // A failure may complete only while unpresented; otherwise teardown must dismiss before removing the file.
+                guard activity.presentingViewController == nil, activity.viewIfLoaded?.window == nil else { return }
+                completion(failure)
                 return
             }
             let popover = activity.popoverPresentationController
@@ -110,6 +114,8 @@ final class PopoverSourceRegion: NSObject {
                     observation["fileLiveAfterDismissal"] = fileIsLive()
                     observation["referenceSucceeded"] = sameWindow && samePresenter && destinationActive && fileWasLive && fileLive && dismissed && fileIsLive()
                     emitTestReference(observation)
+                    // The test's callback removes its synthetic export, so a live or unverified modal must never reach it.
+                    guard dismissed else { return }
                     completion(observation)
                 }
             }
