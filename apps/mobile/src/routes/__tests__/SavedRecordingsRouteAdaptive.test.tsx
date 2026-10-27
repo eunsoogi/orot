@@ -133,10 +133,13 @@ test('preserves the selected summary as usable geometry changes under production
 
   expect(screen.getByTestId('recording-review-back')).toBeTruthy();
   const reviewRouteKey = controller.getSnapshot().currentRoute.key;
-  // The review stub has no edits, so the route adapter uses its clean leave-state source.
+  // RecordingReviewRoute measures the shared usable lane for both recording and review panels.
   expect(
-    screen.getByTestId(`navigation-route-columns-${reviewRouteKey}`),
+    screen.getByTestId(`navigation-route-scene-${reviewRouteKey}`),
   ).toBeTruthy();
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${reviewRouteKey}`),
+  ).toBeNull();
   await fireEvent.press(screen.getByTestId('recording-review-back'));
   await waitFor(() => {
     expect(controller.getSnapshot().currentRoute.key).toBe(savedRouteKey);

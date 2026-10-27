@@ -10,7 +10,7 @@ import { localEncounterReviewService } from './localService';
 import { CandidatePanel } from './CandidatePanel';
 import { reviewCopy as copy } from './strings';
 
-/** A source key, never a geometry key, owns the controller and all unsaved review edits. */
+/** A source key, never geometry, owns this controller and its unsaved edits through route reflow. */
 export function EncounterReviewPanel({
   sourceId,
   disabled,
@@ -44,15 +44,24 @@ export function EncounterReviewPanel({
   const pending = state.status === 'pending' ? state.pending : undefined;
   return (
     <View style={styles.panel} testID="encounter-review-panel">
-      <AppText accessibilityRole="header">{copy.title}</AppText>
-      <AppText>{copy.boundary}</AppText>
-      <AppText accessibilityLiveRegion="polite" testID="encounter-status">
+      <View style={styles.header}>
+        <AppText accessibilityRole="header" style={styles.title}>
+          {copy.title}
+        </AppText>
+        <AppText style={styles.boundary}>{copy.boundary}</AppText>
+      </View>
+      <AppText
+        accessibilityLiveRegion="polite"
+        style={styles.status}
+        testID="encounter-status"
+      >
         {pending && !pending.candidates.length
           ? copy.empty
           : copy[state.status]}
       </AppText>
-      {pending
-        ? state.candidates.map(candidate => (
+      {pending ? (
+        <View style={styles.candidates}>
+          {state.candidates.map(candidate => (
             <CandidatePanel
               key={candidate.id}
               candidate={candidate}
@@ -63,10 +72,11 @@ export function EncounterReviewPanel({
                 controller.edit(candidate.id, field, text)
               }
             />
-          ))
-        : null}
+          ))}
+        </View>
+      ) : null}
       {pending ? (
-        <>
+        <View style={styles.actions}>
           <AppButton
             title={copy.save}
             disabled={
@@ -88,21 +98,23 @@ export function EncounterReviewPanel({
             testID="encounter-deny"
             variant="secondary"
           />
-        </>
+        </View>
       ) : null}
       {!busy && !pending ? (
-        <AppButton
-          title={
-            state.status === 'idle' || state.status === 'no-transcript'
-              ? copy.start
-              : copy.restart
-          }
-          disabled={disabled}
-          onPress={() => {
-            controller.start(consent);
-          }}
-          testID="encounter-start"
-        />
+        <View style={styles.actions}>
+          <AppButton
+            title={
+              state.status === 'idle' || state.status === 'no-transcript'
+                ? copy.start
+                : copy.restart
+            }
+            disabled={disabled}
+            onPress={() => {
+              controller.start(consent);
+            }}
+            testID="encounter-start"
+          />
+        </View>
       ) : null}
       {!busy && ['cancelled', 'unavailable'].includes(state.status) ? (
         <AppButton
@@ -131,5 +143,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderWidth: 1,
   },
+  header: { gap: 8 },
+  title: { fontSize: 18, fontWeight: '600', lineHeight: 24 },
+  boundary: { color: appColors.secondary, lineHeight: 22 },
+  status: { fontWeight: '500', lineHeight: 22 },
+  candidates: { gap: 12 },
+  actions: { gap: 12 },
 });
