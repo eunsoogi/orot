@@ -10,6 +10,7 @@ export const duoTests = [
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
   'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',
+  'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry',
   'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
   'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow',
   'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',

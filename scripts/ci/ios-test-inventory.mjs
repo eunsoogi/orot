@@ -103,6 +103,8 @@ export const fixtureTests = [
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
+  // Large-text fallback is general UI coverage; Duo inventory owns live reflow coverage.
+  'OrotUITests/AppointmentsUITests/testLargeTextKeepsAppointmentDetailsInOneReadableColumn',
   'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
   'OrotUITests/AppointmentReminderJourneyUITests/testActualRNFailureOriginSurvivesCleanupAndQueuedReconciliation',
   'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',
