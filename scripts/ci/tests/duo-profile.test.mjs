@@ -107,7 +107,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 18);
+  assert.equal(duoInventory.length, 19);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -129,8 +129,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLargeText,
     recordingLiveReflow,
   ]);
-  // Home stays in iPhone fixtures; feature-entry, records, and health-import
-  // regressions run only on the dedicated Duo destination.
+  // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
+  // health-import regressions run only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!coreTests.includes(homeSummary));
@@ -138,6 +138,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
+    manualHistoryRecovery,
     healthLibraryReflow,
     healthImportLibrary,
     healthImportReflow,
