@@ -45,6 +45,7 @@ export interface HybridProbeResult {
   readonly cipherVersion: string | null;
   readonly tempStoreMode: number | null;
   readonly remainingVectorCount: number;
+  readonly remainingVectorIds: readonly string[];
   readonly ftsOnly: {
     readonly id: string;
     readonly lexicalRank: number | null;
@@ -114,6 +115,8 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
   let mode: HybridProbeResult['mode'];
   if (indexedVectors.length === 0) {
     mode = 'indexed';
+    // Missing source roots are ineligible for indexing, so persist them before writing vectors.
+    await prepareRetrievalCorpus(corpus, 'fresh');
     await service.index(corpus, { batchSize: 2 });
     if (
       (await vectorStorage.listForModel(service.provider.modelIdentity))
@@ -143,16 +146,14 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
   ) {
     // Re-query the retained vector after process restart; indexing here would hide a persistence failure.
     mode = 'reopened';
+    // Restart validates existing sources only; it must not recreate rows or refill the deleted vector.
+    await prepareRetrievalCorpus(corpus, 'restart');
   } else {
     throw new Error(
       'The SQLCipher store has an unexpected vector state for this synthetic probe.',
     );
   }
 
-  await prepareRetrievalCorpus(
-    corpus,
-    mode === 'indexed' ? 'fresh' : 'restart',
-  );
   const ftsHits = await service.search('혈압약', corpus, 2, {
     filters: {
       timeRange: {
@@ -217,6 +218,7 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
         ? tempStore.rows[0].temp_store
         : null,
     remainingVectorCount: remainingVectors.length,
+    remainingVectorIds: remainingVectors.map(vector => vector.chunkId),
     ftsOnly,
     vectorOnly,
     filtersApplied:
@@ -234,6 +236,7 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
   if (
     result.tempStoreMode !== 2 ||
     result.remainingVectorCount !== corpus.length - 1 ||
+    result.remainingVectorIds[0] !== sleep.id ||
     !result.filtersApplied ||
     !result.locatorPreserved ||
     !result.temporaryTablesCleaned
