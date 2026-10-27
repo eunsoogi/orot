@@ -47,6 +47,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         externalEvidence.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "external-medical-evidence-screen")))
         XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-search")))
+        try assertLiteraturePanelsFitContentLane(app)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertFalse(node(app, "external-evidence-loading").exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
@@ -114,6 +115,48 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.minX - 0.5)
             XCTAssertLessThanOrEqual(action.frame.maxX, viewport.frame.maxX + 0.5)
             XCTAssertFalse(action.frame.intersects(rail.frame), action.debugDescription)
+        }
+    }
+
+    /// Checks the production entry's query and result panels against the measured content lane.
+    @MainActor
+    private func assertLiteraturePanelsFitContentLane(_ app: XCUIApplication) throws {
+        let viewport = node(app, "navigation-content-region")
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
+        let columns = node(app, "external-medical-evidence-columns")
+        let primary = node(app, "external-medical-evidence-columns-primary")
+        let secondary = node(app, "external-medical-evidence-columns-secondary")
+        // Shell geometry is only a measurement prerequisite; missing product panels must fail.
+        guard UITestConditions.exists(viewport), !viewport.frame.isEmpty,
+              UITestConditions.exists(rail), !rail.frame.isEmpty
+        else {
+            throw XCTSkip("Medical-literature panel geometry is unavailable in this window.")
+        }
+
+        for panel in [columns, primary, secondary] {
+            XCTAssertTrue(UITestConditions.exists(panel), app.debugDescription)
+            XCTAssertFalse(panel.frame.isEmpty, panel.debugDescription)
+        }
+
+        let horizontalGap = secondary.frame.minX - primary.frame.maxX
+        let panelsShareRow = primary.frame.minY < secondary.frame.maxY &&
+            secondary.frame.minY < primary.frame.maxY
+        for panel in [primary, secondary] {
+            XCTAssertGreaterThanOrEqual(panel.frame.minX, columns.frame.minX - 0.5)
+            XCTAssertLessThanOrEqual(panel.frame.maxX, columns.frame.maxX + 0.5)
+            XCTAssertGreaterThanOrEqual(panel.frame.minX, viewport.frame.minX - 0.5)
+            XCTAssertLessThanOrEqual(panel.frame.maxX, viewport.frame.maxX + 0.5)
+            XCTAssertFalse(panel.frame.intersects(rail.frame), panel.debugDescription)
+        }
+
+        if panelsShareRow, horizontalGap >= 0 {
+            XCTAssertGreaterThanOrEqual(primary.frame.width, 320)
+            XCTAssertGreaterThanOrEqual(secondary.frame.width, 320)
+            XCTAssertGreaterThanOrEqual(horizontalGap, 23)
+        } else {
+            XCTAssertLessThanOrEqual(abs(primary.frame.minX - secondary.frame.minX), 1)
+            XCTAssertLessThanOrEqual(abs(primary.frame.width - secondary.frame.width), 1)
+            XCTAssertGreaterThanOrEqual(secondary.frame.minY - primary.frame.maxY, 23)
         }
     }
 

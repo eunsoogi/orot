@@ -8,6 +8,7 @@ export function getExternalMedicalEvidenceCopy() {
     placeholder: t('externalMedicalEvidence.placeholder'),
     search: t('externalMedicalEvidence.search'),
     loading: t('externalMedicalEvidence.loading'),
+    selectResult: t('externalMedicalEvidence.selectResult'),
     consent: t('externalMedicalEvidence.consent'),
     consentRequired: t('externalMedicalEvidence.consentRequired'),
     empty: t('externalMedicalEvidence.empty'),
