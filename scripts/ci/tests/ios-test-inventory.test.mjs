@@ -141,9 +141,9 @@ test('each profile declares unique existing cases and every test method is sched
   assert.throws(() => iosTestInventory('unknown'));
 });
 
-// Map the split root suite; mask comments and strings before checking direct declarations.
 const swiftSuiteExtensions = new Map([
-  ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'],
+  ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
+  ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'], // Maps split suite files.
 ]);
 
 function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {

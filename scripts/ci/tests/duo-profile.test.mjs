@@ -95,6 +95,10 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
     'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport';
+  const healthRecordDetailReflow =
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
+  const medicationHistoryReflow =
+    'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
@@ -117,8 +121,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, recording library, appointment, and classification reflow coverage explicit.
-  assert.equal(duoInventory.length, 24);
+  // Keep Settings, recording library/review, appointment, classification, and health-detail coverage explicit.
+  assert.equal(duoInventory.length, 26);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -141,6 +145,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    healthRecordDetailReflow,
+    medicationHistoryReflow,
     recordingLiveReflow,
     recordingReviewReflow,
     savedRecordingsSelectionSummary,
@@ -161,6 +167,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    medicationHistoryReflow,
   ]) {
     assert.ok(!iPhoneFixtures.includes(duoOnlyCase));
     assert.ok(!coreTests.includes(duoOnlyCase));
