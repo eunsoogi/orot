@@ -160,4 +160,53 @@ describe('Default health review tools and durable original evidence identity', (
       ),
     ).toBe(true);
   });
+
+  it.each([
+    { sourceIds: ['selected-source'] },
+    {
+      timeRange: {
+        fromInclusive: '2026-10-01T00:00:00Z',
+        toExclusive: '2026-10-02T00:00:00Z',
+      },
+    },
+  ])(
+    'rejects narrowed scope before reading a restored health period',
+    async restriction => {
+      const initial = setup(checkpointer());
+      const batch = await initial.port.collect(new AbortController().signal);
+      const references = initial.port.references(batch);
+      const original = data();
+      const read = jest.fn(original.readHealthContext!);
+      const restored = createHealthReviewEvidence({
+        ...original,
+        readHealthContext: read,
+      });
+      if (!restored) throw new Error('Default evidence tools missing');
+      restored.restore?.(references);
+      const result = await restored.trends.search({
+        operationRunId: 'scoped-restart',
+        operationKey: 'read',
+        input: {
+          days: 30,
+          topics: ['measurements', 'symptoms'],
+          detail: 'weekly',
+        },
+        allowedScope: { sourceKinds: ['personal_record'], ...restriction },
+        resultLimit: 4,
+        maxPayloadBytes: 32768,
+        signal: new AbortController().signal,
+      });
+      expect(read).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        items: [],
+        coverage: [
+          {
+            gaps: [
+              'period_context_requires_unrestricted_personal_record_scope_use_scoped_raw_search',
+            ],
+          },
+        ],
+      });
+    },
+  );
 });

@@ -49,6 +49,30 @@ export function createHealthReviewEvidence(
         .filter(scope => scope !== undefined);
       let result;
       if (periods.length) {
+        // Whole-period restoration must retain the original tool's pre-read authorization fence.
+        if (
+          !request.allowedScope.sourceKinds.includes('personal_record') ||
+          request.allowedScope.sourceIds ||
+          request.allowedScope.timeRange
+        )
+          return {
+            items: [],
+            conflicts: [],
+            coverage: [
+              {
+                sourceKind: 'personal_record',
+                searchedSourceIds: [],
+                gaps: [
+                  'period_context_requires_unrestricted_personal_record_scope_use_scoped_raw_search',
+                ],
+                truncated: false,
+                resultLimit: request.resultLimit,
+                returnedCount: 0,
+              },
+            ],
+          };
+        if (request.signal.aborted)
+          throw new Error('Health context restoration cancelled.');
         if (!data.readHealthContext || periods.length > request.resultLimit)
           throw new Error('Saved health period unavailable.');
         const read = data.readHealthContext;
