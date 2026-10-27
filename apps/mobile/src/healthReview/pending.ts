@@ -18,11 +18,24 @@ export function readHealthReviewPending(
   if (!values || values.sourceId !== sourceId || !object(values.pending))
     return null;
   const pending = values.pending;
+  const safety = SafetyPolicyDecisionSchema.safeParse(pending.safety);
+  // Both graph interrupt paths use insufficient information and exactly these five fields.
+  // Reject unknown content instead of stripping it: continuation must submit the unchanged snapshot.
+  const pendingKeys = [
+    'threadId',
+    'sourceId',
+    'safety',
+    'references',
+    'reason',
+  ];
   if (
+    Object.keys(pending).length !== pendingKeys.length ||
+    Object.keys(pending).some(key => !pendingKeys.includes(key)) ||
     pending.threadId !== sourceId ||
     pending.sourceId !== sourceId ||
     !['safety_context', 'evidence'].includes(String(pending.reason)) ||
-    !SafetyPolicyDecisionSchema.safeParse(pending.safety).success ||
+    !safety.success ||
+    safety.data.category !== 'insufficient_information' ||
     !Array.isArray(pending.references) ||
     !Array.isArray(values.references) ||
     encounterCanonical(pending.safety) !== encounterCanonical(values.safety) ||
