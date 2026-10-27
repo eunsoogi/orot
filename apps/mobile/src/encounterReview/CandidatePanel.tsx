@@ -4,6 +4,7 @@ import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { reviewCopy as copy } from './strings';
 import { appColors } from '../layout/appColors';
+import { useInputObservation } from './useInputObservation';
 
 /** Identity, kind, speaker and evidence have no editor; only supported descriptive fields can change. */
 export function CandidatePanel({
@@ -19,6 +20,11 @@ export function CandidatePanel({
   onToggle: () => void;
   onEdit: (field: 'text' | 'dosageInstruction', text: string) => void;
 }) {
+  const onChangeText = useInputObservation(
+    candidate.id === 'candidate-0',
+    candidate.text,
+    text => onEdit('text', text),
+  );
   return (
     <View testID={`encounter-${candidate.id}`}>
       <AppText>
@@ -40,7 +46,7 @@ export function CandidatePanel({
         value={candidate.text}
         accessibilityLabel={copy.text}
         maxLength={2000}
-        onChangeText={text => onEdit('text', text)}
+        onChangeText={onChangeText}
         testID={`encounter-text-${candidate.id}`}
       />
       {candidate.kind === 'medication' ? (
