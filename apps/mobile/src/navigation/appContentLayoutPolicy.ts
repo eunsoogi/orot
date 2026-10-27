@@ -34,6 +34,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
+    // Conversation history and evidence panels map directly onto the native usable regions.
+    route.name === 'rag-conversation' ||
     route.name === 'recording' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||
