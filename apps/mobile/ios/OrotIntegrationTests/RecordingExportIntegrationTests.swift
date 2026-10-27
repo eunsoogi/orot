@@ -148,10 +148,26 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
         let modal = UIActivityViewController(activityItems: [operation.file], applicationActivities: nil)
         modal.modalPresentationStyle = .fullScreen
+        let styleAfterAssignment = modal.modalPresentationStyle.rawValue
+        // Observe UIKit's effective policy without changing presentation configuration or adding a delay.
+        let observePresentation = { (phase: String) throws in
+            let policy = modal.presentationController
+            try self.addExportObservation([
+                "requestedStyle": UIModalPresentationStyle.fullScreen.rawValue,
+                "styleAfterAssignment": styleAfterAssignment,
+                "controllerStyle": modal.modalPresentationStyle.rawValue,
+                "presentationStyles": ["actual": policy?.presentationStyle.rawValue ?? -99, "adaptive": policy?.adaptivePresentationStyle.rawValue ?? -99],
+                "policy": ["available": policy != nil, "fullscreen": policy?.shouldPresentInFullscreen ?? false, "removesPresenter": policy?.shouldRemovePresentersView ?? false],
+                "windows": ["source": String(describing: source.window), "child": String(describing: child.viewIfLoaded?.window), "root": String(describing: root.viewIfLoaded?.window), "destination": String(describing: modal.viewIfLoaded?.window)],
+                "relationships": ["presenterIsRoot": modal.presentingViewController === root, "rootPresentsModal": root.presentedViewController === modal, "sourceInChild": source.isDescendant(of: child.view), "sourceInRoot": source.isDescendant(of: root.view)],
+                "transitions": ["presenting": modal.isBeingPresented, "dismissing": modal.isBeingDismissed, "animated": modal.transitionCoordinator?.isAnimated ?? false],
+            ], name: "recording-export-presentation-\(phase)")
+        }
         var didPresent: Bool?
         let presented = expectation(description: "The full-screen controller remains in the source window")
         anchor.present(modal, animated: false) { result in
             didPresent = result
+            XCTAssertNoThrow(try observePresentation("completion"))
             presented.fulfill()
         }
         wait(for: [presented], timeout: 5)
@@ -161,6 +177,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         XCTAssertTrue(root.presentedViewController === modal)
         XCTAssertTrue(modal.viewIfLoaded?.window === window)
         // UIKit removes the covered child hierarchy after a full-screen presentation completes.
+        XCTAssertNoThrow(try observePresentation("before-detachment-assertion"))
         XCTAssertNil(source.window)
 
         var unavailableRejections = 0
