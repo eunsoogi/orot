@@ -28,6 +28,7 @@ const aiFeatureRoutes = [
   ['ai-feature-visit-questions', 'home-visit-questions-screen'],
   ['ai-feature-disease-hypotheses', 'disease-hypotheses-screen'],
   ['ai-feature-rag-conversation', 'rag-conversation-screen'],
+  ['ai-feature-external-evidence', 'external-medical-evidence-screen'],
 ] as const;
 
 afterEach(() => jest.restoreAllMocks());
@@ -48,7 +49,7 @@ function VisitQuestionsHomeRouteProbe({
   return <Text testID="home-visit-questions-screen">다음 진료 질문 화면</Text>;
 }
 
-test('shows three explained AI actions and keeps literature inside conversation', async () => {
+test('shows four explained AI actions and returns from each owner route', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -66,12 +67,11 @@ test('shows three explained AI actions and keeps literature inside conversation'
   expect(screen.getByText('다음 진료 질문')).toBeTruthy();
   expect(screen.getByText('증상 정리')).toBeTruthy();
   expect(screen.getByText('기록과 대화')).toBeTruthy();
-  expect(screen.queryByText('의학 자료 찾기')).toBeNull();
-  expect(screen.queryByTestId('ai-feature-external-evidence')).toBeNull();
+  expect(screen.getByText('의학 자료 찾기')).toBeTruthy();
   expect(screen.getByText('궁금한 점을 정리해요.')).toBeTruthy();
   expect(screen.getByText('지금 느끼는 증상을 정리해요.')).toBeTruthy();
   expect(screen.getByText('내 기록을 바탕으로 질문해요.')).toBeTruthy();
-  expect(screen.queryByText('의학 자료를 찾아보세요.')).toBeNull();
+  expect(screen.getByText('의학 자료를 찾아보세요.')).toBeTruthy();
   expect(screen.queryByTestId('open-ai-features')).toBeNull();
 
   for (const [actionId, routeId] of aiFeatureRoutes) {
@@ -89,6 +89,11 @@ test('shows three explained AI actions and keeps literature inside conversation'
           '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
         ),
       ).toBeTruthy();
+    }
+    if (routeId === 'external-medical-evidence-screen') {
+      expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
+      expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
+      expect(screen.queryByTestId('external-evidence-loading')).toBeNull();
     }
     await fireEvent.press(screen.getByTestId('navigation-back'));
     await waitFor(() =>
