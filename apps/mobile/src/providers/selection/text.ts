@@ -11,6 +11,18 @@ export const providerSelectionText = {
   onDevicePrivacy: t('provider.selection.onDevicePrivacy'),
   remoteHeading: t('provider.selection.remoteHeading'),
   remotePrivacy: t('provider.selection.remotePrivacy'),
+  capabilitiesSummary: t('provider.selection.capabilitiesSummary'),
+  noDeclaredCapabilities: t('provider.selection.noDeclaredCapabilities'),
+  capabilityInput: {
+    audio: t('provider.selection.capability.audio'),
+    image: t('provider.selection.capability.image'),
+    text: t('provider.selection.capability.text'),
+  },
+  capabilityStreaming: t('provider.selection.capability.streaming'),
+  capabilityStructuredOutput: t(
+    'provider.selection.capability.structuredOutput',
+  ),
+  capabilityToolCalling: t('provider.selection.capability.toolCalling'),
   unsupportedCapabilities: t('provider.selection.unsupportedCapabilities'),
   storageLoadError: t('provider.selection.storageLoadError'),
   storageSaveError: t('provider.selection.storageSaveError'),
