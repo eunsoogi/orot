@@ -1,4 +1,5 @@
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
+import { encounterReviewTestImpact } from './encounter-review-test-impact.mjs';
 import {
   maintainedNativeTestOwners,
   sharedUiCohorts as ui,
@@ -229,6 +230,8 @@ export function iosTestImpactForPath(path) {
   if (typeof path !== 'string' || !path || /[\0\r\n]/.test(path))
     return full('invalid-application-path');
   const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
+  const encounter = encounterReviewTestImpact(normalized);
+  if (encounter) return impact(encounter.cohorts, encounter.reason);
   if (normalized.startsWith('packages/'))
     return full('shared-package', normalized.startsWith('packages/provider-openai/'));
   if (normalized.startsWith('apps/mobile/e2e/')) return e2eImpact(normalized);

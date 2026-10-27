@@ -19,15 +19,19 @@ const configuredProbeMode =
   settingsManager?.settings?.OROT_TRANSCRIPTION_PROBE_MODE ??
   settingsManager?.getConstants?.().settings?.OROT_TRANSCRIPTION_PROBE_MODE;
 const probeEntry =
-  configuredProbeMode === 'recording-session-visual'
-    ? RecordingSessionVisualProbe
-    : configuredProbeMode === 'recording-library-visual'
-      ? RecordingLibraryVisualProbe
-      : configuredProbeMode === 'transcript-evidence'
-        ? TranscriptEvidenceProbe
-        : configuredProbeMode === 'recording-export'
-          ? RecordingExportProbeHarness
-          : TranscriptionProbe;
+  configuredProbeMode === 'encounter-review'
+    ? (
+        require('../src/encounterReview/NativeReviewProbe') as typeof import('../src/encounterReview/NativeReviewProbe')
+      ).NativeReviewProbe
+    : configuredProbeMode === 'recording-session-visual'
+      ? RecordingSessionVisualProbe
+      : configuredProbeMode === 'recording-library-visual'
+        ? RecordingLibraryVisualProbe
+        : configuredProbeMode === 'transcript-evidence'
+          ? TranscriptEvidenceProbe
+          : configuredProbeMode === 'recording-export'
+            ? RecordingExportProbeHarness
+            : TranscriptionProbe;
 
-// Keep transcript evidence, export lifecycle, and native speech checks on separate app routes.
+// Only an explicit fixture selector mounts the production saved-library review journey.
 AppRegistry.registerComponent(appName, () => probeEntry);

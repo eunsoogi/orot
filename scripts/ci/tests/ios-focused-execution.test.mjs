@@ -61,6 +61,7 @@ test('shared focus dispatch preserves exact case, empty fixture group and statef
     ['fixture-isolation', ''],
     ['recording-persistence', ''],
     ['state-persistence', ''],
+    ['encounter-review-persistence', ''],
   ]) {
     const value = fixture(mode, identifier);
     try {

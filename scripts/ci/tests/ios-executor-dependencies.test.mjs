@@ -55,6 +55,7 @@ test('every native executor driver loads its local dependency closure in a check
     'run-ios-fixture-isolation-tests',
     'run-ios-recording-persistence-tests',
     'run-ios-state-persistence-tests',
+    'run-ios-encounter-review-persistence-tests',
     'run-ios-shared-persistence-tests',
     'oauth-test-products',
   ];

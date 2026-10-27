@@ -101,6 +101,7 @@ function fixture(input, mutate = () => {}, environment = context, mutateFiles = 
               'fixture-isolation',
               'recording-persistence',
               'state-persistence',
+              'encounter-review-persistence',
             ].includes(selection.mode)
           ? selection.mode + '/results.json'
           : 'results.json';
