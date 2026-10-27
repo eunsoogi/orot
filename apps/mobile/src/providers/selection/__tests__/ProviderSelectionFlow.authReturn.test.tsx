@@ -31,7 +31,7 @@ jest.mock('../options', () => ({
   loadAppleSelectionOption: jest.fn(),
 }));
 
-it('refreshes the account and shows success after the auth session returns', async () => {
+it('refreshes the Settings account route after a synthetic auth return', async () => {
   const account = {
     issuedClientID: 'synthetic-returned-account',
     requiresSignIn: false,
@@ -47,10 +47,18 @@ it('refreshes the account and shows success after the auth session returns', asy
     signOut: jest.fn(),
     cancelSignIn: jest.fn(),
   };
+  const onBack = jest.fn();
   jest.mocked(loadAppleSelectionOption).mockResolvedValue(makeAppleOption());
 
   await render(
-    <ProviderSelectionFlow chatGPTServices={services} onBack={jest.fn()} />,
+    <ProviderSelectionFlow
+      chatGPTServices={services}
+      navigationRouteKey="settings-accounts-synthetic-route"
+      onBack={onBack}
+      presentation="settings-accounts"
+      screenIntroduction="Manage saved connections."
+      screenTitle="Connected accounts"
+    />,
   );
   await waitFor(() => expect(services.listAccounts).toHaveBeenCalledTimes(1));
   await fireEvent.press(screen.getByTestId('chatgpt-account-action'));
@@ -60,9 +68,10 @@ it('refreshes the account and shows success after the auth session returns', asy
   expect(
     screen.getByText(providerSelectionText.chatGPTLoginSuccess),
   ).toBeTruthy();
-  expect(
-    screen.getByText(providerSelectionText.chatGPTLoadModels),
-  ).toBeTruthy();
+  expect(screen.getByTestId('settings-accounts-panels')).toBeTruthy();
+  expect(screen.getByTestId('chatgpt-account-0')).toBeTruthy();
+  expect(screen.getByTestId('chatgpt-account-sign-out')).toBeTruthy();
+  expect(onBack).not.toHaveBeenCalled();
   expect(services.listModels).not.toHaveBeenCalled();
 });
 
