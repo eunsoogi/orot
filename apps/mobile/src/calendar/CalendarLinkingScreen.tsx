@@ -61,6 +61,9 @@ export default function CalendarLinkingScreen({
     selectedEventIdentifier,
     notice: calendar.notice,
   });
+  // Both calendar entry points use measured columns; only Schedule adds its saved-visit summary.
+  const layoutRouteKey = adaptiveScheduleLayout ? 'schedule' : 'calendar';
+  const adaptiveLayoutTestID = `${layoutRouteKey}-adaptive-columns`;
   const upcomingEvent = eventFromAppointment(calendar.nextVisitAppointment);
   // The saved-appointment panel belongs only to Schedule; other linking flows keep their prior layout.
   const selectionSummary = calendar.selectedEvent ? (
@@ -194,20 +197,13 @@ export default function CalendarLinkingScreen({
           <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
         ) : null}
 
-        {adaptiveScheduleLayout ? (
-          // Keep selection in the hook above stable panels so reflow only changes geometry.
-          <AdaptiveColumns
-            primary={calendarMonth}
-            routeKey="schedule"
-            secondary={selectionSummary}
-            testID="schedule-adaptive-columns"
-          />
-        ) : (
-          <>
-            {selectionSummary}
-            {calendarMonth}
-          </>
-        )}
+        {/* Keep selection state above measured panels so route reflow changes only their geometry. */}
+        <AdaptiveColumns
+          primary={calendarMonth}
+          routeKey={layoutRouteKey}
+          secondary={selectionSummary}
+          testID={adaptiveLayoutTestID}
+        />
       </ScrollView>
       {/* Keep route controls outside the calendar scroller and inside its safe area. */}
       {onBack ? (
