@@ -105,6 +105,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute';
   const healthDataSettingsReflow =
     'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure';
+  const diseaseHypothesesReflow =
+    'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions';
   const healthImportReflow =
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
@@ -137,8 +139,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep account, provider, sync, backup, privacy, health settings, and existing Duo cases explicit.
-  assert.equal(duoInventory.length, 34);
+  // Keep account, provider, sync, history, disease-summary, backup, privacy, and health settings explicit.
+  assert.equal(duoInventory.length, 35);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -166,6 +168,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthLibraryReflow,
     healthImportLibrary,
     healthDataSettingsReflow,
+    diseaseHypothesesReflow,
     healthImportReflow,
     healthImportLargeText,
     healthRecordDetailReflow,
@@ -193,6 +196,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     privacySettingsReflow,
     healthLibraryReflow,
     healthDataSettingsReflow,
+    diseaseHypothesesReflow,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,

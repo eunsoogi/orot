@@ -202,6 +202,7 @@
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */; };
 		F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */; };
+		7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */; };
 		39E9AC8CE9104B0AA03A6885 /* HealthRecordsDetailDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */; };
 		DD0E1503C5F659EDCF21AC66 /* SettingsPrivacyDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */; };
 		D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */; };
@@ -363,6 +364,7 @@
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeDuoUITests.swift; sourceTree = "<group>"; };
 		0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportDuoUITests.swift; sourceTree = "<group>"; };
+		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
 		691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthRecordsDetailDuoUITests.swift; sourceTree = "<group>"; };
 		F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsPrivacyDuoUITests.swift; sourceTree = "<group>"; };
 		D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSyncStatusDuoUITests.swift; sourceTree = "<group>"; };
@@ -812,6 +814,7 @@
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
 				0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */,
+				F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */,
 				691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */,
 				F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */,
 				D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */,
@@ -1274,6 +1277,7 @@
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,
+				7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */,
 				39E9AC8CE9104B0AA03A6885 /* HealthRecordsDetailDuoUITests.swift in Sources */,
 				DD0E1503C5F659EDCF21AC66 /* SettingsPrivacyDuoUITests.swift in Sources */,
 				D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */,
