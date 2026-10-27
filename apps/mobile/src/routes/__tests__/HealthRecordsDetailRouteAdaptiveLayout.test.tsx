@@ -43,6 +43,8 @@ jest.mock('react-native-safe-area-context', () => {
 
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
+// The detail screen uses its real Date constructor to calculate the month cutoff.
+const healthRecordReferenceTime = '2035-06-15T12:00:00.000Z';
 const viewport = (width: number) => ({
   ...originalWindow,
   width,
@@ -57,6 +59,7 @@ beforeEach(() => {
 
 afterEach(() => {
   Dimensions.set({ window: originalWindow, screen: originalScreen });
+  jest.useRealTimers();
 });
 
 function geometry(width: number, divided: boolean): NavigationGeometryPayload {
@@ -81,11 +84,15 @@ function geometry(width: number, divided: boolean): NavigationGeometryPayload {
 
 // The real adapter and detail route expose an outer scene-width constraint.
 test('gives the production health detail route the full lane for its panels', async () => {
+  jest.useFakeTimers({ now: Date.parse(healthRecordReferenceTime) });
   const controller = createNavigationController<AppNavigationRoute>('home');
   const observations = mapBloodPressureCorrelation(
     correlation('detail-route-adaptive'),
-    '2026-10-05T10:00:00.000Z',
-  ).observations;
+    healthRecordReferenceTime,
+  ).observations.map(item => ({
+    ...item,
+    effectiveAt: healthRecordReferenceTime,
+  }));
   const loadObservations = jest.fn(async () => ({
     records: observations,
     nextCursor: null,
