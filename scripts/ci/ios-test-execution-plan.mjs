@@ -7,6 +7,7 @@ const names = [
   ['core-ui', 'UI'],
   ['recording-evidence', 'Recording evidence'],
   ['persistence', 'Persistence'],
+  ['encounter-review-persistence', 'Recordings / Encounter review persistence'],
   ['isolation', 'Isolation'],
   ['backup', 'Backup'],
   ['local-model', 'Local model'],

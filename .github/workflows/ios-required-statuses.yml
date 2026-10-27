@@ -24,7 +24,7 @@ jobs:
           - check: UI
             cohorts: '["core-integration","core-ui","recording-evidence","navigation-features","navigation-routes","navigation-accessibility","navigation-imports","recordings-controls","recordings-review","recordings-playback","questions-review","questions-conversation","questions-accessibility","questions-summary","questions-literature","calendar-consent","calendar-appointments","provider","health-observations","health-recovery","microphone","selection"]'
           - check: Storage
-            cohorts: '["persistence","isolation","backup","local-model","recordings-controls","recordings-review","recordings-playback"]'
+            cohorts: '["persistence","encounter-review-persistence","isolation","backup","local-model","recordings-controls","recordings-review","recordings-playback"]'
           - check: Provider
             cohorts: '["provider","selection","local-model","questions-review","questions-conversation","questions-accessibility","questions-summary","questions-literature","calendar-consent","calendar-appointments","health-observations","health-recovery"]'
           - check: Speech

@@ -5,6 +5,7 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
+import { encounterReviewPersistenceTests } from './encounter-review-persistence-test-phases.mjs';
 
 /** Focus is an exact diagnostic selection. Stateful phases and named fixture groups must be requested explicitly. */
 export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) {
@@ -14,6 +15,25 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
   if (!profile) throw new Error('iOS focus profile must use ios/<profile>');
   const configuration = iosTestConfig(profile).configuration;
   const inventory = iosTestInventory(profile);
+  if (profile === 'core' && scenarioName === 'group/encounter-review-persistence') {
+    if (scenarioFile !== 'scripts/ci/encounter-review-persistence-test-phases.mjs')
+      throw new Error('Encounter review focus requires its exact dedicated phase driver');
+    return {
+      profile,
+      configuration,
+      mode: 'encounter-review-persistence',
+      suite: 'encounter-review-persistence',
+      fixtureSuite: 'all',
+      identifiers: encounterReviewPersistenceTests.slice(),
+      identifier: '',
+      prepareUi: false,
+      expectedCount: encounterReviewPersistenceTests.length,
+    };
+  }
+  if (encounterReviewPersistenceTests.includes(scenarioName))
+    throw new Error(
+      'Encounter review focus requires the complete group/encounter-review-persistence phases',
+    );
   if (profile === 'core' && scenarioName === 'group/state-persistence') {
     if (scenarioFile !== 'scripts/ci/state-persistence-test-phases.mjs')
       throw new Error('State persistence focus requires its exact phase driver');

@@ -25,6 +25,9 @@ jest.mock('../e2e/transcription/RecordingLibraryVisualProbe', () => ({
 jest.mock('../e2e/transcription/RecordingSessionVisualProbe', () => ({
   RecordingSessionVisualProbe: 'RecordingSessionVisualProbe',
 }));
+jest.mock('../src/encounterReview/NativeReviewProbe', () => ({
+  NativeReviewProbe: 'NativeReviewProbe',
+}));
 
 function loadProbeEntry(settings: Record<string, unknown>) {
   jest.resetModules();
@@ -37,6 +40,11 @@ function loadProbeEntry(settings: Record<string, unknown>) {
 
 test('keeps native speech as the default Simulator probe entry', () => {
   expect(loadProbeEntry({})).toBe('NativeSpeechProbe');
+});
+test('mounts the production saved-library review fixture only for its explicit selector', () => {
+  expect(
+    loadProbeEntry({ OROT_TRANSCRIPTION_PROBE_MODE: 'encounter-review' }),
+  ).toBe('NativeReviewProbe');
 });
 
 test('launches transcript evidence without mounting the native speech probe', () => {
