@@ -11,9 +11,9 @@ export type NavigationRouteLayoutPolicy<Name extends string> =
 
 /** Gives screens with their own measured panels the full usable content lane. */
 export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
-  route,
-  rootTabs,
-) => {
+  route: NavigationRoute<string>,
+  rootTabs?: NavigationRootTabs,
+): 'scene' | 'screen' => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // The nested health-record panels need the full lane to resolve native regions.
   // Both appointment entry routes share one screen that measures list and selected-detail panels.
@@ -25,6 +25,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     route.name === 'recording' ||
+    route.name === 'settings-privacy' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||
         rootTabs?.activeTab === 'records' ||
