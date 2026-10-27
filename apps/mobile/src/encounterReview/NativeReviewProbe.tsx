@@ -11,6 +11,7 @@ import {
   createNavigationController,
   NavigationRouteAdapter,
 } from '../navigation';
+import { appContentLayoutOwner } from '../navigation/appContentLayoutPolicy';
 import { openLocalStorage } from '../storage/secureDatabase';
 import {
   seedSyntheticEncounter,
@@ -26,7 +27,7 @@ function settings() {
   return manager?.settings ?? manager?.getConstants?.().settings ?? {};
 }
 
-/** Native UI tests mount the production route and consent sheet; only the external model is scripted.
+/** Native UI tests mount the production route policy and consent sheet; only the external model is scripted.
  * A caller-owned UUID is reused across real app launches, never generated silently on restore.
  */
 export function NativeReviewProbe() {
@@ -163,7 +164,7 @@ function ProbeRoute() {
       {ready ? (
         <NavigationRouteAdapter
           controller={navigation}
-          contentLayoutOwner="scene"
+          contentLayoutOwner={appContentLayoutOwner}
           contentSafeAreaHandledByChild
         >
           {actions =>

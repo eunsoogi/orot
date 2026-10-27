@@ -22,4 +22,5 @@ export const duoTests = [
   'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow',
   'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow',
   'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow',
+  'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview',
 ];

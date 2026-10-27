@@ -95,12 +95,16 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
     'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport';
+  const healthRecordDetailReflow =
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges';
   const medicationHistoryReflow =
     'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
   const recordingLiveReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const recordingReviewReflow =
     'OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow';
+  const savedRecordingsSelectionSummary =
+    'OrotUITests/RecordingLibraryUITests/testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview';
   const duoKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
   const fourSidedOcclusion =
@@ -113,8 +117,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep the integrated Settings, Library, Recording Review, and medication detail coverage explicit.
-  assert.equal(duoInventory.length, 22);
+  // Keep Settings, recording review/library, and both health detail scenarios explicit.
+  assert.equal(duoInventory.length, 24);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -135,9 +139,11 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
+    healthRecordDetailReflow,
     medicationHistoryReflow,
     recordingLiveReflow,
     recordingReviewReflow,
+    savedRecordingsSelectionSummary,
   ]);
   // Home stays in iPhone fixtures; feature-entry, manual-history, records, and
   // health-import regressions run only on the dedicated Duo destination.
