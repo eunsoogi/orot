@@ -1,10 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
+import type { SelectedAiResolverOptions } from '../../aiFeatures/integration/provider';
 import type { CalendarAutoSyncState } from '../../calendar/calendarAutoSync';
 import type { CalendarBridge } from '../../calendar/types';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
+import { repository } from '../MedicalAppointmentClassificationScreenTestFixtures';
 import MedicalAppointmentRoute from '../MedicalAppointmentRoute';
 
 jest.mock('@react-navigation/native', () => ({
@@ -58,18 +60,29 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
-async function renderManualRoute(
+const pendingProviderResolution: SelectedAiResolverOptions = {
+  selectionStore: {
+    load: () => new Promise<null>(() => {}),
+    save: async () => undefined,
+    clear: async () => undefined,
+  },
+};
+
+async function renderRoute(
+  manual: boolean,
   loadAppointments: () => Promise<AppointmentRepository>,
+  selectedAiResolverOptions?: SelectedAiResolverOptions,
 ) {
   await render(
     <NavigationGeometryProvider>
       <MedicalAppointmentRoute
         bridge={{} as CalendarBridge}
         calendarSync={{} as CalendarAutoSyncState}
-        manual
+        manual={manual}
         onOpenManual={jest.fn()}
         onOpenCalendarSettings={jest.fn()}
         loadAppointments={loadAppointments}
+        selectedAiResolverOptions={selectedAiResolverOptions}
       />
     </NavigationGeometryProvider>,
   );
@@ -79,6 +92,18 @@ async function renderManualRoute(
     'geometryChange',
     { nativeEvent: dividedGeometry },
   );
+}
+
+async function renderManualRoute(
+  loadAppointments: () => Promise<AppointmentRepository>,
+) {
+  await renderRoute(true, loadAppointments);
+}
+
+async function renderClassificationRoute(
+  loadAppointments: () => Promise<AppointmentRepository>,
+) {
+  await renderRoute(false, loadAppointments, pendingProviderResolution);
 }
 
 function expectStatusPanelToStayInOneUsableRegion() {
@@ -100,5 +125,29 @@ test('keeps manual-route error content inside one divided usable region', async 
   });
 
   await screen.findByTestId('medical-appointments-retry');
+  expectStatusPanelToStayInOneUsableRegion();
+});
+
+test('keeps classification-route loading content inside one divided usable region', async () => {
+  await renderClassificationRoute(
+    () => new Promise<AppointmentRepository>(() => {}),
+  );
+
+  expectStatusPanelToStayInOneUsableRegion();
+});
+
+test('keeps classification-route error content inside one divided usable region', async () => {
+  await renderClassificationRoute(async () => {
+    throw new Error('Appointment repository unavailable');
+  });
+
+  await screen.findByTestId('medical-appointments-retry');
+  expectStatusPanelToStayInOneUsableRegion();
+});
+
+test('keeps provider-resolution content inside one divided usable region', async () => {
+  await renderClassificationRoute(async () => repository());
+
+  await screen.findByTestId('medical-appointment-manual');
   expectStatusPanelToStayInOneUsableRegion();
 });

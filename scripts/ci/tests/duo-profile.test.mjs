@@ -115,12 +115,14 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
   const appointmentsReflow =
     'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
+  const classificationReflow =
+    'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification';
   const recordingShareDismissal =
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep Settings, recording library/review, appointment, and health-detail coverage explicit.
-  assert.equal(duoInventory.length, 25);
+  // Keep Settings, recording library/review, appointment, classification, and health-detail coverage explicit.
+  assert.equal(duoInventory.length, 26);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -132,6 +134,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     scheduleReflow,
     scheduleLargeText,
     appointmentsReflow,
+    classificationReflow,
     contextualDeparture,
     manualHistoryRecovery,
     duoKeyboardSave,

@@ -16,10 +16,12 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
 ) => {
   // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
   // Health detail panels resolve against the actual native usable regions.
-  // Appointment entry routes share the screen that measures list and selected-detail panels.
+  // Appointment entry routes share one screen that measures list and selected-detail panels.
+  // Classification measures its overview and candidate panels from usable geometry.
   // The saved library owns a measured list and summary that share that usable geometry.
   return route.name === 'appointments' ||
     route.name === 'medical-manual' ||
+    route.name === 'medical' ||
     route.name === 'health-records' ||
     route.name === 'health-records-detail' ||
     route.name === 'saved-recordings' ||
