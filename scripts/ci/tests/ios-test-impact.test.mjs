@@ -152,7 +152,7 @@ test('source paths include cohorts owning their maintained native dependent test
         'apps/mobile/ios/OrotIntegrationTests/WindowPresentationAnchorIntegrationTests.swift',
       cohort: 'core-integration',
       identifier:
-        'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow',
+        'OrotIntegrationTests/WindowPresentationAnchorIntegrationTests/testAttachedCallerViewKeepsSystemFilePickerInItsOwningWindow',
     },
     {
       sourcePath: 'apps/mobile/ios/OrotMobile/WindowPresentationAnchor.swift',

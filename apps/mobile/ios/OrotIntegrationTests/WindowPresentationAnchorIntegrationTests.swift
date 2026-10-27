@@ -18,7 +18,7 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    func testAttachedCallerViewAnchorsFilePickerPopoverToItsOwningWindow() throws {
+    func testAttachedCallerViewKeepsSystemFilePickerInItsOwningWindow() throws {
         let (window, originalWindow) = try isolatedKeyWindow()
         defer {
             window.isHidden = true
@@ -47,7 +47,10 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.modalPresentationStyle = .popover
             let configured = anchor.apply(to: picker)
-            // This bounded control records UIKit's actual modality before choosing a permanent picker contract.
+            // UIKit keeps this picker as a form sheet even when a popover is requested; nil means no popover was configured.
+            XCTAssertEqual(picker.modalPresentationStyle, .formSheet)
+            XCTAssertNil(picker.popoverPresentationController)
+            XCTAssertNil(configured)
             let observation: [String: Any] = [
                 "controllerClass": String(describing: type(of: picker)),
                 "modalStyle": picker.modalPresentationStyle.rawValue,
@@ -61,10 +64,6 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             attachment.name = "attached-picker-modality-control"
             attachment.lifetime = .keepAlways
             add(attachment)
-            let item = picker.popoverPresentationController?.sourceItem
-            if let item {
-                XCTAssertEqual(item.frame(in: window), source.convert(sourceRect, to: window))
-            }
 
             var didPresent: Bool?
             let presented = expectation(description: "The document picker stays on the source window")
@@ -87,15 +86,16 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             root.view.setNeedsLayout()
             root.view.layoutIfNeeded()
             XCTAssertTrue(picker.presentingViewController?.viewIfLoaded?.window === window)
-            if let item {
-                let resizedRegion = try XCTUnwrap(item.frame(in: window))
-                XCTAssertEqual(resizedRegion, source.convert(sourceRect, to: window))
-                XCTAssertTrue(resizedRegion.intersects(window.bounds))
-            }
+            XCTAssertTrue(anchor.presentedControllerSharesWindow(picker))
+            XCTAssertTrue(window.isKeyWindow)
+            XCTAssertTrue(source.window === window)
+            XCTAssertTrue(source.convert(sourceRect, to: window).intersects(window.bounds))
 
             let dismissed = expectation(description: "The document picker closes before testing the other window side")
             picker.dismiss(animated: false) { dismissed.fulfill() }
             wait(for: [dismissed], timeout: 5)
+            XCTAssertNil(picker.presentingViewController)
+            XCTAssertNil(picker.viewIfLoaded?.window)
         }
     }
 
