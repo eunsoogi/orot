@@ -49,6 +49,8 @@ it('blocks inherited, ambient and environment tracing during a real clarificatio
             matchedRuleIds: [],
           }),
           revalidate: async () => true,
+          references: (batch) =>
+            batch.items.map(({ content: _content, ...reference }) => reference),
           collect: async () => ({
             items: [
               {

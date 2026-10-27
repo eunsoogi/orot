@@ -11,6 +11,11 @@ const stringList = {
   items: { type: 'string', minLength: 1, maxLength: 400 },
 };
 
+// Review prose may describe measurements, but not infer a disease even with uncertainty or hedging.
+// Conservative inference-language rejection keeps unsupported clinical interpretation out of every generated field.
+const clinicalInference =
+  /(?:의심|가능성|소견|시사|추정|진단|확진|고혈압|당뇨|심부전|뇌졸중|\b(?:consistent with|suggestive of|suggests? that|likely|suspect\w*|diagnos\w*|hypertension|diabetes|cancer|heart failure|stroke)\b)/iu;
+
 /** Health review is a cited observation/question task, never a diagnosis or treatment recommendation. */
 export const healthReviewTask: TaskResponderContract<HealthReviewText> = {
   taskType: 'health-review',
@@ -120,6 +125,7 @@ export const healthReviewTask: TaskResponderContract<HealthReviewText> = {
       texts.some(
         text =>
           hasUnsafeClinicalAdvice(text) ||
+          clinicalInference.test(text) ||
           /\b(diagnos\w*|you have|start taking|stop taking|increase.*dose|decrease.*dose)\b/i.test(
             text,
           ) ||

@@ -47,6 +47,14 @@ describe('Health review non-diagnostic result contract', () => {
       observedChanges: [{ text: '기록 확인', evidenceIds: ['invented'] }],
     },
     { ...value, observedChanges: [] },
+    ...[
+      '고혈압이 의심됩니다.',
+      '심부전일 가능성이 높습니다.',
+      'These findings are consistent with diabetes.',
+    ].map(text => ({
+      ...value,
+      observedChanges: [{ text, evidenceIds: ['pulse'] }],
+    })),
   ])(
     'rejects safety overrides, diagnosis, treatment, unsupported values and invented citations',
     candidate => {

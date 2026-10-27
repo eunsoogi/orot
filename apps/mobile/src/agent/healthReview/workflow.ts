@@ -10,9 +10,8 @@ import {
   openLocalStorage,
 } from '../../storage/secureDatabase';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
-import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { openAiFeatureLocalData } from '../../aiFeatures/integration/localData';
-import { toolsFor } from '../../aiFeatures/integration/featureServiceExecution';
+import { createHealthReviewEvidence } from './evidence';
 import { createHealthReviewPort } from './port';
 import type { HealthReviewEvidence, HealthReviewModel } from './port';
 
@@ -31,23 +30,8 @@ export async function runLocalHealthReview(input: {
   await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds();
   let evidence = input.evidence;
   if (!evidence) {
-    const registry = new LocalEvidenceReferenceRegistry();
-    const tools = toolsFor(
-      undefined,
-      await openAiFeatureLocalData(),
-      registry,
-      4,
-      true,
-    );
-    const trends = tools.find(tool => tool.id === 'local-health-context');
-    const records = tools.find(tool => tool.id === 'local-personal-records');
-    if (!trends || !records) return { status: 'unavailable' as const };
-    evidence = {
-      trends,
-      records,
-      revalidate: (references, signal) =>
-        registry.revalidateEvidence(references, signal),
-    };
+    evidence = createHealthReviewEvidence(await openAiFeatureLocalData());
+    if (!evidence) return { status: 'unavailable' as const };
   }
   return runHealthReviewGraph({
     ...input,

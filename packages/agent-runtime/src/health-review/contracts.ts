@@ -27,7 +27,12 @@ export interface HealthReviewPending {
 export interface HealthReviewPort {
   /** Reject removed/tombstoned sources before returning the deterministic policy decision. */
   assessSafety(input: unknown, signal: AbortSignal): Promise<HealthReviewSafety>;
-  collect(signal: AbortSignal): Promise<EvidenceBatch>;
+  collect(
+    signal: AbortSignal,
+    restoredReferences?: readonly EvidenceReference[],
+  ): Promise<EvidenceBatch>;
+  /** Durable original identities/revisions, never provider-facing ordinal aliases. */
+  references(batch: EvidenceBatch): EvidenceReference[];
   revalidate(references: readonly EvidenceReference[], signal: AbortSignal): Promise<boolean>;
   explain(batch: EvidenceBatch, signal: AbortSignal): Promise<HealthReviewText>;
 }

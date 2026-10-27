@@ -5,9 +5,11 @@ import {
   collectHealthReviewEvidence,
   requireEncounterActive,
   runMultiAgentWorkflow,
+  encounterCanonical,
 } from '@orot/agent-runtime';
 import type {
   EvidenceSearchTool,
+  EvidenceReference,
   HealthReviewPort,
   HealthReviewText,
   MultiAgentWorkflowOptions,
@@ -22,6 +24,8 @@ export interface HealthReviewEvidence {
   trends: EvidenceSearchTool;
   records: EvidenceSearchTool;
   revalidate: HealthReviewPort['revalidate'];
+  resolve(reference: EvidenceReference): EvidenceReference | undefined;
+  restore?(references: readonly EvidenceReference[]): void;
 }
 
 /** App adapter owns the actual deterministic engine; no caller can substitute a permissive safety decision. */
@@ -39,7 +43,8 @@ export function createHealthReviewPort(input: {
     });
     requireEncounterActive(signal);
   };
-  const revalidate: HealthReviewPort['revalidate'] = async (
+  const aliases = new Map<string, EvidenceReference>();
+  const validateCurrent: HealthReviewPort['revalidate'] = async (
     references,
     signal,
   ) => {
@@ -55,14 +60,45 @@ export function createHealthReviewPort(input: {
       await live(signal);
       return new SafetyPolicyEngine().evaluate(value);
     },
-    revalidate,
-    async collect(signal) {
+    references(batch) {
+      return batch.items.map(item => {
+        const original = input.evidence.resolve(item);
+        if (!original)
+          throw new Error('Original health evidence identity unavailable.');
+        // Resolve only explicit reference fields. Provider aliases and raw content cannot become durable identity.
+        const reference: EvidenceReference = {
+          sourceKind: original.sourceKind,
+          sourceId: original.sourceId,
+          sourceRevision: original.sourceRevision,
+          evidenceId: original.evidenceId,
+          evidenceRevision: original.evidenceRevision,
+          locator: original.locator,
+          effectiveTime: original.effectiveTime,
+          reviewState: original.reviewState,
+          ...(original.unit === undefined ? {} : { unit: original.unit }),
+        };
+        aliases.set(encounterCanonical(reference), item);
+        return reference;
+      });
+    },
+    async revalidate(references, signal) {
+      const current = references.map(reference =>
+        aliases.get(encounterCanonical(reference)),
+      );
+      return (
+        current.every((reference): reference is EvidenceReference =>
+          Boolean(reference),
+        ) && validateCurrent(current as EvidenceReference[], signal)
+      );
+    },
+    async collect(signal, references = []) {
       await live(signal);
+      input.evidence.restore?.(references);
       return collectHealthReviewEvidence({
         execution: input.model.execution,
         store: input.model.store,
         signal,
-        revalidate,
+        revalidate: validateCurrent,
         trends: {
           tool: input.evidence.trends,
           input: {
@@ -86,7 +122,7 @@ export function createHealthReviewPort(input: {
           task: healthReviewTask,
           initialEvidence: batch,
           tools: [],
-          revalidateEvidence: revalidate,
+          revalidateEvidence: validateCurrent,
         },
         { signal },
       );

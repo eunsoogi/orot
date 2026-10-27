@@ -2,7 +2,7 @@ import { providerSuccess } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { EvidenceSearchTool, EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
-import { encounterCanonical } from '@orot/agent-runtime';
+import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import type { HealthReviewEvidence, HealthReviewModel } from './port';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 
@@ -76,9 +76,9 @@ export function syntheticHealthReview(
     return {
       sourceKind: 'personal_record',
       sourceId,
-      sourceRevision: encounterCanonical(values),
+      sourceRevision: fingerprint(values),
       evidenceId: kind,
-      evidenceRevision: encounterCanonical(values),
+      evidenceRevision: fingerprint(values),
       locator: { kind: 'synthetic_health_review' },
       effectiveTime: syntheticReviewTime,
       reviewState: 'unreviewed',
@@ -118,11 +118,12 @@ export function syntheticHealthReview(
     },
   });
   const evidence: HealthReviewEvidence = {
+    resolve: reference => reference,
     trends: tool('trends'),
     records: tool('records'),
     async revalidate(references, signal) {
       if (signal.aborted) return false;
-      const current = encounterCanonical(await rows());
+      const current = fingerprint(await rows());
       return references.every(
         reference =>
           reference.sourceId === sourceId &&

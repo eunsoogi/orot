@@ -7,8 +7,8 @@ import type {
 } from './contracts';
 import { EncounterPrivateCallbacks } from '../encounter/privateCallbacks';
 import { encounterCanonical, requireEncounterActive } from '../encounter/validation';
-import { referencesFromBatch } from '../multiAgent/evidence';
 import { withCheckpointThreadLock } from '../multiAgent/workflowCheckpoint';
+import type { EvidenceBatch } from '../multiAgent/contracts';
 
 const State = Annotation.Root({
   sourceId: Annotation<string>(),
@@ -36,6 +36,7 @@ export async function runHealthReviewGraph(
     async (): Promise<HealthReviewResult> => {
       const active = () => requireEncounterActive(signal);
       let outcome: HealthReviewResult | undefined;
+      let restoredBatch: EvidenceBatch | undefined;
       const assess = async (input: unknown) => {
         active();
         const decision = await options.port.assessSafety(input, signal);
@@ -84,9 +85,10 @@ export async function runHealthReviewGraph(
         })
         .addNode('collect_and_review', async (state) => {
           active();
-          const batch = await options.port.collect(signal);
+          const batch = restoredBatch ?? (await options.port.collect(signal, state.references));
+          restoredBatch = undefined;
           active();
-          const references = referencesFromBatch(batch);
+          const references = options.port.references(batch);
           await fresh(references);
           // Incomplete records remain unknown; empty tool receipts cannot authorize inference.
           if (
@@ -136,14 +138,16 @@ export async function runHealthReviewGraph(
           if (saved.values.sourceId !== options.sourceId) return { status: 'unavailable' };
           // Recheck the anchor even for an empty-reference interrupt and terminal state.
           await assess(safetyInput);
+          // Terminal runs expose no saved prose and cannot spend another evidence/model budget.
+          if (!saved.next.length) return { status: 'unavailable' };
           if (saved.values.references?.length) {
             // Rebuild turn-local evidence aliases after restart before checking their exact revisions.
-            const restored = referencesFromBatch(await options.port.collect(signal));
+            restoredBatch = await options.port.collect(signal, saved.values.references);
+            const restored = options.port.references(restoredBatch);
             if (encounterCanonical(restored) !== encounterCanonical(saved.values.references))
               return { status: 'stale_evidence' };
           }
           await fresh(saved.values.references ?? []);
-          if (!saved.next.length) return { status: 'unavailable' };
           if (saved.next.length !== 1 || saved.next[0] !== 'clarification' || !saved.values.pending)
             return { status: 'unavailable' };
           if (!clarification)
