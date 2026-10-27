@@ -196,7 +196,7 @@ extension RootNavigationUITests {
         try verifyAdaptivePanels(app, prefix: "settings-provider-panels", navigationID: "navigation-back")
         tap(app, "provider-selection-confirm")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
-        XCTAssertTrue(app.staticTexts["Synthetic settings model"].exists)
+        XCTAssertTrue(app.staticTexts["Synthetic settings model (ChatGPT plan)"].exists)
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
     }
 
