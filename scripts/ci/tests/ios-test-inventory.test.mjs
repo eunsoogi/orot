@@ -127,7 +127,7 @@ test('each profile declares unique existing cases and every test method is sched
         const methods = extensionSuite
           ? swiftTestMethodsInDeclaration(source, suite, 'extension')
           : [...source.matchAll(/func (test\w+)\(/g)].map((match) => match[1]);
-        assertSwiftTestMethodsScheduled(target, file, suite, methods, seen);
+        assertSwiftTestMethodsScheduled(target, file, suite, methods, seen, source);
         continue;
       }
       for (const match of source.matchAll(/-\s*\(void\)\s*(test\w+)\b/g))
@@ -145,7 +145,7 @@ const swiftSuiteExtensions = new Map([
   ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'],
 ]);
 
-function swiftTestMethodsInDeclaration(source, suite, kind) {
+function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
   const code = maskSwiftCommentsAndStrings(source);
   const declaration =
     /^\s*(?:(?:final|public|private|internal|open)\s+)?(class|extension)\s+([A-Za-z_]\w*)\b[^\n{]*\{/gm;
@@ -159,15 +159,14 @@ function swiftTestMethodsInDeclaration(source, suite, kind) {
   const body = code.slice(openIndex + 1, closeIndex);
   return [...body.matchAll(/\bfunc\s+(test\w+)\s*\(/g)]
     .filter((match) => swiftBraceDepth(body, match.index) === 0)
-    .map((match) => match[1]);
+    .map((match) => (withPositions ? openIndex + 1 + match.index : match[1]));
 }
 
 function maskSwiftCommentsAndStrings(source) {
-  const blank = (value) => value.replace(/[^\n]/g, ' ');
-  return source
-    .replace(/#"(?:\\.|[^"\\])*"#|"(?:\\.|[^"\\])*"/g, blank)
-    .replace(/\/\*[\s\S]*?\*\//g, blank)
-    .replace(/\/\/[^\n]*/g, blank);
+  return source.replace(
+    /#"(?:\\.|[^"\\])*"#|"(?:\\.|[^"\\])*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+    (value) => value.replace(/[^\n]/g, ' '),
+  );
 }
 
 function swiftBraceDepth(source, end) {
@@ -189,22 +188,19 @@ function swiftClosingBrace(source, openIndex) {
   return -1;
 }
 
-function assertSwiftTestMethodsScheduled(target, file, suite, methods, seen) {
+function assertSwiftTestMethodsScheduled(target, file, suite, methods, seen, source) {
+  if (source && swiftSuiteExtensions.has(`${target}/${file}`)) {
+    const mappedPositions = new Set(
+      swiftTestMethodsInDeclaration(source, suite, 'extension', true),
+    );
+    for (const match of maskSwiftCommentsAndStrings(source).matchAll(/\bfunc\s+(test\w+)\s*\(/g))
+      assert.ok(mappedPositions.has(match.index), `Unmapped test ${file}/${match[1]}`);
+  }
   for (const method of methods)
     assert.ok(seen.has(`${target}/${suite}/${method}`), `Unscheduled test ${file}/${method}`);
 }
 
-test('finds Settings only in its declared target and suite', () => {
-  assertTestMethodDeclared(
-    'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
-  );
-  assert.throws(
-    () => assertTestMethodDeclared('OrotIntegrationTests/RootNavigationUITests/testHostLaunches'),
-    /Missing test source/,
-  );
-});
-
-test('ignores comments and nested types and keeps same-named methods in their suite', () => {
+test('keeps extension methods scheduled and rejects unmapped same-named methods', () => {
   const source = `
     extension RootNavigationUITests {
       let sourceText = "func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}"
@@ -212,6 +208,7 @@ test('ignores comments and nested types and keeps same-named methods in their su
       /*
       func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}
       */
+      func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}
       final class NestedSettingsTests: XCTestCase {
         func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}
       }
@@ -220,21 +217,9 @@ test('ignores comments and nested types and keeps same-named methods in their su
       func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}
     }
   `;
-  assert.deepEqual(swiftTestMethodsInDeclaration(source, 'RootNavigationUITests', 'extension'), []);
-  assert.deepEqual(swiftTestMethodsInDeclaration(source, 'OtherSettingsUITests', 'class'), [
-    'testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
-  ]);
-});
-
-test('keeps extension test methods subject to the unscheduled-method guard', () => {
-  const source = `extension RootNavigationUITests {
-    func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() {}
-    func testUnregisteredSettingsExtensionMethod() {}
-  }`;
-  const seen = new Set([
-    'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
-  ]);
   const methods = swiftTestMethodsInDeclaration(source, 'RootNavigationUITests', 'extension');
+  assert.deepEqual(methods, ['testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText']);
+  const seen = new Set([`OrotUITests/RootNavigationUITests/${methods[0]}`]);
   assert.throws(
     () =>
       assertSwiftTestMethodsScheduled(
@@ -242,6 +227,21 @@ test('keeps extension test methods subject to the unscheduled-method guard', () 
         'RootSettingsNavigationUITests.swift',
         'RootNavigationUITests',
         methods,
+        seen,
+        source,
+      ),
+    /Unmapped test RootSettingsNavigationUITests\.swift\/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText/,
+  );
+  const unscheduledSource = `extension RootNavigationUITests {
+    func testUnregisteredSettingsExtensionMethod() {}
+  }`;
+  assert.throws(
+    () =>
+      assertSwiftTestMethodsScheduled(
+        'OrotUITests',
+        'RootSettingsNavigationUITests.swift',
+        'RootNavigationUITests',
+        swiftTestMethodsInDeclaration(unscheduledSource, 'RootNavigationUITests', 'extension'),
         seen,
       ),
     /Unscheduled test RootSettingsNavigationUITests\.swift\/testUnregisteredSettingsExtensionMethod/,
