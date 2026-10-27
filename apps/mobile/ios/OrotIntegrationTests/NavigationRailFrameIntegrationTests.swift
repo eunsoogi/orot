@@ -46,12 +46,14 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.railBottomInset = 46
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
-        surface.actions = [
-            ["id": "tab-home", "label": "Home", "accessibilityLabel": "Home tab",
-             "testID": "navigation-tab-home", "rootTab": true, "selected": true],
-            ["id": "tab-records", "label": "Records", "accessibilityLabel": "Records tab",
-             "testID": "navigation-tab-records", "rootTab": true],
-        ] as NSArray
+        // The production rail's fixed height belongs to exactly five 52pt tabs.
+        surface.actions = [("home", "house.fill"), ("records", "doc.text"),
+                           ("schedule", "calendar"), ("ai", "sparkles"), ("settings", "gearshape")].map { pair -> [String: Any] in
+            let (tab, symbol) = pair
+            return ["id": "tab-\(tab)", "label": tab, "accessibilityLabel": "\(tab) tab",
+                    "testID": "navigation-tab-\(tab)", "rootTab": true, "selected": tab == "home",
+                    "systemImageName": symbol]
+        } as NSArray
         surface.layoutIfNeeded()
         let portal = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? NavigationWindowRailHost }.first)
         portal.layoutIfNeeded()
@@ -61,7 +63,12 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
         let rootStack = try XCTUnwrap(root.contentView.subviews.compactMap { $0 as? UIStackView }.first)
         rootStack.layoutIfNeeded()
-        for button in rootStack.arrangedSubviews.compactMap({ $0 as? UIButton }) {
+        let rootButtons = rootStack.arrangedSubviews.compactMap { $0 as? UIButton }
+        XCTAssertEqual(rootButtons.count, 5)
+        for button in rootButtons {
+            XCTAssertEqual(button.bounds.width, 48, accuracy: 0.5)
+            XCTAssertEqual(button.bounds.height, 52, accuracy: 0.5)
+            XCTAssertTrue(rootFrame.contains(button.convert(button.bounds, to: window)))
             let center = button.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: window)
             XCTAssertTrue(window.hitTest(center, with: nil) === button)
         }

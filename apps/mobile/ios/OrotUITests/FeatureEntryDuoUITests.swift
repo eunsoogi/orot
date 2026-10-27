@@ -57,8 +57,10 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     @MainActor
     private func assertActionsFitContentLane(_ app: XCUIApplication) throws {
         let viewport = node(app, "navigation-content-region")
-        let rail = node(app, "navigation-right-rail")
+        // The React marker owns events; UIKit's toolbar owns the rendered rail frame.
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
         guard UITestConditions.exists(viewport), !viewport.frame.isEmpty,
+              UITestConditions.exists(node(app, "navigation-right-rail")),
               UITestConditions.exists(rail), !rail.frame.isEmpty
         else {
             throw XCTSkip("Duo content-lane geometry is unavailable; this run cannot prove expanded-panel placement.")
