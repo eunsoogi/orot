@@ -67,6 +67,38 @@ export interface EncounterGraphPort {
   ): Promise<string[]>;
 }
 
+/** Fixed labels only: diagnostics must never receive error text or graph data. */
+export interface EncounterDiagnosticFailure {
+  stage:
+    | 'checkpoint_read'
+    | 'resume_validation'
+    | 'graph_invoke'
+    | 'load_transcript'
+    | 'extract_candidates'
+    | 'detect_conflicts'
+    | 'user_confirmation'
+    | 'persist_records'
+    | 'checkpoint_source'
+    | 'checkpoint_result'
+    | 'checkpoint_pending'
+    | 'approval_without_checkpoint'
+    | 'graph_result'
+    | 'extraction_result';
+  category:
+    | 'type_error'
+    | 'range_error'
+    | 'error'
+    | 'UNKNOWN'
+    | 'unavailable'
+    | 'workflow_unavailable'
+    | 'workflow_invalid_output'
+    | 'workflow_budget_exceeded'
+    | 'workflow_consent_required'
+    | 'workflow_stale_evidence'
+    | 'workflow_cancelled'
+    | 'workflow_needs_clarification';
+}
+
 export interface EncounterGraphOptions {
   threadId: string;
   sourceId: string;
@@ -75,6 +107,7 @@ export interface EncounterGraphOptions {
   port: EncounterGraphPort;
   signal?: AbortSignal;
   approval?: EncounterApproval;
+  onDiagnostic?: (failure: EncounterDiagnosticFailure) => void;
 }
 
 export type EncounterGraphResult =

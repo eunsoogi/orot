@@ -5,6 +5,7 @@ import {
 import type {
   EncounterCandidate,
   EncounterTranscript,
+  EncounterGraphOptions,
   MultiAgentWorkflowOptions,
   TaskResponderContract,
 } from '@orot/agent-runtime';
@@ -110,6 +111,7 @@ export async function extractEncounterCandidates(input: {
   model: EncounterModelOptions;
   isCurrent: () => Promise<boolean>;
   signal: AbortSignal;
+  onDiagnostic?: EncounterGraphOptions['onDiagnostic'];
 }): Promise<EncounterCandidate[]> {
   const { transcript, model, signal } = input;
   if (
@@ -156,9 +158,29 @@ export async function extractEncounterCandidates(input: {
     },
     { signal },
   );
-  if (result.status !== 'result')
+  if (result.status !== 'result') {
+    // Preserve the fixed workflow outcome before it becomes a generic extraction failure.
+    // Reasons and checkpoints can contain private evidence and must never reach this observer.
+    const categories = {
+      unavailable: 'workflow_unavailable',
+      invalid_output: 'workflow_invalid_output',
+      budget_exceeded: 'workflow_budget_exceeded',
+      consent_required: 'workflow_consent_required',
+      stale_evidence: 'workflow_stale_evidence',
+      cancelled: 'workflow_cancelled',
+      needs_clarification: 'workflow_needs_clarification',
+    } as const;
+    try {
+      input.onDiagnostic?.({
+        stage: 'extraction_result',
+        category: categories[result.status],
+      });
+    } catch {
+      /* Evidence must not replace the original extraction failure. */
+    }
     throw new Error(
       'Encounter extraction did not produce validated candidates.',
     );
+  }
   return result.value;
 }

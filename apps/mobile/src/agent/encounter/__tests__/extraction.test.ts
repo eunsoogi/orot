@@ -23,6 +23,34 @@ const transcript: EncounterTranscript = {
 };
 
 describe('Encounter extraction standard runtime boundary', () => {
+  it('keeps the original extraction failure when a fixed-status observer throws', async () => {
+    const synthetic = syntheticEncounterModel('source', true);
+    const onDiagnostic = jest.fn(() => {
+      throw new Error('observer failure');
+    });
+    await expect(
+      extractEncounterCandidates({
+        transcript,
+        model: {
+          ...synthetic.model,
+          execution: {
+            ...synthetic.model.execution,
+            operationRunId: 'invalid%synthetic',
+          },
+        },
+        isCurrent: async () => true,
+        signal: new AbortController().signal,
+        onDiagnostic,
+      }),
+    ).rejects.toThrow(
+      'Encounter extraction did not produce validated candidates.',
+    );
+    expect(onDiagnostic.mock.calls).toEqual([
+      [{ stage: 'extraction_result', category: 'workflow_invalid_output' }],
+    ]);
+    expect(synthetic.calls()).toBe(0);
+  });
+
   it('does not transmit a remote transcript without exact outbound consent', async () => {
     const synthetic = syntheticEncounterModel('source', true);
     await expect(

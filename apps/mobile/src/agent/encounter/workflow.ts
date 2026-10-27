@@ -8,6 +8,7 @@ import {
 import type {
   EncounterApproval,
   EncounterGraphPort,
+  EncounterGraphOptions,
 } from '@orot/agent-runtime';
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
@@ -25,6 +26,7 @@ export function createEncounterGraphPort(
   repository: RecordRepository,
   model: EncounterModelOptions,
   requireCurrentSession = false,
+  onDiagnostic?: EncounterGraphOptions['onDiagnostic'],
 ): EncounterGraphPort {
   const load: EncounterGraphPort['load'] = async (sourceId, signal) => {
     requireEncounterActive(signal);
@@ -43,6 +45,7 @@ export function createEncounterGraphPort(
         transcript,
         model,
         signal,
+        onDiagnostic,
         isCurrent: async () =>
           encounterCanonical(await load(transcript.sourceId, signal)) ===
           encounterCanonical(transcript),
@@ -72,6 +75,7 @@ export async function runLocalEncounterProcessing(input: {
   signal?: AbortSignal;
   approval?: EncounterApproval;
   requireCurrentReviewSession?: boolean;
+  onDiagnostic?: EncounterGraphOptions['onDiagnostic'];
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const database = await openLocalAgentMemoryDatabase();
@@ -89,6 +93,7 @@ export async function runLocalEncounterProcessing(input: {
       await openLocalStorage(),
       input.model,
       input.requireCurrentReviewSession,
+      input.onDiagnostic,
     ),
   });
 }

@@ -17,6 +17,10 @@ import {
   syntheticEncounterModel,
 } from '../agent/encounter/syntheticFixture';
 import { createEncounterReviewService } from './service';
+import {
+  createNativeReviewDiagnostics,
+  readNativeReviewReport,
+} from './nativeDiagnostics';
 function settings() {
   const manager = NativeModules.SettingsManager;
   return manager?.settings ?? manager?.getConstants?.().settings ?? {};
@@ -51,26 +55,30 @@ function ProbeRoute() {
   );
   const service = useMemo(
     () =>
-      createEncounterReviewService(async () => ({
-        status: 'ready',
-        selection: {
-          providerId: synthetic.model.provider.id,
-          modelId: 'synthetic',
-        },
-        option: {
+      createEncounterReviewService(
+        async () => ({
+          status: 'ready',
+          selection: {
+            providerId: synthetic.model.provider.id,
+            modelId: 'synthetic',
+          },
+          option: {
+            provider: synthetic.model.provider,
+            modelId: 'synthetic',
+            displayName: 'Synthetic',
+            privacyBoundary:
+              mode === 'remote' ? 'selected-context-remote' : 'on-device',
+            availability: { status: 'available' },
+          },
           provider: synthetic.model.provider,
           modelId: 'synthetic',
-          displayName: 'Synthetic',
-          privacyBoundary:
-            mode === 'remote' ? 'selected-context-remote' : 'on-device',
-          availability: { status: 'available' },
-        },
-        provider: synthetic.model.provider,
-        modelId: 'synthetic',
-        recipient: mode === 'remote' ? 'Synthetic test recipient' : 'on-device',
-        remoteProcessing: mode === 'remote',
-      })),
-    [synthetic, mode],
+          recipient:
+            mode === 'remote' ? 'Synthetic test recipient' : 'on-device',
+          remoteProcessing: mode === 'remote',
+        }),
+        createNativeReviewDiagnostics(sourceId, synthetic.calls),
+      ),
+    [synthetic, mode, sourceId],
   );
   useEffect(() => {
     let active = true;
@@ -97,18 +105,14 @@ function ProbeRoute() {
   }, [sourceId, mode]);
   async function readback() {
     const sequence = ++readbackSequence.current;
-    const repository = await openLocalStorage();
-    const records = (await repository.list('health_observation')).filter(
-      record => record.provenance.sourceRecordIds.includes(sourceId),
-    );
-    const evidence =
-      await repository.evidenceSpans.listForSourceRecord(sourceId);
     setReport(
       JSON.stringify({
         readback: sequence,
-        records,
-        evidence,
-        modelCalls: synthetic.calls(),
+        ...(await readNativeReviewReport(
+          sourceId,
+          synthetic.calls,
+          service.diagnostics,
+        )),
       }),
     );
   }
