@@ -127,17 +127,34 @@ describe('Settings provider presentation', () => {
     expect(screen.getByText(providerSelectionText.remotePrivacy)).toBeTruthy();
   });
 
-  it('keeps the feature selector in its existing combined layout', async () => {
+  it('uses measured panels and capability summaries in the in-flow feature selector', async () => {
     await render(
       <ProviderSelectionScreen
-        options={[makeOption('local', 'on-device')]}
+        options={[
+          makeOption('local', 'on-device'),
+          makeOption('remote', 'selected-context-remote'),
+        ]}
         requirements={requirements}
         selectionStore={makeStore()}
       />,
     );
 
     expect(screen.queryByTestId('settings-provider-panels-primary')).toBeNull();
-    expect(screen.getByTestId('provider-option-0')).toBeTruthy();
-    expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
+    expect(
+      screen.getByTestId('provider-selection-feature-panels-primary'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('provider-selection-feature-panels-secondary'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('provider-option-0-capabilities'),
+    ).toHaveTextContent(
+      `${providerSelectionText.capabilitiesSummary}: ${[
+        providerSelectionText.capabilityInput.text,
+        providerSelectionText.capabilityInput.image,
+        providerSelectionText.capabilityStreaming,
+        providerSelectionText.capabilityToolCalling,
+      ].join(' · ')}`,
+    );
   });
 });
