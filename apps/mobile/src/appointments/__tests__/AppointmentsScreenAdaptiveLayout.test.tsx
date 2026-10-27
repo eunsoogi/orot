@@ -108,7 +108,7 @@ test('selects a newly saved appointment in the detail panel', async () => {
   );
 });
 
-test('lets the appointments screen own its complete measured route lane', () => {
+test('keeps appointment and classification routes screen-owned', () => {
   const appointmentRoute: NavigationRoute<string> = {
     key: 'appointment-route',
     name: 'appointments',
@@ -127,5 +127,5 @@ test('lets the appointments screen own its complete measured route lane', () => 
   }
   expect(appContentLayoutOwner(appointmentRoute)).toBe('screen');
   expect(appContentLayoutOwner(manualRoute)).toBe('screen');
-  expect(appContentLayoutOwner(medicalRoute)).toBe('scene');
+  expect(appContentLayoutOwner(medicalRoute)).toBe('screen');
 });
