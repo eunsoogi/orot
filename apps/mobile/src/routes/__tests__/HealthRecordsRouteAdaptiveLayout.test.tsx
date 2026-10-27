@@ -9,6 +9,7 @@ import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter'
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import type { HealthRecordsDetailSelection } from '../../healthkit/healthRecordsLibraryModel';
+import { expectDuoPanelsInsideNativeRegions } from '../testSupport/healthRecordsDuoLayoutAssertions';
 
 const measurableView = View as unknown as {
   prototype: {
@@ -221,6 +222,10 @@ test('renders the production health route across native regions and keeps its ro
     );
   });
   expect(medicationDirection()).toBe('row');
+  expectDuoPanelsInsideNativeRegions(
+    'health-records-medication-detail-layout',
+    geometry(900, true),
+  );
   expect(
     screen.getByTestId('health-record-period-three_months').props
       .accessibilityState?.selected,

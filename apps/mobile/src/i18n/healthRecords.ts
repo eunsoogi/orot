@@ -40,6 +40,10 @@ export const healthRecordsKo = {
   'healthRecords.medicationForm': '제형: {form}',
   'healthRecords.medicationSource': '출처: {source}',
   'healthRecords.medicationSourceUnavailable': '확인할 수 없어요',
+  // A missing source must stay explicit rather than implying provenance from the record type.
+  'healthRecords.sourceUnavailable': '출처 정보가 없어요.',
+  'healthRecords.sourceValueUnavailable':
+    '출처에서 기록한 원래 값과 단위를 확인할 수 없어요.',
   'healthRecords.period.month': '1개월',
   'healthRecords.period.three_months': '3개월',
   'healthRecords.period.six_months': '6개월',
