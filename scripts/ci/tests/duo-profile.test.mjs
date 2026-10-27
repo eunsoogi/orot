@@ -81,6 +81,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const recordsHub =
     'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText';
+  const recordingLiveReflow =
+    'OrotUITests/RecordingDuoUITests/testRecordingCaptureAndConsentSurviveLiveWindowReflow';
   const duoKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane';
   const fourSidedOcclusion =
@@ -93,7 +95,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  assert.equal(duoInventory.length, 12);
+  assert.equal(duoInventory.length, 13);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -107,6 +109,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     fourSidedOcclusion,
     recordingShareDismissal,
     recordsHub,
+    recordingLiveReflow,
   ]);
   // Home remains part of the iPhone fixture profile; Records runs only on the dedicated Duo destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
