@@ -5,7 +5,7 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
-// This suite binds the Duo destination to its exact native test inventory.
+// This suite pins the Duo selectors and keeps other profile memberships explicit.
 test('Duo remains opt-in with its own product compatibility and exact native test inventory', () => {
   const duo = iosTestBuildSpec('duo');
   const core = iosTestBuildSpec('core');
@@ -68,6 +68,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure';
   const diseaseHypothesesReflow =
     'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions';
+  const evidenceSourceReflow =
+    'OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState';
   const healthImportReflow =
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
@@ -110,8 +112,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
-  // Keep account, provider, transcription, conversation, history, and health cases explicit.
-  assert.equal(duoInventory.length, 39);
+  // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
+  assert.equal(duoInventory.length, 40);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -142,6 +144,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthImportLibrary,
     healthDataSettingsReflow,
     diseaseHypothesesReflow,
+    evidenceSourceReflow,
     healthImportReflow,
     healthImportLargeText,
     healthRecordDetailReflow,
@@ -174,6 +177,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthLibraryReflow,
     healthDataSettingsReflow,
     diseaseHypothesesReflow,
+    evidenceSourceReflow,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,
