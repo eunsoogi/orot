@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NativeModules, Text, View } from 'react-native';
+import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { AppointmentReminderCoordinator } from '../src/appointmentReminders/reminderCoordinator';
 import { createAppointmentReminderPort } from '../src/appointmentReminders/reminderPort';
@@ -107,7 +107,7 @@ export function ReminderOriginControl({
     };
   }, [runtime]);
   return (
-    <View style={{ padding: 24, paddingTop: 100 }}>
+    <View style={styles.control}>
       <AppointmentReminderProvider runtime={runtime}>
         <AppointmentReminderControls appointment={appointment} />
       </AppointmentReminderProvider>
@@ -125,3 +125,5 @@ export function ReminderOriginControl({
     </View>
   );
 }
+
+const styles = StyleSheet.create({ control: { padding: 24, paddingTop: 100 } });

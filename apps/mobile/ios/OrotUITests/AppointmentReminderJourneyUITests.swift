@@ -7,7 +7,6 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
-    /// This native control proves confirmed rejection cannot fall through into original success checks.
     /// First postmerge control must cross RN itself before any original diagnostic journey rerun.
     @MainActor
     func testActualRNFailureOriginSurvivesCleanupAndQueuedReconciliation() throws {
@@ -65,6 +64,8 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         try ReminderJourneyDiagnostic.finishHealthy(app, testCase: self)
     }
 
+    /// This native control proves confirmed rejection cannot fall through into original success checks.
+    @MainActor
     func testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions() throws {
         var order: [String] = []
         do {
