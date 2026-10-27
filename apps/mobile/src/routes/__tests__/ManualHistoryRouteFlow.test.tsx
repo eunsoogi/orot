@@ -6,8 +6,13 @@ import {
   openLocalStorage,
 } from '../../storage/secureDatabase';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
+import { openLocalManualHistoryRepository } from '../../manualHistory/localRepository';
+import { selectTestRoute } from '../../../e2e/testRoute';
 import { RecordsRoute } from '../RecordsRoute';
-import { ManualHistoryRoute } from '../ManualHistoryRoute';
+import {
+  ManualHistoryRepositoryOpenerContext,
+  ManualHistoryRoute,
+} from '../ManualHistoryRoute';
 
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -21,6 +26,16 @@ const mockedOpenLocalAgentMemoryDatabase = jest.mocked(
   openLocalAgentMemoryDatabase,
 );
 const mockedOpenLocalStorage = jest.mocked(openLocalStorage);
+
+test('admits manual-history recovery only as an explicit test scenario', () => {
+  expect(
+    selectTestRoute({ OROT_TEST_SCENARIO: 'manual-history-recovery' }),
+  ).toBe('manual-history-recovery');
+  expect(selectTestRoute({ OROT_TEST_PROFILE: 'core' })).toBe('core');
+  expect(() =>
+    selectTestRoute({ OROT_TEST_SCENARIO: 'manual-history-recovery-typo' }),
+  ).toThrow('Unsupported test scenario');
+});
 
 function RecordsAndManualHistoryRoutes() {
   const [showManualHistory, setShowManualHistory] = useState(false);
@@ -75,6 +90,44 @@ test('opens from Records, saves, leaves, and reloads a structured manual-history
     await expect(
       storage.manualHistory.list({ dateStatus: 'unknown' }),
     ).resolves.toHaveLength(1);
+  } finally {
+    view.unmount();
+    close();
+    mockedOpenLocalStorage.mockReset();
+    mockedOpenLocalAgentMemoryDatabase.mockReset();
+  }
+});
+
+test('retries a failed route open through the real repository and returns to Records', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  await runMigrations(database);
+  const storage = createRecordRepository(database);
+  mockedOpenLocalStorage.mockResolvedValue(storage);
+  mockedOpenLocalAgentMemoryDatabase.mockResolvedValue(database);
+  let attempts = 0;
+  const openRepository = jest.fn(async () => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('Synthetic repository-open failure.');
+    return openLocalManualHistoryRepository();
+  });
+  const view = await render(
+    <ManualHistoryRepositoryOpenerContext.Provider value={openRepository}>
+      <RecordsAndManualHistoryRoutes />
+    </ManualHistoryRepositoryOpenerContext.Provider>,
+  );
+  try {
+    await fireEvent.press(view.getByTestId('records-open-manual-history'));
+    await view.findByTestId('route-load-retry');
+    expect(openRepository).toHaveBeenCalledTimes(1);
+
+    await fireEvent.press(view.getByTestId('route-load-retry'));
+    await view.findByTestId('manual-history-empty');
+    expect(openRepository).toHaveBeenCalledTimes(2);
+    expect(mockedOpenLocalStorage).toHaveBeenCalledTimes(1);
+    expect(mockedOpenLocalAgentMemoryDatabase).toHaveBeenCalledTimes(1);
+
+    await fireEvent.press(view.getByTestId('manual-history-back'));
+    expect(view.getByTestId('records-title')).toBeTruthy();
   } finally {
     view.unmount();
     close();

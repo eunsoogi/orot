@@ -205,6 +205,7 @@
 		E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */; };
 		F65DC9A7A1FC4089B25A63C0 /* StandardAdapterIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69AD0E21B2F7450387C628D6 /* StandardAdapterIntegrationTests.swift */; };
 		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
+		7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */; };
 		E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */; };
 		A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */; };
 		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
@@ -300,6 +301,7 @@
 		79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingMeteringBoundaryTests.swift; sourceTree = "<group>"; };
 		7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticTranscriptionUITests.swift; sourceTree = "<group>"; };
 		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
+		A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportPresentationFixture.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		83F338ACB5824E578A229C10 /* SymptomAccessorySnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SymptomAccessorySnapshot.swift; path = OrotMobile/SymptomAccessorySnapshot.swift; sourceTree = "<group>"; };
 		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
@@ -692,6 +694,7 @@
 				69AD0E21B2F7450387C628D6 /* StandardAdapterIntegrationTests.swift */,
 				2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */,
 				81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */,
+				A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */,
 				F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
 				B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */,
@@ -1281,6 +1284,7 @@
 				F65DC9A7A1FC4089B25A63C0 /* StandardAdapterIntegrationTests.swift in Sources */,
 				AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */,
 				E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */,
+				7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */,
 				E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
 				A62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift in Sources */,
