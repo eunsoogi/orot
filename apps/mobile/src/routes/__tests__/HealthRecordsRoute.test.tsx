@@ -65,7 +65,9 @@ test('routes the medication summary action to its separate dose-event detail lis
       selection={{ category: 'medications', period: 'month' }}
     />,
   );
-  expect(await screen.findByText('Synthetic medication')).toBeTruthy();
+  expect(
+    await screen.findByTestId('health-records-medication-selected'),
+  ).toHaveTextContent(/Synthetic medication/u);
 });
 
 test('opens the existing unified import route from the health records library', async () => {

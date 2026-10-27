@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { HealthRecordsRoute } from '../HealthRecordsRoute';
@@ -7,6 +8,7 @@ import { createNavigationController } from '../../navigation/navigationControlle
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
+import type { HealthRecordsDetailSelection } from '../../healthkit/healthRecordsLibraryModel';
 
 const measurableView = View as unknown as {
   prototype: {
@@ -39,12 +41,12 @@ jest.mock('react-native-safe-area-context', () => {
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
 // Default text scale leaves enough width in each native region for both panels.
-const viewport = (width: number) => ({
+const viewport = (width: number, fontScale = 1) => ({
   ...originalWindow,
   width,
   height: 600,
   scale: 1,
-  fontScale: 1,
+  fontScale,
 });
 
 beforeEach(() => {
@@ -85,29 +87,34 @@ test('renders the production health route across native regions and keeps its ro
     records: [],
     nextCursor: null,
   }));
-  const onSelectionChange = jest.fn();
+  function RouteHarness() {
+    const [selection, setSelection] =
+      useState<HealthRecordsDetailSelection | null>(null);
+    return (
+      <NavigationRouteAdapter
+        contentLayoutOwner={appContentLayoutOwner}
+        controller={controller}
+      >
+        {actions =>
+          actions.route.name === 'health-records' ||
+          actions.route.name === 'health-records-detail' ? (
+            <HealthRecordsRoute
+              actions={actions}
+              loadMedicationData={loadMedicationData}
+              loadObservations={loadObservations}
+              onSelectionChange={setSelection}
+              route={actions.route.name}
+              selection={selection}
+            />
+          ) : (
+            <Text testID="home-route">Home</Text>
+          )
+        }
+      </NavigationRouteAdapter>
+    );
+  }
 
-  await render(
-    <NavigationRouteAdapter
-      contentLayoutOwner={appContentLayoutOwner}
-      controller={controller}
-    >
-      {actions =>
-        actions.route.name === 'health-records' ? (
-          <HealthRecordsRoute
-            actions={actions}
-            loadMedicationData={loadMedicationData}
-            loadObservations={loadObservations}
-            onSelectionChange={onSelectionChange}
-            route="health-records"
-            selection={null}
-          />
-        ) : (
-          <Text testID="home-route">Home</Text>
-        )
-      }
-    </NavigationRouteAdapter>,
-  );
+  await render(<RouteHarness />);
   await act(async () => {
     controller.push('health-records');
   });
@@ -170,4 +177,69 @@ test('renders the production health route across native regions and keeps its ro
   });
   expect(allowed).toBe(true);
   expect(controller.getSnapshot().currentRoute.name).toBe('home');
+
+  await act(async () => {
+    controller.push('health-records');
+  });
+  await fireEvent.press(
+    screen.getByTestId('health-record-open-detail-heart_rate'),
+  );
+  let detailKey = controller.getSnapshot().currentRoute.key;
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${detailKey}`),
+  ).toBeNull();
+  expect(screen.getByTestId('health-records-detail-scroll')).toBeTruthy();
+  await act(async () => {
+    await controller.requestBack();
+  });
+  await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
+  await fireEvent.press(
+    screen.getByTestId('health-record-open-detail-medications'),
+  );
+  detailKey = controller.getSnapshot().currentRoute.key;
+  expect(
+    screen.queryByTestId(`navigation-route-columns-${detailKey}`),
+  ).toBeNull();
+  expect(
+    screen.getByTestId('health-records-medication-detail-layout'),
+  ).toBeTruthy();
+
+  await fireEvent.press(
+    screen.getByTestId('health-record-period-three_months'),
+  );
+  const medicationLayout = screen.getByTestId(
+    'health-records-medication-detail-layout',
+  );
+  const medicationDirection = () =>
+    StyleSheet.flatten(medicationLayout.props.style)?.flexDirection;
+  await act(async () => {
+    Dimensions.set({ window: viewport(900), screen: viewport(900) });
+    await fireEvent(
+      screen.getByTestId('navigation-window-geometry-sensor'),
+      'geometryChange',
+      { nativeEvent: geometry(900, true) },
+    );
+  });
+  expect(medicationDirection()).toBe('row');
+  expect(
+    screen.getByTestId('health-record-period-three_months').props
+      .accessibilityState?.selected,
+  ).toBe(true);
+
+  await act(async () => {
+    Dimensions.set({
+      window: viewport(900, 1.5),
+      screen: viewport(900, 1.5),
+    });
+    await fireEvent(
+      screen.getByTestId('navigation-window-geometry-sensor'),
+      'geometryChange',
+      { nativeEvent: geometry(900, true) },
+    );
+  });
+  expect(medicationDirection()).toBe('column');
+  expect(
+    screen.getByTestId('health-record-period-three_months').props
+      .accessibilityState?.selected,
+  ).toBe(true);
 });
