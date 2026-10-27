@@ -74,6 +74,85 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         capture(app, "manual-classification-schedule-home")
     }
 
+    /// Keeps a synthetic manual draft in the production route's measured content lane through rotation and guarded Back.
+    @MainActor
+    func testManualAppointmentRetainsDraftAcrossDuoReflow() throws {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        defer {
+            XCUIDevice.shared.orientation = .portrait
+            app.terminate()
+        }
+        launch(app, probe: "medical-appointment-app-navigation")
+        try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+        tap(app, "open-medical-appointments")
+        XCTAssertTrue(app.staticTexts["기기 안에서 분류해요."].waitForAppearance())
+        tap(app, "medical-appointment-manual")
+        XCTAssertTrue(node(app, "appointment-add").waitForAppearance())
+        tap(app, "appointment-add")
+        guard
+            replace(app, "appointment-clinic-input", with: "Synthetic Duo clinic"),
+            replace(app, "appointment-date-input", with: "2035-06-02"),
+            replace(app, "appointment-time-input", with: "09:30"),
+            replace(app, "appointment-note-input", with: "Bring the test results.")
+        else { return }
+
+        let panel = node(app, "appointments-columns-primary")
+        let contentRegion = node(app, "navigation-content-region")
+        XCTAssertTrue(panel.exists && contentRegion.exists, app.debugDescription)
+        XCTAssertFalse(panel.frame.isEmpty, app.debugDescription)
+        XCTAssertLessThanOrEqual(panel.frame.width, contentRegion.frame.width + 1, app.debugDescription)
+        let clinic = node(app, "appointment-clinic-input")
+        clinic.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance(), app.debugDescription)
+        for identifier in ["appointment-save", "appointment-form-cancel"] {
+            let action = node(app, identifier)
+            FormUITestConditions.reveal(action, in: app, scrollID: "appointments-scroll")
+            XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+        }
+        capture(app, "manual-appointment-draft-keyboard-portrait")
+
+        let compactWidth = panel.frame.width
+        XCUIDevice.shared.orientation = .landscapeLeft
+        waitForWidthChange(panel, from: compactWidth)
+        XCTAssertLessThanOrEqual(panel.frame.width, contentRegion.frame.width + 1, app.debugDescription)
+        XCTAssertEqual(node(app, "appointment-clinic-input").value as? String, "Synthetic Duo clinic")
+        XCTAssertEqual(node(app, "appointment-date-input").value as? String, "2035-06-02")
+        XCTAssertEqual(node(app, "appointment-time-input").value as? String, "09:30")
+        XCTAssertEqual(node(app, "appointment-note-input").value as? String, "Bring the test results.")
+        capture(app, "manual-appointment-draft-landscape")
+
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        let leavePrompt = app.alerts["저장하지 않은 내용이 있어요"]
+        XCTAssertTrue(leavePrompt.waitForAppearance(), app.debugDescription)
+        leavePrompt.buttons["계속 편집"].tap()
+        XCTAssertEqual(node(app, "appointment-clinic-input").value as? String, "Synthetic Duo clinic")
+        tap(app, "appointment-form-cancel")
+        XCTAssertTrue(node(app, "appointments-empty").waitForAppearance(), app.debugDescription)
+        capture(app, "manual-appointment-cancel-keeps-route")
+
+        // These writes stay in the probe's session-only repository, away from encrypted user storage.
+        let appointmentId = try ReminderJourneyForm.create(
+            app,
+            clinic: "Saved synthetic clinic",
+            start: ReminderJourneyForm.time(minutesAhead: 480),
+            note: "Saved synthetic note",
+        )
+        let savedClinic = node(app, "appointment-clinic-" + appointmentId)
+        XCTAssertTrue(savedClinic.waitForAppearance(), app.debugDescription)
+        XCTAssertEqual(savedClinic.label, "Saved synthetic clinic")
+
+        ReminderJourneyForm.edit(
+            app,
+            id: appointmentId,
+            start: ReminderJourneyForm.time(minutesAhead: 960),
+            clinic: "Edited synthetic clinic",
+        )
+        XCTAssertEqual(savedClinic.label, "Edited synthetic clinic")
+        XCTAssertTrue(app.staticTexts[ReminderJourneyForm.note].waitForAppearance(), app.debugDescription)
+        capture(app, "manual-appointment-edit-saved")
+    }
+
     /// Decline both rendered appearances; this verifies the actual disclosure without any provider send.
     @MainActor
     func testDisclosureCollapsedAndExpandedAcrossAppearances() throws {
