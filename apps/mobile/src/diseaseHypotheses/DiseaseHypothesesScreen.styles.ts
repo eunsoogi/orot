@@ -4,6 +4,7 @@ import { appColors } from '../layout/appColors';
 /** Shared layout for factual summaries and separately selected disease reviews. */
 export const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
+  panel: { gap: 12 },
   heading: { fontSize: 22, fontWeight: '700' },
   results: { gap: 12 },
   // Filled surfaces preserve the card/canvas hierarchy in both system appearances.

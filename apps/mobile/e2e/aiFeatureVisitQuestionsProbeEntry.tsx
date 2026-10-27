@@ -15,6 +15,7 @@ import { name as appName } from '../app.json';
 import { NextVisitQuestionsRoute } from '../src/aiFeatures/integration/NextVisitQuestionsRoute';
 import { resolveSelectedAiProvider } from '../src/aiFeatures/integration/provider';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
+import type { AiFeatureLocalData } from '../src/aiFeatures/integration/localData';
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { VisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/taskContract';
@@ -51,15 +52,54 @@ const selectionStore: ProviderSelectionStore = {
   save: async () => undefined,
   clear: async () => undefined,
 };
-const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
+// This opt-in runner supplies fixed output without dispatching a model or evidence tool.
+const syntheticDiseaseRunner: NonNullable<
+  AiFeatureServiceDependencies['diseaseRunner']
+> = async (_workflow, _inventory, _invocation, _resolve, task) => ({
+  status: 'workflow',
+  result: {
+    status: 'result',
+    value: {
+      ...(task ? { presentation: 'symptom_summary' as const } : {}),
+      hypotheses: [
+        {
+          title: task ? '합성 증상 요약' : '합성 가능성 평가',
+          summary: '합성 기록을 사용해 화면 동작만 확인했어요.',
+          supportingEvidence: [syntheticCitation],
+          contraryEvidence: [],
+          uncertainty: '합성 자료로는 실제 상태를 판단할 수 없어요.',
+          missingData: ['실제 건강 기록'],
+        },
+      ],
+    },
+    citations: [syntheticCitation],
+    coverage: [],
+    checkpoint: {} as never,
+  },
+});
+const syntheticAiFeatureDependencies: AiFeatureServiceDependencies = {
   selectedAi: {
     selectionStore,
     loadAppleOption: async () => syntheticOption,
   },
+  // The opt-in fixture stays in memory and never dispatches an external model or reads encrypted records.
+  loadLocalData: async () =>
+    ({
+      rag: { index: async () => undefined, search: async () => [] },
+    }) as unknown as AiFeatureLocalData,
+  summaryStorage: async () => ({
+    append: async () => undefined,
+    list: async () => [],
+    read: async () => null,
+  }),
+  externalEvidence: { search: async () => ({ status: 'unavailable' }) },
+  diseaseRunner: syntheticDiseaseRunner,
 };
+const syntheticDiseaseFixtureEnabled =
+  launchSettings.OROT_DISEASE_HYPOTHESES_VISUAL_STATE === 'synthetic';
 // Keep this callback stable so route-state rerenders do not abort generation as a provider change.
 const resolveSyntheticSelectedAi: VisitQuestionsRenderInput['resolveSelectedAi'] =
-  () => resolveSelectedAiProvider(aiFeatureServiceDependencies.selectedAi);
+  () => resolveSelectedAiProvider(syntheticAiFeatureDependencies.selectedAi);
 
 const syntheticAppointment: Appointment = {
   id: 'synthetic-appointment-ai-feature-e2e',
@@ -169,7 +209,14 @@ function AiFeatureVisitQuestionsProbeEntry() {
 
   return (
     <View style={styles.container}>
-      <App renderVisitQuestions={renderVisitQuestions} />
+      <App
+        aiFeatureServiceDependencies={
+          syntheticDiseaseFixtureEnabled
+            ? syntheticAiFeatureDependencies
+            : undefined
+        }
+        renderVisitQuestions={renderVisitQuestions}
+      />
       <View pointerEvents="none" style={styles.keyboardMarker}>
         <Text
           accessible
