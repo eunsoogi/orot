@@ -44,6 +44,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     // Conversation history and evidence panels map directly onto the native usable regions.
     route.name === 'rag-conversation' ||
     route.name === 'recording' ||
+    // The recording review route already measures playback, transcript, and review panels together.
+    route.name === 'recording-review' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||
     route.name === 'disease-hypotheses' ||
