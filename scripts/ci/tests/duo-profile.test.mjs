@@ -137,8 +137,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource';
   const standardKeyboardSave =
     'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion';
-  // Keep account, provider, sync, history, disease-summary, backup, privacy, and health settings explicit.
-  assert.equal(duoInventory.length, 34);
+  // Keep account, provider, sync, history, disease-summary, manual-appointment, backup, privacy, and health settings explicit.
+  assert.equal(duoInventory.length, 35);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
@@ -155,6 +155,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     scheduleLargeText,
     appointmentsReflow,
     classificationReflow,
+    'OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow',
     contextualDeparture,
     manualHistoryRecovery,
     manualHistoryReflow,
@@ -188,6 +189,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
+    'OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow',
     manualHistoryRecovery,
     settingsAccounts,
     privacySettingsReflow,

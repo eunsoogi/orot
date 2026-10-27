@@ -3,6 +3,12 @@ import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { AppRegistry, NativeModules } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
+import type { Appointment } from '@orot/domain';
+import {
+  cancelAppointment,
+  createAppointment,
+  updateAppointment,
+} from '@orot/domain';
 import App from '../App';
 import { name as appName } from '../app.json';
 import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
@@ -21,6 +27,10 @@ const homeAppointments = homeAppointmentTimingFixture(
   Date.now(),
 );
 
+const appointmentRepository = createNavigationProbeRepository(homeAppointments);
+
+type ManualAppointmentInput = Parameters<AppointmentRepository['create']>[0];
+
 const selectedOption = createAppleSelectionOption('available');
 const selectionStore: ProviderSelectionStore = {
   load: async () => ({
@@ -37,24 +47,64 @@ const selectedAi: SelectedAiResolverOptions = {
 const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
   selectedAi,
 };
-const appointmentRepository: AppointmentRepository = {
-  list: async () => homeAppointments,
-  create: async () => {
-    throw new Error('This navigation probe does not save appointments.');
-  },
-  confirmCalendarEvent: async () => {
-    throw new Error('This navigation probe does not save appointments.');
-  },
-  reconfirmCalendarEvent: async () => {
-    throw new Error('This navigation probe does not save appointments.');
-  },
-  update: async () => {
-    throw new Error('This navigation probe does not save appointments.');
-  },
-  cancel: async () => {
-    throw new Error('This navigation probe does not save appointments.');
-  },
-};
+/** Uses isolated session memory so manual-entry tests never open persisted user storage. */
+function createNavigationProbeRepository(
+  initialAppointments: readonly Appointment[],
+): AppointmentRepository {
+  const appointments = new Map(
+    initialAppointments.map(appointment => [appointment.id, appointment]),
+  );
+  let sequence = 0;
+  const requireAppointment = (id: string) => {
+    const appointment = appointments.get(id);
+    if (!appointment) throw new Error('Synthetic appointment not found.');
+    return appointment;
+  };
+  const saveNewManualAppointment = (input: ManualAppointmentInput) => {
+    const now = new Date().toISOString();
+    const appointment = createAppointment({
+      ...input,
+      id: `synthetic-manual-appointment-${++sequence}`,
+      recordedAt: now,
+      ingestedAt: now,
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+    });
+    appointments.set(appointment.id, appointment);
+    return appointment;
+  };
+
+  return {
+    list: async () => [...appointments.values()],
+    create: async input => saveNewManualAppointment(input),
+    // Classification remains failure-only in this navigation fixture.
+    confirmCalendarEvent: async () => {
+      throw new Error('This navigation probe does not save calendar events.');
+    },
+    reconfirmCalendarEvent: async () => {
+      throw new Error(
+        'This navigation probe does not reconfirm calendar events.',
+      );
+    },
+    update: async (id, changes) => {
+      const updated = updateAppointment(
+        requireAppointment(id),
+        changes,
+        new Date().toISOString(),
+      );
+      appointments.set(id, updated);
+      return updated;
+    },
+    cancel: async id => {
+      const cancelled = cancelAppointment(
+        requireAppointment(id),
+        new Date().toISOString(),
+      );
+      appointments.set(id, cancelled);
+      return cancelled;
+    },
+  };
+}
 const event: CalendarEvent = {
   calendarEventIdentifier: 'synthetic-medical-appointment-navigation',
   effectiveAt: '2035-06-02T00:00:00.000Z',
