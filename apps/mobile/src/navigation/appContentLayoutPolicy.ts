@@ -22,7 +22,9 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // The saved library owns a measured list and summary that share that usable geometry.
   // Sync status measures its status and recovery panels against the actual usable regions.
   // Health data settings pairs category choices with sync and permission status panels.
+  // The symptom journal shares native usable regions between its list and selected summary.
   return route.name === 'settings-accounts' ||
+    route.name === 'symptoms' ||
     route.name === 'appointments' ||
     route.name === 'medical-manual' ||
     route.name === 'medical' ||

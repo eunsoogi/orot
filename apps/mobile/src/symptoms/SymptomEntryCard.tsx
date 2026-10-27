@@ -1,11 +1,14 @@
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
+import { appColors } from '../layout/appColors';
 import { toLocalSymptomDateTime } from './dateTime';
 
 type SymptomEntryCardProps = {
   entry: SymptomEntry;
   onEdit: () => void;
   onResolve: () => void;
+  onSelect: () => void;
+  selected?: boolean;
   disabled?: boolean;
 };
 
@@ -13,6 +16,8 @@ export default function SymptomEntryCard({
   entry,
   onEdit,
   onResolve,
+  onSelect,
+  selected = false,
   disabled,
 }: SymptomEntryCardProps) {
   const onset = toLocalSymptomDateTime(entry.effectiveAt);
@@ -21,28 +26,45 @@ export default function SymptomEntryCard({
     : null;
 
   return (
-    <View style={styles.card} testID={`symptom-${entry.id}`}>
-      <Text
-        style={styles.description}
-        testID={`symptom-${entry.id}-description`}
+    <View
+      style={[styles.card, selected ? styles.selectedCard : undefined]}
+      testID={`symptom-${entry.id}`}
+    >
+      {/* Keep the selector separate so details and Edit or Resolve stay accessible. */}
+      <Pressable
+        accessibilityHint="Shows this symptom in the selected summary."
+        accessibilityLabel={`${selected ? 'Selected' : 'Select'} symptom: ${entry.description}`}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        disabled={disabled}
+        onPress={onSelect}
+        style={styles.selectableDescription}
+        testID={`symptom-select-${entry.id}`}
       >
-        {entry.description}
-      </Text>
-      <Text testID={`symptom-${entry.id}-onset`}>
+        <Text
+          style={styles.description}
+          testID={`symptom-${entry.id}-description`}
+        >
+          {entry.description}
+        </Text>
+      </Pressable>
+      <Text style={styles.detail} testID={`symptom-${entry.id}-onset`}>
         {onset.date} at {onset.time} (local time)
       </Text>
-      <Text testID={`symptom-${entry.id}-status`}>
+      <Text style={styles.detail} testID={`symptom-${entry.id}-status`}>
         {entry.status === 'active' ? 'Active' : 'Resolved'}
       </Text>
-      <Text>User-entered · not clinician-confirmed</Text>
-      {entry.bodySite ? <Text>{entry.bodySite}</Text> : null}
+      <Text style={styles.detail}>User-entered · not clinician-confirmed</Text>
+      {entry.bodySite ? (
+        <Text style={styles.detail}>{entry.bodySite}</Text>
+      ) : null}
       {entry.severity !== undefined ? (
-        <Text testID={`symptom-${entry.id}-severity`}>
+        <Text style={styles.detail} testID={`symptom-${entry.id}-severity`}>
           Your severity: {entry.severity}/10
         </Text>
       ) : null}
       {resolved ? (
-        <Text>
+        <Text style={styles.detail}>
           Resolved {resolved.date} at {resolved.time}
         </Text>
       ) : null}
@@ -67,7 +89,25 @@ export default function SymptomEntryCard({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  description: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16 },
+  card: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
+  },
+  selectedCard: {
+    backgroundColor: appColors.primarySoft,
+    borderColor: appColors.primaryText,
+  },
+  selectableDescription: { borderRadius: 8, minHeight: 44 },
+  description: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  detail: { color: appColors.text },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 16,
+  },
 });
