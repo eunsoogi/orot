@@ -82,6 +82,11 @@ export function resolveNavigationRootLayout(
   const railRightInset =
     geometry.safeAreaInsets.right + NAVIGATION_ROOT_RAIL_GUTTER;
   const reservedRightWidth = NAVIGATION_ROOT_RAIL_WIDTH + railRightInset;
+  const railLeft =
+    geometry.windowBounds.x + geometry.windowBounds.width - reservedRightWidth;
+  const railRight = railLeft + NAVIGATION_ROOT_RAIL_WIDTH;
+  const windowRight = geometry.windowBounds.x + geometry.windowBounds.width;
+  const windowBottom = geometry.windowBounds.y + geometry.windowBounds.height;
   const usableBottom = geometry.safeAreaFrame.y + geometry.safeAreaFrame.height;
   const reachesBottom = (
     region: NavigationGeometrySnapshot['usableRegions'][number],
@@ -91,37 +96,41 @@ export function resolveNavigationRootLayout(
 
   for (const division of geometry.reservedRegions) {
     if (
-      !division.isActive ||
       division.kind !== 'division' ||
       division.frame.width <= 0 ||
-      division.frame.height < geometry.safeAreaFrame.height * 0.6
+      division.frame.height <= 0 ||
+      division.frame.x >= windowRight ||
+      division.frame.x + division.frame.width <= geometry.windowBounds.x ||
+      division.frame.y >= windowBottom ||
+      division.frame.y + division.frame.height <= geometry.windowBounds.y
     ) {
       continue;
     }
 
     const dividerLeft = division.frame.x;
     const dividerRight = dividerLeft + division.frame.width;
+    // An inactive native division declares geometry but does not split content.
+    // Allocate the readable column beside the rail within the existing usable
+    // rectangle; never manufacture panels from an inactive frame.
     const leftPanelIsReadable = geometry.usableRegions.some(
       region =>
-        region.x + region.width <= dividerLeft + 1 &&
-        region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH &&
-        reachesBottom(region),
+        (division.isActive
+          ? region.x + region.width <= dividerLeft + 1 &&
+            region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH
+          : Math.min(region.x + region.width, railLeft) - region.x >=
+            NAVIGATION_MINIMUM_COLUMN_WIDTH) && reachesBottom(region),
     );
-    const rightPanelFitsRail = geometry.usableRegions.some(
-      region =>
-        region.x >= dividerRight - 1 &&
-        region.width >=
-          NAVIGATION_ROOT_RAIL_WIDTH + NAVIGATION_ROOT_RAIL_GUTTER &&
-        reachesBottom(region),
-    );
+    const rightPanelFitsRail =
+      !division.isActive ||
+      geometry.usableRegions.some(
+        region =>
+          region.x >= dividerRight - 1 &&
+          region.width >=
+            NAVIGATION_ROOT_RAIL_WIDTH + NAVIGATION_ROOT_RAIL_GUTTER &&
+          reachesBottom(region),
+      );
     if (!leftPanelIsReadable || !rightPanelFitsRail) continue;
 
-    const railLeft =
-      geometry.windowBounds.x +
-      geometry.windowBounds.width -
-      railRightInset -
-      NAVIGATION_ROOT_RAIL_WIDTH;
-    const railRight = railLeft + NAVIGATION_ROOT_RAIL_WIDTH;
     const topRailRegion = geometry.usableRegions
       .filter(
         region =>
@@ -133,7 +142,6 @@ export function resolveNavigationRootLayout(
     if (!topRailRegion) continue;
 
     const railBoundary = Math.max(geometry.safeAreaFrame.y, topRailRegion.y);
-    const windowBottom = geometry.windowBounds.y + geometry.windowBounds.height;
     const railTopInset =
       railBoundary - geometry.windowBounds.y + NAVIGATION_ROOT_RAIL_GUTTER;
     const railBottomInset =
