@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import ManualHistoryScreen from '../src/manualHistory/ManualHistoryScreen';
+import { manualHistorySupportsInlineDateControls } from '../src/manualHistory/ManualHistoryFormLayout';
 import {
   MANUAL_HISTORY_DETAILS_MINIMUM_WIDTH,
   MANUAL_HISTORY_LIST_MINIMUM_WIDTH,
@@ -37,6 +38,74 @@ test('uses columns only when both panels fit at the current text scale', () => {
   expect(manualHistorySupportsColumns(minimumPanelWidth * 1.5, 1.5)).toBe(true);
   expect(manualHistorySupportsColumns(Number.NaN, 1)).toBe(false);
   expect(manualHistorySupportsColumns(900, 0)).toBe(false);
+});
+
+test('keeps date controls stacked until the measured form lane supports both controls', () => {
+  expect(manualHistorySupportsInlineDateControls(759, 1)).toBe(false);
+  expect(manualHistorySupportsInlineDateControls(760, 1)).toBe(true);
+  expect(manualHistorySupportsInlineDateControls(1140, 1.5)).toBe(true);
+  expect(manualHistorySupportsInlineDateControls(920, 1.5)).toBe(false);
+  expect(manualHistorySupportsInlineDateControls(Number.NaN, 1)).toBe(false);
+  expect(manualHistorySupportsInlineDateControls(920, 0)).toBe(false);
+});
+
+test('reflows the form inside the measured parent lane without losing an active draft', async () => {
+  await act(() =>
+    Dimensions.set({ window: viewport(960), screen: viewport(960) }),
+  );
+  const view = await render(
+    <ManualHistoryScreen
+      onBack={jest.fn()}
+      repository={createManualHistoryTestRepository()}
+    />,
+  );
+  await view.findByTestId('manual-history-empty');
+  await fireEvent.press(view.getByTestId('manual-history-add'));
+
+  const measureForm = async (width: number) =>
+    fireEvent(view.getByTestId('manual-history-form'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width, height: 600 } },
+    });
+  const dateDirection = () =>
+    StyleSheet.flatten(
+      view.getByTestId('manual-history-date-controls').props.style,
+    )?.flexDirection;
+
+  await measureForm(960);
+  expect(dateDirection()).toBe('row');
+  await fireEvent.changeText(
+    view.getByTestId('manual-history-title-input'),
+    'Synthetic measured form title',
+  );
+  await fireEvent.changeText(
+    view.getByTestId('manual-history-details-input'),
+    'Synthetic details stay in the form while its measured lane narrows.',
+  );
+
+  await act(() =>
+    Dimensions.set({
+      window: viewport(960, 1.5),
+      screen: viewport(960, 1.5),
+    }),
+  );
+  expect(dateDirection()).toBeUndefined();
+  await measureForm(560);
+  expect(dateDirection()).toBeUndefined();
+  await measureForm(960);
+  expect(dateDirection()).toBeUndefined();
+  expect(view.getByTestId('manual-history-title-input').props.value).toBe(
+    'Synthetic measured form title',
+  );
+  expect(view.getByTestId('manual-history-details-input').props.value).toBe(
+    'Synthetic details stay in the form while its measured lane narrows.',
+  );
+
+  await act(() =>
+    Dimensions.set({ window: viewport(960), screen: viewport(960) }),
+  );
+  await measureForm(960);
+  expect(dateDirection()).toBe('row');
+  expect(view.getByTestId('manual-history-scroll')).toBeTruthy();
 });
 
 // A saved correction makes selection, lineage, provenance and local confirmation state observable together.
