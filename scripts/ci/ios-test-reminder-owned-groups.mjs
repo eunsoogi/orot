@@ -79,6 +79,7 @@ export function consumeReminderOwnedGroupPipe(stream, binding, supervisor) {
         const line = input.slice(0, newline);
         input = input.slice(newline + 1);
         let reason = 'malformed-registration-frame';
+        let event;
         try {
           if (!line) {
             reason = 'empty-registration-frame';
@@ -88,7 +89,7 @@ export function consumeReminderOwnedGroupPipe(stream, binding, supervisor) {
             reason = 'registration-frame-limit-exceeded';
             throw new Error('Invalid registration frame');
           }
-          const event = JSON.parse(line);
+          event = JSON.parse(line);
           if (Object.keys(event).some((key) => !fields.has(key))) {
             reason = 'unsupported-registration-field';
             throw new Error('Mismatched registration');
@@ -108,9 +109,15 @@ export function consumeReminderOwnedGroupPipe(stream, binding, supervisor) {
             reason = 'identity-field-on-nonspawn-event';
             throw new Error('Mismatched registration');
           }
-          supervisor.registration(event);
         } catch {
           invalidate(reason);
+          continue;
+        }
+        // Keep supervisor event failures separate from invalid registration input.
+        try {
+          supervisor.registration(event);
+        } catch {
+          invalidate('registration-event-recording-failed');
         }
       }
     });

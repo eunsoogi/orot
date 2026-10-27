@@ -82,6 +82,28 @@ test('zombies are terminal, unrelated processes untouched, and EPERM never means
   assert.equal(deniedReceipt.firstUncertainty.signal, 'SIGTERM');
 });
 
+test('signal-report failures are not diagnosed as operating-system permission denials', async () => {
+  const signals = [];
+  const owner = new OwnedProcessSupervisor(row(10), {
+    snapshot: async () => [row(10), row(11)],
+    signal: (...args) => signals.push(args),
+    emit: (event) => {
+      if (event.event === 'owned-process-signal' && event.pid === 11)
+        throw Object.assign(new Error('Report sink denied'), { code: 'EPERM' });
+    },
+  });
+  register(owner);
+  await owner.escalate('SIGTERM');
+  assert.deepEqual(signals, [
+    [10, 'SIGTERM'],
+    [11, 'SIGTERM'],
+  ]);
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.firstUncertainty.reason, 'process-signal-report-failed');
+  assert.equal(receipt.firstUncertainty.signal, 'SIGTERM');
+});
+
 test('PID/start identity reuse is never signalled, including between observation and signal', async () => {
   let calls = 0;
   const signals = [];
@@ -149,6 +171,32 @@ test('pipe registrations require complete frames and every exact binding field',
     if (invalid === 'private')
       assert.equal(receipt.firstUncertainty.reason, 'unsupported-registration-field');
   }
+});
+
+test('registration-report failures are not diagnosed as malformed frames', async () => {
+  const owner = new OwnedProcessSupervisor(row(10), {
+    expectedGroups: 1,
+    snapshot: async () => [row(99)],
+    emit: (event) => {
+      if (event.event === 'owned-group-registered')
+        throw Object.assign(new Error('Report sink denied'), { code: 'EPERM' });
+    },
+  });
+  const stream = new PassThrough();
+  const done = consumeReminderOwnedGroupPipe(stream, binding, owner);
+  stream.end(
+    [
+      { ...binding, ...attempt },
+      { ...binding, ...spawned, parent: undefined, state: undefined },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join('\n') + '\n',
+  );
+  await done;
+  const receipt = await owner.cleanupReceipt();
+  assert.equal(receipt.writersStopped, false);
+  assert.equal(receipt.firstUncertainty.reason, 'registration-event-recording-failed');
+  assert.equal(receipt.firstUncertainty.receivedLength > 0, true);
 });
 
 test('creation observer records attempt before spawn identity; incomplete identity produces failure', async () => {

@@ -58,14 +58,13 @@ export class OwnedProcessSupervisor {
   /** Preserve the first actual branch and scalar context so later cleanup failures cannot mask it. */
   markUncertain(reason, context = {}) {
     this.uncertain = true;
-    if (!this.firstUncertainty)
-      this.firstUncertainty = Object.freeze({
-        reason,
-        expectedGroupCount: this.expectedGroups,
-        attemptCount: this.attempts.size,
-        registeredGroupCount: this.registered.size,
-        ...context,
-      });
+    this.firstUncertainty ??= Object.freeze({
+      reason,
+      expectedGroupCount: this.expectedGroups,
+      attemptCount: this.attempts.size,
+      registeredGroupCount: this.registered.size,
+      ...context,
+    });
   }
 
   registerRoot(root) {
@@ -217,15 +216,19 @@ export class OwnedProcessSupervisor {
       if (current.state.startsWith('Z')) continue;
       try {
         this.signal(row.pid, signal);
-        this.emit({ event: 'owned-process-signal', pid: row.pid, signal });
       } catch (error) {
-        if (error.code !== 'ESRCH') {
-          this.markUncertain(
-            error.code === 'EPERM' ? 'process-signal-permission-denied' : 'process-signal-failed',
-            { signal },
-          );
-          this.emit({ event: 'owned-signal-failed', pid: row.pid, signal, code: error.code });
-        }
+        if (error.code === 'ESRCH') continue;
+        const reason =
+          error.code === 'EPERM' ? 'process-signal-permission-denied' : 'process-signal-failed';
+        this.markUncertain(reason, { signal });
+        this.emit({ event: 'owned-signal-failed', pid: row.pid, signal, code: error.code });
+        continue;
+      }
+      try {
+        this.emit({ event: 'owned-process-signal', pid: row.pid, signal });
+      } catch {
+        // Reporting failed after the signal call; preserve that boundary instead of claiming the OS denied the signal.
+        this.markUncertain('process-signal-report-failed', { signal });
       }
     }
   }
