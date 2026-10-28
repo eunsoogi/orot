@@ -148,8 +148,39 @@ enum SymptomJournalUITestObservations {
         let element = app.textViews["symptom-description"]
         // Without a text editor this overlap boundary is absent; other journal scrolling keeps its existing behavior.
         guard element.exists else { return (start, end) }
+        let editorReadStartedAtMs = Date().timeIntervalSince1970 * 1000
         let editor = element.frame
+        let editorReadEndedAtMs = Date().timeIntervalSince1970 * 1000
         guard let target, let segment = sideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end).last else {
+            if editor.width <= 0 || editor.height <= 0 || ![editor.minX, editor.minY, editor.width, editor.height].allSatisfy(\.isFinite) {
+                // Read the existing periodic marker once at the failed boundary; it never authorizes a gesture.
+                XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
+                    let marker = UITestConditions.element(app, "navigation-test-observation")
+                    let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
+                    let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
+                    let markerReadEndedAtMs = Date().timeIntervalSince1970 * 1000
+                    let keyboard = app.keyboards.firstMatch
+                    let keyboardExists = keyboard.exists
+                    let observation: [String: Any] = [
+                        "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
+                        "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
+                        "editorAXFrame": String(describing: editor), "targetAXFrame": String(describing: target),
+                        "applicationAXFrame": String(describing: application), "viewportAXFrame": String(describing: viewport),
+                        "callerFrameTimestamps": "unavailable; caller frames precede this helper",
+                        "navigationAXFrames": controls.map { String(describing: $0) },
+                        "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
+                                                           "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
+                        "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardExists ? String(describing: keyboard.frame) : "absent",
+                        // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
+                        "nativeMarker": (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) ?? payload,
+                    ]
+                    let data = (try? JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])) ?? Data("{\"status\":\"serialization-unavailable\"}".utf8)
+                    let record = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+                    record.name = "journal-invalid-editor-gutter"
+                    record.lifetime = .keepAlways
+                    activity.add(record)
+                }
+            }
             XCTFail("The journal form requires a clear side gutter inside the usable viewport: editor=\(editor), target=\(String(describing: target)), viewport=\(viewport), controls=\(controls)")
             return nil
         }
