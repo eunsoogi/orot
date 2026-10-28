@@ -5,11 +5,13 @@ import XCTest
 @MainActor
 enum SymptomJournalUITestObservations {
     /// Checks the editor against the route viewport while preserving the screen's existing side padding.
-    static func assertFullContentFormLane(_ app: XCUIApplication) {
+    static func assertFullContentFormLane(_ app: XCUIApplication, testCase: XCTestCase) {
         let description = UITestConditions.element(app, "symptom-description")
         let scroll = UITestConditions.element(app, "symptoms-scroll")
         XCTAssertTrue(UITestConditions.exists(description))
         XCTAssertTrue(UITestConditions.exists(scroll))
+        // Keep the existing marker's sample time; this read does not make its native frames atomic with the later AX query.
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "symptom-form-lane-width")
         let descriptionWidth = description.frame.width
         // The description spans the route width after 20-point screen and 14-point form padding.
         let usableWidth = scroll.frame.width - 68

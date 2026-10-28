@@ -15,7 +15,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try launchJournal(app)
         guard tap(app, "symptom-add") else { return }
-        SymptomJournalUITestObservations.assertFullContentFormLane(app)
+        SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "create-description-focused")
         if singleOnsetObservation {
