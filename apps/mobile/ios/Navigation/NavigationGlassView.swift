@@ -12,6 +12,11 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var onAction: RCTBubblingEventBlock?
+    /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
+    @objc var geometryLayoutRevision: String? {
+        didSet { (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout() }
+    }
+
     @objc var layoutMode: String = "bottom" {
         didSet { updatePresentation() }
     }

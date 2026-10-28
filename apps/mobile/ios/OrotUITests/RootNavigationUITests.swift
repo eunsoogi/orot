@@ -195,13 +195,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             let action = try NavigationUITestConditions.navigationAction(app, identifier)
             XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
         }
-        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: "conversation-keyboard-native-navigation", testCase: self)
+        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: "conversation-keyboard-native-navigation", testCase: self, requireCurrentNavigation: true)
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
         try NavigationUITestConditions.assertSharedViewport(app, testCase: self)
-        capture(app, "home-after-keyboard-navigation")
+        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-home", name: "home-after-keyboard-navigation", testCase: self)
     }
 
     @MainActor

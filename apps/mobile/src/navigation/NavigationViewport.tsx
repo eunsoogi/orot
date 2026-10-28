@@ -28,6 +28,7 @@ import {
 } from './navigationContentFrame';
 import { observeNavigationTest } from './navigationTestObservation';
 import type { NavigationGeometryRect } from './navigationGeometry';
+import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
 
 /** Shares shell geometry with the bar, preserves routes beside reserved lanes, and separates scroll-only action overlap. */
 export function NavigationViewport({
@@ -41,7 +42,7 @@ export function NavigationViewport({
 }) {
   const [contentFrame, setContentFrame] =
     useState<NavigationLayoutFrame | null>(null);
-  const [actionFrame, setActionFrame] = useState<NavigationLayoutFrame | null>(
+  const [actionFrame, setActionFrame] = useState<NavigationGeometryRect | null>(
     null,
   );
   const [viewportBounds, setViewportBounds] =
@@ -192,14 +193,11 @@ export function NavigationViewport({
               pointerEvents="box-none"
               style={styles.overlay}
               testID="navigation-action-bar-overlay"
-              onLayout={({ nativeEvent }) =>
-                setActionFrame({
-                  y: nativeEvent.layout.y,
-                  height: nativeEvent.layout.height,
-                })
-              }
+              onLayout={({ nativeEvent }) => setActionFrame(nativeEvent.layout)}
             >
-              {actionBar}
+              <NavigationOverlayLayoutContext.Provider value={actionFrame}>
+                {actionBar}
+              </NavigationOverlayLayoutContext.Provider>
             </View>
           </View>
         </NavigationOcclusionContext.Provider>

@@ -97,7 +97,7 @@ enum NavigationGeometryUITestConditions {
     }
 
     /// Keep native frame equality separate from route existence and from the shared contract's own calculation.
-    static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase) throws {
+    static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase, requireCurrentNavigation: Bool = false) throws {
         let content = UITestConditions.element(app, "navigation-content-region")
         XCTAssertTrue(content.exists && !content.frame.isEmpty)
         let action = try NavigationUITestConditions.navigationAction(app, navigationID)
@@ -106,6 +106,9 @@ enum NavigationGeometryUITestConditions {
         let initialContentFrame = content.frame, initialNavigationFrame = action.toolbar.frame
         try NavigationUITestConditions.panelSnapshot(app, frames: ["content": initialContentFrame, "navigation": initialNavigationFrame], testCase: testCase)
         let initial = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "boundary-before-comparison")
+        if requireCurrentNavigation {
+            assertCurrentNavigation(initial, content: initialContentFrame, navigation: initialNavigationFrame)
+        }
         if let lifecycle = initial?["lifecycle"] as? [[String: Any]],
            let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
            let json = event["frame"] as? String,
@@ -147,6 +150,26 @@ enum NavigationGeometryUITestConditions {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         testCase.add(screenshot)
+    }
+
+    /// After the keyboard and actual controls settle, compare numbers instead of waiting for a missing event.
+    private static func assertCurrentNavigation(_ report: [String: Any]?, content: CGRect, navigation: CGRect) {
+        guard let reference = report?["windowGeometry"] as? [String: Any],
+              let controls = reference["navigationControls"] as? [String: Any],
+              controls["truncated"] as? Bool == false,
+              let frames = controls["frames"] as? [[String: Any]],
+              let lifecycle = report?["lifecycle"] as? [[String: Any]],
+              let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+              let json = event["frame"] as? String,
+              let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+              let available = rect(shared["availableContentFrame"]), let reported = rect(shared["navigationFrame"])
+        else { return XCTFail("Current native and shared frame observations must be available") }
+        let candidates = frames.filter { $0["identifier"] as? String == "navigation-toolbar" }
+        XCTAssertEqual(candidates.count, 1, "The active contextual toolbar must be unambiguous")
+        guard let native = candidates.first.flatMap({ rect($0["frame"]) }) else { return }
+        XCTAssertTrue(sameWindow(native, navigation), "UIKit \(native) and XCUI \(navigation) must identify the same settled controls")
+        XCTAssertTrue(sameWindow(content, available), "Current content \(content) must match shared available \(available)")
+        XCTAssertTrue(sameWindow(navigation, reported), "Current toolbar \(navigation) must match shared navigation \(reported)")
     }
 
     /// Preserve the recording route's existing readiness check before measuring its actual content and actions.

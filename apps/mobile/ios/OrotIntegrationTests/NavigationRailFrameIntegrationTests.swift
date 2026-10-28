@@ -87,9 +87,9 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
             XCTAssertTrue(window.hitTest(center, with: nil) === button)
         }
 
-        // Reflow only the real parent; the React surface receives no layout callback here.
+        // The committed overlay signal invalidates the real parent; the React surface receives no layout callback.
         portal.frame.size.height = 600
-        portal.setNeedsLayout()
+        surface.geometryLayoutRevision = "[0,0,951,600]"
         portal.layoutIfNeeded()
         root.layoutIfNeeded()
         let published = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
