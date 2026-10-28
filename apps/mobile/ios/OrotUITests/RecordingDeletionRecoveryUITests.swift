@@ -45,7 +45,12 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         RecordingFixtureUITestConditions.launch(
             app,
-            extra: ["-OROT_RECORDING_DELETION_SCENARIO", "delayed-audio-cleanup"],
+            extra: [
+                "-OROT_RECORDING_DELETION_SCENARIO",
+                "delayed-audio-cleanup",
+                "-OROT_RECORDING_DELETION_TIMING",
+                "YES",
+            ],
         )
         defer {
             if app.state != .notRunning {
@@ -62,10 +67,33 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         XCTAssertFalse(UITestConditions.element(app, "recording-delete-error").exists)
         XCTAssertFalse(UITestConditions.element(app, "recording-delete-cleanup-pending").exists)
 
+        // Keep the progress state visible until its native layout timing mark can be reported.
         UITestConditions.element(app, "recording-deletion-release-audio-cleanup").tap()
         UITestConditions.value(cleanup, equals: "released")
         waitUntilNotExists(row)
         waitUntilNotExists(progress)
+
+        let timingReportElement = UITestConditions.element(app, "recording-deletion-timing-report")
+        XCTAssertTrue(timingReportElement.waitForAppearance(), app.debugDescription)
+        let encodedReport = UITestConditions.text(timingReportElement)
+        let reportData = try XCTUnwrap(encodedReport.data(using: .utf8))
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: reportData) as? [String: Any])
+        XCTAssertEqual(report["complete"] as? Bool, true, encodedReport)
+        XCTAssertEqual(report["succeeded"] as? Bool, true, encodedReport)
+        let events = try XCTUnwrap(report["events"] as? [[String: Any]], encodedReport)
+        let progressIndex = try XCTUnwrap(
+            events.firstIndex {
+                $0["stage"] as? String == "progress-presented" && $0["phase"] as? String == "mark"
+            },
+            encodedReport,
+        )
+        let listRefreshIndex = try XCTUnwrap(
+            events.firstIndex {
+                $0["stage"] as? String == "list-refresh" && $0["phase"] as? String == "mark"
+            },
+            encodedReport,
+        )
+        XCTAssertLessThan(progressIndex, listRefreshIndex, encodedReport)
     }
 
     @MainActor

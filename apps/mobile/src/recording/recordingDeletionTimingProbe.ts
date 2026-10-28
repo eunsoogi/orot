@@ -44,12 +44,11 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
 
   constructor(
     private readonly now: () => number = () => performance.now(),
-    private readonly onComplete?: (
-      report: RecordingDeletionTimingReport,
-    ) => void,
+    private readonly onReport?: (report: RecordingDeletionTimingReport) => void,
   ) {}
 
   mark(stage: RecordingDeletionTimingMark): void {
+    if (this.startedAt === null && stage !== 'confirmation-tap') return;
     if (this.markedStages.has(stage)) return;
     const at = this.now();
     if (stage === 'confirmation-tap' && this.startedAt === null) {
@@ -57,7 +56,12 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
     }
     this.markedStages.add(stage);
     this.record(stage, 'mark', at);
-    if (stage === 'list-refresh' || stage === 'list-summary-refresh') {
+    if (
+      stage === 'list-refresh' ||
+      stage === 'list-summary-refresh' ||
+      (stage === 'progress-presented' && this.reportedEventCount > 0)
+    ) {
+      // Preserve late native layout observations without treating them as ordered success.
       this.deliverUpdatedReport();
     }
   }
@@ -213,11 +217,11 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
   }
 
   private deliverUpdatedReport(): void {
-    if (!this.onComplete || this.reportedEventCount === this.events.length)
+    if (!this.onReport || this.reportedEventCount === this.events.length)
       return;
     this.reportedEventCount = this.events.length;
     try {
-      this.onComplete(this.snapshot());
+      this.onReport(this.snapshot());
     } catch {
       // Report delivery is diagnostic and cannot affect the screen update.
     }

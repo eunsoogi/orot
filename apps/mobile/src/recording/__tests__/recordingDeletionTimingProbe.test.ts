@@ -4,7 +4,10 @@ import {
   withRecordingDeletionTiming,
   type RecordingDeletionTimingProbe as RecordingDeletionTimingProbeContract,
 } from '../recordingDeletionTiming';
-import { RecordingDeletionTimingProbe } from '../recordingDeletionTimingProbe';
+import {
+  RecordingDeletionTimingProbe,
+  type RecordingDeletionTimingReport,
+} from '../recordingDeletionTimingProbe';
 
 test('reports ordered stage durations using monotonic milliseconds only', () => {
   let now = 100;
@@ -65,6 +68,47 @@ test('reports ordered stage durations using monotonic milliseconds only', () => 
     'durationsMs',
   ]);
   expect(JSON.stringify(report)).not.toContain('recording-1');
+});
+
+test('does not let a pre-start progress callback consume the measured progress mark', () => {
+  let now = 100;
+  const probe = new RecordingDeletionTimingProbe(() => now);
+
+  // An unrelated disabled-state layout can occur before confirmation starts a sample.
+  probe.mark('progress-presented');
+  probe.mark('confirmation-tap');
+  now += 3;
+  probe.mark('progress-presented');
+
+  expect(probe.snapshot().events).toEqual([
+    { stage: 'confirmation-tap', phase: 'mark', elapsedMs: 0 },
+    { stage: 'progress-presented', phase: 'mark', elapsedMs: 3 },
+  ]);
+});
+
+test('publishes a later progress callback after the list refresh snapshot', () => {
+  let now = 10;
+  const delivered: RecordingDeletionTimingReport[] = [];
+  const probe = new RecordingDeletionTimingProbe(
+    () => now,
+    report => delivered.push(report),
+  );
+  probe.mark('confirmation-tap');
+  probe.finish('success');
+  probe.mark('list-refresh');
+  expect(delivered).toHaveLength(1);
+  expect(delivered[0]?.complete).toBe(false);
+
+  now += 1;
+  probe.mark('progress-presented');
+
+  expect(delivered).toHaveLength(2);
+  expect(delivered[1]?.complete).toBe(false);
+  expect(delivered[1]?.events).toContainEqual({
+    stage: 'progress-presented',
+    phase: 'mark',
+    elapsedMs: 1,
+  });
 });
 
 test('records a synchronous stage failure and preserves the same error', async () => {
