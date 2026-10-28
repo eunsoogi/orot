@@ -80,6 +80,19 @@ export const NavigationRootLayoutContext = createContext<NavigationRootLayout>(
   BOTTOM_NAVIGATION_ROOT_LAYOUT,
 );
 
+/** Native control width and the system edge define one lane; callers clip it to their own viewport. */
+export function navigationSideLane(
+  geometry: NavigationGeometrySnapshot,
+  side: 'left' | 'right',
+) {
+  const width = geometry.navigationWidth ?? NAVIGATION_ROOT_RAIL_WIDTH;
+  const laneWidth = Math.max(
+    geometry.safeAreaInsets[side],
+    width + 2 * NAVIGATION_ROOT_RAIL_GUTTER,
+  );
+  return { width, laneWidth, edgeInset: (laneWidth - width) / 2 };
+}
+
 /** Resolves controls and content in window coordinates, consuming each native edge once. */
 export function resolveNavigationRootLayout(
   geometry: NavigationGeometrySnapshot | null,
@@ -106,12 +119,11 @@ export function resolveNavigationRootLayout(
     geometry.safeAreaInsets.left > geometry.safeAreaInsets.right
       ? 'left'
       : 'right';
-  const width = geometry.navigationWidth ?? NAVIGATION_ROOT_RAIL_WIDTH;
-  const laneWidth = Math.max(
-    geometry.safeAreaInsets[side],
-    width + 2 * NAVIGATION_ROOT_RAIL_GUTTER,
-  );
-  const railRightInset = (laneWidth - width) / 2;
+  const {
+    width,
+    laneWidth,
+    edgeInset: railRightInset,
+  } = navigationSideLane(geometry, side);
   const railLeft =
     side === 'right'
       ? windowRight - laneWidth + railRightInset

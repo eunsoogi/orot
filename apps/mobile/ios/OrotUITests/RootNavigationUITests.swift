@@ -179,7 +179,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt() throws {
-        let app = launch()
+        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         tap(app, "ai-feature-rag-conversation")
@@ -190,6 +190,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
         XCTAssertGreaterThan(keyboard.frame.height, 100)
+        try NavigationUITestConditions.assertSharedViewport(app, keyboard: keyboard, testCase: self)
         for identifier in ["navigation-back", "navigation-home"] {
             let action = try NavigationUITestConditions.navigationAction(app, identifier)
             XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
@@ -199,6 +200,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
+        try NavigationUITestConditions.assertSharedViewport(app, testCase: self)
         capture(app, "home-after-keyboard-navigation")
     }
 

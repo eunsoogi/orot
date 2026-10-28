@@ -156,6 +156,34 @@ enum NavigationUITestConditions {
                       userInfo: [NSLocalizedDescriptionKey: "Scroll content did not reach a stable bottom: \(scrollID)"])
     }
 
+    /// Compare the shared frame against the real keyboard or public window edge, never generated pixels.
+    static func assertSharedViewport(_ app: XCUIApplication, keyboard: XCUIElement? = nil, testCase: XCTestCase) throws {
+        var lastBottom: Double?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let marker = UITestConditions.element(app, "navigation-test-observation")
+            guard marker.exists,
+                  let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+                  let lifecycle = report["lifecycle"] as? [[String: Any]],
+                  let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+                  let json = event["frame"] as? String,
+                  let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+                  let frame = shared["availableContentFrame"] as? [String: Double],
+                  let y = frame["y"], let height = frame["height"], height > 0,
+                  let reference = report["windowGeometry"] as? [String: Any],
+                  let window = reference["windowBounds"] as? [String: Double],
+                  let insets = reference["safeAreaInsets"] as? [String: Double],
+                  let windowY = window["y"], let windowHeight = window["height"], let bottom = insets["bottom"]
+            else { return false }
+            lastBottom = y + height
+            if let keyboard {
+                return y + height <= Double(keyboard.frame.minY) + 1
+            }
+            return abs(y + height - (windowY + windowHeight - bottom)) <= 1
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "Shared viewport bottom: \(String(describing: lastBottom))")
+        _ = observationSnapshot(app, testCase: testCase, attachmentName: keyboard == nil ? "shared-viewport-restored" : "shared-viewport-keyboard")
+    }
+
     static func contentAboveBar(_ app: XCUIApplication, scrollID: String, contentID: String,
                                 navigationID: String = "navigation-back") throws
     {

@@ -4,7 +4,10 @@ import type {
   NavigationGeometrySnapshot,
   NavigationReservedRegion,
 } from './navigationGeometry';
-import type { NavigationRootLayout } from './navigationRootLayout';
+import {
+  navigationSideLane,
+  type NavigationRootLayout,
+} from './navigationRootLayout';
 
 /** All rectangles use window points. Consumers measure within availableContentFrame and never deduct insets again. */
 export interface NavigationContentFrame {
@@ -28,22 +31,29 @@ export function useNavigationContentFrame(): NavigationContentFrame | null {
 export function resolveNavigationContentFrame(
   geometry: NavigationGeometrySnapshot | null,
   layout: NavigationRootLayout,
+  measuredViewport?: NavigationGeometryRect | null,
 ): NavigationContentFrame | null {
   if (!geometry) return null;
-  const viewport = geometry.viewportBounds ?? geometry.windowBounds;
+  const viewport =
+    measuredViewport ?? geometry.viewportBounds ?? geometry.windowBounds;
   const safe = geometry.safeAreaFrame;
+  // Candidate admission remains independent: observed bottom fallback must not latch the rail off.
   const side =
-    layout.placement === 'bottom' ? 'bottom' : (layout.railSide ?? 'right');
+    geometry.navigationSide ??
+    (layout.placement === 'bottom' ? 'bottom' : (layout.railSide ?? 'right'));
+  const lane =
+    side === 'bottom' ? 0 : navigationSideLane(geometry, side).laneWidth;
   const x = Math.max(
     viewport.x,
     safe.x,
-    viewport.x +
-      (layout.placement === 'right' ? (layout.reservedLeftWidth ?? 0) : 0),
+    geometry.windowBounds.x + (side === 'left' ? lane : 0),
   );
   const right = Math.min(
     viewport.x + viewport.width,
     safe.x + safe.width,
-    viewport.x + viewport.width - layout.reservedRightWidth,
+    geometry.windowBounds.x +
+      geometry.windowBounds.width -
+      (side === 'right' ? lane : 0),
   );
   const y = Math.max(viewport.y, safe.y);
   const bottom = Math.min(viewport.y + viewport.height, safe.y + safe.height);

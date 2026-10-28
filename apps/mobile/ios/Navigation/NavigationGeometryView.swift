@@ -9,6 +9,7 @@ final class NavigationGeometryView: UIView {
 
     private var lastSnapshotData: Data?
     private var hasHinge = false
+    private var navigationSide: String?
     private var navigationWidth: Double?
     private var navigationFrame: [String: Double]?
 
@@ -29,9 +30,8 @@ final class NavigationGeometryView: UIView {
         guard let source = notification.object as? UIView, source.window === window,
               let frame = notification.userInfo?["frame"] as? [String: Double] else { return }
         navigationFrame = frame
-        if notification.userInfo?["side"] as? String != "bottom" {
-            navigationWidth = frame["width"]
-        }
+        navigationSide = notification.userInfo?["side"] as? String
+        navigationWidth = navigationSide == "bottom" ? nil : frame["width"]
         publishGeometryIfNeeded()
     }
 
@@ -52,6 +52,9 @@ final class NavigationGeometryView: UIView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         lastSnapshotData = nil
+        navigationFrame = nil
+        navigationWidth = nil
+        navigationSide = nil
         setNeedsUpdateConstraints()
         setNeedsLayout()
         publishGeometryIfNeeded()
@@ -127,6 +130,9 @@ final class NavigationGeometryView: UIView {
         if let navigationFrame {
             payload["navigationFrame"] = navigationFrame
         }
+        if let navigationSide {
+            payload["navigationSide"] = navigationSide
+        }
         return payload
     }
 
@@ -177,6 +183,17 @@ final class NavigationGeometryViewManager: RCTViewManager {
     }
 }
 
+@objc(NavigationGlassViewManager)
+final class NavigationGlassViewManager: RCTViewManager {
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        NavigationGlassSurfaceView()
+    }
+}
+
 /// Sends only physical control geometry; a sensor ignores notifications from other windows.
 enum NavigationSurfaceGeometry {
     static func publish(_ view: UIView, side: String, actions: [NavigationActionDescriptor]) {
@@ -187,6 +204,7 @@ enum NavigationSurfaceGeometry {
             guard !current.isHidden, current.alpha > 0.01 else { return }
             ancestor = current.superview
         }
+        view.layoutIfNeeded()
         guard !view.isHidden, let window = view.window, !view.bounds.isEmpty else { return }
         let frame = view.convert(view.bounds, to: window)
         NotificationCenter.default.post(name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"),

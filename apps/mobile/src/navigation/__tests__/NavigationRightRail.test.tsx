@@ -151,7 +151,7 @@ test('moves root actions into the right lane without losing route state or botto
   );
   expect(
     screen.getByTestId('navigation-safe-area-content').props.accessibilityHint,
-  ).toBe('top,left');
+  ).toBe('top,right,left');
   expect(
     StyleSheet.flatten(
       screen.getByTestId('navigation-right-rail-host').props.style,
@@ -218,16 +218,23 @@ test('moves root actions into the right lane without losing route state or botto
     StyleSheet.flatten(
       screen.getByTestId('navigation-content-region').props.style,
     ),
-  ).toEqual({ flex: 1 });
-  // Bottom placement restores the full host; this is a new native layout observation.
+  ).toEqual({
+    flex: 1,
+    position: 'absolute',
+    top: 40,
+    left: 14,
+    right: 22,
+    bottom: 30,
+  });
+  // Bottom placement keeps the same safe frame; the removed system edge is not scroll padding.
   await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
-    nativeEvent: { layout: { height: 900, width: 1000, x: 0, y: 0 } },
+    nativeEvent: { layout: { height: 830, width: 964, x: 14, y: 40 } },
   });
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 828 } },
   });
   expect(screen.getByTestId('route-bottom-inset').props.children).toBe(
-    72 + NAVIGATION_CONTENT_GAP,
+    42 + NAVIGATION_CONTENT_GAP,
   );
   expect(screen.getByTestId('route-draft').props.children).toBe('edited');
   expect(lifecycle).toEqual({ mounted: 2, unmounted: 1 });

@@ -65,10 +65,7 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.axis = .horizontal
         innerActions.alignment = .center
         innerActions.spacing = 12
-        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .vertical)
-        innerActionsSpacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
-        innerActions.addArrangedSubview(innerActionsSpacer)
+        NavigationRailConstraints.configureFlexibleSpace(innerActionsSpacer, in: innerActions)
         // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
         innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
@@ -85,12 +82,8 @@ final class NavigationGlassSurfaceView: UIView {
             innerActions.centerYAnchor.constraint(equalTo: centerYAnchor),
             innerActions.heightAnchor.constraint(equalToConstant: 48),
         ]
-        configureRailConstraints(in: self)
+        railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: self)
         updatePresentation()
-    }
-
-    private func configureRailConstraints(in host: UIView) {
-        railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: host)
     }
 
     override func didMoveToWindow() {
@@ -99,12 +92,19 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     override func layoutSubviews() {
-        let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode) : nil
+        let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) : nil
         if rootBar.superview !== (host ?? self) {
             updatePresentation()
         }
         super.layoutSubviews()
-        NavigationSurfaceGeometry.publish(rootBar.isHidden ? innerActions : rootBar, side: layoutMode, actions: renderedActions)
+        publishNavigationGeometry(from: self)
+    }
+
+    /// The mounted host owns measurement, including layout changes outside the React surface.
+    func publishNavigationGeometry(from parent: UIView) {
+        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
+        guard controls.superview === parent else { return }
+        NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions)
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
@@ -134,12 +134,12 @@ final class NavigationGlassSurfaceView: UIView {
     private func updatePresentation() {
         let usesRightRail = layoutMode != "bottom"
         NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
-        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode) ?? self : self
+        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) ?? self : self
         if rootBar.superview !== host {
             for view in [rootBar, innerActions] {
                 host.addSubview(view)
             }
-            configureRailConstraints(in: host)
+            railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: host)
         }
         if host === self {
             windowRailHost.removeFromSuperview()

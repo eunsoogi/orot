@@ -74,3 +74,27 @@ test('ordinary iPhones retain bottom placement even with reserved-region API sup
     side: 'bottom',
   });
 });
+
+test('clips the shared available frame to the measured keyboard-contracted content host', () => {
+  const geometry = createNavigationGeometrySnapshot(openGeometry);
+  expect(
+    resolveNavigationContentFrame(
+      geometry,
+      resolveNavigationRootLayout(geometry),
+      { x: 0, y: 0, width: 867, height: 420 },
+    )?.availableContentFrame,
+  ).toEqual({ x: 0, y: 0, width: 867, height: 420 });
+});
+
+test('shares the observed bottom fallback while candidate rail admission stays available', () => {
+  const geometry = createNavigationGeometrySnapshot({
+    ...openGeometry,
+    navigationSide: 'bottom',
+    navigationFrame: { x: 16, y: 300, width: 835, height: 60 },
+  });
+  const candidate = resolveNavigationRootLayout(geometry);
+  expect(candidate.placement).toBe('right');
+  expect(resolveNavigationContentFrame(geometry, candidate)?.side).toBe(
+    'bottom',
+  );
+});

@@ -6,7 +6,7 @@ import UIKit
 final class NavigationWindowRailHost: UIView {
     private weak var owner: UIView?
 
-    func mount(for owner: UIView, availableHeight: CGFloat, side: String = "right") -> UIView? {
+    func mount(for owner: UIView, availableHeight: CGFloat, side: String = "right", width: CGFloat? = nil) -> UIView? {
         guard let window = owner.window, availableHeight > 0, owner.bounds.width > 0 else {
             removeFromSuperview()
             return nil
@@ -17,8 +17,10 @@ final class NavigationWindowRailHost: UIView {
         }
         guard let controller = responder as? UIViewController else { return nil }
         let root = controller.view!
-        let windowFrame = CGRect(x: side == "left" ? window.bounds.minX : window.bounds.maxX - owner.bounds.width, y: window.bounds.minY,
-                                 width: owner.bounds.width, height: min(availableHeight, window.bounds.height))
+        // Do not inherit a former bottom bar's width while React is changing the surface props.
+        let laneWidth = width ?? owner.bounds.width
+        let windowFrame = CGRect(x: side == "left" ? window.bounds.minX : window.bounds.maxX - laneWidth, y: window.bounds.minY,
+                                 width: laneWidth, height: min(availableHeight, window.bounds.height))
         let target = root.convert(windowFrame, from: window)
         // A contracted controller is not a window host. Never move controls past
         // its touch ancestry merely because an overflow frame could be drawn.
@@ -35,6 +37,11 @@ final class NavigationWindowRailHost: UIView {
         frame = target
         isHidden = !ownerIsVisible
         return self
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        (owner as? NavigationGlassSurfaceView)?.publishNavigationGeometry(from: self)
     }
 
     private var ownerIsVisible: Bool {
@@ -56,19 +63,16 @@ final class NavigationWindowRailHost: UIView {
     }
 }
 
-@objc(NavigationGlassViewManager)
-final class NavigationGlassViewManager: RCTViewManager {
-    override static func requiresMainQueueSetup() -> Bool {
-        true
-    }
-
-    override func view() -> UIView! {
-        NavigationGlassSurfaceView()
-    }
-}
-
 /// The same fixed controls can bind to a local bottom surface or the window rail host.
 enum NavigationRailConstraints {
+    /// One flexible gap separates Back from retained trailing actions in either axis.
+    static func configureFlexibleSpace(_ spacer: UIView, in stack: UIStackView) {
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        stack.addArrangedSubview(spacer)
+    }
+
     static func make(rootBar: NavigationRootGlassBar, innerActions: UIStackView, host: UIView) -> [NSLayoutConstraint] {
         [
             rootBar.trailingAnchor.constraint(equalTo: host.trailingAnchor),

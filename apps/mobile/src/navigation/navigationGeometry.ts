@@ -34,6 +34,7 @@ export interface NavigationGeometryPayload {
   readonly hasHinge?: boolean;
   /** Actual mounted side controls, reported after UIKit layout; defaults are used only before measurement. */
   readonly navigationWidth?: number;
+  readonly navigationSide?: 'bottom' | 'left' | 'right';
   readonly navigationFrame?: NavigationGeometryRect;
 }
 
@@ -140,6 +141,8 @@ export function createNavigationGeometrySnapshot(
       !isFiniteRect(payload.viewportBounds)) ||
     !isNonNegativeInsets(payload.safeAreaInsets) ||
     typeof payload.reservedRegionsSupported !== 'boolean' ||
+    (payload.navigationSide !== undefined &&
+      !['bottom', 'left', 'right'].includes(payload.navigationSide)) ||
     !Array.isArray(payload.reservedRegions) ||
     (payload.hasHinge !== undefined && typeof payload.hasHinge !== 'boolean') ||
     (payload.navigationWidth !== undefined &&

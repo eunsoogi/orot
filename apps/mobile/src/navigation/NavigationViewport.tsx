@@ -27,6 +27,7 @@ import {
   resolveNavigationContentFrame,
 } from './navigationContentFrame';
 import { observeNavigationTest } from './navigationTestObservation';
+import type { NavigationGeometryRect } from './navigationGeometry';
 
 /** Shares shell geometry with the bar, preserves routes beside reserved lanes, and separates scroll-only action overlap. */
 export function NavigationViewport({
@@ -43,14 +44,31 @@ export function NavigationViewport({
   const [actionFrame, setActionFrame] = useState<NavigationLayoutFrame | null>(
     null,
   );
+  const [viewportBounds, setViewportBounds] =
+    useState<NavigationGeometryRect | null>(null);
   const geometry = useNavigationGeometry();
   const layout = useMemo(
     () => resolveNavigationRootLayout(geometry),
     [geometry],
   );
   const sharedFrame = useMemo(
-    () => resolveNavigationContentFrame(geometry, layout),
-    [geometry, layout],
+    () =>
+      resolveNavigationContentFrame(
+        geometry,
+        layout,
+        viewportBounds
+          ? {
+              ...viewportBounds,
+              x:
+                viewportBounds.x +
+                (geometry?.viewportBounds?.x ?? geometry?.windowBounds.x ?? 0),
+              y:
+                viewportBounds.y +
+                (geometry?.viewportBounds?.y ?? geometry?.windowBounds.y ?? 0),
+            }
+          : null,
+      ),
+    [geometry, layout, viewportBounds],
   );
   useEffect(() => {
     if (sharedFrame)
@@ -59,14 +77,28 @@ export function NavigationViewport({
       });
   }, [sharedFrame]);
   const safeAreaInsets = useContext(SafeAreaInsetsContext);
+  const visibleSide =
+    sharedFrame?.side ??
+    (layout.placement === 'right' ? (layout.railSide ?? 'right') : 'bottom');
+  const viewport = sharedFrame?.viewportFrame;
+  const available = sharedFrame?.availableContentFrame;
+  const consumed =
+    viewport && available
+      ? {
+          top: available.y - viewport.y,
+          left: available.x - viewport.x,
+          right: viewport.x + viewport.width - available.x - available.width,
+          bottom: viewport.y + viewport.height - available.y - available.height,
+        }
+      : null;
   const occlusionInput = {
-    placement: layout.placement,
+    placement:
+      visibleSide === 'bottom' ? ('bottom' as const) : ('right' as const),
     reservedRightWidth:
-      layout.placement === 'right' ? layout.reservedRightWidth : 0,
-    reservedLeftWidth:
-      layout.placement === 'right' ? (layout.reservedLeftWidth ?? 0) : 0,
-    systemBottomInset:
-      layout.placement === 'right' ? layout.systemBottomInset : 0,
+      consumed?.right ??
+      (layout.placement === 'right' ? layout.reservedRightWidth : 0),
+    reservedLeftWidth: consumed?.left ?? 0,
+    systemBottomInset: consumed?.bottom ?? 0,
     systemInsets: {
       top: safeAreaInsets?.top ?? 0,
       right: safeAreaInsets?.right ?? 0,
@@ -83,39 +115,35 @@ export function NavigationViewport({
       ? measureNavigationBottomOcclusion(
           contentFrame,
           actionFrame,
-          layout.placement === 'right'
-            ? 0
-            : viewportOcclusion.viewportInsets.bottom,
+          consumed ? 0 : viewportOcclusion.viewportInsets.bottom,
         )
       : null;
   const occlusion = resolveNavigationOcclusion({
     ...occlusionInput,
     measuredBottomActionOcclusion,
   });
-  const contentRegionStyle =
-    layout.placement === 'right'
-      ? [
-          styles.fill,
-          {
-            bottom: occlusion.viewportInsets.bottom,
-            left: sharedFrame
-              ? sharedFrame.availableContentFrame.x -
-                sharedFrame.viewportFrame.x
-              : occlusion.viewportInsets.left,
-            position: 'absolute' as const,
-            right: occlusion.viewportInsets.right,
-            top: sharedFrame
-              ? sharedFrame.availableContentFrame.y -
-                sharedFrame.viewportFrame.y
-              : 0,
-          },
-        ]
-      : styles.fill;
+  // The measured parent shrinks with KeyboardAvoidingView. Derive its edge clearance once,
+  // rather than deducting the full-window home area again above an already visible keyboard.
+  const contentRegionStyle = consumed
+    ? [
+        styles.fill,
+        {
+          position: 'absolute' as const,
+          ...consumed,
+        },
+      ]
+    : styles.fill;
   return (
     <NavigationRootLayoutContext.Provider value={layout}>
       <NavigationContentFrameContext.Provider value={sharedFrame}>
         <NavigationOcclusionContext.Provider value={occlusion}>
-          <View style={styles.fill}>
+          <View
+            style={styles.fill}
+            onLayout={({ nativeEvent }) =>
+              setViewportBounds(nativeEvent.layout)
+            }
+            testID="navigation-visible-viewport"
+          >
             <View
               onLayout={({ nativeEvent }) =>
                 setContentFrame({
@@ -136,15 +164,14 @@ export function NavigationViewport({
                     width: 0,
                     height: 0,
                   },
-                  insets:
-                    layout.placement === 'right'
-                      ? { top: 0, right: 0, bottom: 0, left: 0 }
-                      : (safeAreaInsets ?? {
-                          top: 0,
-                          right: 0,
-                          bottom: 0,
-                          left: 0,
-                        }),
+                  insets: consumed
+                    ? { top: 0, right: 0, bottom: 0, left: 0 }
+                    : (safeAreaInsets ?? {
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        left: 0,
+                      }),
                 }}
               >
                 {childHandlesSafeArea ? (
@@ -152,11 +179,7 @@ export function NavigationViewport({
                 ) : (
                   <SafeAreaView
                     // The nested provider reports only unconsumed edges; never repeat the shell reservation.
-                    edges={
-                      layout.placement === 'right'
-                        ? ['top', 'left']
-                        : ['top', 'right', 'left']
-                    }
+                    edges={['top', 'right', 'left']}
                     style={styles.fill}
                     testID="navigation-safe-area-content"
                   >
