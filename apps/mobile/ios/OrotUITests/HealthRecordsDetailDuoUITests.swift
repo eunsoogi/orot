@@ -33,8 +33,9 @@ extension HealthImportDuoUITests {
             if largeText {
                 XCTAssertGreaterThan(try NavigationGeometryUITestConditions.snapshot(app).fontScale, 1)
             }
+            XCTAssertFalse(libraryIsActive(app, departing: "health-records-detail-scroll"))
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["health-records-title"])
+            waitForLibraryReturn(app, departing: "health-records-detail-scroll")
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-records-open-health-import", owners: [.init(identifier: "health-records-navigation-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
@@ -42,10 +43,30 @@ extension HealthImportDuoUITests {
             XCTAssertTrue(healthDetailNode(app, "unified-import-activity").exists)
             // Observe entry and return without requesting authorization, selecting a source or starting an import.
             try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["unified-import-scroll"], name: "health-import-entry-\(size)", testCase: self)
+            XCTAssertFalse(libraryIsActive(app, departing: "unified-import-scroll"))
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["health-records-title"])
+            waitForLibraryReturn(app, departing: "unified-import-scroll")
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
         }
+    }
+
+    /// Back retains the library's scroll position, so its offscreen heading is not an active-route predicate.
+    @MainActor
+    private func waitForLibraryReturn(_ app: XCUIApplication, departing identifier: String) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.libraryIsActive(app, departing: identifier)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+    }
+
+    /// Reject a retained library behind a still-active detail/import scene; the original filter-state assertion follows return.
+    @MainActor
+    private func libraryIsActive(_ app: XCUIApplication, departing identifier: String) -> Bool {
+        let library = healthDetailNode(app, "health-records-layout")
+        let departing = healthDetailNode(app, identifier)
+        let visible = app.windows.firstMatch.frame.intersection(healthDetailNode(app, "navigation-content-region").frame)
+        return library.exists && !library.frame.isEmpty && library.frame.intersects(visible) && library.isHittable &&
+            (!departing.exists || !departing.isHittable)
     }
 
     /// Retains the selected period and saved measurements when the native usable regions change.
