@@ -6,7 +6,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
     func testSaveFailureKeepsKoreanErrorAndRetryRecovers() throws {
         let app = XCUIApplication()
         defer {
-            // Retain the opted-in structural trace even when an original form assertion fails.
+            // Capture on normal return; fail-fast aborts may retain only XCTest's failure hierarchy.
             _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "symptom-save-recovery-focus")
             app.terminate()
         }
@@ -31,17 +31,19 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             in: app,
             scrollID: "symptoms-scroll",
         ))
+        let active = UITestConditions.element(app, "symptom-status-active")
+        FormUITestConditions.reveal(active, in: app, scrollID: "symptoms-scroll")
+        XCTAssertEqual(active.label, "계속되고 있어요")
+        XCTAssertTrue(active.isHittable)
+        active.tap()
+
+        // Selecting a status can require a drag, which dismisses the keyboard. Finish with real time entry before keyboard Save.
         XCTAssertTrue(FormUITestConditions.replace(
             app.textFields["symptom-onset-time"],
             with: "09:30",
             in: app,
             scrollID: "symptoms-scroll",
         ))
-        let active = UITestConditions.element(app, "symptom-status-active")
-        FormUITestConditions.reveal(active, in: app, scrollID: "symptoms-scroll")
-        XCTAssertEqual(active.label, "계속되고 있어요")
-        XCTAssertTrue(active.isHittable)
-        active.tap()
 
         let keyboardSave = UITestConditions.element(app, "symptom-keyboard-save-onsetTime")
         XCTAssertTrue(keyboardSave.exists && keyboardSave.isHittable)
