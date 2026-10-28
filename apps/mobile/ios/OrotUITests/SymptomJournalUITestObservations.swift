@@ -11,12 +11,43 @@ enum SymptomJournalUITestObservations {
         XCTAssertTrue(UITestConditions.exists(description))
         XCTAssertTrue(UITestConditions.exists(scroll))
         // Keep the existing marker's sample time; this read does not make its native frames atomic with the later AX query.
-        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "symptom-form-lane-width")
-        let descriptionWidth = description.frame.width
-        // The description spans the route width after 20-point screen and 14-point form padding.
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "symptom-form-lane-width")
+        let trace = snapshot?["symptomScrollTrace"] as? [String: Any]
+        let accessory = trace?["descriptionAccessory"] as? [String: Any]
+        let inputs = accessory?["inputs"] as? [[String: Any]]
+        let geometry = inputs?.first?["geometry"] as? [String: Any]
+        // Fabric exposes its backed UITextView to AX. Its 1-point border inset is not a narrower outer content lane.
+        guard accessory?["truncated"] as? Bool == false, accessory?["inputCount"] as? Int == 1,
+              inputs?.count == 1, geometry?["status"] as? String == "sampled",
+              geometry?["outerComponentCount"] as? Int == 1,
+              geometry?["ancestorTraversalComplete"] as? Bool == true,
+              geometry?["accessibilityViewIsInput"] as? Bool == true,
+              let outer = observedWindowFrame(geometry?["outer"]),
+              let exposed = observedWindowFrame(geometry?["accessibilityView"]),
+              let inset = geometry?["inputFrameInOuter"] as? [String: Double]
+        else {
+            XCTFail("The journal width check requires an unambiguous outer component and its public AX text view")
+            return
+        }
+        let descriptionFrame = description.frame
+        // Preserve the full outer lane: 20-point screen padding and 14-point form padding on each side.
         let usableWidth = scroll.frame.width - 68
         XCTAssertGreaterThan(usableWidth, 0)
-        XCTAssertEqual(descriptionWidth, usableWidth, accuracy: 1)
+        XCTAssertEqual(outer.width, usableWidth, accuracy: 1)
+        XCTAssertEqual(inset["x"], 1)
+        XCTAssertEqual(inset["width"], outer.width - 2)
+        // Bind the later real XCUI query to the sampled public view; samples are not claimed to be atomic.
+        XCTAssertEqual(descriptionFrame.width, exposed.width, accuracy: 1)
+        XCTAssertEqual(descriptionFrame.minX, exposed.minX, accuracy: 1)
+    }
+
+    /// Missing windows and nonfinite geometry remain failed evidence rather than a guessed width.
+    private static func observedWindowFrame(_ value: Any?) -> CGRect? {
+        guard let view = value as? [String: Any], view["sameWindow"] as? Bool == true,
+              let frame = view["windowFrame"] as? [String: Double],
+              let x = frame["x"], let y = frame["y"], let width = frame["width"], let height = frame["height"],
+              [x, y, width, height].allSatisfy(\.isFinite), width > 0, height > 0 else { return nil }
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     /// Bracket the existing post-refocus drag to distinguish focus acquisition from later loss, without another action or wait.
