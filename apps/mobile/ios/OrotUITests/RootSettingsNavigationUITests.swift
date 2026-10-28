@@ -99,7 +99,7 @@ extension RootNavigationUITests {
     /// Keep integration and recovery routes reachable in Settings after removing redundant import flows.
     @MainActor
     func verifySettingsRoutes() throws {
-        let app = launch()
+        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
@@ -114,6 +114,7 @@ extension RootNavigationUITests {
         XCTAssertTrue(medication.exists && medication.isHittable)
         XCTAssertGreaterThanOrEqual(medication.frame.height, 44)
         XCTAssertFalse(app.buttons["unified-import-start"].exists)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll", "health-data-status-scroll"], name: "settings-health-data-boundary", testCase: self)
         capture(app, "settings-health-data-light")
         try backToSettings(app)
         tap(app, "settings-open-sync-status")
@@ -125,13 +126,19 @@ extension RootNavigationUITests {
         XCTAssertTrue(calendarAccess.isHittable)
         XCTAssertTrue(UITestConditions.element(app, "settings-sync-retry").exists)
         XCTAssertTrue(UITestConditions.element(app, "settings-sync-open-system-settings").isHittable)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-sync-status-scroll"], name: "settings-sync-status-boundary", testCase: self)
         capture(app, "settings-sync-status-light")
         try backToSettings(app)
 
+        tap(app, "settings-open-provider")
+        NavigationUITestConditions.route(app, markers: ["settings-provider-screen"])
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-provider-screen"], name: "settings-provider-boundary", testCase: self)
+        try backToSettings(app)
         tap(app, "settings-open-accounts")
         NavigationUITestConditions.route(app, markers: ["settings-accounts-screen"])
         XCTAssertTrue(app.staticTexts["연결된 계정"].exists)
         XCTAssertTrue(UITestConditions.element(app, "chatgpt-account-setup").exists)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-accounts-screen"], name: "settings-accounts-boundary", testCase: self)
         try backToSettings(app)
         tap(app, "settings-open-backup")
         NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
@@ -139,6 +146,7 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.element(app, "backup-prepare").isHittable)
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-backup-scroll", contentID: "backup-open-system-settings")
         XCTAssertTrue(UITestConditions.element(app, "backup-open-system-settings").isHittable)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-backup-scroll"], name: "settings-backup-boundary", testCase: self)
         capture(app, "settings-backup-light")
         try backToSettings(app)
         tap(app, "settings-open-privacy")
@@ -148,6 +156,7 @@ extension RootNavigationUITests {
         }
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-privacy-scroll", contentID: "privacy-open-system-settings")
         XCTAssertTrue(UITestConditions.element(app, "privacy-open-system-settings").isHittable)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-privacy-scroll"], name: "settings-privacy-boundary", testCase: self)
         capture(app, "settings-privacy-light")
         try backToSettings(app)
     }

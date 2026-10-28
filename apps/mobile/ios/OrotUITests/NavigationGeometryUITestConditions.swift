@@ -178,6 +178,23 @@ enum NavigationGeometryUITestConditions {
         try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
     }
 
+    /// Measure child viewports independently; scrollable content may extend vertically but never into the rail.
+    static func captureChildBoundary(_ app: XCUIApplication, viewportIDs: [String], name: String, testCase: XCTestCase) throws {
+        try captureBoundary(app, navigationID: "navigation-back", name: name, testCase: testCase)
+        let available = UITestConditions.element(app, "navigation-content-region").frame
+        var frames = ["available": available]
+        for identifier in viewportIDs {
+            let viewport = UITestConditions.element(app, identifier)
+            XCTAssertTrue(viewport.exists && !viewport.frame.isEmpty)
+            let frame = viewport.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, available.minX - 0.5)
+            XCTAssertLessThanOrEqual(frame.maxX, available.maxX + 0.5)
+            frames[identifier] = frame
+        }
+        // Keep real child rectangles next to the outer native/shared equality receipt, rather than inferring them from it.
+        try NavigationUITestConditions.panelSnapshot(app, frames: frames, testCase: testCase)
+    }
+
     /// Keep each selected root's circular indicator, native control and real viewport together.
     static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
