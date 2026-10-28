@@ -86,7 +86,7 @@ export function AdaptiveColumns({
           if (!region.isActive || region.kind !== 'occlusion') return false;
           if (!readableFrame) return true;
           // System lanes already consumed by the shell cannot obstruct these panels again.
-          // Keep interior occlusions, including their required margins, as real constraints.
+          // UIKit's frame already includes its margins; intersect that physical frame exactly once.
           const left = Math.max(
             readableFrame.x,
             measuredBounds?.x ?? readableFrame.x,
@@ -96,12 +96,10 @@ export function AdaptiveColumns({
             measuredBounds ? measuredBounds.x + measuredBounds.width : Infinity,
           );
           return (
-            region.frame.x - region.margins.left < right &&
-            region.frame.x + region.frame.width + region.margins.right > left &&
-            region.frame.y - region.margins.top <
-              readableFrame.y + readableFrame.height &&
-            region.frame.y + region.frame.height + region.margins.bottom >
-              readableFrame.y
+            region.frame.x < right &&
+            region.frame.x + region.frame.width > left &&
+            region.frame.y < readableFrame.y + readableFrame.height &&
+            region.frame.y + region.frame.height > readableFrame.y
           );
         }),
         hasSecondary,

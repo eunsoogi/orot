@@ -72,12 +72,8 @@ enum NavigationGeometryUITestConditions {
         XCTAssertFalse(readable.isNull || readable.isEmpty)
         for region in value.regions where region["isActive"] as? Bool == true {
             guard let frame = rect(region["frame"]) else { continue }
-            let margins = region["margins"] as? [String: Double] ?? [:]
-            let left = margins["left"] ?? 0, right = margins["right"] ?? 0
-            let top = margins["top"] ?? 0, bottom = margins["bottom"] ?? 0
-            let obstruction = CGRect(x: frame.minX - left, y: frame.minY - top,
-                                     width: frame.width + left + right, height: frame.height + top + bottom)
-            XCTAssertFalse(readable.intersects(obstruction), "A split/occluded panel needs an explicit region-aware oracle")
+            // UIViewReservedRegion.frame already includes the margins; the oracle must not reserve them twice.
+            XCTAssertFalse(readable.intersects(frame), "A split/occluded panel needs an explicit region-aware oracle")
         }
         // This uninterrupted Settings layout requires two 320pt columns, scaled for text, and a 24pt gap.
         return readable.width < 640 * max(1, value.fontScale) + 24
