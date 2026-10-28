@@ -102,6 +102,22 @@ enum NavigationGeometryUITestConditions {
         XCTAssertTrue(content.exists && !content.frame.isEmpty)
         let action = try NavigationUITestConditions.navigationAction(app, navigationID)
         let marker = UITestConditions.element(app, "navigation-test-observation")
+        // Preserve independent numeric pairs even when a later completion predicate never matches.
+        let initialContentFrame = content.frame, initialNavigationFrame = action.toolbar.frame
+        try NavigationUITestConditions.panelSnapshot(app, frames: ["content": initialContentFrame, "navigation": initialNavigationFrame], testCase: testCase)
+        let initial = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "boundary-before-comparison")
+        if let lifecycle = initial?["lifecycle"] as? [[String: Any]],
+           let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+           let json = event["frame"] as? String,
+           let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+           let available = rect(shared["availableContentFrame"]), let navigation = rect(shared["navigationFrame"])
+        {
+            let diagnostic = ["contentMatches": sameWindow(initialContentFrame, available), "navigationMatches": sameWindow(initialNavigationFrame, navigation)]
+            let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: diagnostic), uniformTypeIdentifier: "public.json")
+            attachment.name = "boundary-comparison-results"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+        }
         var last: [String: Any]?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard marker.exists,

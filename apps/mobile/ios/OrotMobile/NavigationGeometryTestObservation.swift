@@ -38,7 +38,30 @@
                 "safeAreaInsets": insets(window.safeAreaInsets),
                 "reservedRegionsSupported": regionsSupported,
                 "reservedRegions": regions,
+                "navigationControls": currentNavigationControls(in: window),
             ]
+        }
+
+        /// Samples current UIKit coordinates without forcing layout or reading labels and route content.
+        /// Keep all matching visible controls so duplicate hosts remain observable rather than picking one.
+        private static func currentNavigationControls(in window: UIWindow) -> [String: Any] {
+            var remaining = [window as UIView]
+            var visited = 0
+            var controls: [[String: Any]] = []
+            while !remaining.isEmpty, visited < 2048 {
+                let view = remaining.removeLast()
+                visited += 1
+                guard !view.isHidden, view.alpha > 0.01 else { continue }
+                remaining.append(contentsOf: view.subviews)
+                guard view is NavigationRootGlassBar || view.accessibilityIdentifier == "navigation-toolbar" else { continue }
+                let frame = view.convert(view.bounds, to: window)
+                guard !frame.isEmpty, frame.intersects(window.bounds) else { continue }
+                controls.append([
+                    "identifier": view.accessibilityIdentifier ?? "",
+                    "frame": rect(frame),
+                ])
+            }
+            return ["frames": controls, "truncated": !remaining.isEmpty, "visited": visited]
         }
 
         @available(iOS 27.1, *)
