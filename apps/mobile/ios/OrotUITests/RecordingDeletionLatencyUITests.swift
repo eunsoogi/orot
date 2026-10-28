@@ -10,25 +10,19 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
 
     @MainActor
     func testSyntheticRecordingDeletionTimingDistribution() throws {
-        let sampleCount = 10
-        var samples: [[String: Any]] = []
-        for _ in 0 ..< sampleCount {
-            try samples.append(measureSyntheticDeletion())
-        }
-        verifyDeletionPersistsAfterRestart()
-
+        verifyMetadataEnvironmentMapping()
         let environment = ProcessInfo.processInfo.environment
-        let runKind = environment["TEST_RUNNER_RECORDING_DELETION_RUN_KIND"] ?? "unclassified"
+        let runKind = environmentValue(["RECORDING_DELETION_RUN_KIND", "TEST_RUNNER_RECORDING_DELETION_RUN_KIND"], environment: environment, fallback: "unclassified")
         let sourceRevision = environmentValue(
-            ["TEST_RUNNER_SOURCE_REVISION", "OROT_RECORDING_DELETION_SOURCE_REVISION", "GITHUB_SHA"],
+            ["SOURCE_REVISION", "TEST_RUNNER_SOURCE_REVISION", "OROT_RECORDING_DELETION_SOURCE_REVISION", "GITHUB_SHA"],
             environment: environment,
         )
         let appVersion = environmentValue(
-            ["TEST_RUNNER_APP_VERSION", "OROT_RECORDING_DELETION_APP_VERSION"],
+            ["APP_VERSION", "TEST_RUNNER_APP_VERSION", "OROT_RECORDING_DELETION_APP_VERSION"],
             environment: environment,
         )
         let appBuild = environmentValue(
-            ["TEST_RUNNER_APP_BUILD", "OROT_RECORDING_DELETION_APP_BUILD"],
+            ["APP_BUILD", "TEST_RUNNER_APP_BUILD", "OROT_RECORDING_DELETION_APP_BUILD"],
             environment: environment,
         )
         let simulatorUDID = environmentValue(
@@ -36,7 +30,7 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
             environment: environment,
         )
         let simulatorModel = environmentValue(
-            ["TEST_RUNNER_SIMULATOR_MODEL", "SIMULATOR_MODEL_IDENTIFIER", "SIMULATOR_DEVICE_NAME"],
+            ["SIMULATOR_MODEL", "TEST_RUNNER_SIMULATOR_MODEL", "SIMULATOR_MODEL_IDENTIFIER", "SIMULATOR_DEVICE_NAME"],
             environment: environment,
         )
         if runKind == "baseline" || runKind == "after" {
@@ -46,6 +40,13 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
             XCTAssertNotEqual(simulatorUDID, "unavailable", "A measurement run must record its Simulator UDID.")
             XCTAssertNotEqual(simulatorModel, "unavailable", "A measurement run must record its Simulator model.")
         }
+        let sampleCount = 10
+        var samples: [[String: Any]] = []
+        for _ in 0 ..< sampleCount {
+            try samples.append(measureSyntheticDeletion())
+        }
+        verifyDeletionPersistsAfterRestart()
+
         let report: [String: Any] = [
             "schema": "orot.recording-deletion-run.v1",
             "runKind": runKind,
@@ -64,6 +65,7 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
                 "deletePath": "list-row confirmation and committed row removal",
                 "observer": "opt-in monotonic stage timings; no recording identity or content",
                 "restartPersistence": "verified absent after relaunch without fixture reseed",
+                "workload": deletionWorkload,
             ],
             "distributionsMs": summarize(samples),
             "samples": samples,
@@ -80,7 +82,7 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         RecordingFixtureUITestConditions.launch(
             app,
-            extra: ["-OROT_RECORDING_DELETION_TIMING", "YES"],
+            extra: ["-OROT_RECORDING_DELETION_TIMING", "YES", "-OROT_RECORDING_DELETION_WORKLOAD", deletionWorkload],
         )
         defer {
             if app.state != .notRunning {
@@ -190,7 +192,25 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
         return sortedValues[lowerIndex] + (sortedValues[upperIndex] - sortedValues[lowerIndex]) * interpolation
     }
 
-    private func environmentValue(_ keys: [String], environment: [String: String]) -> String {
-        keys.compactMap { environment[$0] }.first ?? "unavailable"
+    /// Xcode removes TEST_RUNNER_ when forwarding host variables, as in OrotFailFastTestCase.
+    private func environmentValue(_ keys: [String], environment: [String: String], fallback: String = "unavailable") -> String {
+        keys.compactMap { environment[$0] }.first(where: { !$0.isEmpty }) ?? fallback
+    }
+
+    private var deletionWorkload: String {
+        environmentValue(["RECORDING_DELETION_WORKLOAD", "TEST_RUNNER_RECORDING_DELETION_WORKLOAD"],
+                         environment: ProcessInfo.processInfo.environment, fallback: "audio-only")
+    }
+
+    private func verifyMetadataEnvironmentMapping() {
+        for kind in ["baseline", "after"] {
+            let stripped = ["RECORDING_DELETION_RUN_KIND": kind, "SOURCE_REVISION": "revision", "APP_VERSION": "1.0", "APP_BUILD": "2"]
+            XCTAssertEqual(environmentValue(["RECORDING_DELETION_RUN_KIND", "TEST_RUNNER_RECORDING_DELETION_RUN_KIND"], environment: stripped), kind)
+            for key in ["SOURCE_REVISION", "APP_VERSION", "APP_BUILD"] {
+                XCTAssertNotEqual(environmentValue([key, "TEST_RUNNER_" + key], environment: stripped), "unavailable")
+                XCTAssertEqual(environmentValue([key, "TEST_RUNNER_" + key], environment: [:]), "unavailable")
+            }
+        }
+        XCTAssertEqual(environmentValue(["SOURCE_REVISION", "TEST_RUNNER_SOURCE_REVISION"], environment: ["SOURCE_REVISION": "", "TEST_RUNNER_SOURCE_REVISION": "legacy"]), "legacy")
     }
 }

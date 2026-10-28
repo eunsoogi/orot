@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import RecordingScreen from '../../src/recording/RecordingScreen';
-import {
-  createTranscriptEvidenceProbeService,
-  prepareSyntheticTranscriptRecording,
-} from './transcriptEvidenceProbeSupport';
+import { createTranscriptEvidenceProbeService } from './transcriptEvidenceProbeSupport';
+import { prepareRecordingDeletionWorkload } from './recordingDeletionWorkload';
 import {
   playSyntheticTranscriptionRange,
   readSyntheticRecordingDuration,
@@ -87,6 +85,10 @@ export function RecordingLibraryVisualProbe() {
       'YES' ||
     settingsManager?.getConstants?.().settings
       ?.OROT_RECORDING_DELETION_PERSISTENCE_PROBE === 'YES';
+  const configuredDeletionWorkload =
+    settingsManager?.settings?.OROT_RECORDING_DELETION_WORKLOAD ??
+    settingsManager?.getConstants?.().settings
+      ?.OROT_RECORDING_DELETION_WORKLOAD;
   const configuredDeletionScenario =
     settingsManager?.settings?.OROT_RECORDING_DELETION_SCENARIO ??
     settingsManager?.getConstants?.().settings
@@ -141,7 +143,10 @@ export function RecordingLibraryVisualProbe() {
         }
         return { id: source.id };
       }
-      return prepareSyntheticTranscriptRecording();
+      return prepareRecordingDeletionWorkload(
+        configuredDeletionWorkload,
+        transcriptService,
+      );
     };
     prepare().then(
       recording => {
@@ -170,6 +175,8 @@ export function RecordingLibraryVisualProbe() {
     };
   }, [
     configuredDeletionScenario,
+    configuredDeletionWorkload,
+    transcriptService,
     deletionPersistenceEnabled,
     deletionScenario,
     playbackProbeMode,
