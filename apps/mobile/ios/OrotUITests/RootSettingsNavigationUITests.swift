@@ -144,7 +144,7 @@ extension RootNavigationUITests {
         NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
         XCTAssertTrue(UITestConditions.element(app, "backup-status-message").isHittable)
         XCTAssertTrue(UITestConditions.element(app, "backup-prepare").isHittable)
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-backup-scroll", contentID: "backup-open-system-settings")
+        try NavigationUITestConditions.contentClearOfNavigation(app, scrollID: "settings-backup-scroll", contentID: "backup-open-system-settings", testCase: self)
         XCTAssertTrue(UITestConditions.element(app, "backup-open-system-settings").isHittable)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-backup-scroll"], name: "settings-backup-boundary", testCase: self)
         capture(app, "settings-backup-light")
@@ -154,7 +154,7 @@ extension RootNavigationUITests {
         for title in ["마이크", "음성 인식", "건강 앱", "캘린더"] {
             XCTAssertTrue(app.staticTexts[title].exists)
         }
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-privacy-scroll", contentID: "privacy-open-system-settings")
+        try NavigationUITestConditions.contentClearOfNavigation(app, scrollID: "settings-privacy-scroll", contentID: "privacy-open-system-settings", testCase: self)
         XCTAssertTrue(UITestConditions.element(app, "privacy-open-system-settings").isHittable)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-privacy-scroll"], name: "settings-privacy-boundary", testCase: self)
         capture(app, "settings-privacy-light")

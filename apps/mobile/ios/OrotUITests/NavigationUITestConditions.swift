@@ -206,4 +206,33 @@ enum NavigationUITestConditions {
         let active = try navigationAction(app, navigationID)
         XCTAssertLessThanOrEqual(content.frame.maxY, active.toolbar.frame.minY - 16)
     }
+
+    /// Keep the same 16pt clearance on the actual occupied edge; an unclassified overlap must fail.
+    static func contentClearOfNavigation(_ app: XCUIApplication, scrollID: String, contentID: String,
+                                         testCase: XCTestCase) throws
+    {
+        try scrollToBottom(app, scrollID)
+        let content = UITestConditions.element(app, contentID)
+        let region = UITestConditions.element(app, "navigation-content-region")
+        XCTAssertTrue(content.exists && !content.frame.isEmpty)
+        XCTAssertTrue(region.exists && !region.frame.isEmpty)
+        let active = try navigationAction(app, "navigation-back")
+        let item = content.frame
+        let viewport = region.frame
+        let bar = active.toolbar.frame
+        try panelSnapshot(app, frames: ["finalAction": item, "viewport": viewport, "navigation": bar], testCase: testCase)
+        XCTAssertTrue(viewport.insetBy(dx: -0.5, dy: -0.5).contains(item), "The final action must fit inside the real viewport")
+        let verticalOverlap = max(bar.minY, viewport.minY) < min(bar.maxY, viewport.maxY)
+        if verticalOverlap, bar.minX >= viewport.maxX - 0.5 {
+            XCTAssertLessThanOrEqual(item.maxX, bar.minX - 16)
+        } else if verticalOverlap, bar.maxX <= viewport.minX + 0.5 {
+            XCTAssertGreaterThanOrEqual(item.minX, bar.maxX + 16)
+        } else if bar.maxY >= viewport.maxY - 0.5, bar.minY >= viewport.midY,
+                  max(bar.minX, viewport.minX) < min(bar.maxX, viewport.maxX)
+        {
+            XCTAssertLessThanOrEqual(item.maxY, bar.minY - 16)
+        } else {
+            XCTFail("The measured navigation must occupy a viewport edge: \(bar), viewport \(viewport)")
+        }
+    }
 }
