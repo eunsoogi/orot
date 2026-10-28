@@ -11,6 +11,7 @@ interface RecordingDeletionConfirmationProps {
   readonly busy: boolean;
   readonly onCancel: () => void;
   readonly onConfirm: () => void | Promise<void>;
+  readonly onProgressPresented?: () => void;
 }
 
 /** Uses the iOS alert for consent, then exposes non-blocking async deletion progress. */
@@ -19,9 +20,15 @@ export default function RecordingDeletionConfirmation({
   busy,
   onCancel,
   onConfirm,
+  onProgressPresented,
 }: RecordingDeletionConfirmationProps) {
   const callbacks = useRef({ onCancel, onConfirm });
+  const progressReported = useRef(false);
   callbacks.current = { onCancel, onConfirm };
+
+  useEffect(() => {
+    if (!busy) progressReported.current = false;
+  }, [busy]);
 
   useEffect(() => {
     if (!target || busy) return;
@@ -53,6 +60,16 @@ export default function RecordingDeletionConfirmation({
   return (
     <View
       accessibilityLiveRegion="polite"
+      onLayout={
+        onProgressPresented
+          ? () => {
+              if (progressReported.current) return;
+              progressReported.current = true;
+              // The first native layout is the closest UI boundary for when progress is presented.
+              onProgressPresented();
+            }
+          : undefined
+      }
       style={styles.deleteProgress}
       testID="recording-delete-progress"
     >

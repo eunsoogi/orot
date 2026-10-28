@@ -18,6 +18,8 @@ import { recordingLibraryService as defaultRecordingLibraryService } from './rec
 import { errorMessage, sourceSaveErrorMessage } from './recordingErrors';
 import { useAutomaticRecordingTranscription } from './useAutomaticRecordingTranscription';
 import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions';
+import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
+import { RecordingDeletionTimingContext } from './recordingDeletionTiming';
 
 interface RecordingScreenProps {
   onBack: () => void;
@@ -27,6 +29,8 @@ interface RecordingScreenProps {
   /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
   transcriptService?: TranscriptEvidenceService;
   recordingLibraryService?: RecordingLibraryService;
+  /** Supplied only by the Simulator measurement harness; reports contain timing stages, not recording data. */
+  recordingDeletionTimingProbe?: RecordingDeletionTimingProbe;
 }
 
 const initialSnapshot: RecordingSnapshot = {
@@ -43,6 +47,7 @@ export default function RecordingScreen({
   playbackService = service,
   transcriptService,
   recordingLibraryService = defaultRecordingLibraryService,
+  recordingDeletionTimingProbe,
 }: RecordingScreenProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [stateReady, setStateReady] = useState(false);
@@ -194,36 +199,40 @@ export default function RecordingScreen({
   }
 
   return (
-    <RecordingControls
-      onOpenSavedRecordings={onOpenSavedRecordings}
-      onBack={onBack}
-      stateReady={stateReady}
-      status={snapshot.status}
-      durationMs={snapshot.durationMs}
-      amplitude={snapshot.amplitude}
-      consentAcknowledged={consentAcknowledged}
-      onToggleConsent={() => setConsentAcknowledged(value => !value)}
-      busy={busy}
-      onStart={start}
-      onPause={() => runAction(() => service.pause())}
-      onResume={() => runAction(() => service.resume())}
-      onStop={stop}
-      lastRecording={lastRecording}
-      sourceSaved={sourceSaved}
-      onRetrySourceSave={retrySourceSave}
-      error={error}
-      syntheticProbeAvailable={probeActions.available}
-      syntheticProbeReady={probeActions.ready}
-      onPrepareSyntheticProbe={probeActions.prepare}
-      onPrepareSyntheticStartFailure={probeActions.prepareStartFailure}
-      onSendInterruption={probeActions.sendInterruption}
-      probeError={probeActions.error}
-      transcriptService={transcriptService}
-      playbackService={playbackService}
-      recordingLibraryService={recordingLibraryService}
-      automaticTranscription={automaticTranscription.state}
-      onRetryTranscription={retryTranscription}
-      onRecordingSourceDeleted={handleRecordingSourceDeleted}
-    />
+    <RecordingDeletionTimingContext.Provider
+      value={recordingDeletionTimingProbe ?? null}
+    >
+      <RecordingControls
+        onOpenSavedRecordings={onOpenSavedRecordings}
+        onBack={onBack}
+        stateReady={stateReady}
+        status={snapshot.status}
+        durationMs={snapshot.durationMs}
+        amplitude={snapshot.amplitude}
+        consentAcknowledged={consentAcknowledged}
+        onToggleConsent={() => setConsentAcknowledged(value => !value)}
+        busy={busy}
+        onStart={start}
+        onPause={() => runAction(() => service.pause())}
+        onResume={() => runAction(() => service.resume())}
+        onStop={stop}
+        lastRecording={lastRecording}
+        sourceSaved={sourceSaved}
+        onRetrySourceSave={retrySourceSave}
+        error={error}
+        syntheticProbeAvailable={probeActions.available}
+        syntheticProbeReady={probeActions.ready}
+        onPrepareSyntheticProbe={probeActions.prepare}
+        onPrepareSyntheticStartFailure={probeActions.prepareStartFailure}
+        onSendInterruption={probeActions.sendInterruption}
+        probeError={probeActions.error}
+        transcriptService={transcriptService}
+        playbackService={playbackService}
+        recordingLibraryService={recordingLibraryService}
+        automaticTranscription={automaticTranscription.state}
+        onRetryTranscription={retryTranscription}
+        onRecordingSourceDeleted={handleRecordingSourceDeleted}
+      />
+    </RecordingDeletionTimingContext.Provider>
   );
 }

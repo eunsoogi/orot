@@ -86,6 +86,10 @@ export const fixtureTests = [
   'OrotUITests/RecordingLibraryUITests/testActiveAndPausedRecordingControlsAcrossAppearanceChanges',
   'OrotUITests/RecordingLibraryUITests/testLargeTextKeepsTranscriptSaveReachableWithKeyboardVisible',
   'OrotUITests/RecordingLibraryUITests/testSavedRecordingRowsRemainReadableInA320PointViewport',
+  // This disposable fixture records the production confirmation-to-refresh timing distribution.
+  'OrotUITests/RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',
+  'OrotUITests/RecordingDeletionRecoveryUITests/testFailedDeletionRestoresAudioAndKeepsSourceDuringSlowListRead',
+  'OrotUITests/RecordingDeletionRecoveryUITests/testDelayedAudioCleanupKeepsProgressUntilCleanupCompletes',
   'OrotUITests/RecordingPlaybackUITests/testSavedAudioPlaybackStopsCompletesAndReopensBeforeMissingFileRecovery',
   'OrotUITests/RecordingPlaybackUITests/testPlaybackRecoversAfterTheSimulatedOutputRouteLoss',
   'OrotUITests/UnifiedImportUITests/testProviderSelectionUsesTheRealRecordsRouteAcrossAppearanceChangesBeforeImport',

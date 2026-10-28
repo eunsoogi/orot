@@ -235,6 +235,8 @@
 		F7534DE9B1E4004AF1E0777B /* RecordingFixtureUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */; };
 		F9A40EB1180C4A2AB69881C5 /* SymptomAccessorySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B32B25A66940F5B8E52E61 /* SymptomAccessorySnapshotTests.swift */; };
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
+		607365FCA0E94B0589DEAF02 /* RecordingDeletionLatencyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A670E5C349B64234AA94155A /* RecordingDeletionLatencyUITests.swift */; };
+		4F4BD3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
 		BCE683BFF6DE47F6B69A41AADB62634C /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */; };
@@ -291,6 +293,8 @@
 		193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.release.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.release.xcconfig"; sourceTree = "<group>"; };
 		1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RenderedTextUITestConditions.swift; sourceTree = "<group>"; };
 		1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingLibraryUITests.swift; sourceTree = "<group>"; };
+		A670E5C349B64234AA94155A /* RecordingDeletionLatencyUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingDeletionLatencyUITests.swift; sourceTree = "<group>"; };
+		AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingDeletionRecoveryUITests.swift; sourceTree = "<group>"; };
 		2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentsUITests.swift; sourceTree = "<group>"; };
 		2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelIntegrationTests.swift; sourceTree = "<group>"; };
 		2D0CC908B80A06121230581D /* TestSpeechObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestSpeechObservation.swift; path = OrotMobile/TestSpeechObservation.swift; sourceTree = "<group>"; };
@@ -871,6 +875,8 @@
 				1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */,
 				17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */,
 				1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */,
+				A670E5C349B64234AA94155A /* RecordingDeletionLatencyUITests.swift */,
+				AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */,
 				56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */,
 				B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */,
 				46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */,
@@ -1331,6 +1337,8 @@
 				2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */,
 				F7534DE9B1E4004AF1E0777B /* RecordingFixtureUITestConditions.swift in Sources */,
 				FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */,
+				607365FCA0E94B0589DEAF02 /* RecordingDeletionLatencyUITests.swift in Sources */,
+				4F4BD3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift in Sources */,
 				075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */,
 				332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */,
 				F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */,

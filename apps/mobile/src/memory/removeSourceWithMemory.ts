@@ -7,6 +7,12 @@ import {
   openLocalAgentMemoryDatabase,
   openLocalStorage,
 } from '../storage/secureDatabase';
+import type { RecordingDeletionTimingProbe } from '../recording/recordingDeletionTiming';
+import {
+  beginRecordingDeletionTiming,
+  endRecordingDeletionTiming,
+  withRecordingDeletionTiming,
+} from '../recording/recordingDeletionTiming';
 
 export interface SourceMemoryDeletionResult {
   readonly sourceDeleted: boolean;
@@ -30,23 +36,47 @@ function deletionRag(database: SqlDatabase): LocalE5RagService {
 export async function removeLocalSourceWithMemory(
   sourceId: string,
   memory: AgentMemoryService,
+  timingProbe?: RecordingDeletionTimingProbe,
 ): Promise<SourceMemoryDeletionResult> {
-  const normalizedSourceId = RecordIdSchema.parse(sourceId);
-  const [database, repository] = await Promise.all([
-    openLocalAgentMemoryDatabase(),
-    openLocalStorage(),
-  ]);
-  const rag = deletionRag(database);
-  await rag.prepare();
-  // Capture the same cascade roots before SQL removal so transcript-only memory references are deleted too.
-  const deletionReferences =
-    await repository.listSourceDeletionReferences(normalizedSourceId);
-  return memory.removeSource(
-    normalizedSourceId,
-    () =>
-      repository.sourceRecords.delete(normalizedSourceId, transaction =>
-        rag.deleteChunks([], [normalizedSourceId], transaction),
-      ),
-    deletionReferences,
-  );
+  beginRecordingDeletionTiming(timingProbe, 'derived-data-cleanup');
+  let derivedCleanupEnded = false;
+  const endDerivedCleanup = (outcome: 'success' | 'failure') => {
+    if (derivedCleanupEnded) return;
+    derivedCleanupEnded = true;
+    endRecordingDeletionTiming(timingProbe, 'derived-data-cleanup', outcome);
+  };
+
+  try {
+    const normalizedSourceId = RecordIdSchema.parse(sourceId);
+    const [database, repository] = await Promise.all([
+      openLocalAgentMemoryDatabase(),
+      openLocalStorage(),
+    ]);
+    const rag = deletionRag(database);
+    await rag.prepare();
+    // Capture cascade roots before SQL removal so transcript-only memory references are deleted too.
+    const deletionReferences =
+      await repository.listSourceDeletionReferences(normalizedSourceId);
+    const result = await memory.removeSource(
+      normalizedSourceId,
+      () => {
+        // End derived cleanup before the source transaction so the two timings do not overlap.
+        endDerivedCleanup('success');
+        return withRecordingDeletionTiming(
+          timingProbe,
+          'database-delete-commit',
+          () =>
+            repository.sourceRecords.delete(normalizedSourceId, transaction =>
+              rag.deleteChunks([], [normalizedSourceId], transaction),
+            ),
+        );
+      },
+      deletionReferences,
+    );
+    endDerivedCleanup('success');
+    return result;
+  } catch (error) {
+    endDerivedCleanup('failure');
+    throw error;
+  }
 }

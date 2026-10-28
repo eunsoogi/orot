@@ -1,40 +1,29 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
-import type { RecordingSourceRecord } from './recordingTypes';
 import type { SourceMemoryDeletionResult } from '../memory/removeSourceWithMemory';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
+import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
+import type {
+  RecordingAudioDeletion,
+  RecordingLibraryService,
+  RecordingTranscriptReviewState,
+} from './recordingLibraryServiceTypes';
+import { performRecordingDeletion } from './recordingDeletionOperation';
 
-export type RecordingTranscriptReviewState =
-  'notTranscribed' | 'unreviewed' | 'needsReview' | 'reviewed' | 'unavailable';
-
-export interface RecordingLibrarySummary {
-  readonly source: RecordingSourceRecord;
-  readonly durationMs: number | null;
-  readonly transcriptReviewState: RecordingTranscriptReviewState;
-}
-
-export interface RecordingLibraryService {
-  list(): Promise<readonly RecordingSourceRecord[]>;
-  readonly listSummaries?: () => Promise<readonly RecordingLibrarySummary[]>;
-  deleteRecording(sourceId: string): Promise<RecordingDeletionResult>;
-}
-
-export interface RecordingDeletionResult {
-  readonly audioCleanupPending: boolean;
-}
-
-export interface RecordingAudioDeletion {
-  reconcile(sourceIds: readonly string[]): Promise<void>;
-  stage(sourceId: string): Promise<void>;
-  restore(sourceId: string): Promise<void>;
-  commit(sourceId: string): Promise<void>;
-}
+export type {
+  RecordingAudioDeletion,
+  RecordingDeletionResult,
+  RecordingLibraryService,
+  RecordingLibrarySummary,
+  RecordingTranscriptReviewState,
+} from './recordingLibraryServiceTypes';
 
 type RepositoryLoader = () => Promise<RecordRepository>;
 type MemoryLoader = () => Promise<AgentMemoryService>;
 type SourceRemover = (
   sourceId: string,
   memory: AgentMemoryService,
+  timingProbe?: RecordingDeletionTimingProbe,
 ) => Promise<SourceMemoryDeletionResult>;
 type RecordingStateGuard = () => Promise<void>;
 
@@ -73,6 +62,7 @@ async function assertRecordingStopped(): Promise<void> {
   }
 }
 
+/** Default native adapter; the Simulator fixture wraps it to exercise cleanup timing and recovery. */
 export const nativeAudioDeletion: RecordingAudioDeletion = {
   async reconcile(sourceIds) {
     const { reconcileRecordingDeletions } =
@@ -97,10 +87,11 @@ export const nativeAudioDeletion: RecordingAudioDeletion = {
 async function removeLocalSource(
   sourceId: string,
   memory: AgentMemoryService,
+  timingProbe?: RecordingDeletionTimingProbe,
 ): Promise<SourceMemoryDeletionResult> {
   const { removeLocalSourceWithMemory } =
     await import('../memory/removeSourceWithMemory');
-  return removeLocalSourceWithMemory(sourceId, memory);
+  return removeLocalSourceWithMemory(sourceId, memory, timingProbe);
 }
 
 /** Lists saved audio sources and coordinates reversible file staging with the existing dependent-data cascade. */
@@ -113,6 +104,13 @@ export function createRecordingLibraryService(
   const audioDeletion = dependencies.audioDeletion ?? nativeAudioDeletion;
   const ensureStopped =
     dependencies.assertRecordingStopped ?? assertRecordingStopped;
+  const deletionDependencies = {
+    loadRepository,
+    openMemory,
+    removeSource,
+    audioDeletion,
+    ensureStopped,
+  };
 
   async function loadRecordings() {
     const repository = await loadRepository();
@@ -206,43 +204,10 @@ export function createRecordingLibraryService(
         });
       });
     },
-    deleteRecording(sourceId) {
-      return serializeAudioOperation(async () => {
-        const repository = await loadRepository();
-        const source = await repository.get('source_record', sourceId);
-        if (!source || source.sourceKind !== 'audio_recording') {
-          throw new Error('The selected recording is no longer available.');
-        }
-        await ensureStopped();
-        await audioDeletion.stage(sourceId);
-
-        let sourceRemoved = false;
-        try {
-          const memory = await openMemory();
-          const result = await removeSource(sourceId, memory);
-          if (!result.sourceDeleted) {
-            sourceRemoved =
-              (await repository.get('source_record', sourceId)) === null;
-            if (!sourceRemoved) {
-              throw new Error('The recording source could not be removed.');
-            }
-          } else {
-            sourceRemoved = true;
-          }
-        } catch (error) {
-          // Restore audio unless the source cascade positively confirmed deletion.
-          if (!sourceRemoved) await audioDeletion.restore(sourceId);
-          throw error;
-        }
-
-        try {
-          await audioDeletion.commit(sourceId);
-          return { audioCleanupPending: false };
-        } catch {
-          // Keep staged audio hidden; the next list/relaunch reconciles it against the committed source rows.
-          return { audioCleanupPending: true };
-        }
-      });
+    deleteRecording(sourceId, timingProbe) {
+      return serializeAudioOperation(() =>
+        performRecordingDeletion(sourceId, timingProbe, deletionDependencies),
+      );
     },
   };
 }
