@@ -98,13 +98,9 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
 
     @MainActor
     private func confirmSyntheticDeletion(in app: XCUIApplication) throws -> XCUIElement {
-        let openSaved = UITestConditions.element(app, "recording-open-saved")
-        XCTAssertTrue(openSaved.waitForAppearance(), app.debugDescription)
-        openSaved.tap()
-        XCTAssertTrue(
-            UITestConditions.exists(UITestConditions.element(app, "recording-library-panel")),
-            app.debugDescription,
-        )
+        // This fixture embeds the library because it does not provide the app navigation callback.
+        let library = UITestConditions.element(app, "recording-library-panel")
+        XCTAssertTrue(library.waitForAppearance(), app.debugDescription)
 
         let row = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Synthetic transcription test recording"),
