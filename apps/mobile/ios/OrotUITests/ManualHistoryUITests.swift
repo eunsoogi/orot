@@ -121,11 +121,11 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         launch(app, observeGeometry: true)
         defer { app.terminate() }
         try openManualHistory(app)
-        // Observe the list and keyboard-contracted form independently from the departure guard's state assertions.
+        // Observe the list and edited form independently from the departure guard's state assertions.
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-list-boundary", testCase: self)
         tap(app, "manual-history-add", in: "manual-history-scroll")
         guard replace(app, "manual-history-title-input", with: "Synthetic rail draft") else { return }
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-keyboard-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
