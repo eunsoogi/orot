@@ -195,6 +195,14 @@ enum NavigationGeometryUITestConditions {
         try NavigationUITestConditions.panelSnapshot(app, frames: frames, testCase: testCase)
     }
 
+    /// Share named XCTest captures without changing their backend or the app's rendering.
+    static func captureScreen(_ app: XCUIApplication, name: String, testCase: XCTestCase) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+    }
+
     /// Keep each selected root's circular indicator, native control and real viewport together.
     static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
