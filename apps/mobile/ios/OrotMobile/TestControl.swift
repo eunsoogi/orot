@@ -156,7 +156,7 @@
                 resolve(["navigation": observations, "events": self.gestureEvents,
                          "presentations": presentations,
                          "lifecycle": TestLifecycleObservation.snapshot(),
-                         "windowGeometry": NavigationGeometryTestObservation.snapshot(),
+                         "windowGeometry": NavigationGeometryTestObservation.snapshot(identity: UserDefaults.standard.string(forKey: "OROT_TEST_NAVIGATION_FOCUS_OBSERVATION") == "YES" ? { self.observationIdentifier($0, prefix: "view") } : nil),
                          "symptomScrollTrace": self.symptomScrollTrace?.snapshot() ?? [:],
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])
             }
