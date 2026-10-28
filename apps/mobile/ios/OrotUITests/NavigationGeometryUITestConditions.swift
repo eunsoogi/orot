@@ -178,7 +178,7 @@ enum NavigationGeometryUITestConditions {
         try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
     }
 
-    /// Keep the selected root and its real viewport together in every observation.
+    /// Keep each selected root's circular indicator, native control and real viewport together.
     static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
         let roots = [("home", ["welcome-title"]), ("records", ["records-title"]),
@@ -186,7 +186,13 @@ enum NavigationGeometryUITestConditions {
                      ("settings", ["settings-title"])]
         for (tab, markers) in roots {
             try NavigationUITestConditions.openTab(app, tab, markers: markers)
-            XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)").control.isSelected)
+            let selected = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)").control
+            XCTAssertTrue(selected.isSelected)
+            let indicator = UITestConditions.element(app, "navigation-root-selection-indicator").frame
+            XCTAssertEqual(indicator.width, indicator.height, accuracy: 0.5)
+            XCTAssertEqual(indicator.midX, selected.frame.midX, accuracy: 0.5)
+            XCTAssertEqual(indicator.midY, selected.frame.midY, accuracy: 0.5)
+            try NavigationUITestConditions.panelSnapshot(app, frames: ["selection": indicator, "selectedControl": selected.frame], testCase: testCase)
             try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
