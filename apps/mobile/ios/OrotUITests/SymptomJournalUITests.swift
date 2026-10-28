@@ -85,7 +85,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let originalOnset = UITestConditions.text(onset)
         XCTAssertTrue(originalOnset.contains("2025년 4월 2일") && originalOnset.contains("09:30") && originalOnset.contains("현지 시각"))
         guard tap(app, "symptom-edit-" + entryID) else { return }
-        SymptomJournalUITestObservations.assertFullContentFormLane(app)
+        SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "before-edit-accessory-wait")
         accessory(app, "symptom-keyboard-save-description")
