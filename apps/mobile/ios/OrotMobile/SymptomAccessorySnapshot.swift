@@ -71,6 +71,11 @@
                 "atMs": Date().timeIntervalSince1970 * 1000, "windowIdentity": identity(window),
                 "input": geometryView(input, window: window, identity: identity),
                 "outerComponentCount": components.count, "ancestorTraversalComplete": ancestor == nil,
+                // Read effective UIKit traits and the rendered input font, not the requested launch arguments.
+                "contentSizeCategory": window.traitCollection.preferredContentSizeCategory.rawValue,
+                "isAccessibilityCategory": window.traitCollection.preferredContentSizeCategory.isAccessibilityCategory,
+                "userInterfaceStyle": window.traitCollection.userInterfaceStyle.rawValue,
+                "fontPointSize": input.font.map { Double($0.pointSize) } as Any? ?? NSNull(),
             ]
             for identifier in ["symptoms-scroll", "symptoms-form-lane"] {
                 let matches = views.filter { $0.accessibilityIdentifier == identifier && $0.window === window }

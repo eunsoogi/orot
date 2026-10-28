@@ -25,6 +25,7 @@ export const iosFixtureGroups = Object.freeze({
     'AppointmentReminderJourneyUITests',
     'SymptomJournalUITests',
     'SymptomJournalRecoveryUITests',
+    'SymptomJournalAccessibilityUITests',
     'CalendarSelectionUITests',
     'ScheduleCalendarUITests',
     'ManualHistoryUITests',
