@@ -97,8 +97,8 @@ struct FormScrollGeometry {
         size.width.isFinite && size.height.isFinite && size.width > 0 && size.height > 0
     }
 
-    /// Frame edges must remain finite even when their individual components are finite.
-    private static func valid(_ rect: CGRect) -> Bool {
+    /// Shared with the journal consumer: finite components can still overflow their calculated frame edges.
+    static func valid(_ rect: CGRect) -> Bool {
         !rect.isNull && !rect.isInfinite && rect.size.width > 0 && rect.size.height > 0 &&
             [rect.origin.x, rect.origin.y, rect.width, rect.height, rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy(\.isFinite)
     }
