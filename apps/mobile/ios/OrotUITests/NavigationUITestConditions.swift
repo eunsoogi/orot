@@ -27,6 +27,19 @@ enum NavigationUITestConditions {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
+    /// Bind rendered panel bounds to the same process's geometry and adaptive-plan receipt before asserting its axis.
+    static func panelSnapshot(_ app: XCUIApplication, frames: [String: CGRect], testCase: XCTestCase) throws {
+        let payload = frames.mapValues { frame in
+            ["x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height]
+        }
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "adaptive-panel-frames"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        _ = observationSnapshot(app, testCase: testCase, attachmentName: "adaptive-panel-native-geometry")
+    }
+
     /// Read the existing interval-refreshed marker once; missing data remains unavailable, never a forced live snapshot.
     static func symptomAccessorySnapshot(_ app: XCUIApplication, testCase: XCTestCase, phase: String) {
         let snapshot = observationSnapshot(app, testCase: testCase, attachmentName: "symptom-accessory-\(phase)-raw")
