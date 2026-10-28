@@ -88,13 +88,7 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
             }
         }
 
-        let openSaved = UITestConditions.element(app, "recording-open-saved")
-        XCTAssertTrue(openSaved.waitForAppearance(), app.debugDescription)
-        openSaved.tap()
-        XCTAssertTrue(
-            UITestConditions.exists(UITestConditions.element(app, "recording-library-panel")),
-            app.debugDescription,
-        )
+        waitForSavedLibrary(in: app)
 
         let row = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Synthetic transcription test recording"),
@@ -148,15 +142,18 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
         let persistence = UITestConditions.element(app, "recording-deletion-persistence-status")
         XCTAssertTrue(persistence.waitForAppearance(), app.debugDescription)
         UITestConditions.value(persistence, equals: "absent")
-        UITestConditions.element(app, "recording-open-saved").tap()
-        XCTAssertTrue(
-            UITestConditions.exists(UITestConditions.element(app, "recording-library-panel")),
-            app.debugDescription,
-        )
+        waitForSavedLibrary(in: app)
         XCTAssertTrue(
             UITestConditions.element(app, "recording-library-empty").waitForAppearance(),
             app.debugDescription,
         )
+    }
+
+    @MainActor
+    private func waitForSavedLibrary(in app: XCUIApplication) {
+        // The standalone visual probe embeds the production library instead of using app navigation.
+        let library = UITestConditions.element(app, "recording-library-panel")
+        XCTAssertTrue(library.waitForAppearance(), app.debugDescription)
     }
 
     /// Uses linear interpolation so baseline and after-run percentiles share one rank convention.
