@@ -208,6 +208,7 @@
 		7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */; };
 		69CCDA09AD7D4D7B894E04FA /* EvidenceSourceDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */; };
 		39E9AC8CE9104B0AA03A6885 /* HealthRecordsDetailDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */; };
+		1B699BBEBD964B2D81FCADDF /* HealthRecordsBoundaryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFC5C17CC7594C949E694656 /* HealthRecordsBoundaryUITestConditions.swift */; };
 		DD0E1503C5F659EDCF21AC66 /* SettingsPrivacyDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */; };
 		D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */; };
 		E19810000000000000000001 /* LocalE5Preparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000011 /* LocalE5Preparation.swift */; };
@@ -374,6 +375,7 @@
 		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
 		975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EvidenceSourceDuoUITests.swift; sourceTree = "<group>"; };
 		691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthRecordsDetailDuoUITests.swift; sourceTree = "<group>"; };
+		EFC5C17CC7594C949E694656 /* HealthRecordsBoundaryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthRecordsBoundaryUITestConditions.swift; sourceTree = "<group>"; };
 		F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsPrivacyDuoUITests.swift; sourceTree = "<group>"; };
 		D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSyncStatusDuoUITests.swift; sourceTree = "<group>"; };
 		B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoUITests.swift; sourceTree = "<group>"; };
@@ -827,6 +829,7 @@
 				F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */,
 				975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */,
 				691FDED6409147479C1031F9 /* HealthRecordsDetailDuoUITests.swift */,
+				EFC5C17CC7594C949E694656 /* HealthRecordsBoundaryUITestConditions.swift */,
 				F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */,
 				D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */,
 				B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */,
@@ -1293,6 +1296,7 @@
 				7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */,
 				69CCDA09AD7D4D7B894E04FA /* EvidenceSourceDuoUITests.swift in Sources */,
 				39E9AC8CE9104B0AA03A6885 /* HealthRecordsDetailDuoUITests.swift in Sources */,
+				1B699BBEBD964B2D81FCADDF /* HealthRecordsBoundaryUITestConditions.swift in Sources */,
 				DD0E1503C5F659EDCF21AC66 /* SettingsPrivacyDuoUITests.swift in Sources */,
 				D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */,
 				6E086CE21AE9090BE1F11E1E /* FeatureEntryDuoUITests.swift in Sources */,

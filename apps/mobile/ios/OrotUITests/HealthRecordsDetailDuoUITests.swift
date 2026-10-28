@@ -18,14 +18,14 @@ extension HealthImportDuoUITests {
             defer { app.terminate() }
             let size = largeText ? "large-text" : "default-text"
             try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-            tapHealthDetail(app, "records-open-health-library")
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "records-open-health-library", owners: [.init(identifier: "navigation-route-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-title"])
             try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-scroll"], name: "health-library-\(size)", testCase: self)
-            tapHealthDetail(app, "health-record-filter-heart_rate")
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-navigation-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
-            tapHealthDetail(app, "health-record-open-detail-heart_rate")
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-open-detail-heart_rate", owners: [.init(identifier: "health-records-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
-            tapHealthDetail(app, "health-record-period-year")
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-period-year", owners: [.init(identifier: "health-records-detail-controls-scroll")], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-period-year").isSelected)
             // Only the page loader supplies these nine session-only measurements; no personal HealthKit read is requested.
             UITestConditions.value(healthDetailNode(app, "health-record-row-0-value"), equals: "60 count/min")
@@ -36,7 +36,7 @@ extension HealthImportDuoUITests {
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             NavigationUITestConditions.route(app, markers: ["health-records-title"])
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
-            tapHealthDetail(app, "health-records-open-health-import")
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-records-open-health-import", owners: [.init(identifier: "health-records-navigation-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
             XCTAssertTrue(healthDetailNode(app, "unified-import-source-selection").exists)
             XCTAssertTrue(healthDetailNode(app, "unified-import-activity").exists)
