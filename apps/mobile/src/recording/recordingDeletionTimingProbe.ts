@@ -5,34 +5,15 @@ import type {
   RecordingDeletionTimingSpan,
 } from './recordingDeletionTiming';
 
-export interface RecordingDeletionTimingEvent {
-  readonly stage: RecordingDeletionTimingMark | RecordingDeletionTimingSpan;
-  readonly phase: 'mark' | 'begin' | 'end';
-  readonly elapsedMs: number;
-  readonly outcome?: RecordingDeletionTimingOutcome;
-}
-
-export interface RecordingDeletionTimingReport {
-  readonly schema: 'orot.recording-deletion-timing.v1';
-  readonly clock: 'performance.now';
-  readonly unit: 'ms';
-  readonly complete: boolean;
-  readonly succeeded: boolean;
-  readonly events: readonly RecordingDeletionTimingEvent[];
-  readonly durationsMs: {
-    readonly confirmationToProgress: number | null;
-    readonly sourceRead: number | null;
-    readonly stopCheck: number | null;
-    readonly audioStaging: number | null;
-    readonly memoryOpen: number | null;
-    readonly derivedDataCleanup: number | null;
-    readonly databaseDeleteCommit: number | null;
-    readonly audioCleanup: number | null;
-    readonly audioCleanupToListRefresh: number | null;
-    readonly confirmationToListRefresh: number | null;
-    readonly listSummaryRead: number | null;
-  };
-}
+import type {
+  RecordingDeletionTimingReport,
+  RecordingDeletionTimingEvent,
+} from './recordingDeletionTimingReport';
+import type { RecordingDeletionTrace } from './recordingDeletionTrace';
+export type {
+  RecordingDeletionTimingReport,
+  RecordingDeletionTimingEvent,
+} from './recordingDeletionTimingReport';
 
 /** Collects one opt-in sample without storing a recording identity or content. */
 export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProbeContract {
@@ -45,17 +26,26 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
   constructor(
     private readonly now: () => number = () => performance.now(),
     private readonly onReport?: (report: RecordingDeletionTimingReport) => void,
+    readonly trace?: RecordingDeletionTrace,
   ) {}
 
   mark(stage: RecordingDeletionTimingMark): void {
-    if (this.startedAt === null && stage !== 'confirmation-tap') return;
-    if (this.markedStages.has(stage)) return;
+    this.trace?.record('mark-entry', { stage });
+    if (this.startedAt === null && stage !== 'confirmation-tap') {
+      this.trace?.record('mark-not-started', { stage });
+      return;
+    }
+    if (this.markedStages.has(stage)) {
+      this.trace?.record('mark-duplicate', { stage });
+      return;
+    }
     const at = this.now();
     if (stage === 'confirmation-tap' && this.startedAt === null) {
       this.startedAt = at;
     }
     this.markedStages.add(stage);
     this.record(stage, 'mark', at);
+    this.trace?.record('mark-accepted', { stage });
     if (
       stage === 'list-refresh' ||
       stage === 'list-summary-refresh' ||
@@ -221,8 +211,11 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
       return;
     this.reportedEventCount = this.events.length;
     try {
+      this.trace?.beginReport(this.events.length);
       this.onReport(this.snapshot());
+      this.trace?.record('report-return');
     } catch {
+      this.trace?.record('report-exception');
       // Report delivery is diagnostic and cannot affect the screen update.
     }
   }

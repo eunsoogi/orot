@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { RecordingDeletionTrace } from './recordingDeletionTrace';
 
 export type RecordingDeletionTimingMark =
   | 'confirmation-tap'
@@ -20,6 +21,7 @@ export type RecordingDeletionTimingOutcome = 'success' | 'failure';
 
 /** The opt-in observer records only deletion stage names and monotonic elapsed time. */
 export interface RecordingDeletionTimingProbe {
+  readonly trace?: RecordingDeletionTrace;
   mark(stage: RecordingDeletionTimingMark): void;
   begin(stage: RecordingDeletionTimingSpan): void;
   end(

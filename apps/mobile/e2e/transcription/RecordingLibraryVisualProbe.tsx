@@ -13,10 +13,7 @@ import {
 } from '../../src/recording/nativeRecordingBridge';
 import { recordingService } from '../../src/recording/recordingService';
 import { recordingLibraryService } from '../../src/recording/recordingLibraryService';
-import {
-  RecordingDeletionTimingProbe,
-  type RecordingDeletionTimingReport,
-} from '../../src/recording/recordingDeletionTimingProbe';
+import { useRecordingDeletionProbe } from './useRecordingDeletionProbe';
 import {
   RecordingDeletionObservations,
   RecordingDeletionScenarioControls,
@@ -41,8 +38,6 @@ export function RecordingLibraryVisualProbe() {
   const [deletionPersistenceStatus, setDeletionPersistenceStatus] = useState<
     string | null
   >(null);
-  const [deletionTimingReport, setDeletionTimingReport] =
-    useState<RecordingDeletionTimingReport | null>(null);
   const [playbackObservation, setPlaybackObservation] =
     useState<PlaybackObservation | null>(null);
   const transcriptService = useMemo(() => {
@@ -102,13 +97,8 @@ export function RecordingLibraryVisualProbe() {
       ? configuredDeletionScenario
       : null;
   const deletionScenarioProbe = useRecordingDeletionScenario(deletionScenario);
-  const deletionTimingProbe = useMemo(
-    () =>
-      deletionTimingEnabled
-        ? new RecordingDeletionTimingProbe(undefined, setDeletionTimingReport)
-        : null,
-    [deletionTimingEnabled],
-  );
+  const { probe: deletionTimingProbe, report: deletionTimingReport } =
+    useRecordingDeletionProbe(deletionTimingEnabled);
   const playbackService = useMemo(
     () =>
       observedPlaybackService(
