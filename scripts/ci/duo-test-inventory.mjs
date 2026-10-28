@@ -2,6 +2,7 @@
 export const duoTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
+  'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
   // Child boundary measurements share the read-only Core journey without a rotation prerequisite.
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
   'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
