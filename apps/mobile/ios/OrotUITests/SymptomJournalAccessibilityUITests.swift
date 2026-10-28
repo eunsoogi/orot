@@ -23,13 +23,13 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self)
         let description = "오후부터 손끝이 저리고 오래 앉아 있으면 불편해요.\n쉬어도 같은 느낌이 이어져 기록해요."
         try openForm(app)
-        fill(app, "symptom-description", description)
+        guard fill(app, "symptom-description", description) else { return }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         let largeFont = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-korean-light")
         XCTAssertGreaterThan(largeFont, baselineFont, "The actual Korean input must grow from its measured default font")
-        fill(app, "symptom-onset-date", "2026-10-28")
+        guard fill(app, "symptom-onset-date", "2026-10-28") else { return }
         try tapFinal(app, "symptom-status-active", stage: "large-korean-active")
-        fill(app, "symptom-onset-time", "09:30")
+        guard fill(app, "symptom-onset-time", "09:30") else { return }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         // The public form drag may dismiss the real keyboard; final-button containment is still measured before the tap.
         try tapFinal(app, "symptom-save", stage: "large-korean-first-save")
@@ -56,7 +56,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
 
         try openForm(app)
         let canceled = "저장하지 않을 긴 한국어 증상 기록이에요.\n화면을 내려 닫기를 눌러 취소해요."
-        fill(app, "symptom-description", canceled)
+        guard fill(app, "symptom-description", canceled) else { return }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         try tapFinal(app, "symptom-form-cancel", stage: "large-korean-cancel")
         XCTAssertFalse(app.staticTexts[canceled].exists)
@@ -90,11 +90,13 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(app.textViews["symptom-description"]))
     }
 
-    /// Reuse the existing real-focus and measured-scroll input helper rather than injecting draft state.
+    /// Keep the failed XCTest assertion while letting callers stop before dependent keyboard or Save steps.
     @MainActor
-    private func fill(_ app: XCUIApplication, _ identifier: String, _ text: String) {
+    private func fill(_ app: XCUIApplication, _ identifier: String, _ text: String) -> Bool {
         let input = identifier == "symptom-description" ? app.textViews[identifier] : app.textFields[identifier]
-        XCTAssertTrue(FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll"))
+        let completed = FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll")
+        XCTAssertTrue(completed)
+        return completed
     }
 
     @MainActor
