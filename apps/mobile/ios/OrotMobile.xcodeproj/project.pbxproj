@@ -73,6 +73,7 @@
 		9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */; };
 		C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */; };
 		A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */; };
+		081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
@@ -341,6 +342,7 @@
 		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
 		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
 		A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomJournalUITests.swift; sourceTree = "<group>"; };
+		6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomJournalRecoveryUITests.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
@@ -846,6 +848,7 @@
 				B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */,
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
 				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
+				6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
 				E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */,
 				1862B9BC72394CB4A17A0580 /* FormFocusedInputConditions.swift */,
@@ -1306,6 +1309,7 @@
 				A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */,
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
 				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
+				081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,
 				876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */,
 				D07B0333F0F848AA9E9B56D4 /* FormFocusedInputConditions.swift in Sources */,
