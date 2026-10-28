@@ -1,7 +1,9 @@
 import { Pressable, Text, View } from 'react-native';
+import { t } from '../i18n';
 import TextInput from './SymptomTextInput';
 import type { SymptomEntry } from '@orot/storage';
 import styles from './SymptomForm.styles';
+import { symptomStatusLabel } from './presentation';
 
 interface SymptomCreateFieldsProps {
   inputAccessoryViewIDs: {
@@ -37,10 +39,12 @@ export default function SymptomCreateFields({
 }: SymptomCreateFieldsProps) {
   return (
     <>
-      <Text style={styles.fieldLabel}>When it started (your local time)</Text>
+      <Text style={styles.fieldLabel}>
+        {t('symptoms.journal.form.onset.title')}
+      </Text>
       <View style={styles.row}>
         <TextInput
-          accessibilityLabel="Symptom onset date"
+          accessibilityLabel={t('symptoms.journal.form.onset.date')}
           inputAccessoryViewID={inputAccessoryViewIDs.onsetDate}
           onChangeText={setOnsetDate}
           placeholder="YYYY-MM-DD"
@@ -49,7 +53,7 @@ export default function SymptomCreateFields({
           value={onsetDate}
         />
         <TextInput
-          accessibilityLabel="Symptom onset time"
+          accessibilityLabel={t('symptoms.journal.form.onset.time')}
           inputAccessoryViewID={inputAccessoryViewIDs.onsetTime}
           onChangeText={setOnsetTime}
           placeholder="HH:MM"
@@ -58,7 +62,9 @@ export default function SymptomCreateFields({
           value={onsetTime}
         />
       </View>
-      <Text style={styles.fieldLabel}>Status</Text>
+      <Text style={styles.fieldLabel}>
+        {t('symptoms.journal.form.status.title')}
+      </Text>
       <View style={styles.row}>
         <Pressable
           accessibilityRole="radio"
@@ -70,7 +76,7 @@ export default function SymptomCreateFields({
           ]}
           testID="symptom-status-active"
         >
-          <Text>Active</Text>
+          <Text>{symptomStatusLabel('active')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="radio"
@@ -82,17 +88,17 @@ export default function SymptomCreateFields({
           ]}
           testID="symptom-status-resolved"
         >
-          <Text>Resolved</Text>
+          <Text>{symptomStatusLabel('resolved')}</Text>
         </Pressable>
       </View>
       {status === 'resolved' ? (
         <>
           <Text style={styles.fieldLabel}>
-            When it resolved (your local time)
+            {t('symptoms.journal.form.resolved.title')}
           </Text>
           <View style={styles.row}>
             <TextInput
-              accessibilityLabel="Symptom resolution date"
+              accessibilityLabel={t('symptoms.journal.form.resolved.date')}
               inputAccessoryViewID={inputAccessoryViewIDs.resolvedDate}
               onChangeText={setResolvedDate}
               placeholder="YYYY-MM-DD"
@@ -101,7 +107,7 @@ export default function SymptomCreateFields({
               value={resolvedDate}
             />
             <TextInput
-              accessibilityLabel="Symptom resolution time"
+              accessibilityLabel={t('symptoms.journal.form.resolved.time')}
               inputAccessoryViewID={inputAccessoryViewIDs.resolvedTime}
               onChangeText={setResolvedTime}
               placeholder="HH:MM"

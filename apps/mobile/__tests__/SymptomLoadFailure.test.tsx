@@ -45,7 +45,7 @@ it('shows an initial list error and lets the user retry successfully', async () 
   );
 
   expect(await screen.findByTestId('symptoms-load-error')).toHaveTextContent(
-    'Symptoms could not be loaded. Try again.',
+    '증상 기록을 불러오지 못했어요. 다시 시도해 주세요.',
   );
   await fireEvent.press(screen.getByTestId('symptoms-retry-list'));
   expect(
@@ -68,18 +68,18 @@ it('hides stale results after a filtered list error and retries the selected fil
 
   expect(
     await screen.findByTestId('symptom-stale-active-status'),
-  ).toHaveTextContent('Active');
+  ).toHaveTextContent('계속되고 있어요');
   await fireEvent.press(screen.getByTestId('symptom-filter-resolved'));
 
   expect(await screen.findByTestId('symptoms-load-error')).toHaveTextContent(
-    'Symptoms could not be loaded. Try again.',
+    '증상 기록을 불러오지 못했어요. 다시 시도해 주세요.',
   );
   expect(screen.queryByTestId('symptom-stale-active')).toBeNull();
   await fireEvent.press(screen.getByTestId('symptoms-retry-list'));
 
   expect(
     await screen.findByTestId('symptom-recovered-resolved-status'),
-  ).toHaveTextContent('Resolved');
+  ).toHaveTextContent('나아졌어요');
   expect(list).toHaveBeenNthCalledWith(2, { status: 'resolved' });
   expect(list).toHaveBeenNthCalledWith(3, { status: 'resolved' });
 });

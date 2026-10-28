@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button, Text, View } from 'react-native';
+import { t } from '../i18n';
 import SymptomFilters from './SymptomFilters';
 import styles from './SymptomsScreen.styles';
 import type { SymptomFilter } from './types';
@@ -30,18 +31,18 @@ export default function SymptomListPanel({
           style={styles.title}
           testID="symptoms-title"
         >
-          Symptoms
+          {t('symptoms.title')}
         </Text>
         {backButtonVisible ? (
-          <Button onPress={onBack} testID="symptoms-back" title="Back" />
+          <Button
+            onPress={onBack}
+            testID="symptoms-back"
+            title={t('symptoms.journal.back')}
+          />
         ) : null}
       </View>
-      <Text style={styles.message}>
-        Record what you notice in your own words.
-      </Text>
-      <Text style={styles.hint}>
-        Journal entries are user-entered and not clinician-confirmed.
-      </Text>
+      <Text style={styles.message}>{t('symptoms.description')}</Text>
+      <Text style={styles.hint}>{t('symptoms.journal.provenance')}</Text>
       {error ? (
         <Text
           accessibilityRole="alert"
