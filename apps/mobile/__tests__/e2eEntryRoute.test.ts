@@ -118,6 +118,12 @@ describe('Test entry routing', () => {
     ).toBe('ai-feature-visit-questions');
   });
 
+  it('opens the symptom save-recovery route only through its explicit E2E selector', () => {
+    expect(
+      selectEntryRoute({ OROT_E2E_PROBE: 'symptom-journal-save-recovery' }),
+    ).toBe('symptom-journal-save-recovery');
+  });
+
   it('rejects unknown and conflicting test-only selectors', () => {
     expect(() => selectEntryRoute({ OROT_E2E_PROBE: 'unknown' })).toThrow(
       'Unsupported OROT_E2E_PROBE value',
