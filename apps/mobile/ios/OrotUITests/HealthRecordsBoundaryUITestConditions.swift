@@ -21,9 +21,10 @@ enum HealthRecordsBoundaryUITestConditions {
             while true {
                 let window = app.windows.firstMatch.frame
                 let content = UITestConditions.element(app, "navigation-content-region").frame
-                let viewport = scroll.frame.intersection(window).intersection(content)
+                let scrollFrame = scroll.frame
+                let viewport = scrollFrame.intersection(window).intersection(content)
                 let frame = target.frame
-                try NavigationUITestConditions.panelSnapshot(app, frames: ["window": window, "owner": scroll.frame, "viewport": viewport, "target": frame], testCase: testCase)
+                try NavigationUITestConditions.panelSnapshot(app, frames: ["window": window, "owner": scrollFrame, "viewport": viewport, "target": frame], testCase: testCase)
                 guard !viewport.isNull, !viewport.isEmpty, !frame.isEmpty else {
                     XCTFail("The actual scroll owner and target need finite visible frames: \(owner.identifier)")
                     return
@@ -55,10 +56,11 @@ enum HealthRecordsBoundaryUITestConditions {
                                     y: owner.horizontal ? viewport.midY : viewport.minY + viewport.height * (towardStart ? 0.25 : 0.75))
                 let end = CGPoint(x: start.x + (owner.horizontal ? viewport.width * (towardStart ? 0.45 : -0.45) : 0),
                                   y: start.y + (owner.horizontal ? 0 : viewport.height * (towardStart ? 0.45 : -0.45)))
-                let origin = app.coordinate(withNormalizedOffset: .zero)
-                let applicationOrigin = app.frame.origin
-                let from = origin.withOffset(CGVector(dx: start.x - applicationOrigin.x, dy: start.y - applicationOrigin.y))
-                let to = origin.withOffset(CGVector(dx: end.x - applicationOrigin.x, dy: end.y - applicationOrigin.y))
+                // The measured owner also anchors input, preserving its native display instead of the application's default display.
+                let origin = scroll.coordinate(withNormalizedOffset: .zero)
+                let ownerOrigin = scrollFrame.origin
+                let from = origin.withOffset(CGVector(dx: start.x - ownerOrigin.x, dy: start.y - ownerOrigin.y))
+                let to = origin.withOffset(CGVector(dx: end.x - ownerOrigin.x, dy: end.y - ownerOrigin.y))
                 from.press(forDuration: 0.05, thenDragTo: to)
                 gestures += 1
             }
