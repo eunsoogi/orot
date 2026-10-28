@@ -92,7 +92,7 @@ test('recording leaves schedule controls, transcript review and playback with co
     'playback',
   ]);
   for (const [id, count] of [
-    ['controls', 3],
+    ['controls', 6],
     ['review', 2],
     ['playback', 2],
   ]) {
