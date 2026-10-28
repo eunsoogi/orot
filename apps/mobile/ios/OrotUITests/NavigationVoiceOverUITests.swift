@@ -124,6 +124,7 @@ extension RootNavigationUITests {
             payload["sampleStartedAtMs"] = geometry["sampleStartedAtMs"]
             payload["sampleEndedAtMs"] = ended
             payload["homeFocus"] = focus
+            payload["appVoiceOver"] = geometry["appVoiceOver"]
         } catch {
             payload["status"] = "error"
             payload["snapshotReturnedAtMs"] = Date().timeIntervalSince1970 * 1000

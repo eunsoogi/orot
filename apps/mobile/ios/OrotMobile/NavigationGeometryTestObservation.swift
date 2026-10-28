@@ -6,6 +6,21 @@
         /// Returns the active app window and root safe area without reading route or screen content.
         static func snapshot(identity: ((NSObject) -> String)? = nil) -> [String: Any] {
             precondition(Thread.isMainThread)
+            guard let identity else { return geometrySnapshot(identity: nil) }
+            // A nil focus does not imply VoiceOver is disabled. Sample the app-side public flag separately.
+            let running = UIAccessibility.isVoiceOverRunning
+            let readAtMs = Date().timeIntervalSince1970 * 1000
+            var result = geometrySnapshot(identity: identity)
+            result["appVoiceOver"] = voiceOverState(running: running, readAtMs: readAtMs)
+            return result
+        }
+
+        /// A fixed metadata schema prevents the diagnostic channel from accepting focused content.
+        static func voiceOverState(running: Bool, readAtMs: Double) -> [String: Any] {
+            ["running": running, "readAtMs": readAtMs.isFinite ? readAtMs as Any : NSNull(), "timestampUnits": "unix-milliseconds"]
+        }
+
+        private static func geometrySnapshot(identity: ((NSObject) -> String)?) -> [String: Any] {
             let started = Date().timeIntervalSince1970 * 1000
             let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
             let visibleKeys = windows.filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }

@@ -13,6 +13,9 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         XCTAssertTrue(decoded["y"] is NSNull)
         XCTAssertEqual(decoded["width"] as? Double, 40)
         XCTAssertEqual(decoded["height"] as? Double, 44)
+        let state = NavigationGeometryTestObservation.voiceOverState(running: false, readAtMs: .nan)
+        XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: state))
+        XCTAssertTrue(state["readAtMs"] is NSNull)
     }
 
     @MainActor
@@ -40,6 +43,10 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
 
     @MainActor
     func testFocusIdentityNeverReadsOrExportsFocusedContent() throws {
+        let state = NavigationGeometryTestObservation.voiceOverState(running: true, readAtMs: 1000)
+        XCTAssertEqual(Set(state.keys), Set(["running", "readAtMs", "timestampUnits"]))
+        XCTAssertEqual(state["running"] as? Bool, true)
+        XCTAssertEqual(state["readAtMs"] as? Double, 1000)
         let window = try makeWindow()
         let home = UIButton(frame: CGRect(x: 400, y: 200, width: 48, height: 52))
         let known = UIButton(), opaque = PrivateFocusView()
