@@ -120,12 +120,17 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     private var selectedFrame: CGRect? {
         guard let index = descriptors.firstIndex(where: \.selected), buttons.indices.contains(index) else { return nil }
         guard buttons[index].bounds.width > 0, buttons[index].bounds.height > 0 else { return nil }
-        return buttons[index].convert(buttons[index].bounds, to: contentView).insetBy(dx: 2, dy: 2)
+        let buttonFrame = buttons[index].convert(buttons[index].bounds, to: contentView)
+        // The visual selection is a centered circle; the original rectangular hit target remains unchanged.
+        let diameter = max(0, min(buttonFrame.width, buttonFrame.height) - 4)
+        return CGRect(x: buttonFrame.midX - diameter / 2, y: buttonFrame.midY - diameter / 2,
+                      width: diameter, height: diameter)
     }
 
     private func moveIndicator(animated: Bool) {
         guard let frame = selectedFrame else { indicator.isHidden = true; return }
         indicator.isHidden = false
+        indicator.layer.cornerRadius = frame.width / 2
         guard animated, !UIAccessibility.isReduceMotionEnabled, !indicator.frame.isEmpty else {
             indicator.layer.removeAllAnimations()
             indicator.frame = frame

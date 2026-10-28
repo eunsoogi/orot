@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { NavigationGeometryProvider } from '../NavigationGeometryProvider';
-import type { NavigationGeometryPayload } from '../navigationGeometry';
+import { dividedGeometry as duoGeometry } from '../__fixtures__/navigationOpenGeometry';
 import { NavigationActionBar } from '../NavigationActionBar';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
 import { NavigationViewport } from '../NavigationViewport';
@@ -19,6 +19,7 @@ jest.mock('react-native-safe-area-context', () => {
 
   return {
     SafeAreaInsetsContext: React.createContext(null),
+    SafeAreaProvider: NativeView,
     SafeAreaView: ({
       children,
       edges,
@@ -118,28 +119,6 @@ function NavigationFixture({ showPrimary }: { readonly showPrimary: boolean }) {
   );
 }
 
-const duoGeometry: NavigationGeometryPayload = {
-  windowBounds: { x: 0, y: 0, width: 1000, height: 900 },
-  safeAreaInsets: { top: 40, right: 22, bottom: 30, left: 14 },
-  reservedRegionsSupported: true,
-  reservedRegions: [
-    {
-      id: 'display-division',
-      kind: 'division',
-      frame: { x: 450, y: 0, width: 40, height: 900 },
-      margins: { top: 0, right: 0, bottom: 0, left: 0 },
-      isActive: true,
-    },
-    {
-      id: 'top-indicator',
-      kind: 'occlusion',
-      frame: { x: 760, y: 0, width: 100, height: 80 },
-      margins: { top: 0, right: 0, bottom: 0, left: 0 },
-      isActive: true,
-    },
-  ],
-};
-
 beforeEach(() => {
   lifecycle.mounted = 0;
   lifecycle.unmounted = 0;
@@ -167,7 +146,9 @@ test('moves root actions into the right lane without losing route state or botto
     StyleSheet.flatten(
       screen.getByTestId('navigation-content-region').props.style,
     ),
-  ).toEqual(expect.objectContaining({ paddingBottom: 30, right: 60 }));
+  ).toEqual(
+    expect.objectContaining({ bottom: 30, right: 72, top: 40, left: 14 }),
+  );
   expect(
     screen.getByTestId('navigation-safe-area-content').props.accessibilityHint,
   ).toBe('top,left');
@@ -191,7 +172,7 @@ test('moves root actions into the right lane without losing route state or botto
 
   // The right lane reserves the system bottom once, leaving only the real action overlap for scrolling.
   await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
-    nativeEvent: { layout: { height: 900, width: 918, x: 0, y: 0 } },
+    nativeEvent: { layout: { height: 830, width: 914, x: 14, y: 40 } },
   });
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 828 } },
@@ -238,6 +219,10 @@ test('moves root actions into the right lane without losing route state or botto
       screen.getByTestId('navigation-content-region').props.style,
     ),
   ).toEqual({ flex: 1 });
+  // Bottom placement restores the full host; this is a new native layout observation.
+  await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
+    nativeEvent: { layout: { height: 900, width: 1000, x: 0, y: 0 } },
+  });
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 72, width: 1000, x: 0, y: 828 } },
   });

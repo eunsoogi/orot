@@ -53,10 +53,14 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testRightRailKeepsAccessibleRootAndContextualNavigation() throws {
-        let app = launch()
+        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         XCTAssertTrue(home.control.isSelected)
+        let selection = UITestConditions.element(app, "navigation-root-selection-indicator")
+        XCTAssertTrue(selection.exists)
+        XCTAssertEqual(selection.frame.width, selection.frame.height, accuracy: 0.5)
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "right-rail-native-geometry")
         XCTAssertEqual(home.control.label, "홈 탭")
         XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(home.toolbar.frame.height, home.toolbar.frame.width)

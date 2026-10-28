@@ -6,7 +6,7 @@ import UIKit
 final class NavigationWindowRailHost: UIView {
     private weak var owner: UIView?
 
-    func mount(for owner: UIView, availableHeight: CGFloat) -> UIView? {
+    func mount(for owner: UIView, availableHeight: CGFloat, side: String = "right") -> UIView? {
         guard let window = owner.window, availableHeight > 0, owner.bounds.width > 0 else {
             removeFromSuperview()
             return nil
@@ -17,7 +17,7 @@ final class NavigationWindowRailHost: UIView {
         }
         guard let controller = responder as? UIViewController else { return nil }
         let root = controller.view!
-        let windowFrame = CGRect(x: window.bounds.maxX - owner.bounds.width, y: window.bounds.minY,
+        let windowFrame = CGRect(x: side == "left" ? window.bounds.minX : window.bounds.maxX - owner.bounds.width, y: window.bounds.minY,
                                  width: owner.bounds.width, height: min(availableHeight, window.bounds.height))
         let target = root.convert(windowFrame, from: window)
         // A contracted controller is not a window host. Never move controls past
@@ -74,7 +74,7 @@ enum NavigationRailConstraints {
             rootBar.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             rootBar.widthAnchor.constraint(equalToConstant: NavigationRootGlassBar.exteriorWidth),
             rootBar.heightAnchor.constraint(equalToConstant: NavigationRootGlassBar.railHeight),
-            rootBar.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            rootBar.centerYAnchor.constraint(equalTo: host.centerYAnchor),
             innerActions.leadingAnchor.constraint(equalTo: host.leadingAnchor),
             innerActions.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             innerActions.topAnchor.constraint(equalTo: host.topAnchor),

@@ -44,7 +44,7 @@ export interface NavigationGlassSurfaceProps {
   readonly testID: string;
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
-  readonly layoutMode?: 'bottom' | 'right';
+  readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
@@ -55,7 +55,7 @@ export interface NavigationGlassSurfaceProps {
 interface NavigationGlassNativeProps extends ViewProps {
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
-  readonly layoutMode?: 'bottom' | 'right';
+  readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;

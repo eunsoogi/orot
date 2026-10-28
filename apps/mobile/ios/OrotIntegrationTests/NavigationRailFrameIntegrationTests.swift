@@ -63,6 +63,12 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let rootFrame = root.convert(root.bounds, to: window)
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
+        // The root stack is centered below the real indicator, independently of its fixed hit targets.
+        XCTAssertEqual(rootFrame.midY, (192 + 669 - 46) / 2, accuracy: 0.5)
+        let selection = try XCTUnwrap(root.contentView.subviews.first {
+            $0.accessibilityIdentifier == "navigation-root-selection-indicator"
+        })
+        XCTAssertEqual(selection.bounds.width, selection.bounds.height, accuracy: 0.5)
         let rootStack = try XCTUnwrap(root.contentView.subviews.compactMap { $0 as? UIStackView }.first)
         rootStack.layoutIfNeeded()
         let rootButtons = rootStack.arrangedSubviews.compactMap { $0 as? UIButton }

@@ -30,6 +30,11 @@ export interface NavigationGeometryPayload {
   readonly safeAreaInsets: NavigationGeometryInsets;
   readonly reservedRegionsSupported: boolean;
   readonly reservedRegions: readonly NavigationReservedRegion[];
+  /** UIKit hinge identity persists when the folded display has no division region. */
+  readonly hasHinge?: boolean;
+  /** Actual mounted side controls, reported after UIKit layout; defaults are used only before measurement. */
+  readonly navigationWidth?: number;
+  readonly navigationFrame?: NavigationGeometryRect;
 }
 
 export interface NavigationGeometrySnapshot extends NavigationGeometryPayload {
@@ -135,7 +140,13 @@ export function createNavigationGeometrySnapshot(
       !isFiniteRect(payload.viewportBounds)) ||
     !isNonNegativeInsets(payload.safeAreaInsets) ||
     typeof payload.reservedRegionsSupported !== 'boolean' ||
-    !Array.isArray(payload.reservedRegions)
+    !Array.isArray(payload.reservedRegions) ||
+    (payload.hasHinge !== undefined && typeof payload.hasHinge !== 'boolean') ||
+    (payload.navigationWidth !== undefined &&
+      (!Number.isFinite(payload.navigationWidth) ||
+        payload.navigationWidth <= 0)) ||
+    (payload.navigationFrame !== undefined &&
+      !isFiniteRect(payload.navigationFrame))
   ) {
     return null;
   }

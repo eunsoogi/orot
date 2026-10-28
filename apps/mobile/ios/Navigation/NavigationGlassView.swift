@@ -99,11 +99,12 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     override func layoutSubviews() {
-        let host = layoutMode == "right" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) : nil
+        let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode) : nil
         if rootBar.superview !== (host ?? self) {
             updatePresentation()
         }
         super.layoutSubviews()
+        NavigationSurfaceGeometry.publish(rootBar.isHidden ? innerActions : rootBar, side: layoutMode, actions: renderedActions)
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
@@ -131,9 +132,9 @@ final class NavigationGlassSurfaceView: UIView {
 
     /// Reparents existing controls into a window-coordinate host without changing action identity.
     private func updatePresentation() {
-        let usesRightRail = layoutMode == "right"
+        let usesRightRail = layoutMode != "bottom"
         NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
-        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) ?? self : self
+        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode) ?? self : self
         if rootBar.superview !== host {
             for view in [rootBar, innerActions] {
                 host.addSubview(view)
@@ -145,9 +146,11 @@ final class NavigationGlassSurfaceView: UIView {
         }
         bottomPlacementConstraints.forEach { $0.isActive = !usesRightRail }
         railPlacementConstraints.forEach { $0.isActive = usesRightRail }
-        railPlacementConstraints[0].constant = -railRightInset
-        railPlacementConstraints[3].constant = -railBottomInset
-        railPlacementConstraints[5].constant = -railRightInset
+        // Mirror the measured lane for left-side multitasking; the legacy inset property is edge-relative.
+        railPlacementConstraints[0].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
+        railPlacementConstraints[3].constant = (railTopInset - railBottomInset) / 2
+        railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
+        railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
         railPlacementConstraints[6].constant = railTopInset
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
@@ -210,8 +213,8 @@ final class NavigationGlassSurfaceView: UIView {
 
     /// Changes the compact Home width in place while Back remains 48pt in either layout.
     private func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton) {
-        NavigationGlassButton.setUsesRightRail(layoutMode == "right", for: action, button: button)
-        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode == "right") else {
+        NavigationGlassButton.setUsesRightRail(layoutMode != "bottom", for: action, button: button)
+        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode != "bottom") else {
             contextualButtonFixedWidthConstraints.removeValue(forKey: action.id)?.isActive = false
             return
         }

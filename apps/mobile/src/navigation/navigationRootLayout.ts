@@ -56,6 +56,10 @@ export interface RightNavigationRootLayout {
   readonly placement: 'right';
   readonly reservedRightWidth: number;
   readonly contentWidth: number;
+  /** Legacy placement discriminator stays stable; side identifies the observed system edge. */
+  readonly railSide?: 'left' | 'right';
+  readonly reservedLeftWidth?: number;
+  readonly railWidth?: number;
   readonly windowHeight: number;
   readonly railTopInset: number;
   readonly railBottomInset: number;
@@ -76,119 +80,111 @@ export const NavigationRootLayoutContext = createContext<NavigationRootLayout>(
   BOTTOM_NAVIGATION_ROOT_LAYOUT,
 );
 
-/** Uses one measured result for the viewport reservation and the root Glass placement. */
+/** Resolves controls and content in window coordinates, consuming each native edge once. */
 export function resolveNavigationRootLayout(
   geometry: NavigationGeometrySnapshot | null,
 ): NavigationRootLayout {
   if (!geometry?.reservedRegionsSupported) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
-
-  // Custom bars use window-side space, independently of content safe-area
-  // containment. UIKit reserved frames already include their margins.
-  const railRightInset = NAVIGATION_ROOT_RAIL_GUTTER;
-  const railLaneWidth = NAVIGATION_ROOT_RAIL_WIDTH + railRightInset;
-  const viewport = geometry.viewportBounds ?? geometry.windowBounds;
-  const windowRight = geometry.windowBounds.x + geometry.windowBounds.width;
+  const window = geometry.windowBounds;
+  const viewport = geometry.viewportBounds ?? window;
+  const windowRight = window.x + window.width;
+  const windowBottom = window.y + window.height;
+  const divisions = geometry.reservedRegions.filter(
+    region =>
+      region.kind === 'division' &&
+      region.frame.width > 0 &&
+      region.frame.height > 0 &&
+      region.frame.x < windowRight &&
+      region.frame.x + region.frame.width > window.x &&
+      region.frame.y < windowBottom &&
+      region.frame.y + region.frame.height > window.y,
+  );
+  // OS support and window width do not identify a Duo. A real hinge remains present when closed.
+  if (!(geometry.hasHinge ?? divisions.length > 0))
+    return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+  const side =
+    geometry.safeAreaInsets.left > geometry.safeAreaInsets.right
+      ? 'left'
+      : 'right';
+  const width = geometry.navigationWidth ?? NAVIGATION_ROOT_RAIL_WIDTH;
+  const laneWidth = Math.max(
+    geometry.safeAreaInsets[side],
+    width + 2 * NAVIGATION_ROOT_RAIL_GUTTER,
+  );
+  const railRightInset = (laneWidth - width) / 2;
+  const railLeft =
+    side === 'right'
+      ? windowRight - laneWidth + railRightInset
+      : window.x + railRightInset;
+  const railRight = railLeft + width;
+  const contentLeft = Math.max(
+    viewport.x,
+    geometry.safeAreaFrame.x,
+    side === 'left' ? window.x + laneWidth : window.x,
+  );
   const contentRight = Math.min(
     viewport.x + viewport.width,
-    windowRight - Math.max(geometry.safeAreaInsets.right, railLaneWidth),
+    geometry.safeAreaFrame.x + geometry.safeAreaFrame.width,
+    side === 'right' ? windowRight - laneWidth : windowRight,
   );
-  const reservedRightWidth = Math.max(
-    0,
-    viewport.x + viewport.width - contentRight,
-  );
+  const contentWidth = Math.max(0, contentRight - contentLeft);
+  if (contentWidth < NAVIGATION_MINIMUM_COLUMN_WIDTH)
+    return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+
+  // Active seams still need a readable content region opposite the controls. Inactive frames never carve panels.
+  if (
+    divisions.some(
+      division =>
+        division.isActive &&
+        !geometry.usableRegions.some(
+          region =>
+            region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH &&
+            (side === 'right'
+              ? region.x + region.width <= division.frame.x + 1
+              : region.x >= division.frame.x + division.frame.width - 1),
+        ),
+    )
+  )
+    return BOTTOM_NAVIGATION_ROOT_LAYOUT;
   const railGeometry = createNavigationGeometrySnapshot({
     ...geometry,
-    viewportBounds: geometry.windowBounds,
+    viewportBounds: window,
     safeAreaInsets: { ...geometry.safeAreaInsets, left: 0, right: 0 },
   });
-  if (!railGeometry) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
-  const railLeft = windowRight - railLaneWidth;
-  const railRight = railLeft + NAVIGATION_ROOT_RAIL_WIDTH;
-  const windowBottom = geometry.windowBounds.y + geometry.windowBounds.height;
-  const usableBottom = geometry.safeAreaFrame.y + geometry.safeAreaFrame.height;
-  const reachesBottom = (
-    region: NavigationGeometrySnapshot['usableRegions'][number],
-  ) =>
-    region.y + region.height >= usableBottom - 1 &&
-    region.height >= geometry.safeAreaFrame.height * 0.6;
-
-  for (const division of geometry.reservedRegions) {
-    if (
-      division.kind !== 'division' ||
-      division.frame.width <= 0 ||
-      division.frame.height <= 0 ||
-      division.frame.x >= windowRight ||
-      division.frame.x + division.frame.width <= geometry.windowBounds.x ||
-      division.frame.y >= windowBottom ||
-      division.frame.y + division.frame.height <= geometry.windowBounds.y
-    ) {
-      continue;
-    }
-
-    const dividerLeft = division.frame.x;
-    const dividerRight = dividerLeft + division.frame.width;
-    // An inactive native division declares geometry but does not split content.
-    // Allocate the readable column beside the rail within the existing usable
-    // rectangle; never manufacture panels from an inactive frame.
-    const leftPanelIsReadable = geometry.usableRegions.some(
+  const segment = railGeometry?.usableRegions
+    .filter(
       region =>
-        (division.isActive
-          ? region.x + region.width <= dividerLeft + 1 &&
-            region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH
-          : region.width >= NAVIGATION_MINIMUM_COLUMN_WIDTH + railLaneWidth &&
-            Math.min(region.x + region.width, railLeft) - region.x >=
-              NAVIGATION_MINIMUM_COLUMN_WIDTH) && reachesBottom(region),
-    );
-    const rightPanelFitsRail =
-      !division.isActive ||
-      geometry.usableRegions.some(
-        region =>
-          region.x >= dividerRight - 1 &&
-          region.width >=
-            NAVIGATION_ROOT_RAIL_WIDTH + NAVIGATION_ROOT_RAIL_GUTTER &&
-          reachesBottom(region),
-      );
-    if (!leftPanelIsReadable || !rightPanelFitsRail) continue;
-
-    const topRailRegion = railGeometry.usableRegions
-      .filter(
-        region =>
-          region.x <= railLeft + 1 &&
-          region.x + region.width >= railRight - 1 &&
-          reachesBottom(region),
-      )
-      .sort((first, second) => first.y - second.y)[0];
-    if (!topRailRegion) continue;
-
-    const railBoundary = Math.max(geometry.safeAreaFrame.y, topRailRegion.y);
-    const railTopInset =
-      railBoundary - geometry.windowBounds.y + NAVIGATION_ROOT_RAIL_GUTTER;
-    const railBottomInset =
-      windowBottom - usableBottom + NAVIGATION_ROOT_RAIL_GUTTER;
-    if (
-      !fitsNavigationRootRail(
-        geometry.windowBounds.height,
-        railTopInset,
-        railBottomInset,
-      )
-    ) {
-      continue;
-    }
-
-    return {
-      placement: 'right',
-      reservedRightWidth,
-      contentWidth: Math.max(0, contentRight - viewport.x),
-      windowHeight: geometry.windowBounds.height,
-      railTopInset,
-      railBottomInset,
-      railRightInset,
-      systemBottomInset: Math.max(
-        0,
-        viewport.y + viewport.height - usableBottom,
-      ),
-    };
-  }
-
-  return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+        region.x <= railLeft + 0.5 &&
+        region.x + region.width >= railRight - 0.5 &&
+        region.height >=
+          NAVIGATION_ROOT_RAIL_HEIGHT + 2 * NAVIGATION_ROOT_RAIL_GUTTER,
+    )
+    .sort(
+      (first, second) => second.height - first.height || first.y - second.y,
+    )[0];
+  if (!segment) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+  const railTopInset = segment.y - window.y + NAVIGATION_ROOT_RAIL_GUTTER;
+  const railBottomInset =
+    windowBottom - segment.y - segment.height + NAVIGATION_ROOT_RAIL_GUTTER;
+  const usableBottom = geometry.safeAreaFrame.y + geometry.safeAreaFrame.height;
+  return {
+    placement: 'right',
+    ...(side === 'left'
+      ? {
+          railSide: side,
+          reservedLeftWidth: Math.max(0, contentLeft - viewport.x),
+        }
+      : {}),
+    ...(geometry.navigationWidth !== undefined ? { railWidth: width } : {}),
+    reservedRightWidth:
+      side === 'right'
+        ? Math.max(0, viewport.x + viewport.width - contentRight)
+        : 0,
+    contentWidth,
+    windowHeight: window.height,
+    railTopInset,
+    railBottomInset,
+    railRightInset,
+    systemBottomInset: Math.max(0, viewport.y + viewport.height - usableBottom),
+  };
 }
