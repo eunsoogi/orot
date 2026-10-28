@@ -5,23 +5,33 @@ import { fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
-// The read-only Settings journey must remain explicitly admitted on both intended destinations.
-test('Settings child boundaries keep their explicit Core and Duo destinations', () => {
-  const identifier =
-    'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes';
-  for (const profile of ['core', 'duo']) {
-    assert.ok(iosTestInventory(profile).includes(identifier));
-    const accepted = fixture(0, profile, 'all', [identifier]);
-    try {
-      assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
-      assert.deepEqual(
-        accepted.calls
-          .find((call) => call.name === 'xcodebuild')
-          .args.filter((argument) => argument.startsWith('-only-testing:')),
-        ['-only-testing:' + identifier],
-      );
-    } finally {
-      rmSync(accepted.directory, { recursive: true, force: true });
+// Boundary-only journeys must keep explicit membership without weakening unknown/Core-only rejection.
+test('Read-only child boundaries keep their original and Duo destinations', () => {
+  const journeys = [
+    [
+      'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
+      'core',
+    ],
+    [
+      'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
+      'fixtures',
+    ],
+  ];
+  for (const [identifier, originalProfile] of journeys) {
+    for (const profile of [originalProfile, 'duo']) {
+      assert.ok(iosTestInventory(profile).includes(identifier));
+      const accepted = fixture(0, profile, 'all', [identifier]);
+      try {
+        assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+        assert.deepEqual(
+          accepted.calls
+            .find((call) => call.name === 'xcodebuild')
+            .args.filter((argument) => argument.startsWith('-only-testing:')),
+          ['-only-testing:' + identifier],
+        );
+      } finally {
+        rmSync(accepted.directory, { recursive: true, force: true });
+      }
     }
   }
 });
