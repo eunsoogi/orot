@@ -113,6 +113,7 @@ export const fixtureTests = [
   'OrotUITests/SymptomJournalRecoveryUITests/testSaveFailureKeepsKoreanErrorAndRetryRecovers',
   'OrotUITests/SymptomJournalRecoveryUITests/testCancelingNewSymptomKeepsJournalEmpty',
   'OrotUITests/SymptomJournalRecoveryUITests/testKoreanDeviceLanguageKeepsJournalCopyAndAccessibilityNames',
+  'OrotUITests/SymptomJournalRecoveryUITests/testVoiceOverReadsKoreanJournalNamesInBothDeviceLanguages',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
   'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',

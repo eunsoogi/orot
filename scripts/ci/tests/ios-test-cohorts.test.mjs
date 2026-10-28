@@ -40,7 +40,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 186);
+  assert.equal(actual.size, 187);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
@@ -95,10 +95,10 @@ test('two Release destinations partition the original work exactly once and pres
   const partitioned = names.flatMap(iosTestCohortTasks);
   const key = (task) => task.profile + '/' + task.suite;
   assert.deepEqual(partitioned.map(key).sort(), original.map(key).sort());
-  // Symptom recovery adds three Calendar journeys to the Release UI partition.
+  // Symptom recovery and actual VoiceOver speech retain their Calendar fixture boundaries.
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [107, 42],
+    [107, 43],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',

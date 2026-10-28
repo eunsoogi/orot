@@ -113,6 +113,78 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         XCTAssertEqual(UITestConditions.element(app, "symptom-filter-resolved").label, "나아졌어요")
     }
 
+    /// Uses actual VoiceOver speech, not AX labels, while leaving the owned device's original service state intact.
+    @available(iOS 27.0, *)
+    @MainActor
+    func testVoiceOverReadsKoreanJournalNamesInBothDeviceLanguages() throws {
+        let app = XCUIApplication()
+        let voiceOver = XCUIDevice.shared.voiceOverService
+        let wasEnabled = voiceOver.isEnabled
+        defer {
+            app.terminate()
+            do {
+                if voiceOver.isEnabled != wasEnabled {
+                    if wasEnabled {
+                        try voiceOver.enable()
+                    } else {
+                        try voiceOver.disable()
+                    }
+                }
+                XCTAssertEqual(voiceOver.isEnabled, wasEnabled, "Restore the original VoiceOver state")
+            } catch {
+                XCTFail("VoiceOver state restoration failed: \(error)")
+            }
+        }
+        let expected = ["증상 일지", "전체", "계속되고 있어요", "나아졌어요",
+                        "이 조건에 맞는 증상 기록이 없어요.", "증상 기록 추가"]
+        for language in ["en", "ko"] {
+            // Ordinary route setup precedes VoiceOver navigation; service failures remain thrown XCTest failures.
+            if voiceOver.isEnabled {
+                try voiceOver.disable()
+            }
+            try launchJournal(app, language: language)
+            try voiceOver.enable()
+            guard voiceOver.isEnabled else { XCTFail("VoiceOver did not enable"); return }
+            guard try assertVoiceOverOrder(voiceOver, expected: expected, backward: false, language: language),
+                  try assertVoiceOverOrder(voiceOver, expected: Array(expected.reversed()), backward: true, language: language)
+            else { return }
+            try voiceOver.disable()
+            app.terminate()
+        }
+    }
+
+    /// One bounded traversal follows real focus moves; it never retries speech failures or accepts a later wrap as the same page order.
+    @available(iOS 27.0, *)
+    @MainActor
+    private func assertVoiceOverOrder(_ service: XCUIVoiceOverService, expected: [String], backward: Bool, language: String) throws -> Bool {
+        var next = 0
+        for step in 0 ..< 64 {
+            let output = try step == 0 ? try service.currentSpeech()
+                : (backward ? service.moveBackward() : service.moveForward())
+            let speech = output.utterance
+            let attachment = XCTAttachment(string: speech)
+            attachment.name = "symptom-voiceover-\(language)-\(backward ? "backward" : "forward")-\(step)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            guard !speech.isEmpty, !speech.contains("symptoms.") else {
+                XCTFail("VoiceOver returned empty speech or an internal translation key"); return false
+            }
+            if next > 0, speech.contains(expected[0]) {
+                XCTFail("VoiceOver wrapped before reading the required journal order"); return false
+            }
+            if speech.contains(expected[next]) {
+                next += 1
+                if next == expected.count {
+                    return true
+                }
+            } else if next > 0, expected.dropFirst(next + 1).contains(where: { speech.contains($0) }) {
+                XCTFail("VoiceOver reached a later journal item before \(expected[next])"); return false
+            }
+        }
+        XCTFail("VoiceOver did not reach \(expected[next]) within one bounded journal traversal")
+        return false
+    }
+
     /// Uses test-only storage and the app route under English or Korean device-language settings.
     @MainActor
     private func launchJournal(_ app: XCUIApplication, language: String = "en") throws {
