@@ -33,12 +33,13 @@ enum FormFocusedInputConditions {
             return nil
         }
         if journal {
+            let isEditableTextInput = input.elementType == .textField || input.elementType == .textView
             var focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", input.identifier)).count > 0
-            if needsReveal, !focused, actual.keyboardFrame == nil, input.identifier == "symptom-onset-date", input.elementType == .textField {
-                // This ScrollView explicitly dismisses its keyboard on drag. One tap on the visible date field models the next user action.
+            if needsReveal, !focused, actual.keyboardFrame == nil, isEditableTextInput {
+                // Journal scrolling dismisses the keyboard; tap the visible editor once to model the next text-entry action.
                 input.tap()
                 focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", input.identifier)).count > 0
-                XCTContext.runActivity(named: "Journal post-dismissal date focus: focused=\(focused)") { _ in }
+                XCTContext.runActivity(named: "Journal post-dismissal field focus: focused=\(focused)") { _ in }
                 guard let restored = observe(input, referenceSize: referenceSize, in: app, scroll: scroll, journal: journal) else { return nil }
                 actual = restored
             }
