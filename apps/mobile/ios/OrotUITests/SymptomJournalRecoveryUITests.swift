@@ -5,7 +5,11 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
     @MainActor
     func testSaveFailureKeepsKoreanErrorAndRetryRecovers() throws {
         let app = XCUIApplication()
-        defer { app.terminate() }
+        defer {
+            // Retain the opted-in structural trace even when an original form assertion fails.
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "symptom-save-recovery-focus")
+            app.terminate()
+        }
         try launchJournal(app)
 
         let add = UITestConditions.element(app, "symptom-add")
@@ -114,6 +118,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "symptom-journal-save-recovery",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(\(language))",
             "-AppleLocale", locale,
         ]
