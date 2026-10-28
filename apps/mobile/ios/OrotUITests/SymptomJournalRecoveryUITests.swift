@@ -13,7 +13,8 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         add.tap()
         let description = app.textViews["symptom-description"]
         XCTAssertTrue(description.exists)
-        XCTAssertEqual(description.label, "증상 내용")
+        // The native accessibility tree reports this text view's label and placeholder together.
+        XCTAssertEqual(description.label, "증상 내용 어떤 느낌인지 적어 주세요.")
         XCTAssertTrue(FormUITestConditions.replace(
             description,
             with: "Synthetic symptom save retry",
