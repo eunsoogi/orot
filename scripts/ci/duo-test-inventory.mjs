@@ -30,6 +30,7 @@ export const duoTests = [
   'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText',
   'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges',
   'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute',
+  'OrotUITests/HealthImportDuoUITests/testSyntheticHealthLibraryAndDetailKeepContentBoundariesAtBothTextSizes',
   'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure',
   'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions',
   'OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState',

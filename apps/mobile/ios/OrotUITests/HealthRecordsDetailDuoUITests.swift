@@ -2,6 +2,52 @@ import XCTest
 
 /// Keeps health-detail XCTest selectors stable while separating their scenarios from import tests.
 extension HealthImportDuoUITests {
+    /// Read-only synthetic pages measure content independently of rotation and keyboard synchronization.
+    @MainActor
+    func testSyntheticHealthLibraryAndDetailKeepContentBoundariesAtBothTextSizes() throws {
+        for largeText in [false, true] {
+            let app = XCUIApplication()
+            app.launchArguments = [
+                "-OROT_TEST_SCENARIO", "paged-records", "-OROT_TEST_UI_GEOMETRY", "YES",
+                "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+            ]
+            if largeText {
+                app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+            }
+            app.launch()
+            defer { app.terminate() }
+            let size = largeText ? "large-text" : "default-text"
+            try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+            tapHealthDetail(app, "records-open-health-library")
+            NavigationUITestConditions.route(app, markers: ["health-records-title"])
+            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-scroll"], name: "health-library-\(size)", testCase: self)
+            tapHealthDetail(app, "health-record-filter-heart_rate")
+            XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
+            tapHealthDetail(app, "health-record-open-detail-heart_rate")
+            NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+            tapHealthDetail(app, "health-record-period-year")
+            XCTAssertTrue(healthDetailNode(app, "health-record-period-year").isSelected)
+            // Only the page loader supplies these nine session-only measurements; no personal HealthKit read is requested.
+            UITestConditions.value(healthDetailNode(app, "health-record-row-0-value"), equals: "60 count/min")
+            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-detail-scroll"], name: "health-detail-\(size)", testCase: self)
+            if largeText {
+                XCTAssertGreaterThan(try NavigationGeometryUITestConditions.snapshot(app).fontScale, 1)
+            }
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["health-records-title"])
+            XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
+            tapHealthDetail(app, "health-records-open-health-import")
+            NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
+            XCTAssertTrue(healthDetailNode(app, "unified-import-source-selection").exists)
+            XCTAssertTrue(healthDetailNode(app, "unified-import-activity").exists)
+            // Observe entry and return without requesting authorization, selecting a source or starting an import.
+            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["unified-import-scroll"], name: "health-import-entry-\(size)", testCase: self)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["health-records-title"])
+            XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
+        }
+    }
+
     /// Retains the selected period and saved measurements when the native usable regions change.
     @MainActor
     func testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges() throws {
