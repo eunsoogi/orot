@@ -52,16 +52,22 @@ enum HealthRecordsBoundaryUITestConditions {
                     x = left >= right ? viewport.minX + left / 2 : frame.maxX + right / 2
                 }
                 let towardStart = owner.horizontal ? frame.minX < viewport.minX : frame.minY < viewport.minY
+                let overflow = owner.horizontal ? (towardStart ? viewport.minX - frame.minX : frame.maxX - viewport.maxX) :
+                    (towardStart ? viewport.minY - frame.minY : frame.maxY - viewport.maxY)
+                // Match the existing form policy: approach a tall, partially exposed target by its measured clipped distance.
+                let distance = min(max(overflow + 8, 30), (owner.horizontal ? viewport.width : viewport.height) * 0.45)
                 let start = CGPoint(x: owner.horizontal ? viewport.minX + viewport.width * (towardStart ? 0.25 : 0.75) : x,
                                     y: owner.horizontal ? viewport.midY : viewport.minY + viewport.height * (towardStart ? 0.25 : 0.75))
-                let end = CGPoint(x: start.x + (owner.horizontal ? viewport.width * (towardStart ? 0.45 : -0.45) : 0),
-                                  y: start.y + (owner.horizontal ? 0 : viewport.height * (towardStart ? 0.45 : -0.45)))
+                let end = CGPoint(x: start.x + (owner.horizontal ? (towardStart ? distance : -distance) : 0),
+                                  y: start.y + (owner.horizontal ? 0 : (towardStart ? distance : -distance)))
                 // The measured owner also anchors input, preserving its native display instead of the application's default display.
                 let origin = scroll.coordinate(withNormalizedOffset: .zero)
                 let ownerOrigin = scrollFrame.origin
                 let from = origin.withOffset(CGVector(dx: start.x - ownerOrigin.x, dy: start.y - ownerOrigin.y))
                 let to = origin.withOffset(CGVector(dx: end.x - ownerOrigin.x, dy: end.y - ownerOrigin.y))
-                from.press(forDuration: 0.05, thenDragTo: to)
+                // Default-speed inertia can cross the opposite edge; later frame checks still decide whether exposure succeeded.
+                let velocity: XCUIGestureVelocity = viewport.intersects(frame) ? .slow : .default
+                from.press(forDuration: 0.05, thenDragTo: to, withVelocity: velocity, thenHoldForDuration: 0)
                 gestures += 1
             }
         }
