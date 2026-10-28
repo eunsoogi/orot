@@ -50,6 +50,7 @@ enum FormScrollGeometryRegression {
         let translated = try XCTUnwrap(offset.gesture(target: nil, towardTop: false, horizontalPosition: 0.5))
         XCTAssertEqual(translated.start.dx, 187.5)
         XCTAssertEqual(translated.start.dy, 512.5)
+        try verifyClippedJournalEditor()
         try verifyPagedListTraversal()
         try verifyContainedOccludedTargetDirection()
         try verifyFocusedEditorReservation()

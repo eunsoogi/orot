@@ -24,6 +24,7 @@ enum FormUITestConditions {
         let journalScroll = scroll.identifier == "symptoms-scroll"
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
         for attempt in 0 ... 16 {
+            let geometryReadStartedAtMs = Date().timeIntervalSince1970 * 1000
             // Read-only stages can skip this global AX snapshot when no action can present a keyboard.
             let keyboard = keyboardMayBeVisible ? app.keyboards.firstMatch : nil
             // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
@@ -63,7 +64,7 @@ enum FormUITestConditions {
                 return nil
             }
             if journalScroll {
-                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, target: targetFrame, controls: controls ?? [], start: gesture.start, end: gesture.end) else { return nil }
+                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, target: targetFrame, targetIdentifier: { target.identifier }, controls: controls ?? [], start: gesture.start, end: gesture.end, evaluationStartedAtMs: geometryReadStartedAtMs) else { return nil }
                 gesture = gutter
             }
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.

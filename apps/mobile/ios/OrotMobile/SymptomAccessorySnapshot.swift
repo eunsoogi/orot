@@ -173,7 +173,8 @@
                     targetAncestor = view.superview
                     targetDepth += 1
                 }
-                result["target"] = ["view": geometryView(target, window: window, identity: identity),
+                // Bind the consumer to this declared target; another field needs its own observed native match.
+                result["target"] = ["identifier": target.accessibilityIdentifier as Any? ?? NSNull(), "view": geometryView(target, window: window, identity: identity),
                                     "visibility": viewReport(target, identity: identity), "isFirstResponder": target.isFirstResponder,
                                     "nearestScrollIdentity": targetScroll.map(identity) as Any? ?? NSNull(),
                                     "sameSelectedScroll": scroll.flatMap { selected in targetScroll.map { $0 === selected } } as Any? ?? NSNull()]

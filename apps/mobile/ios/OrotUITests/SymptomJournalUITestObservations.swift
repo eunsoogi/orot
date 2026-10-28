@@ -144,43 +144,55 @@ enum SymptomJournalUITestObservations {
     }
 
     /// A multiline editor can consume an overlapping form drag. Prefer the clear right gutter, then the left, without changing vertical travel.
-    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, target: CGRect?, controls: [CGRect], start: CGVector, end: CGVector) -> (start: CGVector, end: CGVector)? {
+    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], start: CGVector, end: CGVector, evaluationStartedAtMs: Double) -> (start: CGVector, end: CGVector)? {
         let element = app.textViews["symptom-description"]
         // Without a text editor this overlap boundary is absent; other journal scrolling keeps its existing behavior.
         guard element.exists else { return (start, end) }
         let editorReadStartedAtMs = Date().timeIntervalSince1970 * 1000
-        let editor = element.frame
+        var editor = element.frame
         let editorReadEndedAtMs = Date().timeIntervalSince1970 * 1000
-        guard let target, let segment = sideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end).last else {
-            if editor.width <= 0 || editor.height <= 0 || ![editor.minX, editor.minY, editor.width, editor.height].allSatisfy(\.isFinite) {
-                // Read the existing periodic marker once at the failed boundary; it never authorizes a gesture.
-                XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
-                    let marker = UITestConditions.element(app, "navigation-test-observation")
-                    let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
-                    let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
-                    let markerReadEndedAtMs = Date().timeIntervalSince1970 * 1000
-                    let keyboard = app.keyboards.firstMatch
-                    let keyboardExists = keyboard.exists
-                    let observation: [String: Any] = [
-                        "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
-                        "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
-                        "editorAXFrame": String(describing: editor), "targetAXFrame": String(describing: target),
-                        "applicationAXFrame": String(describing: application), "viewportAXFrame": String(describing: viewport),
-                        "callerFrameTimestamps": "unavailable; caller frames precede this helper",
-                        "navigationAXFrames": controls.map { String(describing: $0) },
-                        "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
-                                                           "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
-                        "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardExists ? String(describing: keyboard.frame) : "absent",
-                        // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
-                        "nativeMarker": (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) ?? payload,
-                    ]
-                    let data = (try? JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])) ?? Data("{\"status\":\"serialization-unavailable\"}".utf8)
-                    let record = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-                    record.name = "journal-invalid-editor-gutter"
-                    record.lifetime = .keepAlways
-                    activity.add(record)
+        if !FormScrollGeometry.valid(editor) {
+            // Read once for both validation and diagnostics. Rejected samples never trigger another query or gesture.
+            let identifier = targetIdentifier()
+            XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
+                let marker = UITestConditions.element(app, "navigation-test-observation")
+                let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
+                let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
+                let markerReadEndedAtMs = Date().timeIntervalSince1970 * 1000
+                let snapshot = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any]
+                let nativeEditor = target.flatMap {
+                    FormScrollGeometry.clippedJournalEditor(snapshot, application: application, viewport: viewport, target: $0,
+                                                            identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs,
+                                                            readEndedAtMs: markerReadEndedAtMs, start: start, end: end)
+                }
+                let keyboard = app.keyboards.firstMatch
+                let keyboardExists = keyboard.exists
+                let observation: [String: Any] = [
+                    "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
+                    "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
+                    "editorAXFrame": String(describing: editor), "targetAXFrame": String(describing: target),
+                    "applicationAXFrame": String(describing: application), "viewportAXFrame": String(describing: viewport),
+                    "evaluationStartedAtMs": evaluationStartedAtMs, "targetIdentifier": identifier,
+                    "nativeEditorAccepted": nativeEditor != nil,
+                    "resolvedEditorFrame": nativeEditor.map { String(describing: $0) } ?? "unavailable",
+                    "navigationAXFrames": controls.map { String(describing: $0) },
+                    "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
+                                                       "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
+                    "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardExists ? String(describing: keyboard.frame) : "absent",
+                    // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
+                    "nativeMarker": snapshot as Any? ?? payload,
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])) ?? Data("{\"status\":\"serialization-unavailable\"}".utf8)
+                let record = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+                record.name = "journal-invalid-editor-gutter"
+                record.lifetime = .keepAlways
+                activity.add(record)
+                if let nativeEditor {
+                    editor = nativeEditor
                 }
             }
+        }
+        guard let target, let segment = sideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end).last else {
             XCTFail("The journal form requires a clear side gutter inside the usable viewport: editor=\(editor), target=\(String(describing: target)), viewport=\(viewport), controls=\(controls)")
             return nil
         }
@@ -190,13 +202,6 @@ enum SymptomJournalUITestObservations {
 
     /// Validate the entire vertical segment, including endpoints and blocker edges, from the same captured frames.
     private static func sideSegments(application: CGRect, viewport: CGRect, editor: CGRect, blockers: [CGRect], start: CGVector, end: CGVector) -> [(side: String, from: CGPoint, to: CGPoint)] {
-        [("left", viewport.minX, min(viewport.maxX, editor.minX)), ("right", max(viewport.minX, editor.maxX), viewport.maxX)].compactMap { side, lower, upper -> (String, CGPoint, CGPoint)? in
-            let from = CGPoint(x: (lower + upper) / 2, y: application.minY + start.dy)
-            let to = CGPoint(x: from.x, y: application.minY + end.dy)
-            guard upper > lower, viewport.contains(from), viewport.contains(to),
-                  blockers.allSatisfy({ $0.width > 0 && $0.height > 0 && [$0.minX, $0.maxX, $0.minY, $0.maxY].allSatisfy(\.isFinite) }),
-                  !blockers.contains(where: { from.x >= $0.minX && from.x <= $0.maxX && max(from.y, to.y) >= $0.minY && min(from.y, to.y) <= $0.maxY }) else { return nil }
-            return (side, from, to)
-        }
+        FormScrollGeometry.journalSideSegments(application: application, viewport: viewport, editor: editor, blockers: blockers, start: start, end: end)
     }
 }
