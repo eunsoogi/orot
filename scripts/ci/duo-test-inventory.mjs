@@ -34,6 +34,7 @@ export const duoTests = [
   'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure',
   'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions',
   'OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState',
+  'OrotUITests/EvidenceSourceDuoUITests/testSyntheticSourceSelectionAndReturnKeepContentBoundaries',
   'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges',
   'OrotUITests/HealthImportDuoUITests/testLargeTextUsesOneReadableColumnForThePendingImport',
   'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges',

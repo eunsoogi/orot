@@ -49,6 +49,19 @@ test('Synthetic health boundary journey is explicitly admitted on Duo', () => {
   }
 });
 
+test('Synthetic source boundary journey is explicitly admitted on Duo', () => {
+  const identifier =
+    'OrotUITests/EvidenceSourceDuoUITests/testSyntheticSourceSelectionAndReturnKeepContentBoundaries';
+  assert.ok(iosTestInventory('duo').includes(identifier));
+  const accepted = fixture(0, 'duo', 'all', [identifier]);
+  try {
+    assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+    assert.ok(accepted.calls.some((call) => call.name === 'xcodebuild'));
+  } finally {
+    rmSync(accepted.directory, { recursive: true, force: true });
+  }
+});
+
 test('shared picker journeys honor their valid profile and reject a foreign fixture selection', () => {
   const healthInventory = iosTestInventory('health-import');
   const pickerJourney = healthInventory.find((identifier) =>
