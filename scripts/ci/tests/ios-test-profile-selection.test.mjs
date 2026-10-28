@@ -5,6 +5,27 @@ import { fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
+// The read-only Settings journey must remain explicitly admitted on both intended destinations.
+test('Settings child boundaries keep their explicit Core and Duo destinations', () => {
+  const identifier =
+    'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes';
+  for (const profile of ['core', 'duo']) {
+    assert.ok(iosTestInventory(profile).includes(identifier));
+    const accepted = fixture(0, profile, 'all', [identifier]);
+    try {
+      assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+      assert.deepEqual(
+        accepted.calls
+          .find((call) => call.name === 'xcodebuild')
+          .args.filter((argument) => argument.startsWith('-only-testing:')),
+        ['-only-testing:' + identifier],
+      );
+    } finally {
+      rmSync(accepted.directory, { recursive: true, force: true });
+    }
+  }
+});
+
 test('shared picker journeys honor their valid profile and reject a foreign fixture selection', () => {
   const healthInventory = iosTestInventory('health-import');
   const pickerJourney = healthInventory.find((identifier) =>
