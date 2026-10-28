@@ -95,4 +95,61 @@ enum NavigationGeometryUITestConditions {
         XCTAssertLessThanOrEqual(max(primaryFrame.maxX, secondaryFrame.maxX), toolbar.frame.minX + 1)
         return stacked
     }
+
+    /// Keep native frame equality separate from route existence and from the shared contract's own calculation.
+    static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase) throws {
+        let content = UITestConditions.element(app, "navigation-content-region")
+        XCTAssertTrue(content.exists && !content.frame.isEmpty)
+        let action = try NavigationUITestConditions.navigationAction(app, navigationID)
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        var last: [String: Any]?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard marker.exists,
+                  let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+                  let lifecycle = report["lifecycle"] as? [[String: Any]],
+                  let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+                  let json = event["frame"] as? String,
+                  let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+                  let available = rect(shared["availableContentFrame"]),
+                  let navigation = rect(shared["navigationFrame"])
+            else { return false }
+            last = shared
+            return sameWindow(content.frame, available) && sameWindow(action.toolbar.frame, navigation)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "Native content and navigation must match their reported window frames")
+        let measuredContent = content.frame, measuredBar = action.toolbar.frame
+        if measuredBar.height > measuredBar.width {
+            let shared = try XCTUnwrap(last)
+            let window = try XCTUnwrap(rect(shared["windowFrame"]))
+            let available = try XCTUnwrap(rect(shared["availableContentFrame"]))
+            let centerX = shared["side"] as? String == "left" ? (window.minX + available.minX) / 2 : (available.maxX + window.maxX) / 2
+            XCTAssertEqual(measuredBar.midX, centerX, accuracy: 0.5, "The rail must be centered in its one reserved side lane")
+            XCTAssertFalse(measuredContent.intersects(measuredBar))
+        }
+        try NavigationUITestConditions.panelSnapshot(app, frames: ["content": measuredContent, "navigation": measuredBar, "control": action.control.frame], testCase: testCase)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        testCase.add(screenshot)
+    }
+
+    /// Preserve the recording route's existing readiness check before measuring its actual content and actions.
+    static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws {
+        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
+    }
+
+    /// Keep the selected root and its real viewport together in every observation.
+    static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws {
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
+        let roots = [("home", ["welcome-title"]), ("records", ["records-title"]),
+                     ("schedule", ["calendar-title", "schedule-retry"]), ("ai", ["ai-features-screen"]),
+                     ("settings", ["settings-title"])]
+        for (tab, markers) in roots {
+            try NavigationUITestConditions.openTab(app, tab, markers: markers)
+            XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)").control.isSelected)
+            try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
+        }
+        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+    }
 }

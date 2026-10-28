@@ -100,15 +100,20 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         portal.setNeedsLayout()
         portal.layoutIfNeeded()
 
+        measuredPayload = nil
         surface.actions = [
             ["id": "back", "label": "Back", "accessibilityLabel": "Back", "testID": "navigation-back"],
             ["id": "home", "label": "Home", "accessibilityLabel": "Home", "testID": "navigation-home"],
         ] as NSArray
         surface.layoutIfNeeded()
+        // Rendering new controls must update their actual parent without a caller forcing portal layout.
+        let renderedContextFrame = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
         portal.layoutIfNeeded()
         let stack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first)
         stack.layoutIfNeeded()
         let contextualFrame = stack.convert(stack.bounds, to: window)
+        XCTAssertEqual(try XCTUnwrap(renderedContextFrame["y"]), Double(contextualFrame.minY), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(renderedContextFrame["height"]), Double(contextualFrame.height), accuracy: 0.5)
         verify(contextualFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(contextualFrame.minY - systemRegion.maxY, 12, accuracy: 0.5)
         let buttons = stack.arrangedSubviews.compactMap { $0 as? UIButton }

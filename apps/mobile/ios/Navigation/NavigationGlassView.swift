@@ -117,6 +117,7 @@ final class NavigationGlassSurfaceView: UIView {
         if wasRoot, isRoot {
             updatePresentation()
             rootBar.render(descriptors, animated: animated, onAction: dispatch)
+            finishRendering()
             return
         }
         NavigationToolbarTransition.apply(to: self, animated: animated) {
@@ -126,8 +127,16 @@ final class NavigationGlassSurfaceView: UIView {
             } else {
                 self.renderInnerActions(descriptors, onAction: dispatch)
             }
-            self.layoutIfNeeded()
+            self.finishRendering()
         }
+    }
+
+    /// Finish on the actual parent so portal-mounted controls publish their newly rendered frame.
+    private func finishRendering() {
+        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
+        guard let parent = controls.superview else { return }
+        parent.setNeedsLayout()
+        parent.layoutIfNeeded()
     }
 
     /// Reparents existing controls into a window-coordinate host without changing action identity.
@@ -162,6 +171,7 @@ final class NavigationGlassSurfaceView: UIView {
         }
         rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
         innerActions.isHidden = rootBar.isHidden == false
+        host.setNeedsLayout()
         setNeedsLayout()
     }
 
@@ -188,7 +198,7 @@ final class NavigationGlassSurfaceView: UIView {
                 button = NavigationGlassButton.make(for: action, onAction: onAction)
                 contextualButtons[action.id] = button
             }
-            updateMinimumWidth(for: action, button: button)
+            NavigationGlassButton.updateMinimumWidth(for: action, button: button, constraints: &contextualButtonWidthConstraints)
             updateFixedWidth(for: action, button: button)
         }
 
@@ -224,20 +234,6 @@ final class NavigationGlassSurfaceView: UIView {
             let constraint = button.widthAnchor.constraint(equalToConstant: width)
             constraint.isActive = true
             contextualButtonFixedWidthConstraints[action.id] = constraint
-        }
-    }
-
-    /// Tracks localized primary titles while keeping one width constraint per stable action.
-    private func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton) {
-        guard action.id != "home", action.id != "back" else { return }
-        let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
-        let minimumWidth = max(88, titleWidth + 24)
-        if let constraint = contextualButtonWidthConstraints[action.id] {
-            constraint.constant = minimumWidth
-        } else {
-            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
-            constraint.isActive = true
-            contextualButtonWidthConstraints[action.id] = constraint
         }
     }
 

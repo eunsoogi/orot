@@ -14,7 +14,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
-        let app = launch()
+        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         let tabs = [
             ("home", ["welcome-title"], "홈 탭"),
@@ -29,7 +29,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             XCTAssertEqual(action.control.label, label)
             // Read the native accessibility selection state in addition to the rendered route.
             XCTAssertTrue(action.control.isSelected, "Root tab \(tab) must expose selected state")
-            capture(app, "selected-root-tab-\(tab)")
+            try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
         let recent = UITestConditions.element(app, "home-open-records")
@@ -44,7 +44,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(bottomClearance, 26)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-new-recording")
-        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
         XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-home").control.label, "홈 화면으로 이동")
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
@@ -60,7 +60,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         let selection = UITestConditions.element(app, "navigation-root-selection-indicator")
         XCTAssertTrue(selection.exists)
         XCTAssertEqual(selection.frame.width, selection.frame.height, accuracy: 0.5)
-        _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "right-rail-native-geometry")
+        try NavigationGeometryUITestConditions.verifyRootBoundaries(app, testCase: self)
         XCTAssertEqual(home.control.label, "홈 탭")
         XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(home.toolbar.frame.height, home.toolbar.frame.width)
@@ -68,7 +68,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control.isSelected)
         tap(app, "records-new-recording")
-        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let homeAction = try NavigationUITestConditions.navigationAction(app, "navigation-home")
         XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
@@ -195,7 +195,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             let action = try NavigationUITestConditions.navigationAction(app, identifier)
             XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
         }
-        capture(app, "conversation-keyboard-native-navigation")
+        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: "conversation-keyboard-native-navigation", testCase: self)
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
