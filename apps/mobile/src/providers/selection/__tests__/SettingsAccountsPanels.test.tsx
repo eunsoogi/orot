@@ -55,6 +55,7 @@ test('shows the empty connection state beside its original sign-in action', asyn
 
   expect(screen.getByTestId('settings-accounts-list')).toBeTruthy();
   expect(screen.getByTestId('settings-accounts-actions')).toBeTruthy();
+  expect(screen.queryByTestId('settings-accounts-panels-secondary')).toBeNull();
   expect(
     screen.getByText(providerSelectionText.chatGPTNoAccounts),
   ).toBeTruthy();

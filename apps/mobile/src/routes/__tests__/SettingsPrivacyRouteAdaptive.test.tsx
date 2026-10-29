@@ -149,14 +149,15 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
   ).toBeNull();
   expect(screen.getByTestId('settings-privacy-permissions')).toBeTruthy();
   expect(screen.getByTestId('settings-privacy-external-transfer')).toBeTruthy();
-  expect(columnsAxis()).toBe('row');
+  expect(columnsAxis()).toBe('column');
 
   await fireEvent(
     screen.getByTestId('navigation-window-geometry-sensor'),
     'geometryChange',
     { nativeEvent: geometry(1600, true) },
   );
-  expect(columnsAxis()).toBe('row');
+  expect(columnsAxis()).toBe('column');
+  expect(screen.queryByTestId('settings-privacy-columns-secondary')).toBeNull();
   expect(
     StyleSheet.flatten(
       screen.getByTestId('settings-privacy-columns-primary').props.style,

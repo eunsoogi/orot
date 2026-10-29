@@ -195,11 +195,15 @@ export default function CalendarLinkingScreen({
         ) : null}
 
         {adaptiveScheduleLayout ? (
-          // Keep selection in the hook above stable panels so reflow only changes geometry.
+          // Keep selection in the hook while both sections share one measured region.
           <AdaptiveColumns
-            primary={calendarMonth}
+            primary={
+              <View style={styles.pageSections}>
+                {calendarMonth}
+                {selectionSummary}
+              </View>
+            }
             routeKey="schedule"
-            secondary={selectionSummary}
             testID="schedule-adaptive-columns"
           />
         ) : (

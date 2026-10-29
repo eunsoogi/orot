@@ -1,7 +1,7 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { ReactNode } from 'react';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -57,7 +57,6 @@ export function ConversationScreen({
     .slice()
     .reverse()
     .find(message => message.role === 'assistant')?.id;
-  const [composerHeight, setComposerHeight] = useState(0);
   const cancel = () => store.cancel(id);
   const onLinkError = () =>
     store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
@@ -131,39 +130,37 @@ export function ConversationScreen({
       testID="rag-conversation-screen"
     >
       <AdaptiveColumns
+        routeKey={navigationRouteKey}
+        testID="rag-conversation-columns"
         primary={
           <ConversationHistory
             header={header}
             messages={messages}
             pendingMessage={pendingMessage}
             error={error}
-            bottomInset={composerHeight}
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}
             citationsInPanelForMessageId={latestAssistantMessageId}
+            footer={
+              <>
+                <ConversationEvidencePanel
+                  messages={messages}
+                  onOpenSource={onOpenSource}
+                  onLinkError={onLinkError}
+                />
+                <ConversationComposer
+                  value={draft}
+                  busy={busy}
+                  onChangeText={value => store.setDraft(id, value)}
+                  onSend={() => {
+                    store.send(id, onSend);
+                  }}
+                  onCancel={cancel}
+                />
+              </>
+            }
           />
         }
-        secondary={
-          <ConversationEvidencePanel
-            messages={messages}
-            bottomInset={composerHeight}
-            onOpenSource={onOpenSource}
-            onLinkError={onLinkError}
-          />
-        }
-        routeKey={navigationRouteKey}
-        testID="rag-conversation-columns"
-      />
-      {/* The composer stays anchored to the route while its panels reflow around it. */}
-      <ConversationComposer
-        onLayout={event => setComposerHeight(event.nativeEvent.layout.height)}
-        value={draft}
-        busy={busy}
-        onChangeText={value => store.setDraft(id, value)}
-        onSend={() => {
-          store.send(id, onSend);
-        }}
-        onCancel={cancel}
       />
     </KeyboardAvoidingView>
   );

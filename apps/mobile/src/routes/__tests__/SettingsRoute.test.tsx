@@ -108,7 +108,7 @@ test('keeps automatic health integrations in their own Settings group', async ()
 
 test.each([
   { layout: 'compact', width: 390, fontScale: 1, direction: 'column' },
-  { layout: 'expanded', width: 1000, fontScale: 1, direction: 'row' },
+  { layout: 'expanded', width: 1000, fontScale: 1, direction: 'column' },
   {
     layout: 'narrow large text',
     width: 760,

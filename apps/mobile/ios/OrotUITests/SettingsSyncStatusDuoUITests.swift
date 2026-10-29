@@ -135,8 +135,8 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         expectsStacked: Bool = false,
     ) throws {
         let layout = node(app, "settings-sync-status-layout")
-        let primary = node(app, "settings-sync-status-layout-primary")
-        let secondary = node(app, "settings-sync-status-layout-secondary")
+        let primary = node(app, "settings-sync-status-primary")
+        let secondary = node(app, "settings-sync-status-secondary")
         XCTAssertTrue(layout.exists && primary.exists && secondary.exists, app.debugDescription)
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         let rightRail = navigation.toolbar.frame.height > navigation.toolbar.frame.width
@@ -144,15 +144,14 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.contentAboveBar(
                 app,
                 scrollID: "settings-sync-status-scroll",
-                contentID: "settings-sync-status-layout-secondary",
+                contentID: "settings-sync-status-secondary",
                 navigationID: "navigation-tab-settings",
             )
         }
         let first = primary.frame
         let second = secondary.frame
-        let sideBySide = abs(first.minY - second.minY) <= 1 && first.maxX <= second.minX + 1
         let stacked = abs(first.minX - second.minX) <= 1 && first.maxY <= second.minY + 1
-        XCTAssertTrue(sideBySide || stacked, "\(phase) panels must not overlap: \(first), \(second)")
+        XCTAssertTrue(stacked, "\(phase) sections must follow one vertical page: \(first), \(second)")
         if expectsStacked {
             XCTAssertTrue(stacked, "Large text must use one readable column")
         }

@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ConversationHistoryScreen } from '../ConversationHistoryScreen';
 import * as sessionsContext from '../ConversationSessionsContext';
@@ -13,6 +18,15 @@ test('keeps the large heading and new-session action inside the scrolling native
   try {
     await render(<ConversationHistoryScreen onBack={onBack} />);
     const list = screen.getByTestId('conversation-history-list');
+    expect(
+      within(screen.getByTestId('conversation-history-page')).getByTestId(
+        'conversation-history-list',
+      ),
+    ).toBeTruthy();
+    await fireEvent(list, 'contentHeightChange', {
+      nativeEvent: { height: 640 },
+    });
+    expect(StyleSheet.flatten(list.props.style).height).toBe(640);
     // A fixed React header can consume the entire list viewport at accessibility sizes.
     expect(screen.queryByText('대화 기록')).toBeNull();
     expect(list.props).toMatchObject({

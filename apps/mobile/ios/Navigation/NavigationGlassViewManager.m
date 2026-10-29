@@ -5,7 +5,7 @@
 // Native trailing swipe actions emit only the selected session identity.
 @interface RCT_EXTERN_MODULE (ConversationHistoryViewManager, RCTViewManager)
 RCT_EXPORT_VIEW_PROPERTY(rows, NSArray)
-// The table scrolls its large title while React retains session ownership and color tokens.
+// The enclosing page scrolls the table's title, rows, and React-owned preview together.
 RCT_EXPORT_VIEW_PROPERTY(headerTitle, NSString)
 RCT_EXPORT_VIEW_PROPERTY(headerCount, NSString)
 RCT_EXPORT_VIEW_PROPERTY(newSessionLabel, NSString)
@@ -15,6 +15,7 @@ RCT_EXPORT_VIEW_PROPERTY(headerTintColor, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(onCreateSession, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onSelectSession, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onDeleteSession, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onContentHeightChange, RCTDirectEventBlock)
 @end
 
 // The composer owns input and actions in React; this view supplies only native material.

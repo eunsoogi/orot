@@ -33,9 +33,11 @@ enum ConversationHistoryUITestConditions {
                 let suffix = "\(largeText ? "maximum-text" : "default-text")-\(dark ? "dark" : "light")"
                 node(app, "rag-conversation-new-session").tap()
                 let input = node(app, "rag-conversation-input")
+                FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
                 input.tap()
                 input.typeText(question)
                 app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
+                FormUITestConditions.reveal(node(app, "rag-conversation-sessions-toggle"), in: app, scroll: node(app, "rag-conversation-history"))
                 node(app, "rag-conversation-sessions-toggle").tap()
                 XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
                 _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
@@ -44,10 +46,10 @@ enum ConversationHistoryUITestConditions {
                 XCTAssertTrue(UITestConditions.exists(row))
                 XCTAssertTrue(row.staticTexts[String(question.prefix(36))].firstMatch.exists, row.debugDescription)
                 let rowID = row.identifier
-                let list = node(app, "conversation-history-list")
-                reveal(row, in: list)
+                let page = node(app, "conversation-history-page")
+                reveal(row, in: page)
                 XCTAssertTrue(row.isHittable)
-                XCTAssertTrue(list.frame.contains(row.frame), "Row \(row.frame), list \(list.frame)")
+                XCTAssertTrue(page.frame.contains(row.frame), "Row \(row.frame), page \(page.frame)")
                 XCTAssertGreaterThanOrEqual(node(app, "conversation-history-new").frame.height, 44)
                 if largeText {
                     XCTAssertGreaterThan(row.frame.height, defaultHeight + 20)
@@ -61,6 +63,7 @@ enum ConversationHistoryUITestConditions {
                 let undo = node(app, "conversation-history-undo")
                 XCTAssertTrue(UITestConditions.exists(undo))
                 XCTAssertFalse(node(app, rowID).exists)
+                reveal(undo, in: page)
                 XCTAssertTrue(undo.isHittable)
                 XCTAssertTrue(app.frame.contains(undo.frame))
                 RecordingFixtureUITestConditions.capture(app, "history-full-swipe-deleted-\(suffix)", testCase: testCase)
@@ -92,14 +95,17 @@ enum ConversationHistoryUITestConditions {
 
         func send(_ question: String) {
             let input = node(app, "rag-conversation-input")
+            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
             input.tap()
             input.typeText(question)
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
         }
 
         send(firstQuestion)
+        FormUITestConditions.reveal(node(app, "rag-conversation-new-session"), in: app, scroll: node(app, "rag-conversation-history"))
         node(app, "rag-conversation-new-session").tap()
         send(secondQuestion)
+        FormUITestConditions.reveal(node(app, "rag-conversation-sessions-toggle"), in: app, scroll: node(app, "rag-conversation-history"))
         node(app, "rag-conversation-sessions-toggle").tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
 
@@ -108,12 +114,14 @@ enum ConversationHistoryUITestConditions {
         )
         XCTAssertEqual(rows.count, 2)
         let firstConversation = rows.element(boundBy: 1)
-        reveal(firstConversation, in: node(app, "conversation-history-list"))
+        let page = node(app, "conversation-history-page")
+        reveal(firstConversation, in: page)
         XCTAssertTrue(firstConversation.isHittable)
         let preview = node(app, "conversation-history-preview")
         firstConversation.tap()
 
         if UITestConditions.exists(preview) {
+            reveal(preview, in: page)
             XCTAssertTrue(UITestConditions.exists(preview.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", firstQuestion),
             ).firstMatch))

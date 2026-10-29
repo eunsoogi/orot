@@ -142,7 +142,7 @@ export function EvidenceSourceDetailScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
-  container: { gap: 12, paddingHorizontal: 24, paddingTop: 20 },
+  container: { gap: 12, paddingHorizontal: 20, paddingTop: 16 },
   // Match the selected reference title without overriding system text scaling or its existing weight.
   heading: { fontSize: 36, fontWeight: '700' },
   subtitle: { fontSize: 14, color: appColors.secondary, marginBottom: 12 },

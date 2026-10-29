@@ -1,7 +1,7 @@
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -9,7 +9,6 @@ import type {
   ProviderSelectionOption,
 } from '../../providers/selection';
 import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
-import { getAiFeatureIntegrationCopy } from './copy';
 import type {
   AiFeatureServiceDependencies,
   AiFeatureServices,
@@ -21,7 +20,6 @@ import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
 import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
-import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 
@@ -79,7 +77,6 @@ export function AiFeatureFlow({
     () => resolveSelectedAi(selectedAiDependencies),
     [selectedAiDependencies],
   );
-  const copy = getAiFeatureIntegrationCopy();
   const requestBack = useCallback(() => {
     navigation.onBack().then(
       () => undefined,
@@ -88,20 +85,6 @@ export function AiFeatureFlow({
   }, [navigation]);
   return (
     <View style={styles.container} testID="ai-feature-flow">
-      {!providerSelectionOpen &&
-      !sourceDetailOpen &&
-      screenRoute === 'entry' ? (
-        <AiProviderSelectorRow
-          onPress={openProviderSelection}
-          resolveSelectedAi={resolveSelectedAiForRoute}
-          revision={selectedAiRevision}
-        />
-      ) : null}
-      {articleOpenError ? (
-        <Text accessibilityRole="alert" testID="external-article-open-error">
-          {copy.articleOpenError}
-        </Text>
-      ) : null}
       <View style={styles.screen}>
         {/* Keep feature ScrollViews mounted and bounded while an overlay is active. */}
         <View
@@ -122,6 +105,7 @@ export function AiFeatureFlow({
           >
             <AiFeatureFlowScreen
               route={screenRoute}
+              articleOpenError={articleOpenError}
               navigationRouteKey={screenRouteKey ?? undefined}
               onFeatureNavigationStateChange={reportFeatureNavigationState}
               renderVisitQuestions={renderVisitQuestions}

@@ -20,7 +20,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         tap(app, "inference-disclosure-expand")
         let preview = node(app, "inference-disclosure-message-1")
         XCTAssertTrue(preview.exists)
-        let scroll = node(app, "inference-disclosure-preview")
+        let scroll = node(app, "inference-disclosure-content")
         scroll.swipeUp()
         let request = UITestConditions.text(preview)
         XCTAssertTrue(request.contains("SENTINEL_HEALTH_VALUE"), request)
@@ -181,7 +181,9 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
             tap(app, "medical-appointment-import")
             XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
             XCTAssertTrue(node(app, "inference-disclosure-allow").isEnabled)
-            // The sheet is accessible before its presentation finishes; capture only once both actions enter the window.
+            // The decisions belong to the same page, so reveal them before measuring their hit regions.
+            let page = node(app, "inference-disclosure-content")
+            FormUITestConditions.reveal(node(app, "inference-disclosure-cancel"), in: app, scroll: page)
             let presented = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 ["inference-disclosure-allow", "inference-disclosure-cancel"].allSatisfy {
                     let action = self.node(app, $0)
