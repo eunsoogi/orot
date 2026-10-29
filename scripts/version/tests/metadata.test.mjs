@@ -151,7 +151,9 @@ test('reuses only the matching open version PR and refuses conflicting refs', ()
     base: { ref: 'main' },
     head: { ref: details.branch, repo: { full_name: 'eunsoogi/orot' } },
     title: details.title,
-    body: `Version update\nFixes #171\n${details.marker}`,
+    state: 'open',
+    draft: true,
+    body: `Updates Orot version metadata to 0.1.1.\n${details.marker}`,
     html_url: 'https://github.com/eunsoogi/orot/pull/200',
   };
 
@@ -197,28 +199,6 @@ test('reuses only the matching open version PR and refuses conflicting refs', ()
     () =>
       classifyExistingVersionPr({
         pullRequests: [{ ...matchingPullRequest, body: details.marker }],
-        branchExists: true,
-        repository: 'eunsoogi/orot',
-        version: '0.1.1',
-      }),
-    /does not match/,
-  );
-});
-
-test('rejects a similarly prefixed issue number when reusing a version PR', () => {
-  const details = versionPrDetails('0.1.1');
-  const pullRequest = {
-    base: { ref: 'main' },
-    head: { ref: details.branch, repo: { full_name: 'eunsoogi/orot' } },
-    title: details.title,
-    body: `Version update\nFixes #1710\n${details.marker}`,
-    html_url: 'https://github.com/eunsoogi/orot/pull/200',
-  };
-
-  assert.throws(
-    () =>
-      classifyExistingVersionPr({
-        pullRequests: [pullRequest],
         branchExists: true,
         repository: 'eunsoogi/orot',
         version: '0.1.1',
