@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { classifyExistingVersionPr } from './metadata.mjs';
+import { classifyExistingVersionPr, versionPrDetails } from './metadata.mjs';
 
 function gh(args, allowFailure = false) {
   const result = spawnSync('gh', args, {
@@ -46,15 +46,8 @@ export function readRemoteVersionPrState(repository, branch) {
 }
 
 export function createVersionPullRequest(repository, details, version) {
-  const body = [
-    `Updates Orot version metadata to ${version}.`,
-    '',
-    'The workflow changes only the root, mobile, workspace package, and iOS marketing version fields.',
-    '',
-    'Fixes #171',
-    '',
-    details.marker,
-  ].join('\n');
+  // Generate body identity from the same validated input used by reuse and readback.
+  const { body } = versionPrDetails(version);
   const result = gh(
     [
       'pr',
