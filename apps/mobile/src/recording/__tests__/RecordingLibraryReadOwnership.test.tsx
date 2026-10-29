@@ -88,6 +88,7 @@ test('a late cleanup refresh cannot overwrite a newer effect result or revive an
       newer.resolve([summary(fresh)]);
     });
     expect(screen.getByText('Corrected title')).toBeTruthy();
+    expect(screen.queryByTestId('recording-delete-cleanup-pending')).toBeNull();
     await act(async () => {
       older.resolve([
         summary(deleted),
@@ -113,6 +114,7 @@ test('a late cleanup refresh cannot overwrite a newer effect result or revive an
     expect(
       screen.queryByTestId(`recording-library-item-${deleted.id}`),
     ).toBeNull();
+    expect(screen.queryByTestId('recording-delete-cleanup-pending')).toBeNull();
   } finally {
     await act(async () => {
       older.resolve([]);

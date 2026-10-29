@@ -56,6 +56,10 @@ export async function recordingSummaryRaceHarness() {
   };
   const repository = await openEncryptedStorage(options(database));
   const audioOrder: string[] = [];
+  const failures = {
+    commit: null as Error | null,
+    reconcile: null as Error | null,
+  };
   const library = createRecordingLibraryService({
     loadRepository: async () => repository,
     openMemory: async () => ({}) as AgentMemoryService,
@@ -73,9 +77,11 @@ export async function recordingSummaryRaceHarness() {
       },
       commit: async () => {
         audioOrder.push('commit');
+        if (failures.commit) throw failures.commit;
       },
       reconcile: async () => {
         audioOrder.push('reconcile');
+        if (failures.reconcile) throw failures.reconcile;
       },
     },
   });
@@ -102,7 +108,15 @@ export async function recordingSummaryRaceHarness() {
     if (withTranscript) await appendTranscript(id);
     return source;
   }
-  return { database, repository, library, audioOrder, seed, appendTranscript };
+  return {
+    database,
+    repository,
+    library,
+    audioOrder,
+    seed,
+    appendTranscript,
+    failures,
+  };
 }
 
 /** Gate either repository read route after its SQL snapshot has finished, including a committed read transaction. */

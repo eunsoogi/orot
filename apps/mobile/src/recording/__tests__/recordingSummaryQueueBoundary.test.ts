@@ -118,3 +118,61 @@ test('raw metadata can observe an uncommitted cascade, while the queued summary 
     await h.database.closeAsync?.();
   }
 });
+
+test('a late transcript append is reflected by the next snapshot rather than an already completed metadata read', async () => {
+  const h = await recordingSummaryRaceHarness();
+  await h.seed('later-transcript', false);
+  const gate = holdMetadataResult(h.repository);
+  const listing = h.library.listSummaries!();
+  try {
+    await gate.entered;
+    await h.appendTranscript('later-transcript');
+    gate.release();
+    expect((await listing)[0].transcriptReviewState).toBe('notTranscribed');
+    expect((await h.library.listSummaries!())[0].transcriptReviewState).toBe(
+      'unreviewed',
+    );
+  } finally {
+    gate.release();
+    await Promise.allSettled([listing]);
+    gate.restore();
+    await h.database.closeAsync?.();
+  }
+});
+
+test('deletion waits for an active read transaction, then finishes without reversing the database and audio locks', async () => {
+  const h = await recordingSummaryRaceHarness();
+  await h.seed('active-read');
+  const gate = resultGate();
+  const transaction = h.database.transaction.bind(h.database);
+  const tx = jest
+    .spyOn(h.database, 'transaction')
+    .mockImplementationOnce(operation =>
+      transaction(async executor => {
+        const result = await operation(executor);
+        await gate.wait();
+        return result;
+      }),
+    );
+  const listing = h.library.listSummaries!();
+  await gate.entered;
+  let settled = false;
+  const deletion = h.library.deleteRecording('active-read').then(result => {
+    settled = true;
+    return result;
+  });
+  try {
+    await completeSynchronousSqlWork();
+    expect(settled).toBe(false);
+    expect(h.audioOrder).toEqual(['stage']);
+    gate.release();
+    await deletion;
+    expect(await listing).toEqual([]);
+    expect(h.audioOrder).toEqual(['stage', 'commit', 'reconcile']);
+  } finally {
+    gate.release();
+    await Promise.allSettled([listing, deletion]);
+    tx.mockRestore();
+    await h.database.closeAsync?.();
+  }
+});
