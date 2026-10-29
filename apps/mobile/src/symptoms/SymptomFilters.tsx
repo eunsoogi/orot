@@ -18,34 +18,13 @@ import {
 } from './dateTime';
 import { symptomStatusLabel } from './presentation';
 import styles from './SymptomFilters.styles';
+import {
+  FILTER_KEYBOARD_FIELDS,
+  filterInputAccessoryID,
+} from './symptomFilterKeyboard';
 
 // `all` is a UI-only choice; the domain filter keeps only persisted status values.
 type StatusFilter = 'all' | SymptomStatus;
-const FILTER_INPUT_ACCESSORY_IDS = {
-  fromDate: 'symptom-filter-accessory-from-date',
-  fromTime: 'symptom-filter-accessory-from-time',
-  throughDate: 'symptom-filter-accessory-through-date',
-  throughTime: 'symptom-filter-accessory-through-time',
-};
-const FILTER_KEYBOARD_FIELDS = [
-  { nativeID: FILTER_INPUT_ACCESSORY_IDS.fromDate, testSuffix: 'from-date' },
-  { nativeID: FILTER_INPUT_ACCESSORY_IDS.fromTime, testSuffix: 'from-time' },
-  {
-    nativeID: FILTER_INPUT_ACCESSORY_IDS.throughDate,
-    testSuffix: 'through-date',
-  },
-  {
-    nativeID: FILTER_INPUT_ACCESSORY_IDS.throughTime,
-    testSuffix: 'through-time',
-  },
-];
-
-type FilterInputKey = keyof typeof FILTER_INPUT_ACCESSORY_IDS;
-
-function filterInputAccessoryID(field: FilterInputKey): string | undefined {
-  return Platform.OS === 'ios' ? FILTER_INPUT_ACCESSORY_IDS[field] : undefined;
-}
-
 interface SymptomFiltersProps {
   disabled?: boolean;
   filter?: SymptomFilter;
@@ -57,12 +36,19 @@ export default function SymptomFilters({
   filter = {},
   onFilterChange,
 }: SymptomFiltersProps) {
-  const from = filter.fromOnsetAt
-    ? toLocalSymptomDateTime(filter.fromOnsetAt)
-    : null;
-  const through = filter.throughOnsetAt
-    ? toLocalSymptomDateTime(filter.throughOnsetAt)
-    : null;
+  const from = filter.localFrom
+    ? { date: filter.localFrom.slice(0, 10), time: filter.localFrom.slice(11) }
+    : filter.fromOnsetAt
+      ? toLocalSymptomDateTime(filter.fromOnsetAt)
+      : null;
+  const through = filter.localThrough
+    ? {
+        date: filter.localThrough.slice(0, 10),
+        time: filter.localThrough.slice(11),
+      }
+    : filter.throughOnsetAt
+      ? toLocalSymptomDateTime(filter.throughOnsetAt)
+      : null;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     filter.status ?? 'all',
   );
@@ -88,7 +74,8 @@ export default function SymptomFilters({
     if (
       fromOnsetAt &&
       throughOnsetAt &&
-      new Date(fromOnsetAt).getTime() > new Date(throughOnsetAt).getTime()
+      `${fromDate.trim()}T${fromTime.trim()}` >
+        `${throughDate.trim()}T${throughTime.trim()}`
     ) {
       setError(t('symptoms.journal.dateFilter.order'));
       return;
@@ -98,6 +85,12 @@ export default function SymptomFilters({
         ...(nextStatus === 'all' ? {} : { status: nextStatus }),
         ...(fromOnsetAt ? { fromOnsetAt } : {}),
         ...(throughOnsetAt ? { throughOnsetAt } : {}),
+        ...(fromOnsetAt
+          ? { localFrom: `${fromDate.trim()}T${fromTime.trim()}` }
+          : {}),
+        ...(throughOnsetAt
+          ? { localThrough: `${throughDate.trim()}T${throughTime.trim()}` }
+          : {}),
       });
     } catch {
       setError(t('symptoms.journal.filterError'));

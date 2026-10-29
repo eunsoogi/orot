@@ -1,9 +1,9 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import type { SymptomEntry, SymptomEntryFilter } from '@orot/storage';
+import type { SymptomEntry } from '@orot/storage';
 import { t } from '../i18n';
 import { openLocalSymptomJournal } from './localRepository';
 import type { SymptomJournalRepository } from './localRepository';
-import type { NewSymptomDraft, SymptomEdit } from './types';
+import type { NewSymptomDraft, SymptomEdit, SymptomFilter } from './types';
 import { SymptomFilterContext } from './SymptomFilterContext';
 
 /** Keeps journal state in its retained route; failed reads clear stale results. */
@@ -13,7 +13,7 @@ export function useSymptomJournal(
   const repository = useRef<SymptomJournalRepository | null>(null);
   const [entries, setEntries] = useState<SymptomEntry[]>([]);
   const retainedFilter = useContext(SymptomFilterContext);
-  const [localFilter, setLocalFilter] = useState<SymptomEntryFilter>({});
+  const [localFilter, setLocalFilter] = useState<SymptomFilter>({});
   const { filter, setFilter } = retainedFilter ?? {
     filter: localFilter,
     setFilter: setLocalFilter,
@@ -25,7 +25,7 @@ export function useSymptomJournal(
   const mounted = useRef(false);
 
   const reload = useCallback(
-    async (nextFilter: SymptomEntryFilter = {}) => {
+    async (nextFilter: SymptomFilter = {}) => {
       const generation = ++request.current;
       setLoading(true);
       setError('');
@@ -74,7 +74,7 @@ export function useSymptomJournal(
     error,
     canWrite: repository.current !== null,
     retry: () => reload(filter),
-    async changeFilter(nextFilter: SymptomEntryFilter) {
+    async changeFilter(nextFilter: SymptomFilter) {
       setFilter(nextFilter);
       await reload(nextFilter);
     },

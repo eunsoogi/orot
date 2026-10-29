@@ -3,17 +3,17 @@ import type {
   CreateSymptomEntryInput,
   EditSymptomEntryInput,
   SymptomEntry,
-  SymptomEntryFilter,
 } from '@orot/storage';
 import type { SymptomRepository } from '@orot/storage';
-import type { NewSymptomDraft, SymptomEdit } from './types';
+import type { NewSymptomDraft, SymptomEdit, SymptomFilter } from './types';
+import { toLocalSymptomDateTime } from './dateTime';
 
 declare const require: (path: string) => {
   openLocalSymptomRepository: () => Promise<SymptomRepository>;
 };
 
 export interface SymptomJournalRepository {
-  list(filter?: SymptomEntryFilter): Promise<SymptomEntry[]>;
+  list(filter?: SymptomFilter): Promise<SymptomEntry[]>;
   create(draft: NewSymptomDraft): Promise<SymptomEntry>;
   update(id: string, changes: SymptomEdit): Promise<SymptomEntry | null>;
   resolve(id: string): Promise<SymptomEntry | null>;
@@ -48,7 +48,24 @@ export function createSymptomJournalRepository(
   const now = options.now ?? (() => new Date().toISOString());
   const createId = options.createId ?? createSecureSymptomId;
   return {
-    list: filter => storage.list(filter),
+    async list(filter = {}) {
+      const { localFrom, localThrough, fromOnsetAt, throughOnsetAt, status } =
+        filter;
+      // A repeated local hour is discontinuous in UTC; query broadly and compare displayed minutes after retrieval.
+      const entries = await storage.list({
+        ...(status ? { status } : {}),
+        ...(!localFrom && fromOnsetAt ? { fromOnsetAt } : {}),
+        ...(!localThrough && throughOnsetAt ? { throughOnsetAt } : {}),
+      });
+      return entries.filter(entry => {
+        const local = toLocalSymptomDateTime(entry.effectiveAt);
+        const minute = `${local.date}T${local.time}`;
+        return (
+          (!localFrom || minute >= localFrom) &&
+          (!localThrough || minute <= localThrough)
+        );
+      });
+    },
     async create(draft) {
       // Recording and ingestion capture journal entry time; the user supplies onset separately.
       const timestamp = now();

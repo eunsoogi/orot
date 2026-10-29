@@ -163,6 +163,8 @@ describe('SymptomsScreen', () => {
       expect(onFilterChange).toHaveBeenLastCalledWith({
         status: 'active',
         fromOnsetAt: toSymptomTimestamp('2026-04-20', '08:30'),
+        localFrom: '2026-04-20T08:30',
+        localThrough: '2026-04-21T08:30',
         throughOnsetAt: new Date(
           new Date(toSymptomTimestamp('2026-04-21', '08:30')!).getTime() +
             59999,

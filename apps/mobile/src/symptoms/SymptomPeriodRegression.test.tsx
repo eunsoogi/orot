@@ -73,3 +73,86 @@ test('a stored instant within the displayed ending minute is returned by the per
   );
   close();
 });
+
+test('repeated local minutes exclude intervening wall times and support dates across the fold', async () => {
+  if (Intl.DateTimeFormat().resolvedOptions().timeZone !== 'America/New_York')
+    return;
+  const { database, close } = createHealthEvidenceTestDatabase();
+  await runMigrations(database);
+  let sequence = 0;
+  const journal = createSymptomJournalRepository(
+    createSymptomRepository(database),
+    {
+      now: () => '2025-11-03T12:00:00.000Z',
+      createId: () => `fold-${sequence++}`,
+    },
+  );
+  const instants = [
+    '2025-11-02T05:29:00.000Z',
+    '2025-11-02T05:30:43.000Z',
+    '2025-11-02T05:31:00.000Z',
+    '2025-11-02T05:45:00.000Z',
+    '2025-11-02T06:29:00.000Z',
+    '2025-11-02T06:30:43.000Z',
+    '2025-11-02T06:31:00.000Z',
+    '2025-11-02T06:45:00.000Z',
+  ];
+  for (const onsetAt of instants)
+    await journal.create({
+      onsetAt,
+      description: '합성 증상',
+      status: 'active',
+    });
+  let results: string[] = [];
+  await render(
+    <SymptomsScreen
+      entries={[]}
+      onBack={jest.fn()}
+      onRetry={jest.fn()}
+      onCreate={jest.fn()}
+      onUpdate={jest.fn()}
+      onResolve={jest.fn()}
+      onFilterChange={async filter => {
+        results = (await journal.list(filter)).map(item => item.effectiveAt);
+      }}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('symptom-filter-period'));
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-filter-from-date'),
+    '2025-11-02',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-filter-from-time'),
+    '01:30',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-filter-through-date'),
+    '2025-11-02',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-filter-through-time'),
+    '01:30',
+  );
+  await fireEvent.press(screen.getByTestId('symptom-filter-apply'));
+  await waitFor(() =>
+    expect(results).toEqual([
+      '2025-11-02T06:30:43.000Z',
+      '2025-11-02T05:30:43.000Z',
+    ]),
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-filter-from-date'),
+    '2025-11-01',
+  );
+  await fireEvent.press(screen.getByTestId('symptom-filter-apply'));
+  await waitFor(() =>
+    expect(results).toEqual([
+      '2025-11-02T06:30:43.000Z',
+      '2025-11-02T06:29:00.000Z',
+      '2025-11-02T05:30:43.000Z',
+      '2025-11-02T05:29:00.000Z',
+    ]),
+  );
+  close();
+});
