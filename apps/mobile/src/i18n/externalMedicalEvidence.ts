@@ -7,7 +7,7 @@ export const externalMedicalEvidenceKo = {
   'externalMedicalEvidence.search': '검색어 보내고 자료 찾기',
   'externalMedicalEvidence.loading': '외부 문헌을 찾고 있어요.',
   'externalMedicalEvidence.selectResult':
-    '검색 결과를 선택하면 문헌 정보가 여기에 표시돼요.',
+    '검색한 문헌을 선택하면 원문 정보와 출처를 확인할 수 있어요.',
   'externalMedicalEvidence.consent':
     '검색어를 Europe PMC에 전송하는 데 동의해요.',
   'externalMedicalEvidence.consentRequired':

@@ -79,6 +79,10 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             let suffix = dark ? "dark" : "light"
             node(app, "summary-visual-literature").tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "external-medical-evidence-screen")))
+            // Pre-search guidance stays in the page without a blank detail viewport.
+            XCTAssertFalse(node(app, "external-evidence-result-panel").exists)
+            XCTAssertFalse(node(app, "external-evidence-search").isEnabled)
+            XCTAssertEqual(node(app, "external-medical-evidence-screen").scrollViews.count, 1)
             query(app, "sleep synthetic")
             node(app, "external-evidence-search").tap()
             if !dark {
@@ -95,7 +99,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(title))
             capture(app, "literature-result-\(suffix)")
 
-            // The synthetic second result proves selection updates the detail pane.
+            // Selection updates provenance below the list in the same scrolling page.
             let firstResult = node(app, "external-evidence-publication-MED-SYNTHETIC")
             let secondResult = node(app, "external-evidence-publication-MED-SYNTHETIC-SECOND")
             XCTAssertTrue(firstResult.isSelected)
@@ -107,9 +111,12 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 문헌: 운동과 수면의 질"]))
             let open = node(app, "external-evidence-open-selected-source")
             UITestConditions.scrollTo(open, in: app)
+            XCTAssertTrue(open.isHittable, open.debugDescription)
             open.tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
             try back(app)
+            XCTAssertEqual(node(app, "external-evidence-query").value as? String, "sleep synthetic")
+            XCTAssertTrue(secondResult.isSelected)
             for (value, marker) in [("empty", "external-evidence-empty"), ("failure", "")] {
                 query(app, value)
                 node(app, "external-evidence-search").tap()
@@ -133,6 +140,33 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             capture(app, "literature-cancelled-\(suffix)")
             try back(app)
         }
+        // Compare the same supplied title before and after a fresh large-text launch.
+        node(app, "summary-visual-literature").tap()
+        query(app, "long synthetic")
+        node(app, "external-evidence-search").tap()
+        let row = node(app, "external-evidence-publication-MED-SYNTHETIC")
+        XCTAssertTrue(UITestConditions.exists(row))
+        let defaultTitleHeight = row.frame.height
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "summary-visual-picker")))
+        node(app, "summary-visual-literature").tap()
+        query(app, "long synthetic")
+        let search = node(app, "external-evidence-search")
+        FormUITestConditions.reveal(search, in: app, scrollID: "external-medical-evidence-screen")
+        XCTAssertTrue(search.isHittable)
+        search.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
+        XCTAssertTrue(row.frame.height.isFinite)
+        XCTAssertGreaterThan(row.frame.height, defaultTitleHeight)
+        let open = node(app, "external-evidence-open-selected-source")
+        FormUITestConditions.reveal(open, in: app, scrollID: "external-medical-evidence-screen")
+        XCTAssertTrue(open.isHittable)
+        XCTAssertGreaterThanOrEqual(open.frame.height, 44)
+        capture(app, "literature-long-content-large-text")
+        open.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
     }
 
     @MainActor
