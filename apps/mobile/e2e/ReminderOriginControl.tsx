@@ -72,6 +72,7 @@ export function ReminderOriginControl({
         throw new Error('Synthetic control has no repository');
       },
       targets: new Map(),
+      homePreparationTargets: new Map(),
     } satisfies AppointmentReminderRuntime & { transport: boolean[] };
   }, []);
   useEffect(() => {
