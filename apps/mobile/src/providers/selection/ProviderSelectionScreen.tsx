@@ -169,10 +169,8 @@ export default function ProviderSelectionScreen({
   return (
     <View style={styles.root}>
       <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          presentation === 'settings-accounts' && navigationInset,
-        ]}
+        // The page owns scroll clearance once, including confirmation and recovery below the catalog.
+        contentContainerStyle={[styles.container, navigationInset]}
         style={styles.scrollView}
         testID={
           presentation === 'settings-provider'
@@ -224,27 +222,27 @@ export default function ProviderSelectionScreen({
             selectedOption={selectedOption}
           />
         ) : null}
+        {presentation !== 'settings-accounts' ? (
+          <ProviderSelectionFooter
+            message={selectionMessage}
+            saveError={saveError}
+            remoteAvailable={options.some(
+              option => option.privacyBoundary !== 'on-device',
+            )}
+            resolution={pendingResolution}
+            onCancel={() => {
+              publishNavigationState(
+                { hasPendingSelection: false, isSavingSelection: false },
+                true,
+              );
+              setPendingOption(null);
+            }}
+            onConfirm={confirmSelection}
+            option={pendingOption ? confirmationOption : null}
+            saving={saving}
+          />
+        ) : null}
       </ScrollView>
-      {presentation !== 'settings-accounts' ? (
-        <ProviderSelectionFooter
-          message={selectionMessage}
-          saveError={saveError}
-          remoteAvailable={options.some(
-            option => option.privacyBoundary !== 'on-device',
-          )}
-          resolution={pendingResolution}
-          onCancel={() => {
-            publishNavigationState(
-              { hasPendingSelection: false, isSavingSelection: false },
-              true,
-            );
-            setPendingOption(null);
-          }}
-          onConfirm={confirmSelection}
-          option={pendingOption ? confirmationOption : null}
-          saving={saving}
-        />
-      ) : null}
     </View>
   );
 }
