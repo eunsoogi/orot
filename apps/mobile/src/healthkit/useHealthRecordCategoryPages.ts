@@ -19,6 +19,7 @@ export const observationCategories: readonly HealthObservationCategory[] = [
   'other',
 ];
 interface CategoryPage {
+  readonly retryCursor?: HealthObservationCursor | null;
   readonly records: readonly HealthObservation[];
   readonly cursor: HealthObservationCursor | null;
   readonly loadState: 'loading' | 'ready' | 'failed';
@@ -32,6 +33,7 @@ const initialPage: CategoryPage = {
 /** Each card reads its own indexed month page; dense types cannot hide sparse ones. */
 export function useHealthRecordCategoryPages(
   loadObservations: HealthObservationPageLoader,
+  refreshRevision = 0,
 ) {
   const [pages, setPages] = useState<
     Partial<Record<HealthObservationCategory, CategoryPage>>
@@ -39,7 +41,18 @@ export function useHealthRecordCategoryPages(
   const [revision, setRevision] = useState(0);
   const generation = useRef(0);
   const pending = useRef(new Set<HealthObservationCategory>());
-  const now = useRef(new Date().toISOString()).current;
+  const reference = useRef({
+    revision: refreshRevision,
+    now: new Date().toISOString(),
+  });
+  if (reference.current.revision !== refreshRevision) {
+    // Include newly imported measurements through return time, not the original mount time.
+    reference.current = {
+      revision: refreshRevision,
+      now: new Date().toISOString(),
+    };
+  }
+  const now = reference.current.now;
   const from = healthRecordPeriodStart('month', now)!.toISOString();
   const reload = useCallback(
     async (
@@ -54,6 +67,7 @@ export function useHealthRecordCategoryPages(
         [category]: {
           ...(current[category] ?? initialPage),
           loadState: 'loading',
+          retryCursor: after,
         },
       }));
       try {
@@ -72,7 +86,13 @@ export function useHealthRecordCategoryPages(
           ...current,
           [category]: {
             records: after
-              ? [...(current[category]?.records ?? []), ...records]
+              ? [
+                  ...new Map(
+                    [...(current[category]?.records ?? []), ...records].map(
+                      record => [record.id, record],
+                    ),
+                  ).values(),
+                ]
               : records,
             cursor: page.nextCursor,
             loadState: 'ready',
@@ -100,7 +120,7 @@ export function useHealthRecordCategoryPages(
   useEffect(() => {
     generation.current += 1;
     pending.current.clear();
-    setPages({});
+    // Keep the retained page visible while refreshing after import; failure is not empty.
     for (const category of observationCategories) reload(category);
     return () => {
       generation.current += 1;

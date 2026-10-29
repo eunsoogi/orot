@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -10,6 +11,7 @@ import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
 export type HealthRecordsLibraryLoadState = 'loading' | 'ready' | 'failed';
 
 interface HealthRecordsLibraryHeaderProps {
+  readonly beforeFilters?: ReactNode;
   readonly hasSharedNavigation: boolean;
   readonly hasMore?: boolean;
   readonly loadState: HealthRecordsLibraryLoadState;
@@ -22,6 +24,7 @@ interface HealthRecordsLibraryHeaderProps {
 
 /** Keeps the record-library title, filters, and top-level load feedback together. */
 export function HealthRecordsLibraryHeader({
+  beforeFilters,
   hasSharedNavigation,
   hasMore = false,
   loadState,
@@ -52,17 +55,18 @@ export function HealthRecordsLibraryHeader({
         )}
       </View>
       <Text style={styles.description}>{t('healthRecords.description')}</Text>
-      {hasMore ? <Text>{t('healthRecords.moreAvailable')}</Text> : null}
+      {beforeFilters}
       <HealthRecordsCategoryFilter
         selected={selectedCategory}
         onSelect={onSelectCategory}
       />
-      {loadState === 'loading' && observationCount === 0 ? (
+      {hasMore ? <Text>{t('healthRecords.moreAvailable')}</Text> : null}
+      {loadState === 'loading' ? (
         <Text testID="health-records-loading">
           {t('healthRecords.loading')}
         </Text>
       ) : null}
-      {loadState === 'failed' && observationCount === 0 ? (
+      {loadState === 'failed' ? (
         <View>
           <Text
             accessibilityRole="alert"
@@ -90,7 +94,7 @@ export function HealthRecordsLibraryHeader({
 }
 
 const styles = StyleSheet.create({
-  header: { gap: 14 },
+  header: { gap: 16 },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
