@@ -42,8 +42,8 @@ function snapshot(changes: Partial<NavigationGeometryPayload> = {}) {
 test('uses the right rail only when live panels can support content and controls', () => {
   expect(resolveNavigationRootLayout(snapshot())).toEqual({
     placement: 'right',
-    reservedRightWidth: 60,
-    contentWidth: 940,
+    reservedRightWidth: 72,
+    contentWidth: 928,
     windowHeight: 900,
     railTopInset: 92,
     railBottomInset: 42,

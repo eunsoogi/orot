@@ -4,6 +4,7 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HostInstance } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
+import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import {
@@ -42,6 +43,9 @@ export function AdaptiveColumns({
   const { width, fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
   const geometry = useNavigationGeometry();
+  const readableFrame =
+    useNavigationContentFrame()?.availableContentFrame ??
+    geometry?.safeAreaFrame;
   const hostRef = useRef<HostInstance | null>(null);
   const [measuredBounds, setMeasuredBounds] = useState<{
     readonly x: number;
@@ -78,12 +82,37 @@ export function AdaptiveColumns({
         hasNativeDivision: geometry?.reservedRegions.some(
           region => region.isActive && region.kind === 'division',
         ),
-        hasNativeOcclusion: geometry?.reservedRegions.some(
-          region => region.isActive && region.kind === 'occlusion',
-        ),
+        hasNativeOcclusion: geometry?.reservedRegions.some(region => {
+          if (!region.isActive || region.kind !== 'occlusion') return false;
+          if (!readableFrame) return true;
+          // System lanes already consumed by the shell cannot obstruct these panels again.
+          // UIKit's frame already includes its margins; intersect that physical frame exactly once.
+          const left = Math.max(
+            readableFrame.x,
+            measuredBounds?.x ?? readableFrame.x,
+          );
+          const right = Math.min(
+            readableFrame.x + readableFrame.width,
+            measuredBounds ? measuredBounds.x + measuredBounds.width : Infinity,
+          );
+          return (
+            region.frame.x < right &&
+            region.frame.x + region.frame.width > left &&
+            region.frame.y < readableFrame.y + readableFrame.height &&
+            region.frame.y + region.frame.height > readableFrame.y
+          );
+        }),
         hasSecondary,
       }),
-    [fontScale, geometry, hasSecondary, measuredBounds, occlusion, width],
+    [
+      fontScale,
+      geometry,
+      hasSecondary,
+      measuredBounds,
+      occlusion,
+      readableFrame,
+      width,
+    ],
   );
 
   useEffect(() => {

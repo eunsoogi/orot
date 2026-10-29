@@ -22,7 +22,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         let save = UITestConditions.element(app, "manual-history-save")
         FormUITestConditions.reveal(save, in: app, scrollID: "manual-history-scroll")
         XCTAssertTrue(save.isHittable)
-        capture(app, "manual-history-large-text-keyboard-save")
+        NavigationGeometryUITestConditions.captureScreen(app, name: "manual-history-large-text-keyboard-save", testCase: self)
         save.tap()
 
         visible(app, "Synthetic history before correction")
@@ -118,11 +118,14 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testContextualBackAndHomeHonorDepartureConfirmationInRightRail() throws {
         let app = XCUIApplication()
-        launch(app)
+        launch(app, observeGeometry: true)
         defer { app.terminate() }
         try openManualHistory(app)
+        // Observe the list and edited form independently from the departure guard's state assertions.
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-list-boundary", testCase: self)
         tap(app, "manual-history-add", in: "manual-history-scroll")
         guard replace(app, "manual-history-title-input", with: "Synthetic rail draft") else { return }
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
@@ -138,6 +141,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
         leavePrompt.buttons["계속 편집"].tap()
         XCTAssertEqual(UITestConditions.element(app, "manual-history-title-input").value as? String, "Synthetic rail draft")
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
@@ -188,12 +192,13 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false) {
+    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false) {
         app.launchArguments = [
             scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
             scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
             + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
+            + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
@@ -238,13 +243,5 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(text), app.debugDescription)
         FormUITestConditions.reveal(text, in: app, scrollID: "manual-history-scroll", towardTop: true)
         XCTAssertTrue(text.isHittable)
-    }
-
-    @MainActor
-    private func capture(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

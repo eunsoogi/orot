@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import { AdaptiveColumns } from '../AdaptiveColumns';
+import { openGeometry } from '../../navigation/__fixtures__/navigationOpenGeometry';
 
 function StatefulPanel({
   name,
@@ -201,4 +202,49 @@ test('remeasures a padded host when native window regions change', async () => {
       screen.getByTestId('adaptive-columns-secondary').props.style,
     )?.width,
   ).toBe(702);
+});
+
+test('uses readable content width without treating the reserved system lane as an internal obstacle', async () => {
+  const dimensions = jest
+    .spyOn(require('react-native'), 'useWindowDimensions')
+    .mockReturnValue({ width: 951, height: 669, scale: 3, fontScale: 1 });
+  try {
+    setWindowBounds('adaptive-columns-host', 0, 867);
+    await render(
+      <NavigationGeometryProvider>
+        <TestPanels startPrimary={jest.fn()} startSecondary={jest.fn()} />
+      </NavigationGeometryProvider>,
+    );
+    const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+    await fireEvent(sensor, 'geometryChange', { nativeEvent: openGeometry });
+    expect(axis('adaptive-columns')).toBe('row');
+
+    // The same obstruction inside the actual content must retain its avoidance policy.
+    await fireEvent(sensor, 'geometryChange', {
+      nativeEvent: {
+        ...openGeometry,
+        reservedRegions: openGeometry.reservedRegions.map(region =>
+          region.isActive
+            ? { ...region, frame: { ...region.frame, x: 400 } }
+            : region,
+        ),
+      },
+    });
+    expect(axis('adaptive-columns')).toBe('column');
+
+    setWindowBounds('adaptive-columns-host', 0, 663);
+    await fireEvent(sensor, 'geometryChange', { nativeEvent: openGeometry });
+    expect(axis('adaptive-columns')).toBe('column');
+    dimensions.mockReturnValue({
+      width: 951,
+      height: 669,
+      scale: 3,
+      fontScale: 2,
+    });
+    setWindowBounds('adaptive-columns-host', 0, 867);
+    await fireEvent(screen.getByTestId('adaptive-columns-host'), 'layout');
+    expect(axis('adaptive-columns')).toBe('column');
+  } finally {
+    dimensions.mockRestore();
+  }
 });

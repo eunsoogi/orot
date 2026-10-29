@@ -1,7 +1,14 @@
-import { useContext, useState, type ReactNode } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   SafeAreaInsetsContext,
+  SafeAreaProvider,
   SafeAreaView,
 } from 'react-native-safe-area-context';
 import { NavigationOcclusionContext } from './useNavigationContentInset';
@@ -15,6 +22,13 @@ import {
   NavigationRootLayoutContext,
   resolveNavigationRootLayout,
 } from './navigationRootLayout';
+import {
+  NavigationContentFrameContext,
+  resolveNavigationContentFrame,
+} from './navigationContentFrame';
+import { observeNavigationTest } from './navigationTestObservation';
+import type { NavigationGeometryRect } from './navigationGeometry';
+import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
 
 /** Shares shell geometry with the bar, preserves routes beside reserved lanes, and separates scroll-only action overlap. */
 export function NavigationViewport({
@@ -28,18 +42,64 @@ export function NavigationViewport({
 }) {
   const [contentFrame, setContentFrame] =
     useState<NavigationLayoutFrame | null>(null);
-  const [actionFrame, setActionFrame] = useState<NavigationLayoutFrame | null>(
+  const [actionFrame, setActionFrame] = useState<NavigationGeometryRect | null>(
     null,
   );
+  const [viewportBounds, setViewportBounds] =
+    useState<NavigationGeometryRect | null>(null);
   const geometry = useNavigationGeometry();
-  const layout = resolveNavigationRootLayout(geometry);
+  const layout = useMemo(
+    () => resolveNavigationRootLayout(geometry),
+    [geometry],
+  );
+  const sharedFrame = useMemo(
+    () =>
+      resolveNavigationContentFrame(
+        geometry,
+        layout,
+        viewportBounds
+          ? {
+              ...viewportBounds,
+              x:
+                viewportBounds.x +
+                (geometry?.viewportBounds?.x ?? geometry?.windowBounds.x ?? 0),
+              y:
+                viewportBounds.y +
+                (geometry?.viewportBounds?.y ?? geometry?.windowBounds.y ?? 0),
+            }
+          : null,
+      ),
+    [geometry, layout, viewportBounds],
+  );
+  useEffect(() => {
+    if (sharedFrame)
+      observeNavigationTest('navigation-content-frame', {
+        frame: JSON.stringify(sharedFrame),
+      });
+  }, [sharedFrame]);
   const safeAreaInsets = useContext(SafeAreaInsetsContext);
+  const visibleSide =
+    sharedFrame?.side ??
+    (layout.placement === 'right' ? (layout.railSide ?? 'right') : 'bottom');
+  const viewport = sharedFrame?.viewportFrame;
+  const available = sharedFrame?.availableContentFrame;
+  const consumed =
+    viewport && available
+      ? {
+          top: available.y - viewport.y,
+          left: available.x - viewport.x,
+          right: viewport.x + viewport.width - available.x - available.width,
+          bottom: viewport.y + viewport.height - available.y - available.height,
+        }
+      : null;
   const occlusionInput = {
-    placement: layout.placement,
+    placement:
+      visibleSide === 'bottom' ? ('bottom' as const) : ('right' as const),
     reservedRightWidth:
-      layout.placement === 'right' ? layout.reservedRightWidth : 0,
-    systemBottomInset:
-      layout.placement === 'right' ? layout.systemBottomInset : 0,
+      consumed?.right ??
+      (layout.placement === 'right' ? layout.reservedRightWidth : 0),
+    reservedLeftWidth: consumed?.left ?? 0,
+    systemBottomInset: consumed?.bottom ?? 0,
     systemInsets: {
       top: safeAreaInsets?.top ?? 0,
       right: safeAreaInsets?.right ?? 0,
@@ -56,73 +116,92 @@ export function NavigationViewport({
       ? measureNavigationBottomOcclusion(
           contentFrame,
           actionFrame,
-          viewportOcclusion.viewportInsets.bottom,
+          consumed ? 0 : viewportOcclusion.viewportInsets.bottom,
         )
       : null;
   const occlusion = resolveNavigationOcclusion({
     ...occlusionInput,
     measuredBottomActionOcclusion,
   });
-  const contentRegionStyle =
-    layout.placement === 'right'
-      ? [
-          styles.fill,
-          {
-            bottom: 0,
-            left: 0,
-            position: 'absolute' as const,
-            paddingBottom: occlusion.viewportInsets.bottom,
-            right: occlusion.viewportInsets.right,
-            top: 0,
-          },
-        ]
-      : styles.fill;
+  // The measured parent shrinks with KeyboardAvoidingView. Derive its edge clearance once,
+  // rather than deducting the full-window home area again above an already visible keyboard.
+  const contentRegionStyle = consumed
+    ? [
+        styles.fill,
+        {
+          position: 'absolute' as const,
+          ...consumed,
+        },
+      ]
+    : styles.fill;
   return (
     <NavigationRootLayoutContext.Provider value={layout}>
-      <NavigationOcclusionContext.Provider value={occlusion}>
-        <View style={styles.fill}>
+      <NavigationContentFrameContext.Provider value={sharedFrame}>
+        <NavigationOcclusionContext.Provider value={occlusion}>
           <View
+            style={styles.fill}
             onLayout={({ nativeEvent }) =>
-              setContentFrame({
-                y: nativeEvent.layout.y,
-                height: nativeEvent.layout.height,
-              })
+              setViewportBounds(nativeEvent.layout)
             }
-            style={contentRegionStyle}
-            testID="navigation-content-region"
+            testID="navigation-visible-viewport"
           >
-            {childHandlesSafeArea ? (
-              <View style={styles.fill}>{children}</View>
-            ) : (
-              <SafeAreaView
-                // The rail reservation owns right and bottom clearance; this wrapper keeps the remaining edges.
-                edges={
-                  layout.placement === 'right'
-                    ? ['top', 'left']
-                    : ['top', 'right', 'left']
-                }
+            <View
+              onLayout={({ nativeEvent }) =>
+                setContentFrame({
+                  y: nativeEvent.layout.y,
+                  height: nativeEvent.layout.height,
+                })
+              }
+              style={contentRegionStyle}
+              testID="navigation-content-region"
+            >
+              {/* The contracted native provider reports only edges not already consumed by this frame. */}
+              <SafeAreaProvider
                 style={styles.fill}
-                testID="navigation-safe-area-content"
+                initialMetrics={{
+                  frame: sharedFrame?.availableContentFrame ?? {
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 0,
+                  },
+                  insets: consumed
+                    ? { top: 0, right: 0, bottom: 0, left: 0 }
+                    : (safeAreaInsets ?? {
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        left: 0,
+                      }),
+                }}
               >
-                {children}
-              </SafeAreaView>
-            )}
+                {childHandlesSafeArea ? (
+                  <View style={styles.fill}>{children}</View>
+                ) : (
+                  <SafeAreaView
+                    // The nested provider reports only unconsumed edges; never repeat the shell reservation.
+                    edges={['top', 'right', 'left']}
+                    style={styles.fill}
+                    testID="navigation-safe-area-content"
+                  >
+                    {children}
+                  </SafeAreaView>
+                )}
+              </SafeAreaProvider>
+            </View>
+            <View
+              pointerEvents="box-none"
+              style={styles.overlay}
+              testID="navigation-action-bar-overlay"
+              onLayout={({ nativeEvent }) => setActionFrame(nativeEvent.layout)}
+            >
+              <NavigationOverlayLayoutContext.Provider value={actionFrame}>
+                {actionBar}
+              </NavigationOverlayLayoutContext.Provider>
+            </View>
           </View>
-          <View
-            pointerEvents="box-none"
-            style={styles.overlay}
-            testID="navigation-action-bar-overlay"
-            onLayout={({ nativeEvent }) =>
-              setActionFrame({
-                y: nativeEvent.layout.y,
-                height: nativeEvent.layout.height,
-              })
-            }
-          >
-            {actionBar}
-          </View>
-        </View>
-      </NavigationOcclusionContext.Provider>
+        </NavigationOcclusionContext.Provider>
+      </NavigationContentFrameContext.Provider>
     </NavigationRootLayoutContext.Provider>
   );
 }

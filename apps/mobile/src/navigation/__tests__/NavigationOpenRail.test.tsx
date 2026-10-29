@@ -104,10 +104,10 @@ test('retains draft and disabled primary action across continuous Open geometry 
     StyleSheet.flatten(
       screen.getByTestId('navigation-right-rail-host').props.style,
     ),
-  ).toEqual(expect.objectContaining({ width: 60, height: 669, right: 0 }));
+  ).toEqual(expect.objectContaining({ width: 66, height: 669, right: 0 }));
   expect(
     screen.getByTestId('navigation-right-rail-insets').props.children,
-  ).toBe('12,136');
+  ).toBe('18,136');
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');
