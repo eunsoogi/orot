@@ -12,6 +12,7 @@ export const recordingCohorts = {
       'RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',
       'RecordingDeletionRecoveryUITests/testFailedDeletionRestoresAudioAndKeepsSourceDuringSlowListRead',
       'RecordingDeletionRecoveryUITests/testDelayedAudioCleanupKeepsProgressUntilCleanupCompletes',
+      'RecordingDeletionRecoveryUITests/testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave',
     ],
   },
   'recordings-review': {
