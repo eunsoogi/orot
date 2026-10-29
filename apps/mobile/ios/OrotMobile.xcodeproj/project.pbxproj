@@ -1477,7 +1477,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.3.0;
 				"OROT_SIMULATOR_ENTITLEMENTS[sdk=iphonesimulator*]" = OrotMobile/OrotMobile.simulator.entitlements;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -1511,7 +1511,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.3.0;
 				"OROT_SIMULATOR_ENTITLEMENTS[sdk=iphonesimulator*]" = OrotMobile/OrotMobile.simulator.entitlements;
 				OTHER_LDFLAGS = (
 					"$(inherited)",

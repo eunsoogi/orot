@@ -1,6 +1,6 @@
 {
   "name": "@orot/mobile",
-  "version": "0.0.1",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "ios": "react-native run-ios",
