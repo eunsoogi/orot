@@ -36,7 +36,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         NavigationWindowGeometryUITestConditions.tap(app, "ai-feature-visit-questions")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         let generate = UITestConditions.element(app, "next-visit-generate")
-        FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(generate.exists && generate.isHittable)
+        guard generate.exists, generate.isHittable else { return }
         generate.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-review-save")))
 

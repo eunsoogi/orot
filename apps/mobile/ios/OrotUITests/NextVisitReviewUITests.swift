@@ -39,38 +39,38 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let initialViewport = viewport.frame
         try captureViewport(app, container: scroll, viewport: viewport, stage: "initial")
         XCTAssertTrue(app.staticTexts["합성 진료 예약"].exists)
-        reveal(app, "next-visit-generate")
+        try reveal(app, "next-visit-generate")
         tap(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-generation-loading")))
         tap(app, "next-visit-probe-tools")
         tap(app, "next-visit-probe-complete-generation")
-        reveal(app, "next-visit-caveat-conflicting_records")
+        try reveal(app, "next-visit-caveat-conflicting_records")
         top(app)
         capture(app, "edit-questions-light")
-        reveal(app, "next-visit-source-0-0")
+        try reveal(app, "next-visit-source-0-0")
         tap(app, "next-visit-source-0-0")
         UITestConditions.value(node(app, "next-visit-source-content"), equals: "합성 기록에서 가져온 예시 문장입니다.")
         tap(app, "next-visit-source-close")
         top(app)
         replace(app, "검토해 수정한 합성 질문")
-        reveal(app, "next-visit-review-save")
+        try reveal(app, "next-visit-review-save")
         tap(app, "next-visit-review-save")
         UITestConditions.value(node(app, "next-visit-save-message"), equals: "검토한 질문을 이 예약에 저장했어요.")
         try savedQuestion(app)
-        reveal(app, "next-visit-saved-edit")
+        try reveal(app, "next-visit-saved-edit")
         top(app)
         capture(app, "saved-questions-light")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
         XCTAssertTrue(node(app, "next-visit-title").exists)
         capture(app, "saved-questions-dark")
-        reveal(app, "next-visit-saved-edit")
+        try reveal(app, "next-visit-saved-edit")
         tap(app, "next-visit-saved-edit")
         top(app)
         capture(app, "edit-questions-dark")
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self)
         top(app)
         replace(app, "저장되지 않은 임시 수정")
-        reveal(app, "next-visit-review-cancel")
+        try reveal(app, "next-visit-review-cancel")
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "next-visit-questions-scroll", contentID: "next-visit-review-cancel")
         tap(app, "next-visit-review-cancel")
         try savedQuestion(app)
@@ -83,7 +83,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         tap(app, "next-visit-probe-reload-screen")
         try savedQuestion(app)
         // Check the preserved caveat once after rehydration; repeating this bottom trip after every text assertion adds no boundary.
-        reveal(app, "next-visit-caveat-conflicting_records")
+        try reveal(app, "next-visit-caveat-conflicting_records")
     }
 
     @MainActor
@@ -117,7 +117,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "next-visit-questions-back").exists)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-appointment-time")))
         XCTAssertEqual(node(app, "next-visit-provider-select").label, "AI 선택 또는 변경, 합성 UI 검사 제공자")
-        reveal(app, "next-visit-generate")
+        try reveal(app, "next-visit-generate")
         tap(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-review-save")))
         try NavigationUITestConditions.scrollToBottom(app, "next-visit-questions-scroll")
@@ -141,12 +141,13 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(keyboard.minY, keyboardTop)
         XCTAssertLessThanOrEqual(keyboard.maxY, keyboardTop + keyboardHeight + 1)
         let save = node(app, "next-visit-review-save")
-        FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input)
+        _ = try XCTUnwrap(FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "Save must be reachable while editing with the keyboard visible")
         if expectsRightRail {
             XCTAssertLessThan(save.frame.maxX, back.toolbar.frame.minX)
         }
         XCTAssertTrue(save.exists && save.isHittable)
+        guard save.exists, save.isHittable, app.keyboards.firstMatch.exists else { return }
         XCTAssertLessThanOrEqual(save.frame.maxY, keyboardTop)
         capture(app, "visit-questions-keyboard-save-action")
         save.tap()
@@ -180,12 +181,13 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let target = node(app, id)
         XCTAssertTrue(UITestConditions.exists(target))
         XCTAssertTrue(target.isHittable, target.debugDescription)
+        guard target.exists, target.isHittable else { return }
         target.tap()
     }
 
     @MainActor
-    private func reveal(_ app: XCUIApplication, _ id: String) {
-        FormUITestConditions.reveal(node(app, id), in: app, scrollID: "next-visit-questions-scroll")
+    private func reveal(_ app: XCUIApplication, _ id: String) throws {
+        _ = try XCTUnwrap(FormUITestConditions.reveal(node(app, id), in: app, scrollID: "next-visit-questions-scroll"))
     }
 
     @MainActor
