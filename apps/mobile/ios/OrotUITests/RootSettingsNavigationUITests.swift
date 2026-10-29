@@ -237,7 +237,10 @@ extension RootNavigationUITests {
             prefix == "settings-provider-panels" ? ["settings-provider-local-panel", "settings-provider-connected-panel"] : ["settings-accounts-list", "settings-accounts-actions"]
         let first = UITestConditions.element(app, ids[0]), second = UITestConditions.element(app, ids[1])
         XCTAssertTrue(first.exists && second.exists, app.debugDescription)
+        let host = UITestConditions.element(app, "\(prefix)-host")
+        XCTAssertTrue(host.exists && host.frame.insetBy(dx: -1, dy: -1).contains(first.frame) && host.frame.insetBy(dx: -1, dy: -1).contains(second.frame))
         let navigation = try NavigationUITestConditions.navigationAction(app, navigationID)
+        try NavigationUITestConditions.panelSnapshot(app, frames: ["window": app.frame, "host": host.frame, "primary": first.frame, "secondary": second.frame, "navigation": navigation.toolbar.frame], testCase: self)
         if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
             XCTAssertLessThanOrEqual(max(first.frame.maxX, second.frame.maxX), navigation.toolbar.frame.minX + 1)
         }
