@@ -1,5 +1,38 @@
+diff --git a/lib/generators/components/GenerateShadowNodeCpp.js b/lib/generators/components/GenerateShadowNodeCpp.js
+index eb17be7b461f35a94d812f858da777dacf028528..d92069e28b179111d22705723bff4bfd9146017e 100644
+--- a/lib/generators/components/GenerateShadowNodeCpp.js
++++ b/lib/generators/components/GenerateShadowNodeCpp.js
+@@ -56,6 +56,11 @@ module.exports = {
+         return replacedTemplate;
+       }).join('\n');
+     }).filter(Boolean).join('\n');
++    // Do not emit a translation unit without exported component names.
++    if (componentNames.length === 0) {
++      return new Map();
++    }
++
+     const replacedTemplate = FileTemplate({
+       componentNames,
+       headerPrefix: headerPrefix !== null && headerPrefix !== void 0 ? headerPrefix : ''
+diff --git a/lib/generators/components/GenerateShadowNodeCpp.js.flow b/lib/generators/components/GenerateShadowNodeCpp.js.flow
+index 8c3573316f001100898d7577da8cd50c685b7674..b6cc8c62f8216419876c0290550b03cd4cc94b9a 100644
+--- a/lib/generators/components/GenerateShadowNodeCpp.js.flow
++++ b/lib/generators/components/GenerateShadowNodeCpp.js.flow
+@@ -87,6 +87,11 @@ module.exports = {
+       .filter(Boolean)
+       .join('\n');
+-
++
++    // Do not emit a translation unit without exported component names.
++    if (componentNames.length === 0) {
++      return new Map();
++    }
++
+     const replacedTemplate = FileTemplate({
+       componentNames,
+       headerPrefix: headerPrefix ?? '',
 diff --git a/lib/generators/components/GenerateStateCpp.js b/lib/generators/components/GenerateStateCpp.js
-index 69bacca..b39b0cd 100644
+index 69bacca33ba9775eff6b02c5017708a0616baa51..a784191dd5051e42ecd4c6b62796a722878ba6e9 100644
 --- a/lib/generators/components/GenerateStateCpp.js
 +++ b/lib/generators/components/GenerateStateCpp.js
 @@ -53,6 +53,11 @@ module.exports = {
@@ -15,13 +48,14 @@ index 69bacca..b39b0cd 100644
        stateClasses,
        headerPrefix: headerPrefix !== null && headerPrefix !== void 0 ? headerPrefix : ''
 diff --git a/lib/generators/components/GenerateStateCpp.js.flow b/lib/generators/components/GenerateStateCpp.js.flow
-index 8cbb3fb..18077f5 100644
+index 8cbb3fb920a1663c177ba694b49ae731b6276bf7..18077f566254068f0ddd3beaabb3cedb3b6b141e 100644
 --- a/lib/generators/components/GenerateStateCpp.js.flow
 +++ b/lib/generators/components/GenerateStateCpp.js.flow
 @@ -84,6 +84,11 @@ module.exports = {
        .filter(Boolean)
        .join('\n');
- 
+-
++
 +    // Avoid compiling a generated translation unit with no definitions.
 +    if (stateClasses.length === 0) {
 +      return new Map();

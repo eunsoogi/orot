@@ -107,7 +107,9 @@ settings:
 
 patchedDependencies:
   '@op-engineering/op-sqlite@18.2.5': 4fc537009ee7bf3930954300cc65f24bac75e03511bbd280c44fae2de33f58e5
-  '@react-native/codegen@0.87.1': c2e776084273a2c846c9032c68dd62809644f35e851f05c32ebe3e243fa240ac
+  '@react-native-community/datetimepicker@9.2.2': 6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc
+  '@react-native-community/slider@5.2.2': a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e
+  '@react-native/codegen@0.87.1': cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e
   '@react-navigation/elements@2.9.44': 086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a
   '@react-navigation/native@7.5.0': 2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195
   fast-text-encoding@1.0.6: 7517f8f9187fc79a318d339494e64ef41dd1d6466933232cdc956cb66a30464a
@@ -175,10 +177,10 @@ importers:
         version: link:../../packages/storage
       '@react-native-community/datetimepicker':
         specifier: 9.2.2
-        version: 9.2.2(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
+        version: 9.2.2(patch_hash=6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@react-native-community/slider':
         specifier: 5.2.2
-        version: 5.2.2
+        version: 5.2.2(patch_hash=a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e)
       '@react-navigation/native':
         specifier: 7.5.0
         version: 7.5.0(patch_hash=2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -5370,20 +5372,20 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@react-native-community/datetimepicker@9.2.2(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
+  '@react-native-community/datetimepicker@9.2.2(patch_hash=6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
     dependencies:
       invariant: 2.2.4
       react: 19.2.3
       react-native: 0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
 
-  '@react-native-community/slider@5.2.2': {}
+  '@react-native-community/slider@5.2.2(patch_hash=a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e)': {}
 
   '@react-native/asset-utils@0.87.1': {}
 
   '@react-native/babel-plugin-codegen@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@babel/traverse': 7.29.8(supports-color@8.1.1)
-      '@react-native/codegen': 0.87.1(patch_hash=c2e776084273a2c846c9032c68dd62809644f35e851f05c32ebe3e243fa240ac)(@babel/core@7.29.7(supports-color@8.1.1))
+      '@react-native/codegen': 0.87.1(patch_hash=cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e)(@babel/core@7.29.7(supports-color@8.1.1))
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color
@@ -5426,7 +5428,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@react-native/codegen@0.87.1(patch_hash=c2e776084273a2c846c9032c68dd62809644f35e851f05c32ebe3e243fa240ac)(@babel/core@7.29.7(supports-color@8.1.1))':
+  '@react-native/codegen@0.87.1(patch_hash=cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e)(@babel/core@7.29.7(supports-color@8.1.1))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       '@babel/parser': 7.29.9
@@ -8138,7 +8140,7 @@ snapshots:
   react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1):
     dependencies:
       '@react-native/asset-utils': 0.87.1
-      '@react-native/codegen': 0.87.1(patch_hash=c2e776084273a2c846c9032c68dd62809644f35e851f05c32ebe3e243fa240ac)(@babel/core@7.29.7(supports-color@8.1.1))
+      '@react-native/codegen': 0.87.1(patch_hash=cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e)(@babel/core@7.29.7(supports-color@8.1.1))
       '@react-native/community-cli-plugin': 0.87.1(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(supports-color@8.1.1)
       '@react-native/gradle-plugin': 0.87.1
       '@react-native/normalize-colors': 0.87.1
