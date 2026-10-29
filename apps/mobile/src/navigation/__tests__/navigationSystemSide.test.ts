@@ -4,6 +4,8 @@ import {
 } from '../navigationGeometry';
 import { resolveNavigationRootLayout } from '../navigationRootLayout';
 import { openGeometry } from '../__fixtures__/navigationOpenGeometry';
+import { leftSplitGeometry } from '../__fixtures__/navigationSplitGeometry';
+import { resolveNavigationContentFrame } from '../navigationContentFrame';
 
 // Public UIKit observations from beef451 on iOS 27.1, 2026-10-28.
 // Closed Duo has no division; hinge identity must survive that disappearance.
@@ -53,4 +55,20 @@ test('does not infer a hinged phone from OS support or ordinary phone width', ()
       }),
     ).placement,
   ).toBe('bottom');
+});
+
+test('places the observed left split rail opposite its edge-clipped division', () => {
+  const geometry = createNavigationGeometrySnapshot(leftSplitGeometry);
+  const layout = resolveNavigationRootLayout(geometry);
+  expect(layout).toMatchObject({
+    placement: 'right',
+    railSide: 'left',
+    reservedLeftWidth: 72,
+    reservedRightWidth: 0,
+    contentWidth: 397,
+  });
+  expect(resolveNavigationContentFrame(geometry, layout)).toMatchObject({
+    side: 'left',
+    availableContentFrame: { x: 72, y: 0, width: 397, height: 635 },
+  });
 });

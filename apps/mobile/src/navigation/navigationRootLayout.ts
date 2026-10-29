@@ -3,6 +3,7 @@ import {
   createNavigationGeometrySnapshot,
   type NavigationGeometrySnapshot,
 } from './navigationGeometry';
+import { resolveNavigationSystemSide } from './navigationSystemSide';
 
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
@@ -115,10 +116,7 @@ export function resolveNavigationRootLayout(
   // OS support and window width do not identify a Duo. A real hinge remains present when closed.
   if (!(geometry.hasHinge ?? divisions.length > 0))
     return BOTTOM_NAVIGATION_ROOT_LAYOUT;
-  const side =
-    geometry.safeAreaInsets.left > geometry.safeAreaInsets.right
-      ? 'left'
-      : 'right';
+  const side = resolveNavigationSystemSide(geometry, divisions);
   const {
     width,
     laneWidth,
