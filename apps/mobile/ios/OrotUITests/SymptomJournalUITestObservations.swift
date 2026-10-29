@@ -5,16 +5,49 @@ import XCTest
 @MainActor
 enum SymptomJournalUITestObservations {
     /// Checks the editor against the route viewport while preserving the screen's existing side padding.
-    static func assertFullContentFormLane(_ app: XCUIApplication) {
+    static func assertFullContentFormLane(_ app: XCUIApplication, testCase: XCTestCase) {
         let description = UITestConditions.element(app, "symptom-description")
         let scroll = UITestConditions.element(app, "symptoms-scroll")
         XCTAssertTrue(UITestConditions.exists(description))
         XCTAssertTrue(UITestConditions.exists(scroll))
-        let descriptionWidth = description.frame.width
-        // The description spans the route width after 20-point screen and 14-point form padding.
+        // Keep the existing marker's sample time; this read does not make its native frames atomic with the later AX query.
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "symptom-form-lane-width")
+        let trace = snapshot?["symptomScrollTrace"] as? [String: Any]
+        let accessory = trace?["descriptionAccessory"] as? [String: Any]
+        let inputs = accessory?["inputs"] as? [[String: Any]]
+        let geometry = inputs?.first?["geometry"] as? [String: Any]
+        // Fabric exposes its backed UITextView to AX. Its 1-point border inset is not a narrower outer content lane.
+        guard accessory?["truncated"] as? Bool == false, accessory?["inputCount"] as? Int == 1,
+              inputs?.count == 1, geometry?["status"] as? String == "sampled",
+              geometry?["outerComponentCount"] as? Int == 1,
+              geometry?["ancestorTraversalComplete"] as? Bool == true,
+              geometry?["accessibilityViewIsInput"] as? Bool == true,
+              let outer = observedWindowFrame(geometry?["outer"]),
+              let exposed = observedWindowFrame(geometry?["accessibilityView"]),
+              let inset = geometry?["inputFrameInOuter"] as? [String: Double]
+        else {
+            XCTFail("The journal width check requires an unambiguous outer component and its public AX text view")
+            return
+        }
+        let descriptionFrame = description.frame
+        // Preserve the full outer lane: 20-point screen padding and 14-point form padding on each side.
         let usableWidth = scroll.frame.width - 68
         XCTAssertGreaterThan(usableWidth, 0)
-        XCTAssertEqual(descriptionWidth, usableWidth, accuracy: 1)
+        XCTAssertEqual(outer.width, usableWidth, accuracy: 1)
+        XCTAssertEqual(inset["x"], 1)
+        XCTAssertEqual(inset["width"], outer.width - 2)
+        // Bind the later real XCUI query to the sampled public view; samples are not claimed to be atomic.
+        XCTAssertEqual(descriptionFrame.width, exposed.width, accuracy: 1)
+        XCTAssertEqual(descriptionFrame.minX, exposed.minX, accuracy: 1)
+    }
+
+    /// Missing windows and nonfinite geometry remain failed evidence rather than a guessed width.
+    private static func observedWindowFrame(_ value: Any?) -> CGRect? {
+        guard let view = value as? [String: Any], view["sameWindow"] as? Bool == true,
+              let frame = view["windowFrame"] as? [String: Double],
+              let x = frame["x"], let y = frame["y"], let width = frame["width"], let height = frame["height"],
+              [x, y, width, height].allSatisfy(\.isFinite), width > 0, height > 0 else { return nil }
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     /// Bracket the existing post-refocus drag to distinguish focus acquisition from later loss, without another action or wait.
@@ -111,11 +144,54 @@ enum SymptomJournalUITestObservations {
     }
 
     /// A multiline editor can consume an overlapping form drag. Prefer the clear right gutter, then the left, without changing vertical travel.
-    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, target: CGRect?, controls: [CGRect], start: CGVector, end: CGVector) -> (start: CGVector, end: CGVector)? {
+    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], start: CGVector, end: CGVector, evaluationStartedAtMs: Double) -> (start: CGVector, end: CGVector)? {
         let element = app.textViews["symptom-description"]
         // Without a text editor this overlap boundary is absent; other journal scrolling keeps its existing behavior.
         guard element.exists else { return (start, end) }
-        let editor = element.frame
+        let editorReadStartedAtMs = Date().timeIntervalSince1970 * 1000
+        var editor = element.frame
+        let editorReadEndedAtMs = Date().timeIntervalSince1970 * 1000
+        if !FormScrollGeometry.valid(editor) {
+            // Read once for both validation and diagnostics. Rejected samples never trigger another query or gesture.
+            let identifier = targetIdentifier()
+            XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
+                let marker = UITestConditions.element(app, "navigation-test-observation")
+                let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
+                let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
+                let markerReadEndedAtMs = Date().timeIntervalSince1970 * 1000
+                let snapshot = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any]
+                let nativeEditor = target.flatMap {
+                    FormScrollGeometry.clippedJournalEditor(snapshot, application: application, viewport: viewport, target: $0,
+                                                            identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs,
+                                                            readEndedAtMs: markerReadEndedAtMs, start: start, end: end)
+                }
+                let keyboard = app.keyboards.firstMatch
+                let keyboardExists = keyboard.exists
+                let observation: [String: Any] = [
+                    "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
+                    "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
+                    "editorAXFrame": String(describing: editor), "targetAXFrame": String(describing: target),
+                    "applicationAXFrame": String(describing: application), "viewportAXFrame": String(describing: viewport),
+                    "evaluationStartedAtMs": evaluationStartedAtMs, "targetIdentifier": identifier,
+                    "nativeEditorAccepted": nativeEditor != nil,
+                    "resolvedEditorFrame": nativeEditor.map { String(describing: $0) } ?? "unavailable",
+                    "navigationAXFrames": controls.map { String(describing: $0) },
+                    "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
+                                                       "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
+                    "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardExists ? String(describing: keyboard.frame) : "absent",
+                    // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
+                    "nativeMarker": snapshot as Any? ?? payload,
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])) ?? Data("{\"status\":\"serialization-unavailable\"}".utf8)
+                let record = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+                record.name = "journal-invalid-editor-gutter"
+                record.lifetime = .keepAlways
+                activity.add(record)
+                if let nativeEditor {
+                    editor = nativeEditor
+                }
+            }
+        }
         guard let target, let segment = sideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end).last else {
             XCTFail("The journal form requires a clear side gutter inside the usable viewport: editor=\(editor), target=\(String(describing: target)), viewport=\(viewport), controls=\(controls)")
             return nil
@@ -126,13 +202,6 @@ enum SymptomJournalUITestObservations {
 
     /// Validate the entire vertical segment, including endpoints and blocker edges, from the same captured frames.
     private static func sideSegments(application: CGRect, viewport: CGRect, editor: CGRect, blockers: [CGRect], start: CGVector, end: CGVector) -> [(side: String, from: CGPoint, to: CGPoint)] {
-        [("left", viewport.minX, min(viewport.maxX, editor.minX)), ("right", max(viewport.minX, editor.maxX), viewport.maxX)].compactMap { side, lower, upper -> (String, CGPoint, CGPoint)? in
-            let from = CGPoint(x: (lower + upper) / 2, y: application.minY + start.dy)
-            let to = CGPoint(x: from.x, y: application.minY + end.dy)
-            guard upper > lower, viewport.contains(from), viewport.contains(to),
-                  blockers.allSatisfy({ $0.width > 0 && $0.height > 0 && [$0.minX, $0.maxX, $0.minY, $0.maxY].allSatisfy(\.isFinite) }),
-                  !blockers.contains(where: { from.x >= $0.minX && from.x <= $0.maxX && max(from.y, to.y) >= $0.minY && min(from.y, to.y) <= $0.maxY }) else { return nil }
-            return (side, from, to)
-        }
+        FormScrollGeometry.journalSideSegments(application: application, viewport: viewport, editor: editor, blockers: blockers, start: start, end: end)
     }
 }

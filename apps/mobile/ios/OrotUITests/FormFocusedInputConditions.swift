@@ -33,12 +33,13 @@ enum FormFocusedInputConditions {
             return nil
         }
         if journal {
+            let isEditableTextInput = input.elementType == .textField || input.elementType == .textView
             var focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", input.identifier)).count > 0
-            if needsReveal, !focused, actual.keyboardFrame == nil, input.identifier == "symptom-onset-date", input.elementType == .textField {
-                // This ScrollView explicitly dismisses its keyboard on drag. One tap on the visible date field models the next user action.
+            if needsReveal, !focused, actual.keyboardFrame == nil, isEditableTextInput {
+                // Journal scrolling dismisses the keyboard; tap the visible editor once to model the next text-entry action.
                 input.tap()
                 focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", input.identifier)).count > 0
-                XCTContext.runActivity(named: "Journal post-dismissal date focus: focused=\(focused)") { _ in }
+                XCTContext.runActivity(named: "Journal post-dismissal field focus: focused=\(focused)") { _ in }
                 guard let restored = observe(input, referenceSize: referenceSize, in: app, scroll: scroll, journal: journal) else { return nil }
                 actual = restored
             }
@@ -57,6 +58,8 @@ enum FormFocusedInputConditions {
 
     /// Re-read after each gesture; pre-tap success cannot stand in for the current keyboard, scroll, or navigation geometry.
     private static func observe(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scroll: XCUIElement, journal: Bool) -> Observation? {
+        // Bound sequential AX reads in the same epoch clock used by the opted-in RN trace.
+        let observationStartedAtMs = Date().timeIntervalSince1970 * 1000
         let keyboard = app.keyboards.firstMatch
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
         let applicationFrame = app.frame
@@ -69,7 +72,7 @@ enum FormFocusedInputConditions {
         }
         let contained = geometry.contains(inputFrame, referenceSize: referenceSize)
         let hittable = journal ? input.isHittable : contained && input.isHittable
-        XCTContext.runActivity(named: "Refocused form viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame)), input=\(inputFrame), viewport=\(geometry.viewport), referenceSize=\(referenceSize), contained=\(contained), hittable=\(hittable)") { _ in }
+        XCTContext.runActivity(named: "Refocused form viewport: startedAtMs=\(observationStartedAtMs), endedAtMs=\(Date().timeIntervalSince1970 * 1000), application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame)), input=\(inputFrame), viewport=\(geometry.viewport), referenceSize=\(referenceSize), contained=\(contained), hittable=\(hittable)") { _ in }
         return Observation(application: applicationFrame, input: inputFrame, keyboardFrame: keyboardFrame, geometry: geometry, contained: contained, hittable: hittable)
     }
 }
