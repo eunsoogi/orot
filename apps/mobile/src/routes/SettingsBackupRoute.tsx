@@ -60,10 +60,6 @@ export function SettingsBackupRoute({
               </Text>
               <BackupStatusRecovery state={state} onRetry={onPrepare} />
             </View>
-          </View>
-        }
-        secondary={
-          <View style={styles.column}>
             <View
               style={styles.section}
               testID="settings-backup-recovery-panel"

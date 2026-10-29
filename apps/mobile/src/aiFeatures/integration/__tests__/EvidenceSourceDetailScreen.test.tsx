@@ -161,7 +161,10 @@ describe('EvidenceSourceDetailScreen', () => {
       StyleSheet.flatten(
         screen.getByTestId('ai-feature-source-detail-columns').props.style,
       )?.flexDirection,
-    ).toBe('row');
+    ).toBe('column');
+    expect(
+      screen.queryByTestId('ai-feature-source-detail-columns-secondary'),
+    ).toBeNull();
     await fireEvent.press(screen.getByRole('tab', { name: '저장된 출처 3' }));
     expect(screen.getByText('HealthKit import')).toBeTruthy();
 

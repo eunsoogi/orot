@@ -36,9 +36,8 @@ afterEach(() => Dimensions.set({ window: originalWindow }));
 
 test('uses the production history route lane for a selected Duo preview and compact return', async () => {
   const store = createConversationSessions();
-  await saveAnswer(store, '첫 대화의 합성 질문', '첫 대화의 합성 답변', [
-    sourceReference,
-  ]);
+  const longAnswer = '첫 대화의 합성 답변 ' + '긴 근거 문장 '.repeat(80);
+  await saveAnswer(store, '첫 대화의 합성 질문', longAnswer, [sourceReference]);
   store.create();
   await saveAnswer(store, '두 번째 합성 질문', '두 번째 합성 답변');
   const sessionHook = jest
@@ -66,7 +65,7 @@ test('uses the production history route lane for a selected Duo preview and comp
       StyleSheet.flatten(
         screen.getByTestId('conversation-history-layout').props.style,
       )?.flexDirection;
-    await waitFor(() => expect(direction()).toBe('row'));
+    await waitFor(() => expect(direction()).toBe('column'));
     expect(
       StyleSheet.flatten(
         screen.getByTestId('conversation-history-layout').props.style,
@@ -76,7 +75,21 @@ test('uses the production history route lane for a selected Duo preview and comp
       StyleSheet.flatten(
         screen.getByTestId('conversation-history-layout').props.style,
       )?.columnGap,
-    ).toBe(120);
+    ).toBe(0);
+    const primaryWidth = StyleSheet.flatten(
+      screen.getByTestId('conversation-history-layout-primary').props.style,
+    )?.width;
+    expect(primaryWidth).toBeLessThanOrEqual(640);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('conversation-history-layout-secondary').props.style,
+      )?.width,
+    ).toBe(primaryWidth);
+    const sections = screen.getByTestId('conversation-history-layout').children;
+    expect(sections.map(section => section.props.testID)).toEqual([
+      'conversation-history-layout-primary',
+      'conversation-history-layout-secondary',
+    ]);
     expect(
       screen.getByTestId('conversation-history-measurement-host'),
     ).toBeTruthy();
@@ -89,7 +102,7 @@ test('uses the production history route lane for a selected Duo preview and comp
       'conversation-history',
     );
     expect(store.getSnapshot().activeId).toBe(1);
-    expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
+    expect(screen.getByText(longAnswer)).toBeTruthy();
     expect(
       within(
         screen.getByTestId('conversation-history-preview'),
@@ -114,7 +127,7 @@ test('uses the production history route lane for a selected Duo preview and comp
     expect(screen.getByText('두 번째 합성 답변')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('conversation-history-undo'));
     expect(store.getSnapshot().activeId).toBe(1);
-    expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
+    expect(screen.getByText(longAnswer)).toBeTruthy();
 
     await act(async () => {
       await controller.requestBack();
@@ -131,8 +144,10 @@ test('uses the production history route lane for a selected Duo preview and comp
     await act(async () => {
       controller.push('conversation-history');
     });
-    await waitFor(() => expect(direction()).toBe('row'));
-    expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('conversation-history-preview')).toBeTruthy(),
+    );
+    expect(screen.getByText(longAnswer)).toBeTruthy();
     const page = screen.getByTestId('conversation-history-page');
     expect(within(page).getByTestId('conversation-history-list')).toBeTruthy();
     expect(
@@ -155,9 +170,11 @@ test('uses the production history route lane for a selected Duo preview and comp
     await act(async () => {
       Dimensions.set({ window: windowSize(900) });
     });
-    await waitFor(() => expect(direction()).toBe('row'));
+    await waitFor(() =>
+      expect(screen.getByTestId('conversation-history-preview')).toBeTruthy(),
+    );
     expect(screen.getByTestId('conversation-history-page')).toBe(page);
-    expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
+    expect(screen.getByText(longAnswer)).toBeTruthy();
 
     await act(async () => {
       setMeasuredHistoryHost(0, 500);

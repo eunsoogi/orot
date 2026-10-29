@@ -96,6 +96,27 @@ export function ConversationHistoryLayout({
       }),
     [fontScale, geometry, measuredBounds, occlusion, width],
   );
+  // Keep the wide-preview eligibility, but place both sections in one usable region.
+  const singlePlan = useMemo(
+    () =>
+      resolveAdaptiveColumns({
+        windowWidth: width,
+        fontScale,
+        systemInsets: occlusion.systemInsets,
+        viewportInsets: occlusion.viewportInsets,
+        measuredBounds,
+        safeAreaFrame: geometry?.safeAreaFrame,
+        usableRegions: geometry?.usableRegions,
+        hasNativeDivision: geometry?.reservedRegions.some(
+          region => region.isActive && region.kind === 'division',
+        ),
+        hasNativeOcclusion: geometry?.reservedRegions.some(
+          region => region.isActive && region.kind === 'occlusion',
+        ),
+        hasSecondary: false,
+      }),
+    [fontScale, geometry, measuredBounds, occlusion, width],
+  );
   const previousColumns = useRef(plan.columns);
 
   useLayoutEffect(() => {
@@ -124,31 +145,31 @@ export function ConversationHistoryLayout({
       flexGrow: 1,
       minWidth: 0,
       minHeight: 0,
-      flexDirection: plan.columns === 2 ? 'row' : 'column',
-      width: Math.max(0, plan.contentWidth - plan.leadingInset),
-      marginStart: plan.leadingInset,
-      columnGap: plan.columns === 2 ? plan.columnGap : 0,
-      rowGap: plan.columns === 1 ? plan.rowGap : 0,
+      flexDirection: 'column',
+      width: Math.max(0, singlePlan.contentWidth - singlePlan.leadingInset),
+      marginStart: singlePlan.leadingInset,
+      columnGap: 0,
+      rowGap: 16,
     }),
-    [plan],
+    [singlePlan],
   );
   const primaryStyle = useMemo<ViewStyle>(
     () => ({
       flexGrow: plan.columns === 1 ? 1 : 0,
       minWidth: 0,
       minHeight: 0,
-      width: plan.primaryWidth,
+      width: singlePlan.primaryWidth,
     }),
-    [plan],
+    [plan.columns, singlePlan.primaryWidth],
   );
   const secondaryStyle = useMemo<ViewStyle>(
     () => ({
       flexGrow: plan.columns === 1 ? 1 : 0,
       minWidth: 0,
       minHeight: 0,
-      width: plan.secondaryWidth,
+      width: singlePlan.primaryWidth,
     }),
-    [plan],
+    [plan.columns, singlePlan.primaryWidth],
   );
   const create = () => {
     onCreateSession();
