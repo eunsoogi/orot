@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ProviderCatalogAccount } from '../ProviderCatalogAccount';
 import type { ChatGPTAccountSetup } from '../types';
 import { providerSelectionText } from '../text';
@@ -123,7 +124,7 @@ test('keeps long Korean permission copy in a not-ready account text column', asy
     providerSelectionText.chatGPTAccountMissingScope,
   );
   expect(permission.props.numberOfLines).toBeUndefined();
-  expect(permission.props.style).toMatchObject({
+  expect(StyleSheet.flatten(permission.props.style)).toMatchObject({
     flexShrink: 1,
     minWidth: 0,
   });
