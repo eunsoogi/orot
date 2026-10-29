@@ -85,6 +85,8 @@ test('summarizes real duration and latest transcript review state for saved reco
       return [];
     }),
   } as unknown as RecordRepository;
+  // The snapshot uses the public transaction reader; SQL isolation is covered by the real SQLite cases.
+  repository.transaction = operation => operation(repository);
   const service = createRecordingLibraryService({
     loadRepository: async () => repository,
     audioDeletion: audioDeletion(),

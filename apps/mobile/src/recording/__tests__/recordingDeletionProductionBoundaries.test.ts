@@ -1,3 +1,7 @@
+import {
+  holdMetadataResult,
+  completeSynchronousSqlWork,
+} from '../testSupport/recordingSummaryRaceHarness';
 import { open } from '@op-engineering/op-sqlite';
 import { createAgentMemory } from '@orot/agent-memory';
 import { providerSuccess } from '@orot/model-runtime';
@@ -185,45 +189,30 @@ test('warm deletion reuses schema preparation through the production database fa
   }
 });
 
-test('completed transcript SQL still holds the library audio queue while its metadata result is pending', async () => {
+test('completed metadata delivery cannot hold deletion behind the production facade', async () => {
   const sourceId = 'metadata-queue-recording';
   const { repository, memory, library, audioOrder } = await harness(sourceId);
-  let entered!: () => void;
-  let release!: () => void;
-  const started = new Promise<void>(resolve => {
-    entered = resolve;
-  });
-  const held = new Promise<void>(resolve => {
-    release = resolve;
-  });
-  const list = repository.list.bind(repository);
-  const read = jest
-    .spyOn(repository, 'list')
-    .mockImplementation(async table => {
-      const rows = await list(table);
-      if (table === 'transcript_segment') {
-        // SQL has finished: this gate isolates promise ownership from native database contention.
-        entered();
-        await held;
-      }
-      return rows;
-    });
+  const gate = holdMetadataResult(repository);
   const listing = library.listSummaries!();
-  await started;
-  const deletion = library.deleteRecording(sourceId);
+  await gate.entered;
+  let settled = false;
+  const deletion = library.deleteRecording(sourceId).then(result => {
+    settled = true;
+    return result;
+  });
   try {
-    await Promise.resolve();
-    expect(audioOrder).toEqual([]);
-    expect(await repository.get('source_record', sourceId)).not.toBeNull();
-    release();
-    await listing;
+    await completeSynchronousSqlWork();
+    const completedBeforeRelease = settled;
+    gate.release();
     await deletion;
+    expect(await listing).toEqual([]);
+    expect(completedBeforeRelease).toBe(true);
     expect(audioOrder).toEqual(['stage', 'commit']);
     expect(await repository.get('source_record', sourceId)).toBeNull();
   } finally {
-    release();
-    await Promise.all([listing, deletion]);
-    read.mockRestore();
+    gate.release();
+    await Promise.allSettled([listing, deletion]);
+    gate.restore();
     await memory.close();
   }
 });

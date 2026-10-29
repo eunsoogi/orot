@@ -46,6 +46,8 @@ function createHarness(waitForSourceRemoval: () => Promise<void>) {
       table === 'source_record' && state.source ? [state.source] : [],
     ),
   } as unknown as RecordRepository;
+  // The snapshot uses the public transaction reader; SQL isolation is covered by the real SQLite cases.
+  repository.transaction = operation => operation(repository);
   const audio: RecordingAudioDeletion = {
     reconcile: jest.fn(async sourceIds => {
       order.push('reconcile');
