@@ -156,7 +156,6 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
     }
 
-
     @MainActor
     private func savedQuestion(_ app: XCUIApplication) throws {
         top(app)
