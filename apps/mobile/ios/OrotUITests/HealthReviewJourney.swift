@@ -73,7 +73,8 @@ final class HealthReviewJourney {
     func reading(systolic: String, diastolic: String) {
         enter("health-review-systolic-0", systolic)
         enter("health-review-diastolic-0", diastolic)
-        enter("health-review-measuredAt-0", ISO8601DateFormatter().string(from: Date()))
+        tap("health-review-measuredAt-0")
+        tap("health-review-time-done", inForm: false)
         enter("health-review-source-0", "사용자가 확인한 합성 혈압계")
     }
 

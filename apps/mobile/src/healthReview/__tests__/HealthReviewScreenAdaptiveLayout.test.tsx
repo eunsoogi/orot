@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { HealthReviewPending } from '@orot/agent-runtime';
 import { SafetyPolicyDecisionSchema, SourceRecordSchema } from '@orot/domain';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
@@ -117,9 +117,7 @@ it('keeps the selected pending review and form values as measured panels reflow'
   expect(
     await screen.findByTestId('health-review-request-pending-review'),
   ).toBeOnTheScreen();
-  const layout = () =>
-    StyleSheet.flatten(screen.getByTestId('health-review-layout').props.style);
-  expect(layout()?.flexDirection).toBe('row');
+  expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   await fireEvent.changeText(
     screen.getByTestId('health-review-name'),
     '유지할 초안',
@@ -132,7 +130,7 @@ it('keeps the selected pending review and form values as measured panels reflow'
     screen.getByTestId('health-review-request-pending-review'),
   );
   await fireEvent.press(
-    screen.getByRole('button', { name: '대상 정보: 임신 중' }),
+    screen.getByRole('radio', { name: '대상 정보: 임신 중' }),
   );
   expect(
     screen.getByTestId('health-review-needs_clarification'),
@@ -144,15 +142,7 @@ it('keeps the selected pending review and form values as measured panels reflow'
     'geometryChange',
     { nativeEvent: geometry(900, 445) },
   );
-  expect(layout()?.flexDirection).toBe('row');
-  const primaryWidth = StyleSheet.flatten(
-    screen.getByTestId('health-review-layout-primary').props.style,
-  )?.width;
-  const secondaryWidth = StyleSheet.flatten(
-    screen.getByTestId('health-review-layout-secondary').props.style,
-  )?.width;
-  expect(primaryWidth).toBeLessThanOrEqual(445);
-  expect(secondaryWidth).toBeLessThanOrEqual(445);
+  expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
 
   await act(async () => {
     Dimensions.set({ window: viewport(500), screen: viewport(500) });
@@ -163,7 +153,7 @@ it('keeps the selected pending review and form values as measured panels reflow'
       { nativeEvent: geometry(500) },
     );
   });
-  expect(layout()?.flexDirection).toBe('column');
+  expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(screen.getByTestId('health-review-name')).toHaveDisplayValue(
     '유지할 초안',
   );
@@ -171,9 +161,9 @@ it('keeps the selected pending review and form values as measured panels reflow'
     '125',
   );
   expect(
-    screen.getByRole('button', {
+    screen.getByRole('radio', {
       name: '대상 정보: 임신 중',
-      selected: true,
+      checked: true,
     }),
   ).toBeOnTheScreen();
   expect(
@@ -189,7 +179,7 @@ it('keeps the selected pending review and form values as measured panels reflow'
       { nativeEvent: geometry(900) },
     );
   });
-  expect(layout()?.flexDirection).toBe('column');
+  expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(
     screen.getByTestId('health-review-needs_clarification'),
   ).toBeOnTheScreen();

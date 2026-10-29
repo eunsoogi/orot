@@ -1,4 +1,5 @@
-import { View, TextInput } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { MeasurementFields } from './MeasurementFields';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { healthReviewText as copy } from '../i18n/healthReview';
@@ -11,23 +12,29 @@ function Choices<T extends string>({
   values,
   selected,
   onSelect,
+  disabled,
 }: {
   label: string;
   values: readonly (readonly [T, string])[];
   selected: T;
   onSelect: (value: T) => void;
+  disabled: boolean;
 }) {
   return (
     <View>
       <Text accessibilityRole="header">{label}</Text>
       {values.map(([value, title]) => (
-        <AppButton
+        <Pressable
           key={value}
-          title={title}
+          accessibilityRole="radio"
           accessibilityLabel={`${label}: ${title}`}
-          accessibilityState={{ selected: selected === value }}
+          accessibilityState={{ checked: selected === value, disabled }}
+          disabled={disabled}
+          style={[styles.choice, selected === value && styles.choiceSelected]}
           onPress={() => onSelect(value)}
-        />
+        >
+          <Text>{title}</Text>
+        </Pressable>
       ))}
     </View>
   );
@@ -62,6 +69,7 @@ export function SafetyForm({
     <View style={styles.form}>
       <Choices
         label={copy.population}
+        disabled={disabled}
         selected={draft.population}
         onSelect={value => set('population', value)}
         values={[
@@ -73,6 +81,7 @@ export function SafetyForm({
       />
       <Choices
         label={copy.context}
+        disabled={disabled}
         selected={draft.readingContext}
         onSelect={value => set('readingContext', value)}
         values={[
@@ -81,8 +90,35 @@ export function SafetyForm({
           ['historical', '과거 측정'],
         ]}
       />
+      <Text accessibilityRole="header">{copy.reading}</Text>
+      {draft.readings.map((row, index) => (
+        <MeasurementFields
+          key={index}
+          row={row}
+          index={index}
+          disabled={disabled}
+          onChange={value =>
+            set(
+              'readings',
+              draft.readings.map((entry, position) =>
+                position === index ? value : entry,
+              ),
+            )
+          }
+        />
+      ))}
+      {draft.readings.length < 2 ? (
+        <AppButton
+          title={copy.repeat}
+          disabled={disabled}
+          onPress={() =>
+            set('readings', [...draft.readings, emptySafetyReading()])
+          }
+        />
+      ) : null}
       <Choices
         label={copy.symptoms}
+        disabled={disabled}
         selected={draft.symptoms}
         onSelect={value => set('symptoms', value)}
         values={[
@@ -96,6 +132,7 @@ export function SafetyForm({
             <AppButton
               key={sign}
               title={title}
+              disabled={disabled}
               accessibilityState={{ selected: draft.signs.includes(sign) }}
               onPress={() =>
                 set(
@@ -110,6 +147,7 @@ export function SafetyForm({
         : null}
       <Choices
         label={copy.visit}
+        disabled={disabled}
         selected={draft.upcomingVisit}
         onSelect={value => set('upcomingVisit', value)}
         values={[
@@ -118,41 +156,6 @@ export function SafetyForm({
           ['no', '예정된 진료가 없음'],
         ]}
       />
-      <Text accessibilityRole="header">{copy.reading}</Text>
-      {draft.readings.map((row, index) => (
-        <View key={index} style={styles.reading}>
-          {(['systolic', 'diastolic', 'measuredAt', 'source'] as const).map(
-            key => (
-              <TextInput
-                key={key}
-                accessibilityLabel={`${copy[key]} ${index + 1}`}
-                placeholder={copy[key]}
-                value={row[key]}
-                editable={!disabled}
-                testID={`health-review-${key}-${index}`}
-                autoCapitalize="none"
-                onChangeText={value =>
-                  set(
-                    'readings',
-                    draft.readings.map((entry, position) =>
-                      position === index ? { ...entry, [key]: value } : entry,
-                    ),
-                  )
-                }
-              />
-            ),
-          )}
-        </View>
-      ))}
-      {draft.readings.length < 2 ? (
-        <AppButton
-          title={copy.repeat}
-          disabled={disabled}
-          onPress={() =>
-            set('readings', [...draft.readings, emptySafetyReading()])
-          }
-        />
-      ) : null}
     </View>
   );
 }

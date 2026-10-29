@@ -3,6 +3,24 @@ import XCTest
 /// SQLCipher, graph, retained App session, safety and consent execute for every journey; only provider output is synthetic.
 final class HealthReviewUITests: OrotFailFastTestCase {
     @MainActor
+    func testMeasurementTimeCancelAndReopenPreserveInput() {
+        let journey = HealthReviewJourney()
+        defer { journey.clean() }
+        journey.launch()
+        journey.open()
+        journey.name()
+        journey.tap("health-review-measuredAt-0")
+        journey.tap("health-review-time-done", inForm: false)
+        let time = journey.element("health-review-measuredAt-0")
+        let committed = time.value as? String
+        XCTAssertNotNil(committed)
+        journey.tap("health-review-measuredAt-0")
+        journey.tap("health-review-time-cancel", inForm: false)
+        XCTAssertEqual(time.value as? String, committed)
+        XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)
+    }
+
+    @MainActor
     func testHealthKitReviewCitationReturnRetainsSession() throws {
         let journey = HealthReviewJourney()
         defer { journey.clean() }
@@ -17,7 +35,7 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(journey.element("ai-feature-source-detail")))
         journey.tap("navigation-back", inForm: false)
         journey.status("health-review-result")
-        journey.tap("health-review-provider", towardTop: true)
+        journey.tap("ai-feature-select-provider", towardTop: true)
         journey.tap("navigation-back", inForm: false)
         journey.status("health-review-result")
         XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)

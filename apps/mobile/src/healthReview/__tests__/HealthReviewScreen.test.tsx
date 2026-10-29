@@ -38,7 +38,7 @@ it('retains authored name and genuine safety answers while the view leaves and r
     '이번 주 건강 기록',
   );
   await fireEvent.press(
-    screen.getByRole('button', { name: '대상 정보: 임신 중이 아닌 성인' }),
+    screen.getByRole('radio', { name: '대상 정보: 임신 중이 아닌 성인' }),
   );
   await view.rerender(wrapper(false));
   await view.rerender(wrapper(true));
@@ -46,9 +46,9 @@ it('retains authored name and genuine safety answers while the view leaves and r
     '이번 주 건강 기록',
   );
   expect(
-    screen.getByRole('button', {
+    screen.getByRole('radio', {
       name: '대상 정보: 임신 중이 아닌 성인',
-      selected: true,
+      checked: true,
     }),
   ).toBeOnTheScreen();
   expect(service.start).not.toHaveBeenCalled();
