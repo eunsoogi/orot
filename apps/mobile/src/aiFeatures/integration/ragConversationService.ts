@@ -1,4 +1,5 @@
 import type {
+  EvidenceSearchTool,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
@@ -31,6 +32,34 @@ type RagObserver = Pick<
   MultiAgentInvocation,
   'onProgress' | 'onTaskStreamEvent'
 >;
+
+const LOCAL_SEARCH_FAILURE_GAP =
+  '로컬 검색을 사용할 수 없어 근거를 찾지 못했어요.';
+
+/** Tracks only the fixed safe gap emitted when a local search suppresses its exception. */
+function observeLocalSearchFailures(
+  tools: readonly EvidenceSearchTool[],
+  onFailure: () => void,
+): readonly EvidenceSearchTool[] {
+  return tools.map(tool => {
+    if (tool.execution !== 'local_read_only') return tool;
+    return {
+      ...tool,
+      async search(...args: Parameters<EvidenceSearchTool['search']>) {
+        const outcome = await tool.search(...args);
+        if (
+          'coverage' in outcome &&
+          outcome.coverage.some(coverage =>
+            coverage.gaps.includes(LOCAL_SEARCH_FAILURE_GAP),
+          )
+        ) {
+          onFailure();
+        }
+        return outcome;
+      },
+    };
+  });
+}
 
 interface RagConversationServiceDependencies {
   readonly consent: MultiAgentWorkflowOptions['consent'];
@@ -74,6 +103,10 @@ export function createRagConversationService({
         const inventory = await withProviderStage('rag', 'data', () =>
           data.repository.readInventory({ signal }),
         );
+        // Manual history has its own table and is not represented in structured inventory.
+        const manualHistory = await withProviderStage('rag', 'data', () =>
+          data.manualHistory.listEvidence({ limit: 1 }),
+        );
         let syncStatus = null;
         try {
           syncStatus = await withProviderStage(
@@ -92,7 +125,11 @@ export function createRagConversationService({
         if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
         return {
           status: 'answer',
-          answer: describeLocalRecordAvailability(inventory, syncStatus),
+          answer: describeLocalRecordAvailability(
+            inventory,
+            syncStatus,
+            manualHistory.length > 0,
+          ),
           citations: [],
         };
       }
@@ -106,13 +143,19 @@ export function createRagConversationService({
         literature: externalEvidence,
         literatureConsent: queryConsent,
       });
+      let localRetrievalFailed = false;
       const tools = [
-        ...toolsFor(undefined, data, registry, 6, true, 'rag'),
+        ...observeLocalSearchFailures(
+          toolsFor(undefined, data, registry, 6, true, 'rag'),
+          () => {
+            localRetrievalFailed = true;
+          },
+        ),
         ...external.tools,
       ];
       const runId = createOperationRunId?.() ?? operationRunId();
       stage = 'workflow';
-      return await ragRunner(
+      const outcome = await ragRunner(
         {
           question: normalizedQuestion,
           previousMessages: boundRagConversationHistory(previousMessages),
@@ -135,6 +178,14 @@ export function createRagConversationService({
         },
         { ...observer, signal },
       );
+      if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
+      if (
+        localRetrievalFailed &&
+        (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
+      ) {
+        return { status: 'failure', kind: 'retrieval_failed' };
+      }
+      return outcome;
     } catch (error) {
       if (
         signal.aborted ||

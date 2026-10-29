@@ -26,6 +26,7 @@ const categoryKeyByRecordKind = {
 export function describeLocalRecordAvailability(
   inventory: LocalHealthEvidenceInventory,
   syncStatus: { readonly status: HealthKitAutoSyncStatus } | null,
+  hasManualHistory = false,
 ): string {
   const coverage = assessHealthEvidenceCoverage(inventory);
   const categories = [
@@ -33,6 +34,8 @@ export function describeLocalRecordAvailability(
       inventory.availableKinds.map(kind => t(categoryKeyByRecordKind[kind])),
     ),
   ];
+  if (hasManualHistory)
+    categories.push(t('ragConversation.availability.category.manualHistory'));
   const summary = categories.length
     ? t('ragConversation.availability.categories', {
         categories: categories.join(', '),

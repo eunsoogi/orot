@@ -77,6 +77,8 @@ export const ragConversationKo = {
   'ragConversation.availability.category.visitQuestion': '진료 질문',
   'ragConversation.availability.category.visitBrief': '진료 준비 요약',
   'ragConversation.availability.category.transcriptSegment': '녹음 전사',
+  'ragConversation.availability.category.manualHistory':
+    '수기로 작성한 건강 이력',
   'ragConversation.speakerUser': '나',
   'ragConversation.source': '원문 근거 열기 · {sourceId}',
 } as const;

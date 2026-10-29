@@ -77,6 +77,9 @@ test.each([
     const source = localData([]);
     const readInventory = jest.fn(async () => currentInventory);
     Object.assign(source.data.repository, { readInventory });
+    Object.assign(source.data.manualHistory, {
+      listEvidence: jest.fn(async () => []),
+    });
     const selection = selectionStore({
       providerId: apple.provider.id,
       modelId: apple.modelId,
