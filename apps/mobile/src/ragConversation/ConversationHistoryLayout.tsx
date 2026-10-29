@@ -166,6 +166,7 @@ export function ConversationHistoryLayout({
       <ScrollView
         ref={pageRef}
         testID="conversation-history-page"
+        contentContainerStyle={styles.pageContent}
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         onScroll={event => {
@@ -221,7 +222,8 @@ export function ConversationHistoryLayout({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, minWidth: 0, backgroundColor: appColors.background },
-  measurementHost: { flex: 1, minWidth: 0, minHeight: 0 },
+  pageContent: { flexGrow: 1 },
+  measurementHost: { flexGrow: 1, minWidth: 0, minHeight: 0 },
   layout: { flexGrow: 1, minWidth: 0, minHeight: 0 },
   panel: { flexDirection: 'column' },
 });
