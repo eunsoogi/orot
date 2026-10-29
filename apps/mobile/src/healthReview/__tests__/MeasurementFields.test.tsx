@@ -13,19 +13,32 @@ jest.mock('@react-native-community/datetimepicker', () => {
     onValueChange: (event: object, date: Date) => void;
   }) =>
     React.createElement(
-      Pressable,
-      {
-        accessibilityRole: 'button',
-        accessibilityLabel: mode,
-        onPress: () => {
-          const selected = new Date('2026-10-28T00:15:00.000Z');
-          onValueChange(
-            { nativeEvent: { timestamp: selected.getTime(), utcOffset: 0 } },
-            selected,
-          );
+      React.Fragment,
+      null,
+      React.createElement(
+        Pressable,
+        {
+          accessibilityRole: 'button',
+          accessibilityLabel: mode,
+          onPress: () => {
+            const selected = new Date('2026-10-28T00:15:00.000Z');
+            onValueChange(
+              { nativeEvent: { timestamp: selected.getTime(), utcOffset: 0 } },
+              selected,
+            );
+          },
         },
-      },
-      React.createElement(NativeText, null, mode),
+        React.createElement(NativeText, null, mode),
+      ),
+      React.createElement(Pressable, {
+        accessibilityRole: 'button',
+        accessibilityLabel: `${mode}-invalid`,
+        onPress: () =>
+          onValueChange(
+            { nativeEvent: { timestamp: 0, utcOffset: 0 } },
+            undefined as unknown as Date,
+          ),
+      }),
     );
 });
 
@@ -59,6 +72,12 @@ it('keeps the previous instant on cancel and applies an explicit selection on do
       onChange={onChange}
     />,
   );
+  await fireEvent.press(screen.getByTestId('health-review-measuredAt-0'));
+  // The real iOS module suppresses missing timestamps; this exercises the defensive boundary.
+  await fireEvent.press(screen.getByRole('button', { name: 'date-invalid' }));
+  await fireEvent.press(screen.getByRole('button', { name: '완료' }));
+  expect(onChange).toHaveBeenLastCalledWith(row);
+  onChange.mockClear();
   await fireEvent.press(screen.getByTestId('health-review-measuredAt-0'));
   await fireEvent.press(screen.getByRole('button', { name: 'date' }));
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
