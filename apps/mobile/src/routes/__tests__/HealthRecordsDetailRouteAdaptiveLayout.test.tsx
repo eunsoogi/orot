@@ -12,7 +12,7 @@ import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter'
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import type { HealthRecordsDetailSelection } from '../../healthkit/healthRecordsLibraryModel';
 import type { HealthObservationPageLoader } from '@orot/storage';
-import { expectDuoPanelsInsideNativeRegions } from '../testSupport/healthRecordsDuoLayoutAssertions';
+import { expectHealthRecordPageInsideNativeRegion } from '../testSupport/healthRecordsDuoLayoutAssertions';
 
 const measurableView = View as unknown as {
   prototype: {
@@ -143,7 +143,7 @@ test('gives the production health detail route the full lane for its panels', as
   const direction = () =>
     StyleSheet.flatten(layout().props.style)?.flexDirection;
   expect(direction()).toBe('column');
-  expectDuoPanelsInsideNativeRegions(
+  expectHealthRecordPageInsideNativeRegion(
     'health-records-detail-layout',
     geometry(900, true),
   );
