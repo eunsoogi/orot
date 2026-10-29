@@ -58,6 +58,10 @@ export function MeasurementFields({
   }, []);
   const set = (key: keyof SafetyReadingDraft, value: string) =>
     onChange({ ...row, [key]: value });
+  // The picker emits value changes separately from dismissal; never commit either until Done.
+  const updateDraft = (value: Date | undefined) => {
+    if (value && Number.isFinite(value.getTime())) setDraft(value);
+  };
   return (
     <View style={styles.reading}>
       <View
@@ -130,14 +134,14 @@ export function MeasurementFields({
                   value={draft}
                   mode="date"
                   display="inline"
-                  onValueChange={(_, value) => setDraft(value)}
+                  onValueChange={(_, value) => updateDraft(value)}
                 />
                 <DateTimePicker
                   testID="health-review-time-wheel"
                   value={draft}
                   mode="time"
                   display="spinner"
-                  onValueChange={(_, value) => setDraft(value)}
+                  onValueChange={(_, value) => updateDraft(value)}
                 />
                 <Text testID="health-review-time-draft">
                   {formatMeasurementTime(draft.toISOString())}

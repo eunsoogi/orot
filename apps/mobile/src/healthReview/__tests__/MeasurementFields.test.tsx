@@ -17,7 +17,13 @@ jest.mock('@react-native-community/datetimepicker', () => {
       {
         accessibilityRole: 'button',
         accessibilityLabel: mode,
-        onPress: () => onValueChange({}, new Date('2026-10-28T00:15:00.000Z')),
+        onPress: () => {
+          const selected = new Date('2026-10-28T00:15:00.000Z');
+          onValueChange(
+            { nativeEvent: { timestamp: selected.getTime(), utcOffset: 0 } },
+            selected,
+          );
+        },
       },
       React.createElement(NativeText, null, mode),
     );
