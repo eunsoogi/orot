@@ -9,6 +9,10 @@ import type {
   RecordingTranscriptReviewState,
 } from './recordingLibraryServiceTypes';
 import { performRecordingDeletion } from './recordingDeletionOperation';
+import {
+  beginRecordingDeletionTiming,
+  endRecordingDeletionTiming,
+} from './recordingDeletionTiming';
 
 export type {
   RecordingAudioDeletion,
@@ -205,9 +209,21 @@ export function createRecordingLibraryService(
       });
     },
     deleteRecording(sourceId, timingProbe) {
-      return serializeAudioOperation(() =>
-        performRecordingDeletion(sourceId, timingProbe, deletionDependencies),
-      );
+      // Confirmation can arrive during a library read; measure that wait before source I/O starts.
+      // Queue acquisition succeeds even when the preceding read failed; recovery exclusion is unchanged.
+      beginRecordingDeletionTiming(timingProbe, 'library-queue-wait');
+      return serializeAudioOperation(() => {
+        endRecordingDeletionTiming(
+          timingProbe,
+          'library-queue-wait',
+          'success',
+        );
+        return performRecordingDeletion(
+          sourceId,
+          timingProbe,
+          deletionDependencies,
+        );
+      });
     },
   };
 }

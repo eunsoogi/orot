@@ -6,6 +6,107 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// Captures real microphone audio instead of seeding the synthetic deletion fixture.
+    @MainActor
+    func testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave() throws {
+        let app = XCUIApplication()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        app.launch()
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        UITestConditions.element(app, "records-new-recording").tap()
+        let consent = UITestConditions.element(app, "recording-consent")
+        XCTAssertTrue(UITestConditions.exists(consent))
+        consent.tap()
+        let microphone = UITestConditions.element(app, "recording-microphone-control")
+        microphone.tap()
+        let status = UITestConditions.element(app, "recording-status")
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        let started = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            permission.exists || UITestConditions.text(status) == "녹음 중"
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [started]), .completed, app.debugDescription)
+        if permission.exists {
+            let allow = permission.buttons.matching(
+                NSPredicate(format: "label IN %@", ["Allow", "허용", "OK", "확인"]),
+            ).firstMatch
+            XCTAssertTrue(allow.exists, permission.debugDescription)
+            allow.tap()
+        }
+        UITestConditions.value(status, equals: "녹음 중")
+        let duration = UITestConditions.element(app, "recording-duration")
+        // Observe the real recorder's advancing duration; no sleep or synthetic elapsed state.
+        let captured = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            // Accessibility labels prefix the clock with "녹음 시간:"; values can contain just the clock.
+            let clock = UITestConditions.text(duration).split(separator: " ").last?
+                .split(separator: ":").compactMap { Int($0) } ?? []
+            return clock.count == 2 && clock[0] * 60 + clock[1] >= 2
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [captured]), .completed, app.debugDescription)
+        microphone.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-result")))
+        let saved = UITestConditions.element(app, "recording-open-saved")
+        let saveOrPermission = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            permission.exists || (saved.exists && saved.isEnabled)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [saveOrPermission]), .completed, app.debugDescription)
+        // First-use Speech authorization can follow save; acknowledge it without awaiting recognition.
+        if permission.exists {
+            let allow = permission.buttons.matching(
+                NSPredicate(format: "label IN %@", ["Allow", "허용", "OK", "확인"]),
+            ).firstMatch
+            XCTAssertTrue(allow.exists, permission.debugDescription)
+            allow.tap()
+        }
+        let savedReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"), object: saved,
+        )
+        XCTAssertEqual(UITestConditions.wait(for: [savedReady]), .completed, app.debugDescription)
+        // Enter as soon as save releases the screen; do not wait for automatic transcription.
+        saved.tap()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recording-details-")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
+        let sourceId = String(row.identifier.dropFirst("recording-details-".count))
+        XCTAssertNotNil(UUID(uuidString: sourceId))
+        let delete = UITestConditions.element(app, "recording-delete-\(sourceId)")
+        FormUITestConditions.reveal(delete, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(delete.isHittable, delete.debugDescription)
+        delete.tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.waitForAppearance())
+        let confirmedAt = ProcessInfo.processInfo.systemUptime
+        confirmation.buttons.element(boundBy: 1).tap()
+        let progress = UITestConditions.element(app, "recording-delete-progress")
+        // XCTest can miss a short-lived indicator. Preserve missing observations rather than inventing pixel timing.
+        let observedProgressAt: Double? = progress.exists ? ProcessInfo.processInfo.systemUptime : nil
+        waitUntilNotExists(row)
+        waitUntilNotExists(progress)
+        XCTAssertFalse(UITestConditions.element(app, "recording-delete-error").exists, app.debugDescription)
+        let absentAt = ProcessInfo.processInfo.systemUptime
+        let observation: [String: Any] = [
+            "scenario": "real-microphone-stop-save-immediate-delete",
+            "minimumCaptureMs": 2000,
+            "confirmationToObservedAbsenceMs": (absentAt - confirmedAt) * 1000,
+            "progressFirstObservedAfterConfirmationMs": observedProgressAt.map { ($0 - confirmedAt) * 1000 } as Any? ?? NSNull(),
+            "limit": "XCTest accessibility observation bounds, not native pixel presentation timestamps",
+        ]
+        let attachment = try XCTAttachment(
+            data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json",
+        )
+        attachment.name = "fresh-recording-deletion-observation"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        app.terminate()
+        app.launch()
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        UITestConditions.element(app, "records-new-recording").tap()
+        let reopened = UITestConditions.element(app, "recording-open-saved")
+        XCTAssertTrue(UITestConditions.exists(reopened))
+        reopened.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-library-panel")))
+        XCTAssertFalse(UITestConditions.element(app, "recording-delete-\(sourceId)").exists)
+    }
+
     @MainActor
     func testFailedDeletionRestoresAudioAndKeepsSourceDuringSlowListRead() throws {
         let app = XCUIApplication()

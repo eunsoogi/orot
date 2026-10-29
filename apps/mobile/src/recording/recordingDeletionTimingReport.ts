@@ -20,6 +20,7 @@ export interface RecordingDeletionTimingReport {
   readonly events: readonly RecordingDeletionTimingEvent[];
   readonly durationsMs: {
     readonly confirmationToProgress: number | null;
+    readonly libraryQueueWait: number | null;
     readonly sourceRead: number | null;
     readonly stopCheck: number | null;
     readonly audioStaging: number | null;
