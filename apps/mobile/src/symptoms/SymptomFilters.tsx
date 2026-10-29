@@ -11,7 +11,11 @@ import { t } from '../i18n';
 import type { SymptomFilter, SymptomStatus } from './types';
 import SymptomFilterRange from './SymptomFilterRange';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
-import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
+import {
+  toLocalSymptomDateTime,
+  toSymptomTimestamp,
+  toSymptomThroughTimestamp,
+} from './dateTime';
 import { symptomStatusLabel } from './presentation';
 import styles from './SymptomFilters.styles';
 
@@ -75,7 +79,7 @@ export default function SymptomFilters({
     const hasThrough = Boolean(throughDate.trim() || throughTime.trim());
     const fromOnsetAt = hasFrom ? toSymptomTimestamp(fromDate, fromTime) : null;
     const throughOnsetAt = hasThrough
-      ? toSymptomTimestamp(throughDate, throughTime)
+      ? toSymptomThroughTimestamp(throughDate, throughTime)
       : null;
     if ((hasFrom && !fromOnsetAt) || (hasThrough && !throughOnsetAt)) {
       setError(t('symptoms.journal.dateFilter.invalid'));

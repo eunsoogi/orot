@@ -77,6 +77,39 @@ test('only the selected card expands inline and toggles closed', async () => {
   expect(screen.queryByTestId(`symptom-edit-${entry.id}`)).toBeNull();
 });
 
+test.each(['create', 'edit'] as const)(
+  'unapplied period draft survives %s and return',
+  async mode => {
+    const onFilterChange = jest.fn();
+    await open({ onFilterChange });
+    await fireEvent.press(screen.getByTestId('symptom-filter-period'));
+    await fireEvent.changeText(
+      screen.getByTestId('symptom-filter-from-date'),
+      '2025-01-02',
+    );
+    await fireEvent.changeText(
+      screen.getByTestId('symptom-filter-from-time'),
+      '09:30',
+    );
+    if (mode === 'create')
+      await fireEvent.press(screen.getByTestId('symptom-add'));
+    else {
+      await fireEvent.press(screen.getByTestId(`symptom-select-${entry.id}`));
+      await fireEvent.press(screen.getByTestId(`symptom-edit-${entry.id}`));
+    }
+    await fireEvent.press(screen.getByTestId('symptom-form-cancel'));
+    expect(screen.getByTestId('symptom-filter-from-date')).toHaveProp(
+      'value',
+      '2025-01-02',
+    );
+    expect(screen.getByTestId('symptom-filter-from-time')).toHaveProp(
+      'value',
+      '09:30',
+    );
+    expect(onFilterChange).not.toHaveBeenCalled();
+  },
+);
+
 test('edit opens its populated form directly with immutable onset and status context', async () => {
   await open();
   await fireEvent.press(screen.getByTestId(`symptom-select-${entry.id}`));

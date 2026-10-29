@@ -147,7 +147,7 @@ export default function SymptomsScreen({
           testID="symptoms-scroll"
         >
           {/* The editor replaces browsing; its draft is never remounted by reflow. */}
-          {!creating && !editing ? (
+          <View style={creating || editing ? { display: 'none' } : undefined}>
             <AdaptiveColumns
               primary={
                 <SymptomListPanel
@@ -201,7 +201,7 @@ export default function SymptomsScreen({
               routeKey="symptoms"
               testID="symptoms-layout"
             />
-          ) : null}
+          </View>
           {creating || editing ? (
             // Keep the active editor outside either adaptive panel's width clamp.
             <View

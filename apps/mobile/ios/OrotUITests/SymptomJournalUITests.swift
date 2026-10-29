@@ -10,6 +10,15 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     private var severityGestureEndedAtMs: Double?
 
     @MainActor
+    func testConfirmedNativePickerValueIsSaved() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        try SymptomJournalUITestObservations.launchJournal(app)
+        guard tap(app, "symptom-add") else { return }
+        SymptomJournalControlUITestConditions.confirmedPickerPersists(app)
+    }
+
+    @MainActor
     func testCreationEditingFilteringAndResolutionSurviveRelaunch() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
