@@ -49,6 +49,7 @@ export function HealthReviewScreen({
     <ScrollView
       testID="health-review-screen"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
       style={styles.screen}
       contentContainerStyle={[styles.container, inset]}
     >

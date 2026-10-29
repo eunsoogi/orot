@@ -28,12 +28,22 @@ function Choices<T extends string>({
           key={value}
           accessibilityRole="radio"
           accessibilityLabel={`${label}: ${title}`}
-          accessibilityState={{ checked: selected === value, disabled }}
+          accessibilityState={{
+            checked: selected === value,
+            selected: selected === value,
+            disabled,
+          }}
           disabled={disabled}
           style={[styles.choice, selected === value && styles.choiceSelected]}
           onPress={() => onSelect(value)}
         >
-          <Text>{title}</Text>
+          <View
+            style={[
+              styles.choiceMark,
+              selected === value && styles.choiceMarkSelected,
+            ]}
+          />
+          <Text style={styles.choiceLabel}>{title}</Text>
         </Pressable>
       ))}
     </View>

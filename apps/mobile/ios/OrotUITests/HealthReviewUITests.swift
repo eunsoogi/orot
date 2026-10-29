@@ -54,7 +54,7 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         XCTAssertEqual(try journey.report()["pending"] as? Int, 1)
         XCTAssertEqual(try journey.report()["modelCalls"] as? Int, 0)
         journey.choose("대상 정보: 임신 중이 아닌 성인")
-        let selectedPopulation = journey.app.buttons.matching(identifier: "대상 정보: 임신 중이 아닌 성인").firstMatch
+        let selectedPopulation = journey.element("대상 정보: 임신 중이 아닌 성인")
         XCTAssertTrue(selectedPopulation.isSelected)
         // Reflow must preserve the selected answer and saved interrupt without starting inference.
         XCUIDevice.shared.orientation = .landscapeLeft

@@ -15,12 +15,27 @@ export const healthReviewStyles = StyleSheet.create({
   choice: {
     minHeight: 48,
     padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: appColors.border,
     backgroundColor: appColors.surface,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   choiceSelected: { backgroundColor: appColors.primarySoft },
+  choiceLabel: { flexShrink: 1 },
+  choiceMark: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: appColors.secondary,
+  },
+  choiceMarkSelected: {
+    borderColor: appColors.primary,
+    backgroundColor: appColors.primary,
+  },
   reading: { gap: 8 },
   input: {
     minHeight: 48,
@@ -32,11 +47,7 @@ export const healthReviewStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
     color: appColors.text,
   },
-  pickerPage: {
-    flex: 1,
-    padding: 24,
-    gap: 12,
-    backgroundColor: appColors.background,
-  },
+  pickerScreen: { flex: 1, backgroundColor: appColors.background },
+  pickerPage: { padding: 24, gap: 12 },
   probe: { flex: 1 },
 });

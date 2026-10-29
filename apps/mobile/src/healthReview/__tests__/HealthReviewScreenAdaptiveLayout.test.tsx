@@ -8,6 +8,10 @@ import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import type { HealthReviewService } from '../service';
 
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker', {
+  virtual: true,
+});
+
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
 const viewport = (width: number, fontScale = 1) => ({

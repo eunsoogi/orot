@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { AppState, Modal, Pressable, TextInput, View } from 'react-native';
+import {
+  AppState,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text } from '../layout/AppText';
@@ -95,38 +102,41 @@ export function MeasurementFields({
         animationType="slide"
         onRequestClose={() => setDraft(null)}
       >
-        <SafeAreaView style={styles.pickerPage}>
-          <Text accessibilityRole="header">{copy.measuredAt}</Text>
-          {draft ? (
-            <>
-              <DateTimePicker
-                value={draft}
-                mode="date"
-                display="inline"
-                onChange={(_, value) => value && setDraft(value)}
-              />
-              <DateTimePicker
-                value={draft}
-                mode="time"
-                display="spinner"
-                onChange={(_, value) => value && setDraft(value)}
-              />
-            </>
-          ) : null}
-          <AppButton
-            title={copy.done}
-            testID="health-review-time-done"
-            onPress={() => {
-              if (draft) set('measuredAt', draft.toISOString());
-              setDraft(null);
-            }}
-          />
-          <AppButton
-            title={copy.cancelPicker}
-            testID="health-review-time-cancel"
-            variant="secondary"
-            onPress={() => setDraft(null)}
-          />
+        <SafeAreaView style={styles.pickerScreen}>
+          <ScrollView contentContainerStyle={styles.pickerPage}>
+            <Text accessibilityRole="header">{copy.measuredAt}</Text>
+            {draft ? (
+              <>
+                <DateTimePicker
+                  value={draft}
+                  mode="date"
+                  display="inline"
+                  onChange={(_, value) => value && setDraft(value)}
+                />
+                <DateTimePicker
+                  value={draft}
+                  mode="time"
+                  display="spinner"
+                  onChange={(_, value) => value && setDraft(value)}
+                />
+                <Text>{formatMeasurementTime(draft.toISOString())}</Text>
+              </>
+            ) : null}
+            <AppButton
+              title={copy.done}
+              testID="health-review-time-done"
+              onPress={() => {
+                if (draft) set('measuredAt', draft.toISOString());
+                setDraft(null);
+              }}
+            />
+            <AppButton
+              title={copy.cancelPicker}
+              testID="health-review-time-cancel"
+              variant="secondary"
+              onPress={() => setDraft(null)}
+            />
+          </ScrollView>
         </SafeAreaView>
       </Modal>
     </View>

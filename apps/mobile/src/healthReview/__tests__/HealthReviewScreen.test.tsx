@@ -1,14 +1,24 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import { ReviewResult } from '../ReviewResult';
 import { SafetyPolicyActionSchema } from '@orot/domain';
 import { healthReviewText as copy } from '../../i18n/healthReview';
 import type { HealthReviewService } from '../service';
+import * as provider from '../../aiFeatures/integration/provider';
 import {
   emptyHealthReviewSafety,
   healthReviewSafetyInput,
 } from '../safetyInput';
+
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker', {
+  virtual: true,
+});
 
 jest.mock('../../agent/execution/useInferenceConsent', () => ({
   useInferenceConsent: () => ({
@@ -23,6 +33,27 @@ const service: HealthReviewService = {
   continue: jest.fn(),
   delete: jest.fn(),
 };
+
+it('places the shared AI selection in the heading and opens provider settings', async () => {
+  const resolve = jest
+    .spyOn(provider, 'resolveSelectedAiProvider')
+    .mockResolvedValue({ status: 'selection-required' });
+  const onProvider = jest.fn();
+  await render(
+    <HealthReviewSessionProvider service={service}>
+      <HealthReviewScreen onSource={jest.fn()} onProvider={onProvider} />
+    </HealthReviewSessionProvider>,
+  );
+  const selector = await screen.findByTestId('ai-feature-select-provider');
+  expect(
+    within(screen.getByTestId('health-review-heading')).getByTestId(
+      'ai-feature-select-provider',
+    ),
+  ).toBeOnTheScreen();
+  await fireEvent.press(selector);
+  expect(onProvider).toHaveBeenCalledTimes(1);
+  resolve.mockRestore();
+});
 
 it('retains authored name and genuine safety answers while the view leaves and returns', async () => {
   const wrapper = (visible: boolean) => (

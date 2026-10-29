@@ -46,7 +46,8 @@ final class HealthReviewJourney {
     }
 
     func choose(_ label: String) {
-        let control = app.buttons.matching(identifier: label).firstMatch
+        // React Native exposes radio controls without the iOS button trait.
+        let control = element(label)
         XCTAssertTrue(UITestConditions.exists(control))
         FormUITestConditions.reveal(control, in: app, scrollID: "health-review-screen", towardTop: true)
         XCTAssertTrue(control.isHittable)
