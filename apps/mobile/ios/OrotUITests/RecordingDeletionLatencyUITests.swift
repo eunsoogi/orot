@@ -162,6 +162,7 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
     private func summarize(_ samples: [[String: Any]]) -> [String: [String: Double]] {
         let stages = [
             "confirmationToProgress",
+            "libraryQueueWait",
             "sourceRead",
             "stopCheck",
             "audioStaging",

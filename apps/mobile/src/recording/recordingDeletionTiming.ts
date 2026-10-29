@@ -8,6 +8,7 @@ export type RecordingDeletionTimingMark =
   | 'list-summary-refresh';
 
 export type RecordingDeletionTimingSpan =
+  | 'library-queue-wait'
   | 'source-read'
   | 'stop-check'
   | 'audio-staging'

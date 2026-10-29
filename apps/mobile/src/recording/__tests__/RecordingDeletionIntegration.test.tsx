@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -128,4 +129,53 @@ test('prevents a new capture while a confirmed recording deletion is in flight',
 
 afterEach(() => {
   jest.restoreAllMocks();
+});
+
+test('immediate deletion after save cancels transcription without waiting for its provider to settle', async () => {
+  let finishTranscription!: () => void;
+  const provider = new Promise<never[]>(resolve => {
+    finishTranscription = () => resolve([]);
+  });
+  let signal: AbortSignal | undefined;
+  const transcription = createTranscriptService();
+  jest
+    .mocked(transcription.transcribe)
+    .mockImplementation(async (_id, abort) => {
+      signal = abort;
+      return provider;
+    });
+  const alert = mockNativeDeletionAlert();
+  const recording = createService().service;
+  const library = createLibraryService();
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      service={recording}
+      transcriptService={transcription}
+      recordingLibraryService={library}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await waitFor(() => expect(transcription.transcribe).toHaveBeenCalled());
+  expect(recording.saveSource).toHaveBeenCalledWith(completed);
+  expect(signal?.aborted).toBe(false);
+  await fireEvent.press(
+    screen.getByTestId(`recording-delete-${savedSource.id}`),
+  );
+  await confirmNativeDeletion(alert);
+  await waitFor(() => {
+    expect(signal?.aborted).toBe(true);
+    expect(screen.queryByTestId('recording-delete-progress')).toBeNull();
+    expect(screen.queryByTestId('recording-result')).toBeNull();
+  });
+  // A provider that ignores cancellation may settle later; it cannot keep deletion busy.
+  await act(async () => {
+    finishTranscription();
+  });
+  expect(screen.queryByTestId('recording-result')).toBeNull();
+  expect(screen.getByTestId('recording-status')).toHaveTextContent(
+    '녹음하지 않음',
+  );
 });

@@ -92,6 +92,7 @@ export const fixtureTests = [
   'OrotUITests/RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',
   'OrotUITests/RecordingDeletionRecoveryUITests/testFailedDeletionRestoresAudioAndKeepsSourceDuringSlowListRead',
   'OrotUITests/RecordingDeletionRecoveryUITests/testDelayedAudioCleanupKeepsProgressUntilCleanupCompletes',
+  'OrotUITests/RecordingDeletionRecoveryUITests/testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave',
   'OrotUITests/RecordingPlaybackUITests/testSavedAudioPlaybackStopsCompletesAndReopensBeforeMissingFileRecovery',
   'OrotUITests/RecordingPlaybackUITests/testPlaybackRecoversAfterTheSimulatedOutputRouteLoss',
   'OrotUITests/UnifiedImportUITests/testProviderSelectionUsesTheRealRecordsRouteAcrossAppearanceChangesBeforeImport',
