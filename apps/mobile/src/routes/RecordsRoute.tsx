@@ -15,6 +15,7 @@ import {
 import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocumentImport';
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
 import { RecordsRecentSources } from './RecordsRecentSources';
+import { hubSpacing } from '../layout/hubSpacing';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
 
 export interface RecordsRouteProps {
@@ -88,52 +89,47 @@ export function RecordsRoute({
 
   return (
     <View style={styles.container}>
-      <AdaptiveColumns
-        primary={
-          <View style={styles.primaryPanel}>
-            <RecordsRouteEntries
-              onOpenSymptoms={onOpenSymptoms}
-              onOpenSavedRecordings={onOpenSavedRecordings}
-              onOpenRecording={onOpenRecording}
-              onOpenHealthLibrary={onOpenHealthLibrary}
-              onOpenManualHistory={onOpenManualHistory}
-            />
-            {/* Imported clinical sources stay in their explicit review workflow. */}
-            <View style={styles.medicalDocuments}>
-              <MedicalDocumentImportAction
-                opening={activity === 'selecting'}
-                disabled={activity !== null}
-                onPress={selectMedicalDocument}
-              />
-              <MedicalDocumentSourceLibrary
-                documents={savedDocuments}
-                loading={savedDocumentsLoading}
-                openingSource={sourceLoading}
-                message={sourceMessage}
-                onOpenDocument={openSavedDocument}
-              />
-              {message ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  style={styles.status}
-                  testID="medical-document-import-status"
-                >
-                  {message}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        }
-        secondary={
-          <RecordsRecentSources
-            recordings={recordings}
-            recordingState={recordingState}
-            onRetry={onRetryRecordings}
+      <View testID="records-layout" style={styles.page}>
+        <View style={styles.primaryPanel}>
+          <RecordsRouteEntries
+            onOpenSymptoms={onOpenSymptoms}
             onOpenSavedRecordings={onOpenSavedRecordings}
+            onOpenRecording={onOpenRecording}
+            onOpenHealthLibrary={onOpenHealthLibrary}
+            onOpenManualHistory={onOpenManualHistory}
           />
-        }
-        testID="records-layout"
-      />
+          {/* Imported clinical sources stay in their explicit review workflow. */}
+          <View style={styles.medicalDocuments}>
+            <MedicalDocumentImportAction
+              opening={activity === 'selecting'}
+              disabled={activity !== null}
+              onPress={selectMedicalDocument}
+            />
+            <MedicalDocumentSourceLibrary
+              documents={savedDocuments}
+              loading={savedDocumentsLoading}
+              openingSource={sourceLoading}
+              message={sourceMessage}
+              onOpenDocument={openSavedDocument}
+            />
+            {message ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={styles.status}
+                testID="medical-document-import-status"
+              >
+                {message}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <RecordsRecentSources
+          recordings={recordings}
+          recordingState={recordingState}
+          onRetry={onRetryRecordings}
+          onOpenSavedRecordings={onOpenSavedRecordings}
+        />
+      </View>
     </View>
   );
 }
@@ -144,11 +140,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
     backgroundColor: appColors.background,
   },
-  primaryPanel: { flexGrow: 1, minWidth: 0 },
+  // A single page owns both entry groups; no panel seam adds a second top or side gutter.
+  page: {
+    gap: hubSpacing.item,
+    paddingHorizontal: hubSpacing.horizontal,
+    paddingTop: hubSpacing.top,
+    paddingBottom: hubSpacing.bottom,
+  },
+  primaryPanel: { minWidth: 0, gap: hubSpacing.item },
   medicalDocuments: {
-    gap: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    gap: hubSpacing.item,
   },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
 });

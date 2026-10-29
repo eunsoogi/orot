@@ -4,6 +4,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
+import { hubSpacing } from '../layout/hubSpacing';
 
 interface RecordsRouteEntriesProps {
   readonly onOpenSymptoms: () => void;
@@ -117,11 +118,8 @@ export function RecordsRouteEntries({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
+    gap: hubSpacing.item,
     minWidth: 0,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 24,
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },

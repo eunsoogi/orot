@@ -13,6 +13,7 @@ import { formatDateTime } from '../i18n';
 import { appointmentStartTime } from '../calendar/appointmentTime';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { resolveAppointmentReminderTarget } from './reminderPlan';
+import { selectNextAppointment } from '../routes/nextAppointment';
 
 /** A tap opens preparation for this visit, even when another visit is sooner.
  * Only reviewed local questions are read; opening a notification never starts inference.
@@ -20,9 +21,11 @@ import { resolveAppointmentReminderTarget } from './reminderPlan';
 export function AppointmentPreparationRoute({
   routeKey,
   loadSavedQuestions,
+  onOpenSchedule,
 }: {
   readonly routeKey: string;
   readonly loadSavedQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
+  readonly onOpenSchedule?: () => void;
 }) {
   const runtime = useAppointmentReminderRuntime();
   const focused = useIsFocused();
@@ -50,12 +53,21 @@ export function AppointmentPreparationRoute({
       if (!runtime || !loadSavedQuestions)
         throw new Error('Preparation unavailable.');
       const target = runtime.targets.get(routeKey);
-      const resolve = async () =>
-        resolveAppointmentReminderTarget(
+      const resolve = async () => {
+        const appointments = await runtime.list();
+        const homeId = runtime.homePreparationTargets.get(routeKey);
+        // Home accepts the displayed active visit until its known end. Notification taps retain their strict future/time-key validation.
+        if (homeId)
+          return selectNextAppointment(
+            appointments.filter(appointment => appointment.id === homeId),
+            Date.now(),
+          );
+        return resolveAppointmentReminderTarget(
           target,
-          await runtime.list(),
+          appointments,
           Date.now(),
         );
+      };
       const appointment = await resolve();
       if (!appointment) throw new Error('Stale appointment.');
       const saved = await loadSavedQuestions(appointment.id);
@@ -131,6 +143,22 @@ export function AppointmentPreparationRoute({
             <AppText>
               최근 증상 변화, 복용 정보와 확인할 기록을 준비해 주세요.
             </AppText>
+            {runtime?.homePreparationTargets.has(routeKey) ? (
+              <>
+                <AppText testID="home-preparation-unsupported">
+                  이 예약의 AI 질문 생성은 지원하지 않아요. AI 질문은 시작 전인
+                  Calendar 연결 예약에서 준비할 수 있어요. 일정에서 예약을
+                  확인하고 기록한 증상과 저장 질문을 진료에 활용해 주세요.
+                </AppText>
+                {onOpenSchedule ? (
+                  <AppButton
+                    title="일정에서 예약 확인"
+                    onPress={onOpenSchedule}
+                    testID="home-preparation-open-schedule"
+                  />
+                ) : null}
+              </>
+            ) : null}
           </>
         ) : (
           <AppText>예약을 확인하고 있어요.</AppText>

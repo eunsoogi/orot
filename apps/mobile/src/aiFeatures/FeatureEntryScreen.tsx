@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { getAiFeatureCopy } from './copy';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { hubSpacing } from '../layout/hubSpacing';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -17,7 +17,7 @@ export interface FeatureEntryScreenProps {
   readonly onOpenHealthReview?: () => void;
 }
 
-/** Keeps all four AI entry actions visible while preserving route and consent ownership. */
+/** Keeps ordered AI entry actions in one readable page while preserving route and consent ownership. */
 export function FeatureEntryScreen({
   embedded = false,
   onOpenVisitQuestions,
@@ -65,7 +65,6 @@ export function FeatureEntryScreen({
       action: onOpenHealthReview,
       symbol: 'heart.text.square',
     });
-  const splitIndex = Math.ceil(entries.length / 2);
   const renderEntries = (group: typeof entries) => (
     <View style={styles.list}>
       {group.map(({ feature, action, symbol }) => (
@@ -103,31 +102,21 @@ export function FeatureEntryScreen({
     </View>
   );
 
-  // Keep the action order stable while letting measured shell geometry and text scale choose the layout axis.
+  // All entries share one list: splitting into padded panels adds a gap before the fourth action.
   const content = (
-    <AdaptiveColumns
-      primary={
-        <View style={styles.panel}>
-          <View style={styles.headingGroup}>
-            <Text accessibilityRole="header" style={styles.heading}>
-              {copy.heading}
-            </Text>
-            <Text style={styles.subtitle}>{copy.subtitle}</Text>
-          </View>
-          {renderEntries(entries.slice(0, splitIndex))}
-        </View>
-      }
-      secondary={
-        <View style={styles.panel}>
-          {renderEntries(entries.slice(splitIndex))}
-          <View style={styles.notice}>
-            <AppSymbol name="info.circle" size={18} />
-            <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-          </View>
-        </View>
-      }
-      testID="ai-feature-columns"
-    />
+    <View style={styles.panel} testID="ai-feature-columns">
+      <View style={styles.headingGroup}>
+        <Text accessibilityRole="header" style={styles.heading}>
+          {copy.heading}
+        </Text>
+        <Text style={styles.subtitle}>{copy.subtitle}</Text>
+      </View>
+      {renderEntries(entries)}
+      <View style={styles.notice}>
+        <AppSymbol name="info.circle" size={18} />
+        <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+      </View>
+    </View>
   );
 
   if (embedded) {
@@ -152,19 +141,19 @@ export function FeatureEntryScreen({
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    gap: 18,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
+    gap: hubSpacing.item,
+    paddingHorizontal: hubSpacing.horizontal,
+    paddingTop: hubSpacing.top,
+    paddingBottom: hubSpacing.bottom,
     backgroundColor: appColors.background,
   },
-  embedded: { alignSelf: 'stretch', gap: 18 },
-  panel: { minWidth: 0, gap: 18 },
+  embedded: { alignSelf: 'stretch', gap: hubSpacing.item },
+  panel: { minWidth: 0, gap: hubSpacing.item },
   headingGroup: { gap: 8 },
   heading: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
   list: {
-    gap: 12,
+    gap: hubSpacing.item,
   },
   row: {
     alignItems: 'center',

@@ -77,9 +77,12 @@ export function AppointmentReminderDeliveryHost({
     });
     const navigation = controller.subscribe(() => {
       const snapshot = controller.getSnapshot();
-      for (const key of runtime.targets.keys()) {
-        if (!snapshot.routes.some(route => route.key === key))
-          runtime.targets.delete(key);
+      // Route lifetime, not a rendered view's mount, owns targets through provider/source detours.
+      for (const targets of [runtime.targets, runtime.homePreparationTargets]) {
+        for (const key of targets.keys()) {
+          if (!snapshot.routes.some(route => route.key === key))
+            targets.delete(key);
+        }
       }
       if (retryWhenNavigationAvailable && !snapshot.isTransitioning) {
         retryWhenNavigationAvailable = false;
