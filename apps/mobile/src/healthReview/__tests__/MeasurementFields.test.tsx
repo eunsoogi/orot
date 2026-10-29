@@ -33,6 +33,16 @@ it('does not infer a timezone for an unknown timestamp', () => {
   expect(formatMeasurementTime('2026-10-28T00:00:00Z')).not.toBe('');
 });
 
+it('renders the same instant in the selected display timezone without changing storage', () => {
+  const stored = '2026-10-28T00:00:00.000Z';
+  const seoul = formatMeasurementTime(stored, 'Asia/Seoul');
+  const newYork = formatMeasurementTime(stored, 'America/New_York');
+  expect(seoul).toMatch(/9:00/);
+  expect(newYork).toMatch(/8:00/);
+  expect(seoul).not.toEqual(newYork);
+  expect(new Date(stored).toISOString()).toBe(stored);
+});
+
 it('keeps the previous instant on cancel and applies an explicit selection on done', async () => {
   const onChange = jest.fn();
   const row = {

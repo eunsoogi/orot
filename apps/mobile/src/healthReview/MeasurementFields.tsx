@@ -16,7 +16,10 @@ import { healthReviewStyles as styles } from './styles';
 import type { SafetyReadingDraft } from './safetyInput';
 
 /** Render only a known instant in the current device timezone. */
-export function formatMeasurementTime(value: string): string {
+export function formatMeasurementTime(
+  value: string,
+  timeZone?: string,
+): string {
   if (!value || !/(?:Z|[+-]\d\d:\d\d)$/i.test(value)) return '';
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return '';
@@ -27,6 +30,7 @@ export function formatMeasurementTime(value: string): string {
     hour: 'numeric',
     minute: '2-digit',
     timeZoneName: 'short',
+    timeZone,
   }).format(date);
 }
 
