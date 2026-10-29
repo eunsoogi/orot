@@ -14,7 +14,7 @@ import { createNavigationController } from '../../navigation/navigationControlle
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
 import type { EuropePmcMedicalEvidenceService } from '../europePmc';
-import { publications } from './fixtures/literatureLayoutFixtures';
+import { publications } from '../testSupport/literatureLayoutFixtures';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');

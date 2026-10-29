@@ -1,4 +1,4 @@
-import type { ExternalMedicalPublication } from '../../europePmc';
+import type { ExternalMedicalPublication } from '../europePmc';
 
 /** Synthetic provider data stays separate from the navigation roundtrip contract. */
 export const publications: ExternalMedicalPublication[] = [
