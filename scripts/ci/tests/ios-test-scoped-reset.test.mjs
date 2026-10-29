@@ -97,7 +97,7 @@ test('fresh creation, migration, document import, backup and native permission c
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
-  // Stateful journeys, including symptom recovery, require a fresh local store per fixture.
+  // Stateful journeys, including symptom recovery and appointment input replacement, require a fresh local store.
   assert.deepEqual(full, [
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
@@ -109,6 +109,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/RecordingDeletionRecoveryUITests/testDelayedAudioCleanupKeepsProgressUntilCleanupCompletes',
     'OrotUITests/RecordingDeletionRecoveryUITests/testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
+    'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
     'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
     'OrotUITests/AppointmentReminderJourneyUITests/testActualRNFailureOriginSurvivesCleanupAndQueuedReconciliation',
     'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',

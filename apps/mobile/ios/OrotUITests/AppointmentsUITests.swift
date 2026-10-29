@@ -217,7 +217,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         for (field, value) in [("clinic", clinic), ("date", date), ("time", time), ("note", note)] {
             let input = app.textFields.matching(identifier: "appointment-\(field)-input").firstMatch
             XCTAssertTrue(UITestConditions.exists(input))
-            FormUITestConditions.replace(input, with: value, in: app, scrollID: "appointments-scroll")
+            FormUITestConditions.replace(input, with: value, in: app, scrollID: "appointments-scroll", useNativeSelectAllMenu: true)
         }
         capture(app, "appointment-editor-keyboard")
         app.textFields.matching(identifier: "appointment-note-input").firstMatch.typeText("\n")
