@@ -113,6 +113,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',
     'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
     'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',
+    'OrotUITests/SymptomJournalUITests/testConfirmedNativePickerValueIsSaved',
     'OrotUITests/SymptomJournalRecoveryUITests/testSaveFailureKeepsKoreanErrorAndRetryRecovers',
     'OrotUITests/SymptomJournalRecoveryUITests/testCancelingNewSymptomKeepsJournalEmpty',
     'OrotUITests/SymptomJournalRecoveryUITests/testKoreanDeviceLanguageKeepsJournalCopyAndAccessibilityNames',
