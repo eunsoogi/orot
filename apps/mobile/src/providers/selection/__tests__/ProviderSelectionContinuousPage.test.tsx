@@ -209,8 +209,10 @@ test('keeps confirmation disabled until the explicit save settles without duplic
   await fireEvent.press(page.getByTestId('provider-selection-confirm'));
   expect(save).toHaveBeenCalledTimes(1);
   expect(onSelectionCommitted).not.toHaveBeenCalled();
-  finishSave?.();
-  await pendingSave;
+  await act(async () => {
+    finishSave?.();
+    await pendingSave;
+  });
   expect(onSelectionCommitted).toHaveBeenCalledTimes(1);
   expect(
     page.getByTestId('provider-option-1').props.accessibilityState,
