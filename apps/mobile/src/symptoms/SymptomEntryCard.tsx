@@ -1,5 +1,7 @@
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
+import { AppButton as Button } from '../layout/AppButton';
+import SymptomSelectionSummary from './SymptomSelectionSummary';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { symptomDateTimeLabel, symptomStatusLabel } from './presentation';
@@ -11,6 +13,7 @@ type SymptomEntryCardProps = {
   onSelect: () => void;
   selected?: boolean;
   disabled?: boolean;
+  resolutionFailed?: boolean;
 };
 
 export default function SymptomEntryCard({
@@ -20,16 +23,14 @@ export default function SymptomEntryCard({
   onSelect,
   selected = false,
   disabled,
+  resolutionFailed = false,
 }: SymptomEntryCardProps) {
-  const resolvedAt = entry.resolvedAt;
-  const resolved = resolvedAt !== undefined;
-
   return (
     <View
       style={[styles.card, selected ? styles.selectedCard : undefined]}
       testID={`symptom-${entry.id}`}
     >
-      {/* Keep the selector separate so details and Edit or Resolve stay accessible. */}
+      {/* Only this header is selectable; expanded detail and actions remain separate AX elements. */}
       <Pressable
         accessibilityHint={t('symptoms.journal.selectEntryHint')}
         accessibilityLabel={t(
@@ -39,7 +40,7 @@ export default function SymptomEntryCard({
           { description: entry.description },
         )}
         accessibilityRole="button"
-        accessibilityState={{ selected }}
+        accessibilityState={{ selected, expanded: selected }}
         disabled={disabled}
         onPress={onSelect}
         style={styles.selectableDescription}
@@ -57,41 +58,44 @@ export default function SymptomEntryCard({
           dateTime: symptomDateTimeLabel(entry.effectiveAt),
         })}
       </Text>
-      <Text style={styles.detail} testID={`symptom-${entry.id}-status`}>
+      <Text
+        style={[
+          styles.detail,
+          styles.status,
+          entry.status === 'active'
+            ? styles.activeStatus
+            : styles.resolvedStatus,
+        ]}
+        testID={`symptom-${entry.id}-status`}
+      >
         {symptomStatusLabel(entry.status)}
       </Text>
-      <Text style={styles.detail}>{t('symptoms.journal.provenance')}</Text>
-      {entry.bodySite ? (
-        <Text style={styles.detail}>{entry.bodySite}</Text>
+      {selected ? (
+        <>
+          <SymptomSelectionSummary entry={entry} />
+          <View style={styles.actions}>
+            <Button
+              disabled={disabled}
+              onPress={onEdit}
+              testID={`symptom-edit-${entry.id}`}
+              title={t('symptoms.journal.edit')}
+              variant="secondary"
+            />
+            {entry.status === 'active' ? (
+              <Button
+                disabled={disabled}
+                onPress={onResolve}
+                testID={`symptom-resolve-${entry.id}`}
+                title={t(
+                  resolutionFailed
+                    ? 'symptoms.journal.retry'
+                    : 'symptoms.journal.markResolved',
+                )}
+              />
+            ) : null}
+          </View>
+        </>
       ) : null}
-      {entry.severity !== undefined ? (
-        <Text style={styles.detail} testID={`symptom-${entry.id}-severity`}>
-          {t('symptoms.journal.severity', { severity: entry.severity })}
-        </Text>
-      ) : null}
-      {resolved && resolvedAt ? (
-        <Text style={styles.detail}>
-          {t('symptoms.journal.resolvedAt', {
-            dateTime: symptomDateTimeLabel(resolvedAt),
-          })}
-        </Text>
-      ) : null}
-      <View style={styles.actions}>
-        <Button
-          disabled={disabled}
-          onPress={onEdit}
-          testID={`symptom-edit-${entry.id}`}
-          title={t('symptoms.journal.edit')}
-        />
-        {entry.status === 'active' ? (
-          <Button
-            disabled={disabled}
-            onPress={onResolve}
-            testID={`symptom-resolve-${entry.id}`}
-            title={t('symptoms.journal.markResolved')}
-          />
-        ) : null}
-      </View>
     </View>
   );
 }
@@ -112,6 +116,20 @@ const styles = StyleSheet.create({
   selectableDescription: { borderRadius: 8, minHeight: 44 },
   description: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   detail: { color: appColors.text },
+  status: {
+    alignSelf: 'flex-start',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  activeStatus: {
+    backgroundColor: appColors.warningSurface,
+    color: appColors.warning,
+  },
+  resolvedStatus: {
+    backgroundColor: appColors.greenSoft,
+    color: appColors.green,
+  },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

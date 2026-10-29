@@ -10,11 +10,22 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
     private var severityGestureEndedAtMs: Double?
 
     @MainActor
+    func testConfirmedNativePickerValueIsSaved() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        try SymptomJournalUITestObservations.launchJournal(app)
+        guard tap(app, "symptom-add") else { return }
+        SymptomJournalControlUITestConditions.confirmedPickerPersists(app)
+    }
+
+    @MainActor
     func testCreationEditingFilteringAndResolutionSurviveRelaunch() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        try launchJournal(app)
+        try SymptomJournalUITestObservations.launchJournal(app)
         guard tap(app, "symptom-add") else { return }
+        SymptomJournalControlUITestConditions.directFormAndPickerCancellation(app)
+        SymptomJournalUITestObservations.openManualOnset(app)
         SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "create-description-focused")
@@ -30,6 +41,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard replace(app, "symptom-onset-date", "2025-04-02") else { return }
         guard replace(app, "symptom-onset-time", "09:30") else { return }
         guard tap(app, "symptom-status-active") else { return }
+        SymptomJournalControlUITestConditions.pendingPickerBlocksSave(app)
         if singleSeverityObservation {
             // Incomplete geometry cannot justify an input gesture; reject it before touching severity.
             print("Journal single severity diagnostic opt-in active")
@@ -56,6 +68,9 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
                 return
             }
         }
+        if !singleSeverityObservation {
+            SymptomJournalControlUITestConditions.sliderRecordsExplicitEndpointsAndCanReturnToMissing(app)
+        }
         let severityCompleted = replace(app, "symptom-severity", "6", observeFocusGesture: true)
         // A diagnostic completion proves only that one original focused drag was measured, never journal acceptance.
         if singleSeverityObservation {
@@ -66,7 +81,6 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard severityCompleted else { return }
         accessory(app, "symptom-keyboard-save-severity")
         guard visible(app, "Synthetic intermittent tingling") else { return }
-        guard visible(app, "내가 느낀 불편 정도: 6/10") else { return }
         guard visible(app, "직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.") else { return }
         let description = app.staticTexts.matching(NSPredicate(format:
             "identifier BEGINSWITH 'symptom-' AND identifier ENDSWITH '-description'")).firstMatch
@@ -74,12 +88,14 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         // Remove only the card's wrapper; the stored entry ID retains its own symptom- prefix.
         let entryID = String(cardID.dropFirst("symptom-".count))
         XCTAssertTrue(description.exists && description.isHittable && UITestConditions.element(app, "symptom-select-" + entryID).label == "증상 기록 선택: Synthetic intermittent tingling")
-        // The selected summary is local to this existing journal route.
+        // Selection expands detail inside the original card and keeps actions in that page.
         guard tap(app, "symptom-select-" + entryID) else { return }
         UITestConditions.value(
-            UITestConditions.element(app, "symptoms-selected-description"),
+            UITestConditions.element(app, cardID + "-description"),
             equals: "Synthetic intermittent tingling",
         )
+        guard visible(app, "내가 느낀 불편 정도: 6/10") else { return }
+        XCTAssertTrue(UITestConditions.element(app, "symptoms-selected-summary").exists)
         let onset = UITestConditions.element(app, cardID + "-onset")
         XCTAssertTrue(onset.exists)
         let originalOnset = UITestConditions.text(onset)
@@ -93,6 +109,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
                                equals: "Synthetic tingling after lunch\nUsually in the afternoon")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
         guard tap(app, "symptom-filter-active", towardTop: true) else { return }
+        guard tap(app, "symptom-filter-period") else { return }
         guard replace(app, "symptom-filter-from-date", "2025-04-02") else { return }
         guard replace(app, "symptom-filter-from-time", "09:30") else { return }
         guard replace(app, "symptom-filter-through-date", "2025-04-02") else { return }
@@ -106,31 +123,13 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
         capture(app, "symptom-journal-resolved")
         app.terminate()
-        try launchJournal(app)
+        try SymptomJournalUITestObservations.launchJournal(app)
         UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "나아졌어요")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
         guard visible(app, "직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.") else { return }
         capture(app, "symptom-journal-persisted-after-relaunch")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-    }
-
-    @MainActor
-    private func launchJournal(_ app: XCUIApplication) throws {
-        // English device settings exercise the Korean-only copy through the real journal route.
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        // The passive marker is opted in for this scenario; diagnostic-only early-exit flags remain separate.
-        app.launchArguments += ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
-        app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        let open = UITestConditions.element(app, "symptoms-open")
-        XCTAssertTrue(UITestConditions.exists(open))
-        FormUITestConditions.reveal(open, in: app, scrollID: "navigation-route-scroll")
-        XCTAssertTrue(open.isHittable)
-        open.tap()
-        NavigationUITestConditions.route(app, markers: ["symptoms-title"])
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-title")) && UITestConditions.element(app, "symptoms-title").label == "증상 일지" && !UITestConditions.element(app, "symptoms-back").exists)
     }
 
     @MainActor

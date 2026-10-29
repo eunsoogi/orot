@@ -34,6 +34,7 @@ describe('symptom form accessory across create and edit', () => {
       />,
     );
     const createID = descriptionAccessoryID();
+    await fireEvent.press(screen.getByTestId('symptom-onset-manual'));
     await fireEvent.changeText(
       screen.getByTestId('symptom-description'),
       'Synthetic hand tingling',

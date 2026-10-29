@@ -83,6 +83,7 @@ describe.each(['en-US', 'ko-KR'])(
       expect(
         screen.getByTestId('symptom-resolved-entry-status'),
       ).toHaveTextContent('나아졌어요');
+      await fireEvent.press(screen.getByTestId('symptom-select-active-entry'));
       expect(
         screen.getByTestId('symptom-active-entry-severity'),
       ).toHaveTextContent('내가 느낀 불편 정도: 0/10');
@@ -99,9 +100,8 @@ describe.each(['en-US', 'ko-KR'])(
 
       const selector = screen.getByTestId('symptom-select-active-entry');
       expect(selector.props.accessibilityLabel).toBe(
-        '증상 기록 선택: 직접 작성한 증상 설명',
+        '선택한 증상 기록: 직접 작성한 증상 설명',
       );
-      await fireEvent.press(selector);
       expect(
         screen.getByTestId('symptom-select-active-entry').props
           .accessibilityLabel,
@@ -130,6 +130,7 @@ it('localizes form guidance, accessibility names, and save errors', async () => 
     .mockRejectedValue(new Error('storage unavailable'));
   await renderScreen({ onCreate });
   await fireEvent.press(screen.getByTestId('symptom-add'));
+  await fireEvent.press(screen.getByTestId('symptom-onset-manual'));
   expect(
     screen.getByTestId('symptom-description').props.accessibilityLabel,
   ).toBe('증상 내용');

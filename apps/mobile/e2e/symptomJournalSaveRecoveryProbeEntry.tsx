@@ -1,19 +1,24 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { AppRegistry } from 'react-native';
-import { SymptomEntrySchema } from '@orot/storage';
+import {
+  SymptomEntrySchema,
+  filterSymptomEntries,
+  resolveSymptomEntry,
+} from '@orot/storage';
 import type { SymptomEntry } from '@orot/storage';
 import App from '../App';
 import { name as appName } from '../app.json';
 import type { SymptomJournalRepository } from '../src/symptoms/localRepository';
 
-/** Exercises the production route with a memory-only repository and one failed write. */
+/** Exercises the production route with a memory-only repository and one failed create and resolution attempt. */
 function createRecoveryRepository(): SymptomJournalRepository {
   const entries: SymptomEntry[] = [];
   let createAttempts = 0;
+  let resolveAttempts = 0;
 
   return {
-    list: async () => entries.slice(),
+    list: async filter => filterSymptomEntries(entries, filter),
     async create(draft) {
       createAttempts += 1;
       if (createAttempts === 1) {
@@ -42,8 +47,18 @@ function createRecoveryRepository(): SymptomJournalRepository {
     async update() {
       throw new Error('This symptom recovery probe does not edit entries.');
     },
-    async resolve() {
-      throw new Error('This symptom recovery probe does not resolve entries.');
+    async resolve(id) {
+      resolveAttempts += 1;
+      if (resolveAttempts === 1)
+        throw new Error('Synthetic symptom resolution failure.');
+      const index = entries.findIndex(entry => entry.id === id);
+      if (index < 0) return null;
+      const resolved = resolveSymptomEntry(
+        entries[index]!,
+        new Date().toISOString(),
+      );
+      entries[index] = resolved;
+      return resolved;
     },
   };
 }

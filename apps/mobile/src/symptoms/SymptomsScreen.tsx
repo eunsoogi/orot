@@ -12,10 +12,10 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import SymptomJournalEntries from './SymptomJournalEntries';
 import SymptomEntryCard from './SymptomEntryCard';
 import SymptomForm from './SymptomForm';
 import SymptomListPanel from './SymptomListPanel';
-import SymptomSelectionSummary from './SymptomSelectionSummary';
 import symptomFormStyles from './SymptomForm.styles';
 import styles from './SymptomsScreen.styles';
 import useSymptomScrollDiagnostics from './useSymptomScrollDiagnostics';
@@ -52,11 +52,12 @@ export default function SymptomsScreen({
 }: SymptomsScreenProps) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<SymptomEntry | null>(null);
-  // Keep the selected entry local so reflow changes only the panel geometry.
+  // Selection stays route-owned while inline detail and editor geometry reflow.
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(
     null,
   );
   const [error, setError] = useState('');
+  const [failedResolution, setFailedResolution] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [inputRevision, setInputRevision] = useState(0);
   const navigationInset = useNavigationContentInset();
@@ -74,8 +75,6 @@ export default function SymptomsScreen({
     revision: Number(creating) + Number(editing !== null) + Number(saving),
     inputRevision,
   });
-  const selectedSymptom =
-    entries.find(entry => entry.id === selectedSymptomId) ?? null;
   // New typing invalidates a pending discard confirmation from the shared toolbar.
   const draftChanged = () => setInputRevision(value => value + 1);
 
@@ -84,7 +83,9 @@ export default function SymptomsScreen({
     setSaving(true);
     try {
       await onResolve(entry.id);
+      setFailedResolution(null);
     } catch {
+      setFailedResolution(entry.id);
       setError(t('symptoms.journal.resolveError'));
     } finally {
       setSaving(false);
@@ -96,10 +97,18 @@ export default function SymptomsScreen({
       <SymptomEntryCard
         disabled={saving || creating || editing !== null}
         entry={entry}
+        resolutionFailed={failedResolution === entry.id}
         key={entry.id}
-        onSelect={() => setSelectedSymptomId(entry.id)}
+        onSelect={() =>
+          setSelectedSymptomId(current =>
+            current === entry.id ? null : entry.id,
+          )
+        }
         selected={entry.id === selectedSymptomId}
-        onEdit={() => setEditing(entry)}
+        onEdit={() => {
+          setEditing(entry);
+          diagnosticScroll.current?.scrollTo({ y: 0, animated: false });
+        }}
         onResolve={() => {
           resolve(entry);
         }}
@@ -137,60 +146,62 @@ export default function SymptomsScreen({
           keyboardShouldPersistTaps="handled"
           testID="symptoms-scroll"
         >
-          {/* Both panels stay mounted so selection survives geometry changes. */}
-          <AdaptiveColumns
-            primary={
-              <SymptomListPanel
-                backButtonVisible={!hasSharedNavigation}
-                disabled={creating || editing !== null || saving}
-                error={error}
-                filter={filter}
-                onBack={onBack}
-                onFilterChange={onFilterChange}
-              >
-                {loadError ? (
-                  <>
-                    <Text
-                      accessibilityRole="alert"
-                      style={styles.error}
-                      testID="symptoms-load-error"
-                    >
-                      {loadError}
+          {/* The editor replaces browsing; its draft is never remounted by reflow. */}
+          <View style={creating || editing ? styles.hidden : undefined}>
+            <AdaptiveColumns
+              primary={
+                <SymptomListPanel
+                  backButtonVisible={!hasSharedNavigation}
+                  disabled={creating || editing !== null || saving}
+                  error={error}
+                  filter={filter}
+                  onBack={onBack}
+                  onFilterChange={onFilterChange}
+                  canAdd={!loading && canWrite && !saving}
+                  onAdd={() => {
+                    setCreating(true);
+                    diagnosticScroll.current?.scrollTo({
+                      y: 0,
+                      animated: false,
+                    });
+                  }}
+                >
+                  {loadError ? (
+                    <>
+                      <Text
+                        accessibilityRole="alert"
+                        style={styles.error}
+                        testID="symptoms-load-error"
+                      >
+                        {loadError}
+                      </Text>
+                      <Button
+                        disabled={loading}
+                        onPress={onRetry}
+                        testID="symptoms-retry-list"
+                        title={t('symptoms.journal.retry')}
+                      />
+                    </>
+                  ) : loading ? (
+                    <Text testID="symptoms-loading">
+                      {t('symptoms.journal.loading')}
                     </Text>
-                    <Button
-                      disabled={loading}
-                      onPress={onRetry}
-                      testID="symptoms-retry-list"
-                      title={t('symptoms.journal.retry')}
+                  ) : entries.length === 0 ? (
+                    <Text testID="symptoms-empty">
+                      {t('symptoms.journal.empty')}
+                    </Text>
+                  ) : (
+                    <SymptomJournalEntries
+                      entries={entries}
+                      renderEntry={renderEntry}
                     />
-                  </>
-                ) : loading ? (
-                  <Text testID="symptoms-loading">
-                    {t('symptoms.journal.loading')}
-                  </Text>
-                ) : entries.length === 0 ? (
-                  <Text testID="symptoms-empty">
-                    {t('symptoms.journal.empty')}
-                  </Text>
-                ) : (
-                  entries
-                    .filter(entry => entry.id !== editing?.id)
-                    .map(renderEntry)
-                )}
-                {!creating && !editing ? (
-                  <Button
-                    disabled={loading || !canWrite || saving}
-                    onPress={() => setCreating(true)}
-                    testID="symptom-add"
-                    title={t('symptoms.journal.add')}
-                  />
-                ) : null}
-              </SymptomListPanel>
-            }
-            routeKey="symptoms"
-            secondary={<SymptomSelectionSummary entry={selectedSymptom} />}
-            testID="symptoms-layout"
-          />
+                  )}
+                </SymptomListPanel>
+              }
+              routeKey="symptoms"
+              testID="symptoms-layout"
+            />
+          </View>
           {creating || editing ? (
             // Keep the active editor outside either adaptive panel's width clamp.
             <View

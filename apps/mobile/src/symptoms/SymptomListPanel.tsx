@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button, Text, View } from 'react-native';
+import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import SymptomFilters from './SymptomFilters';
 import styles from './SymptomsScreen.styles';
@@ -14,12 +15,16 @@ export default function SymptomListPanel({
   filter,
   onBack,
   onFilterChange,
+  onAdd,
+  canAdd,
 }: {
   readonly backButtonVisible: boolean;
   readonly children: ReactNode;
   readonly disabled: boolean;
   readonly error: string;
   readonly filter: SymptomFilter;
+  readonly onAdd: () => void;
+  readonly canAdd: boolean;
   readonly onBack: () => void;
   readonly onFilterChange: (filter: SymptomFilter) => Promise<void> | void;
 }) {
@@ -33,6 +38,12 @@ export default function SymptomListPanel({
         >
           {t('symptoms.title')}
         </Text>
+        <AppButton
+          disabled={!canAdd}
+          onPress={onAdd}
+          testID="symptom-add"
+          title={t('symptoms.journal.add')}
+        />
         {backButtonVisible ? (
           <Button
             onPress={onBack}
@@ -41,7 +52,7 @@ export default function SymptomListPanel({
           />
         ) : null}
       </View>
-      <Text style={styles.message}>{t('symptoms.description')}</Text>
+      <Text style={styles.message}>{t('symptoms.journal.description')}</Text>
       <Text style={styles.hint}>{t('symptoms.journal.provenance')}</Text>
       {error ? (
         <Text

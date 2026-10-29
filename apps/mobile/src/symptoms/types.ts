@@ -29,4 +29,6 @@ export interface SymptomFilter {
   status?: SymptomStatus;
   fromOnsetAt?: string;
   throughOnsetAt?: string;
+  localFrom?: string;
+  localThrough?: string;
 }

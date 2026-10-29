@@ -87,6 +87,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     private func openForm(_ app: XCUIApplication) throws {
         try tapFinal(app, "symptom-add", stage: "large-korean-add")
+        SymptomJournalUITestObservations.openManualOnset(app)
         XCTAssertTrue(UITestConditions.exists(app.textViews["symptom-description"]))
     }
 

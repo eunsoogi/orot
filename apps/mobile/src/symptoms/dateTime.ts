@@ -52,3 +52,25 @@ export function toLocalSymptomDateTime(timestamp: string): {
     time: [pad(value.getHours()), pad(value.getMinutes())].join(':'),
   };
 }
+
+/** Include the entire displayed minute and both occurrences of a repeated local minute. */
+export function toSymptomThroughTimestamp(
+  date: string,
+  time: string,
+): string | null {
+  const start = toSymptomTimestamp(date, time);
+  if (!start) return null;
+  const first = new Date(start);
+  const offsets = [-86400000, 0, 86400000].map(delta =>
+    new Date(first.getTime() + delta).getTimezoneOffset(),
+  );
+  const candidates = offsets
+    .map(
+      offset => first.getTime() + (offset - first.getTimezoneOffset()) * 60000,
+    )
+    .filter(value => {
+      const local = toLocalSymptomDateTime(new Date(value).toISOString());
+      return local.date === date.trim() && local.time === time.trim();
+    });
+  return new Date(Math.max(...candidates) + 59999).toISOString();
+}
