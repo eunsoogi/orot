@@ -1,7 +1,8 @@
 import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
 import { appColors } from '../layout/appColors';
-import { toLocalSymptomDateTime } from './dateTime';
+import { t } from '../i18n';
+import { symptomDateTimeLabel, symptomStatusLabel } from './presentation';
 
 type SymptomEntryCardProps = {
   entry: SymptomEntry;
@@ -20,10 +21,8 @@ export default function SymptomEntryCard({
   selected = false,
   disabled,
 }: SymptomEntryCardProps) {
-  const onset = toLocalSymptomDateTime(entry.effectiveAt);
-  const resolved = entry.resolvedAt
-    ? toLocalSymptomDateTime(entry.resolvedAt)
-    : null;
+  const resolvedAt = entry.resolvedAt;
+  const resolved = resolvedAt !== undefined;
 
   return (
     <View
@@ -32,8 +31,13 @@ export default function SymptomEntryCard({
     >
       {/* Keep the selector separate so details and Edit or Resolve stay accessible. */}
       <Pressable
-        accessibilityHint="Shows this symptom in the selected summary."
-        accessibilityLabel={`${selected ? 'Selected' : 'Select'} symptom: ${entry.description}`}
+        accessibilityHint={t('symptoms.journal.selectEntryHint')}
+        accessibilityLabel={t(
+          selected
+            ? 'symptoms.journal.selectedEntry'
+            : 'symptoms.journal.selectEntry',
+          { description: entry.description },
+        )}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         disabled={disabled}
@@ -49,23 +53,27 @@ export default function SymptomEntryCard({
         </Text>
       </Pressable>
       <Text style={styles.detail} testID={`symptom-${entry.id}-onset`}>
-        {onset.date} at {onset.time} (local time)
+        {t('symptoms.journal.startedAt', {
+          dateTime: symptomDateTimeLabel(entry.effectiveAt),
+        })}
       </Text>
       <Text style={styles.detail} testID={`symptom-${entry.id}-status`}>
-        {entry.status === 'active' ? 'Active' : 'Resolved'}
+        {symptomStatusLabel(entry.status)}
       </Text>
-      <Text style={styles.detail}>User-entered · not clinician-confirmed</Text>
+      <Text style={styles.detail}>{t('symptoms.journal.provenance')}</Text>
       {entry.bodySite ? (
         <Text style={styles.detail}>{entry.bodySite}</Text>
       ) : null}
       {entry.severity !== undefined ? (
         <Text style={styles.detail} testID={`symptom-${entry.id}-severity`}>
-          Your severity: {entry.severity}/10
+          {t('symptoms.journal.severity', { severity: entry.severity })}
         </Text>
       ) : null}
-      {resolved ? (
+      {resolved && resolvedAt ? (
         <Text style={styles.detail}>
-          Resolved {resolved.date} at {resolved.time}
+          {t('symptoms.journal.resolvedAt', {
+            dateTime: symptomDateTimeLabel(resolvedAt),
+          })}
         </Text>
       ) : null}
       <View style={styles.actions}>
@@ -73,14 +81,14 @@ export default function SymptomEntryCard({
           disabled={disabled}
           onPress={onEdit}
           testID={`symptom-edit-${entry.id}`}
-          title="Edit symptom"
+          title={t('symptoms.journal.edit')}
         />
         {entry.status === 'active' ? (
           <Button
             disabled={disabled}
             onPress={onResolve}
             testID={`symptom-resolve-${entry.id}`}
-            title="Mark resolved"
+            title={t('symptoms.journal.markResolved')}
           />
         ) : null}
       </View>

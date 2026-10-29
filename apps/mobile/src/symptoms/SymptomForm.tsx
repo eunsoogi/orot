@@ -11,6 +11,7 @@ import {
   formKeyboardFields,
   formInputAccessoryID,
 } from './symptomFormKeyboard';
+import { t } from '../i18n';
 
 type SymptomFormProps = {
   onCancel: () => void;
@@ -53,9 +54,10 @@ export default function SymptomForm({
     setError('');
     const trimmedDescription = description.trim();
     if (!trimmedDescription) {
-      setError('Describe the symptom before saving.');
+      setError(t('symptoms.journal.form.validation.description'));
       return;
     }
+    // An empty field remains missing; an entered 0 stays an explicit severity.
     let selectedSeverity: number | null = null;
     if (severity.trim()) {
       selectedSeverity = Number(severity);
@@ -64,7 +66,7 @@ export default function SymptomForm({
         selectedSeverity < 0 ||
         selectedSeverity > 10
       ) {
-        setError('Severity must be a whole number from 0 to 10.');
+        setError(t('symptoms.journal.form.validation.severity'));
         return;
       }
     }
@@ -84,11 +86,11 @@ export default function SymptomForm({
       }
       const onsetAt = toSymptomTimestamp(onsetDate, onsetTime);
       if (!onsetAt) {
-        setError('Enter a valid local onset date and time.');
+        setError(t('symptoms.journal.form.validation.onset'));
         return;
       }
       if (!status) {
-        setError('Choose the symptom status.');
+        setError(t('symptoms.journal.form.validation.status'));
         return;
       }
       const details = {
@@ -102,7 +104,7 @@ export default function SymptomForm({
       } else {
         const resolvedAt = toSymptomTimestamp(resolvedDate, resolvedTime);
         if (!resolvedAt) {
-          setError('Enter a valid local resolution date and time.');
+          setError(t('symptoms.journal.form.validation.resolved'));
           return;
         }
         await onCreate({ ...details, status, resolvedAt });
@@ -111,8 +113,8 @@ export default function SymptomForm({
     } catch {
       setError(
         mode === 'edit'
-          ? 'The symptom could not be updated. Try again.'
-          : 'The symptom could not be saved. Try again.',
+          ? t('symptoms.journal.form.updateError')
+          : t('symptoms.journal.form.saveError'),
       );
     } finally {
       setSaving(false);
@@ -123,13 +125,15 @@ export default function SymptomForm({
   return (
     <View style={styles.form}>
       <Text accessibilityRole="header" style={styles.formTitle}>
-        {mode === 'edit' ? 'Edit symptom' : 'New symptom'}
+        {mode === 'edit'
+          ? t('symptoms.journal.form.editTitle')
+          : t('symptoms.journal.form.newTitle')}
       </Text>
       <TextInput
-        accessibilityLabel="Symptom description"
+        accessibilityLabel={t('symptoms.journal.form.description.label')}
         multiline
         onChangeText={change(setDescription)}
-        placeholder="Describe what you feel"
+        placeholder={t('symptoms.journal.form.description.placeholder')}
         inputAccessoryViewID={formInputAccessoryID('description', mode)}
         style={[styles.input, styles.description]}
         testID="symptom-description"
@@ -156,25 +160,27 @@ export default function SymptomForm({
         />
       ) : null}
       <TextInput
-        accessibilityLabel="Optional body site"
+        accessibilityLabel={t('symptoms.journal.form.bodySite.label')}
         onChangeText={change(setBodySite)}
         inputAccessoryViewID={formInputAccessoryID('bodySite')}
-        placeholder="Body area (optional)"
+        placeholder={t('symptoms.journal.form.bodySite.placeholder')}
         style={styles.input}
         testID="symptom-body-site"
         value={bodySite}
       />
       <TextInput
-        accessibilityLabel="Optional severity from zero to ten"
+        accessibilityLabel={t('symptoms.journal.form.severity.label')}
         keyboardType="number-pad"
         onChangeText={change(setSeverity)}
         inputAccessoryViewID={formInputAccessoryID('severity')}
-        placeholder="Severity (optional, 0–10)"
+        placeholder={t('symptoms.journal.form.severity.placeholder')}
         style={styles.input}
         testID="symptom-severity"
         value={severity}
       />
-      <Text style={styles.hint}>Severity is optional and entered by you.</Text>
+      <Text style={styles.hint}>
+        {t('symptoms.journal.form.severity.hint')}
+      </Text>
       {error ? (
         <Text accessibilityRole="alert" testID="symptom-form-error">
           {error}
@@ -187,20 +193,27 @@ export default function SymptomForm({
         }}
         testID="symptom-save"
         title={
-          saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save symptom'
+          saving
+            ? t('symptoms.journal.form.saving')
+            : mode === 'edit'
+              ? t('symptoms.journal.form.saveChanges')
+              : t('symptoms.journal.form.save')
         }
       />
       <Button
         disabled={saving}
         onPress={onCancel}
         testID="symptom-form-cancel"
-        title="Close"
+        title={t('symptoms.journal.form.close')}
       />
       {Platform.OS === 'ios' ? (
         <SymptomKeyboardAccessoryGroup
           actions={[
             {
-              label: mode === 'edit' ? 'Save changes' : 'Save symptom',
+              label:
+                mode === 'edit'
+                  ? t('symptoms.journal.form.saveChanges')
+                  : t('symptoms.journal.form.save'),
               testID: 'symptom-keyboard-save',
               disabled: saving || (mode === 'create' && status === null),
               onPress: () => {
@@ -209,7 +222,7 @@ export default function SymptomForm({
               },
             },
             {
-              label: 'Close',
+              label: t('symptoms.journal.form.close'),
               testID: 'symptom-keyboard-close',
               disabled: saving,
               onPress: () => {

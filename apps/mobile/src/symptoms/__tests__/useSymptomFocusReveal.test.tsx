@@ -7,6 +7,7 @@ import type {
   TextInputInstance,
 } from 'react-native';
 import useSymptomFocusReveal from '../useSymptomFocusReveal';
+import { registerNavigationTestObserver } from '../../navigation/navigationTestObservation';
 
 function fixture() {
   let fieldY = 425;
@@ -51,6 +52,60 @@ function scrollEvent(y: number) {
 
 describe('focused symptom field visibility', () => {
   afterEach(() => jest.restoreAllMocks());
+
+  it('distinguishes a requested correction from the observed native offset without recording content', async () => {
+    const observed = jest.fn();
+    const dispose = registerNavigationTestObserver(observed);
+    try {
+      const f = fixture();
+      Object.assign(f.input, { value: 'private symptom text' });
+      const { result } = await renderHook(() =>
+        useSymptomFocusReveal(f.scroll, 52),
+      );
+      await act(() => result.current.focusInput(f.field));
+      await act(() => result.current.onScroll(scrollEvent(5)));
+      const records = observed.mock.calls.map(([record]) => ({
+        ...record,
+        payload: JSON.parse(record.payload),
+      }));
+      expect(records).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            phase: 'scroll-requested',
+            payload: expect.objectContaining({
+              delta: 8,
+              desiredOffset: 8,
+              requestedOffset: 8,
+            }),
+          }),
+          expect.objectContaining({
+            phase: 'scroll-observed',
+            payload: expect.objectContaining({ offset: 5 }),
+          }),
+        ]),
+      );
+      expect(JSON.stringify(records)).not.toContain('private symptom text');
+      expect(f.scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('keeps the correction unchanged when the diagnostic sink fails', async () => {
+    const dispose = registerNavigationTestObserver(() => {
+      throw new Error('sink unavailable');
+    });
+    try {
+      const f = fixture();
+      const { result } = await renderHook(() =>
+        useSymptomFocusReveal(f.scroll, 52),
+      );
+      await act(() => result.current.focusInput(f.field));
+      expect(f.scrollTo).toHaveBeenCalledWith({ y: 8, animated: false });
+    } finally {
+      dispose();
+    }
+  });
 
   it('scrolls only the measured overlap above the measured navigation obstruction, preserving focus and text', async () => {
     const f = fixture();
