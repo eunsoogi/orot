@@ -29,6 +29,25 @@ export const syntheticLiteratureService: EuropePmcMedicalEvidenceService = {
     if (!options.externalQueryConsented) return { status: 'consent_required' };
     if (query.includes('empty')) return { status: 'empty' };
     if (query.includes('failure')) return { status: 'unavailable' };
+    // Long provider-supplied content exercises wrapping without reaching the network.
+    if (query.includes('long'))
+      return {
+        status: 'available',
+        publications: [
+          {
+            ...syntheticPublication,
+            title:
+              'Synthetic original literature title with long supplied content '.repeat(
+                2,
+              ),
+            abstract:
+              'Synthetic supplied abstract for scrolling and source attribution. '.repeat(
+                6,
+              ),
+            originalUrl: `${syntheticPublication.originalUrl}?reference=${'synthetic-reference-'.repeat(4)}`,
+          },
+        ],
+      };
     if (query.includes('pending')) {
       return new Promise(resolve => {
         if (options.signal?.aborted) resolve({ status: 'unavailable' });

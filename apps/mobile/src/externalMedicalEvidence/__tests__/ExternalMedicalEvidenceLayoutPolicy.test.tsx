@@ -5,14 +5,13 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
-import { Dimensions, StyleSheet, Text } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text } from 'react-native';
 import { FeatureEntryScreen } from '../../aiFeatures/FeatureEntryScreen';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import { expectDuoPanelsInsideNativeRegions } from '../../routes/testSupport/healthRecordsDuoLayoutAssertions';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
 import type {
   EuropePmcMedicalEvidenceService,
@@ -103,7 +102,9 @@ afterEach(() => {
 });
 
 test('uses the production route policy and retains literature selection through reflow', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute | 'article'>(
+    'home',
+  );
   const rootTabs = { activeTab: 'ai' as const, onSelect: jest.fn() };
   const onNavigationStateChange = jest.fn();
   const service: EuropePmcMedicalEvidenceService = {
@@ -125,7 +126,15 @@ test('uses the production route policy and retains literature selection through 
             navigationRouteKey={actions.route.key}
             onBack={actions.onBack}
             onNavigationStateChange={onNavigationStateChange}
-            onOpenArticle={jest.fn()}
+            onOpenArticle={() => actions.push('article')}
+            providerSelection={
+              <Pressable
+                testID="literature-provider-picker"
+                onPress={() => actions.push('settings-provider')}
+              >
+                <Text>AI 선택</Text>
+              </Pressable>
+            }
             service={service}
           />
         ) : actions.route.name === 'home' ? (
@@ -151,7 +160,7 @@ test('uses the production route policy and retains literature selection through 
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   await fireEvent(sensor, 'geometryChange', { nativeEvent: duoGeometry });
 
-  // A divided-window fixture checks that the production screen-owned panels use both regions.
+  // One measured panel keeps query, results, and details in the same vertical reading order.
   expect(
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
@@ -159,11 +168,16 @@ test('uses the production route policy and retains literature selection through 
     StyleSheet.flatten(
       screen.getByTestId('external-medical-evidence-columns').props.style,
     ),
-  ).toMatchObject({ flexDirection: 'row' });
-  expectDuoPanelsInsideNativeRegions(
-    'external-medical-evidence-columns',
-    duoGeometry,
-  );
+  ).toMatchObject({ flexDirection: 'column' });
+  expect(
+    screen.queryByTestId('external-medical-evidence-columns-secondary'),
+  ).toBeNull();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('external-medical-evidence-columns-primary').props
+        .style,
+    ).width,
+  ).toBeLessThanOrEqual(445);
 
   await fireEvent.changeText(
     screen.getByTestId('external-evidence-query'),
@@ -206,4 +220,24 @@ test('uses the production route policy and retains literature selection through 
       'Synthetic exercise study',
     ),
   ).toBeTruthy();
+  // The production stack retains the same screen instance during AI and source presentation.
+  for (const action of [
+    'literature-provider-picker',
+    'external-evidence-open-selected-source',
+  ]) {
+    await fireEvent.press(screen.getByTestId(action));
+    expect(controller.getSnapshot().currentRoute.name).not.toBe(
+      'external-evidence',
+    );
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    expect(controller.getSnapshot().currentRoute.key).toBe(routeKey);
+    expect(screen.getByTestId('external-evidence-query').props.value).toBe(
+      'sleep',
+    );
+    expect(
+      screen.getByTestId('external-evidence-publication-MED-SYNTHETIC-SECOND')
+        .props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    expect(service.search).toHaveBeenCalledTimes(1);
+  }
 });
