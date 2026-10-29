@@ -61,3 +61,26 @@ export const rotatedGeometry: NavigationGeometryPayload = {
     },
   ],
 };
+
+// Synthetic active seam for retained-route and consumed-inset regression checks.
+export const dividedGeometry: NavigationGeometryPayload = {
+  windowBounds: { x: 0, y: 0, width: 1000, height: 900 },
+  safeAreaInsets: { top: 40, right: 22, bottom: 30, left: 14 },
+  reservedRegionsSupported: true,
+  reservedRegions: [
+    {
+      id: 'display-division',
+      kind: 'division',
+      frame: { x: 450, y: 0, width: 40, height: 900 },
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      isActive: true,
+    },
+    {
+      id: 'top-indicator',
+      kind: 'occlusion',
+      frame: { x: 760, y: 0, width: 100, height: 80 },
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      isActive: true,
+    },
+  ],
+};

@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
+import { iosFixtureGroups } from './ios-test-fixture-groups.mjs';
 import { healthCohorts } from './ios-health-cohorts.mjs';
 import { questionCohorts } from './ios-question-cohorts.mjs';
 import { recordingCohorts } from './ios-recording-cohorts.mjs';
@@ -104,17 +105,8 @@ const cohorts = {
     profiles: ['fixtures'],
     suites: ['calendar'],
     minutes: 20,
-    classes: [
-      'AppointmentsUITests',
-      'AppointmentReminderJourneyUITests',
-      'SymptomJournalUITests',
-      'CalendarSelectionUITests',
-      'ScheduleCalendarUITests',
-      'HealthImportUITests',
-      'StorageMigrationUITests',
-      'ManualHistoryUITests',
-      'MedicalDocumentImportJourneyUITests',
-    ],
+    // Consent has its own cohort; keep every other Calendar fixture here.
+    classes: iosFixtureGroups.calendar.filter((name) => name !== 'AppointmentConsentUITests'),
   },
   provider: { profiles: ['provider-data'], minutes: 20 },
   ...healthCohorts,

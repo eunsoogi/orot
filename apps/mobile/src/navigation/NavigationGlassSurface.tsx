@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
+import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
 import {
   NAVIGATION_SURFACE_HEIGHT,
   ROOT_TAB_SURFACE_HEIGHT,
@@ -44,7 +45,7 @@ export interface NavigationGlassSurfaceProps {
   readonly testID: string;
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
-  readonly layoutMode?: 'bottom' | 'right';
+  readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
@@ -53,9 +54,10 @@ export interface NavigationGlassSurfaceProps {
 }
 
 interface NavigationGlassNativeProps extends ViewProps {
+  readonly geometryLayoutRevision?: string;
   readonly actions?: readonly NavigationGlassAction[];
   readonly onAction?: NavigationGlassActionEventHandler;
-  readonly layoutMode?: 'bottom' | 'right';
+  readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
@@ -79,12 +81,18 @@ export function NavigationGlassSurface({
   style,
   testID,
 }: NavigationGlassSurfaceProps) {
+  const overlay = useContext(NavigationOverlayLayoutContext);
+  // Wait for the overlay's own layout event; a viewport event can precede its final position.
+  const geometryLayoutRevision = overlay
+    ? JSON.stringify([overlay.x, overlay.y, overlay.width, overlay.height])
+    : undefined;
   const isDarkAppearance = useColorScheme() === 'dark';
   const hasRootTabs = actions.some(action => action.rootTab);
 
   if (NativeNavigationGlassSurface) {
     return (
       <NativeNavigationGlassSurface
+        geometryLayoutRevision={geometryLayoutRevision}
         actions={actions}
         layoutMode={layoutMode}
         onAction={onAction}

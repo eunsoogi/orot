@@ -21,11 +21,8 @@ export function resolutionMessage(
 
 export const providerSelectionScreenStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: appColors.background },
-  footerContent: { maxHeight: 230 },
-  footerBody: { gap: 10 },
   footer: {
     gap: 10,
-    paddingHorizontal: 20,
     paddingTop: 10,
     backgroundColor: appColors.background,
   },

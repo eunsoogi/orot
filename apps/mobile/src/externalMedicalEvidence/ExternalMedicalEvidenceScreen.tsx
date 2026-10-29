@@ -132,6 +132,7 @@ export function ExternalMedicalEvidenceScreen({
   return (
     <>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.container, navigationInset]}
         keyboardShouldPersistTaps="handled"
         testID="external-medical-evidence-screen"

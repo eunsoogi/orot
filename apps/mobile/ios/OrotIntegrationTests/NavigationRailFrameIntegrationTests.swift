@@ -37,6 +37,10 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         controller.view.frame = window.bounds
         window.isHidden = false
         defer { window.isHidden = true }
+        let sensor = NavigationGeometryView(frame: controller.view.bounds)
+        controller.view.addSubview(sensor)
+        var measuredPayload: [AnyHashable: Any]?
+        sensor.onGeometryChange = { measuredPayload = $0 }
         let host = UIView(frame: CGRect(x: 24, y: 10, width: 843, height: 625))
         controller.view.addSubview(host)
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 783, y: 0, width: 60, height: 625))
@@ -63,6 +67,12 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let rootFrame = root.convert(root.bounds, to: window)
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
+        // The root stack is centered below the real indicator, independently of its fixed hit targets.
+        XCTAssertEqual(rootFrame.midY, (192 + 669 - 46) / 2, accuracy: 0.5)
+        let selection = try XCTUnwrap(root.contentView.subviews.first {
+            $0.accessibilityIdentifier == "navigation-root-selection-indicator"
+        })
+        XCTAssertEqual(selection.bounds.width, selection.bounds.height, accuracy: 0.5)
         let rootStack = try XCTUnwrap(root.contentView.subviews.compactMap { $0 as? UIStackView }.first)
         rootStack.layoutIfNeeded()
         let rootButtons = rootStack.arrangedSubviews.compactMap { $0 as? UIButton }
@@ -77,15 +87,33 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
             XCTAssertTrue(window.hitTest(center, with: nil) === button)
         }
 
+        // The committed overlay signal invalidates the real parent; the React surface receives no layout callback.
+        portal.frame.size.height = 600
+        surface.geometryLayoutRevision = "[0,0,951,600]"
+        portal.layoutIfNeeded()
+        root.layoutIfNeeded()
+        let published = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
+        let afterHostLayout = root.convert(root.bounds, to: window)
+        XCTAssertEqual(try XCTUnwrap(published["y"]), Double(afterHostLayout.minY), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(measuredPayload?["navigationWidth"] as? Double), Double(afterHostLayout.width), accuracy: 0.5)
+        portal.frame.size.height = 669
+        portal.setNeedsLayout()
+        portal.layoutIfNeeded()
+
+        measuredPayload = nil
         surface.actions = [
             ["id": "back", "label": "Back", "accessibilityLabel": "Back", "testID": "navigation-back"],
             ["id": "home", "label": "Home", "accessibilityLabel": "Home", "testID": "navigation-home"],
         ] as NSArray
         surface.layoutIfNeeded()
+        // Rendering new controls must update their actual parent without a caller forcing portal layout.
+        let renderedContextFrame = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
         portal.layoutIfNeeded()
         let stack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first)
         stack.layoutIfNeeded()
         let contextualFrame = stack.convert(stack.bounds, to: window)
+        XCTAssertEqual(try XCTUnwrap(renderedContextFrame["y"]), Double(contextualFrame.minY), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(renderedContextFrame["height"]), Double(contextualFrame.height), accuracy: 0.5)
         verify(contextualFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(contextualFrame.minY - systemRegion.maxY, 12, accuracy: 0.5)
         let buttons = stack.arrangedSubviews.compactMap { $0 as? UIButton }
@@ -123,9 +151,44 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
             modal.dismiss(animated: false) { continuation.resume() }
         }
         surface.layoutMode = "bottom"
+        surface.frame = CGRect(x: 0, y: 500, width: 843, height: 60)
+        surface.layoutIfNeeded()
         XCTAssertNil(portal.superview)
+        XCTAssertEqual(measuredPayload?["navigationSide"] as? String, "bottom")
+        XCTAssertNil(measuredPayload?["navigationWidth"], "A former bottom width must never feed side admission")
+        surface.frame = CGRect(x: 783, y: 0, width: 60, height: 625)
         surface.layoutMode = "right"
+        surface.layoutIfNeeded()
+        portal.layoutIfNeeded()
         XCTAssertNotNil(portal.superview)
+        XCTAssertEqual(measuredPayload?["navigationSide"] as? String, "right")
+        // A contracted controller keeps the side controls local; it must still publish their actual frame.
+        controller.view.frame.size.width = 800
+        measuredPayload = nil
+        surface.setNeedsLayout()
+        surface.layoutIfNeeded()
+        XCTAssertNil(portal.superview)
+        XCTAssertTrue(stack.superview === surface)
+        let localFrame = stack.convert(stack.bounds, to: window)
+        let localPublished = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
+        XCTAssertEqual(try XCTUnwrap(localPublished["x"]), Double(localFrame.minX), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(localPublished["y"]), Double(localFrame.minY), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(localPublished["width"]), Double(localFrame.width), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(localPublished["height"]), Double(localFrame.height), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(measuredPayload?["navigationWidth"] as? Double), Double(localFrame.width), accuracy: 0.5)
+        XCTAssertEqual(measuredPayload?["navigationSide"] as? String, "right")
+        controller.view.frame = window.bounds
+        surface.setNeedsLayout()
+        surface.layoutIfNeeded()
+        portal.layoutIfNeeded()
+        XCTAssertTrue(stack.superview === portal)
+        let restoredFrame = stack.convert(stack.bounds, to: window)
+        let restoredPublished = try XCTUnwrap(measuredPayload?["navigationFrame"] as? [String: Double])
+        XCTAssertEqual(try XCTUnwrap(restoredPublished["x"]), Double(restoredFrame.minX), accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(restoredPublished["y"]), Double(restoredFrame.minY), accuracy: 0.5)
+        measuredPayload = nil
+        surface.publishNavigationGeometry(from: surface)
+        XCTAssertNil(measuredPayload, "The former local parent cannot publish portal-owned controls")
         surface.removeFromSuperview()
         XCTAssertNil(portal.superview)
         let nextWindow = makeSceneWindow(in: scene, frame: window.frame)

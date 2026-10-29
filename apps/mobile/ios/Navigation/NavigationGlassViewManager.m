@@ -36,6 +36,9 @@ RCT_EXPORT_VIEW_PROPERTY(onComposerPress, RCTDirectEventBlock)
 // existing controls in place.
 RCT_EXPORT_VIEW_PROPERTY(actions, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(onAction, RCTBubblingEventBlock)
+// A committed React overlay move requests fresh UIKit measurement without supplying a navigation
+// frame.
+RCT_EXPORT_VIEW_PROPERTY(geometryLayoutRevision, NSString)
 RCT_EXPORT_VIEW_PROPERTY(layoutMode, NSString)
 RCT_EXPORT_VIEW_PROPERTY(railTopInset, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(railBottomInset, CGFloat)

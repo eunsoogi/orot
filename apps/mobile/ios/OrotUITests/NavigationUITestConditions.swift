@@ -27,6 +27,19 @@ enum NavigationUITestConditions {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
+    /// Bind rendered panel bounds to the same process's geometry and adaptive-plan receipt before asserting its axis.
+    static func panelSnapshot(_ app: XCUIApplication, frames: [String: CGRect], testCase: XCTestCase) throws {
+        let payload = frames.mapValues { frame in
+            ["x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height]
+        }
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "adaptive-panel-frames"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        _ = observationSnapshot(app, testCase: testCase, attachmentName: "adaptive-panel-native-geometry")
+    }
+
     /// Read the existing interval-refreshed marker once; missing data remains unavailable, never a forced live snapshot.
     static func symptomAccessorySnapshot(_ app: XCUIApplication, testCase: XCTestCase, phase: String) {
         let snapshot = observationSnapshot(app, testCase: testCase, attachmentName: "symptom-accessory-\(phase)-raw")
@@ -156,6 +169,34 @@ enum NavigationUITestConditions {
                       userInfo: [NSLocalizedDescriptionKey: "Scroll content did not reach a stable bottom: \(scrollID)"])
     }
 
+    /// Compare the shared frame against the real keyboard or public window edge, never generated pixels.
+    static func assertSharedViewport(_ app: XCUIApplication, keyboard: XCUIElement? = nil, testCase: XCTestCase) throws {
+        var lastBottom: Double?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let marker = UITestConditions.element(app, "navigation-test-observation")
+            guard marker.exists,
+                  let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+                  let lifecycle = report["lifecycle"] as? [[String: Any]],
+                  let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+                  let json = event["frame"] as? String,
+                  let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+                  let frame = shared["availableContentFrame"] as? [String: Double],
+                  let y = frame["y"], let height = frame["height"], height > 0,
+                  let reference = report["windowGeometry"] as? [String: Any],
+                  let window = reference["windowBounds"] as? [String: Double],
+                  let insets = reference["safeAreaInsets"] as? [String: Double],
+                  let windowY = window["y"], let windowHeight = window["height"], let bottom = insets["bottom"]
+            else { return false }
+            lastBottom = y + height
+            if let keyboard {
+                return y + height <= Double(keyboard.frame.minY) + 1
+            }
+            return abs(y + height - (windowY + windowHeight - bottom)) <= 1
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "Shared viewport bottom: \(String(describing: lastBottom))")
+        _ = observationSnapshot(app, testCase: testCase, attachmentName: keyboard == nil ? "shared-viewport-restored" : "shared-viewport-keyboard")
+    }
+
     static func contentAboveBar(_ app: XCUIApplication, scrollID: String, contentID: String,
                                 navigationID: String = "navigation-back") throws
     {
@@ -164,5 +205,34 @@ enum NavigationUITestConditions {
         XCTAssertTrue(content.exists && !content.frame.isEmpty)
         let active = try navigationAction(app, navigationID)
         XCTAssertLessThanOrEqual(content.frame.maxY, active.toolbar.frame.minY - 16)
+    }
+
+    /// Keep the same 16pt clearance on the actual occupied edge; an unclassified overlap must fail.
+    static func contentClearOfNavigation(_ app: XCUIApplication, scrollID: String, contentID: String,
+                                         testCase: XCTestCase) throws
+    {
+        try scrollToBottom(app, scrollID)
+        let content = UITestConditions.element(app, contentID)
+        let region = UITestConditions.element(app, "navigation-content-region")
+        XCTAssertTrue(content.exists && !content.frame.isEmpty)
+        XCTAssertTrue(region.exists && !region.frame.isEmpty)
+        let active = try navigationAction(app, "navigation-back")
+        let item = content.frame
+        let viewport = region.frame
+        let bar = active.toolbar.frame
+        try panelSnapshot(app, frames: ["finalAction": item, "viewport": viewport, "navigation": bar], testCase: testCase)
+        XCTAssertTrue(viewport.insetBy(dx: -0.5, dy: -0.5).contains(item), "The final action must fit inside the real viewport")
+        let verticalOverlap = max(bar.minY, viewport.minY) < min(bar.maxY, viewport.maxY)
+        if verticalOverlap, bar.minX >= viewport.maxX - 0.5 {
+            XCTAssertLessThanOrEqual(item.maxX, bar.minX - 16)
+        } else if verticalOverlap, bar.maxX <= viewport.minX + 0.5 {
+            XCTAssertGreaterThanOrEqual(item.minX, bar.maxX + 16)
+        } else if bar.maxY >= viewport.maxY - 0.5, bar.minY >= viewport.midY,
+                  max(bar.minX, viewport.minX) < min(bar.maxX, viewport.maxX)
+        {
+            XCTAssertLessThanOrEqual(item.maxY, bar.minY - 16)
+        } else {
+            XCTFail("The measured navigation must occupy a viewport edge: \(bar), viewport \(viewport)")
+        }
     }
 }

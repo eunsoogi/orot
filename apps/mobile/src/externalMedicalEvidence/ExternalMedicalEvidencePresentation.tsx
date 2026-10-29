@@ -48,7 +48,7 @@ interface ExternalMedicalEvidencePresentationProps {
   readonly onOpenArticle: (publication: ExternalMedicalPublication) => void;
 }
 
-/** Separates query/results from selected-source details within measured readable columns. */
+/** Keeps search, results, and provenance in one measured reading flow without a second scroll owner. */
 export function ExternalMedicalEvidencePresentation({
   copy,
   providerSelection,
@@ -130,33 +130,38 @@ export function ExternalMedicalEvidencePresentation({
                     key={externalMedicalEvidencePublicationKey(publication)}
                     onPress={() => onSelectPublication(publication)}
                     style={({ pressed }) => [
-                      styles.resultCard,
+                      styles.resultRow,
                       selected && styles.selectedResult,
                       pressed && styles.pressedResult,
                     ]}
                     testID={`external-evidence-publication-${publication.source}-${publication.recordId}`}
                   >
+                    {selected ? (
+                      <View
+                        accessible={false}
+                        style={styles.selectionIndicator}
+                        testID={`external-evidence-selection-${publication.source}-${publication.recordId}`}
+                      />
+                    ) : null}
                     <Text accessibilityRole="header" style={styles.resultTitle}>
                       {publication.title}
                     </Text>
                     {publication.authors ? (
-                      <Text>{publication.authors}</Text>
+                      <Text style={styles.supporting}>
+                        {publication.authors}
+                      </Text>
                     ) : null}
                     {publication.journal ? (
-                      <Text>{publication.journal}</Text>
+                      <Text style={styles.supporting}>
+                        {publication.journal}
+                      </Text>
                     ) : null}
                   </Pressable>
                 );
               })}
             </View>
           ) : null}
-        </View>
-      }
-      secondary={
-        <View
-          style={styles.resultPanel}
-          testID="external-evidence-result-panel"
-        >
+          {/* Status replaces the results in place; no empty detail container reserves page height. */}
           {state.status === 'available' && selectedPublication ? (
             <ExternalMedicalEvidenceSelectedSource
               copy={copy}
@@ -190,37 +195,38 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700' },
   input: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.secondary,
+    borderColor: 'transparent',
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     color: appColors.text,
     minHeight: 48,
     paddingHorizontal: 12,
   },
   // Focus remains visible for keyboard users in both system appearances.
   inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
-  resultList: { gap: 8 },
-  resultCard: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
+  resultList: { marginTop: 8 },
+  resultRow: {
+    borderBottomColor: appColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 6,
-    padding: 12,
+    minHeight: 44,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
-  selectedResult: { borderColor: appColors.primaryText, borderWidth: 2 },
+  // The marker adds a shape cue while the row exposes its selected accessibility state.
+  selectedResult: { paddingLeft: 16 },
+  selectionIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 16,
+    bottom: 16,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: appColors.primaryText,
+  },
   pressedResult: { opacity: 0.72 },
   resultTitle: { fontSize: 16, fontWeight: '700' },
-  resultPanel: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexGrow: 1,
-    gap: 8,
-    minHeight: 320,
-    padding: 16,
-  },
+  supporting: { color: appColors.secondary },
   status: { color: appColors.secondary, gap: 8 },
   error: { color: appColors.danger },
 });

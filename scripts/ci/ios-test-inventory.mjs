@@ -68,6 +68,8 @@ export const providerSelectionTests = [
   'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
   'OrotUITests/ProviderSelectionUITests/testExplicitSelectionAndKeychainRestoreNeverChooseAnAutomaticFallback',
   'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
+  'OrotUITests/ProviderCatalogAccountUITests/testAccountActionStaysAccessibleAndCenteredWithLargeText',
+  'OrotUITests/ProviderCatalogAccountUITests/testLongKoreanPermissionGuidanceWrapsBeforeTheRefreshAction',
 ];
 export const fixtureTests = [
   'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
@@ -114,6 +116,11 @@ export const fixtureTests = [
   'OrotUITests/AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps',
   'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
   'OrotUITests/SymptomJournalUITests/testCreationEditingFilteringAndResolutionSurviveRelaunch',
+  'OrotUITests/SymptomJournalRecoveryUITests/testSaveFailureKeepsKoreanErrorAndRetryRecovers',
+  'OrotUITests/SymptomJournalRecoveryUITests/testCancelingNewSymptomKeepsJournalEmpty',
+  'OrotUITests/SymptomJournalRecoveryUITests/testKoreanDeviceLanguageKeepsJournalCopyAndAccessibilityNames',
+  'OrotUITests/SymptomJournalRecoveryUITests/testVoiceOverReadsKoreanJournalNamesInBothDeviceLanguages',
+  'OrotUITests/SymptomJournalAccessibilityUITests/testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
   'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',

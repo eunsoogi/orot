@@ -8,6 +8,7 @@ import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
 import { healthkitSettingsKo } from './healthkitSettings';
+import { symptomJournalKo } from './symptomJournal';
 import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 
@@ -220,5 +221,6 @@ export const ko = {
   ...medicalAppointmentsKo,
   ...providerAccountsKo,
   ...healthRecordsKo,
+  ...symptomJournalKo,
   ...healthkitSettingsKo,
 } as const;

@@ -54,7 +54,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "provider-option-12")))
         DebugUITestConditions.dismissWarningToast(app)
         let confirm = node(app, "provider-selection-confirm")
-        FormUITestConditions.reveal(confirm, in: app, scroll: footerScroll(app))
+        FormUITestConditions.reveal(confirm, in: app, scroll: selectionPage(app))
         XCTAssertTrue(node(app, "provider-selection-confirmation-privacy").isHittable)
         XCTAssertTrue(confirm.isHittable)
         confirm.tap()
@@ -189,15 +189,14 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func footerScroll(_ app: XCUIApplication) -> XCUIElement {
+    private func selectionPage(_ app: XCUIApplication) -> XCUIElement {
         let footer = node(app, "provider-selection-footer")
         XCTAssertTrue(UITestConditions.exists(footer) && !footer.frame.isEmpty)
-        // React Native may flatten the footer subtree in AX. Its real viewport remains geometrically contained by the tagged footer.
-        let scroll = app.scrollViews.allElementsBoundByIndex.filter {
-            !$0.frame.isEmpty && footer.frame.contains($0.frame)
-        }.max { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
-            ?? footer.scrollViews.firstMatch
+        // Confirmation belongs to the catalog's page, so drag its actual viewport rather than a footer-sized region.
+        let scroll = app.scrollViews.matching(identifier: "provider-selection-screen").firstMatch
         XCTAssertTrue(UITestConditions.exists(scroll) && !scroll.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(scroll.scrollViews.count, 0, app.debugDescription)
+        XCTAssertTrue(scroll.descendants(matching: .any).matching(identifier: "provider-selection-footer").firstMatch.exists, app.debugDescription)
         return scroll
     }
 
@@ -212,19 +211,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         if let role {
             XCTAssertEqual(target.elementType, role)
         }
-        let footer = node(app, "provider-selection-footer")
-        let inFooter = footer.descendants(matching: role ?? .any)
-            .matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
-        // Native ScrollViews retain content ownership even when React Native flattens tagged containers. Offscreen main content can overlap the footer's frame, so ancestry takes priority over geometry.
-        let scrolls = app.scrollViews.allElementsBoundByIndex
-        let owner = scrolls.filter {
-            $0.descendants(matching: role ?? .any)
-                .matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
-        }.min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
-        let containing = scrolls.filter {
-            !target.frame.isEmpty && $0.frame.contains(target.frame)
-        }.min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
-        let scroll = owner ?? containing ?? (inFooter ? footerScroll(app) : node(app, "provider-selection-screen"))
+        let scroll = selectionPage(app)
         // Preserve the original visible-message requirement with real scrolling and rendered pixels; static text need not provide a touch activation point.
         FormUITestConditions.reveal(target, in: app, scroll: scroll, requireHittable: false)
         if target.elementType == .button {

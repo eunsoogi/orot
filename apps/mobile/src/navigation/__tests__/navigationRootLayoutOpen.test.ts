@@ -16,11 +16,11 @@ function layout(payload: NavigationGeometryPayload) {
 }
 
 test.each([
-  [openGeometry, 84, 867, 136],
-  [rotatedGeometry, 60, 609, 94],
+  [openGeometry, 84, 867, 136, 18],
+  [rotatedGeometry, 72, 597, 94, 12],
 ] as const)(
   'allocates content and a rail inside continuous measured Open space',
-  (payload, reservedRightWidth, contentWidth, railTopInset) => {
+  (payload, reservedRightWidth, contentWidth, railTopInset, railRightInset) => {
     const geometry = createNavigationGeometrySnapshot(payload);
     expect(geometry?.usableRegions).toEqual([geometry?.safeAreaFrame]);
     expect(layout(payload)).toEqual({
@@ -30,7 +30,7 @@ test.each([
       windowHeight: payload.windowBounds.height,
       railTopInset,
       railBottomInset: 46,
-      railRightInset: 12,
+      railRightInset,
       systemBottomInset: 34,
     });
   },
@@ -56,7 +56,7 @@ test.each([
   ).toBe('bottom');
 });
 
-test('keeps bottom placement when continuous space cannot hold readable content beside the rail', () => {
+test('does not deduct the rail twice from an already safe readable column', () => {
   expect(
     layout({
       ...openGeometry,
@@ -68,7 +68,7 @@ test('keeps bottom placement when continuous space cannot hold readable content 
         },
       ],
     }).placement,
-  ).toBe('bottom');
+  ).toBe('right');
 });
 
 test('keeps the rail below actual active occlusion in a continuous region', () => {
@@ -111,8 +111,8 @@ test('places the rail outside the right content safe edge with a real indicator 
   expect(result.placement).toBe('right');
   if (result.placement !== 'right') throw new Error('Expected a rail');
   const railRight = openGeometry.windowBounds.width - result.railRightInset;
-  expect(railRight).toBe(939);
-  expect(railRight - 48).toBeGreaterThan(867);
+  expect(railRight).toBe(933);
+  expect(railRight - 48).toBe(885);
   expect(result.contentWidth).toBe(867);
   expect(result.railTopInset).toBe(124 + 12);
 });
@@ -153,7 +153,7 @@ test('uses expanded reserved frames without applying their included margins agai
     expect.objectContaining({
       placement: 'right',
       railTopInset: 192,
-      railRightInset: 12,
+      railRightInset: 18,
       contentWidth: 867,
     }),
   );
@@ -171,7 +171,7 @@ test('does not reserve the rail again inside an already contracted content viewp
       contentWidth: 843,
       reservedRightWidth: 0,
       systemBottomInset: 0,
-      railRightInset: 12,
+      railRightInset: 18,
       railTopInset: 136,
     }),
   );

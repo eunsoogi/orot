@@ -5,6 +5,63 @@ import { fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
+// Boundary-only journeys must keep explicit membership without weakening unknown/Core-only rejection.
+test('Read-only child boundaries keep their original and Duo destinations', () => {
+  const journeys = [
+    [
+      'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
+      'core',
+    ],
+    [
+      'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
+      'fixtures',
+    ],
+  ];
+  for (const [identifier, originalProfile] of journeys) {
+    for (const profile of [originalProfile, 'duo']) {
+      assert.ok(iosTestInventory(profile).includes(identifier));
+      const accepted = fixture(0, profile, 'all', [identifier]);
+      try {
+        assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+        assert.deepEqual(
+          accepted.calls
+            .find((call) => call.name === 'xcodebuild')
+            .args.filter((argument) => argument.startsWith('-only-testing:')),
+          ['-only-testing:' + identifier],
+        );
+      } finally {
+        rmSync(accepted.directory, { recursive: true, force: true });
+      }
+    }
+  }
+});
+
+test('Synthetic health boundary journey is explicitly admitted on Duo', () => {
+  const identifier =
+    'OrotUITests/HealthImportDuoUITests/testSyntheticHealthLibraryAndDetailKeepContentBoundariesAtBothTextSizes';
+  assert.ok(iosTestInventory('duo').includes(identifier));
+  const accepted = fixture(0, 'duo', 'all', [identifier]);
+  try {
+    assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+    assert.ok(accepted.calls.some((call) => call.name === 'xcodebuild'));
+  } finally {
+    rmSync(accepted.directory, { recursive: true, force: true });
+  }
+});
+
+test('Synthetic source boundary journey is explicitly admitted on Duo', () => {
+  const identifier =
+    'OrotUITests/EvidenceSourceDuoUITests/testSyntheticSourceSelectionAndReturnKeepContentBoundaries';
+  assert.ok(iosTestInventory('duo').includes(identifier));
+  const accepted = fixture(0, 'duo', 'all', [identifier]);
+  try {
+    assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+    assert.ok(accepted.calls.some((call) => call.name === 'xcodebuild'));
+  } finally {
+    rmSync(accepted.directory, { recursive: true, force: true });
+  }
+});
+
 test('shared picker journeys honor their valid profile and reject a foreign fixture selection', () => {
   const healthInventory = iosTestInventory('health-import');
   const pickerJourney = healthInventory.find((identifier) =>

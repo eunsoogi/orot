@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import SymptomEntryCard from './SymptomEntryCard';
@@ -84,7 +85,7 @@ export default function SymptomsScreen({
     try {
       await onResolve(entry.id);
     } catch {
-      setError('The symptom could not be marked resolved. Try again.');
+      setError(t('symptoms.journal.resolveError'));
     } finally {
       setSaving(false);
     }
@@ -160,14 +161,16 @@ export default function SymptomsScreen({
                       disabled={loading}
                       onPress={onRetry}
                       testID="symptoms-retry-list"
-                      title="Try again"
+                      title={t('symptoms.journal.retry')}
                     />
                   </>
                 ) : loading ? (
-                  <Text testID="symptoms-loading">Loading symptoms…</Text>
+                  <Text testID="symptoms-loading">
+                    {t('symptoms.journal.loading')}
+                  </Text>
                 ) : entries.length === 0 ? (
                   <Text testID="symptoms-empty">
-                    No symptom entries match these filters.
+                    {t('symptoms.journal.empty')}
                   </Text>
                 ) : (
                   entries
@@ -179,7 +182,7 @@ export default function SymptomsScreen({
                     disabled={loading || !canWrite || saving}
                     onPress={() => setCreating(true)}
                     testID="symptom-add"
-                    title="Add symptom"
+                    title={t('symptoms.journal.add')}
                   />
                 ) : null}
               </SymptomListPanel>
