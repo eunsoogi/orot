@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { NavigationContext } from '@react-navigation/native';
+import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import {
@@ -42,6 +44,7 @@ test('routes the medication summary action to its separate dose-event detail lis
     />,
   );
 
+  await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   await screen.findByTestId('health-record-medications-count');
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-medications'),
@@ -88,4 +91,55 @@ test('opens the existing unified import route from the health records library', 
     await screen.findByTestId('health-records-open-health-import'),
   );
   expect(push).toHaveBeenCalledWith('unified-import');
+});
+
+test('import return refreshes stored results without remounting the library or changing its filter', async () => {
+  let onFocus = () => {};
+  // Model the native retained scene's focus event; the import continues to own its writes.
+  const focusNavigation = {
+    addListener: (_event: string, listener: () => void) => {
+      onFocus = listener;
+      return () => {};
+    },
+  };
+  let imported = false;
+  const record = healthObservation(
+    'new-import',
+    'heart_rate',
+    new Date().toISOString(),
+  );
+  const loadObservations = jest.fn(async () => ({
+    records: imported ? [record] : [],
+    nextCursor: null,
+  }));
+  await render(
+    <NavigationContext.Provider value={focusNavigation as never}>
+      <HealthRecordsRoute
+        actions={actions('health-records')}
+        route="health-records"
+        selection={null}
+        loadObservations={loadObservations}
+        loadMedicationData={async () => ({ definitions: [], doseEvents: [] })}
+        onSelectionChange={jest.fn()}
+      />
+    </NavigationContext.Provider>,
+  );
+  await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
+  const page = screen.getByTestId('health-records-scroll');
+  await fireEvent.press(
+    screen.getByTestId('health-records-open-health-import'),
+  );
+  imported = true;
+  await act(async () => onFocus());
+  expect(screen.getByTestId('health-records-scroll')).toBe(page);
+  expect(
+    screen.getByTestId('health-record-filter-heart_rate').props
+      .accessibilityState.selected,
+  ).toBe(true);
+  expect(
+    await screen.findByTestId('health-record-chart-heart_rate'),
+  ).toBeTruthy();
+  expect(loadObservations).toHaveBeenCalledTimes(12);
+  await act(async () => onFocus());
+  expect(loadObservations).toHaveBeenCalledTimes(12);
 });

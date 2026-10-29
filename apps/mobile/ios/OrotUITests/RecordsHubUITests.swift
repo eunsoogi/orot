@@ -174,7 +174,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         )
         for identifier in [
             "health-records-layout-primary",
-            "health-records-layout-secondary",
+            "health-records-scroll",
         ] {
             let panel = UITestConditions.element(app, identifier)
             XCTAssertTrue(panel.exists && !panel.frame.isEmpty, app.debugDescription)

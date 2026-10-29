@@ -182,7 +182,7 @@ test('keeps the period and loaded rows while detail panels reflow', async () => 
     const direction = () =>
       StyleSheet.flatten(layout.props.style)?.flexDirection;
 
-    expect(direction()).toBe('row');
+    expect(direction()).toBe('column');
     expect(screen.getByTestId('health-record-row-0-time')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('health-record-period-year'));
     expect(

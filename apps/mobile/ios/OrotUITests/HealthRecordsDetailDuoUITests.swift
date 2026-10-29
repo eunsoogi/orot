@@ -21,11 +21,12 @@ extension HealthImportDuoUITests {
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "records-open-health-library", owners: [.init(identifier: "navigation-route-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-title"])
             try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-scroll"], name: "health-library-\(size)", testCase: self)
-            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-navigation-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
+            XCTAssertFalse(healthDetailNode(app, "health-record-category-blood_pressure").exists)
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-open-detail-heart_rate", owners: [.init(identifier: "health-records-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
-            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-period-year", owners: [.init(identifier: "health-records-detail-controls-scroll")], testCase: self)
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-period-year", owners: [.init(identifier: "health-records-detail-scroll")], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-period-year").isSelected)
             // Only the page loader supplies these nine session-only measurements; no personal HealthKit read is requested.
             UITestConditions.value(healthDetailNode(app, "health-record-row-0-value"), equals: "60 count/min")
@@ -37,7 +38,7 @@ extension HealthImportDuoUITests {
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             waitForLibraryReturn(app, departing: "health-records-detail-scroll")
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
-            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-records-open-health-import", owners: [.init(identifier: "health-records-navigation-scroll")], testCase: self)
+            try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-records-open-health-import", owners: [.init(identifier: "health-records-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
             XCTAssertTrue(healthDetailNode(app, "unified-import-source-selection").exists)
             XCTAssertTrue(healthDetailNode(app, "unified-import-activity").exists)
@@ -98,17 +99,19 @@ extension HealthImportDuoUITests {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tapHealthDetail(app, "records-open-health-library")
         NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        tapHealthDetail(app, "health-record-filter-heart_rate")
         tapHealthDetail(app, "health-record-open-detail-heart_rate")
         NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
 
         let layout = healthDetailNode(app, "health-records-detail-layout")
         let controls = healthDetailNode(app, "health-records-detail-layout-primary")
-        let records = healthDetailNode(app, "health-records-detail-layout-secondary")
+        let records = healthDetailNode(app, "health-records-detail-scroll")
         let period = healthDetailNode(app, "health-record-period-year")
         let value = healthDetailNode(app, "health-record-row-0-value")
         XCTAssertTrue(layout.exists && controls.exists && records.exists, app.debugDescription)
         XCTAssertTrue(value.waitForAppearance(), app.debugDescription)
-        XCTAssertGreaterThanOrEqual(records.frame.minY, controls.frame.maxY, app.debugDescription)
+        XCTAssertFalse(healthDetailNode(app, "health-records-detail-layout-secondary").exists, app.debugDescription)
+        XCTAssertTrue(controls.frame.contains(records.frame), app.debugDescription)
         period.tap()
         XCTAssertTrue(period.isSelected, app.debugDescription)
         UITestConditions.value(value, equals: "72 count/min")
@@ -117,7 +120,7 @@ extension HealthImportDuoUITests {
         let portraitWidth = layout.frame.width
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForHealthDetailWidthChange(layout, from: portraitWidth)
-        XCTAssertGreaterThanOrEqual(records.frame.minX, controls.frame.maxX, app.debugDescription)
+        XCTAssertTrue(controls.frame.contains(records.frame), app.debugDescription)
         XCTAssertTrue(period.isSelected, app.debugDescription)
         UITestConditions.value(value, equals: "72 count/min")
         _ = try AppearanceUITestConditions.select(
@@ -131,7 +134,7 @@ extension HealthImportDuoUITests {
         captureHealthDetail(app, "health-record-detail-dark")
     }
 
-    /// Retains the selected period and source label when medication history reflows on Duo.
+    /// Medication options and history retain selection inside one vertical owner on Duo.
     @MainActor
     func testMedicationHistoryAndPeriodSurviveDuoReflow() throws {
         let app = XCUIApplication()
@@ -172,7 +175,7 @@ extension HealthImportDuoUITests {
         XCTAssertTrue(source.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(source).contains("HealthKit"), app.debugDescription)
         let primary = healthDetailNode(app, "health-records-medication-detail-layout-primary")
-        let secondary = healthDetailNode(app, "health-records-medication-detail-layout-secondary")
+        let secondary = healthDetailNode(app, "health-records-detail-scroll")
         XCTAssertTrue(primary.exists && secondary.exists, app.debugDescription)
 
         let before = app.windows.firstMatch.frame.width
@@ -180,15 +183,15 @@ extension HealthImportDuoUITests {
         waitForHealthDetailWidthChange(app.windows.firstMatch, from: before)
         XCTAssertTrue(healthDetailNode(app, "health-record-period-three_months").isSelected, app.debugDescription)
         XCTAssertTrue(healthDetailNode(app, "health-record-medication-row-0-source").exists, app.debugDescription)
-        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        XCTAssertTrue(primary.frame.contains(secondary.frame), app.debugDescription)
         XCTAssertLessThanOrEqual(abs(primary.frame.minY - secondary.frame.minY), 1, app.debugDescription)
-        XCTAssertLessThanOrEqual(primary.frame.maxX, secondary.frame.minX + 1, app.debugDescription)
+        XCTAssertFalse(healthDetailNode(app, "health-records-medication-detail-layout-secondary").exists, app.debugDescription)
         captureHealthDetail(app, "medication-history-landscape")
         let landscapeWidth = app.windows.firstMatch.frame.width
         XCUIDevice.shared.orientation = .portrait
         waitForHealthDetailWidthChange(app.windows.firstMatch, from: landscapeWidth)
         XCTAssertTrue(healthDetailNode(app, "health-record-period-three_months").isSelected, app.debugDescription)
-        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        XCTAssertTrue(primary.frame.contains(secondary.frame), app.debugDescription)
     }
 
     @MainActor
