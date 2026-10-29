@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { HealthRecordsMedicationDetailScreen } from '../HealthRecordsMedicationDetailScreen';
-import { HealthRecordsMedicationCategoryCard } from '../HealthRecordsMedicationCategoryCard';
+import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
 import { listHealthRecordMedicationData } from '../healthRecordsMedicationLibrary';
 import { importedDoseEvent } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 
@@ -68,7 +68,10 @@ test('medication detail requests the selected period and appends its next page',
 
 test('medication overview shows scalar totals rather than the bounded sample size', async () => {
   await render(
-    <HealthRecordsMedicationCategoryCard
+    <HealthRecordsLibraryScreen
+      loadObservations={async () => ({ records: [], nextCursor: null })}
+      onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
       loadMedicationData={async () => ({
         definitions: [],
@@ -78,5 +81,8 @@ test('medication overview shows scalar totals rather than the bounded sample siz
       })}
     />,
   );
+  await fireEvent.press(screen.getByTestId('health-record-filter-all'));
+  expect(screen.queryByTestId('health-records-empty')).toBeNull();
+  await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   expect(await screen.findByText('12개 약 · 20000개 복용 기록')).toBeTruthy();
 });

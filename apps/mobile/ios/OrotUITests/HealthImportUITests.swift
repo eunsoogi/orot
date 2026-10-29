@@ -54,11 +54,13 @@ final class HealthImportUITests: OrotFailFastTestCase {
         try assertCompletedSyncStatus(app)
         try openHealthLibrary(app)
 
+        tap(app, "health-record-filter-heart_rate")
         tap(app, "health-record-open-detail-heart_rate")
         NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
         UITestConditions.value(node(app, "health-record-row-0-value"), equals: "72 count/min")
         tap(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        tap(app, "health-record-filter-steps")
         tap(app, "health-record-open-detail-steps")
         NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
         UITestConditions.value(node(app, "health-record-row-0-value"), equals: "1200 count")
@@ -155,7 +157,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(
             categoryFilter,
             in: app,
-            scrollID: "health-records-navigation-scroll",
+            scrollID: "health-records-scroll",
             towardTop: true,
         )
         for _ in 0 ..< 8 {

@@ -7,7 +7,13 @@ import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import { healthRecordCategoryPresentation } from './healthRecordCategoryPresentation';
-import { HealthRecordsLineChart } from './HealthRecordsLineChart';
+import { HealthRecordsCategoryCharts } from './HealthRecordsCategoryCharts';
+import { HealthRecordsCategoryHeading } from './HealthRecordsCategoryHeading';
+import {
+  displayRecordValue,
+  provenanceLabel,
+  hasUnavailableSourceValue,
+} from './healthRecordsDetailPresentation';
 import type {
   HealthObservationCategory,
   HealthRecordsDetailSelection,
@@ -61,38 +67,43 @@ export function HealthRecordsCategoryCard({
 
   return (
     <View style={styles.card} testID={'health-record-category-' + category}>
-      <View style={styles.heading}>
-        <View style={[styles.icon, { backgroundColor: appearance.background }]}>
-          <AppSymbol
-            name={appearance.symbol}
-            size={26}
-            color={appearance.color}
+      <HealthRecordsCategoryHeading
+        icon={
+          <View
+            style={[styles.icon, { backgroundColor: appearance.background }]}
+          >
+            <AppSymbol
+              name={appearance.symbol}
+              size={26}
+              color={appearance.color}
+            />
+          </View>
+        }
+        action={
+          <AppButton
+            accessibilityHint={t('healthRecords.detailHint', { title })}
+            onPress={() => onOpenDetail({ category, period: 'month' })}
+            testID={'health-record-open-detail-' + category}
+            title={t('healthRecords.detail')}
+            variant="secondary"
           />
-        </View>
-        <View style={styles.headingCopy}>
-          <Text accessibilityRole="header" style={styles.title}>
-            {title + ' 기록'}
-          </Text>
-          <Text style={styles.count}>
-            {t(
-              hasMore
-                ? 'healthRecords.loadedCategoryPeriodSummary'
-                : 'healthRecords.categoryPeriodSummary',
-              {
-                count,
-                period: healthRecordPeriodTitle('month'),
-              },
-            )}
-          </Text>
-        </View>
-        <AppButton
-          accessibilityHint={t('healthRecords.detailHint', { title })}
-          onPress={() => onOpenDetail({ category, period: 'month' })}
-          testID={'health-record-open-detail-' + category}
-          title={t('healthRecords.detail')}
-          variant="secondary"
-        />
-      </View>
+        }
+      >
+        <Text accessibilityRole="header" style={styles.title}>
+          {title + ' 기록'}
+        </Text>
+        <Text style={styles.count}>
+          {t(
+            hasMore
+              ? 'healthRecords.loadedCategoryPeriodSummary'
+              : 'healthRecords.categoryPeriodSummary',
+            {
+              count,
+              period: healthRecordPeriodTitle('month'),
+            },
+          )}
+        </Text>
+      </HealthRecordsCategoryHeading>
       {recentObservations.length === 0 ? (
         <Text
           style={styles.eventSummary}
@@ -117,11 +128,25 @@ export function HealthRecordsCategoryCard({
           })}
         </Text>
       ) : (
-        <HealthRecordsLineChart
+        <HealthRecordsCategoryCharts
           category={category}
           observations={recentObservations}
         />
       )}
+      {latest && !latestPressure ? (
+        <View style={styles.latestCopy}>
+          <Text style={styles.latestTitle}>{displayRecordValue(latest)}</Text>
+          <Text style={styles.count}>
+            {formatRecordedAt(latest.effectiveAt)}
+          </Text>
+          <Text style={styles.count}>{provenanceLabel(latest)}</Text>
+          {hasUnavailableSourceValue(latest) ? (
+            <Text style={styles.count}>
+              {t('healthRecords.sourceValueUnavailable')}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {latestPressure ? (
         <View style={styles.latest}>
           <View style={styles.latestIcon}>
@@ -135,20 +160,20 @@ export function HealthRecordsCategoryCard({
             <Text style={styles.latestTitle}>
               {t('healthRecords.latestBloodPressure')}
               <Text style={styles.latestValue}>
-                {' ' +
-                  pressureValues
-                    .map(item =>
-                      item.value.kind === 'quantity'
-                        ? item.value.amount + ' ' + item.value.unit
-                        : '',
-                    )
-                    .filter(Boolean)
-                    .join(' / ')}
+                {' ' + pressureValues.map(displayRecordValue).join(' / ')}
               </Text>
             </Text>
             <Text style={styles.count}>
               {formatRecordedAt(latestPressure.effectiveAt)}
             </Text>
+            <Text style={styles.count}>
+              {[...new Set(pressureValues.map(provenanceLabel))].join(' · ')}
+            </Text>
+            {pressureValues.some(hasUnavailableSourceValue) ? (
+              <Text style={styles.count}>
+                {t('healthRecords.sourceValueUnavailable')}
+              </Text>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -162,13 +187,8 @@ const styles = StyleSheet.create({
     borderColor: appColors.border,
     borderRadius: 18,
     borderWidth: 1,
-    gap: 14,
+    gap: 16,
     padding: 16,
-  },
-  heading: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
   },
   icon: {
     alignItems: 'center',
@@ -178,10 +198,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 52,
   },
-  headingCopy: { flex: 1, gap: 4 },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
   count: { color: appColors.secondary, fontSize: 13 },
-  eventSummary: { color: appColors.text, fontSize: 14, lineHeight: 20 },
+  eventSummary: {
+    color: appColors.text,
+    fontSize: 14,
+    lineHeight: 20,
+    borderTopColor: appColors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 16,
+  },
   latest: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
@@ -198,7 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  latestCopy: { flex: 1, gap: 4 },
+  latestCopy: { flexShrink: 1, minWidth: 0, gap: 4 },
   latestTitle: { color: appColors.text, fontSize: 14, fontWeight: '600' },
   latestValue: { color: appColors.primaryAction, fontWeight: '700' },
 });

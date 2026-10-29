@@ -134,18 +134,14 @@ test('renders the production health route across native regions and keeps its ro
   ).toBeNull();
   const layout = screen.getByTestId('health-records-layout');
   const direction = () => StyleSheet.flatten(layout.props.style)?.flexDirection;
-  expect(direction()).toBe('row');
+  expect(direction()).toBe('column');
   expect(StyleSheet.flatten(layout.props.style)?.width).toBeGreaterThan(800);
   expect(
     StyleSheet.flatten(
       screen.getByTestId('health-records-layout-primary').props.style,
     )?.width,
   ).toBeGreaterThan(320);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('health-records-layout-secondary').props.style,
-    )?.width,
-  ).toBeGreaterThan(320);
+  expect(screen.queryByTestId('health-records-layout-secondary')).toBeNull();
   expect(
     screen.getByTestId('health-record-filter-heart_rate').props
       .accessibilityState?.selected,
@@ -156,7 +152,7 @@ test('renders the production health route across native regions and keeps its ro
     'geometryChange',
     { nativeEvent: geometry(900, false) },
   );
-  expect(direction()).toBe('row');
+  expect(direction()).toBe('column');
 
   await act(async () => {
     Dimensions.set({ window: viewport(500), screen: viewport(500) });
@@ -182,6 +178,7 @@ test('renders the production health route across native regions and keeps its ro
   await act(async () => {
     controller.push('health-records');
   });
+  await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-heart_rate'),
   );
@@ -221,7 +218,7 @@ test('renders the production health route across native regions and keeps its ro
       { nativeEvent: geometry(900, true) },
     );
   });
-  expect(medicationDirection()).toBe('row');
+  expect(medicationDirection()).toBe('column');
   expectDuoPanelsInsideNativeRegions(
     'health-records-medication-detail-layout',
     geometry(900, true),

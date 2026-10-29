@@ -142,7 +142,7 @@ test('gives the production health detail route the full lane for its panels', as
   const layout = () => screen.getByTestId('health-records-detail-layout');
   const direction = () =>
     StyleSheet.flatten(layout().props.style)?.flexDirection;
-  expect(direction()).toBe('row');
+  expect(direction()).toBe('column');
   expectDuoPanelsInsideNativeRegions(
     'health-records-detail-layout',
     geometry(900, true),
