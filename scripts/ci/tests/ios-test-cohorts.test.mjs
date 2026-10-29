@@ -40,7 +40,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 192);
+  assert.equal(actual.size, 194);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
