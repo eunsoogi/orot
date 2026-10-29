@@ -2,6 +2,8 @@
 export const duoTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
+  // Keep keyboard-open navigation checks selectable on the dedicated Duo runtime.
+  'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
   'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
   // Child boundary measurements share the read-only Core journey without a rotation prerequisite.
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
