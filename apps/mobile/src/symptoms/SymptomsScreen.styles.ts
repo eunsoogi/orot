@@ -11,6 +11,7 @@ export default StyleSheet.create({
     minHeight: '100%',
   },
   primaryPanel: { gap: 12, minWidth: 0 },
+  hidden: { display: 'none' },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
