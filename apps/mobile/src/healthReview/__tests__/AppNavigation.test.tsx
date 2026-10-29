@@ -120,28 +120,28 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
   ).toBe('screen');
   expect(screen.queryAllByTestId(/navigation-route-columns-/)).toHaveLength(0);
 
-  const layout = () =>
-    StyleSheet.flatten(screen.getByTestId('health-review-layout').props.style);
-  expect(layout()?.flexDirection).toBe('row');
+  const direction = () =>
+    StyleSheet.flatten(
+      screen.getByTestId('health-review-population-choices').props.style,
+    ).flexDirection;
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 852, height: 700 } },
+  });
+  expect(direction()).toBe('row');
   hostBounds.set('health-review-layout-host', { x: 24, width: 852 });
   await fireEvent(
     screen.getByTestId('navigation-window-geometry-sensor'),
     'geometryChange',
     { nativeEvent: geometry(900, 445) },
   );
-  expect(layout()?.flexDirection).toBe('row');
-  const primaryWidth = StyleSheet.flatten(
-    screen.getByTestId('health-review-layout-primary').props.style,
-  )?.width;
-  const secondaryWidth = StyleSheet.flatten(
-    screen.getByTestId('health-review-layout-secondary').props.style,
-  )?.width;
-  expect(primaryWidth).toBeLessThanOrEqual(421);
-  expect(secondaryWidth).toBeLessThanOrEqual(421);
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 421, height: 700 } },
+  });
+  expect(direction()).toBe('column');
   // Route copy must stay inside its measured lane when native geometry reserves
   // a division.
   expect(
-    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+    within(screen.getByTestId('health-review-layout')).getByTestId(
       'health-review-heading',
     ),
   ).toBeOnTheScreen();
@@ -160,9 +160,12 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
       { nativeEvent: geometry(500) },
     );
   });
-  expect(layout()?.flexDirection).toBe('column');
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 452, height: 700 } },
+  });
+  expect(direction()).toBe('column');
   expect(
-    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+    within(screen.getByTestId('health-review-layout')).getByTestId(
       'health-review-heading',
     ),
   ).toBeOnTheScreen();
@@ -181,9 +184,12 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
       { nativeEvent: geometry(900) },
     );
   });
-  expect(layout()?.flexDirection).toBe('column');
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 852, height: 700 } },
+  });
+  expect(direction()).toBe('column');
   expect(
-    within(screen.getByTestId('health-review-layout-primary')).getByTestId(
+    within(screen.getByTestId('health-review-layout')).getByTestId(
       'health-review-heading',
     ),
   ).toBeOnTheScreen();

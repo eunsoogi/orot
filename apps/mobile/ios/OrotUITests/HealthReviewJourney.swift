@@ -46,7 +46,8 @@ final class HealthReviewJourney {
     }
 
     func choose(_ label: String) {
-        let control = app.buttons.matching(identifier: label).firstMatch
+        // React Native exposes radio controls without the iOS button trait.
+        let control = element(label)
         XCTAssertTrue(UITestConditions.exists(control))
         FormUITestConditions.reveal(control, in: app, scrollID: "health-review-screen", towardTop: true)
         XCTAssertTrue(control.isHittable)
@@ -73,8 +74,17 @@ final class HealthReviewJourney {
     func reading(systolic: String, diastolic: String) {
         enter("health-review-systolic-0", systolic)
         enter("health-review-diastolic-0", diastolic)
-        enter("health-review-measuredAt-0", ISO8601DateFormatter().string(from: Date()))
+        tap("health-review-measuredAt-0")
+        pickerAction("health-review-time-done")
         enter("health-review-source-0", "사용자가 확인한 합성 혈압계")
+    }
+
+    func pickerAction(_ id: String) {
+        let control = element(id)
+        XCTAssertTrue(UITestConditions.exists(control))
+        FormUITestConditions.reveal(control, in: app, scrollID: "health-review-time-page")
+        XCTAssertTrue(control.isHittable)
+        control.tap()
     }
 
     func status(_ id: String) {

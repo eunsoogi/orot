@@ -3,6 +3,38 @@ import XCTest
 /// SQLCipher, graph, retained App session, safety and consent execute for every journey; only provider output is synthetic.
 final class HealthReviewUITests: OrotFailFastTestCase {
     @MainActor
+    func testMeasurementTimeCancelAndReopenPreserveInput() {
+        let journey = HealthReviewJourney()
+        defer { journey.clean() }
+        journey.launch()
+        journey.open()
+        journey.name()
+        journey.tap("health-review-measuredAt-0")
+        journey.pickerAction("health-review-time-done")
+        let time = journey.element("health-review-measuredAt-0")
+        let committed = time.value as? String
+        XCTAssertNotNil(committed)
+        journey.tap("health-review-measuredAt-0")
+        let draft = journey.element("health-review-time-draft")
+        XCTAssertTrue(UITestConditions.exists(draft))
+        let before = draft.label
+        // The native time control uses UIKit's wheel-style UIDatePicker.
+        let wheel = journey.element("health-review-time-wheel").pickerWheels.firstMatch
+        XCTAssertTrue(UITestConditions.exists(wheel))
+        FormUITestConditions.reveal(wheel, in: journey.app, scrollID: "health-review-time-page")
+        XCTAssertTrue(wheel.isHittable)
+        wheel.swipeUp()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", before), object: draft)
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
+        journey.pickerAction("health-review-time-cancel")
+        XCTAssertEqual(time.value as? String, committed)
+        journey.tap("health-review-measuredAt-0")
+        journey.pickerAction("health-review-time-done")
+        XCTAssertEqual(time.value as? String, committed)
+        XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)
+    }
+
+    @MainActor
     func testHealthKitReviewCitationReturnRetainsSession() throws {
         let journey = HealthReviewJourney()
         defer { journey.clean() }
@@ -17,7 +49,7 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(journey.element("ai-feature-source-detail")))
         journey.tap("navigation-back", inForm: false)
         journey.status("health-review-result")
-        journey.tap("health-review-provider", towardTop: true)
+        journey.tap("ai-feature-select-provider", towardTop: true)
         journey.tap("navigation-back", inForm: false)
         journey.status("health-review-result")
         XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)
@@ -36,7 +68,7 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         XCTAssertEqual(try journey.report()["pending"] as? Int, 1)
         XCTAssertEqual(try journey.report()["modelCalls"] as? Int, 0)
         journey.choose("대상 정보: 임신 중이 아닌 성인")
-        let selectedPopulation = journey.app.buttons.matching(identifier: "대상 정보: 임신 중이 아닌 성인").firstMatch
+        let selectedPopulation = journey.element("대상 정보: 임신 중이 아닌 성인")
         XCTAssertTrue(selectedPopulation.isSelected)
         // Reflow must preserve the selected answer and saved interrupt without starting inference.
         XCUIDevice.shared.orientation = .landscapeLeft

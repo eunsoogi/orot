@@ -9,7 +9,7 @@ import { createProductFixture } from './ios-test-products-fixture.mjs';
 
 for (const [cohort, count] of [
   ['core-ui', 4],
-  ['health-review-ui', 7],
+  ['health-review-ui', 8],
   ['recording-evidence', 6],
 ]) {
   test(`${cohort} forwards its exact subset through native execution and result verification`, () => {

@@ -173,12 +173,18 @@ importers:
       '@orot/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@react-native-community/datetimepicker':
+        specifier: 9.2.2
+        version: 9.2.2(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
+      '@react-native-community/slider':
+        specifier: 5.2.2
+        version: 5.2.2
       '@react-navigation/native':
         specifier: 7.5.0
         version: 7.5.0(patch_hash=2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@react-navigation/native-stack':
         specifier: 7.20.0
-        version: 7.20.0(037dfa19570434a5ece897fcd8f80987)
+        version: 7.20.0(ecf87a5929c7a899e91d5dc7d2d36247)
       fast-text-encoding:
         specifier: 1.0.6
         version: 1.0.6(patch_hash=7517f8f9187fc79a318d339494e64ef41dd1d6466933232cdc956cb66a30464a)
@@ -1251,6 +1257,22 @@ packages:
     resolution: {integrity: sha512-5RZKkBeUFC4hhrzySzxWmRJwXBTc2PE3L6QUgvnJk3QDxNYMY7aGuI8Gr9eZRS1DbiY10IPWqpJfqSIplzVG6A==}
     engines: {node: '>=20.19.4'}
     hasBin: true
+
+  '@react-native-community/datetimepicker@9.2.2':
+    resolution: {integrity: sha512-0cZGrK61UZ8VxpKKV/lun/L/b5wKus55IhvqqdewUayHwIc73lrLI0l5CIlHw8tA0/yQEzHEMEdtHQglAD+hKA==}
+    peerDependencies:
+      expo: '>=52.0.0'
+      react: '*'
+      react-native: '*'
+      react-native-windows: '*'
+    peerDependenciesMeta:
+      expo:
+        optional: true
+      react-native-windows:
+        optional: true
+
+  '@react-native-community/slider@5.2.2':
+    resolution: {integrity: sha512-KdWURcFqHZ/nvQwt9S7P2PHBREl83GZeflWZU1VpR/qJ+lF/mdiOBZshJQztE2hBDgW5iBIrRb3RY9uAie5k/w==}
 
   '@react-native/asset-utils@0.87.1':
     resolution: {integrity: sha512-FeFnbn9ENPs7IVBzZt1bBWfiRGvT4q+CsWwXGFyKVW/1ol3ylBRuTtXBGHIAmcNN4fUR60nSXsCN19pzNHkPgA==}
@@ -5348,6 +5370,14 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@react-native-community/datetimepicker@9.2.2(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
+    dependencies:
+      invariant: 2.2.4
+      react: 19.2.3
+      react-native: 0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
+
+  '@react-native-community/slider@5.2.2': {}
+
   '@react-native/asset-utils@0.87.1': {}
 
   '@react-native/babel-plugin-codegen@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)':
@@ -5412,7 +5442,7 @@ snapshots:
       '@react-native/dev-middleware': 0.87.1(supports-color@8.1.1)
       debug: 4.4.3(supports-color@8.1.1)
       invariant: 2.2.4
-      metro: 0.87.1(supports-color@8.1.1)(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)
+      metro: 0.87.1(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)(supports-color@8.1.1)
       semver: 7.8.5
     optionalDependencies:
       '@react-native-community/cli': 20.2.0(supports-color@8.1.1)(typescript@6.0.3)
@@ -5534,7 +5564,7 @@ snapshots:
       use-latest-callback: 0.2.6(react@19.2.3)
       use-sync-external-store: 1.7.0(react@19.2.3)
 
-  '@react-navigation/elements@2.9.44(patch_hash=086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a)(31954cfd4b9ffbf404b8ddb9865f9bb9)':
+  '@react-navigation/elements@2.9.44(patch_hash=086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a)(e01871e48da2e05e45e9d89007e5dce5)':
     dependencies:
       '@react-navigation/native': 7.5.0(patch_hash=2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       color: 4.2.3
@@ -5544,9 +5574,9 @@ snapshots:
       use-latest-callback: 0.2.6(react@19.2.3)
       use-sync-external-store: 1.7.0(react@19.2.3)
 
-  '@react-navigation/native-stack@7.20.0(037dfa19570434a5ece897fcd8f80987)':
+  '@react-navigation/native-stack@7.20.0(ecf87a5929c7a899e91d5dc7d2d36247)':
     dependencies:
-      '@react-navigation/elements': 2.9.44(patch_hash=086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a)(31954cfd4b9ffbf404b8ddb9865f9bb9)
+      '@react-navigation/elements': 2.9.44(patch_hash=086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a)(e01871e48da2e05e45e9d89007e5dce5)
       '@react-navigation/native': 7.5.0(patch_hash=2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       color: 4.2.3
       react: 19.2.3
@@ -7623,7 +7653,7 @@ snapshots:
       connect: 3.7.0(supports-color@8.1.1)
       flow-enums-runtime: 0.0.6
       jest-validate: 29.7.0
-      metro: 0.87.1(supports-color@8.1.1)(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)
+      metro: 0.87.1(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)(supports-color@8.1.1)
       metro-cache: 0.87.1(supports-color@8.1.1)
       metro-core: 0.87.1
       metro-runtime: 0.87.1(patch_hash=e6084e7e0ec8d8eb8dc80f72ef580d26bf52c53ae73cf63a9561ccce8618cd91)
@@ -7706,7 +7736,7 @@ snapshots:
       '@babel/parser': 7.29.9
       '@babel/types': 7.29.8
       flow-enums-runtime: 0.0.6
-      metro: 0.87.1(supports-color@8.1.1)(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)
+      metro: 0.87.1(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)(supports-color@8.1.1)
       metro-babel-transformer: 0.87.1(supports-color@8.1.1)
       metro-cache: 0.87.1(supports-color@8.1.1)
       metro-cache-key: 0.87.1
@@ -7719,7 +7749,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  metro@0.87.1(supports-color@8.1.1)(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501):
+  metro@0.87.1(patch_hash=aa1d88ca5a5b6791dea24eb7220f8f1f334593112e17446114964dfa2fe7b501)(supports-color@8.1.1):
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/core': 7.29.7(supports-color@8.1.1)

@@ -114,8 +114,8 @@ test('a full plan schedules every registered hosted case and OAuth when selected
 
   assert.equal(plan.selectedCohorts.length, 29);
   assert.equal(plan.notSelectedCohorts.length, 0);
-  assert.equal(plan.uniqueTestCases, 198);
-  assert.equal(plan.scheduledTestObservations, 198);
+  assert.equal(plan.uniqueTestCases, 199);
+  assert.equal(plan.scheduledTestObservations, 199);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 5);
