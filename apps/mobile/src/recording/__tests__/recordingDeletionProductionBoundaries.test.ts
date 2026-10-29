@@ -54,6 +54,16 @@ afterAll(async () => {
   await database.closeAsync?.();
 });
 
+test('concurrent production opens reuse one limited facade after the storage singleflight succeeds', async () => {
+  const [first, second] = await Promise.all([
+    openLocalAgentMemoryDatabase(),
+    openLocalAgentMemoryDatabase(),
+  ]);
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(first).toBe(second);
+  expect(Object.keys(first).sort()).toEqual(['execute', 'transaction']);
+});
+
 async function harness(sourceId: string) {
   const repository = await openLocalStorage();
   // This unit begins at the native stop result; it does not simulate microphone capture.

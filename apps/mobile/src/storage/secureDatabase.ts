@@ -25,6 +25,7 @@ import {
 } from '../backup/nativeBackupMigration';
 import { formatStorageOpenDiagnostic } from './storageDiagnostics';
 import { setupVisitQuestionPeriods } from './visitQuestionPeriods';
+import { agentMemoryDatabaseFacade } from './agentMemoryDatabaseFacade';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
@@ -152,12 +153,7 @@ export function openLocalStorage(): Promise<RecordRepository> {
 export async function openLocalAgentMemoryDatabase(): Promise<SqlDatabase> {
   await openLocalStorage();
   if (!database) throw new Error('The encrypted database is not open.');
-  const encryptedDatabase = database;
-  return {
-    execute: (query, parameters) =>
-      encryptedDatabase.execute(query, parameters),
-    transaction: operation => encryptedDatabase.transaction(operation),
-  };
+  return agentMemoryDatabaseFacade(database);
 }
 
 export async function openLocalAppointmentRepository(): Promise<AppointmentRepository> {
