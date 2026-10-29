@@ -142,6 +142,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(keyboard.maxY, keyboardTop + keyboardHeight + 1)
         let save = node(app, "next-visit-review-save")
         FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input)
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "Save must be reachable while editing with the keyboard visible")
         if expectsRightRail {
             XCTAssertLessThan(save.frame.maxX, back.toolbar.frame.minX)
         }
