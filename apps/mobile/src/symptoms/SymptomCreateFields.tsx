@@ -6,6 +6,7 @@ import styles from './SymptomForm.styles';
 import { symptomStatusLabel } from './presentation';
 
 interface SymptomCreateFieldsProps {
+  onPickerOpenChange: (kind: 'onset' | 'resolved', open: boolean) => void;
   inputAccessoryViewIDs: {
     onsetDate?: string;
     onsetTime?: string;
@@ -14,8 +15,8 @@ interface SymptomCreateFieldsProps {
   };
   onsetInstant: string | null;
   resolvedInstant: string | null;
-  onSelectOnset: (value: string) => void;
-  onSelectResolved: (value: string) => void;
+  onSelectOnset: (value: string | null) => void;
+  onSelectResolved: (value: string | null) => void;
   onsetDate: string;
   onsetTime: string;
   resolvedDate: string;
@@ -30,6 +31,7 @@ interface SymptomCreateFieldsProps {
 
 export default function SymptomCreateFields({
   inputAccessoryViewIDs,
+  onPickerOpenChange,
   onsetInstant,
   resolvedInstant,
   onSelectOnset,
@@ -49,6 +51,7 @@ export default function SymptomCreateFields({
     <>
       <SymptomDateTimeFields
         kind="onset"
+        onPickerOpenChange={open => onPickerOpenChange('onset', open)}
         initialInstant={onsetInstant}
         date={onsetDate}
         time={onsetTime}
@@ -68,7 +71,10 @@ export default function SymptomCreateFields({
           <Pressable
             accessibilityRole="radio"
             accessibilityState={{ selected: status === 'active' }}
-            onPress={() => setStatus('active')}
+            onPress={() => {
+              onPickerOpenChange('resolved', false);
+              setStatus('active');
+            }}
             style={[
               styles.choice,
               status === 'active' ? styles.selectedChoice : null,
@@ -98,6 +104,7 @@ export default function SymptomCreateFields({
       {status === 'resolved' ? (
         <SymptomDateTimeFields
           kind="resolved"
+          onPickerOpenChange={open => onPickerOpenChange('resolved', open)}
           initialInstant={resolvedInstant}
           date={resolvedDate}
           time={resolvedTime}

@@ -3,6 +3,22 @@ import XCTest
 /// Exercises the new native controls while preserving the journal's existing real-keyboard journeys.
 @MainActor
 enum SymptomJournalControlUITestConditions {
+    static func pendingPickerBlocksSave(_ app: XCUIApplication) {
+        let date = UITestConditions.element(app, "symptom-onset-choose-date")
+        FormUITestConditions.reveal(date, in: app, scrollID: "symptoms-scroll")
+        XCTAssertTrue(date.exists && date.isHittable)
+        date.tap()
+        let save = UITestConditions.element(app, "symptom-save")
+        FormUITestConditions.reveal(save, in: app, scrollID: "symptoms-scroll")
+        XCTAssertTrue(save.exists)
+        XCTAssertFalse(save.isEnabled, "Unconfirmed picker values must not be saved")
+        let cancel = UITestConditions.element(app, "symptom-onset-picker-cancel")
+        FormUITestConditions.reveal(cancel, in: app, scrollID: "symptoms-scroll")
+        XCTAssertTrue(cancel.exists && cancel.isHittable)
+        cancel.tap()
+        XCTAssertTrue(save.isEnabled)
+    }
+
     static func directFormAndPickerCancellation(_ app: XCUIApplication) {
         XCTAssertFalse(UITestConditions.element(app, "symptom-filter-active").exists)
         XCTAssertFalse(UITestConditions.element(app, "symptoms-selected-summary").exists)

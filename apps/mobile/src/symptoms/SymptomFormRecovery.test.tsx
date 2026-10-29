@@ -5,8 +5,52 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { SymptomEntrySchema } from '@orot/storage';
+import { Alert } from 'react-native';
 import SymptomForm from './SymptomForm';
 import { toLocalSymptomDateTime } from './dateTime';
+
+test('pending picker must be confirmed before saving', async () => {
+  const onCreate = await open();
+  await fireEvent.press(screen.getByTestId('symptom-onset-choose-date'));
+  await fireEvent(screen.getByTestId('symptom-onset-picker'), 'change', {
+    nativeEvent: { timestamp: 1735689600000, utcOffset: 0 },
+  });
+  expect(screen.getByTestId('symptom-save')).toBeDisabled();
+  expect(onCreate).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('symptom-onset-picker-done'));
+  await fireEvent.press(screen.getByTestId('symptom-save'));
+  await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+  expect(onCreate.mock.calls[0][0].onsetAt).toBe(
+    new Date(1735689600000).toISOString(),
+  );
+});
+
+test('cancel asks before discarding a changed draft', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const onCancel = jest.fn();
+  await render(
+    <SymptomForm
+      mode="create"
+      onCreate={jest.fn()}
+      onUpdate={jest.fn()}
+      onCancel={onCancel}
+    />,
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-description'),
+    '작성 중',
+  );
+  await fireEvent.press(screen.getByTestId('symptom-form-cancel'));
+  expect(onCancel).not.toHaveBeenCalled();
+  expect(alert).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('symptom-description')).toHaveProp(
+    'value',
+    '작성 중',
+  );
+  alert.mock.calls[0][2]?.[1]?.onPress?.();
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  alert.mockRestore();
+});
 
 async function open(onCreate = jest.fn()) {
   await render(

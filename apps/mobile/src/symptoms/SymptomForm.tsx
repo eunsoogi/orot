@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
 import TextInput from './SymptomTextInput';
-import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
+import { toLocalSymptomDateTime } from './dateTime';
+import { matchingSelectedInstant } from './matchingSelectedInstant';
 import SymptomCreateFields from './SymptomCreateFields';
 import styles from './SymptomForm.styles';
 import SymptomSeverityField from './SymptomSeverityField';
@@ -10,6 +11,7 @@ import SymptomFormActions from './SymptomFormActions';
 import type { NewSymptomDraft, SymptomEdit } from './types';
 import { formInputAccessoryID } from './symptomFormKeyboard';
 import { t } from '../i18n';
+import { confirmSymptomDiscard } from './confirmSymptomDiscard';
 import SymptomEditContext from './SymptomEditContext';
 
 type SymptomFormProps = {
@@ -50,15 +52,23 @@ export default function SymptomForm({
   const [status, setStatus] = useState<SymptomEntry['status'] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [openPickers, setOpenPickers] = useState({
+    onset: false,
+    resolved: false,
+  });
+  const dirty = useRef(false);
 
   function change<T>(setter: (value: T) => void) {
     return (value: T) => {
       setter(value);
+      dirty.current = true;
       onDraftChange?.();
     };
   }
 
   async function save() {
+    // Pending picker values must be explicitly confirmed or cancelled before saving.
+    if (openPickers.onset || openPickers.resolved) return;
     setError('');
     const trimmedDescription = description.trim();
     if (!trimmedDescription) {
@@ -164,6 +174,9 @@ export default function SymptomForm({
       {mode === 'edit' ? <SymptomEditContext entry={entry} /> : null}
       {mode === 'create' ? (
         <SymptomCreateFields
+          onPickerOpenChange={(kind, open) =>
+            setOpenPickers(current => ({ ...current, [kind]: open }))
+          }
           inputAccessoryViewIDs={{
             onsetDate: formInputAccessoryID('onsetDate'),
             onsetTime: formInputAccessoryID('onsetTime'),
@@ -213,24 +226,21 @@ export default function SymptomForm({
       <SymptomFormActions
         mode={mode}
         saving={saving}
-        needsStatus={mode === 'create' && status === null}
+        needsStatus={
+          (mode === 'create' && status === null) ||
+          openPickers.onset ||
+          openPickers.resolved
+        }
         onSave={save}
-        onCancel={onCancel}
+        onCancel={() => {
+          if (!dirty.current && !openPickers.onset && !openPickers.resolved) {
+            onCancel();
+            return;
+          }
+          confirmSymptomDiscard(onCancel);
+        }}
       />
       <Text style={styles.hint}>{t('symptoms.journal.provenance')}</Text>
     </View>
   );
-}
-
-/** Native selections retain repeated-hour instants; manual changes use strict local parsing. */
-function matchingSelectedInstant(
-  selected: string | null,
-  date: string,
-  time: string,
-): string | null {
-  if (selected) {
-    const local = toLocalSymptomDateTime(selected);
-    if (local.date === date && local.time === time) return selected;
-  }
-  return toSymptomTimestamp(date, time);
 }

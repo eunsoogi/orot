@@ -32,6 +32,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard replace(app, "symptom-onset-date", "2025-04-02") else { return }
         guard replace(app, "symptom-onset-time", "09:30") else { return }
         guard tap(app, "symptom-status-active") else { return }
+        SymptomJournalControlUITestConditions.pendingPickerBlocksSave(app)
         if singleSeverityObservation {
             // Incomplete geometry cannot justify an input gesture; reject it before touching severity.
             print("Journal single severity diagnostic opt-in active")

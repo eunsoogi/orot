@@ -1,7 +1,7 @@
 import { SymptomEntrySchema } from '@orot/storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -164,7 +164,10 @@ test('the symptom route shares the full usable lane and keeps selection through 
     );
     expectFormInFullContentLane();
   }
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await fireEvent.press(screen.getByTestId('symptom-form-cancel'));
+  await act(() => alert.mock.calls[0][2]?.[1]?.onPress?.());
+  alert.mockRestore();
   expect(
     screen.getByTestId(`symptom-${entry.id}-description`),
   ).toHaveTextContent(entry.description);

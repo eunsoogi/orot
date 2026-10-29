@@ -18,14 +18,16 @@ export default function SymptomDateTimeFields({
   onSelectInstant,
   accessoryIDs,
   initialInstant,
+  onPickerOpenChange,
 }: {
   readonly kind: 'onset' | 'resolved';
+  readonly onPickerOpenChange: (open: boolean) => void;
   readonly initialInstant: string | null;
   readonly date: string;
   readonly time: string;
   readonly setDate: (value: string) => void;
   readonly setTime: (value: string) => void;
-  readonly onSelectInstant: (value: string) => void;
+  readonly onSelectInstant: (value: string | null) => void;
   readonly accessoryIDs: { date?: string; time?: string };
 }) {
   const [manual, setManual] = useState(false);
@@ -54,6 +56,7 @@ export default function SymptomDateTimeFields({
             onPress={() => {
               setPendingValue(value);
               setPickerMode('date');
+              onPickerOpenChange(true);
             }}
             accessibilityLabel={`${t(kind === 'onset' ? 'symptoms.journal.form.onset.date' : 'symptoms.journal.form.resolved.date')}: ${date || t('symptoms.journal.form.chooseDate')}`}
             testID={`${prefix}-choose-date`}
@@ -66,6 +69,7 @@ export default function SymptomDateTimeFields({
             onPress={() => {
               setPendingValue(value);
               setPickerMode('time');
+              onPickerOpenChange(true);
             }}
             accessibilityLabel={`${t(kind === 'onset' ? 'symptoms.journal.form.onset.time' : 'symptoms.journal.form.resolved.time')}: ${time || t('symptoms.journal.form.chooseTime')}`}
             testID={`${prefix}-choose-time`}
@@ -80,7 +84,10 @@ export default function SymptomDateTimeFields({
             mode={pickerMode}
             display="spinner"
             locale="ko-KR"
-            onDismiss={() => setPickerMode(null)}
+            onDismiss={() => {
+              setPickerMode(null);
+              onPickerOpenChange(false);
+            }}
             testID={`${prefix}-picker`}
             onValueChange={(_event, next) => {
               setPendingValue(next);
@@ -96,12 +103,16 @@ export default function SymptomDateTimeFields({
               setTime(local.time);
               onSelectInstant(next.toISOString());
               setPickerMode(null);
+              onPickerOpenChange(false);
             }}
             testID={`${prefix}-picker-done`}
           />
           <Button
             title={t('symptoms.journal.form.pickerCancel')}
-            onPress={() => setPickerMode(null)}
+            onPress={() => {
+              setPickerMode(null);
+              onPickerOpenChange(false);
+            }}
             testID={`${prefix}-picker-cancel`}
           />
         </>
@@ -122,6 +133,7 @@ export default function SymptomDateTimeFields({
             inputAccessoryViewID={accessoryIDs.date}
             onChangeText={next => {
               setSelectedInstant(null);
+              onSelectInstant(null);
               setDate(next);
             }}
             placeholder="YYYY-MM-DD"
@@ -138,6 +150,7 @@ export default function SymptomDateTimeFields({
             inputAccessoryViewID={accessoryIDs.time}
             onChangeText={next => {
               setSelectedInstant(null);
+              onSelectInstant(null);
               setTime(next);
             }}
             placeholder="HH:MM"
