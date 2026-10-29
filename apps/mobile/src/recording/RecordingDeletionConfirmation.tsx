@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef } from 'react';
+import { RecordingDeletionTimingContext } from './recordingDeletionTiming';
 import { Alert, Text, View } from 'react-native';
 import { AppProgress } from '../layout/AppProgress';
 import { t } from '../i18n';
@@ -11,6 +12,7 @@ interface RecordingDeletionConfirmationProps {
   readonly busy: boolean;
   readonly onCancel: () => void;
   readonly onConfirm: () => void | Promise<void>;
+  readonly onProgressPresented?: () => void;
 }
 
 /** Uses the iOS alert for consent, then exposes non-blocking async deletion progress. */
@@ -19,9 +21,24 @@ export default function RecordingDeletionConfirmation({
   busy,
   onCancel,
   onConfirm,
+  onProgressPresented,
 }: RecordingDeletionConfirmationProps) {
+  const trace = useContext(RecordingDeletionTimingContext)?.trace;
+  // Layout effects observe committed state, rather than render attempts or state requests.
+  useLayoutEffect(() => {
+    trace?.record('component-mount');
+    return () => trace?.record('component-unmount');
+  }, [trace]);
+  useLayoutEffect(() => {
+    trace?.record('busy-commit', { busy });
+  }, [busy, trace]);
   const callbacks = useRef({ onCancel, onConfirm });
+  const progressReported = useRef(false);
   callbacks.current = { onCancel, onConfirm };
+
+  useEffect(() => {
+    if (!busy) progressReported.current = false;
+  }, [busy]);
 
   useEffect(() => {
     if (!target || busy) return;
@@ -53,6 +70,21 @@ export default function RecordingDeletionConfirmation({
   return (
     <View
       accessibilityLiveRegion="polite"
+      onLayout={
+        onProgressPresented
+          ? event => {
+              trace?.record('layout-entry', {
+                latched: progressReported.current,
+                width: event.nativeEvent.layout.width,
+                height: event.nativeEvent.layout.height,
+              });
+              if (progressReported.current) return;
+              progressReported.current = true;
+              // The first native layout is the closest UI boundary for when progress is presented.
+              onProgressPresented();
+            }
+          : undefined
+      }
       style={styles.deleteProgress}
       testID="recording-delete-progress"
     >

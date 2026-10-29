@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import RecordingScreen from '../../src/recording/RecordingScreen';
-import {
-  createTranscriptEvidenceProbeService,
-  prepareSyntheticTranscriptRecording,
-} from './transcriptEvidenceProbeSupport';
+import { createTranscriptEvidenceProbeService } from './transcriptEvidenceProbeSupport';
+import { prepareRecordingDeletionWorkload } from './recordingDeletionWorkload';
 import {
   playSyntheticTranscriptionRange,
   readSyntheticRecordingDuration,
@@ -13,6 +11,12 @@ import {
 } from '../../src/recording/nativeRecordingBridge';
 import { recordingService } from '../../src/recording/recordingService';
 import { recordingLibraryService } from '../../src/recording/recordingLibraryService';
+import { useRecordingDeletionProbe } from './useRecordingDeletionProbe';
+import {
+  RecordingDeletionObservations,
+  RecordingDeletionScenarioControls,
+  useRecordingDeletionScenario,
+} from './recordingDeletionScenarioSupport';
 import {
   observedPlaybackService,
   type PlaybackObservation,
@@ -29,6 +33,9 @@ export function RecordingLibraryVisualProbe() {
     null,
   );
   const [setupError, setSetupError] = useState('');
+  const [deletionPersistenceStatus, setDeletionPersistenceStatus] = useState<
+    string | null
+  >(null);
   const [playbackObservation, setPlaybackObservation] =
     useState<PlaybackObservation | null>(null);
   const transcriptService = useMemo(() => {
@@ -68,6 +75,32 @@ export function RecordingLibraryVisualProbe() {
     playbackProbeMode === 'resume' ||
     playbackProbeMode === 'missing' ||
     playbackProbeMode === 'route';
+  const deletionTimingEnabled =
+    settingsManager?.settings?.OROT_RECORDING_DELETION_TIMING === 'YES' ||
+    settingsManager?.getConstants?.().settings
+      ?.OROT_RECORDING_DELETION_TIMING === 'YES';
+  // This mode checks persisted deletion after a process restart without reseeding the disposable source.
+  const deletionPersistenceEnabled =
+    settingsManager?.settings?.OROT_RECORDING_DELETION_PERSISTENCE_PROBE ===
+      'YES' ||
+    settingsManager?.getConstants?.().settings
+      ?.OROT_RECORDING_DELETION_PERSISTENCE_PROBE === 'YES';
+  const configuredDeletionWorkload =
+    settingsManager?.settings?.OROT_RECORDING_DELETION_WORKLOAD ??
+    settingsManager?.getConstants?.().settings
+      ?.OROT_RECORDING_DELETION_WORKLOAD;
+  const configuredDeletionScenario =
+    settingsManager?.settings?.OROT_RECORDING_DELETION_SCENARIO ??
+    settingsManager?.getConstants?.().settings
+      ?.OROT_RECORDING_DELETION_SCENARIO;
+  const deletionScenario =
+    configuredDeletionScenario === 'failure-slow-list-read' ||
+    configuredDeletionScenario === 'delayed-audio-cleanup'
+      ? configuredDeletionScenario
+      : null;
+  const deletionScenarioProbe = useRecordingDeletionScenario(deletionScenario);
+  const { probe: deletionTimingProbe, report: deletionTimingReport } =
+    useRecordingDeletionProbe(deletionTimingEnabled);
   const playbackService = useMemo(
     () =>
       observedPlaybackService(
@@ -84,6 +117,20 @@ export function RecordingLibraryVisualProbe() {
   useEffect(() => {
     let active = true;
     const prepare = async () => {
+      if (configuredDeletionScenario !== undefined && !deletionScenario) {
+        throw new Error('The recording deletion scenario is unsupported.');
+      }
+      if (deletionPersistenceEnabled) {
+        const syntheticSourcePresent = (
+          await recordingLibraryService.list()
+        ).some(item => item.title === 'Synthetic transcription test recording');
+        return {
+          id: null,
+          deletionPersistenceStatus: syntheticSourcePresent
+            ? 'present'
+            : 'absent',
+        };
+      }
       if (playbackProbeMode === 'resume' || playbackProbeMode === 'missing') {
         const source = (await recordingLibraryService.list()).find(
           item => item.title === 'Synthetic transcription test recording',
@@ -96,12 +143,20 @@ export function RecordingLibraryVisualProbe() {
         }
         return { id: source.id };
       }
-      return prepareSyntheticTranscriptRecording();
+      return prepareRecordingDeletionWorkload(
+        configuredDeletionWorkload,
+        transcriptService,
+      );
     };
     prepare().then(
       recording => {
         if (active) {
-          setRecordingSourceId(recording.id);
+          setRecordingSourceId(recording.id ?? null);
+          if ('deletionPersistenceStatus' in recording) {
+            setDeletionPersistenceStatus(
+              recording.deletionPersistenceStatus ?? null,
+            );
+          }
           setStatus('ready');
         }
       },
@@ -118,7 +173,14 @@ export function RecordingLibraryVisualProbe() {
     return () => {
       active = false;
     };
-  }, [playbackProbeMode]);
+  }, [
+    configuredDeletionScenario,
+    configuredDeletionWorkload,
+    transcriptService,
+    deletionPersistenceEnabled,
+    deletionScenario,
+    playbackProbeMode,
+  ]);
 
   useEffect(() => {
     if (playbackProbeMode !== 'route') return;
@@ -138,7 +200,10 @@ export function RecordingLibraryVisualProbe() {
   }, [playbackProbeMode]);
 
   // The dedicated E2E simulator is uninstalled after capture to discard fixture data.
-  if (status !== 'ready' || recordingSourceId === null) {
+  if (
+    status !== 'ready' ||
+    (recordingSourceId === null && !deletionPersistenceEnabled)
+  ) {
     return (
       <Text testID="recording-library-visual-status">
         {setupError ? `${status}: ${setupError}` : status}
@@ -149,8 +214,14 @@ export function RecordingLibraryVisualProbe() {
     <View style={[styles.viewport, { width: contentWidth }]}>
       <RecordingScreen
         onBack={() => {}}
+        recordingLibraryService={deletionScenarioProbe.service}
+        recordingDeletionTimingProbe={deletionTimingProbe ?? undefined}
         transcriptService={transcriptService}
         playbackService={playbackProbeEnabled ? playbackService : undefined}
+      />
+      <RecordingDeletionScenarioControls
+        scenario={deletionScenario}
+        {...deletionScenarioProbe}
       />
       {playbackProbeEnabled ? (
         <View
@@ -160,6 +231,12 @@ export function RecordingLibraryVisualProbe() {
           style={styles.observation}
         />
       ) : null}
+      <RecordingDeletionObservations
+        timingEnabled={deletionTimingEnabled}
+        timingReport={deletionTimingReport}
+        persistenceEnabled={deletionPersistenceEnabled}
+        persistenceStatus={deletionPersistenceStatus}
+      />
     </View>
   );
 }

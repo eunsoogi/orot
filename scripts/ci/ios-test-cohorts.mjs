@@ -4,9 +4,7 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { iosFixtureGroups } from './ios-test-fixture-groups.mjs';
 import { healthCohorts } from './ios-health-cohorts.mjs';
 import { questionCohorts } from './ios-question-cohorts.mjs';
-
-// Each recording leaf retains the same fixture/reset contract while owning independent complete methods.
-const recordingFixture = { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 };
+import { recordingCohorts } from './ios-recording-cohorts.mjs';
 
 const cohorts = {
   release: { profiles: ['core', 'fixtures', 'backup', 'local-model'], minutes: 200 },
@@ -94,23 +92,7 @@ const cohorts = {
     minutes: 20,
     classes: ['SafeAreaNavigationUITests', 'UnifiedImportUITests'],
   },
-  recordings: recordingFixture,
-  'recordings-controls': {
-    ...recordingFixture,
-    cases: [
-      'RecordingLibraryUITests/testActiveAndPausedRecordingControlsAcrossAppearanceChanges',
-      'RecordingLibraryUITests/testRecordingConsentAndSeparateLibraryAcrossAppearanceChanges',
-      'RecordingLibraryUITests/testSavedRecordingRowsRemainReadableInA320PointViewport',
-    ],
-  },
-  'recordings-review': {
-    ...recordingFixture,
-    cases: [
-      'RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
-      'RecordingLibraryUITests/testLargeTextKeepsTranscriptSaveReachableWithKeyboardVisible',
-    ],
-  },
-  'recordings-playback': { ...recordingFixture, classes: ['RecordingPlaybackUITests'] },
+  ...recordingCohorts,
   ...questionCohorts,
   calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 20 },
   'calendar-consent': {

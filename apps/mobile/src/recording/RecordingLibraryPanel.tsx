@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
-import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
-import type {
-  RecordingPlaybackService,
-  RecordingSourceRecord,
-} from './recordingTypes';
+import type { RecordingSourceRecord } from './recordingTypes';
 import { recordingService } from './recordingService';
 import RecordingDeletionNotice from './RecordingDeletionNotice';
 import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
@@ -14,31 +10,13 @@ import {
   loadRecordingLibrarySummaries,
   recordingLibrarySources,
   type RecordingDeleteNotice,
-  type RecordingLibraryService,
+  type RecordingLibraryPanelProps,
   type RecordingLibrarySummary,
 } from './recordingLibraryPanelHelpers';
 import RecordingExportPanel from './RecordingExportPanel';
 import RecordingLibraryDetail from './RecordingLibraryDetail';
 import RecordingLibraryContent from './RecordingLibraryContent';
-import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
-
-interface RecordingLibraryPanelProps {
-  readonly service: RecordingLibraryService;
-  readonly onNewRecording?: () => void;
-  readonly onOpenRecording?: (
-    summary: RecordingLibrarySummary,
-    autoPlay: boolean,
-  ) => void;
-  readonly transcriptService?: TranscriptEvidenceService;
-  readonly automaticTranscription?: AutomaticTranscriptionSnapshot | null;
-  readonly fallbackExportSourceId?: string | null;
-  readonly refreshKey?: string | null;
-  readonly selectedSummarySourceId?: string | null;
-  readonly onSourceDeleted?: (sourceId: string) => void;
-  readonly actionsDisabled?: boolean;
-  readonly onBusyChange?: (busy: boolean) => void;
-  readonly playbackService?: RecordingPlaybackService;
-}
+import { useRecordingDeletionTiming } from './useRecordingDeletionTiming';
 
 /** Shows real saved-audio summaries and one selected detail with shared delete recovery. */
 export default function RecordingLibraryPanel({
@@ -71,6 +49,7 @@ export default function RecordingLibraryPanel({
   const [exportBusy, setExportBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState<RecordingDeleteNotice>(null);
+  const deletionTiming = useRecordingDeletionTiming(recordings);
 
   useEffect(() => {
     let active = true;
@@ -125,7 +104,11 @@ export default function RecordingLibraryPanel({
 
   async function refreshAfterDelete(targetId: string): Promise<boolean> {
     try {
-      const next = await loadRecordingLibrarySummaries(service);
+      const next = await deletionTiming.readListSummaries(() =>
+        loadRecordingLibrarySummaries(service),
+      );
+      deletionTiming.markListSummaryRefresh();
+      deletionTiming.markListRefreshPending();
       setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
       setSelectedSourceId(current =>
         current &&
@@ -144,15 +127,17 @@ export default function RecordingLibraryPanel({
   async function confirmDelete(): Promise<void> {
     const target = deleteTarget;
     if (!target || busy || exportBusy || actionsDisabled) return;
+    deletionTiming.markConfirmationTap();
     setBusy(true);
     onBusyChange?.(true);
     setDeleteNotice(null);
     try {
-      const result = await service.deleteRecording(target.id);
+      const result = await deletionTiming.deleteRecording(service, target.id);
       setDeleteTarget(null);
       onSourceDeleted?.(target.id);
       // The cascade has committed. Publish its result immediately, without a full metadata reread.
       deletedIds.add(target.id);
+      deletionTiming.markListRefreshPending();
       setRecordings(current =>
         current.filter(item => item.source.id !== target.id),
       );
@@ -239,6 +224,7 @@ export default function RecordingLibraryPanel({
         busy={busy || actionsDisabled}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
+        onProgressPresented={deletionTiming.markProgressPresented}
         target={deleteTarget}
       />
       <RecordingDeletionNotice notice={deleteNotice} />

@@ -3,6 +3,8 @@ import type {
   RecordingLibrarySummary,
 } from './recordingLibraryService';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
+import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
+import type { RecordingPlaybackService } from './recordingTypes';
 
 export type {
   RecordingLibraryService,
@@ -10,6 +12,24 @@ export type {
 } from './recordingLibraryService';
 
 export type RecordingDeleteNotice = 'error' | 'cleanup-pending' | null;
+
+export interface RecordingLibraryPanelProps {
+  readonly service: RecordingLibraryService;
+  readonly onNewRecording?: () => void;
+  readonly onOpenRecording?: (
+    summary: RecordingLibrarySummary,
+    autoPlay: boolean,
+  ) => void;
+  readonly transcriptService?: TranscriptEvidenceService;
+  readonly automaticTranscription?: AutomaticTranscriptionSnapshot | null;
+  readonly fallbackExportSourceId?: string | null;
+  readonly refreshKey?: string | null;
+  readonly selectedSummarySourceId?: string | null;
+  readonly onSourceDeleted?: (sourceId: string) => void;
+  readonly actionsDisabled?: boolean;
+  readonly onBusyChange?: (busy: boolean) => void;
+  readonly playbackService?: RecordingPlaybackService;
+}
 
 /** Older adapters lack transcript summaries, so their review state must remain unavailable. */
 export async function loadRecordingLibrarySummaries(
