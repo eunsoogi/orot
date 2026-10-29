@@ -3,7 +3,7 @@ import { appendFileSync } from 'node:fs';
 import {
   assertVersionPrReadback,
   isPrMetadataCurrent,
-  requiredPrMetadataFromIssue,
+  requiredVersionPrMetadata,
   versionPrDetails,
 } from './metadata.mjs';
 
@@ -28,15 +28,9 @@ function ghJson(endpoint) {
   }
 }
 
-function applyIssueMetadata(number, milestone, assignees, labels) {
-  const args = [
-    'api',
-    '--method',
-    'PATCH',
-    `repos/${repository}/issues/${number}`,
-    '-F',
-    `milestone=${milestone}`,
-  ];
+function applyIssueMetadata(number, assignees, labels) {
+  // Omit milestone entirely so new PRs stay unassigned and manual choices survive reruns.
+  const args = ['api', '--method', 'PATCH', `repos/${repository}/issues/${number}`];
   for (const assignee of assignees) args.push('-f', `assignees[]=${assignee}`);
   for (const label of labels) args.push('-f', `labels[]=${label}`);
 
@@ -64,15 +58,14 @@ function main() {
     throw new Error('pull request URL is not a repository pull request');
 
   const details = versionPrDetails(version);
-  const issue = ghJson(`repos/${repository}/issues/171`);
   const number = Number(match[1]);
   const pullRequest = ghJson(`repos/${repository}/pulls/${number}`);
   assertVersionPrReadback(pullRequest, details, repository, pullRequestUrl);
   const prIssue = ghJson(`repos/${repository}/issues/${number}`);
-  const expected = requiredPrMetadataFromIssue(issue, prIssue);
+  const expected = requiredVersionPrMetadata(prIssue);
 
   if (!isPrMetadataCurrent(prIssue, expected)) {
-    applyIssueMetadata(number, expected.milestone, expected.assignees, expected.labels);
+    applyIssueMetadata(number, expected.assignees, expected.labels);
   }
 
   const updatedIssue = ghJson(`repos/${repository}/issues/${number}`);
