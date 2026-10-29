@@ -1,11 +1,12 @@
 import XCTest
 
 extension RootNavigationUITests {
-    /// Verifies Settings panels follow live Duo geometry without moving route actions or the right navigation lane.
+    /// Starts from portrait, verifies Settings geometry, and restores a valid original orientation.
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
-        XCTAssertTrue(initialOrientation.isPortrait || initialOrientation.isLandscape)
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = initialOrientation.isPortrait || initialOrientation.isLandscape ? initialOrientation : .portrait }
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
@@ -15,7 +16,6 @@ extension RootNavigationUITests {
         ] + AppearanceUITestConditions.observationArguments
         app.launch()
         var appearanceSnapshot: AppearanceUITestConditions.Snapshot?
-        var regularTitleHeight: CGFloat = 0
         defer {
             if let appearanceSnapshot, app.state == .runningForeground {
                 do {
@@ -29,12 +29,13 @@ extension RootNavigationUITests {
                 }
             }
             app.terminate()
-            XCUIDevice.shared.orientation = initialOrientation
         }
 
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        // Establish that UIKit and shared navigation geometry are live before rotation assertions use this width.
+        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
+        let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
 
         appearanceSnapshot = try AppearanceUITestConditions.select(
@@ -52,14 +53,13 @@ extension RootNavigationUITests {
             appearanceSnapshot = nil
         }
 
-        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let rotatedAt = Date().timeIntervalSince1970 * 1000
-        XCUIDevice.shared.orientation = initialOrientation.isLandscape ? .portrait : .landscapeLeft
+        XCUIDevice.shared.orientation = .landscapeLeft
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: rotatedAt, width: initialWindow.width, differs: true)
         try verifySettingsPanels(app)
 
         let returnedAt = Date().timeIntervalSince1970 * 1000
-        XCUIDevice.shared.orientation = initialOrientation
+        XCUIDevice.shared.orientation = .portrait
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: returnedAt, width: initialWindow.width)
         try verifySettingsPanels(app)
 
