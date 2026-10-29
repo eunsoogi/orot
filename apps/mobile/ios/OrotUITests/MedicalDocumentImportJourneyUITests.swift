@@ -11,7 +11,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     func testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        launch(app, fixture: "text-pdf")
+        launch(app, fixture: "text-pdf", largeText: true)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-import-medical-document")
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
@@ -27,6 +27,12 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-text-1")).contains("Synthetic medical document page two"))
         XCTAssertTrue(node(app, "medical-document-save").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-cancel").exists, app.debugDescription)
+        let page = recordsPage(app)
+        let lastPage = node(app, "medical-document-review-text-11")
+        FormUITestConditions.reveal(lastPage, in: app, scroll: page)
+        XCTAssertTrue(lastPage.isHittable && page.frame.contains(lastPage.frame), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(lastPage).contains("Synthetic medical document page 12"))
+        XCTAssertLessThan(node(app, "medical-document-review-title").frame.minY, page.frame.minY)
         capture(app, "medical-document-review-before-save")
 
         tap(app, "medical-document-save")
@@ -36,6 +42,11 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         assertSavedSource(app)
         capture(app, "medical-document-source-with-provenance")
+        tap(app, "medical-document-source-back")
+        FormUITestConditions.reveal(savedSource, in: app, scroll: recordsPage(app))
+        XCTAssertTrue(savedSource.exists && savedSource.isHittable, app.debugDescription)
+        tap(app, "medical-document-source-0")
+        assertSavedSource(app)
 
         app.terminate()
         app.launch()
@@ -92,13 +103,13 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, fixture: String) {
+    private func launch(_ app: XCUIApplication, fixture: String, largeText: Bool = false) {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "medical-document-import",
             "-OROT_TEST_MEDICAL_DOCUMENT_FIXTURE", fixture,
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ]
+        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
         XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
         DebugUITestConditions.dismissWarningToast(app)
@@ -129,6 +140,20 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-text-0")).contains("Synthetic medical document page one"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-locator-1")).contains("2쪽 · 위치"))
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-source-text-1")).contains("Synthetic medical document page two"))
+        let page = recordsPage(app)
+        let lastSource = node(app, "medical-document-source-text-11")
+        FormUITestConditions.reveal(lastSource, in: app, scroll: page)
+        XCTAssertTrue(lastSource.isHittable && page.frame.contains(lastSource.frame), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(lastSource).contains("Synthetic medical document page 12"))
+    }
+
+    @MainActor
+    private func recordsPage(_ app: XCUIApplication) -> XCUIElement {
+        // Both document states consume Records' scene viewport; child scroll owners must not return.
+        let page = app.scrollViews.matching(identifier: "navigation-route-scroll").firstMatch
+        XCTAssertTrue(page.exists && !page.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(page.scrollViews.count, 0, app.debugDescription)
+        return page
     }
 
     @MainActor
@@ -140,7 +165,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = node(app, identifier)
         XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
-        UITestConditions.scrollTo(target, in: app)
+        FormUITestConditions.reveal(target, in: app, scroll: recordsPage(app))
         XCTAssertTrue(target.isHittable, app.debugDescription)
         target.tap()
     }

@@ -2,7 +2,9 @@ import { replaceTopLevelJsonStringProperty } from './manifest-text.mjs';
 
 const VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const MARKETING_VERSION_LINE = /^([\t ]*MARKETING_VERSION = )([^;\r\n]+);([\t ]*)$/gm;
-const ISSUE_171_CLOSING_REFERENCE = 'Fixes #171';
+// Version automation owns these classifications independently of any release issue.
+const VERSION_PR_LABELS = ['area/foundation', 'type/ci', 'priority/p1'];
+const VERSION_PR_ASSIGNEES = ['eunsoogi'];
 
 function parseManifest(source, path) {
   let manifest;
@@ -17,11 +19,11 @@ function parseManifest(source, path) {
   return manifest;
 }
 
-function hasExactClosingReference(body) {
-  return (
-    typeof body === 'string' &&
-    body.split(/\r?\n/).some((line) => line.trim() === ISSUE_171_CLOSING_REFERENCE)
-  );
+// Exact identity lines permit maintainer prose without accepting another version's summary.
+function hasVersionBody(body, details) {
+  if (typeof body !== 'string') return false;
+  const lines = body.split(/\r?\n/).map((line) => line.trim());
+  return lines.includes(details.summary) && lines.includes(details.marker);
 }
 
 export function parseVersion(value) {
@@ -135,35 +137,35 @@ export function planVersionUpdate({
 
 export function versionPrDetails(version) {
   parseVersion(version);
+  const summary = `Updates Orot version metadata to ${version}.`;
+  const marker = `<!-- orot-version-update:${version} -->`;
   return {
     branch: `automation/version-${version}`,
     title: `chore: update version to ${version}`,
-    marker: `<!-- orot-version-update:${version} -->`,
+    marker,
+    summary,
+    body: [
+      summary,
+      '',
+      'The workflow changes only the root, mobile, workspace package, and iOS marketing version fields.',
+      '',
+      marker,
+    ].join('\n'),
   };
 }
 
-export function requiredPrMetadataFromIssue(issue, currentPrIssue) {
-  const labels = issue.labels
-    .map((label) => label.name)
-    .filter((label) => /^(area|type|priority)\//.test(label));
-  const requiredLabels = ['area/foundation', 'type/ci', 'priority/p1'];
-  const assignees = issue.assignees.map((assignee) => assignee.login);
-  if (
-    !requiredLabels.every((label) => labels.includes(label)) ||
-    !assignees.includes('eunsoogi') ||
-    issue.milestone?.title !== '0.1.0'
-  ) {
-    throw new Error(
-      'issue #171 metadata is missing a required label, assignee, or 0.1.0 milestone',
-    );
-  }
-
+export function requiredVersionPrMetadata(currentPrIssue) {
+  // Preserve the observed labels and owners; milestone selection belongs only to maintainers.
   return {
-    labels: [...new Set([...currentPrIssue.labels.map((label) => label.name), ...labels])],
-    assignees: [
-      ...new Set([...currentPrIssue.assignees.map((assignee) => assignee.login), ...assignees]),
+    labels: [
+      ...new Set([...currentPrIssue.labels.map((label) => label.name), ...VERSION_PR_LABELS]),
     ],
-    milestone: issue.milestone.number,
+    assignees: [
+      ...new Set([
+        ...currentPrIssue.assignees.map((assignee) => assignee.login),
+        ...VERSION_PR_ASSIGNEES,
+      ]),
+    ],
   };
 }
 
@@ -171,7 +173,6 @@ export function isPrMetadataCurrent(prIssue, expected) {
   const labels = new Set(prIssue.labels.map((label) => label.name));
   const assignees = new Set(prIssue.assignees.map((assignee) => assignee.login));
   return (
-    prIssue.milestone?.number === expected.milestone &&
     expected.labels.every((label) => labels.has(label)) &&
     expected.assignees.every((assignee) => assignees.has(assignee))
   );
@@ -186,8 +187,7 @@ export function assertVersionPrReadback(pullRequest, details, repository, url) {
     pullRequest.head?.repo?.full_name !== repository ||
     pullRequest.state !== 'open' ||
     pullRequest.draft !== true ||
-    !hasExactClosingReference(pullRequest.body) ||
-    !pullRequest.body?.includes(details.marker)
+    !hasVersionBody(pullRequest.body, details)
   ) {
     throw new Error(
       'version PR title, body, base, head, or draft state did not match the requested update',
@@ -208,9 +208,9 @@ export function classifyExistingVersionPr({ pullRequests, branchExists, reposito
       pullRequest.head?.ref === expected.branch &&
       pullRequest.head?.repo?.full_name === repository &&
       pullRequest.title === expected.title &&
-      typeof pullRequest.body === 'string' &&
-      pullRequest.body.includes(expected.marker) &&
-      hasExactClosingReference(pullRequest.body);
+      pullRequest.state === 'open' &&
+      pullRequest.draft === true &&
+      hasVersionBody(pullRequest.body, expected);
 
     if (!matches)
       throw new Error(
