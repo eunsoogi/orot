@@ -6,22 +6,35 @@ export function appointmentDisplayUntil(appointment: Appointment): number {
   return Date.parse(appointment.endsAt ?? appointment.effectiveAt);
 }
 
+/** Uses one exclusive instant boundary for Home, appointment lists, and route eligibility. */
+export function isEligibleNextVisit(
+  appointment: Appointment,
+  now: number,
+): boolean {
+  return (
+    (appointment.status === 'scheduled' ||
+      appointment.status === 'rescheduled') &&
+    appointmentDisplayUntil(appointment) > now
+  );
+}
+
+/** Equal start instants stay separate; stable IDs make the singular Home choice deterministic. */
+function compareNextVisits(left: Appointment, right: Appointment): number {
+  const leftStart = Date.parse(left.effectiveAt);
+  const rightStart = Date.parse(right.effectiveAt);
+  if (leftStart < rightStart) return -1;
+  if (leftStart > rightStart) return 1;
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+}
+
 export function selectNextAppointment(
   appointments: readonly Appointment[],
   now: number,
 ): Appointment | null {
   return (
     appointments
-      .filter(
-        appointment =>
-          (appointment.status === 'scheduled' ||
-            appointment.status === 'rescheduled') &&
-          appointmentDisplayUntil(appointment) > now,
-      )
-      .sort(
-        (left, right) =>
-          Date.parse(left.effectiveAt) - Date.parse(right.effectiveAt),
-      )[0] ?? null
+      .filter(appointment => isEligibleNextVisit(appointment, now))
+      .sort(compareNextVisits)[0] ?? null
   );
 }
 
