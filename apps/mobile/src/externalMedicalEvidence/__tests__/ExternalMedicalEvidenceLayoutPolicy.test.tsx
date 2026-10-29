@@ -13,39 +13,8 @@ import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter'
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
-import type {
-  EuropePmcMedicalEvidenceService,
-  ExternalMedicalPublication,
-} from '../europePmc';
-
-const publications: ExternalMedicalPublication[] = [
-  {
-    provider: 'Europe PMC',
-    recordId: 'SYNTHETIC-FIRST',
-    source: 'MED',
-    title: 'Synthetic sleep study',
-    authors: 'Synthetic Author One',
-    journal: 'Synthetic Journal',
-    publicationDate: '2035-01-01',
-    updatedDate: null,
-    abstract: 'Synthetic first abstract',
-    originalUrl: 'https://europepmc.org/article/MED/SYNTHETIC-FIRST',
-    retrievedAt: '2035-01-03T00:00:00.000Z',
-  },
-  {
-    provider: 'Europe PMC',
-    recordId: 'SYNTHETIC-SECOND',
-    source: 'MED',
-    title: 'Synthetic exercise study',
-    authors: 'Synthetic Author Two',
-    journal: 'Synthetic Journal',
-    publicationDate: '2035-01-02',
-    updatedDate: null,
-    abstract: 'Synthetic second abstract',
-    originalUrl: 'https://europepmc.org/article/MED/SYNTHETIC-SECOND',
-    retrievedAt: '2035-01-03T00:00:00.000Z',
-  },
-];
+import type { EuropePmcMedicalEvidenceService } from '../europePmc';
+import { publications } from './fixtures/literatureLayoutFixtures';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');
@@ -118,6 +87,16 @@ test('uses the production route policy and retains literature selection through 
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
+      // Stub child routes have no draft or task; production children register their own state.
+      leaveState={{
+        readState: () => ({
+          hasUnsavedChanges: false,
+          isRecording: false,
+          hasOngoingOperation: false,
+          revision: 0,
+          inputRevision: 0,
+        }),
+      }}
       rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
     >
       {actions =>
