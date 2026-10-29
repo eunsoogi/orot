@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { HealthReviewPending } from '@orot/agent-runtime';
 import { SafetyPolicyDecisionSchema, SourceRecordSchema } from '@orot/domain';
-import { Dimensions, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
@@ -122,6 +122,13 @@ it('keeps the selected pending review and form values as measured panels reflow'
     await screen.findByTestId('health-review-request-pending-review'),
   ).toBeOnTheScreen();
   expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 900, height: 700 } },
+  });
+  const direction = (id: string) =>
+    StyleSheet.flatten(screen.getByTestId(id).props.style).flexDirection;
+  expect(direction('health-review-population-choices')).toBe('row');
+  expect(direction('health-review-measurement-row-0')).toBe('row');
   await fireEvent.changeText(
     screen.getByTestId('health-review-name'),
     '유지할 초안',
@@ -157,6 +164,11 @@ it('keeps the selected pending review and form values as measured panels reflow'
       { nativeEvent: geometry(500) },
     );
   });
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 500, height: 700 } },
+  });
+  expect(direction('health-review-population-choices')).toBe('column');
+  expect(direction('health-review-measurement-row-0')).toBe('column');
   expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(screen.getByTestId('health-review-name')).toHaveDisplayValue(
     '유지할 초안',
@@ -183,6 +195,11 @@ it('keeps the selected pending review and form values as measured panels reflow'
       { nativeEvent: geometry(900) },
     );
   });
+  await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 900, height: 700 } },
+  });
+  expect(direction('health-review-population-choices')).toBe('column');
+  expect(direction('health-review-measurement-row-0')).toBe('column');
   expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(
     screen.getByTestId('health-review-needs_clarification'),

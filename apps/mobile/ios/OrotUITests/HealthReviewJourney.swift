@@ -75,8 +75,16 @@ final class HealthReviewJourney {
         enter("health-review-systolic-0", systolic)
         enter("health-review-diastolic-0", diastolic)
         tap("health-review-measuredAt-0")
-        tap("health-review-time-done", inForm: false)
+        pickerAction("health-review-time-done")
         enter("health-review-source-0", "사용자가 확인한 합성 혈압계")
+    }
+
+    func pickerAction(_ id: String) {
+        let control = element(id)
+        XCTAssertTrue(UITestConditions.exists(control))
+        FormUITestConditions.reveal(control, in: app, scrollID: "health-review-time-page")
+        XCTAssertTrue(control.isHittable)
+        control.tap()
     }
 
     func status(_ id: String) {

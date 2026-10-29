@@ -1,4 +1,5 @@
-import { Pressable, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { MeasurementFields } from './MeasurementFields';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -13,39 +14,49 @@ function Choices<T extends string>({
   selected,
   onSelect,
   disabled,
+  wide,
+  testID,
 }: {
   label: string;
   values: readonly (readonly [T, string])[];
   selected: T;
   onSelect: (value: T) => void;
   disabled: boolean;
+  wide: boolean;
+  testID: string;
 }) {
   return (
     <View>
       <Text accessibilityRole="header">{label}</Text>
-      {values.map(([value, title]) => (
-        <Pressable
-          key={value}
-          accessibilityRole="radio"
-          accessibilityLabel={`${label}: ${title}`}
-          accessibilityState={{
-            checked: selected === value,
-            selected: selected === value,
-            disabled,
-          }}
-          disabled={disabled}
-          style={[styles.choice, selected === value && styles.choiceSelected]}
-          onPress={() => onSelect(value)}
-        >
-          <View
+      <View testID={testID} style={wide ? styles.choiceRow : styles.column}>
+        {values.map(([value, title]) => (
+          <Pressable
+            key={value}
+            accessibilityRole="radio"
+            accessibilityLabel={`${label}: ${title}`}
+            accessibilityState={{
+              checked: selected === value,
+              selected: selected === value,
+              disabled,
+            }}
+            disabled={disabled}
             style={[
-              styles.choiceMark,
-              selected === value && styles.choiceMarkSelected,
+              styles.choice,
+              wide && styles.choiceWide,
+              selected === value && styles.choiceSelected,
             ]}
-          />
-          <Text style={styles.choiceLabel}>{title}</Text>
-        </Pressable>
-      ))}
+            onPress={() => onSelect(value)}
+          >
+            <View
+              style={[
+                styles.choiceMark,
+                selected === value && styles.choiceMarkSelected,
+              ]}
+            />
+            <Text style={styles.choiceLabel}>{title}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -69,6 +80,10 @@ export function SafetyForm({
   onChange: (value: HealthReviewSafetyDraft) => void;
   disabled: boolean;
 }) {
+  const [width, setWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  // Use the actual content lane, since a wide window may be split by the system.
+  const wide = width / Math.max(1, fontScale) >= 720;
   const set = <K extends keyof HealthReviewSafetyDraft>(
     key: K,
     value: HealthReviewSafetyDraft[K],
@@ -76,9 +91,15 @@ export function SafetyForm({
     if (!disabled) onChange({ ...draft, [key]: value });
   };
   return (
-    <View style={styles.form}>
+    <View
+      style={styles.form}
+      testID="health-review-form"
+      onLayout={event => setWidth(event.nativeEvent.layout.width)}
+    >
       <Choices
         label={copy.population}
+        testID="health-review-population-choices"
+        wide={wide}
         disabled={disabled}
         selected={draft.population}
         onSelect={value => set('population', value)}
@@ -91,6 +112,8 @@ export function SafetyForm({
       />
       <Choices
         label={copy.context}
+        testID="health-review-context-choices"
+        wide={wide}
         disabled={disabled}
         selected={draft.readingContext}
         onSelect={value => set('readingContext', value)}
@@ -107,6 +130,7 @@ export function SafetyForm({
           row={row}
           index={index}
           disabled={disabled}
+          wide={wide}
           onChange={value =>
             set(
               'readings',
@@ -128,6 +152,8 @@ export function SafetyForm({
       ) : null}
       <Choices
         label={copy.symptoms}
+        testID="health-review-symptom-choices"
+        wide={wide}
         disabled={disabled}
         selected={draft.symptoms}
         onSelect={value => set('symptoms', value)}
@@ -157,6 +183,8 @@ export function SafetyForm({
         : null}
       <Choices
         label={copy.visit}
+        testID="health-review-visit-choices"
+        wide={wide}
         disabled={disabled}
         selected={draft.upcomingVisit}
         onSelect={value => set('upcomingVisit', value)}

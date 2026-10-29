@@ -24,6 +24,9 @@ export const healthReviewStyles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   choiceSelected: { backgroundColor: appColors.primarySoft },
+  choiceRow: { flexDirection: 'row', gap: 8 },
+  column: { flexDirection: 'column' },
+  choiceWide: { flex: 1, minWidth: 0 },
   choiceLabel: { flexShrink: 1 },
   choiceMark: {
     width: 20,
@@ -37,6 +40,9 @@ export const healthReviewStyles = StyleSheet.create({
     backgroundColor: appColors.primary,
   },
   reading: { gap: 8 },
+  measurementRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  measurementValue: { flex: 1, minWidth: 0 },
+  measurementTime: { flex: 1.5, minWidth: 0 },
   input: {
     minHeight: 48,
     width: '100%',

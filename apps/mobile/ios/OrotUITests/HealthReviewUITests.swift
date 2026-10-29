@@ -10,12 +10,26 @@ final class HealthReviewUITests: OrotFailFastTestCase {
         journey.open()
         journey.name()
         journey.tap("health-review-measuredAt-0")
-        journey.tap("health-review-time-done", inForm: false)
+        journey.pickerAction("health-review-time-done")
         let time = journey.element("health-review-measuredAt-0")
         let committed = time.value as? String
         XCTAssertNotNil(committed)
         journey.tap("health-review-measuredAt-0")
-        journey.tap("health-review-time-cancel", inForm: false)
+        let draft = journey.element("health-review-time-draft")
+        XCTAssertTrue(UITestConditions.exists(draft))
+        let before = draft.label
+        // The native time control uses UIKit's wheel-style UIDatePicker.
+        let wheel = journey.element("health-review-time-wheel").pickerWheels.firstMatch
+        XCTAssertTrue(UITestConditions.exists(wheel))
+        FormUITestConditions.reveal(wheel, in: journey.app, scrollID: "health-review-time-page")
+        XCTAssertTrue(wheel.isHittable)
+        wheel.swipeUp()
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label != %@", before), object: draft)
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
+        journey.pickerAction("health-review-time-cancel")
+        XCTAssertEqual(time.value as? String, committed)
+        journey.tap("health-review-measuredAt-0")
+        journey.pickerAction("health-review-time-done")
         XCTAssertEqual(time.value as? String, committed)
         XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)
     }

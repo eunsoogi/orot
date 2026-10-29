@@ -39,10 +39,12 @@ export function MeasurementFields({
   index,
   disabled,
   onChange,
+  wide = false,
 }: {
   row: SafetyReadingDraft;
   index: number;
   disabled: boolean;
+  wide?: boolean;
   onChange: (value: SafetyReadingDraft) => void;
 }) {
   const [draft, setDraft] = useState<Date | null>(null);
@@ -58,40 +60,49 @@ export function MeasurementFields({
     onChange({ ...row, [key]: value });
   return (
     <View style={styles.reading}>
-      {(['systolic', 'diastolic'] as const).map(key => (
-        <View key={key}>
-          <Text>{copy[key]}</Text>
-          <TextInput
-            accessibilityLabel={`${copy[key]} ${index + 1}`}
-            value={row[key]}
-            editable={!disabled}
-            keyboardType="numeric"
-            style={styles.input}
-            testID={`health-review-${key}-${index}`}
-            onChangeText={value => set(key, value)}
-          />
-        </View>
-      ))}
-      <Text>{copy.measuredAt}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${copy.measuredAt} ${index + 1}`}
-        accessibilityValue={{
-          text: formatMeasurementTime(row.measuredAt) || copy.chooseTime,
-        }}
-        disabled={disabled}
-        style={styles.input}
-        testID={`health-review-measuredAt-${index}`}
-        onPress={() =>
-          setDraft(
-            formatMeasurementTime(row.measuredAt)
-              ? new Date(row.measuredAt)
-              : new Date(),
-          )
-        }
+      <View
+        testID={`health-review-measurement-row-${index}`}
+        style={wide ? styles.measurementRow : styles.column}
       >
-        <Text>{formatMeasurementTime(row.measuredAt) || copy.chooseTime}</Text>
-      </Pressable>
+        {(['systolic', 'diastolic'] as const).map(key => (
+          <View key={key} style={wide ? styles.measurementValue : undefined}>
+            <Text>{copy[key]}</Text>
+            <TextInput
+              accessibilityLabel={`${copy[key]} ${index + 1}`}
+              value={row[key]}
+              editable={!disabled}
+              keyboardType="numeric"
+              style={styles.input}
+              testID={`health-review-${key}-${index}`}
+              onChangeText={value => set(key, value)}
+            />
+          </View>
+        ))}
+        <View style={wide ? styles.measurementTime : undefined}>
+          <Text>{copy.measuredAt}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${copy.measuredAt} ${index + 1}`}
+            accessibilityValue={{
+              text: formatMeasurementTime(row.measuredAt) || copy.chooseTime,
+            }}
+            disabled={disabled}
+            style={styles.input}
+            testID={`health-review-measuredAt-${index}`}
+            onPress={() =>
+              setDraft(
+                formatMeasurementTime(row.measuredAt)
+                  ? new Date(row.measuredAt)
+                  : new Date(),
+              )
+            }
+          >
+            <Text>
+              {formatMeasurementTime(row.measuredAt) || copy.chooseTime}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
       <Text>{copy.source}</Text>
       <TextInput
         accessibilityLabel={`${copy.source} ${index + 1}`}
@@ -108,7 +119,10 @@ export function MeasurementFields({
         onRequestClose={() => setDraft(null)}
       >
         <SafeAreaView style={styles.pickerScreen}>
-          <ScrollView contentContainerStyle={styles.pickerPage}>
+          <ScrollView
+            testID="health-review-time-page"
+            contentContainerStyle={styles.pickerPage}
+          >
             <Text accessibilityRole="header">{copy.measuredAt}</Text>
             {draft ? (
               <>
@@ -119,12 +133,15 @@ export function MeasurementFields({
                   onChange={(_, value) => value && setDraft(value)}
                 />
                 <DateTimePicker
+                  testID="health-review-time-wheel"
                   value={draft}
                   mode="time"
                   display="spinner"
                   onChange={(_, value) => value && setDraft(value)}
                 />
-                <Text>{formatMeasurementTime(draft.toISOString())}</Text>
+                <Text testID="health-review-time-draft">
+                  {formatMeasurementTime(draft.toISOString())}
+                </Text>
               </>
             ) : null}
             <AppButton
