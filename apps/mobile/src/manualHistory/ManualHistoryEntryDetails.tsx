@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { ManualHistoryScreenRecord } from './types';
 
@@ -10,13 +13,6 @@ interface ManualHistoryEntryDetailsProps {
   onClose: () => void;
   onDelete: () => void | Promise<void>;
   deleting: boolean;
-}
-
-function kindLabel(kind: ManualHistoryScreenRecord['kind']): string {
-  return t(
-    ('manualHistory.kind.' +
-      kind) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
-  );
 }
 
 function effectiveDateLabel(
@@ -55,10 +51,8 @@ export default function ManualHistoryEntryDetails({
   return (
     <View style={styles.container} testID="manual-history-detail">
       <Text accessibilityRole="header" style={styles.sectionTitle}>
-        {t('manualHistory.detail.title')}
+        {t('manualHistory.form.detailsLabel')}
       </Text>
-      <Text style={styles.entryTitle}>{entry.title}</Text>
-      <Text>{kindLabel(entry.kind)}</Text>
       <Text testID="manual-history-date-detail">
         {effectiveDateLabel(entry.effectiveDate)}
       </Text>
@@ -82,7 +76,12 @@ export default function ManualHistoryEntryDetails({
                   ? t('manualHistory.detail.currentVersion')
                   : t('manualHistory.detail.earlierVersion')}
               </Text>
-              <Text>{kindLabel(version.kind)}</Text>
+              <Text>
+                {t(
+                  ('manualHistory.kind.' +
+                    version.kind) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
+                )}
+              </Text>
               <Text>
                 {t('manualHistory.status', { review: reviewLabel(version) })}
               </Text>
@@ -106,12 +105,15 @@ export default function ManualHistoryEntryDetails({
         </View>
       ) : null}
       <Button
+        variant="secondary"
+        disabled={deleting}
         onPress={onCorrect}
         testID="manual-history-correct"
         title={t('manualHistory.detail.correct')}
       />
       {!confirmDelete ? (
         <Button
+          variant="secondary"
           disabled={deleting}
           onPress={() => setConfirmDelete(true)}
           testID="manual-history-delete"
@@ -124,12 +126,14 @@ export default function ManualHistoryEntryDetails({
         >
           <Text>{t('manualHistory.detail.confirmDelete')}</Text>
           <Button
+            variant="secondary"
             disabled={deleting}
             onPress={onDelete}
             testID="manual-history-confirm-delete"
             title={t('manualHistory.detail.confirmDeleteAction')}
           />
           <Button
+            variant="secondary"
             disabled={deleting}
             onPress={() => setConfirmDelete(false)}
             testID="manual-history-cancel-delete"
@@ -138,6 +142,8 @@ export default function ManualHistoryEntryDetails({
         </View>
       )}
       <Button
+        variant="secondary"
+        disabled={deleting}
         onPress={onClose}
         testID="manual-history-close-details"
         title={t('manualHistory.detail.close')}
@@ -148,22 +154,23 @@ export default function ManualHistoryEntryDetails({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    gap: 8,
-    padding: 14,
+    backgroundColor: appColors.surface,
+    borderTopColor: appColors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 16,
+    paddingTop: 16,
   },
-  sectionTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  entryTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
+  sectionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  entryTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   history: { gap: 8, paddingTop: 8 },
   version: {
-    borderLeftColor: '#a8b3bf',
+    borderLeftColor: appColors.border,
     borderLeftWidth: 2,
     gap: 6,
     paddingLeft: 10,
   },
   confirmation: {
-    backgroundColor: '#fff4e8',
+    backgroundColor: appColors.warningSurface,
     borderRadius: 8,
     gap: 8,
     padding: 12,

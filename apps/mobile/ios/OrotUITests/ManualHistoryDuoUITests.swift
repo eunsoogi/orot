@@ -12,12 +12,17 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         let originalOrientation = XCUIDevice.shared.orientation
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
         launch(app)
         defer {
+            if let originalAppearance {
+                try? AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
+            }
             app.terminate()
             XCUIDevice.shared.orientation = originalOrientation
         }
 
+        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         try openManualHistory(app)
         tap(app, "manual-history-add")
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
@@ -50,7 +55,9 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         visible(app, "기준일을 모름")
         visible(app, "직접 입력 · 미확인")
 
+        _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
         tapDetails(app)
+        NavigationGeometryUITestConditions.captureScreen(app, name: "manual-history-inline-dark-details", testCase: self)
         tap(app, "manual-history-correct")
         guard replace(app, "manual-history-title-input", with: "Synthetic corrected Duo history") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic corrected user-entered details.", multiline: true) else { return }
@@ -70,7 +77,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         waitForOrientation(app, landscape: true, changedFrom: portraitSize)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correction-history")), app.debugDescription)
         visible(app, "Synthetic corrected Duo history")
-        assertPanelsDoNotOverlap(app)
+        assertDetailsStayInsideList(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correct")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-delete")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-close-details")), app.debugDescription)
@@ -80,7 +87,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         waitForOrientation(app, landscape: false, changedFrom: landscapeSize)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-detail")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correction-history")), app.debugDescription)
-        assertPanelsDoNotOverlap(app)
+        assertDetailsStayInsideList(app)
 
         app.terminate()
         XCUIDevice.shared.orientation = .portrait
@@ -90,7 +97,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         visible(app, "Synthetic corrected Duo history")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correction-history")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-delete")), app.debugDescription)
-        assertPanelsStacked(app)
+        assertDetailsStayInsideList(app)
         tap(app, "manual-history-delete")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-delete-confirmation")), app.debugDescription)
         tap(app, "manual-history-cancel-delete")
@@ -101,7 +108,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     private func launch(_ app: XCUIApplication, largeText: Bool = false) {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "duo", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+        ] + AppearanceUITestConditions.observationArguments + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
@@ -111,7 +118,9 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-open-manual-history")
         NavigationUITestConditions.route(app, markers: ["manual-history-title"])
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-scroll")), app.debugDescription)
+        let page = UITestConditions.element(app, "manual-history-scroll")
+        XCTAssertTrue(UITestConditions.exists(page), app.debugDescription)
+        XCTAssertEqual(page.scrollViews.count, 0, app.debugDescription)
     }
 
     @MainActor
@@ -160,24 +169,15 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func assertPanelsDoNotOverlap(_ app: XCUIApplication) {
+    private func assertDetailsStayInsideList(_ app: XCUIApplication) {
         let list = UITestConditions.element(app, "manual-history-list-panel")
         let selected = UITestConditions.element(app, "manual-history-selected-panel")
         XCTAssertTrue(UITestConditions.exists(list) && UITestConditions.exists(selected), app.debugDescription)
 
-        // Measured panel frames must form one readable row or one readable column after reflow.
-        let sideBySide = selected.frame.minX >= list.frame.maxX - 1
-        let stacked = selected.frame.minY >= list.frame.maxY - 1
-            && abs(selected.frame.minX - list.frame.minX) < 2
-        XCTAssertTrue(sideBySide || stacked, app.debugDescription)
-    }
-
-    @MainActor
-    private func assertPanelsStacked(_ app: XCUIApplication) {
-        let list = UITestConditions.element(app, "manual-history-list-panel")
-        let selected = UITestConditions.element(app, "manual-history-selected-panel")
-        XCTAssertTrue(UITestConditions.exists(list) && UITestConditions.exists(selected), app.debugDescription)
-        XCTAssertGreaterThanOrEqual(selected.frame.minY, list.frame.maxY - 1, app.debugDescription)
-        XCTAssertEqual(selected.frame.minX, list.frame.minX, accuracy: 2, app.debugDescription)
+        // Expanded details remain inside the selected list card, including after window reflow.
+        XCTAssertGreaterThanOrEqual(selected.frame.minY, list.frame.minY - 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(selected.frame.maxY, list.frame.maxY + 1, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(selected.frame.minX, list.frame.minX - 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(selected.frame.maxX, list.frame.maxX + 1, app.debugDescription)
     }
 }

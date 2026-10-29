@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { ManualHistoryHeader } from './ManualHistoryHeader';
+import { styles } from './manualHistoryScreenStyles';
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { t } from '../i18n';
 import { ManualHistoryEntryBrowser } from './ManualHistoryEntryBrowser';
 import ManualHistoryForm from './ManualHistoryForm';
-import { useManualHistoryDraftState } from './useManualHistoryDraftState';
+import {
+  manualHistoryCorrectionDraft,
+  useManualHistoryDraftState,
+} from './useManualHistoryDraftState';
 import type {
   ManualHistoryScreenDraft,
   ManualHistoryScreenFormDraft,
@@ -21,6 +28,8 @@ export default function ManualHistoryScreen({
   repository,
   onBack,
 }: ManualHistoryScreenProps) {
+  const navigationInset = useNavigationContentInset();
+  const savingRef = useRef(false);
   const [entries, setEntries] = useState<ManualHistoryScreenRecord[]>([]);
   const [selectedEntry, setSelectedEntry] =
     useState<ManualHistoryScreenRecord | null>(null);
@@ -54,6 +63,7 @@ export default function ManualHistoryScreen({
   }, [reload]);
 
   function startNewEntry() {
+    if (savingRef.current) return;
     setFormKey('new');
     setFormEntry(null);
     setError('');
@@ -62,6 +72,7 @@ export default function ManualHistoryScreen({
   }
 
   function startCorrection(entry: ManualHistoryScreenRecord) {
+    if (savingRef.current) return;
     setFormKey('correction:' + entry.id);
     setFormEntry(entry);
     setError('');
@@ -70,6 +81,7 @@ export default function ManualHistoryScreen({
   }
 
   async function openDetails(entry: ManualHistoryScreenRecord) {
+    if (savingRef.current) return;
     setError('');
     try {
       setSelectedEntry(entry);
@@ -80,6 +92,9 @@ export default function ManualHistoryScreen({
   }
 
   async function saveEntry(input: ManualHistoryScreenDraft) {
+    // A ref closes the same-event gap before React publishes the disabled state.
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError('');
     const previous = formEntry;
@@ -90,6 +105,7 @@ export default function ManualHistoryScreen({
         : await repository.create(input);
     } catch {
       setError(t('manualHistory.error.save'));
+      savingRef.current = false;
       setSaving(false);
       return;
     }
@@ -117,6 +133,7 @@ export default function ManualHistoryScreen({
         setError(t('manualHistory.error.correctedHistory'));
       }
     }
+    savingRef.current = false;
     setSaving(false);
   }
 
@@ -128,7 +145,8 @@ export default function ManualHistoryScreen({
   );
 
   async function deleteEntry() {
-    if (!selectedEntry) return;
+    if (!selectedEntry || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError('');
     try {
@@ -141,55 +159,49 @@ export default function ManualHistoryScreen({
     } catch {
       setError(t('manualHistory.error.delete'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   const initialValue = formKey ? getDraft(formKey) : undefined;
-  const correctionInitialValue: ManualHistoryScreenFormDraft | undefined =
-    formEntry
-      ? {
-          kind: formEntry.kind,
-          title: formEntry.title,
-          details: formEntry.details,
-          effectiveDateText:
-            formEntry.effectiveDate.status === 'known'
-              ? formEntry.effectiveDate.date
-              : '',
-          dateUnknown: formEntry.effectiveDate.status === 'unknown',
-          correctionNote: '',
-        }
-      : undefined;
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={[styles.container, navigationInset]}
       keyboardShouldPersistTaps="handled"
       testID="manual-history-scroll"
     >
-      <View style={styles.topBar}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="manual-history-title"
-        >
-          {t('manualHistory.title')}
-        </Text>
-        <Button
-          onPress={onBack}
-          testID="manual-history-back"
-          title={t('manualHistory.back')}
-        />
-      </View>
-      <Text style={styles.message}>{t('manualHistory.subtitle')}</Text>
-      <Text style={styles.provenanceNote}>{t('manualHistory.provenance')}</Text>
-      {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
-      {error ? (
-        <Text accessibilityRole="alert" testID="manual-history-error">
-          {error}
-        </Text>
-      ) : null}
+      <ManualHistoryHeader
+        onBack={onBack}
+        saving={saving}
+        error={error}
+        notice={notice}
+      />
 
+      {!formOpen ? (
+        <Button
+          variant="secondary"
+          disabled={saving}
+          onPress={startNewEntry}
+          testID="manual-history-add"
+          title={t('manualHistory.add')}
+        />
+      ) : (
+        <ManualHistoryForm
+          // Replace field state when switching entries, then restore that entry's saved draft.
+          key={formKey ?? 'new'}
+          initialValue={initialValue ?? manualHistoryCorrectionDraft(formEntry)}
+          isCorrection={formEntry !== null}
+          onClose={() => {
+            if (!savingRef.current) setFormOpen(false);
+          }}
+          onDraftChange={saveFormDraft}
+          onSave={saveEntry}
+          saving={saving}
+        />
+      )}
       <ManualHistoryEntryBrowser
         deleting={saving}
         entries={entries}
@@ -208,41 +220,6 @@ export default function ManualHistoryScreen({
         onRetry={reload}
         selectedEntry={selectedEntry}
       />
-      {!formOpen ? (
-        <Button
-          onPress={startNewEntry}
-          testID="manual-history-add"
-          title={t('manualHistory.add')}
-        />
-      ) : (
-        <ManualHistoryForm
-          // Replace field state when switching entries, then restore that entry's saved draft.
-          key={formKey ?? 'new'}
-          initialValue={initialValue ?? correctionInitialValue}
-          isCorrection={formEntry !== null}
-          onClose={() => setFormOpen(false)}
-          onDraftChange={saveFormDraft}
-          onSave={saveEntry}
-          saving={saving}
-        />
-      )}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 12,
-    padding: 20,
-    backgroundColor: '#f7f8fa',
-    minHeight: '100%',
-  },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  message: { color: '#45515f', fontSize: 15 },
-  provenanceNote: { color: '#45515f', fontSize: 13 },
-});
