@@ -96,7 +96,7 @@ enum NavigationGeometryUITestConditions {
         return stacked
     }
 
-    /// Returns the measured UIWindow frame after native and shared navigation bounds agree.
+    /// Returns the measured navigation rail frame after native and shared geometry agree.
     @discardableResult
     static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase, requireCurrentNavigation: Bool = false) throws -> CGRect {
         let content = UITestConditions.element(app, "navigation-content-region")

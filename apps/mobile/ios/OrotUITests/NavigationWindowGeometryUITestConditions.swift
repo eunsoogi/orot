@@ -3,6 +3,89 @@ import XCTest
 /// Extends the existing geometry journey without changing the system's window arrangement.
 @MainActor
 enum NavigationWindowGeometryUITestConditions {
+    /// Binds a logical route identity to distinct UIKit callback, provider context, and public window samples.
+    struct GeometryReceipt {
+        let routeKey: String
+        let native: GeometryPayload
+        let eventSnapshot: GeometrySnapshot
+        let contextSnapshot: GeometrySnapshot
+        let publicUIKit: GeometryPayload
+        let adaptive: (routeKey: String, width: Double, columns: Int)?
+
+        var matchesPublicUIKit: Bool {
+            native.matches(publicUIKit)
+                && eventSnapshot.payload.matches(publicUIKit)
+                && contextSnapshot.payload.matches(publicUIKit)
+                && NavigationWindowGeometryUITestConditions.rectMatches(contextSnapshot.safeAreaFrame, expectedSafeAreaFrame)
+        }
+
+        var expectedSafeAreaFrame: GeometryRect {
+            // Apply each UIWindow inset once when deriving its native safe rectangle.
+            GeometryRect(
+                x: publicUIKit.windowBounds.x + publicUIKit.safeAreaInsets.left,
+                y: publicUIKit.windowBounds.y + publicUIKit.safeAreaInsets.top,
+                width: max(0, publicUIKit.windowBounds.width - publicUIKit.safeAreaInsets.left - publicUIKit.safeAreaInsets.right),
+                height: max(0, publicUIKit.windowBounds.height - publicUIKit.safeAreaInsets.top - publicUIKit.safeAreaInsets.bottom),
+            )
+        }
+    }
+
+    /// Decodes normalized UIWindow geometry, safe-area bounds, and usable-region output.
+    struct GeometrySnapshot: Decodable {
+        let windowBounds: GeometryRect
+        let safeAreaInsets: GeometryInsets
+        let reservedRegionsSupported: Bool
+        let reservedRegions: [GeometryRegion]
+        let safeAreaFrame: GeometryRect
+        let usableRegions: [GeometryRect]
+
+        var payload: GeometryPayload {
+            GeometryPayload(windowBounds: windowBounds, safeAreaInsets: safeAreaInsets,
+                            reservedRegionsSupported: reservedRegionsSupported, reservedRegions: reservedRegions)
+        }
+    }
+
+    /// Carries native or public UIKit measurements in the same window coordinate system.
+    struct GeometryPayload: Decodable {
+        let windowBounds: GeometryRect
+        let safeAreaInsets: GeometryInsets
+        let reservedRegionsSupported: Bool
+        let reservedRegions: [GeometryRegion]
+
+        /// Compares every shared geometry field while allowing half-point UIKit rounding.
+        func matches(_ other: GeometryPayload) -> Bool {
+            NavigationWindowGeometryUITestConditions.rectMatches(windowBounds, other.windowBounds)
+                && NavigationWindowGeometryUITestConditions.insetsMatch(safeAreaInsets, other.safeAreaInsets)
+                && reservedRegionsSupported == other.reservedRegionsSupported
+                && NavigationWindowGeometryUITestConditions.regionsMatch(reservedRegions, other.reservedRegions)
+        }
+    }
+
+    /// Rectangles are expressed in UIWindow points so route frames share the native measurement basis.
+    struct GeometryRect: Decodable {
+        let x: Double
+        let y: Double
+        let width: Double
+        let height: Double
+    }
+
+    /// Carries the four safe-area edge values reported for a UIWindow.
+    struct GeometryInsets: Decodable {
+        let top: Double
+        let right: Double
+        let bottom: Double
+        let left: Double
+    }
+
+    /// Retains a system-reserved frame and its UIKit margin metadata without changing its semantics.
+    struct GeometryRegion: Decodable {
+        let id: String
+        let kind: String
+        let frame: GeometryRect
+        let margins: GeometryInsets
+        let isActive: Bool
+    }
+
     static func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target))
@@ -99,6 +182,21 @@ enum NavigationWindowGeometryUITestConditions {
         testCase.add(screenshot)
     }
 
+    /// Checks received and committed UIKit geometry, including active reservations and usable regions.
+    static func assertGeometry(_ receipt: GeometryReceipt, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(receipt.native.matches(receipt.publicUIKit), "The RN native event must match public UIKit bounds and all four insets", file: file, line: line)
+        XCTAssertTrue(receipt.eventSnapshot.payload.matches(receipt.publicUIKit), "The native callback must normalize the received geometry", file: file, line: line)
+        XCTAssertTrue(receipt.contextSnapshot.payload.matches(receipt.publicUIKit), "The provider context must retain the normalized native geometry", file: file, line: line)
+        XCTAssertTrue(rectMatches(receipt.contextSnapshot.safeAreaFrame, receipt.expectedSafeAreaFrame), file: file, line: line)
+        XCTAssertEqual(receipt.contextSnapshot.reservedRegionsSupported, receipt.publicUIKit.reservedRegionsSupported, file: file, line: line)
+        XCTAssertTrue(regionsMatch(receipt.contextSnapshot.reservedRegions, receipt.publicUIKit.reservedRegions), file: file, line: line)
+        for region in receipt.contextSnapshot.reservedRegions where region.isActive {
+            for usable in receipt.contextSnapshot.usableRegions {
+                XCTAssertFalse(cgRect(region.frame).intersects(cgRect(usable)), "Active reserved regions must be absent from usable content rectangles", file: file, line: line)
+            }
+        }
+    }
+
     private static func rect(_ value: Any?) throws -> CGRect {
         let values = try XCTUnwrap(value as? [String: Double])
         return try CGRect(x: XCTUnwrap(values["x"]), y: XCTUnwrap(values["y"]),
@@ -108,5 +206,31 @@ enum NavigationWindowGeometryUITestConditions {
     private static func matches(_ first: CGRect, _ second: CGRect) -> Bool {
         abs(first.minX - second.minX) <= 0.5 && abs(first.minY - second.minY) <= 0.5 &&
             abs(first.width - second.width) <= 0.5 && abs(first.height - second.height) <= 0.5
+    }
+
+    /// Allows half-point floating rounding while still requiring actual frame agreement.
+    nonisolated static func rectMatches(_ first: GeometryRect, _ second: GeometryRect) -> Bool {
+        abs(first.x - second.x) <= 0.5 && abs(first.y - second.y) <= 0.5 &&
+            abs(first.width - second.width) <= 0.5 && abs(first.height - second.height) <= 0.5
+    }
+
+    /// Allows half-point rounding while requiring all four safe-area edges to agree.
+    private nonisolated static func insetsMatch(_ first: GeometryInsets, _ second: GeometryInsets) -> Bool {
+        abs(first.top - second.top) <= 0.5 && abs(first.right - second.right) <= 0.5 &&
+            abs(first.bottom - second.bottom) <= 0.5 && abs(first.left - second.left) <= 0.5
+    }
+
+    /// Matches reservations by stable kind and id because UIKit may return them in a different order.
+    private nonisolated static func regionsMatch(_ first: [GeometryRegion], _ second: [GeometryRegion]) -> Bool {
+        guard first.count == second.count else { return false }
+        return first.allSatisfy { region in
+            guard let match = second.first(where: { $0.id == region.id && $0.kind == region.kind }) else { return false }
+            return region.isActive == match.isActive && rectMatches(region.frame, match.frame) && insetsMatch(region.margins, match.margins)
+        }
+    }
+
+    /// Converts a normalized receipt rectangle for usable-region overlap checks.
+    private static func cgRect(_ rect: GeometryRect) -> CGRect {
+        CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height)
     }
 }
