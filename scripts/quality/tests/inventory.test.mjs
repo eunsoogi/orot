@@ -36,8 +36,25 @@ test('classifies the pinned React Native Codegen patch with focused validation',
 
   assert.equal(codegenPatch.kind, 'excluded');
   assert.match(codegenPatch.reason, /version-pinned third-party diff/i);
-  assert.match(codegenPatch.validation, /Codegen empty-State regression/);
+  assert.match(codegenPatch.validation, /Codegen empty-State/);
+  assert.match(codegenPatch.validation, /empty-ShadowNodes regressions/);
   assert.match(codegenPatch.validation, /clean iOS compilation/);
+});
+
+test('classifies the pinned Slider and DateTimePicker warning repairs with native validation', () => {
+  const sliderPatch = classifyPath('vendor/patches/@react-native-community__slider@5.2.2.patch');
+  const dateTimePickerPatch = classifyPath(
+    'vendor/patches/@react-native-community__datetimepicker@9.2.2.patch',
+  );
+
+  for (const patch of [sliderPatch, dateTimePickerPatch]) {
+    assert.equal(patch.kind, 'excluded');
+    assert.match(patch.reason, /version-pinned third-party diff/i);
+    assert.match(patch.validation, /Frozen pnpm installation/);
+    assert.match(patch.validation, /warning-gated Duo Release build/);
+  }
+  assert.match(sliderPatch.validation, /image and quantization regressions/);
+  assert.match(dateTimePickerPatch.validation, /converter and pod-source regressions/);
 });
 
 test('classifies the pinned p-queue timer patch with bundle validation', () => {
