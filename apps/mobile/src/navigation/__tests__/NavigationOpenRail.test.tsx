@@ -13,6 +13,7 @@ import {
   openGeometry,
   rotatedGeometry,
 } from '../__fixtures__/navigationOpenGeometry';
+import { leftSplitGeometry } from '../__fixtures__/navigationSplitGeometry';
 
 /** Exposes only the native presentation contract; this is not native UI proof. */
 function Surface({
@@ -139,4 +140,26 @@ test('retains draft and disabled primary action across continuous Open geometry 
     screen.getByTestId('navigation-primary-action-surface-actions').props
       .children,
   ).toBe('primary:true');
+});
+
+test('requests the observed left edge from the native surface and returns to the right without losing the draft', async () => {
+  const { rerender } = await render(<Fixture geometry={openGeometry} />);
+  await fireEvent.press(screen.getByTestId('edit-draft'));
+  await rerender(<Fixture geometry={leftSplitGeometry} />);
+  // A policy result must reach the native layoutMode prop; a shared content
+  // frame alone cannot relocate the mounted toolbar or prove native execution.
+  expect(
+    screen.getByTestId('navigation-right-rail').props.accessibilityHint,
+  ).toBe('left');
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('navigation-right-rail-host').props.style,
+    ),
+  ).toEqual(expect.objectContaining({ left: 0, width: 60 }));
+  expect(screen.getByTestId('draft').props.children).toBe('edited');
+  await rerender(<Fixture geometry={openGeometry} />);
+  expect(
+    screen.getByTestId('navigation-right-rail').props.accessibilityHint,
+  ).toBe('right');
+  expect(screen.getByTestId('draft').props.children).toBe('edited');
 });
