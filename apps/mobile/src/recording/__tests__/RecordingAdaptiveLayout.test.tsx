@@ -23,7 +23,7 @@ afterEach(async () => {
 });
 
 test('keeps consent and active recording state through width and text-scale reflow', async () => {
-  // 664 fits two 320pt panels plus the gap; large text raises that threshold above 983pt.
+  // Page sections stay vertical at wide widths as well as with large text.
   await setWindow(664, 1);
   const { service, emit } = createService();
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);
@@ -31,7 +31,7 @@ test('keeps consent and active recording state through width and text-scale refl
   await screen.findByTestId('recording-status');
   expect(
     screen.getByTestId('recording-content-columns').props.style,
-  ).toMatchObject({ flexDirection: 'row' });
+  ).toMatchObject({ flexDirection: 'column' });
   expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('recording-consent'));

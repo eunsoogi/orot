@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { NavigationPrimaryActionContext } from '../navigation/useNavigationPrimaryAction';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type { NextVisitQuestionsController } from './controllerTypes';
@@ -74,13 +74,7 @@ export function NextVisitQuestionsScreenView<
     isSaving,
     generateLabel,
     hasSharedAction,
-  } = useNextVisitPrimaryAction(
-    controller,
-    canGenerate,
-    savedQuestions.length > 0
-      ? () => controller.startReview(savedQuestions, savedCaveats)
-      : null,
-  );
+  } = useNextVisitPrimaryAction(controller);
 
   const openSource = (reference: TReference) => {
     // Integrated navigation owns one detail screen; only standalone callers use the local sheet.
@@ -195,8 +189,8 @@ export function NextVisitQuestionsScreenView<
   return (
     <>
       <KeyboardAvoidingView
-        // The shared shell moves both the page and toolbar; standalone use owns its keyboard inset here.
-        enabled={!hasSharedAction}
+        // The shared shell already handles keyboard avoidance for integrated routes.
+        enabled={!activeRoute}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.fill}
       >
@@ -216,16 +210,16 @@ export function NextVisitQuestionsScreenView<
             secondary={questionsPanel}
             testID="next-visit-question-columns"
           />
+          {isReviewing && !hasSharedAction ? (
+            <QuestionReviewActions
+              isReviewValid={controller.isReviewValid}
+              isSaving={isSaving}
+              onCancel={controller.cancelReview}
+              onSave={controller.save}
+              theme={props.theme}
+            />
+          ) : null}
         </ScrollView>
-        {isReviewing && !hasSharedAction ? (
-          <QuestionReviewActions
-            isReviewValid={controller.isReviewValid}
-            isSaving={isSaving}
-            onCancel={controller.cancelReview}
-            onSave={controller.save}
-            theme={props.theme}
-          />
-        ) : null}
       </KeyboardAvoidingView>
       <SourceEvidenceSheet
         onClose={controller.closeSource}

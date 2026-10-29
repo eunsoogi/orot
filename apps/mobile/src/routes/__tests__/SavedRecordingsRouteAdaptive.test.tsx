@@ -118,15 +118,15 @@ test('preserves the selected summary as usable geometry changes under production
     StyleSheet.flatten(
       screen.getByTestId('saved-recordings-layout').props.style,
     )?.flexDirection;
-  const columnWidth = (side: 'primary' | 'secondary') =>
+  const columnWidth = () =>
     StyleSheet.flatten(
-      screen.getByTestId(`saved-recordings-layout-${side}`).props.style,
+      screen.getByTestId('saved-recordings-layout-frame-primary').props.style,
     )?.width;
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
   });
   expect(direction()).toBe('column');
-  expect(columnWidth('primary')).toBeLessThanOrEqual(leftUsableRegionWidth);
+  expect(columnWidth()).toBeLessThanOrEqual(leftUsableRegionWidth);
   await fireEvent.press(
     screen.getByTestId('recording-details-recording-source'),
   );
@@ -158,9 +158,8 @@ test('preserves the selected summary as usable geometry changes under production
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
   });
-  expect(direction()).toBe('row');
-  expect(columnWidth('primary')).toBeGreaterThan(320);
-  expect(columnWidth('secondary')).toBeGreaterThan(320);
+  expect(direction()).toBe('column');
+  expect(columnWidth()).toBeLessThanOrEqual(leftUsableRegionWidth);
   expect(screen.getByTestId('saved-recordings-selection-summary')).toBeTruthy();
 
   await act(async () => {
@@ -193,7 +192,7 @@ test('preserves the selected summary as usable geometry changes under production
   expect(direction()).toBe('column');
   expect(
     StyleSheet.flatten(
-      screen.getByTestId('saved-recordings-layout-primary').props.style,
+      screen.getByTestId('saved-recordings-layout-frame-primary').props.style,
     )?.width,
   ).toBe(320);
 
@@ -215,7 +214,7 @@ test('preserves the selected summary as usable geometry changes under production
     });
   });
   expect(direction()).toBe('column');
-  expect(columnWidth('primary')).toBeLessThanOrEqual(leftUsableRegionWidth);
+  expect(columnWidth()).toBeLessThanOrEqual(leftUsableRegionWidth);
   expect(service.deleteRecording).toHaveBeenCalledWith(source.id);
   alert.mockRestore();
 });

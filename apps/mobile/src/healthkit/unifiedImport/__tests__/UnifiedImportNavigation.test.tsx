@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { NavigationRouteAdapter } from '../../../navigation/NavigationRouteAdapter';
@@ -66,6 +67,11 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
   );
 
   expect(screen.getByTestId('unified-import-start')).toBeDisabled();
+  expect(
+    within(screen.getByTestId('unified-import-scroll')).getByTestId(
+      'unified-import-start',
+    ),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('unified-import-toggle-healthKit'));
   for (const feature of healthKitFeatures) {
     expect(
@@ -127,6 +133,11 @@ test.each(['navigation-back', 'navigation-home'])(
     await fireEvent.press(
       screen.getByTestId('unified-import-eventkit-select-0'),
     );
+    expect(
+      within(screen.getByTestId('unified-import-scroll')).getByTestId(
+        'unified-import-eventkit-confirm',
+      ),
+    ).toBeTruthy();
     await fireEvent.press(
       screen.getByTestId('unified-import-eventkit-confirm'),
     );
