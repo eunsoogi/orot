@@ -2,30 +2,26 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MeasurementFields, formatMeasurementTime } from '../MeasurementFields';
 import { emptySafetyReading } from '../safetyInput';
 
-jest.mock(
-  '@react-native-community/datetimepicker',
-  () => {
-    const React = require('react');
-    const { Pressable, Text: NativeText } = require('react-native');
-    return ({
-      mode,
-      onChange,
-    }: {
-      mode: string;
-      onChange: (event: object, date: Date) => void;
-    }) =>
-      React.createElement(
-        Pressable,
-        {
-          accessibilityRole: 'button',
-          accessibilityLabel: mode,
-          onPress: () => onChange({}, new Date('2026-10-28T00:15:00.000Z')),
-        },
-        React.createElement(NativeText, null, mode),
-      );
-  },
-  { virtual: true },
-);
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  const { Pressable, Text: NativeText } = require('react-native');
+  return ({
+    mode,
+    onValueChange,
+  }: {
+    mode: string;
+    onValueChange: (event: object, date: Date) => void;
+  }) =>
+    React.createElement(
+      Pressable,
+      {
+        accessibilityRole: 'button',
+        accessibilityLabel: mode,
+        onPress: () => onValueChange({}, new Date('2026-10-28T00:15:00.000Z')),
+      },
+      React.createElement(NativeText, null, mode),
+    );
+});
 
 it('does not infer a timezone for an unknown timestamp', () => {
   expect(formatMeasurementTime('')).toBe('');

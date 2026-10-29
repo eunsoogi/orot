@@ -19,9 +19,7 @@ import {
   healthReviewSafetyInput,
 } from '../safetyInput';
 
-jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker', {
-  virtual: true,
-});
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 
 jest.mock('../../agent/execution/useInferenceConsent', () => ({
   useInferenceConsent: () => ({

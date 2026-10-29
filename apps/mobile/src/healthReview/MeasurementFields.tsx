@@ -130,14 +130,14 @@ export function MeasurementFields({
                   value={draft}
                   mode="date"
                   display="inline"
-                  onChange={(_, value) => value && setDraft(value)}
+                  onValueChange={(_, value) => setDraft(value)}
                 />
                 <DateTimePicker
                   testID="health-review-time-wheel"
                   value={draft}
                   mode="time"
                   display="spinner"
-                  onChange={(_, value) => value && setDraft(value)}
+                  onValueChange={(_, value) => setDraft(value)}
                 />
                 <Text testID="health-review-time-draft">
                   {formatMeasurementTime(draft.toISOString())}

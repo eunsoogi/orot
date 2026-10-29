@@ -4,9 +4,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 import { SafetyForm } from '../SafetyForm';
 import { emptyHealthReviewSafety } from '../safetyInput';
 
-jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker', {
-  virtual: true,
-});
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 
 function Form() {
   const [draft, setDraft] = useState(emptyHealthReviewSafety);

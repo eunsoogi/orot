@@ -8,9 +8,7 @@ import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import type { HealthReviewService } from '../service';
 
-jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker', {
-  virtual: true,
-});
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
