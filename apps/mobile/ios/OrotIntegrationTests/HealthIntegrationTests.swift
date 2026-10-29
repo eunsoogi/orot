@@ -15,7 +15,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                                standard: { _, finish in finish(true, nil) },
                                                perObject: { _, finish in presented = true; finish(true, nil) },
                                                presentationReady: { ready = $0 },
-                                               completion: { success, _ in completed = success })
+                                               completion: { result in completed = (try? result.get()) != nil })
         XCTAssertFalse(presented, "The sample callback does not prove its sheet has been dismissed")
         XCTAssertFalse(completed)
         try XCTUnwrap(ready)(true, nil)
@@ -25,7 +25,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                            standard: { _, _ in XCTFail("No sample request expected") },
                                            perObject: { _, _ in XCTFail("An unavailable presenter must not open a picker") },
                                            presentationReady: { $0(false, nil) },
-                                           completion: { success, _ in XCTAssertFalse(success) })
+                                           completion: { result in XCTAssertEqual(result, .failure(.presentationUnavailable)) })
     }
 
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
@@ -53,9 +53,8 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                                XCTAssertEqual(type, medication)
                                                phases.append("medication")
                                                finish(true, nil)
-                                           }, completion: { success, error in
-                                               XCTAssertTrue(success)
-                                               XCTAssertNil(error)
+                                           }, completion: { result in
+                                               XCTAssertEqual(result, .success(()))
                                                phases.append("complete")
                                            })
         XCTAssertEqual(phases, ["medication", "complete"])
@@ -75,9 +74,8 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                                XCTAssertEqual(type, medication)
                                                phases.append("medication")
                                                finishMedication = finish
-                                           }, completion: { success, error in
-                                               XCTAssertFalse(success)
-                                               XCTAssertNil(error)
+                                           }, completion: { result in
+                                               XCTAssertEqual(result, .failure(.medicationRequestFailed))
                                                phases.append("cancelled")
                                            })
         XCTAssertEqual(phases, ["samples"], "The two HealthKit sheets must not overlap")
@@ -86,14 +84,38 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
         try XCTUnwrap(finishMedication)(false, nil)
         XCTAssertEqual(phases, ["samples", "medication", "cancelled"])
 
-        let failure = NSError(domain: "HealthKitAuthorizationRegression", code: 1)
+        let privateFailure = NSError(domain: "HealthKitAuthorizationRegression", code: 1,
+                                     userInfo: [NSLocalizedDescriptionKey: "private native detail"])
+        var standardFailure: HealthKitReadAuthorization.Failure?
         HealthKitReadAuthorization.request(readTypes: mixed.readTypes, perObjectReadTypes: mixed.perObjectReadTypes,
-                                           standard: { _, finish in finish(false, failure) },
+                                           standard: { _, finish in finish(false, privateFailure) },
                                            perObject: { _, _ in XCTFail("A failed first request must stop the consent sequence") },
-                                           completion: { success, error in
-                                               XCTAssertFalse(success)
-                                               XCTAssertEqual(error as NSError?, failure)
+                                           completion: { result in
+                                               guard case let .failure(failure) = result else {
+                                                   return XCTFail("A failed sample request must report a sanitized failure")
+                                               }
+                                               standardFailure = failure
                                            })
+        XCTAssertEqual(standardFailure, .standardRequestFailed)
+        XCTAssertEqual(standardFailure?.stage, "standardRequest")
+        XCTAssertEqual(standardFailure?.code, "requestFailed")
+        XCTAssertEqual(standardFailure?.bridgeCode, "HEALTHKIT_AUTHORIZATION_STANDARD_REQUEST_FAILED")
+        XCTAssertFalse(standardFailure?.bridgeMessage.contains("private native detail") ?? true)
+
+        var medicationFailure: HealthKitReadAuthorization.Failure?
+        HealthKitReadAuthorization.request(readTypes: [], perObjectReadTypes: [medication],
+                                           standard: { _, _ in XCTFail("Medication-only requests skip sample authorization") },
+                                           perObject: { _, finish in finish(false, privateFailure) },
+                                           completion: { result in
+                                               guard case let .failure(failure) = result else {
+                                                   return XCTFail("A failed medication request must report its stage")
+                                               }
+                                               medicationFailure = failure
+                                           })
+        XCTAssertEqual(medicationFailure, .medicationRequestFailed)
+        XCTAssertEqual(medicationFailure?.stage, "medicationRequest")
+        XCTAssertEqual(medicationFailure?.code, "requestFailed")
+        XCTAssertEqual(medicationFailure?.bridgeCode, "HEALTHKIT_AUTHORIZATION_MEDICATION_REQUEST_FAILED")
     }
 
     func testSyntheticSleepNormalizationAndAnchorResume() async throws {
