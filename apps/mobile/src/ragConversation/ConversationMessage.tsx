@@ -13,6 +13,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;
+  /** Failed prompts stay visible when the user has already drafted a different question. */
+  readonly failed?: boolean;
 }
 
 /** Citation labels reveal source type and date; opaque record aliases remain implementation details. */

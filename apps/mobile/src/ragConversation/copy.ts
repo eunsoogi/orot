@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import type { RagConversationFailureKind } from './service';
 
 /** Resolves UI copy for the current render and localizes the citation label around its ID. */
 export function getRagConversationCopy() {
@@ -30,4 +31,25 @@ export function getRagConversationCopy() {
     speakerUser: t('ragConversation.speakerUser'),
     source: (sourceId: string) => t('ragConversation.source', { sourceId }),
   };
+}
+
+/** Maps only typed failure categories to static recovery guidance; raw provider details stay private. */
+export function getRagConversationFailureCopy(
+  kind: RagConversationFailureKind,
+): string {
+  const keyByKind = {
+    provider_authentication: 'ragConversation.failureAuthentication',
+    provider_rate_limited: 'ragConversation.failureRateLimited',
+    provider_configuration: 'ragConversation.failureProviderConfiguration',
+    provider_refused: 'ragConversation.failureProviderRefused',
+    provider_unavailable: 'ragConversation.failureProviderUnavailable',
+    consent_required: 'ragConversation.failureConsentRequired',
+    cancelled: 'ragConversation.failureCancelled',
+    retrieval_failed: 'ragConversation.failureRetrieval',
+    validation_failed: 'ragConversation.failureValidation',
+    stale_evidence: 'ragConversation.failureStaleEvidence',
+    budget_exceeded: 'ragConversation.failureBudget',
+    unavailable: 'ragConversation.unavailable',
+  } as const satisfies Record<RagConversationFailureKind, string>;
+  return t(keyByKind[kind]);
 }

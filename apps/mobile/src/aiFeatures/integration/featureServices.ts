@@ -19,7 +19,6 @@ import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/task';
 import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { AiFeatureLocalData } from './localData';
-import { boundRagConversationHistory } from './evidencePayload';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { requireSelectedAi, resolveSelectedAiProvider } from './provider';
@@ -28,13 +27,13 @@ import { loadSavedVisitQuestionState } from './savedVisitQuestions';
 import type { SavedVisitQuestionsLoadState } from './savedVisitQuestions';
 import { createVisitQuestionSourceService } from './visitQuestionSourceRegistration';
 import { executionOptions, toolsFor } from './featureServiceExecution';
-import { createLinkedAbortController } from './linkedAbortController';
 import type { VisitQuestionSourceService } from './visitQuestionSourceRegistration';
 import type {
   SymptomSummaryStorage,
   SymptomSummaryHistory,
 } from '../../diseaseHypotheses/savedSummaries';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
+import { createRagConversationService } from './ragConversationService';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
   readonly summaryHistory?: SymptomSummaryHistory;
@@ -171,6 +170,17 @@ export function createAiFeatureServices(
     return summaryPersistence.save(outcome, selected, runId, operationSignal);
   }
 
+  const sendRagMessage = createRagConversationService({
+    consent,
+    queryConsent,
+    externalEvidence,
+    loadLocalData: privateLocalData,
+    selectedAi,
+    registry,
+    ragRunner,
+    createOperationRunId: dependencies.createOperationRunId,
+  });
+
   return {
     summaryHistory: summaryPersistence.history,
     ...createVisitQuestionSourceService(registry, loadLocalData),
@@ -189,59 +199,7 @@ export function createAiFeatureServices(
     generateDiseaseHypotheses: (signal, observer) =>
       analyze(false, signal, observer),
     summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),
-    async sendRagMessage(question, previousMessages, parentSignal, observer) {
-      const normalizedQuestion = question.trim();
-      if (!normalizedQuestion || normalizedQuestion.length > 1000) {
-        return { status: 'unavailable' };
-      }
-      const linked = createLinkedAbortController(parentSignal);
-      try {
-        const selected = await withProviderStage(
-          'rag',
-          'selection',
-          selectedAi,
-        );
-        const data = await withProviderStage('rag', 'data', privateLocalData);
-        const signal = linked.controller.signal;
-        const external = createSelectedExternalEvidence({
-          selected,
-          consent,
-          literature: externalEvidence,
-          literatureConsent: queryConsent,
-        });
-        const tools = [
-          ...toolsFor(undefined, data, registry, 6, true, 'rag'),
-          ...external.tools,
-        ];
-        const runId = dependencies.createOperationRunId?.() ?? operationRunId();
-        const outcome = await ragRunner(
-          {
-            question: normalizedQuestion,
-            previousMessages: boundRagConversationHistory(previousMessages),
-            loadCurrentEvidence: async () => ({
-              batch: { items: [], coverage: [], conflicts: [] },
-              chunks: [],
-            }),
-            rag: data.rag,
-            resolveLocalEvidenceIdentity: reference =>
-              registry.resolve(reference),
-            workflow: executionOptions({
-              consentPurpose: 'record_conversation',
-              selected,
-              operationRunId: runId,
-              consent,
-              registry,
-              tools,
-              external,
-            }),
-          },
-          { ...observer, signal },
-        );
-        return outcome;
-      } finally {
-        linked.dispose();
-      }
-    },
+    sendRagMessage,
     resolveSource: reference => registry.resolve(reference),
     readSource: (reference, signal) => registry.readSource(reference, signal),
   };
