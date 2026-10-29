@@ -3,6 +3,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { Text } from 'react-native';
@@ -37,6 +38,10 @@ test('exposes provider selection from the feature entry', async () => {
     />,
   );
 
+  const page = screen.getByTestId('ai-feature-entry-page');
+  expect(within(page).getByTestId('ai-feature-select-provider')).toBeTruthy();
+  expect(within(page).getByTestId('ai-feature-rag-conversation')).toBeTruthy();
+  expect(screen.getAllByTestId('ai-feature-select-provider')).toHaveLength(1);
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
   await waitFor(() =>
     expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),

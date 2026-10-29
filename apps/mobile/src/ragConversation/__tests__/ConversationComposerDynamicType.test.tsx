@@ -24,7 +24,7 @@ const originalDimensions = Native.Dimensions.get('window');
 beforeEach(() => Native.Dimensions.set({ window: dimensions }));
 afterEach(() => Native.Dimensions.set({ window: originalDimensions }));
 
-test('keeps the fixed caution readable above scrolling conversation text', async () => {
+test('keeps the caution readable in the conversation page', async () => {
   await render(<ConversationComposer {...props} value="" />);
   expect(
     Native.StyleSheet.flatten(
@@ -72,19 +72,18 @@ test('fits scaled placeholder lines without fixing typed content height', async 
   expect(inputStyle().height).toBeUndefined();
 });
 
-test('bounds large drafts, then resets a cleared editor and a changed text size', async () => {
+test('lets large drafts grow, then resets a cleared editor and a changed text size', async () => {
   const view = await render(
     <ConversationComposer {...props} value={'첫 줄\n둘째 줄\n셋째 줄'} />,
   );
   await fireEvent(placeholderMeasurement(), 'layout', {
     nativeEvent: { layout: { height: 180 } },
   });
-  expect(inputStyle().maxHeight).toBeGreaterThan(96);
-  expect(inputStyle().maxHeight).toBeLessThanOrEqual(dimensions.height / 3);
+  expect(inputStyle().maxHeight).toBeUndefined();
   await fireEvent(input(), 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 500 } },
   });
-  expect(input().props.scrollEnabled).toBe(true);
+  expect(input().props.scrollEnabled).toBe(false);
   expect(inputStyle().height).toBeUndefined();
   await view.rerender(<ConversationComposer {...props} value="" />);
   expect(input().props.scrollEnabled).toBe(false);
@@ -102,7 +101,6 @@ test('bounds large drafts, then resets a cleared editor and a changed text size'
   await view.rerender(<ConversationComposer {...props} value="" />);
   expect(inputStyle()).toMatchObject({
     minHeight: 44,
-    maxHeight: 96,
     height: 44,
   });
 });

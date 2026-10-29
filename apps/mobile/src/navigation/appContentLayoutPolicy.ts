@@ -45,7 +45,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'external-evidence' ||
     // Conversation history measures its list and selected preview as one screen-owned layout.
     route.name === 'conversation-history' ||
-    // Conversation history and evidence panels map directly onto the native usable regions.
+    // The conversation page chooses a native usable region for its single scroll owner.
     route.name === 'rag-conversation' ||
     route.name === 'recording' ||
     // The recording review route already measures playback, transcript, and review panels together.

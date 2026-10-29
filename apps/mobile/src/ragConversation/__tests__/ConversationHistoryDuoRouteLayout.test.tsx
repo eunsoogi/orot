@@ -133,10 +133,12 @@ test('uses the production history route lane for a selected Duo preview and comp
     });
     await waitFor(() => expect(direction()).toBe('row'));
     expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
-    const previewScroll = screen.getByTestId(
-      'conversation-history-preview-messages',
-    );
-    await fireEvent.scroll(previewScroll, {
+    const page = screen.getByTestId('conversation-history-page');
+    expect(within(page).getByTestId('conversation-history-list')).toBeTruthy();
+    expect(
+      within(page).getByTestId('conversation-history-preview'),
+    ).toBeTruthy();
+    await fireEvent.scroll(page, {
       nativeEvent: {
         contentOffset: { x: 0, y: 240 },
         contentSize: { width: 600, height: 1600 },
@@ -154,10 +156,8 @@ test('uses the production history route lane for a selected Duo preview and comp
       Dimensions.set({ window: windowSize(900) });
     });
     await waitFor(() => expect(direction()).toBe('row'));
-    expect(
-      screen.getByTestId('conversation-history-preview-messages').props
-        .contentOffset,
-    ).toEqual({ x: 0, y: 240 });
+    expect(screen.getByTestId('conversation-history-page')).toBe(page);
+    expect(screen.getByText('첫 대화의 합성 답변')).toBeTruthy();
 
     await act(async () => {
       setMeasuredHistoryHost(0, 500);

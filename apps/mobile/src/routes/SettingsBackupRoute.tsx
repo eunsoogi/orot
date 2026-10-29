@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    paddingTop: 24,
+    paddingTop: 16,
   },
   column: {
     flexGrow: 1,

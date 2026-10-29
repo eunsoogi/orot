@@ -1,4 +1,8 @@
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
+import { getAiFeatureIntegrationCopy } from './copy';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { ReactElement } from 'react';
@@ -44,6 +48,7 @@ export interface VisitQuestionsRouteState {
 }
 
 export interface AiFeatureFlowScreenProps {
+  readonly articleOpenError?: boolean;
   readonly onOpenSummaryHistory?: () => void;
   readonly onRestoreSummary?: (value: DiseaseHypothesisAnalysis) => void;
   readonly restoredSummary?: DiseaseHypothesisAnalysis;
@@ -73,6 +78,7 @@ export interface AiFeatureFlowScreenProps {
 
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
+  articleOpenError,
   onOpenSummaryHistory,
   onRestoreSummary,
   restoredSummary,
@@ -95,6 +101,7 @@ export function AiFeatureFlowScreen({
   services,
   onOpenArticle,
 }: AiFeatureFlowScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const providerSelection = (
     <AiProviderSelectorRow
       embedded
@@ -104,11 +111,23 @@ export function AiFeatureFlowScreen({
     />
   );
   const entryScreen = (
-    <FeatureEntryScreen
-      onOpenVisitQuestions={onOpenVisitQuestions}
-      onOpenDiseaseHypotheses={onOpenDiseaseHypotheses}
-      onOpenRagConversation={onOpenRagConversation}
-      onOpenExternalEvidence={onOpenExternalEvidence}
+    <AdaptiveColumns
+      routeKey={navigationRouteKey}
+      primary={
+        <ScrollView
+          contentContainerStyle={[styles.entry, navigationInset]}
+          testID="ai-feature-entry-page"
+        >
+          {providerSelection}
+          <FeatureEntryScreen
+            embedded
+            onOpenVisitQuestions={onOpenVisitQuestions}
+            onOpenDiseaseHypotheses={onOpenDiseaseHypotheses}
+            onOpenRagConversation={onOpenRagConversation}
+            onOpenExternalEvidence={onOpenExternalEvidence}
+          />
+        </ScrollView>
+      }
     />
   );
 
@@ -173,7 +192,19 @@ export function AiFeatureFlowScreen({
     case 'external-evidence':
       return (
         <ExternalMedicalEvidenceScreen
-          providerSelection={providerSelection}
+          providerSelection={
+            <>
+              {providerSelection}
+              {articleOpenError ? (
+                <Text
+                  accessibilityRole="alert"
+                  testID="external-article-open-error"
+                >
+                  {getAiFeatureIntegrationCopy().articleOpenError}
+                </Text>
+              ) : null}
+            </>
+          }
           navigationRouteKey={navigationRouteKey}
           onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}
@@ -183,3 +214,8 @@ export function AiFeatureFlowScreen({
       );
   }
 }
+
+// The selector and feature list share the same page instead of competing for height.
+const styles = StyleSheet.create({
+  entry: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, gap: 18 },
+});

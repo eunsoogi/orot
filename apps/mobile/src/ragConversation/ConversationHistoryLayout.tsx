@@ -6,7 +6,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import type { ComponentRef } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import type { HostInstance, ViewStyle } from 'react-native';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
 import { appColors } from '../layout/appColors';
@@ -45,16 +51,14 @@ export function ConversationHistoryLayout({
   const geometry = useNavigationGeometry();
   const inset = useNavigationContentInset();
   const hostRef = useRef<HostInstance | null>(null);
+  const pageRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const pageOffset = useRef(0);
+  const savedWideOffset = useRef(0);
+  const restoreWideOffset = useRef(false);
   const [measuredBounds, setMeasuredBounds] = useState<{
     readonly x: number;
     readonly width: number;
   } | null>(null);
-  const [savedPreviewScroll, setSavedPreviewScroll] = useState({
-    sessionId: selectedSession?.id ?? null,
-    offset: 0,
-  });
-  const previewScrollOffset = useRef(0);
-  const selectedSessionId = selectedSession?.id ?? null;
   const measureHost = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -92,7 +96,15 @@ export function ConversationHistoryLayout({
       }),
     [fontScale, geometry, measuredBounds, occlusion, width],
   );
-  const previousColumnCount = useRef(plan.columns);
+  const previousColumns = useRef(plan.columns);
+
+  useLayoutEffect(() => {
+    const previous = previousColumns.current;
+    previousColumns.current = plan.columns;
+    if (previous === 2 && plan.columns === 1)
+      savedWideOffset.current = pageOffset.current;
+    if (previous === 1 && plan.columns === 2) restoreWideOffset.current = true;
+  }, [plan.columns]);
 
   useEffect(() => {
     measureHost();
@@ -106,32 +118,6 @@ export function ConversationHistoryLayout({
     occlusion.viewportInsets.right,
     width,
   ]);
-
-  useLayoutEffect(() => {
-    previewScrollOffset.current = 0;
-    setSavedPreviewScroll(previous =>
-      previous.sessionId === selectedSessionId && previous.offset === 0
-        ? previous
-        : { sessionId: selectedSessionId, offset: 0 },
-    );
-  }, [selectedSessionId]);
-
-  useLayoutEffect(() => {
-    const previousColumns = previousColumnCount.current;
-    previousColumnCount.current = plan.columns;
-    if (previousColumns === 2 && plan.columns === 1) {
-      // The layout owner survives reflow, so save the preview offset before its ScrollView unmounts.
-      setSavedPreviewScroll({
-        sessionId: selectedSessionId,
-        offset: previewScrollOffset.current,
-      });
-    }
-  }, [plan.columns, selectedSessionId]);
-
-  const rememberPreviewScrollOffset = useCallback((offset: number) => {
-    if (Number.isFinite(offset))
-      previewScrollOffset.current = Math.max(0, offset);
-  }, []);
 
   const layoutStyle = useMemo<ViewStyle>(
     () => ({
@@ -176,47 +162,59 @@ export function ConversationHistoryLayout({
 
   return (
     <View style={[styles.screen, inset]} testID="conversation-history-screen">
-      <View
-        ref={hostRef}
-        onLayout={measureHost}
-        style={styles.measurementHost}
-        testID="conversation-history-measurement-host"
+      {/* A single page moves both the native rows and the selected preview. */}
+      <ScrollView
+        ref={pageRef}
+        testID="conversation-history-page"
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        onScroll={event => {
+          pageOffset.current = event.nativeEvent.contentOffset.y;
+        }}
+        onContentSizeChange={() => {
+          if (!restoreWideOffset.current) return;
+          // Restore only after the wider preview has contributed its actual height.
+          restoreWideOffset.current = false;
+          pageRef.current?.scrollTo({
+            y: savedWideOffset.current,
+            animated: false,
+          });
+        }}
       >
         <View
-          style={[styles.layout, layoutStyle]}
-          testID="conversation-history-layout"
+          ref={hostRef}
+          onLayout={measureHost}
+          style={styles.measurementHost}
+          testID="conversation-history-measurement-host"
         >
           <View
-            style={[styles.panel, primaryStyle]}
-            testID="conversation-history-layout-primary"
+            style={[styles.layout, layoutStyle]}
+            testID="conversation-history-layout"
           >
-            <ConversationHistoryListPane
-              deleted={deleted}
-              onCreateSession={create}
-              onDeleteSession={onDeleteSession}
-              onSelectSession={select}
-              onUndoRemove={onUndoRemove}
-              rows={rows}
-            />
-          </View>
-          {plan.columns === 2 ? (
             <View
-              style={[styles.panel, secondaryStyle]}
-              testID="conversation-history-layout-secondary"
+              style={[styles.panel, primaryStyle]}
+              testID="conversation-history-layout-primary"
             >
-              <ConversationHistoryPreview
-                onScrollOffsetChange={rememberPreviewScrollOffset}
-                scrollOffset={
-                  savedPreviewScroll.sessionId === selectedSessionId
-                    ? savedPreviewScroll.offset
-                    : 0
-                }
-                session={selectedSession}
+              <ConversationHistoryListPane
+                deleted={deleted}
+                onCreateSession={create}
+                onDeleteSession={onDeleteSession}
+                onSelectSession={select}
+                onUndoRemove={onUndoRemove}
+                rows={rows}
               />
             </View>
-          ) : null}
+            {plan.columns === 2 ? (
+              <View
+                style={[styles.panel, secondaryStyle]}
+                testID="conversation-history-layout-secondary"
+              >
+                <ConversationHistoryPreview session={selectedSession} />
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

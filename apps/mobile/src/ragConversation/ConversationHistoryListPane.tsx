@@ -1,8 +1,8 @@
+import { useState } from 'react';
 import {
   Platform,
   Pressable,
   requireNativeComponent,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -29,6 +29,9 @@ interface NativeHistoryProps extends ViewProps {
   readonly onDeleteSession: (
     event: NativeSyntheticEvent<{ id: number }>,
   ) => void;
+  readonly onContentHeightChange: (
+    event: NativeSyntheticEvent<{ height: number }>,
+  ) => void;
 }
 
 const NativeHistory =
@@ -52,6 +55,7 @@ export function ConversationHistoryListPane({
   readonly onUndoRemove: () => void;
   readonly rows: readonly ConversationHistoryRow[];
 }) {
+  const [nativeHeight, setNativeHeight] = useState(1);
   return (
     <View style={styles.pane}>
       {!NativeHistory ? (
@@ -77,7 +81,7 @@ export function ConversationHistoryListPane({
       {NativeHistory ? (
         <NativeHistory
           testID="conversation-history-list"
-          style={styles.list}
+          style={[styles.list, { height: nativeHeight }]}
           rows={rows}
           headerTitle="대화 기록"
           headerCount={`${rows.length}개의 대화`}
@@ -88,9 +92,16 @@ export function ConversationHistoryListPane({
           onCreateSession={onCreateSession}
           onSelectSession={event => onSelectSession(event.nativeEvent.id)}
           onDeleteSession={event => onDeleteSession(event.nativeEvent.id)}
+          onContentHeightChange={event => {
+            const height = event.nativeEvent.height;
+            if (Number.isFinite(height) && height > 0)
+              setNativeHeight(previous =>
+                Math.abs(previous - height) < 0.5 ? previous : height,
+              );
+          }}
         />
       ) : (
-        <ScrollView style={styles.list}>
+        <View style={styles.list}>
           {rows.map(row => (
             <Pressable
               key={row.id}
@@ -106,7 +117,7 @@ export function ConversationHistoryListPane({
               <Text>{row.title}</Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       )}
       {deleted ? (
         <View style={styles.undo} accessibilityLiveRegion="polite">
@@ -140,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  list: { flex: 1, minWidth: 0, minHeight: 0 },
+  list: { minWidth: 0 },
   undo: {
     marginHorizontal: 24,
     padding: 12,
