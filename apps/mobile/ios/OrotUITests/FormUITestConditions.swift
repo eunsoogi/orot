@@ -101,7 +101,7 @@ enum FormUITestConditions {
 
     /// Return exposure/edit failure so guarded callers stop before another field or a missing keyboard action.
     @discardableResult
-    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String, observeCursorTap: ((String) -> Void)? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeInput: ((EncounterInputObservation.Phase) -> Void)? = nil) -> Bool {
+    static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String, observeCursorTap: ((String) -> Void)? = nil, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeInput: ((EncounterInputObservation.Phase) -> Void)? = nil, useNativeSelectAllMenu: Bool = false) -> Bool {
         let replaceStartedAt = ProcessInfo.processInfo.systemUptime
         defer { recordTiming("replace-total", since: replaceStartedAt) }
         // Pass measured closures as explicit arguments so Swift binds `else` to each guard statement.
@@ -119,12 +119,15 @@ enum FormUITestConditions {
             measure("placeholder-read") { current != input.placeholderValue }
         }
         if shouldReplace {
-            // A trailing viewport tap can leave the caret inside internally scrolled text.
-            // XCTest's native Command-A selects the entire focused value, including its offscreen suffix.
-            // Keep the existing observer around selection without synthesizing another coordinate tap.
+            // Keep Command-A for unrelated forms. The fixtures appointment probe left the caret at the end and
+            // one Delete removed only the trailing character, so appointment edits use the observed native Select All action.
             observeCursorTap?("before-select-all")
             observeInput?(.beforeSelect)
-            measure("select-existing") { app.typeKey("a", modifierFlags: .command) }
+            if useNativeSelectAllMenu {
+                guard AppointmentTextSelectionUITestConditions.selectAll(input, in: app, measure: measure) else { return false }
+            } else {
+                measure("select-existing") { app.typeKey("a", modifierFlags: .command) }
+            }
             observeInput?(.afterSelect)
             observeCursorTap?("after-select-all")
             // One native delete replaces the selection; exact-empty rejects a missed selection without retrying.

@@ -110,8 +110,8 @@ export const fixtureTests = [
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
-  // Observe the appointment clinic's native select-all state before Delete.
-  'OrotUITests/AppointmentTextSelectionUITests/testCommandASelectionStateBeforeDelete',
+  // Verify the appointment clinic can be cleared and replaced with ASCII and Unicode text.
+  'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
   // Large-text fallback is general UI coverage; Duo inventory owns live reflow coverage.
   'OrotUITests/AppointmentsUITests/testLargeTextKeepsAppointmentDetailsInOneReadableColumn',
   'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',

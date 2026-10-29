@@ -1,6 +1,6 @@
 import XCTest
 
-/// Captures the real clinic-field edit boundary before deletion, using only one synthetic appointment.
+/// Verifies ASCII and Unicode clinic replacements through the native edit menu with one synthetic appointment.
 final class AppointmentTextSelectionUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -8,24 +8,21 @@ final class AppointmentTextSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testCommandASelectionStateBeforeDelete() {
+    func testAppointmentClinicReplacementClearsASCIIAndUnicodeValues() {
         let app = XCUIApplication()
         let originalClinic = "Cardiology clinic"
-        var beforeSelect: InputObservation?
-        var beforeDelete: InputObservation?
-        var afterDelete: InputObservation?
         defer {
             if app.state != .notRunning {
                 app.terminate()
             }
         }
 
-        launch(app)
+        launch(app, language: "ko")
         UITestConditions.value(UITestConditions.element(app, "appointments-empty"), equals: "등록된 예약이 없어요.")
         createAppointment(app, clinic: originalClinic)
 
         app.terminate()
-        launch(app)
+        launch(app, language: "ko")
         // One synthetic appointment keeps the existing journey's edit button label unique.
         let edit = app.buttons["수정"]
         XCTAssertTrue(edit.waitForAppearance(), app.debugDescription)
@@ -34,46 +31,63 @@ final class AppointmentTextSelectionUITests: OrotFailFastTestCase {
         edit.tap()
 
         let clinic = app.textFields.matching(identifier: "appointment-clinic-input").firstMatch
-        let replaced = FormUITestConditions.replace(
-            clinic,
-            with: "Neurology clinic",
-            in: app,
-            scrollID: "appointments-scroll",
-            observeInput: { phase in
-                switch phase {
-                case .beforeSelect:
-                    beforeSelect = self.observe(clinic, in: app, phase: "before-select")
-                case .beforeDelete:
-                    // This callback runs after native Command-A and before the original Delete action.
-                    self.captureSelectionScreenshot(app)
-                    beforeDelete = self.observe(clinic, in: app, phase: "before-delete")
-                case .afterDelete:
-                    afterDelete = self.observe(clinic, in: app, phase: "after-delete")
-                default:
-                    break
-                }
-            },
-        )
+        let replacements = ["Neurology clinic", "진료 예약 🩺", "Neurology clinic"]
+        var currentClinic = originalClinic
+        for (index, replacement) in replacements.enumerated() {
+            var beforeSelect: InputObservation?
+            var afterSelect: InputObservation?
+            var beforeDelete: InputObservation?
+            var afterDelete: InputObservation?
+            let replaced = FormUITestConditions.replace(
+                clinic,
+                with: replacement,
+                in: app,
+                scrollID: "appointments-scroll",
+                observeInput: { phase in
+                    switch phase {
+                    case .beforeSelect:
+                        beforeSelect = self.observe(clinic, in: app, phase: "before-select-\(index)")
+                    case .afterSelect:
+                        self.captureSelectionScreenshot(app, phase: "after-select-\(index)")
+                        self.captureAccessibilityHierarchy(app, phase: "after-select-\(index)")
+                        afterSelect = self.observe(clinic, in: app, phase: "after-select-\(index)")
+                    case .beforeDelete:
+                        beforeDelete = self.observe(clinic, in: app, phase: "before-delete-\(index)")
+                    case .afterDelete:
+                        afterDelete = self.observe(clinic, in: app, phase: "after-delete-\(index)")
+                    default:
+                        break
+                    }
+                },
+                useNativeSelectAllMenu: true,
+            )
 
-        XCTAssertEqual(beforeSelect?.value, originalClinic)
-        XCTAssertEqual(beforeSelect?.focused, true)
-        XCTAssertEqual(beforeSelect?.keyboardVisible, true)
-        XCTAssertTrue(beforeSelect?.hittable ?? false)
-        XCTAssertEqual(beforeDelete?.value, originalClinic)
-        XCTAssertEqual(beforeDelete?.focused, true)
-        XCTAssertEqual(beforeDelete?.keyboardVisible, true)
-        XCTAssertTrue(beforeDelete?.hittable ?? false)
-        XCTAssertEqual(afterDelete?.value, "")
-        XCTAssertTrue(replaced, "The original exact-empty assertion and replacement must both pass.")
+            XCTAssertEqual(beforeSelect?.value, currentClinic)
+            XCTAssertEqual(beforeSelect?.focused, true)
+            XCTAssertEqual(beforeSelect?.keyboardVisible, true)
+            XCTAssertTrue(beforeSelect?.hittable ?? false)
+            XCTAssertEqual(afterSelect?.value, currentClinic)
+            XCTAssertEqual(afterSelect?.focused, true)
+            XCTAssertEqual(afterSelect?.keyboardVisible, true)
+            XCTAssertTrue(afterSelect?.hittable ?? false)
+            XCTAssertEqual(beforeDelete?.value, currentClinic)
+            XCTAssertEqual(beforeDelete?.focused, true)
+            XCTAssertEqual(beforeDelete?.keyboardVisible, true)
+            XCTAssertTrue(beforeDelete?.hittable ?? false)
+            XCTAssertEqual(afterDelete?.value, "")
+            XCTAssertTrue(replaced, "The exact-empty assertion and replacement must both pass.")
+            currentClinic = replacement
+        }
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication) {
+    private func launch(_ app: XCUIApplication, language: String = "en") {
+        let locale = language == "ko" ? "ko_KR" : "en_US"
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "appointments",
-            "-AppleLanguages", "(en)",
-            "-AppleLocale", "en_US",
+            "-AppleLanguages", "(\(language))",
+            "-AppleLocale", locale,
         ]
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "appointments-title"), equals: "예약")
@@ -123,9 +137,17 @@ final class AppointmentTextSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func captureSelectionScreenshot(_ app: XCUIApplication) {
+    private func captureSelectionScreenshot(_ app: XCUIApplication, phase: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "appointment-command-a-before-delete"
+        attachment.name = "appointment-clinic-\(phase)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    private func captureAccessibilityHierarchy(_ app: XCUIApplication, phase: String) {
+        let attachment = XCTAttachment(string: app.debugDescription)
+        attachment.name = "appointment-clinic-\(phase)-accessibility"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -140,5 +162,21 @@ private struct InputObservation: CustomStringConvertible {
 
     var description: String {
         "phase=\(phase);value=\(value ?? "unknown");keyboard=\(keyboardVisible);focused=\(focused);hittable=\(hittable)"
+    }
+}
+
+@MainActor
+enum AppointmentTextSelectionUITestConditions {
+    /// Measures the observed system edit action so the appointment path preserves its existing timing diagnostics.
+    static func selectAll(
+        _ input: XCUIElement,
+        in app: XCUIApplication,
+        measure: (_ step: String, _ operation: () -> Void) -> Void,
+    ) -> Bool {
+        measure("select-existing") { input.press(forDuration: 1) }
+        let selectAll = app.menuItems["Select All"]
+        guard selectAll.exists, selectAll.isHittable else { XCTFail("Select All missing"); return false }
+        measure("select-all") { selectAll.tap() }
+        return true
     }
 }
