@@ -39,7 +39,7 @@ export function SettingsRoute({
   )?.version;
   return (
     <View style={styles.container}>
-      {/* AdaptiveColumns clips panels to live usable regions and leaves the shell rail clear. */}
+      {/* Keep all settings sections in a single usable region. */}
       <AdaptiveColumns
         primary={
           <View style={styles.panel}>
@@ -106,10 +106,6 @@ export function SettingsRoute({
                 />
               </View>
             </View>
-          </View>
-        }
-        secondary={
-          <View style={styles.panel}>
             <View
               style={styles.section}
               testID="settings-section-data-management"
@@ -153,7 +149,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: 20,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 28,
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },

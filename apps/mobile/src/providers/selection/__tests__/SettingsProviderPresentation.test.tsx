@@ -102,8 +102,8 @@ describe('Settings provider presentation', () => {
     ).toBeTruthy();
     expect(screen.getByTestId('settings-provider-panels-primary')).toBeTruthy();
     expect(
-      screen.getByTestId('settings-provider-panels-secondary'),
-    ).toBeTruthy();
+      screen.queryByTestId('settings-provider-panels-secondary'),
+    ).toBeNull();
     expect(screen.getByTestId('chatgpt-account-status')).toHaveTextContent(
       providerSelectionText.chatGPTAccountSignedOut,
     );
@@ -144,8 +144,8 @@ describe('Settings provider presentation', () => {
       screen.getByTestId('provider-selection-feature-panels-primary'),
     ).toBeTruthy();
     expect(
-      screen.getByTestId('provider-selection-feature-panels-secondary'),
-    ).toBeTruthy();
+      screen.queryByTestId('provider-selection-feature-panels-secondary'),
+    ).toBeNull();
     expect(
       screen.getByTestId('provider-option-0-capabilities'),
     ).toHaveTextContent(
