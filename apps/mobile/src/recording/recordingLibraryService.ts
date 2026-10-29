@@ -1,14 +1,16 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
 import type { SourceMemoryDeletionResult } from '../memory/removeSourceWithMemory';
-import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
 import type {
   RecordingAudioDeletion,
   RecordingLibraryService,
-  RecordingTranscriptReviewState,
 } from './recordingLibraryServiceTypes';
 import { performRecordingDeletion } from './recordingDeletionOperation';
+import {
+  readRecordingSummarySnapshot,
+  recordingLibrarySummaries,
+} from './recordingLibrarySummaries';
 import {
   beginRecordingDeletionTiming,
   endRecordingDeletionTiming,
@@ -116,8 +118,8 @@ export function createRecordingLibraryService(
     ensureStopped,
   };
 
-  async function loadRecordings() {
-    const repository = await loadRepository();
+  async function loadRecordings(loadedRepository?: RecordRepository) {
+    const repository = loadedRepository ?? (await loadRepository());
     const sources = await repository.list('source_record');
     const recordings = sources
       .filter(source => source.sourceKind === 'audio_recording')
@@ -147,65 +149,13 @@ export function createRecordingLibraryService(
         return recordings;
       });
     },
-    // One transcript-table read supplies latest revisions for every row without loading segment text into the UI.
-    listSummaries() {
+    async listSummaries() {
+      const repository = await loadRepository();
+      const snapshot = await readRecordingSummarySnapshot(repository);
       return serializeAudioOperation(async () => {
-        const { repository, recordings } = await loadRecordings();
-        let transcriptSegments: readonly TranscriptEvidenceSegment[] | null;
-        try {
-          transcriptSegments = await repository.list('transcript_segment');
-        } catch {
-          // Keep audio visible if transcript metadata cannot be read; do not claim no transcript exists.
-          transcriptSegments = null;
-        }
-
-        const latestByTranscript = new Map<string, TranscriptEvidenceSegment>();
-        for (const segment of transcriptSegments ?? []) {
-          const latest = latestByTranscript.get(segment.transcriptId);
-          if (!latest || segment.revision > latest.revision) {
-            latestByTranscript.set(segment.transcriptId, segment);
-          }
-        }
-        const segmentsBySource = new Map<string, TranscriptEvidenceSegment[]>();
-        for (const segment of latestByTranscript.values()) {
-          const current = segmentsBySource.get(segment.recordingSourceId) ?? [];
-          current.push(segment);
-          segmentsBySource.set(segment.recordingSourceId, current);
-        }
-
-        return recordings.map(source => {
-          const segments = segmentsBySource.get(source.id) ?? [];
-          const durations = [
-            ...new Set(segments.map(segment => segment.recordingDurationMs)),
-          ];
-          const transcriptDuration =
-            durations.length === 1 ? durations[0] : null;
-          let transcriptReviewState: RecordingTranscriptReviewState;
-          if (transcriptSegments === null) {
-            transcriptReviewState = 'unavailable';
-          } else if (segments.length === 0) {
-            transcriptReviewState = 'notTranscribed';
-          } else if (
-            segments.some(
-              segment => segment.reviewState.status === 'needs_review',
-            )
-          ) {
-            transcriptReviewState = 'needsReview';
-          } else if (
-            segments.some(
-              segment => segment.reviewState.status === 'unreviewed',
-            )
-          ) {
-            transcriptReviewState = 'unreviewed';
-          } else {
-            transcriptReviewState = 'reviewed';
-          }
-          return {
-            source,
-            durationMs: source.recordingDurationMs ?? transcriptDuration,
-            transcriptReviewState,
-          };
-        });
+        // Fresh source identities and crash recovery stay mutually exclusive with live audio deletion.
+        const { recordings } = await loadRecordings(repository);
+        return recordingLibrarySummaries(recordings, snapshot);
       });
     },
     deleteRecording(sourceId, timingProbe) {

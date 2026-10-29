@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import type { RecordingSourceRecord } from './recordingTypes';
@@ -7,16 +7,14 @@ import RecordingDeletionNotice from './RecordingDeletionNotice';
 import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import {
-  loadRecordingLibrarySummaries,
   recordingLibrarySources,
-  type RecordingDeleteNotice,
   type RecordingLibraryPanelProps,
-  type RecordingLibrarySummary,
 } from './recordingLibraryPanelHelpers';
 import RecordingExportPanel from './RecordingExportPanel';
 import RecordingLibraryDetail from './RecordingLibraryDetail';
 import RecordingLibraryContent from './RecordingLibraryContent';
-import { useRecordingDeletionTiming } from './useRecordingDeletionTiming';
+import { useRecordingLibraryReadState } from './useRecordingLibraryReadState';
+import { useRecordingDeleteNotice } from './useRecordingDeleteNotice';
 
 /** Shows real saved-audio summaries and one selected detail with shared delete recovery. */
 export default function RecordingLibraryPanel({
@@ -33,54 +31,32 @@ export default function RecordingLibraryPanel({
   onBusyChange,
   playbackService = recordingService,
 }: RecordingLibraryPanelProps) {
-  const [recordings, setRecordings] = useState<
-    readonly RecordingLibrarySummary[]
-  >([]);
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [playbackRequestSourceId, setPlaybackRequestSourceId] = useState<
     string | null
   >(null);
   const [deleteTarget, setDeleteTarget] =
     useState<RecordingSourceRecord | null>(null);
-  const [deletedIds] = useState(() => new Set<string>());
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   // Each operation owns its settlement; export completion must never clear an outstanding deletion.
   const [exportBusy, setExportBusy] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [deleteNotice, setDeleteNotice] = useState<RecordingDeleteNotice>(null);
-  const deletionTiming = useRecordingDeletionTiming(recordings);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setLoadError(false);
-    loadRecordingLibrarySummaries(service)
-      .then(next => {
-        if (!active) return;
-        setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
-        setSelectedSourceId(current =>
-          current && next.some(item => item.source.id === current)
-            ? current
-            : null,
-        );
-      })
-      .catch(() => {
-        if (active) setLoadError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [
-    automaticTranscription?.sourceId,
-    automaticTranscription?.status,
-    refreshKey,
-    service,
+  const notice = useRecordingDeleteNotice(service);
+  const { deleteNotice } = notice;
+  const {
+    recordings,
+    setRecordings,
+    selectedSourceId,
+    setSelectedSourceId,
     deletedIds,
-  ]);
+    loading,
+    loadError,
+    deletionTiming,
+    refreshAfterDelete,
+  } = useRecordingLibraryReadState({
+    service,
+    automaticTranscription,
+    refreshKey,
+    onReconciled: notice.reconciled,
+  });
 
   const selected = recordings.find(item => item.source.id === selectedSourceId);
   // The route context retains only identity; visible metadata comes from the currently loaded library.
@@ -89,7 +65,7 @@ export default function RecordingLibraryPanel({
     : undefined;
 
   function requestDelete(source: RecordingSourceRecord): void {
-    setDeleteNotice(null);
+    notice.clear();
     setDeleteTarget(source);
   }
 
@@ -99,29 +75,7 @@ export default function RecordingLibraryPanel({
       candidate => candidate.source.id === sourceId,
     )?.source;
     if (source) requestDelete(source);
-    else setDeleteNotice('error');
-  }
-
-  async function refreshAfterDelete(targetId: string): Promise<boolean> {
-    try {
-      const next = await deletionTiming.readListSummaries(() =>
-        loadRecordingLibrarySummaries(service),
-      );
-      deletionTiming.markListSummaryRefresh();
-      deletionTiming.markListRefreshPending();
-      setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
-      setSelectedSourceId(current =>
-        current &&
-        current !== targetId &&
-        next.some(item => item.source.id === current)
-          ? current
-          : null,
-      );
-      return true;
-    } catch {
-      setLoadError(true);
-      return false;
-    }
+    else notice.requestError();
   }
 
   async function confirmDelete(): Promise<void> {
@@ -130,7 +84,7 @@ export default function RecordingLibraryPanel({
     deletionTiming.markConfirmationTap();
     setBusy(true);
     onBusyChange?.(true);
-    setDeleteNotice(null);
+    const operation = notice.begin();
     try {
       const result = await deletionTiming.deleteRecording(service, target.id);
       setDeleteTarget(null);
@@ -143,14 +97,12 @@ export default function RecordingLibraryPanel({
       );
       setSelectedSourceId(current => (current === target.id ? null : current));
       if (result.audioCleanupPending) {
-        setDeleteNotice('cleanup-pending');
-        refreshAfterDelete(target.id).then(refreshed => {
-          if (refreshed) setDeleteNotice(null);
-        });
+        notice.cleanupPending(operation);
+        refreshAfterDelete(target.id);
       }
     } catch {
       setDeleteTarget(null);
-      setDeleteNotice('error');
+      notice.fail(operation);
       // Re-read after failure so an interrupted operation is shown from persisted state.
       await refreshAfterDelete(target.id);
     } finally {
