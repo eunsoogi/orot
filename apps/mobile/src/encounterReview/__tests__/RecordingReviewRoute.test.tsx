@@ -213,6 +213,6 @@ test('production navigation lets recording review measure its own usable content
   expect(
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
-  expect(screen.getByTestId('recording-review-layout-host')).toBeTruthy();
+  expect(screen.getByTestId('recording-review-layout-frame-host')).toBeTruthy();
   expect(screen.getByTestId('recording-review-layout')).toBeTruthy();
 });

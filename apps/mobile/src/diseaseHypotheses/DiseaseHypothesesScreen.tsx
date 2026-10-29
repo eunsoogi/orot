@@ -13,7 +13,6 @@ import { getDiseaseHypothesisCopy } from './copy';
 import type { DiseaseHypothesisRunOutcome } from './task';
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { useDiseaseHypothesisGeneration } from './useDiseaseHypothesisGeneration';
-import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 import { SavedSummaryHistory } from './SavedSummaryHistory';
 import type { SymptomSummaryHistory } from './savedSummaries';
 import { SummaryHeader } from './SummaryHeader';
@@ -57,11 +56,6 @@ export function DiseaseHypothesesScreen({
     useDiseaseHypothesisGeneration(onGenerate, restoredSummary);
   const canRetry =
     state.status === 'error' || state.status === 'consent_required';
-  const hasSharedCancel = useAiCancellationAction(
-    state.status === 'loading',
-    cancel,
-    'disease-hypotheses-cancel',
-  );
   const hasOutput = state.status !== 'idle' || preview.length > 0;
 
   useAiFeatureScreenNavigationState(
@@ -154,7 +148,7 @@ export function DiseaseHypothesesScreen({
               activity={activity}
               preview={preview}
               lastOperation={lastOperation}
-              hasSharedCancel={hasSharedCancel}
+              hasSharedCancel={false}
               onCancel={cancel}
               onOpenProviderSelection={onOpenProviderSelection}
               onOpenSource={onOpenSource}

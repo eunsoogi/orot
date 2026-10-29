@@ -99,7 +99,7 @@ beforeEach(() => {
     ) {
       if (this.props.testID === 'medical-appointment-status-columns-host') {
         callback(0, 0, 1020, 800);
-      } else if (this.props.testID === 'appointments-columns-host') {
+      } else if (this.props.testID === 'appointments-columns-frame-host') {
         callback(0, 0, appointmentsHostWidth, 800);
       }
     });
@@ -171,7 +171,8 @@ test('keeps the production manual form within usable geometry and guards its dra
   await fireEvent.press(screen.getByTestId('appointment-add'));
   await enterDraft('Synthetic clinic draft');
 
-  const primaryPanel = () => screen.getByTestId('appointments-columns-primary');
+  const primaryPanel = () =>
+    screen.getByTestId('appointments-columns-frame-primary');
   expect(StyleSheet.flatten(primaryPanel().props.style)?.width).toBe(500);
 
   appointmentsHostWidth = 360;
