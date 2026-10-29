@@ -25,7 +25,7 @@ const remote = {
 };
 const requirements = { inputTypes: ['text'] as const };
 
-test('marks a pending model immediately and keeps confirmation outside the scrolling catalog', async () => {
+test('marks a pending model immediately and keeps confirmation in the same scrolling page', async () => {
   let saved: ProviderSelection = {
     providerId: apple.provider.id,
     modelId: apple.modelId,
@@ -59,10 +59,10 @@ test('marks a pending model immediately and keeps confirmation outside the scrol
   ).toBe(false);
   expect(screen.getByTestId('provider-selection-footer')).toBeTruthy();
   expect(
-    within(screen.getByTestId('provider-selection-screen')).queryByTestId(
+    within(screen.getByTestId('provider-selection-screen')).getByTestId(
       'provider-selection-confirm',
     ),
-  ).toBeNull();
+  ).toBeTruthy();
   expect(save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
   expect(save).toHaveBeenCalledWith({

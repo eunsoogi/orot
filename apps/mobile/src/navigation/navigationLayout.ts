@@ -21,6 +21,7 @@ export interface NavigationOcclusion {
 export interface NavigationOcclusionInput {
   readonly placement: NavigationOcclusion['placement'];
   readonly reservedRightWidth: number;
+  readonly reservedLeftWidth?: number;
   readonly systemBottomInset: number;
   readonly measuredBottomActionOcclusion: number | null;
   readonly systemInsets: NavigationEdgeInsets;
@@ -50,6 +51,7 @@ export const BOTTOM_NAVIGATION_CONTENT_INSET =
 export function resolveNavigationOcclusion({
   placement,
   reservedRightWidth,
+  reservedLeftWidth = 0,
   systemBottomInset,
   measuredBottomActionOcclusion,
   systemInsets,
@@ -62,7 +64,7 @@ export function resolveNavigationOcclusion({
       top: 0,
       right: hasRightRail ? reservedRightWidth : 0,
       bottom: hasRightRail ? systemBottomInset : 0,
-      left: 0,
+      left: hasRightRail ? reservedLeftWidth : 0,
     },
     scrollContentInsets: {
       top: 0,

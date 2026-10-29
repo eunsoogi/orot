@@ -29,3 +29,8 @@ export {
 } from './useNavigationLeaveStateRegistration';
 export type { NavigationLeaveStateRegistration } from './useNavigationLeaveStateRegistration';
 export { useNavigationSnapshot } from './useNavigationSnapshot';
+
+export {
+  useNavigationContentFrame,
+  type NavigationContentFrame,
+} from './navigationContentFrame';

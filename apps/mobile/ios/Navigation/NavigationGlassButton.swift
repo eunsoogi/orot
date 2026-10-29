@@ -24,6 +24,20 @@ enum NavigationGlassButton {
         }
     }
 
+    /// Tracks localized primary titles while keeping one width constraint per stable action.
+    static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, constraints: inout [String: NSLayoutConstraint]) {
+        guard action.id != "home", action.id != "back" else { return }
+        let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
+        let minimumWidth = max(88, titleWidth + 24)
+        if let constraint = constraints[action.id] {
+            constraint.constant = minimumWidth
+        } else {
+            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
+            constraint.isActive = true
+            constraints[action.id] = constraint
+        }
+    }
+
     /// Creates a UIKit control once for a stable navigation action ID.
     static func make(for action: NavigationActionDescriptor, onAction: @escaping (String) -> Void) -> UIButton {
         let button = UIButton(type: .system)

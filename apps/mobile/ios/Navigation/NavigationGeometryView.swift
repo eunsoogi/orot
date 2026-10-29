@@ -8,22 +8,58 @@ final class NavigationGeometryView: UIView {
     }
 
     private var lastSnapshotData: Data?
+    private var hasHinge = false
+    private var navigationSide: String?
+    private var navigationWidth: Double?
+    private var navigationFrame: [String: Double]?
+
+    /// Observe public hinge identity and the actual mounted controls, without inspecting route contents.
+    private func observeWindowGeometry() {
+        NotificationCenter.default.addObserver(self, selector: #selector(navigationFrameChanged),
+                                               name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"), object: nil)
+        if #available(iOS 27.1, *) {
+            addInteraction(UIHingeInteraction { [weak self] _, update in
+                guard let self else { return }
+                hasHinge = update.hinge != nil
+                publishGeometryIfNeeded()
+            })
+        }
+    }
+
+    @objc private func navigationFrameChanged(_ notification: Notification) {
+        #if OROT_TESTS
+            // Separate sender activity from same-window acceptance without altering notification delivery.
+            let sameWindow = (notification.object as? UIView).map { $0.window != nil && $0.window === window } ?? false
+            TestLifecycleObservation.record("navigation-frame-received", fields: ["sameWindow": sameWindow, "frame": notification.userInfo?["frame"] ?? [:]])
+        #endif
+        guard let source = notification.object as? UIView, source.window === window,
+              let frame = notification.userInfo?["frame"] as? [String: Double] else { return }
+        navigationFrame = frame
+        navigationSide = notification.userInfo?["side"] as? String
+        navigationWidth = navigationSide == "bottom" ? nil : frame["width"]
+        publishGeometryIfNeeded()
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
         isOpaque = false
+        observeWindowGeometry()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         backgroundColor = .clear
         isOpaque = false
+        observeWindowGeometry()
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         lastSnapshotData = nil
+        navigationFrame = nil
+        navigationWidth = nil
+        navigationSide = nil
         setNeedsUpdateConstraints()
         setNeedsLayout()
         publishGeometryIfNeeded()
@@ -84,7 +120,8 @@ final class NavigationGeometryView: UIView {
             )
         }
 
-        return [
+        var payload: [String: Any] = [
+            "hasHinge": hasHinge,
             // Keep the physical window domain distinct from a nested or safe-area-contracted sensor.
             "windowBounds": rectPayload(window.bounds),
             "viewportBounds": rectPayload(convert(bounds, to: window)),
@@ -92,6 +129,16 @@ final class NavigationGeometryView: UIView {
             "reservedRegionsSupported": reservedRegionsSupported,
             "reservedRegions": reservedRegionEntries,
         ]
+        if let navigationWidth {
+            payload["navigationWidth"] = navigationWidth
+        }
+        if let navigationFrame {
+            payload["navigationFrame"] = navigationFrame
+        }
+        if let navigationSide {
+            payload["navigationSide"] = navigationSide
+        }
+        return payload
     }
 
     @available(iOS 27.1, *)
@@ -138,5 +185,44 @@ final class NavigationGeometryViewManager: RCTViewManager {
 
     override func view() -> UIView! {
         NavigationGeometryView(frame: .zero)
+    }
+}
+
+@objc(NavigationGlassViewManager)
+final class NavigationGlassViewManager: RCTViewManager {
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        NavigationGlassSurfaceView()
+    }
+}
+
+/// Sends only physical control geometry; a sensor ignores notifications from other windows.
+enum NavigationSurfaceGeometry {
+    static func publish(_ view: UIView, side: String, actions: [NavigationActionDescriptor]) {
+        #if OROT_TESTS
+            // Record requests separately so a missing callback differs from a guarded-out publication.
+            TestLifecycleObservation.record("navigation-frame-publication-request", fields: ["side": side, "attached": view.window != nil, "hidden": view.isHidden])
+        #endif
+        // Primary-only bottom actions do not replace the side navigation's measured frame.
+        guard actions.contains(where: { $0.rootTab || $0.id == "back" || $0.id == "home" }) else { return }
+        var ancestor: UIView? = view
+        while let current = ancestor {
+            guard !current.isHidden, current.alpha > 0.01 else { return }
+            ancestor = current.superview
+        }
+        view.layoutIfNeeded()
+        guard !view.isHidden, let window = view.window, !view.bounds.isEmpty else { return }
+        let frame = view.convert(view.bounds, to: window)
+        #if OROT_TESTS
+            TestLifecycleObservation.record("navigation-frame-published", fields: ["side": side, "frame": ["x": Double(frame.minX), "y": Double(frame.minY), "width": Double(frame.width), "height": Double(frame.height)]])
+        #endif
+        NotificationCenter.default.post(name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"),
+                                        object: view, userInfo: ["side": side, "frame": [
+                                            "x": Double(frame.minX), "y": Double(frame.minY),
+                                            "width": Double(frame.width), "height": Double(frame.height),
+                                        ]])
     }
 }

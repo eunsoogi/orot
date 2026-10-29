@@ -70,6 +70,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions';
   const evidenceSourceReflow =
     'OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState';
+  const evidenceSourceBoundary =
+    'OrotUITests/EvidenceSourceDuoUITests/testSyntheticSourceSelectionAndReturnKeepContentBoundaries';
   const healthImportReflow =
     'OrotUITests/HealthImportDuoUITests/testSelectedSourcesAndPendingImportSurviveDuoGeometryChanges';
   const healthImportLargeText =
@@ -113,10 +115,12 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 40);
+  assert.equal(duoInventory.length, 45);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
+    'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
+    'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
     homeSummary,
     settingsHome,
     settingsAccounts,
@@ -132,6 +136,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     scheduleLargeText,
     appointmentsReflow,
     classificationReflow,
+    'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
     manualAppointmentReflow,
     contextualDeparture,
     manualHistoryRecovery,
@@ -142,9 +147,11 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     recordsHub,
     healthLibraryReflow,
     healthImportLibrary,
+    'OrotUITests/HealthImportDuoUITests/testSyntheticHealthLibraryAndDetailKeepContentBoundariesAtBothTextSizes',
     healthDataSettingsReflow,
     diseaseHypothesesReflow,
     evidenceSourceReflow,
+    evidenceSourceBoundary,
     healthImportReflow,
     healthImportLargeText,
     healthRecordDetailReflow,
@@ -169,6 +176,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.ok(!iPhoneFixtures.includes(recordsHub));
   assert.ok(!coreTests.includes(recordsHub));
   for (const duoOnlyCase of [
+    'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
     activeTranscriptionReflow,
     manualAppointmentReflow,
     manualHistoryRecovery,
@@ -178,6 +186,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     healthDataSettingsReflow,
     diseaseHypothesesReflow,
     evidenceSourceReflow,
+    evidenceSourceBoundary,
     healthImportLibrary,
     healthImportReflow,
     healthImportLargeText,

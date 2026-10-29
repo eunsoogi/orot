@@ -12,6 +12,11 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var onAction: RCTBubblingEventBlock?
+    /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
+    @objc var geometryLayoutRevision: String? {
+        didSet { (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout() }
+    }
+
     @objc var layoutMode: String = "bottom" {
         didSet { updatePresentation() }
     }
@@ -65,10 +70,7 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.axis = .horizontal
         innerActions.alignment = .center
         innerActions.spacing = 12
-        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .vertical)
-        innerActionsSpacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
-        innerActions.addArrangedSubview(innerActionsSpacer)
+        NavigationRailConstraints.configureFlexibleSpace(innerActionsSpacer, in: innerActions)
         // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
         innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
@@ -85,12 +87,8 @@ final class NavigationGlassSurfaceView: UIView {
             innerActions.centerYAnchor.constraint(equalTo: centerYAnchor),
             innerActions.heightAnchor.constraint(equalToConstant: 48),
         ]
-        configureRailConstraints(in: self)
+        railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: self)
         updatePresentation()
-    }
-
-    private func configureRailConstraints(in host: UIView) {
-        railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: host)
     }
 
     override func didMoveToWindow() {
@@ -99,11 +97,19 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     override func layoutSubviews() {
-        let host = layoutMode == "right" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) : nil
+        let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) : nil
         if rootBar.superview !== (host ?? self) {
             updatePresentation()
         }
         super.layoutSubviews()
+        publishNavigationGeometry(from: self)
+    }
+
+    /// The mounted host owns measurement, including layout changes outside the React surface.
+    func publishNavigationGeometry(from parent: UIView) {
+        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
+        guard controls.superview === parent else { return }
+        NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions)
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
@@ -116,6 +122,7 @@ final class NavigationGlassSurfaceView: UIView {
         if wasRoot, isRoot {
             updatePresentation()
             rootBar.render(descriptors, animated: animated, onAction: dispatch)
+            finishRendering()
             return
         }
         NavigationToolbarTransition.apply(to: self, animated: animated) {
@@ -125,29 +132,39 @@ final class NavigationGlassSurfaceView: UIView {
             } else {
                 self.renderInnerActions(descriptors, onAction: dispatch)
             }
-            self.layoutIfNeeded()
+            self.finishRendering()
         }
+    }
+
+    /// Finish on the actual parent so portal-mounted controls publish their newly rendered frame.
+    private func finishRendering() {
+        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
+        guard let parent = controls.superview else { return }
+        parent.setNeedsLayout()
+        parent.layoutIfNeeded()
     }
 
     /// Reparents existing controls into a window-coordinate host without changing action identity.
     private func updatePresentation() {
-        let usesRightRail = layoutMode == "right"
+        let usesRightRail = layoutMode != "bottom"
         NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
-        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight) ?? self : self
+        let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) ?? self : self
         if rootBar.superview !== host {
             for view in [rootBar, innerActions] {
                 host.addSubview(view)
             }
-            configureRailConstraints(in: host)
+            railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: host)
         }
         if host === self {
             windowRailHost.removeFromSuperview()
         }
         bottomPlacementConstraints.forEach { $0.isActive = !usesRightRail }
         railPlacementConstraints.forEach { $0.isActive = usesRightRail }
-        railPlacementConstraints[0].constant = -railRightInset
-        railPlacementConstraints[3].constant = -railBottomInset
-        railPlacementConstraints[5].constant = -railRightInset
+        // Mirror the measured lane for left-side multitasking; the legacy inset property is edge-relative.
+        railPlacementConstraints[0].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
+        railPlacementConstraints[3].constant = (railTopInset - railBottomInset) / 2
+        railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
+        railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
         railPlacementConstraints[6].constant = railTopInset
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
@@ -159,6 +176,7 @@ final class NavigationGlassSurfaceView: UIView {
         }
         rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
         innerActions.isHidden = rootBar.isHidden == false
+        host.setNeedsLayout()
         setNeedsLayout()
     }
 
@@ -185,7 +203,7 @@ final class NavigationGlassSurfaceView: UIView {
                 button = NavigationGlassButton.make(for: action, onAction: onAction)
                 contextualButtons[action.id] = button
             }
-            updateMinimumWidth(for: action, button: button)
+            NavigationGlassButton.updateMinimumWidth(for: action, button: button, constraints: &contextualButtonWidthConstraints)
             updateFixedWidth(for: action, button: button)
         }
 
@@ -210,8 +228,8 @@ final class NavigationGlassSurfaceView: UIView {
 
     /// Changes the compact Home width in place while Back remains 48pt in either layout.
     private func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton) {
-        NavigationGlassButton.setUsesRightRail(layoutMode == "right", for: action, button: button)
-        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode == "right") else {
+        NavigationGlassButton.setUsesRightRail(layoutMode != "bottom", for: action, button: button)
+        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode != "bottom") else {
             contextualButtonFixedWidthConstraints.removeValue(forKey: action.id)?.isActive = false
             return
         }
@@ -221,20 +239,6 @@ final class NavigationGlassSurfaceView: UIView {
             let constraint = button.widthAnchor.constraint(equalToConstant: width)
             constraint.isActive = true
             contextualButtonFixedWidthConstraints[action.id] = constraint
-        }
-    }
-
-    /// Tracks localized primary titles while keeping one width constraint per stable action.
-    private func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton) {
-        guard action.id != "home", action.id != "back" else { return }
-        let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
-        let minimumWidth = max(88, titleWidth + 24)
-        if let constraint = contextualButtonWidthConstraints[action.id] {
-            constraint.constant = minimumWidth
-        } else {
-            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
-            constraint.isActive = true
-            contextualButtonWidthConstraints[action.id] = constraint
         }
     }
 

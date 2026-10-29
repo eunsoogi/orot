@@ -33,6 +33,7 @@ import {
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
+import { useNavigationPrimaryFrame } from './navigationContentFrame';
 
 interface NavigationActionBarPresentationProps {
   readonly actions: readonly NavigationGlassAction[];
@@ -61,6 +62,7 @@ export function NavigationActionBarPresentation({
   surface: Surface = NavigationGlassSurface,
 }: NavigationActionBarPresentationProps) {
   const layout = useContext(NavigationRootLayoutContext);
+  const primaryFrame = useNavigationPrimaryFrame(layout);
   const candidateRightLayout =
     layout.placement === 'right' ? layout : undefined;
   const candidateRailHeight = candidateRightLayout
@@ -106,10 +108,12 @@ export function NavigationActionBarPresentation({
         bottom: 0,
         height: railHeight,
         position: 'absolute' as const,
-        right: 0,
+        ...(rightLayout.railSide === 'left' ? { left: 0 } : { right: 0 }),
         // Content may already end before this lane; the native window host
         // still needs the complete fixed-width rail and its trailing gap.
-        width: NAVIGATION_ROOT_RAIL_WIDTH + rightLayout.railRightInset,
+        width:
+          (rightLayout.railWidth ?? NAVIGATION_ROOT_RAIL_WIDTH) +
+          rightLayout.railRightInset,
       }
     : undefined;
   const primaryActions = primaryAction ? (
@@ -135,7 +139,7 @@ export function NavigationActionBarPresentation({
       : 'navigation-bar-fallback';
   const railProps = rightLayout
     ? {
-        layoutMode: 'right' as const,
+        layoutMode: rightLayout.railSide ?? ('right' as const),
         railBottomInset,
         railRightInset: rightLayout.railRightInset,
         railTopInset: rightLayout.railTopInset,
@@ -191,7 +195,7 @@ export function NavigationActionBarPresentation({
       <SafeAreaView
         edges={safeAreaHandledByParent || keyboardVisible ? [] : ['bottom']}
         pointerEvents="box-none"
-        style={[styles.safeArea, { width: rightLayout.contentWidth }]}
+        style={[styles.safeArea, primaryFrame]}
       >
         <Surface
           actions={actions.filter(action => action.id === 'primary')}
