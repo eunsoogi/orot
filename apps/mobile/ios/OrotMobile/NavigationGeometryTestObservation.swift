@@ -130,7 +130,12 @@
             result["homeID"] = identity(home)
             result["windowID"] = identity(window)
             result["windowBounds"] = finiteRect(window.bounds)
-            result["orientation"] = window.windowScene?.effectiveGeometry.interfaceOrientation.rawValue ?? 0
+            // The app still builds for iOS 15.1; unavailable metadata must not raise its deployment floor.
+            if #available(iOS 16.0, *) {
+                result["orientation"] = window.windowScene?.effectiveGeometry.interfaceOrientation.rawValue ?? 0
+            } else {
+                result["orientation"] = NSNull()
+            }
             // UIKit's nil source window denotes screen base coordinates; no inferred rotation is applied.
             result["screenCoordinateSpace"] = "UIKit-screen-base"
             result["nativeFrameInWindow"] = finiteRect(home.convert(home.bounds, to: window))

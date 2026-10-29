@@ -53,4 +53,8 @@ switch (selectEntryRoute(launchSettings)) {
     // Keep the production App navigation and inject synthetic operations only for the UI proof.
     require('./aiFeatureVisitQuestionsProbeEntry');
     break;
+  case 'symptom-journal-save-recovery':
+    // Keep the production symptom route while isolating the synthetic write failure in memory.
+    require('./symptomJournalSaveRecoveryProbeEntry');
+    break;
 }

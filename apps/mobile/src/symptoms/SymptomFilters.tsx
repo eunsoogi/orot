@@ -7,12 +7,15 @@ import {
   Text,
   View,
 } from 'react-native';
+import { t } from '../i18n';
 import type { SymptomFilter, SymptomStatus } from './types';
 import TextInput from './SymptomTextInput';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
+import { symptomStatusLabel } from './presentation';
 import styles from './SymptomFilters.styles';
 
+// `all` is a UI-only choice; the domain filter keeps only persisted status values.
 type StatusFilter = 'all' | SymptomStatus;
 const FILTER_INPUT_ACCESSORY_IDS = {
   fromDate: 'symptom-filter-accessory-from-date',
@@ -74,7 +77,7 @@ export default function SymptomFilters({
       ? toSymptomTimestamp(throughDate, throughTime)
       : null;
     if ((hasFrom && !fromOnsetAt) || (hasThrough && !throughOnsetAt)) {
-      setError('Enter a valid date and time for each range boundary.');
+      setError(t('symptoms.journal.dateFilter.invalid'));
       return;
     }
     if (
@@ -82,7 +85,7 @@ export default function SymptomFilters({
       throughOnsetAt &&
       new Date(fromOnsetAt).getTime() > new Date(throughOnsetAt).getTime()
     ) {
-      setError('The end of the time range must follow its start.');
+      setError(t('symptoms.journal.dateFilter.order'));
       return;
     }
     try {
@@ -92,7 +95,7 @@ export default function SymptomFilters({
         ...(throughOnsetAt ? { throughOnsetAt } : {}),
       });
     } catch {
-      setError('Symptoms could not be filtered. Try again.');
+      setError(t('symptoms.journal.filterError'));
     }
   }
 
@@ -107,7 +110,7 @@ export default function SymptomFilters({
         statusFilter === 'all' ? {} : { status: statusFilter },
       );
     } catch {
-      setError('Symptoms could not be filtered. Try again.');
+      setError(t('symptoms.journal.filterError'));
     }
   }
 
@@ -123,7 +126,9 @@ export default function SymptomFilters({
         </Text>
       ) : null}
       <View style={styles.filterCard}>
-        <Text style={styles.sectionTitle}>Filter by status</Text>
+        <Text style={styles.sectionTitle}>
+          {t('symptoms.journal.statusFilter.title')}
+        </Text>
         <View style={styles.row}>
           {(['all', 'active', 'resolved'] as StatusFilter[]).map(status => (
             <Pressable
@@ -143,29 +148,29 @@ export default function SymptomFilters({
             >
               <Text style={styles.choiceLabel}>
                 {status === 'all'
-                  ? 'All'
-                  : status === 'active'
-                    ? 'Active'
-                    : 'Resolved'}
+                  ? t('symptoms.journal.statusFilter.all')
+                  : symptomStatusLabel(status)}
               </Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.sectionTitle}>Filter by onset time</Text>
+        <Text style={styles.sectionTitle}>
+          {t('symptoms.journal.dateFilter.title')}
+        </Text>
         <View style={styles.row}>
           <TextInput
             editable={!disabled}
-            accessibilityLabel="From onset date"
+            accessibilityLabel={t('symptoms.journal.dateFilter.startDate')}
             inputAccessoryViewID={filterInputAccessoryID('fromDate')}
             onChangeText={setFromDate}
-            placeholder="From date"
+            placeholder="YYYY-MM-DD"
             style={[styles.input, styles.halfInput]}
             testID="symptom-filter-from-date"
             value={fromDate}
           />
           <TextInput
             editable={!disabled}
-            accessibilityLabel="From onset time"
+            accessibilityLabel={t('symptoms.journal.dateFilter.startTime')}
             inputAccessoryViewID={filterInputAccessoryID('fromTime')}
             onChangeText={setFromTime}
             placeholder="HH:MM"
@@ -177,17 +182,17 @@ export default function SymptomFilters({
         <View style={styles.row}>
           <TextInput
             editable={!disabled}
-            accessibilityLabel="Through onset date"
+            accessibilityLabel={t('symptoms.journal.dateFilter.endDate')}
             inputAccessoryViewID={filterInputAccessoryID('throughDate')}
             onChangeText={setThroughDate}
-            placeholder="Through date"
+            placeholder="YYYY-MM-DD"
             style={[styles.input, styles.halfInput]}
             testID="symptom-filter-through-date"
             value={throughDate}
           />
           <TextInput
             editable={!disabled}
-            accessibilityLabel="Through onset time"
+            accessibilityLabel={t('symptoms.journal.dateFilter.endTime')}
             inputAccessoryViewID={filterInputAccessoryID('throughTime')}
             onChangeText={setThroughTime}
             placeholder="HH:MM"
@@ -197,7 +202,7 @@ export default function SymptomFilters({
           />
         </View>
         <Text style={styles.hint}>
-          Range endpoints include the entered local times.
+          {t('symptoms.journal.dateFilter.guidance')}
         </Text>
         <Button
           disabled={disabled}
@@ -205,7 +210,7 @@ export default function SymptomFilters({
             applyFilters();
           }}
           testID="symptom-filter-apply"
-          title="Apply time range"
+          title={t('symptoms.journal.dateFilter.apply')}
         />
         <Button
           disabled={disabled}
@@ -213,14 +218,14 @@ export default function SymptomFilters({
             clearTimeRange();
           }}
           testID="symptom-filter-clear-time"
-          title="Clear time range"
+          title={t('symptoms.journal.dateFilter.clear')}
         />
       </View>
       {Platform.OS === 'ios' ? (
         <SymptomKeyboardAccessoryGroup
           actions={[
             {
-              label: 'Apply time range',
+              label: t('symptoms.journal.dateFilter.apply'),
               testID: 'symptom-filter-keyboard-apply',
               disabled,
               onPress: () => {
@@ -229,7 +234,7 @@ export default function SymptomFilters({
               },
             },
             {
-              label: 'Done',
+              label: t('symptoms.journal.keyboard.done'),
               testID: 'symptom-filter-keyboard-done',
               onPress: Keyboard.dismiss,
             },
