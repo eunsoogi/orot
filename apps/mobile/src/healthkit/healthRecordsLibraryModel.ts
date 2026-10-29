@@ -38,8 +38,8 @@ export function healthRecordCategories(): readonly HealthRecordCategory[] {
   return categoryOrder;
 }
 
-/** Promotes the selected type while keeping other imported types discoverable. */
-export function orderHealthRecordCategories(
+/** Filters result data; horizontal chips keep every type reachable independently. */
+export function filterHealthRecordCategories(
   categories: readonly HealthRecordCategory[],
   selected: HealthRecordCategory | 'all',
 ): HealthRecordCategory[] {
@@ -47,7 +47,7 @@ export function orderHealthRecordCategories(
     categories.includes(category),
   );
   if (selected === 'all') return visible;
-  return [selected, ...visible.filter(category => category !== selected)];
+  return visible.filter(category => category === selected);
 }
 
 export interface BloodPressureReading {

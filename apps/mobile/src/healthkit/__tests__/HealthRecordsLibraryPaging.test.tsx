@@ -93,11 +93,11 @@ test('shows the first page before requesting more current-period records', async
   // A dense current month must not delay first paint until every page arrives.
   expect(loader).toHaveBeenCalledTimes(6);
   expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
-  expect(screen.getByText('아직 불러오지 않은 기록이 있어요.')).toBeTruthy();
+  expect(screen.queryByText('아직 불러오지 않은 기록이 있어요.')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   await fireEvent.press(screen.getByTestId('health-records-load-older'));
   expect(
-    await screen.findByTestId('health-record-chart-blood_pressure'),
+    await screen.findByTestId('health-record-chart-heart_rate'),
   ).toBeTruthy();
   expect(loader).toHaveBeenCalledTimes(7);
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
@@ -160,6 +160,7 @@ test('late loader responses cannot overwrite a new library request', async () =>
       nextCursor: { id: 'stale', effectiveAt: '2026-10-01T00:00:00Z' },
     }),
   );
+  await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   expect(
     screen.getByTestId('health-record-category-empty-heart_rate'),
   ).toHaveTextContent('저장된 심박수 기록이 없어요.');

@@ -107,6 +107,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',
     'OrotUITests/RecordingDeletionRecoveryUITests/testFailedDeletionRestoresAudioAndKeepsSourceDuringSlowListRead',
     'OrotUITests/RecordingDeletionRecoveryUITests/testDelayedAudioCleanupKeepsProgressUntilCleanupCompletes',
+    'OrotUITests/RecordingDeletionRecoveryUITests/testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
     'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
     'OrotUITests/AppointmentReminderJourneyUITests/testActualRNFailureOriginSurvivesCleanupAndQueuedReconciliation',

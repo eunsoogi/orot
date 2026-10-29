@@ -46,6 +46,7 @@ test('loads each category directly and shows pressure while a Watch category rem
   expect(
     await screen.findByTestId('health-record-chart-blood_pressure'),
   ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   expect(
     screen.getByTestId('health-record-category-empty-heart_rate'),
   ).toHaveTextContent('저장된 건강 기록을 불러오는 중…');
@@ -119,5 +120,10 @@ test('retries only the failed category while retaining the ready pressure card',
     null,
     expect.objectContaining({ category: 'heart_rate' }),
   );
+  expect(screen.queryByTestId('health-record-chart-blood_pressure')).toBeNull();
+  await fireEvent.press(
+    screen.getByTestId('health-record-filter-blood_pressure'),
+  );
   expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
+  expect(loader).toHaveBeenCalledTimes(7);
 });
