@@ -31,7 +31,7 @@ test('keeps all HealthData content and recovery controls in one vertical owner',
       }}
       loadFailed
       loaded
-      notice="selection_save_failed"
+      notice={{ status: 'selection_save_failed' }}
       onRetryLoad={onRetryLoad}
       onRetryStatus={onRetryStatus}
       onSave={onSave}

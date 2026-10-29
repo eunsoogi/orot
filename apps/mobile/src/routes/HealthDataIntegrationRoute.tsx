@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
-import type { HealthKitAutoSyncConfigurationResult } from '../healthkit/autoSyncSettings';
+import type { HealthKitAutoSyncNotice } from '../healthkit/autoSyncSettings';
 import {
   configureLocalHealthKitAutoSync,
   loadLocalHealthKitAutoSyncSelection,
@@ -21,9 +22,7 @@ export function HealthDataIntegrationRoute({
   readonly loadSelection?: () => Promise<readonly HealthKitAutoSyncFeature[]>;
   readonly saveSelection?: (
     features: readonly HealthKitAutoSyncFeature[],
-  ) => Promise<{
-    readonly status: HealthKitAutoSyncConfigurationResult['status'];
-  }>;
+  ) => Promise<HealthKitAutoSyncNotice>;
   readonly loadIntegrationStatus?: () => Promise<HealthDataIntegrationStatus>;
 }) {
   const [selected, setSelected] = useState<
@@ -38,9 +37,7 @@ export function HealthDataIntegrationRoute({
     useState<HealthDataIntegrationStatus | null>(null);
   const [statusLoadFailed, setStatusLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<
-    HealthKitAutoSyncConfigurationResult['status'] | null
-  >(null);
+  const [notice, setNotice] = useState<HealthKitAutoSyncNotice | null>(null);
   const [revision, setRevision] = useState(0);
   const [loadRevision, setLoadRevision] = useState(0);
   const [statusRevision, setStatusRevision] = useState(0);
@@ -79,6 +76,22 @@ export function HealthDataIntegrationRoute({
     };
   }, [loadIntegrationStatus, statusRevision]);
 
+  useEffect(() => {
+    // Returning from Apple Health refreshes saved sync status only; it never requests permission or samples.
+    let wasAway =
+      AppState.currentState === 'background' ||
+      AppState.currentState === 'inactive';
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        if (wasAway) setStatusRevision(value => value + 1);
+        wasAway = false;
+      } else if (state === 'background' || state === 'inactive') {
+        wasAway = true;
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   const dirty = !sameSelection(selected, saved);
   useNavigationLeaveStateRegistration({
     canLeave: !saving,
@@ -115,14 +128,14 @@ export function HealthDataIntegrationRoute({
     const features = [...selected];
     try {
       const result = await saveSelection(features);
-      setNotice(result.status);
+      setNotice(result);
       if (result.status !== 'selection_save_failed') {
         setSaved(new Set(features));
         // Saving can run a refresh that updates this screen's aggregate status snapshot.
         setStatusRevision(value => value + 1);
       }
     } catch {
-      setNotice('selection_save_failed');
+      setNotice({ status: 'selection_save_failed' });
     } finally {
       setSaving(false);
     }

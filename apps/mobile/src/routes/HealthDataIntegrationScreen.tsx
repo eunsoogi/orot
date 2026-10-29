@@ -1,12 +1,13 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
-import type { HealthKitAutoSyncConfigurationResult } from '../healthkit/autoSyncSettings';
+import type { HealthKitAutoSyncNotice } from '../healthkit/autoSyncSettings';
 import { formatDateTime, t } from '../i18n';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { HealthDataAuthorizationRecoveryNotice } from './HealthDataAuthorizationRecoveryNotice';
 import { HealthDataFeatureSelection } from './HealthDataFeatureSelection';
 import type { HealthDataIntegrationStatus } from './HealthDataIntegrationStatus';
 
@@ -27,7 +28,7 @@ export function HealthDataIntegrationScreen({
   readonly integrationStatus: HealthDataIntegrationStatus | null;
   readonly loadFailed: boolean;
   readonly loaded: boolean;
-  readonly notice: HealthKitAutoSyncConfigurationResult['status'] | null;
+  readonly notice: HealthKitAutoSyncNotice | null;
   readonly onRetryLoad: () => void;
   readonly onRetryStatus: () => void;
   readonly onSave: () => void;
@@ -154,18 +155,23 @@ export function HealthDataIntegrationScreen({
         style={styles.status}
         testID="health-data-status"
       >
-        {notice === 'complete'
+        {notice?.status === 'complete'
           ? t('settings.healthData.saved')
-          : notice === 'retryable'
+          : notice?.status === 'retryable'
             ? t('settings.healthData.retryable')
-            : notice === 'skipped'
+            : notice?.status === 'skipped'
               ? t('settings.healthData.disabled')
-              : notice === 'selection_save_failed'
+              : notice?.status === 'selection_save_failed'
                 ? t('settings.healthData.selectionSaveFailed')
                 : !loaded && !loadFailed
                   ? t('settings.healthData.loading')
                   : ''}
       </Text>
+      {notice?.authorizationFailure ? (
+        <HealthDataAuthorizationRecoveryNotice
+          failure={notice.authorizationFailure}
+        />
+      ) : null}
     </ScrollView>
   );
 

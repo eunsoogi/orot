@@ -45,17 +45,22 @@ public final class HealthKitModule: NSObject {
             return
         }
 
-        // Completion confirms request processing, not whether HealthKit granted read access.
-        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { success, error in
-            if let error {
-                reject("HEALTHKIT_AUTHORIZATION_FAILED", error.localizedDescription, error as NSError)
-                return
+        // A successful completion means the request finished; HealthKit keeps read grants unobservable.
+        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { result in
+            switch result {
+            case .success:
+                resolve(HealthKitBoundary.authorizationResult(availability: "available", status: "completed"))
+            case let .failure(failure):
+                reject(failure.bridgeCode, failure.bridgeMessage, NSError(
+                    domain: "HealthKitAuthorization",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: failure.bridgeMessage,
+                        "stage": failure.stage,
+                        "authorizationCode": failure.code,
+                    ],
+                ))
             }
-            guard success else {
-                reject("HEALTHKIT_AUTHORIZATION_FAILED", "HealthKit authorization request did not succeed.", nil)
-                return
-            }
-            resolve(HealthKitBoundary.authorizationResult(availability: "available", status: "completed"))
         }
     }
 
@@ -100,22 +105,27 @@ public final class HealthKitModule: NSObject {
             return
         }
 
-        // One completion covers the selected read set; it still cannot reveal read grants.
-        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { success, error in
-            if let error {
-                reject("HEALTHKIT_AUTHORIZATION_FAILED", error.localizedDescription, error as NSError)
-                return
+        // The bridge returns only selected types and request completion, never individual read grants.
+        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { result in
+            switch result {
+            case .success:
+                resolve(HealthKitBatchAuthorization.result(
+                    availability: "available",
+                    status: "completed",
+                    requestedFeatures: plan.requestedFeatures,
+                    unsupportedFeatures: plan.unsupportedFeatures,
+                ))
+            case let .failure(failure):
+                reject(failure.bridgeCode, failure.bridgeMessage, NSError(
+                    domain: "HealthKitAuthorization",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: failure.bridgeMessage,
+                        "stage": failure.stage,
+                        "authorizationCode": failure.code,
+                    ],
+                ))
             }
-            guard success else {
-                reject("HEALTHKIT_AUTHORIZATION_FAILED", "HealthKit authorization request did not succeed.", nil)
-                return
-            }
-            resolve(HealthKitBatchAuthorization.result(
-                availability: "available",
-                status: "completed",
-                requestedFeatures: plan.requestedFeatures,
-                unsupportedFeatures: plan.unsupportedFeatures,
-            ))
         }
     }
 

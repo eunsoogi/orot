@@ -9,6 +9,8 @@ allowBuilds:
 
 patchedDependencies:
   '@op-engineering/op-sqlite@18.2.5': vendor/patches/@op-engineering__op-sqlite@18.2.5.patch
+  '@react-native-community/datetimepicker@9.2.2': vendor/patches/@react-native-community__datetimepicker@9.2.2.patch
+  '@react-native-community/slider@5.2.2': vendor/patches/@react-native-community__slider@5.2.2.patch
   '@react-native/codegen@0.87.1': vendor/patches/@react-native__codegen@0.87.1.patch
   '@react-navigation/elements@2.9.44': vendor/patches/@react-navigation__elements@2.9.44.patch
   '@react-navigation/native@7.5.0': vendor/patches/@react-navigation__native@7.5.0.patch
