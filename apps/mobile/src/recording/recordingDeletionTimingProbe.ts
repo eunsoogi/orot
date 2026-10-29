@@ -167,6 +167,7 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
         'confirmation-tap',
         'progress-presented',
       ),
+      libraryQueueWait: duration('library-queue-wait'),
       sourceRead: duration('source-read'),
       stopCheck: duration('stop-check'),
       audioStaging: duration('audio-staging'),
