@@ -67,9 +67,7 @@ test('opens saved medical document text and provenance in measured detail panels
   expect(
     screen.getByTestId('medical-document-source-detail-layout-primary'),
   ).toBeTruthy();
-  expect(
-    screen.getByTestId('medical-document-source-detail-layout-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('medical-document-source-evidence')).toBeTruthy();
   expect(screen.queryByTestId('records-document-source-layout')).toBeNull();
   expect(service.getDocument).toHaveBeenCalledWith(source.id);
   expect(screen.getByTestId('medical-document-source-title')).toHaveTextContent(

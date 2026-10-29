@@ -17,6 +17,10 @@ import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration
 import type { ProviderSelectionStore } from '../src/providers/selection/types';
 import type { SelectedAiResolverOptions } from '../src/aiFeatures/integration/provider';
 import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
+import {
+  homeOverviewJournal,
+  homeOverviewRecordings,
+} from './homeOverviewFixture';
 
 const settingsManager = NativeModules?.SettingsManager;
 const launchSettings =
@@ -134,6 +138,12 @@ function MedicalAppointmentNavigationProbeEntry() {
       aiFeatureServiceDependencies={aiFeatureServiceDependencies}
       calendarBridge={calendarBridge}
       loadAppointments={async () => appointmentRepository}
+      loadSymptoms={
+        homeAppointments.length ? async () => homeOverviewJournal : undefined
+      }
+      loadRecordings={
+        homeAppointments.length ? async () => homeOverviewRecordings : undefined
+      }
     />
   );
 }

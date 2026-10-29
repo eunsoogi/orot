@@ -3,7 +3,7 @@ import { AppButton } from '../layout/AppButton';
 import { SelectedModelControl } from '../layout/SelectedModelControl';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
@@ -32,7 +32,7 @@ interface Props {
   readonly onOpenProviderSelection?: () => void;
 }
 
-/** One scroll owner keeps the import flow reachable while measured panels reflow. */
+/** One scroll owner keeps the import flow and its actions in reading order. */
 export function MedicalAppointmentReviewView(props: Props) {
   const inset = useNavigationContentInset();
   const busy =

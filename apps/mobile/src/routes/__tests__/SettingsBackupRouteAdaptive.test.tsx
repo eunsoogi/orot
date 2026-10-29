@@ -190,14 +190,15 @@ test('production backup route reflows by usable region and retains recovery acti
       nativeEvent: geometry(900, { x: 445, width: 10 }),
     });
   });
-  expect(direction()).toBe('row');
-  for (const side of ['primary', 'secondary']) {
+  expect(direction()).toBe('column');
+  for (const side of ['primary']) {
     expect(
       StyleSheet.flatten(
         screen.getByTestId(`settings-backup-layout-${side}`).props.style,
       )?.width,
     ).toBeGreaterThan(320);
   }
+  expect(screen.queryByTestId('settings-backup-layout-secondary')).toBeNull();
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(screen.getByTestId('backup-status-message')).toHaveTextContent(
     t('backup.status.recoveryRequired'),

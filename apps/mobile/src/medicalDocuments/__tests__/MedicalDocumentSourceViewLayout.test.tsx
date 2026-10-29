@@ -95,15 +95,14 @@ test('uses measured Duo regions and preserves the detail while narrow and large-
     'geometryChange',
     { nativeEvent: sourceDetailDuoGeometry },
   );
-  expect(direction()).toBe('row');
+  expect(direction()).toBe('column');
   const rootStyle = StyleSheet.flatten(layout().props.style);
   const primaryEnd =
     Number(rootStyle?.marginStart ?? 0) + panelWidth('primary');
-  const secondaryStart = primaryEnd + Number(rootStyle?.columnGap ?? 0);
-  const secondaryEnd = secondaryStart + panelWidth('secondary');
   expect(primaryEnd).toBeLessThanOrEqual(450);
-  expect(secondaryStart).toBeGreaterThanOrEqual(490);
-  expect(secondaryEnd).toBeLessThanOrEqual(918);
+  expect(
+    screen.queryByTestId('medical-document-source-detail-layout-secondary'),
+  ).toBeNull();
   expect(
     screen.getByTestId('medical-document-source-text-0'),
   ).toHaveTextContent('Synthetic saved page text');

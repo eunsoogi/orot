@@ -5,6 +5,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
+import { hubSpacing } from '../layout/hubSpacing';
 
 interface RecordsRecentSourcesProps {
   readonly recordings: readonly RecordingSourceRecord[];
@@ -90,17 +91,11 @@ export function RecordsRecentSources({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexGrow: 1,
-    gap: 14,
+    gap: hubSpacing.item,
     minWidth: 0,
-    padding: 20,
   },
   heading: { color: appColors.text, fontSize: 21, fontWeight: '700' },
-  rows: { gap: 10 },
+  rows: { gap: hubSpacing.item },
   row: {
     alignItems: 'center',
     borderColor: appColors.border,

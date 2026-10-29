@@ -72,7 +72,7 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   );
 
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
-  // The feature route must expose both native regions to the screen's own measured panels.
+  // The screen chooses a single native region for its continuous page.
   expect(screen.queryByTestId('navigation-route-columns-route-2')).toBeNull();
 
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
@@ -105,22 +105,18 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     '다음 질문 초안',
   );
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(panelAxis()).toBe('row'));
+  await waitFor(() => expect(panelAxis()).toBe('column'));
 
   const columnsStyle = StyleSheet.flatten(
     screen.getByTestId('rag-conversation-columns').props.style,
   );
-  expect(columnsStyle?.columnGap).toBe(120);
+  expect(columnsStyle?.columnGap).toBe(0);
   expect(
     StyleSheet.flatten(
       screen.getByTestId('rag-conversation-columns-primary').props.style,
     )?.width,
   ).toBeLessThanOrEqual(640);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-columns-secondary').props.style,
-    )?.width,
-  ).toBeLessThanOrEqual(640);
+  expect(screen.queryByTestId('rag-conversation-columns-secondary')).toBeNull();
   expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',

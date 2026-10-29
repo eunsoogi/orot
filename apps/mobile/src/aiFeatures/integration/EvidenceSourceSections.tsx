@@ -120,15 +120,20 @@ export function EvidenceSourceSections({
 
   return (
     <AdaptiveColumns
-      primary={sourceSelection}
+      primary={
+        <View style={styles.pageSections}>
+          {sourceSelection}
+          {sourceContent}
+        </View>
+      }
       routeKey={routeKey}
-      secondary={sourceContent}
       testID="ai-feature-source-detail-columns"
     />
   );
 }
 
 const styles = StyleSheet.create({
+  pageSections: { gap: 16 },
   tabs: { gap: 8, paddingVertical: 4 },
   tab: {
     minHeight: 44,

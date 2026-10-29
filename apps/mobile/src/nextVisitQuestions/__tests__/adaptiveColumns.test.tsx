@@ -45,7 +45,7 @@ test('reflows the active question editor without replaying generation', async ()
   await render(<NextVisitQuestionsScreen {...props} />);
 
   const columns = screen.getByTestId('next-visit-question-columns');
-  const host = screen.getByTestId('next-visit-question-columns-host');
+  const host = screen.getByTestId('next-visit-question-columns-frame-host');
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
   const question = await screen.findByTestId('next-visit-question-text-0');
   await fireEvent.changeText(question, 'edited visit question');
@@ -80,15 +80,15 @@ test('reflows the active question editor without replaying generation', async ()
     );
   };
 
-  setWindowBounds('next-visit-question-columns-host', 24, 1400);
+  setWindowBounds('next-visit-question-columns-frame-host', 24, 1400);
   await fireEvent(host, 'layout', {
     nativeEvent: { layout: { width: 1400, height: 600, x: 0, y: 0 } },
   });
 
-  expect(StyleSheet.flatten(columns.props.style)?.flexDirection).toBe('row');
+  expect(StyleSheet.flatten(columns.props.style)?.flexDirection).toBe('column');
   expectRetainedState();
 
-  setWindowBounds('next-visit-question-columns-host', 24, 1200);
+  setWindowBounds('next-visit-question-columns-frame-host', 24, 1200);
   await fireEvent(host, 'layout', {
     nativeEvent: { layout: { width: 1200, height: 600, x: 0, y: 0 } },
   });

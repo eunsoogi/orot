@@ -62,7 +62,7 @@ export function ProviderSelectionChoices({
       testID={
         presentation === 'settings-provider'
           ? 'settings-provider-local-panel'
-          : undefined
+          : 'provider-selection-local-panel'
       }
     >
       <Text style={styles.heading}>이 기기에서</Text>
@@ -78,7 +78,7 @@ export function ProviderSelectionChoices({
       testID={
         presentation === 'settings-provider'
           ? 'settings-provider-connected-panel'
-          : undefined
+          : 'provider-selection-connected-panel'
       }
     >
       <Text style={styles.heading}>연결한 계정</Text>
@@ -90,11 +90,15 @@ export function ProviderSelectionChoices({
   ) : null;
 
   if (presentation === 'settings-provider' || presentation === 'feature') {
-    // Both routes provide their measured content region; separate IDs keep their UI coverage distinct.
+    // Both sections stay in one measured region and retain their screen-owned selection state.
     return (
       <AdaptiveColumns
-        primary={localPanel}
-        secondary={connectedPanel}
+        primary={
+          <View>
+            {localPanel}
+            {connectedPanel}
+          </View>
+        }
         testID={
           presentation === 'settings-provider'
             ? 'settings-provider-panels'

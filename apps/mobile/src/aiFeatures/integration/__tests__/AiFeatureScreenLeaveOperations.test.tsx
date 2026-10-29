@@ -108,6 +108,7 @@ test('aborts disease analysis after confirmed leave and ignores its late result'
   await waitFor(() =>
     expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull(),
   );
+  expect(route.queryByTestId('disease-hypotheses-cancel')).toBeNull();
   expect(signal?.aborted).toBe(true);
   await act(async () =>
     finish({

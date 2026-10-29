@@ -77,14 +77,13 @@ export default function InferenceDisclosureModalPanel({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       />
-      {/* Keep both consent facts in one sticky child so neither displaces the other. */}
+      {/* Consent details and decisions share one scroll owner at large text sizes. */}
       <ScrollView
         contentContainerStyle={[
           styles.content,
           compact && styles.compactContent,
         ]}
         keyboardShouldPersistTaps="handled"
-        stickyHeaderIndices={[1]}
         testID="inference-disclosure-content"
       >
         <View style={[styles.header, compact && styles.compactHeader]}>
@@ -185,33 +184,32 @@ export default function InferenceDisclosureModalPanel({
             {t('medicalAppointments.inferenceDisclosure.blockedAttachment')}
           </Text>
         ) : null}
+        <SafeAreaInsetsContext.Consumer>
+          {modalInsets => (
+            <View
+              style={[
+                styles.footer,
+                compact && styles.compactFooter,
+                { paddingBottom: Math.max(modalInsets?.bottom ?? 0, 16) },
+              ]}
+              testID="inference-disclosure-footer"
+            >
+              <AppButton
+                disabled={!complete}
+                title={t('medicalAppointments.inferenceDisclosure.allow')}
+                onPress={() => onDecision(true)}
+                testID="inference-disclosure-allow"
+              />
+              <AppButton
+                variant="neutral"
+                title={t('medicalAppointments.inferenceDisclosure.cancel')}
+                onPress={() => onDecision(false)}
+                testID="inference-disclosure-cancel"
+              />
+            </View>
+          )}
+        </SafeAreaInsetsContext.Consumer>
       </ScrollView>
-      {/* Keep consent decisions reachable while the disclosure content scrolls. */}
-      <SafeAreaInsetsContext.Consumer>
-        {modalInsets => (
-          <View
-            style={[
-              styles.footer,
-              compact && styles.compactFooter,
-              { paddingBottom: Math.max(modalInsets?.bottom ?? 0, 16) },
-            ]}
-            testID="inference-disclosure-footer"
-          >
-            <AppButton
-              disabled={!complete}
-              title={t('medicalAppointments.inferenceDisclosure.allow')}
-              onPress={() => onDecision(true)}
-              testID="inference-disclosure-allow"
-            />
-            <AppButton
-              variant="neutral"
-              title={t('medicalAppointments.inferenceDisclosure.cancel')}
-              onPress={() => onDecision(false)}
-              testID="inference-disclosure-cancel"
-            />
-          </View>
-        )}
-      </SafeAreaInsetsContext.Consumer>
     </View>
   );
 }

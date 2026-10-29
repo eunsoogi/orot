@@ -11,6 +11,7 @@ export const calendarStyles = StyleSheet.create({
     backgroundColor: appColors.background,
   },
   heading: { gap: 6 },
+  pageSections: { gap: 16 },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 17, lineHeight: 24 },
   message: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

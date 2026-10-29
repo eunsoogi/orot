@@ -9,7 +9,6 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import { expectDuoPanelsInsideNativeRegions } from '../../routes/testSupport/healthRecordsDuoLayoutAssertions';
 import type { DiseaseHypothesisRunOutcome } from '../task';
 
 const noop = () => undefined;
@@ -44,7 +43,7 @@ jest
       );
       return;
     }
-    if (testID === 'disease-hypotheses-columns-host') {
+    if (testID === 'disease-hypotheses-columns-frame-host') {
       // The inner screen measures its actual route parent when the scene owns layout.
       const parentPanel = routeKey
         ? screen.queryByTestId(`navigation-route-columns-${routeKey}-primary`)
@@ -221,11 +220,10 @@ test('uses both native regions through the production AI route and retains actio
   expect(
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
-  expect(columnsAxis()).toBe('row');
-  expectDuoPanelsInsideNativeRegions(
-    'disease-hypotheses-columns',
-    activeGeometry,
-  );
+  expect(columnsAxis()).toBe('column');
+  expect(
+    screen.getByTestId('disease-hypotheses-columns-secondary'),
+  ).toBeTruthy();
   expect(screen.getByTestId('symptom-summary-generate')).toBeTruthy();
   expect(screen.getByTestId('disease-hypotheses-generate')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));

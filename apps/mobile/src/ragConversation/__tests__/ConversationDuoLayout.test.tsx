@@ -76,7 +76,7 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
       window: { ...originalWindow, width: 1400, height: 900, fontScale: 1 },
     });
   });
-  await waitFor(() => expect(panelAxis()).toBe('row'));
+  await waitFor(() => expect(panelAxis()).toBe('column'));
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',
   );
@@ -109,10 +109,10 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
 
   const evidencePanel = screen.getByTestId('rag-conversation-evidence-panel');
   expect(
-    within(screen.getByTestId('rag-conversation-history')).queryByLabelText(
+    within(screen.getByTestId('rag-conversation-history')).getByLabelText(
       /원문 근거 열기/,
     ),
-  ).toBeNull();
+  ).toBeTruthy();
   await fireEvent.press(within(evidencePanel).getByLabelText(/원문 근거 열기/));
   expect(onOpenSource).toHaveBeenCalledTimes(1);
   expect(onOpenSource).toHaveBeenCalledWith(reference);

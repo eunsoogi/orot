@@ -5,7 +5,7 @@ import type { AppointmentRepository } from '@orot/storage';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { AppointmentListItem } from './AppointmentListItem';
 import AppointmentCard from './AppointmentCard';
 import AppointmentForm from './AppointmentForm';

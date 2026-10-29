@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** Layout mirrors the reference: full-width reading area and a composer anchored above navigation. */
+/** Keeps conversation content and controls in the same page flow. */
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
-  header: { paddingHorizontal: 24, paddingTop: 20, gap: 8 },
+  header: { paddingHorizontal: 20, paddingTop: 16, gap: 8 },
   heading: { flex: 1, fontSize: 25, fontWeight: '700', color: appColors.text },
   description: { fontSize: 15, lineHeight: 22 },
   provider: { marginTop: 0 },
@@ -23,9 +23,9 @@ export const styles = StyleSheet.create({
   },
   history: { flex: 1 },
   evidencePanel: {
-    flex: 1,
     minWidth: 0,
-    minHeight: 180,
+    marginHorizontal: 20,
+    marginTop: 16,
     gap: 12,
     padding: 20,
     borderRadius: 22,
@@ -44,7 +44,7 @@ export const styles = StyleSheet.create({
   evidenceEmpty: { color: appColors.secondary, fontSize: 14, lineHeight: 21 },
   container: {
     gap: 20,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 0,
   },
@@ -99,13 +99,9 @@ export const styles = StyleSheet.create({
   sources: { flexDirection: 'row', gap: 8 },
   sourceText: { flexShrink: 1, fontSize: 13, lineHeight: 18 },
   composerArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: 20,
     gap: 4,
-    paddingTop: 6,
+    paddingTop: 16,
   },
   composer: {
     flexDirection: 'row',
@@ -124,7 +120,6 @@ export const styles = StyleSheet.create({
     borderRadius: 24,
     color: appColors.text,
     minHeight: 44,
-    maxHeight: 96,
     fontSize: 16,
     lineHeight: 22,
     paddingHorizontal: 14,
@@ -155,8 +150,7 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  // The floating editor stays Glass; its caution needs a page-colored reading
-  // surface so enlarged text never blends with conversation content beneath it.
+  // Keep the caution readable against the page background at enlarged text sizes.
   composerDisclaimer: { backgroundColor: appColors.background },
   error: { color: appColors.danger },
 });

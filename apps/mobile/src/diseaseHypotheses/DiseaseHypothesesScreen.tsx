@@ -13,11 +13,10 @@ import { getDiseaseHypothesisCopy } from './copy';
 import type { DiseaseHypothesisRunOutcome } from './task';
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { useDiseaseHypothesisGeneration } from './useDiseaseHypothesisGeneration';
-import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 import { SavedSummaryHistory } from './SavedSummaryHistory';
 import type { SymptomSummaryHistory } from './savedSummaries';
 import { SummaryHeader } from './SummaryHeader';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { DiseaseHypothesesScreenOutput } from './DiseaseHypothesesScreenOutput';
 
 interface DiseaseHypothesesScreenProps {
@@ -37,7 +36,7 @@ interface DiseaseHypothesesScreenProps {
   readonly onSummarize?: DiseaseHypothesesScreenProps['onGenerate'];
 }
 
-/** Presents validated summaries while route-owned work and consent survive measured panel reflow. */
+/** Presents validated summaries and route-owned work in one page flow. */
 export function DiseaseHypothesesScreen({
   onOpenHistory,
   restoredSummary,
@@ -57,11 +56,6 @@ export function DiseaseHypothesesScreen({
     useDiseaseHypothesisGeneration(onGenerate, restoredSummary);
   const canRetry =
     state.status === 'error' || state.status === 'consent_required';
-  const hasSharedCancel = useAiCancellationAction(
-    state.status === 'loading',
-    cancel,
-    'disease-hypotheses-cancel',
-  );
   const hasOutput = state.status !== 'idle' || preview.length > 0;
 
   useAiFeatureScreenNavigationState(
@@ -154,7 +148,7 @@ export function DiseaseHypothesesScreen({
               activity={activity}
               preview={preview}
               lastOperation={lastOperation}
-              hasSharedCancel={hasSharedCancel}
+              hasSharedCancel={false}
               onCancel={cancel}
               onOpenProviderSelection={onOpenProviderSelection}
               onOpenSource={onOpenSource}

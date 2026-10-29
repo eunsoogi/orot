@@ -161,7 +161,8 @@ test('reflows in measured Duo regions while preserving a pending choice and conf
     { nativeEvent: duoGeometry(1700, 700) },
   );
 
-  expect(panelAxis()).toBe('row');
+  expect(panelAxis()).toBe('column');
+  expect(screen.queryByTestId(`${featurePanelsID}-secondary`)).toBeNull();
   expect(
     screen.getByTestId('provider-option-0-capabilities'),
   ).toHaveTextContent(

@@ -1,5 +1,5 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
@@ -143,7 +143,7 @@ export default function RecordingControls({
         stateReady={stateReady}
         status={status}
       />
-      {/* Stable route-owned panels let the screen reflow without restarting capture or consent state. */}
+      {/* Keep capture and consent together in the page without restarting their state. */}
       <AdaptiveColumns
         primary={
           <RecordingSessionPanel

@@ -9,7 +9,7 @@ export function isCompactDisclosureWindow(
   return width < 380 || height < 560;
 }
 
-/** The selected permission mock uses quiet grouped cards and a fixed, reachable action footer. */
+/** Groups the permission facts and decisions within the sheet's scrolling page. */
 export const disclosureStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
@@ -40,7 +40,6 @@ export const disclosureStyles = StyleSheet.create({
   compactContent: { paddingHorizontal: 14, paddingBottom: 16, gap: 12 },
   header: { gap: 12 },
   compactHeader: { gap: 8 },
-  // Give the shared sticky summary an opaque backing while details pass beneath it.
   summary: { gap: 14, backgroundColor: appColors.background },
   compactSummary: { gap: 12 },
   icon: {

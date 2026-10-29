@@ -89,7 +89,10 @@ test('keeps explicit event confirmation through measured narrow large-text reflo
   await fireEvent.press(
     await screen.findByTestId('calendar-candidate-selected-calendar-event'),
   );
-  expect(layoutAxis()).toBe('row');
+  expect(layoutAxis()).toBe('column');
+  expect(
+    screen.queryByTestId('schedule-adaptive-columns-secondary'),
+  ).toBeNull();
   expect(screen.getByTestId('calendar-selected-event-title')).toBeTruthy();
   expect(screen.queryByTestId('schedule-next-visit-summary')).toBeNull();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();

@@ -39,9 +39,12 @@ test('uses native usable regions and retains expanded candidate details through 
   );
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
 
-  windowBounds.set('medical-appointment-columns-host', { x: 24, width: 1400 });
+  windowBounds.set('medical-appointment-columns-frame-host', {
+    x: 24,
+    width: 1400,
+  });
   await fireEvent(
-    screen.getByTestId('medical-appointment-columns-host'),
+    screen.getByTestId('medical-appointment-columns-frame-host'),
     'layout',
     {
       nativeEvent: { layout: { x: 24, y: 0, width: 1400, height: 800 } },
@@ -74,16 +77,19 @@ test('uses native usable regions and retains expanded candidate details through 
     { nativeEvent: expandedGeometry },
   );
 
-  expect(columnsAxis()).toBe('row');
+  expect(columnsAxis()).toBe('column');
   expect(
     screen.getByTestId('medical-appointment-details-calendar-candidate-1').props
       .accessibilityState.expanded,
   ).toBe(true);
 
   await setWindowSize(760, 1.5);
-  windowBounds.set('medical-appointment-columns-host', { x: 24, width: 760 });
+  windowBounds.set('medical-appointment-columns-frame-host', {
+    x: 24,
+    width: 760,
+  });
   await fireEvent(
-    screen.getByTestId('medical-appointment-columns-host'),
+    screen.getByTestId('medical-appointment-columns-frame-host'),
     'layout',
     {
       nativeEvent: { layout: { x: 24, y: 0, width: 760, height: 800 } },
