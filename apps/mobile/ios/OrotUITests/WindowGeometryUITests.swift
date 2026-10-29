@@ -33,7 +33,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         let rootRoute = try XCTUnwrap(waitForGeometry(app).adaptive.routeKey)
-        tap(app, "ai-feature-visit-questions")
+        NavigationWindowGeometryUITestConditions.tap(app, "ai-feature-visit-questions")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         try NavigationUITestConditions.tapNavigation(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-review-save")))
@@ -52,7 +52,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-source-content")))
-        tap(app, "next-visit-source-close")
+        NavigationWindowGeometryUITestConditions.tap(app, "next-visit-source-close")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         let questionRoute = try XCTUnwrap(waitForGeometry(app, routeKeyDifferentFrom: rootRoute).adaptive.routeKey)
 
@@ -69,6 +69,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         }
 
         try assertGeometry(waitForGeometry(app))
+        try NavigationWindowGeometryUITestConditions.verifyObservedSplit(app, testCase: self)
         XCTAssertTrue((question.value as? String) == draft, "The edited question must survive the source-detail route")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
@@ -137,14 +138,6 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
                 XCTAssertFalse(cgRect(region.frame).intersects(cgRect(usable)), "Active reserved regions must be absent from usable content rectangles")
             }
         }
-    }
-
-    @MainActor
-    private func tap(_ app: XCUIApplication, _ identifier: String) {
-        let target = UITestConditions.element(app, identifier)
-        XCTAssertTrue(UITestConditions.exists(target))
-        XCTAssertTrue(target.isHittable)
-        target.tap()
     }
 }
 

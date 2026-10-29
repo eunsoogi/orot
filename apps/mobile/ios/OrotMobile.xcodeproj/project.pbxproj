@@ -87,6 +87,7 @@
 		BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
+		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
 		C48E4D8B9A064C7D850136A0 /* WindowPresentationAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */; };
 		5E87FF95506955455199819F /* PopoverSourceRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */; };
 		C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */; };
@@ -386,6 +387,7 @@
 		DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGeometryView.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
+		193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationWindowGeometryUITestConditions.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeDuoUITests.swift; sourceTree = "<group>"; };
 		0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportDuoUITests.swift; sourceTree = "<group>"; };
 		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
@@ -854,6 +856,7 @@
 				A27415DB31F6D1B47C931A02 /* RecordsHubUITests.swift */,
 				B27800000000000000000002 /* RecordingDuoUITests.swift */,
 				F26700000000000000000004 /* WindowGeometryUITests.swift */,
+				193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */,
 				B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */,
 				D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */,
 				B18E52C6342445A2AE89D337 /* ManualHistoryDuoUITests.swift */,
@@ -1375,6 +1378,7 @@
 				075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */,
 				332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */,
 				F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */,
+				B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */,
 				A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */,
 				C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */,
 				E3C71A4D0BDB468A9C3F6217 /* ManualHistoryDuoUITests.swift in Sources */,

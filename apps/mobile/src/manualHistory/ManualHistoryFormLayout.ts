@@ -1,4 +1,3 @@
-export const MANUAL_HISTORY_FORM_MAX_WIDTH = 960;
 export const MANUAL_HISTORY_INLINE_DATE_MINIMUM_WIDTH = 760;
 
 /** Keeps the date editor and date-knowledge choice readable in one measured lane. */
