@@ -4,6 +4,7 @@ import HealthKit
 import XCTest
 
 final class HealthIntegrationTests: OrotFailFastTestCase {
+    /// Verifies medication consent waits for presentation readiness and reports typed failures.
     private func verifyMedicationPickerWaitsForDismissedSampleConsent() throws {
         guard #available(iOS 26.0, *) else { return }
         let medication = HKObjectType.userAnnotatedMedicationType()
@@ -25,7 +26,12 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                            standard: { _, _ in XCTFail("No sample request expected") },
                                            perObject: { _, _ in XCTFail("An unavailable presenter must not open a picker") },
                                            presentationReady: { $0(false, nil) },
-                                           completion: { result in XCTAssertEqual(result, .failure(.presentationUnavailable)) })
+                                           completion: { result in
+                                               guard case let .failure(failure) = result else {
+                                                   return XCTFail("An unavailable presenter must report a presentation failure")
+                                               }
+                                               XCTAssertEqual(failure, .presentationUnavailable)
+                                           })
     }
 
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
@@ -54,7 +60,9 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                                phases.append("medication")
                                                finish(true, nil)
                                            }, completion: { result in
-                                               XCTAssertEqual(result, .success(()))
+                                               guard case .success = result else {
+                                                   return XCTFail("A successful medication request must complete")
+                                               }
                                                phases.append("complete")
                                            })
         XCTAssertEqual(phases, ["medication", "complete"])
@@ -75,7 +83,10 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                                                phases.append("medication")
                                                finishMedication = finish
                                            }, completion: { result in
-                                               XCTAssertEqual(result, .failure(.medicationRequestFailed))
+                                               guard case let .failure(failure) = result else {
+                                                   return XCTFail("A declined medication request must report its failure")
+                                               }
+                                               XCTAssertEqual(failure, .medicationRequestFailed)
                                                phases.append("cancelled")
                                            })
         XCTAssertEqual(phases, ["samples"], "The two HealthKit sheets must not overlap")
