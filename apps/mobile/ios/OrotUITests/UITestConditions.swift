@@ -69,12 +69,13 @@ enum UITestConditions {
         return snapshot.label
     }
 
-    static func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+    /// Drag the caller's actual scroll owner; app callers retain their full-window gesture.
+    static func scrollTo(_ element: XCUIElement, in container: XCUIElement) {
         for _ in 0 ..< 8 {
             if element.exists, element.isHittable {
                 return
             }
-            app.swipeUp()
+            container.swipeUp()
         }
         XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
     }

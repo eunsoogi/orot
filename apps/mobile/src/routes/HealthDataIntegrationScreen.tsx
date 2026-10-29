@@ -10,7 +10,7 @@ import { useNavigationContentInset } from '../navigation/useNavigationContentIns
 import { HealthDataFeatureSelection } from './HealthDataFeatureSelection';
 import type { HealthDataIntegrationStatus } from './HealthDataIntegrationStatus';
 
-/** Places the category choices beside their connection and permission context when space allows. */
+/** Keeps choices, permission context and final actions in one region-bound scrolling page. */
 export function HealthDataIntegrationScreen({
   integrationStatus,
   loadFailed,
@@ -37,7 +37,8 @@ export function HealthDataIntegrationScreen({
   readonly statusLoadFailed: boolean;
 }) {
   const inset = useNavigationContentInset();
-  const categoryPanel = (
+  // Consume the shell's scroll clearance once; the measured wrapper owns horizontal regions.
+  const page = (
     <ScrollView
       contentContainerStyle={[styles.panel, inset]}
       style={styles.scroll}
@@ -76,14 +77,6 @@ export function HealthDataIntegrationScreen({
           />
         </View>
       ) : null}
-    </ScrollView>
-  );
-  const statusPanel = (
-    <ScrollView
-      contentContainerStyle={[styles.panel, inset]}
-      style={styles.scroll}
-      testID="health-data-status-scroll"
-    >
       <View style={styles.statusCard}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>
           {t('settings.healthData.connection')}
@@ -178,9 +171,8 @@ export function HealthDataIntegrationScreen({
 
   return (
     <AdaptiveColumns
-      primary={categoryPanel}
+      primary={page}
       routeKey="settings-health-data"
-      secondary={statusPanel}
       testID="health-data-layout"
     />
   );
