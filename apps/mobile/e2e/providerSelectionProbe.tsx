@@ -38,7 +38,7 @@ const initialSummary =
 
 export function ProviderSelectionProbe() {
   const [authFlow, setAuthFlow] = useState<
-    'cancel' | 'success' | 'signOutLifecycle' | null
+    'cancel' | 'success' | 'missingScope' | 'signOutLifecycle' | null
   >(null);
   const [summary, setSummary] = useState(initialSummary);
   const [signOutResponseState, setSignOutResponseState] = useState('idle');
@@ -47,9 +47,11 @@ export function ProviderSelectionProbe() {
     const services =
       authFlow === 'success'
         ? syntheticSuccessfulChatGPTServices
-        : authFlow === 'signOutLifecycle'
-          ? syntheticSignOutLifecycleServices
-          : syntheticChatGPTServices;
+        : authFlow === 'missingScope'
+          ? syntheticMissingScopeChatGPTServices
+          : authFlow === 'signOutLifecycle'
+            ? syntheticSignOutLifecycleServices
+            : syntheticChatGPTServices;
     return (
       <View style={styles.container}>
         {authFlow === 'signOutLifecycle' ? (
@@ -102,6 +104,11 @@ export function ProviderSelectionProbe() {
         onPress={() => setAuthFlow('cancel')}
         testID="provider-selection-auth-cancel"
         title={t('probe.provider.loginCancel')}
+      />
+      <Button
+        onPress={() => setAuthFlow('missingScope')}
+        testID="provider-selection-account-missing-scope"
+        title="Show synthetic account permission guidance"
       />
       <Button
         onPress={() => {
@@ -211,6 +218,21 @@ const syntheticSuccessfulChatGPTServices: ChatGPTSelectionServices = {
     syntheticSignInCompleted = true;
     return account;
   },
+  signOut: async () => 'localCredentialsCleared',
+  cancelSignIn: () => undefined,
+};
+
+const syntheticMissingScopeAccount: OpenAIAccountSummary = {
+  issuedClientID: 'synthetic-missing-scope-account',
+  requiresSignIn: false,
+  hasDirectPlanAccess: false,
+};
+
+// This layout fixture supplies a not-ready account without reading or changing Keychain state.
+const syntheticMissingScopeChatGPTServices: ChatGPTSelectionServices = {
+  listAccounts: async () => [syntheticMissingScopeAccount],
+  listModels: async () => providerSuccess([]),
+  signIn: async () => syntheticMissingScopeAccount,
   signOut: async () => 'localCredentialsCleared',
   cancelSignIn: () => undefined,
 };

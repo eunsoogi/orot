@@ -68,6 +68,8 @@ export const providerSelectionTests = [
   'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
   'OrotUITests/ProviderSelectionUITests/testExplicitSelectionAndKeychainRestoreNeverChooseAnAutomaticFallback',
   'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
+  'OrotUITests/ProviderCatalogAccountUITests/testAccountActionStaysAccessibleAndCenteredWithLargeText',
+  'OrotUITests/ProviderCatalogAccountUITests/testLongKoreanPermissionGuidanceWrapsBeforeTheRefreshAction',
 ];
 export const fixtureTests = [
   'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
