@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AdaptiveColumns, type AdaptiveColumnsProps } from './AdaptiveColumns';
 
 /** Keep page sections in reading order while retaining the measured usable region. */
@@ -13,7 +13,7 @@ export function VerticalPageSections({
       {...frameProps}
       testID={`${testID}-frame`}
       primary={
-        <View style={{ flexDirection: 'column', gap: 20 }} testID={testID}>
+        <View style={styles.sections} testID={testID}>
           <View testID={`${testID}-primary`}>{primary}</View>
           {secondary != null ? (
             <View testID={`${testID}-secondary`}>{secondary}</View>
@@ -23,3 +23,7 @@ export function VerticalPageSections({
     />
   );
 }
+
+const styles = StyleSheet.create({
+  sections: { flexDirection: 'column', gap: 20 },
+});
