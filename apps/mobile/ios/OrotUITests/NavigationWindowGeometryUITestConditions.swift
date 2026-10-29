@@ -21,10 +21,15 @@ enum NavigationWindowGeometryUITestConditions {
         let insets = try XCTUnwrap(native["safeAreaInsets"] as? [String: Double])
         let regions = try XCTUnwrap(native["reservedRegions"] as? [[String: Any]])
         var divisions: [(frame: CGRect, active: Bool)] = []
-        for region in regions where region["kind"] as? String == "division" {
+        var hasActiveReservation = false
+        for region in regions {
             let frame = try rect(region["frame"])
             if window.intersects(frame) {
-                try divisions.append((frame, XCTUnwrap(region["isActive"] as? Bool)))
+                let active = try XCTUnwrap(region["isActive"] as? Bool)
+                hasActiveReservation = hasActiveReservation || active
+                if region["kind"] as? String == "division" {
+                    divisions.append((frame, active))
+                }
             }
         }
         // This independently sampled signature was observed with the app left of
@@ -43,24 +48,51 @@ enum NavigationWindowGeometryUITestConditions {
         let shared = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(encoded.utf8)) as? [String: Any])
         let sharedWindow = try rect(shared["windowFrame"])
         let viewport = try rect(shared["viewportFrame"])
+        let safe = try CGRect(x: window.minX, y: window.minY + XCTUnwrap(insets["top"]),
+                              width: window.width,
+                              height: window.height - XCTUnwrap(insets["top"]) - XCTUnwrap(insets["bottom"]))
+        let visible = viewport.intersection(safe)
+        // Assert the rail only in a conservatively admitted region: 48pt controls,
+        // two 12pt gutters, a readable 320pt column and a complete 276pt root stack.
+        // Narrow/short/keyboard-contracted or actively reserved regions may use bottom.
+        // Never let the observed toolbar's size or reported side disable this oracle.
+        guard !hasActiveReservation, visible.width - 72 >= 320, visible.height >= 300 else { return }
         let available = try rect(shared["availableContentFrame"])
         let measured = try rect(shared["navigationFrame"])
         let controls = try XCTUnwrap(native["navigationControls"] as? [String: Any])
         XCTAssertEqual(controls["truncated"] as? Bool, false)
         let frames = try XCTUnwrap(controls["frames"] as? [[String: Any]])
-        XCTAssertEqual(frames.count, 1, "A unique mounted navigation surface is required")
-        let actual = try rect(XCTUnwrap(frames.first)["frame"])
+        let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
+        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
+        XCTAssertTrue(matches(back.toolbar.frame, home.toolbar.frame))
+        // XCTest frames use screen points; the marker uses window points. Bind
+        // the Back/Home toolbar to its app window before selecting its marker.
+        // A separate primary-only toolbar is expected and must not be counted as a duplicate rail.
+        let windows = app.windows.allElementsBoundByIndex.filter {
+            $0.exists && abs($0.frame.width - window.width) <= 0.5 &&
+                abs($0.frame.height - window.height) <= 0.5 && $0.frame.contains(back.toolbar.frame)
+        }
+        XCTAssertEqual(windows.count, 1, "The navigation toolbar must belong to one observed app window")
+        let screenWindow = try XCTUnwrap(windows.first).frame
+        let toolbar = back.toolbar.frame.offsetBy(dx: window.minX - screenWindow.minX,
+                                                  dy: window.minY - screenWindow.minY)
+        let navigationFrames = try frames.map { try rect($0["frame"]) }.filter { matches($0, toolbar) }
+        XCTAssertEqual(navigationFrames.count, 1, "The Back/Home toolbar must have one native marker frame")
+        let actual = try XCTUnwrap(navigationFrames.first)
         XCTAssertTrue(matches(window, sharedWindow))
         XCTAssertEqual(shared["side"] as? String, "left")
         XCTAssertTrue(matches(actual, measured), "Shared geometry must retain the actual native control frame")
         XCTAssertTrue(window.contains(actual))
+        let content = UITestConditions.element(app, "navigation-content-region")
+        XCTAssertTrue(UITestConditions.exists(content))
+        let actualContent = content.frame.offsetBy(dx: window.minX - screenWindow.minX,
+                                                   dy: window.minY - screenWindow.minY)
+        XCTAssertTrue(matches(actualContent, available), "Rendered content must consume the shared available frame")
         // The existing lane contract reserves the measured bar plus two 12pt
         // gutters once. UIKit's margin-inclusive inactive seam is not deducted.
         XCTAssertEqual(available.minX - window.minX, actual.width + 24, accuracy: 0.5)
         XCTAssertEqual(actual.midX - window.minX, (available.minX - window.minX) / 2, accuracy: 0.5)
         XCTAssertEqual(available.maxX, viewport.maxX, accuracy: 0.5, "The former opposite reservation must be released")
-        _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
-        _ = try NavigationUITestConditions.navigationAction(app, "navigation-home")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "observed-left-window-navigation"
         screenshot.lifetime = .keepAlways
