@@ -1,8 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { HealthRecordsMedicationDetailScreen } from '../HealthRecordsMedicationDetailScreen';
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
 import { listHealthRecordMedicationData } from '../healthRecordsMedicationLibrary';
-import { importedDoseEvent } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
+import {
+  importedDoseEvent,
+  medicationDefinition,
+} from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 
 test('production medication reads use a bounded page instead of loading the full history', async () => {
   const list = jest.fn().mockRejectedValue(new Error('Unbounded history read'));
@@ -85,4 +88,80 @@ test('medication overview shows scalar totals rather than the bounded sample siz
   expect(screen.queryByTestId('health-records-empty')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   expect(await screen.findByText('12개 약 · 20000개 복용 기록')).toBeTruthy();
+});
+
+test('unloaded medication history stays pending and paging failure preserves rows until retry', async () => {
+  const at = new Date().toISOString();
+  const first = importedDoseEvent('first', at, 'taken');
+  const later = {
+    ...importedDoseEvent('later', at, 'skipped'),
+    medicationDefinitionId: 'medication-2',
+  };
+  const definitions = [
+    medicationDefinition('medication-1', at),
+    medicationDefinition('medication-2', at),
+  ];
+  const cursor = { id: first.id, effectiveAt: at };
+  let reject!: (error: Error) => void;
+  const pending = new Promise((_resolve, fail) => {
+    reject = fail;
+  });
+  const load = jest
+    .fn()
+    .mockResolvedValueOnce({
+      definitions,
+      doseEvents: [first],
+      nextCursor: cursor,
+    })
+    .mockImplementationOnce(() => pending)
+    .mockResolvedValueOnce({
+      definitions: [],
+      doseEvents: [later],
+      nextCursor: null,
+    });
+  await render(
+    <HealthRecordsMedicationDetailScreen
+      loadMedicationData={load}
+      onBack={jest.fn()}
+      onSelectionChange={jest.fn()}
+      selection={{ category: 'medications', period: 'month' }}
+    />,
+  );
+  await fireEvent.press(
+    screen.getByTestId('health-record-medication-option-1'),
+  );
+  expect(
+    screen.queryByTestId('health-records-medication-history-empty'),
+  ).toBeNull();
+  expect(
+    screen.getByTestId('health-records-medication-history-pending'),
+  ).toBeTruthy();
+  await fireEvent.press(
+    screen.getByTestId('health-record-medication-option-0'),
+  );
+  await fireEvent.press(screen.getByTestId('health-records-detail-more'));
+  expect(screen.getByTestId('health-records-detail-loading')).toBeTruthy();
+  expect(screen.queryByTestId('health-records-detail-more')).toBeNull();
+  expect(
+    screen.getByTestId('health-record-medication-row-0-status'),
+  ).toHaveTextContent('복용함');
+  await act(async () => reject(new Error('page unavailable')));
+  expect(screen.getByTestId('health-records-detail-error')).toHaveTextContent(
+    '저장된 건강 기록을 불러오지 못했어요.',
+  );
+  expect(
+    screen.getByTestId('health-record-medication-row-0-status'),
+  ).toHaveTextContent('복용함');
+  await fireEvent.press(
+    screen.getByTestId('health-record-medication-option-1'),
+  );
+  await fireEvent.press(screen.getByTestId('health-records-detail-retry'));
+  expect(load).toHaveBeenLastCalledWith(expect.objectContaining({ cursor }));
+  expect(
+    screen.getByTestId('health-record-medication-option-1').props
+      .accessibilityState.selected,
+  ).toBe(true);
+  expect(
+    await screen.findByTestId('health-record-medication-row-0-status'),
+  ).toHaveTextContent('건너뜀');
 });

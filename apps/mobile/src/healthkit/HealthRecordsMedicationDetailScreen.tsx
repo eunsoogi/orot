@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { SectionList } from 'react-native';
+import { SectionList, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -142,6 +142,7 @@ export function HealthRecordsMedicationDetailScreen({
           renderSectionFooter={({ section }) =>
             section.key === 'options' &&
             options.length === 0 &&
+            !cursor &&
             loadState === 'ready' ? (
               <Text testID="health-records-detail-empty">
                 {t('healthRecords.detailEmpty')}
@@ -150,27 +151,56 @@ export function HealthRecordsMedicationDetailScreen({
               selectedMedication !== null &&
               selectedRows.length === 0 &&
               loadState === 'ready' ? (
-              <Text testID="health-records-medication-history-empty">
-                {t('healthRecords.detailEmpty')}
+              // Pages are globally time-ordered; an absent selected medication is
+              // only genuinely empty once the storage cursor is exhausted.
+              <Text
+                testID={
+                  cursor
+                    ? 'health-records-medication-history-pending'
+                    : 'health-records-medication-history-empty'
+                }
+              >
+                {t(
+                  cursor
+                    ? 'healthRecords.moreAvailable'
+                    : 'healthRecords.detailEmpty',
+                )}
               </Text>
             ) : null
           }
           ListFooterComponent={
             cursor ? (
-              <AppButton
-                onPress={loadState === 'failed' ? onRetry : onLoadMore}
-                testID={
-                  loadState === 'failed'
-                    ? 'health-records-detail-retry'
-                    : 'health-records-detail-more'
-                }
-                title={t(
-                  loadState === 'failed'
-                    ? 'healthRecords.retry'
-                    : 'healthRecords.loadOlder',
-                )}
-                variant="secondary"
-              />
+              loadState === 'loading' ? (
+                <Text testID="health-records-detail-loading">
+                  {t('healthRecords.loading')}
+                </Text>
+              ) : (
+                <View style={styles.header}>
+                  {loadState === 'failed' ? (
+                    <Text
+                      accessibilityRole="alert"
+                      style={styles.error}
+                      testID="health-records-detail-error"
+                    >
+                      {t('healthRecords.error')}
+                    </Text>
+                  ) : null}
+                  <AppButton
+                    onPress={loadState === 'failed' ? onRetry : onLoadMore}
+                    testID={
+                      loadState === 'failed'
+                        ? 'health-records-detail-retry'
+                        : 'health-records-detail-more'
+                    }
+                    title={t(
+                      loadState === 'failed'
+                        ? 'healthRecords.retry'
+                        : 'healthRecords.loadOlder',
+                    )}
+                    variant="secondary"
+                  />
+                </View>
+              )
             ) : undefined
           }
           onEndReached={onLoadMore}
