@@ -96,8 +96,9 @@ enum NavigationGeometryUITestConditions {
         return stacked
     }
 
-    /// Keep native frame equality separate from route existence and from the shared contract's own calculation.
-    static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase, requireCurrentNavigation: Bool = false) throws {
+    /// Returns the measured UIWindow frame after native and shared navigation bounds agree.
+    @discardableResult
+    static func captureBoundary(_ app: XCUIApplication, navigationID: String, name: String, testCase: XCTestCase, requireCurrentNavigation: Bool = false) throws -> CGRect {
         let content = UITestConditions.element(app, "navigation-content-region")
         XCTAssertTrue(content.exists && !content.frame.isEmpty)
         let action = try NavigationUITestConditions.navigationAction(app, navigationID)
@@ -143,6 +144,8 @@ enum NavigationGeometryUITestConditions {
             let available = try XCTUnwrap(rect(shared["availableContentFrame"]))
             let centerX = shared["side"] as? String == "left" ? (window.minX + available.minX) / 2 : (available.maxX + window.maxX) / 2
             XCTAssertEqual(measuredBar.midX, centerX, accuracy: 0.5, "The rail must be centered in its one reserved side lane")
+            XCTAssertEqual(action.control.frame.midX, centerX, accuracy: 0.5,
+                           "Native control \(navigationID) must share the measured rail center")
             XCTAssertFalse(measuredContent.intersects(measuredBar))
         }
         try NavigationUITestConditions.panelSnapshot(app, frames: ["content": measuredContent, "navigation": measuredBar, "control": action.control.frame], testCase: testCase)
@@ -150,6 +153,7 @@ enum NavigationGeometryUITestConditions {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         testCase.add(screenshot)
+        return measuredBar
     }
 
     /// After the keyboard and actual controls settle, compare numbers instead of waiting for a missing event.
@@ -172,10 +176,11 @@ enum NavigationGeometryUITestConditions {
         XCTAssertTrue(sameWindow(navigation, reported), "Current toolbar \(navigation) must match shared navigation \(reported)")
     }
 
-    /// Preserve the recording route's existing readiness check before measuring its actual content and actions.
-    static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws {
+    /// Returns the recording route's measured UIWindow frame after checking its content and actions.
+    @discardableResult
+    static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
-        try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
+        return try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
     }
 
     /// Measure child viewports independently; scrollable content may extend vertically but never into the rail.
@@ -203,12 +208,13 @@ enum NavigationGeometryUITestConditions {
         testCase.add(attachment)
     }
 
-    /// Keep each selected root's circular indicator, native control and real viewport together.
-    static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws {
+    /// Verifies each root and returns Home's measured UIWindow frame for contextual comparison.
+    static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
         let roots = [("home", ["welcome-title"]), ("records", ["records-title"]),
                      ("schedule", ["calendar-title", "schedule-retry"]), ("ai", ["ai-features-screen"]),
                      ("settings", ["settings-title"])]
+        var homeFrame: CGRect?
         for (tab, markers) in roots {
             try NavigationUITestConditions.openTab(app, tab, markers: markers)
             let selected = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)").control
@@ -218,8 +224,20 @@ enum NavigationGeometryUITestConditions {
             XCTAssertEqual(indicator.midX, selected.frame.midX, accuracy: 0.5)
             XCTAssertEqual(indicator.midY, selected.frame.midY, accuracy: 0.5)
             try NavigationUITestConditions.panelSnapshot(app, frames: ["selection": indicator, "selectedControl": selected.frame], testCase: testCase)
-            try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
+            let measuredFrame = try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
+            if tab == "home" {
+                homeFrame = measuredFrame
+            }
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        return try XCTUnwrap(homeFrame)
+    }
+
+    /// Compares native root and contextual rail/control frames against one window center.
+    static func assertSameRailCenter(_ root: CGRect, contextualFrames: [CGRect]) {
+        for frame in contextualFrames {
+            XCTAssertEqual(root.midX, frame.midX, accuracy: 0.5,
+                           "Root and contextual controls must share the measured UIWindow lane center")
+        }
     }
 }

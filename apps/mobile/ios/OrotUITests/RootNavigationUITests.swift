@@ -57,10 +57,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         XCTAssertTrue(home.control.isSelected)
-        let selection = UITestConditions.element(app, "navigation-root-selection-indicator")
-        XCTAssertTrue(selection.exists)
-        XCTAssertEqual(selection.frame.width, selection.frame.height, accuracy: 0.5)
-        try NavigationGeometryUITestConditions.verifyRootBoundaries(app, testCase: self)
+        let rootFrame = try NavigationGeometryUITestConditions.verifyRootBoundaries(app, testCase: self)
         XCTAssertEqual(home.control.label, "홈 탭")
         XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(home.toolbar.frame.height, home.toolbar.frame.width)
@@ -68,9 +65,12 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control.isSelected)
         tap(app, "records-new-recording")
-        try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
+        let contextualFrame = try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let homeAction = try NavigationUITestConditions.navigationAction(app, "navigation-home")
+        // Compare native UIKit frames captured in the same UIWindow across route navigation.
+        let contextualFrames = [contextualFrame, back.control.frame, homeAction.control.frame]
+        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: contextualFrames)
         XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertEqual(homeAction.control.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(homeAction.control.frame.midY, back.control.frame.midY)
