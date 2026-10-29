@@ -3,6 +3,47 @@ import XCTest
 
 @MainActor
 enum AppearanceUITestConditions {
+    /// Exercise the actual receipt predicate before the original UI journey, including independent native and RN disagreement.
+    @MainActor
+    static func verifyObservationContract() throws {
+        let valid: [String: Any] = ["session": "owned-session", "status": "refreshed", "command": "restore", "appliedCount": 4,
+                                    "applicationScheme": "light", "windowStyle": 1, "overrideStyle": 0, "originalOverrideStyle": 0]
+        func decode(_ value: [String: Any]) throws -> AppearanceUITestConditions.Observation? {
+            let data = try JSONSerialization.data(withJSONObject: value)
+            return try AppearanceUITestConditions.decodeObservation(XCTUnwrap(String(data: data, encoding: .utf8)))
+        }
+        func accepts(_ value: [String: Any]) throws -> Bool {
+            try decode(value)?.matches(session: "owned-session", command: "restore", scheme: "light", after: 3,
+                                       override: 0, originalOverride: 0) == true
+        }
+        XCTAssertTrue(try accepts(valid))
+        let mismatches: [(String, Any)] = [
+            ("session", "another-session"), ("status", "failed"), ("status", "pending"), ("command", "light"),
+            ("appliedCount", 3), ("appliedCount", -1), ("appliedCount", true), ("appliedCount", "4"),
+            ("applicationScheme", "dark"), ("applicationScheme", "unspecified"), ("windowStyle", 2),
+            ("overrideStyle", 1), ("originalOverrideStyle", 2),
+        ]
+        for (key, value) in mismatches {
+            var candidate = valid
+            candidate[key] = value
+            XCTAssertFalse(try accepts(candidate), "Must reject \(key)=\(value)")
+        }
+        for key in valid.keys {
+            var candidate = valid
+            candidate.removeValue(forKey: key)
+            XCTAssertFalse(try accepts(candidate), "Must reject missing \(key)")
+        }
+        XCTAssertNil(AppearanceUITestConditions.decodeObservation("not JSON"))
+        var dark = valid
+        dark["command"] = "dark"
+        dark["applicationScheme"] = "dark"
+        dark["windowStyle"] = 2
+        dark["overrideStyle"] = 2
+        XCTAssertTrue(try decode(dark)?.matches(session: "owned-session", command: "dark", scheme: "dark", after: 3,
+                                                override: 2, originalOverride: 0) == true)
+        print("OROT_APPEARANCE_RECEIPT_REGRESSIONS passed=24")
+    }
+
     private static let session = UUID().uuidString
     static let observationArguments = ["-OROT_TEST_APPEARANCE_OBSERVATION", "YES", "-OROT_TEST_APPEARANCE_SESSION", session]
 

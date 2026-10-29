@@ -149,7 +149,7 @@ function layoutAxis(): string | undefined {
 }
 
 async function setMeasuredHostWidth(width: number): Promise<void> {
-  const testID = 'recording-review-layout-host';
+  const testID = 'recording-review-layout-frame-host';
   measuredBounds.set(testID, { x: 20, width });
   // Exercise the same measurement callback used by native window geometry and Split View.
   await fireEvent(screen.getByTestId(testID), 'layout', {
@@ -176,7 +176,7 @@ test('reflows source and review panels without losing edits, selection, or reque
   );
 
   await setMeasuredHostWidth(1500);
-  expect(layoutAxis()).toBe('row');
+  expect(layoutAxis()).toBe('column');
   expect(
     within(screen.getByTestId('recording-review-layout-primary')).getByTestId(
       'recording-playback-controls',

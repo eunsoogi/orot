@@ -26,8 +26,7 @@ jest.mock('../../../providers/selection/options', () => {
   };
 });
 
-// Exercise the real screen and route shell: hiding a view alone does not stop
-// its hooks from publishing an action into the overlay's navigation bar.
+// Exercise the real screen and route shell, including hidden-page overlay boundaries.
 test.each(['review', 'saved'] as const)(
   'keeps the %s action out of evidence and provider overlays, then restores it on return',
   async phase => {
@@ -61,13 +60,19 @@ test.each(['review', 'saved'] as const)(
       phase === 'review' ? 'next-visit-review-save' : 'next-visit-saved-edit';
     const bar = () =>
       within(route.getByTestId('navigation-bar-native-surface'));
-    expect(bar().getByTestId(actionId)).toBeTruthy();
+    expect(bar().queryByTestId(actionId)).toBeNull();
+    expect(
+      within(route.getByTestId('next-visit-questions-scroll')).getByTestId(
+        actionId,
+      ),
+    ).toBeTruthy();
 
     await fireEvent.press(route.getByTestId('next-visit-source-0-0'));
     await waitFor(() =>
       expect(route.getByTestId('ai-feature-source-detail')).toBeTruthy(),
     );
     expect(bar().queryByTestId(actionId)).toBeNull();
+    expect(route.queryByTestId(actionId)).toBeNull();
     expect(bar().getByTestId('navigation-back')).toBeTruthy();
     expect(bar().getByTestId('navigation-home')).toBeTruthy();
     expect(
@@ -78,7 +83,7 @@ test.each(['review', 'saved'] as const)(
         ),
     ).toEqual(['navigation-back', 'navigation-home']);
     await fireEvent.press(bar().getByTestId('navigation-back'));
-    await waitFor(() => expect(bar().getByTestId(actionId)).toBeTruthy());
+    await waitFor(() => expect(route.getByTestId(actionId)).toBeTruthy());
     if (phase === 'review') {
       expect(
         route.getByTestId('next-visit-question-text-0'),
@@ -91,6 +96,7 @@ test.each(['review', 'saved'] as const)(
       expect(route.getByTestId('provider-selection-screen')).toBeTruthy(),
     );
     expect(bar().queryByTestId(actionId)).toBeNull();
+    expect(route.queryByTestId(actionId)).toBeNull();
     expect(bar().queryByTestId('next-visit-generate')).toBeNull();
     await waitFor(() =>
       expect(route.getByTestId('provider-option-0')).toBeTruthy(),
@@ -104,7 +110,7 @@ test.each(['review', 'saved'] as const)(
       expect(route.queryByTestId('provider-selection-screen')).toBeNull(),
     );
     expect(
-      bar().getByTestId(
+      within(route.getByTestId('next-visit-questions-scroll')).getByTestId(
         phase === 'saved' ? 'next-visit-saved-edit' : 'next-visit-generate',
       ),
     ).toBeTruthy();

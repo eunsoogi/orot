@@ -1,6 +1,6 @@
 import XCTest
 
-/// Keeps the original synthetic session boundary explicit while testing the production review, native toolbar and system appearance changes.
+/// Keeps the synthetic session boundary explicit while testing review actions and system appearance changes.
 final class NextVisitReviewUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -9,7 +9,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     func testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges() throws {
-        try verifyAppearanceObservationContract()
+        try AppearanceUITestConditions.verifyObservationContract()
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
@@ -39,7 +39,8 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let initialViewport = viewport.frame
         try captureViewport(app, container: scroll, viewport: viewport, stage: "initial")
         XCTAssertTrue(app.staticTexts["합성 진료 예약"].exists)
-        try NavigationUITestConditions.tapNavigation(app, "next-visit-generate")
+        reveal(app, "next-visit-generate")
+        tap(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-generation-loading")))
         tap(app, "next-visit-probe-tools")
         tap(app, "next-visit-probe-complete-generation")
@@ -52,16 +53,18 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         tap(app, "next-visit-source-close")
         top(app)
         replace(app, "검토해 수정한 합성 질문")
-        try NavigationUITestConditions.tapNavigation(app, "next-visit-review-save")
+        reveal(app, "next-visit-review-save")
+        tap(app, "next-visit-review-save")
         UITestConditions.value(node(app, "next-visit-save-message"), equals: "검토한 질문을 이 예약에 저장했어요.")
         try savedQuestion(app)
-        _ = try NavigationUITestConditions.navigationAction(app, "next-visit-saved-edit")
+        reveal(app, "next-visit-saved-edit")
         top(app)
         capture(app, "saved-questions-light")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
         XCTAssertTrue(node(app, "next-visit-title").exists)
         capture(app, "saved-questions-dark")
-        try NavigationUITestConditions.tapNavigation(app, "next-visit-saved-edit")
+        reveal(app, "next-visit-saved-edit")
+        tap(app, "next-visit-saved-edit")
         top(app)
         capture(app, "edit-questions-dark")
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self)
@@ -114,7 +117,8 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "next-visit-questions-back").exists)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-appointment-time")))
         XCTAssertEqual(node(app, "next-visit-provider-select").label, "AI 선택 또는 변경, 합성 UI 검사 제공자")
-        try NavigationUITestConditions.tapNavigation(app, "next-visit-generate")
+        reveal(app, "next-visit-generate")
+        tap(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-review-save")))
         try NavigationUITestConditions.scrollToBottom(app, "next-visit-questions-scroll")
         let input = node(app, "next-visit-question-text-2")
@@ -136,60 +140,21 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(keyboard.height, 0)
         XCTAssertGreaterThanOrEqual(keyboard.minY, keyboardTop)
         XCTAssertLessThanOrEqual(keyboard.maxY, keyboardTop + keyboardHeight + 1)
-        let save = try NavigationUITestConditions.navigationAction(app, "next-visit-review-save")
+        let save = node(app, "next-visit-review-save")
+        FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input)
         if expectsRightRail {
-            // Duo keeps the narrow contextual host in its lane while Save remains in content above the keyboard.
-            XCTAssertLessThan(save.toolbar.frame.maxX, back.toolbar.frame.minX)
+            XCTAssertLessThan(save.frame.maxX, back.toolbar.frame.minX)
         }
-        XCTAssertLessThanOrEqual(save.control.frame.maxY, keyboardTop)
+        XCTAssertTrue(save.exists && save.isHittable)
+        XCTAssertLessThanOrEqual(save.frame.maxY, keyboardTop)
         capture(app, "visit-questions-keyboard-save-action")
-        try NavigationUITestConditions.tapNavigation(app, "next-visit-review-save")
+        save.tap()
         UITestConditions.value(node(app, "next-visit-save-message"), equals: "검토한 질문을 이 예약에 저장했어요.")
         capture(app, "visit-questions-after-save")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
     }
 
-    /// Exercise the actual receipt predicate before the original UI journey, including independent native and RN disagreement.
-    @MainActor
-    private func verifyAppearanceObservationContract() throws {
-        let valid: [String: Any] = ["session": "owned-session", "status": "refreshed", "command": "restore", "appliedCount": 4,
-                                    "applicationScheme": "light", "windowStyle": 1, "overrideStyle": 0, "originalOverrideStyle": 0]
-        func decode(_ value: [String: Any]) throws -> AppearanceUITestConditions.Observation? {
-            let data = try JSONSerialization.data(withJSONObject: value)
-            return try AppearanceUITestConditions.decodeObservation(XCTUnwrap(String(data: data, encoding: .utf8)))
-        }
-        func accepts(_ value: [String: Any]) throws -> Bool {
-            try decode(value)?.matches(session: "owned-session", command: "restore", scheme: "light", after: 3,
-                                       override: 0, originalOverride: 0) == true
-        }
-        XCTAssertTrue(try accepts(valid))
-        let mismatches: [(String, Any)] = [
-            ("session", "another-session"), ("status", "failed"), ("status", "pending"), ("command", "light"),
-            ("appliedCount", 3), ("appliedCount", -1), ("appliedCount", true), ("appliedCount", "4"),
-            ("applicationScheme", "dark"), ("applicationScheme", "unspecified"), ("windowStyle", 2),
-            ("overrideStyle", 1), ("originalOverrideStyle", 2),
-        ]
-        for (key, value) in mismatches {
-            var candidate = valid
-            candidate[key] = value
-            XCTAssertFalse(try accepts(candidate), "Must reject \(key)=\(value)")
-        }
-        for key in valid.keys {
-            var candidate = valid
-            candidate.removeValue(forKey: key)
-            XCTAssertFalse(try accepts(candidate), "Must reject missing \(key)")
-        }
-        XCTAssertNil(AppearanceUITestConditions.decodeObservation("not JSON"))
-        var dark = valid
-        dark["command"] = "dark"
-        dark["applicationScheme"] = "dark"
-        dark["windowStyle"] = 2
-        dark["overrideStyle"] = 2
-        XCTAssertTrue(try decode(dark)?.matches(session: "owned-session", command: "dark", scheme: "dark", after: 3,
-                                                override: 2, originalOverride: 0) == true)
-        print("OROT_APPEARANCE_RECEIPT_REGRESSIONS passed=24")
-    }
 
     @MainActor
     private func savedQuestion(_ app: XCUIApplication) throws {

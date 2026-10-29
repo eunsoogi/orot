@@ -1,4 +1,4 @@
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import RecordingLibraryList from './RecordingLibraryList';
 import RecordingLibrarySelectionSummary from './RecordingLibrarySelectionSummary';
 import type { RecordingLibrarySummary } from './recordingLibraryService';

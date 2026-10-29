@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';

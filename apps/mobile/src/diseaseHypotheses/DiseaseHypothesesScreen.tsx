@@ -17,7 +17,7 @@ import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 import { SavedSummaryHistory } from './SavedSummaryHistory';
 import type { SymptomSummaryHistory } from './savedSummaries';
 import { SummaryHeader } from './SummaryHeader';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { DiseaseHypothesesScreenOutput } from './DiseaseHypothesesScreenOutput';
 
 interface DiseaseHypothesesScreenProps {
@@ -37,7 +37,7 @@ interface DiseaseHypothesesScreenProps {
   readonly onSummarize?: DiseaseHypothesesScreenProps['onGenerate'];
 }
 
-/** Presents validated summaries while route-owned work and consent survive measured panel reflow. */
+/** Presents validated summaries and route-owned work in one page flow. */
 export function DiseaseHypothesesScreen({
   onOpenHistory,
   restoredSummary,

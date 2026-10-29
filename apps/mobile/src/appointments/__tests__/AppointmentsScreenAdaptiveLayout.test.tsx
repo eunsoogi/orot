@@ -66,13 +66,13 @@ test('keeps the selected appointment details through measured column changes', a
   );
 
   expect(axis('appointments-columns')).toBe('column');
-  setWindowBounds('appointments-columns-host', 0, measuredContentWidth);
-  await fireEvent(screen.getByTestId('appointments-columns-host'), 'layout', {
+  setWindowBounds('appointments-columns-frame-host', 0, measuredContentWidth);
+  await fireEvent(screen.getByTestId('appointments-columns-frame-host'), 'layout', {
     nativeEvent: {
       layout: { width: measuredContentWidth, height: 600, x: 0, y: 0 },
     },
   });
-  expect(axis('appointments-columns')).toBe('row');
+  expect(axis('appointments-columns')).toBe('column');
   expect(
     screen.getByTestId('appointment-select-manual-2').props.accessibilityState,
   ).toEqual({ selected: true });
@@ -82,9 +82,9 @@ test('keeps the selected appointment details through measured column changes', a
 
   parentWidth = 640;
   measuredContentWidth = 600;
-  setWindowBounds('appointments-columns-host', 0, measuredContentWidth);
+  setWindowBounds('appointments-columns-frame-host', 0, measuredContentWidth);
   await rendered.rerender(tree());
-  await fireEvent(screen.getByTestId('appointments-columns-host'), 'layout', {
+  await fireEvent(screen.getByTestId('appointments-columns-frame-host'), 'layout', {
     nativeEvent: {
       layout: { width: measuredContentWidth, height: 600, x: 0, y: 0 },
     },
@@ -126,8 +126,8 @@ test('keeps the appointment form readable and intact when its measured parent na
   );
 
   // Match the ScrollView's 20-point horizontal padding within its wider parent.
-  setWindowBounds('appointments-columns-host', 0, measuredContentWidth);
-  await fireEvent(screen.getByTestId('appointments-columns-host'), 'layout', {
+  setWindowBounds('appointments-columns-frame-host', 0, measuredContentWidth);
+  await fireEvent(screen.getByTestId('appointments-columns-frame-host'), 'layout', {
     nativeEvent: {
       layout: { width: measuredContentWidth, height: 600, x: 0, y: 0 },
     },
@@ -143,15 +143,15 @@ test('keeps the appointment form readable and intact when its measured parent na
     '진료 예약 정보를 이 기기에 저장해요.',
   );
   expect(
-    StyleSheet.flatten(screen.getByTestId('appointments-columns').props.style)
+    StyleSheet.flatten(screen.getByTestId('appointments-columns-frame').props.style)
       ?.width,
   ).toBeLessThanOrEqual(measuredContentWidth);
 
   parentWidth = 360;
   measuredContentWidth = 320;
-  setWindowBounds('appointments-columns-host', 0, measuredContentWidth);
+  setWindowBounds('appointments-columns-frame-host', 0, measuredContentWidth);
   await rendered.rerender(tree());
-  await fireEvent(screen.getByTestId('appointments-columns-host'), 'layout', {
+  await fireEvent(screen.getByTestId('appointments-columns-frame-host'), 'layout', {
     nativeEvent: {
       layout: { width: measuredContentWidth, height: 600, x: 0, y: 0 },
     },
@@ -176,7 +176,7 @@ test('keeps the appointment form readable and intact when its measured parent na
     keyboardShouldPersistTaps: 'handled',
   });
   expect(
-    StyleSheet.flatten(screen.getByTestId('appointments-columns').props.style)
+    StyleSheet.flatten(screen.getByTestId('appointments-columns-frame').props.style)
       ?.width,
   ).toBeLessThanOrEqual(measuredContentWidth);
 });
