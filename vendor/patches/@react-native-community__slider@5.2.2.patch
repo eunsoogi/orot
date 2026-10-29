@@ -1,0 +1,53 @@
+diff --git a/ios/RNCSliderComponentView.h b/ios/RNCSliderComponentView.h
+index 3bb041d7aea37623522d27ef8c56f302ef219bd2..4b5c8256f984d98f13d47e669d3f5e17f924c165 100644
+--- a/ios/RNCSliderComponentView.h
++++ b/ios/RNCSliderComponentView.h
+@@ -29,8 +29,6 @@ typedef void (^RNCLoadImageFailureBlock)();
+ @property (nonatomic, strong) NSString *accessibilityUnits;
+ @property (nonatomic, strong) NSArray *accessibilityIncrements;
+-
++
+-- (float) discreteValue:(float)value;
+-
+ @end
+-
++
+ NS_ASSUME_NONNULL_END
+diff --git a/ios/RNCSliderComponentView.mm b/ios/RNCSliderComponentView.mm
+index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..a3c53db7ff08e2af6a727054eaee1ea41dba8a78 100644
+--- a/ios/RNCSliderComponentView.mm
++++ b/ios/RNCSliderComponentView.mm
+@@ -320,14 +320,15 @@ - (void)loadImageFromImageSource:(ImageSource)source completionBlock:(RNCLoadIma
+         return;
+     }
+-
++
++    // The slider updates its track from the final image, not download progress or partial frames.
+     [imageLoader
+     loadImageWithURLRequest:request
+     size:CGSizeMake(source.size.width, source.size.height)
+     scale:source.scale
+     clipped:NO
+     resizeMode:RCTResizeModeCover
+-    progressBlock:nil
+-    partialLoadBlock:nil
++    progressBlock:^(__unused int64_t progress, __unused int64_t total) {}
++    partialLoadBlock:^(__unused UIImage *image) {}
+     completionBlock:^(NSError *error, UIImage *image) {
+         if (image) {
+             completionBlock(nil, image);
+diff --git a/react-native-slider.podspec b/react-native-slider.podspec
+index b795d531ffed6e39b8b258d7b596bad684ebb988..daa36d3d0db084fc827be40514bad90a817f282a 100644
+--- a/react-native-slider.podspec
++++ b/react-native-slider.podspec
+@@ -17,6 +17,8 @@ Pod::Spec.new do |s|
+-
++
+   s.subspec "common" do |ss|
+     ss.source_files         = "common/cpp/**/*.{cpp,h}"
++    # This fbjni measurement registration is Android-only and has no iOS object definitions.
++    ss.exclude_files        = "common/cpp/react/renderer/components/RNCSlider/RNCSliderMeasurementsManager.cpp"
+     ss.pod_target_xcconfig  = { "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"" }
+   end
+-
++

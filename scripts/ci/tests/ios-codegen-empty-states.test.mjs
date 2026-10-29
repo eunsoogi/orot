@@ -8,6 +8,7 @@ const appRequire = createRequire(resolve('apps/mobile/package.json'));
 const nativeRequire = createRequire(appRequire.resolve('react-native/package.json'));
 const codegenRequire = createRequire(nativeRequire.resolve('@react-native/codegen/package.json'));
 const generateStateCpp = codegenRequire('./lib/generators/components/GenerateStateCpp');
+const generateShadowNodeCpp = codegenRequire('./lib/generators/components/GenerateShadowNodeCpp');
 const keychainPackagePath = appRequire.resolve('react-native-keychain/package.json');
 const keychainRoot = dirname(keychainPackagePath);
 const keychainManifest = JSON.parse(readFileSync(keychainPackagePath, 'utf8'));
@@ -35,6 +36,40 @@ test('Codegen omits empty States.cpp translation units', () => {
   );
 
   assert.deepEqual([...generatedFiles.keys()], []);
+});
+
+// Slider and DateTimePicker have no exported component-name definitions in this generated unit.
+test('Codegen omits empty ShadowNodes.cpp files and retains exported component names', () => {
+  const emptyFiles = generateShadowNodeCpp.generate(
+    'RNCSlider',
+    {
+      modules: {
+        RNCSlider: { type: 'Component', components: {} },
+        RNDateTimePicker: { type: 'Component', components: {} },
+      },
+    },
+    'com.example',
+  );
+  assert.deepEqual([...emptyFiles.keys()], []);
+
+  const populatedFiles = generateShadowNodeCpp.generate(
+    'safeareacontext',
+    {
+      modules: {
+        safeareacontext: {
+          type: 'Component',
+          components: {
+            RNCSafeAreaProvider: { interfaceOnly: false },
+            RNCSafeAreaView: { interfaceOnly: false },
+          },
+        },
+      },
+    },
+    'com.example',
+  );
+  assert.deepEqual([...populatedFiles.keys()], ['ShadowNodes.cpp']);
+  assert.match(populatedFiles.get('ShadowNodes.cpp'), /RNCSafeAreaProviderComponentName/);
+  assert.match(populatedFiles.get('ShadowNodes.cpp'), /RNCSafeAreaViewComponentName/);
 });
 
 // v10.0.0 has no Native* Codegen spec; its old registration generated empty module outputs.

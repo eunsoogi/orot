@@ -1,0 +1,57 @@
+diff --git a/RNDateTimePicker.podspec b/RNDateTimePicker.podspec
+index 5f5328224f13c18eb9a21d56117249659f0201f4..10b024d0e560a0e033156d752476f2a017e30d53 100644
+--- a/RNDateTimePicker.podspec
++++ b/RNDateTimePicker.podspec
+@@ -16,6 +16,8 @@ Pod::Spec.new do |s|
+   s.requires_arc = true
+-
++
+   if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
++    # State constructors are inline in the header; this source only opens namespaces.
++    s.exclude_files = "ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.cpp"
+     install_modules_dependencies(s)
+   else
+     s.exclude_files = "ios/fabric"
+diff --git a/ios/RNDateTimePickerManager.m b/ios/RNDateTimePickerManager.m
+index 0a69f5c8c4dde9db45e42e483d60dc0059b4a927..8046713b7ce8b42cedeba903db4744d886065bd1 100644
+--- a/ios/RNDateTimePickerManager.m
++++ b/ios/RNDateTimePickerManager.m
+@@ -19,6 +19,7 @@ + (instancetype) tintColor;
+ @end
+ #endif
+-
++
++// React Native's primary RCTConvert implementation already owns UIUserInterfaceStyle mapping.
+ @implementation RCTConvert(UIDatePicker)
+-
++
+ RCT_ENUM_CONVERTER(UIDatePickerMode, (@{
+@@ -44,11 +45,6 @@ @implementation RCTConvert(UIDatePicker)
+ }), UIDatePickerStyleAutomatic, integerValue)
+-
++
+-
++
+-RCT_ENUM_CONVERTER(UIUserInterfaceStyle, (@{
+-    @"dark": @(UIUserInterfaceStyleDark),
+-    @"light": @(UIUserInterfaceStyleLight),
+-}), UIUserInterfaceStyleUnspecified, integerValue)
+-
+ #endif
+ #pragma clang diagnostic pop
+-
++
+diff --git a/ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.h b/ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.h
+index 9ca04105493d97648b324005c37d74fb43113708..b9f88e288ff6b7b73747c59672f9227cab0da75f 100644
+--- a/ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.h
++++ b/ios/fabric/cpp/react/renderer/components/RNDateTimePicker/RNDateTimePickerState.h
+@@ -8,7 +8,7 @@
+ #if __has_include(<React/Graphics.h>)
+ #include <React/Graphics.h>
+ #else
+-#include <react/renderer/graphics/Geometry.h>
++#include <react/renderer/graphics/Size.h>
+ #endif
+-
++
+ namespace facebook {
