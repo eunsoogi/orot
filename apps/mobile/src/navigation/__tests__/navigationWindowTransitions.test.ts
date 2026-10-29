@@ -4,6 +4,8 @@ import {
 } from '../navigationGeometry';
 import { resolveNavigationRootLayout } from '../navigationRootLayout';
 import { resolveNavigationContentFrame } from '../navigationContentFrame';
+import { leftSplitGeometry } from '../__fixtures__/navigationSplitGeometry';
+import { openGeometry } from '../__fixtures__/navigationOpenGeometry';
 
 // Synthetic window inputs exercise publication order; these are not observed
 // Duo multitasking dimensions or a policy for choosing its system-side edge.
@@ -95,5 +97,40 @@ test('uses a new window size and viewport without retaining an opposite inset', 
     y: 0,
     width: 516,
     height: 766,
+  });
+});
+
+test('moves the observed split lane only after a fresh native side and releases it on return', () => {
+  // The pre-repair right toolbar is an actual observation. The following left
+  // measurement models the repair's publication contract without claiming a native run.
+  const previousFrame = { x: 409, y: 12, width: 48, height: 611 };
+  const pending = resolve({
+    ...leftSplitGeometry,
+    navigationSide: 'right',
+    navigationFrame: previousFrame,
+    navigationWidth: 48,
+  });
+  expect(pending.candidate).toMatchObject({ railSide: 'left' });
+  expect(pending.shared).toMatchObject({
+    side: 'right',
+    navigationFrame: previousFrame,
+    availableContentFrame: { x: 0, width: 397 },
+  });
+  expect(
+    resolve({
+      ...leftSplitGeometry,
+      navigationSide: 'left',
+      navigationFrame: { ...previousFrame, x: 12 },
+      navigationWidth: 48,
+    }).shared,
+  ).toMatchObject({
+    side: 'left',
+    availableContentFrame: { x: 72, width: 397 },
+  });
+  expect(
+    resolve({ ...openGeometry, navigationSide: 'right' }).shared,
+  ).toMatchObject({
+    side: 'right',
+    availableContentFrame: { x: 0, width: 867 },
   });
 });

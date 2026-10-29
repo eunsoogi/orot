@@ -5,6 +5,7 @@ import { NavigationGeometryProvider } from '../NavigationGeometryProvider';
 import { NavigationViewport } from '../NavigationViewport';
 import { useNavigationContentFrame } from '../navigationContentFrame';
 import type { NavigationGeometryPayload } from '../navigationGeometry';
+import { leftSplitGeometry } from '../__fixtures__/navigationSplitGeometry';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -59,17 +60,24 @@ test('retains the same route, edited input and selection across side and viewpor
     navigationSide: 'right',
   };
   const left: NavigationGeometryPayload = {
-    ...full,
-    windowBounds: { ...full.windowBounds, width: 500 },
-    safeAreaInsets: { ...full.safeAreaInsets, left: 84, right: 0 },
+    ...leftSplitGeometry,
+    // The system geometry was observed; the post-repair left measurement is a
+    // synthetic event, not evidence that the changed native layout was executed.
     navigationSide: 'left',
   };
   const right: NavigationGeometryPayload = {
-    ...left,
+    ...full,
+    windowBounds: { ...full.windowBounds, width: 500 },
     safeAreaInsets: full.safeAreaInsets,
     navigationSide: 'right',
   };
-  for (const payload of [full, left, right, full]) {
+  const transitions = [
+    { payload: full, x: 0, width: 916, height: 766 },
+    { payload: left, x: 72, width: 397, height: 635 },
+    { payload: right, x: 0, width: 416, height: 766 },
+    { payload: full, x: 0, width: 916, height: 766 },
+  ];
+  for (const { payload, x, width, height } of transitions) {
     await fireEvent(sensor, 'geometryChange', { nativeEvent: payload });
     await fireEvent(viewport, 'layout', {
       nativeEvent: { layout: payload.windowBounds },
@@ -77,10 +85,10 @@ test('retains the same route, edited input and selection across side and viewpor
     const frame = JSON.parse(screen.getByTestId('frame').props.children);
     expect(frame.side).toBe(payload.navigationSide);
     expect(frame.availableContentFrame).toEqual({
-      x: payload.safeAreaInsets.left,
+      x,
       y: 0,
-      width: payload.windowBounds.width - 84,
-      height: 766,
+      width,
+      height,
     });
     expect(screen.getByTestId('draft')).toBe(originalInput);
     expect(originalInput.props.value).toBe('합성 입력 유지');
