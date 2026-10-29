@@ -198,7 +198,7 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
 });
 
 test.each(['home', 'records', 'ai', 'settings'] as const)(
-  'lets the %s root tab own the full lane for its adaptive panels',
+  'lets the %s root tab own the full usable lane',
   async activeTab => {
     const controller = createNavigationController<TestRoute>('home');
     const rootTabs = { activeTab, onSelect: jest.fn() };
@@ -224,7 +224,7 @@ test.each(['home', 'records', 'ai', 'settings'] as const)(
       </NavigationRouteAdapter>,
     );
 
-    // Root tabs share the `home` route name while their screens own adaptive panels.
+    // Root tabs share the `home` route name while the screen owns its continuous content.
     expect(
       screen.getByTestId(
         activeTab === 'ai' ? 'ai-features-screen' : 'route-home',
@@ -232,8 +232,8 @@ test.each(['home', 'records', 'ai', 'settings'] as const)(
     ).toBeTruthy();
     if (activeTab === 'ai') {
       expect(screen.getByTestId('ai-feature-columns')).toBeTruthy();
-      expect(screen.getByTestId('ai-feature-columns-primary')).toBeTruthy();
-      expect(screen.getByTestId('ai-feature-columns-secondary')).toBeTruthy();
+      expect(screen.queryByTestId('ai-feature-columns-primary')).toBeNull();
+      expect(screen.queryByTestId('ai-feature-columns-secondary')).toBeNull();
     }
     expect(
       screen.queryByTestId(`navigation-route-columns-${homeKey}`),

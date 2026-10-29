@@ -47,8 +47,7 @@ test('shows the next saved appointment and recent recording on Home', async () =
   await waitFor(() =>
     expect(screen.getByTestId('home-next-appointment')).toBeTruthy(),
   );
-  expect(screen.getByTestId('home-adaptive-columns-primary')).toBeTruthy();
-  expect(screen.getByTestId('home-adaptive-columns-secondary')).toBeTruthy();
+  expect(screen.getByTestId('home-overview-sections')).toBeTruthy();
   expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
   expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
   expect(screen.getAllByTestId('home-prepare-visit')).toHaveLength(1);
@@ -122,8 +121,8 @@ test('keeps Home summaries independent while each loader recovers from failure',
   expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
 
   // Each panel owns its retry path, so recovering one summary cannot replace the other.
-  fireEvent.press(screen.getByTestId('home-appointments-retry'));
-  fireEvent.press(screen.getByTestId('home-recordings-retry'));
+  await fireEvent.press(screen.getByTestId('home-appointments-retry'));
+  await fireEvent.press(screen.getByTestId('home-recordings-retry'));
 
   await waitFor(() => {
     expect(screen.getByText('새봄의원')).toBeTruthy();

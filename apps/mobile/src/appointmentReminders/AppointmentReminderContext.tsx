@@ -21,6 +21,8 @@ export function createAppointmentReminderRuntime(load: Loader) {
     load: async () => withAppointmentReminders(await load(), coordinator),
     // A route key binds a delivered tap to its own visit, never the next visit.
     targets: new Map<string, AppointmentReminderTarget>(),
+    // Home can show manual or already-started visits; these read-only targets never enter reminder scheduling or inference.
+    homePreparationTargets: new Map<string, string>(),
   };
 }
 

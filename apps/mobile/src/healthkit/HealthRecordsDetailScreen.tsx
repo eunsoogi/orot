@@ -1,6 +1,6 @@
 import { HealthRecordsDetailHeader } from './HealthRecordsDetailHeader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, ScrollView } from 'react-native';
+import { FlatList } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type {
   HealthObservationCursor,
@@ -34,7 +34,7 @@ interface HealthRecordsDetailScreenProps {
 
 type LoadState = 'loading' | 'ready' | 'failed';
 
-/** Keeps the selected period and loaded rows mounted while the detail panels reflow. */
+/** Keeps controls and paged rows in one virtualized flow without resetting the selected period. */
 export function HealthRecordsDetailScreen({
   loadObservations,
   onBack,
@@ -124,26 +124,20 @@ export function HealthRecordsDetailScreen({
 
   const title = healthRecordCategoryTitle(selection.category) + ' 기록 상세';
   const controlsPanel = (
-    <ScrollView
-      contentContainerStyle={[styles.container, navigationInset]}
-      style={styles.panelScroll}
-      testID="health-records-detail-controls-scroll"
-    >
-      <HealthRecordsDetailHeader
-        title={title}
-        hasSharedNavigation={hasSharedNavigation}
-        onBack={onBack}
-        selection={selection}
-        onSelectionChange={onSelectionChange}
-        recordCount={rows.length}
-        observationCount={observations.length}
-        loadState={loadState}
-        onRetry={() => {
-          reload(null);
-        }}
-        hasMore={cursor !== null}
-      />
-    </ScrollView>
+    <HealthRecordsDetailHeader
+      title={title}
+      hasSharedNavigation={hasSharedNavigation}
+      onBack={onBack}
+      selection={selection}
+      onSelectionChange={onSelectionChange}
+      recordCount={rows.length}
+      observationCount={observations.length}
+      loadState={loadState}
+      onRetry={() => {
+        reload(null);
+      }}
+      hasMore={cursor !== null}
+    />
   );
   const recordsPanel = (
     <FlatList
@@ -152,6 +146,7 @@ export function HealthRecordsDetailScreen({
         row.kind === 'blood_pressure' ? row.reading.id : row.observation.id
       }
       contentContainerStyle={[styles.container, navigationInset]}
+      ListHeaderComponent={controlsPanel}
       ListEmptyComponent={
         loadState === 'ready' && !cursor ? (
           <Text testID="health-records-detail-empty">
@@ -200,9 +195,8 @@ export function HealthRecordsDetailScreen({
 
   return (
     <AdaptiveColumns
-      primary={controlsPanel}
+      primary={recordsPanel}
       routeKey="health-records-detail"
-      secondary={recordsPanel}
       testID="health-records-detail-layout"
     />
   );

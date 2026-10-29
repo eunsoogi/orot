@@ -20,6 +20,7 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         library.tap()
         let overview = UITestConditions.element(app, "health-records-scroll")
         XCTAssertTrue(overview.waitForAppearance())
+        try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
         let detail = UITestConditions.element(app, "health-record-open-detail-heart_rate")
         XCTAssertTrue(detail.waitForAppearance())
         detail.tap()

@@ -42,3 +42,30 @@ export function expectDuoPanelsInsideNativeRegions(
   expect(secondaryStart).toBeGreaterThanOrEqual(right.x - 0.5);
   expect(secondaryEnd).toBeLessThanOrEqual(right.x + right.width + 0.5);
 }
+
+/** Checks the one-page owner stays inside one native region and never spans a seam. */
+export function expectHealthRecordPageInsideNativeRegion(
+  layoutTestID: string,
+  payload: NavigationGeometryPayload,
+) {
+  const snapshot = createNavigationGeometrySnapshot(payload);
+  expect(snapshot).not.toBeNull();
+  if (!snapshot) return;
+
+  const regions = snapshot.usableRegions
+    .filter(region => region.height >= snapshot.safeAreaFrame.height * 0.6)
+    .sort((left, right) => left.x - right.x);
+  expect(regions).toHaveLength(2);
+  if (regions.length !== 2) return;
+
+  const layout = viewStyle(layoutTestID);
+  const primary = viewStyle(`${layoutTestID}-primary`);
+  const start = snapshot.safeAreaFrame.x + Number(layout.marginStart ?? 0);
+  const end = start + Number(primary.width ?? 0);
+  expect(screen.queryByTestId(`${layoutTestID}-secondary`)).toBeNull();
+  expect(
+    regions.some(
+      region => start >= region.x - 0.5 && end <= region.x + region.width + 0.5,
+    ),
+  ).toBe(true);
+}
