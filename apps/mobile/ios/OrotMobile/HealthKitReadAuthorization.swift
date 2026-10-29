@@ -2,15 +2,54 @@ import Foundation
 import HealthKit
 import UIKit
 
-/// Serializes ordinary and per-medication consent sheets. Completion never asserts that read access was granted.
+/// Serializes ordinary and per-medication requests without exposing whether HealthKit granted read access.
 enum HealthKitReadAuthorization {
     typealias Completion = (Bool, Error?) -> Void
     typealias StandardRequest = (Set<HKObjectType>, @escaping Completion) -> Void
     typealias ObjectRequest = (HKObjectType, @escaping Completion) -> Void
     typealias PresentationGate = (@escaping Completion) -> Void
+    typealias RequestCompletion = (Result<Void, Failure>) -> Void
+
+    /// Keeps bridge diagnostics useful while excluding variable HealthKit error text.
+    enum Failure: Error, Equatable {
+        case standardRequestFailed
+        case medicationRequestFailed
+        case presentationUnavailable
+
+        var stage: String {
+            switch self {
+            case .standardRequestFailed: "standardRequest"
+            case .medicationRequestFailed: "medicationRequest"
+            case .presentationUnavailable: "presentation"
+            }
+        }
+
+        var code: String {
+            switch self {
+            case .standardRequestFailed, .medicationRequestFailed: "requestFailed"
+            case .presentationUnavailable: "presentationUnavailable"
+            }
+        }
+
+        var bridgeCode: String {
+            switch self {
+            case .standardRequestFailed: "HEALTHKIT_AUTHORIZATION_STANDARD_REQUEST_FAILED"
+            case .medicationRequestFailed: "HEALTHKIT_AUTHORIZATION_MEDICATION_REQUEST_FAILED"
+            case .presentationUnavailable: "HEALTHKIT_AUTHORIZATION_PRESENTATION_UNAVAILABLE"
+            }
+        }
+
+        var bridgeMessage: String {
+            switch self {
+            case .standardRequestFailed: "HealthKit authorization request failed."
+            case .medicationRequestFailed: "Medication authorization request failed."
+            case .presentationUnavailable: "Medication authorization could not be presented."
+            }
+        }
+    }
 
     static func request(store: HKHealthStore, readTypes: Set<HKObjectType>, perObjectReadTypes: [HKObjectType],
-                        completion: @escaping Completion)
+                        completion: @escaping RequestCompletion)
     {
         request(readTypes: readTypes, perObjectReadTypes: perObjectReadTypes,
                 standard: { types, finish in
@@ -32,21 +71,21 @@ enum HealthKitReadAuthorization {
     static func request(readTypes: Set<HKObjectType>, perObjectReadTypes: [HKObjectType],
                         standard: @escaping StandardRequest, perObject: @escaping ObjectRequest,
                         presentationReady: @escaping PresentationGate = { $0(true, nil) },
-                        completion: @escaping Completion)
+                        completion: @escaping RequestCompletion)
     {
         func requestObject(at index: Int) {
             guard index < perObjectReadTypes.count else {
-                completion(true, nil)
+                completion(.success(()))
                 return
             }
             presentationReady { ready, presentationError in
                 guard ready, presentationError == nil else {
-                    completion(false, presentationError)
+                    completion(.failure(.presentationUnavailable))
                     return
                 }
                 perObject(perObjectReadTypes[index]) { success, error in
                     guard success, error == nil else {
-                        completion(false, error)
+                        completion(.failure(.medicationRequestFailed))
                         return
                     }
                     requestObject(at: index + 1)
@@ -60,7 +99,7 @@ enum HealthKitReadAuthorization {
         }
         standard(readTypes) { success, error in
             guard success, error == nil else {
-                completion(false, error)
+                completion(.failure(.standardRequestFailed))
                 return
             }
             requestObject(at: 0)

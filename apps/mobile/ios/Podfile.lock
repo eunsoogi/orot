@@ -2198,7 +2198,7 @@ SPEC CHECKSUMS:
   React-mutationobservernativemodule: 877e9f730e0d8175c2e952901b55c170fc3d372f
   react-native-get-random-values: 4c923ad74f603ac6359e7990c36fd3af06f129b9
   react-native-safe-area-context: a65d8dbe94029e79c8a4677a0da17b35c2608e1f
-  react-native-slider: 8ec501a2b7aa69970f879aca7aba59bfba845c27
+  react-native-slider: 17fe7c32177bade4a1bd1a8f4e6e5b656eff0151
   React-NativeModulesApple: adb1dd8361dff80e9f6652fb3fdbf033cfbe2a89
   React-networking: c00b437c4408f0640ba0d4158357133488521eca
   React-oscompat: 3175a287dd7175d1a20fdce5048a4b9e11f4b915
@@ -2235,7 +2235,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 2adff9d71e89e7bbae5df02b961ca3301258ce3f
   ReactCommon: 749169e12aa3461a3df3656a00e48dbe0456b2d6
   ReactNativeDependencies: 94c922c39e0e6150ee9ad05e2ca1946e0ef55783
-  RNDateTimePicker: e2d1fa58ac2faa1e318fd4b1e86633c8ab4bdc73
+  RNDateTimePicker: 6d33cf235366a473e384722d69aabbfa9b16fbef
   RNKeychain: 551d42b0ef53426f82551a0cc961cfa10ad33afa
   RNScreens: 890cb87b9fc336e46e9a673099b8e0dceb5b77a0
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871

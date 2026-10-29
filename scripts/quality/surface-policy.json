@@ -87,9 +87,17 @@
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
       "validation": "Frozen pnpm installation, SQLCipher native regressions and clean iOS compilation."
     },
+    "vendor/patches/@react-native-community__datetimepicker@9.2.2.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, DateTimePicker converter and pod-source regressions, and the warning-gated Duo Release build."
+    },
+    "vendor/patches/@react-native-community__slider@5.2.2.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, Slider image and quantization regressions, and the warning-gated Duo Release build."
+    },
     "vendor/patches/@react-native__codegen@0.87.1.patch": {
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
-      "validation": "Frozen pnpm installation, Codegen empty-State regression and clean iOS compilation."
+      "validation": "Frozen pnpm installation, Codegen empty-State and empty-ShadowNodes regressions, and clean iOS compilation."
     },
     "vendor/patches/react-native@0.87.1.patch": {
       "reason": "Version-pinned third-party diff, including prebuilt-header repair code.",
