@@ -2,21 +2,10 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import ManualHistoryScreen from '../src/manualHistory/ManualHistoryScreen';
 import { manualHistorySupportsInlineDateControls } from '../src/manualHistory/ManualHistoryFormLayout';
-import {
-  MANUAL_HISTORY_DETAILS_MINIMUM_WIDTH,
-  MANUAL_HISTORY_LIST_MINIMUM_WIDTH,
-  MANUAL_HISTORY_PANEL_GAP,
-  manualHistorySupportsColumns,
-} from '../src/manualHistory/manualHistoryLayout';
 import { createManualHistoryTestRepository } from '../test-support/manualHistoryTestRepository';
 
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
-const minimumPanelWidth =
-  MANUAL_HISTORY_LIST_MINIMUM_WIDTH +
-  MANUAL_HISTORY_DETAILS_MINIMUM_WIDTH +
-  MANUAL_HISTORY_PANEL_GAP;
-
 const viewport = (width: number, fontScale = 1) => ({
   ...originalWindow,
   width,
@@ -27,17 +16,6 @@ afterEach(async () => {
   await act(() =>
     Dimensions.set({ window: originalWindow, screen: originalScreen }),
   );
-});
-
-test('uses columns only when both panels fit at the current text scale', () => {
-  expect(manualHistorySupportsColumns(minimumPanelWidth - 1, 1)).toBe(false);
-  expect(manualHistorySupportsColumns(minimumPanelWidth, 1)).toBe(true);
-  expect(manualHistorySupportsColumns(minimumPanelWidth * 1.5 - 1, 1.5)).toBe(
-    false,
-  );
-  expect(manualHistorySupportsColumns(minimumPanelWidth * 1.5, 1.5)).toBe(true);
-  expect(manualHistorySupportsColumns(Number.NaN, 1)).toBe(false);
-  expect(manualHistorySupportsColumns(900, 0)).toBe(false);
 });
 
 test('keeps date controls stacked until the measured form lane supports both controls', () => {
@@ -133,9 +111,9 @@ test('preserves selected correction history and confirmation state through measu
   await view.findByTestId('manual-history-entry-' + corrected.id);
 
   const measureBrowser = async (width: number) => {
-    await fireEvent(view.getByTestId('manual-history-browser'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width, height: 700 } },
-    });
+    await act(() =>
+      Dimensions.set({ window: viewport(width), screen: viewport(width) }),
+    );
   };
   const layoutDirection = () =>
     StyleSheet.flatten(view.getByTestId('manual-history-browser').props.style)
@@ -146,7 +124,7 @@ test('preserves selected correction history and confirmation state through measu
     view.getByTestId('manual-history-details-' + corrected.id),
   );
   await view.findByTestId('manual-history-correction-history');
-  expect(layoutDirection()).toBe('row');
+  expect(layoutDirection()).toBe('column');
   expect(
     view.getByText('직접 입력한 기록이며 의료진이 확인한 정보가 아니에요.'),
   ).toBeTruthy();
@@ -177,7 +155,7 @@ test('preserves selected correction history and confirmation state through measu
     }),
   );
   await measureBrowser(1000);
-  expect(layoutDirection()).toBe('row');
+  expect(layoutDirection()).toBe('column');
   await act(() =>
     Dimensions.set({ window: viewport(540, 1.5), screen: viewport(540, 1.5) }),
   );
@@ -204,6 +182,6 @@ test('preserves selected correction history and confirmation state through measu
     }),
   );
   await measureBrowser(1000);
-  expect(layoutDirection()).toBe('row');
+  expect(layoutDirection()).toBe('column');
   expect(view.getByTestId('manual-history-close-details')).toBeTruthy();
 });

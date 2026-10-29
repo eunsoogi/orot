@@ -78,3 +78,22 @@ export function useManualHistoryDraftState(saving: boolean) {
 
   return { clearDraft, getDraft: (key: string) => drafts[key], recordDraft };
 }
+
+/** A correction starts from the exact stored date knowledge and never a recording timestamp. */
+export function manualHistoryCorrectionDraft(
+  entry: ManualHistoryScreenRecord | null,
+): ManualHistoryScreenFormDraft | undefined {
+  return entry
+    ? {
+        kind: entry.kind,
+        title: entry.title,
+        details: entry.details,
+        effectiveDateText:
+          entry.effectiveDate.status === 'known'
+            ? entry.effectiveDate.date
+            : '',
+        dateUnknown: entry.effectiveDate.status === 'unknown',
+        correctionNote: '',
+      }
+    : undefined;
+}

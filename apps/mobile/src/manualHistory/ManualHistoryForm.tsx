@@ -1,25 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Button,
-  StyleSheet,
-  Text,
+  AccessibilityInfo,
   TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
+import { ManualHistoryKindControls } from './ManualHistoryKindControls';
+import { styles } from './manualHistoryFormStyles';
 import { t } from '../i18n';
 import { ManualHistoryDateControls } from './ManualHistoryDateControls';
 import type {
   ManualHistoryScreenDraft,
   ManualHistoryScreenRecord,
 } from './types';
-import { MANUAL_HISTORY_KINDS } from './types';
 import type { ManualHistoryScreenFormDraft } from './types';
-import {
-  MANUAL_HISTORY_FORM_MAX_WIDTH,
-  manualHistorySupportsInlineDateControls,
-} from './ManualHistoryFormLayout';
+import { manualHistorySupportsInlineDateControls } from './ManualHistoryFormLayout';
 
 interface ManualHistoryFormProps {
   initialValue?: ManualHistoryScreenFormDraft;
@@ -62,6 +61,7 @@ export default function ManualHistoryForm({
     initialValue?.correctionNote ?? '',
   );
   const [validationError, setValidationError] = useState('');
+  const [detailsHeight, setDetailsHeight] = useState(96);
   const [availableWidth, setAvailableWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
   const inlineDateControls = manualHistorySupportsInlineDateControls(
@@ -96,7 +96,13 @@ export default function ManualHistoryForm({
     title,
   ]);
 
+  useEffect(() => {
+    if (validationError)
+      AccessibilityInfo.announceForAccessibility(validationError);
+  }, [validationError]);
+
   async function save() {
+    if (saving) return;
     if (!title.trim() || !details.trim()) {
       setValidationError(t('manualHistory.form.validation.required'));
       return;
@@ -132,21 +138,18 @@ export default function ManualHistoryForm({
           : t('manualHistory.form.newTitle')}
       </Text>
       <Text style={styles.fieldLabel}>{t('manualHistory.form.kind')}</Text>
-      {MANUAL_HISTORY_KINDS.map(value => (
-        <Button
-          key={value}
-          onPress={() => setKind(value)}
-          testID={'manual-history-kind-' + value}
-          title={
-            (kind === value ? '✓ ' : '') +
-            t(
-              ('manualHistory.kind.' +
-                value) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
-            )
-          }
-        />
-      ))}
+      <ManualHistoryKindControls
+        kind={kind}
+        onChange={setKind}
+        disabled={saving}
+        inline={inlineDateControls}
+      />
+      <Text style={styles.fieldLabel}>
+        {t('manualHistory.form.titleLabel')} {t('manualHistory.form.required')}
+      </Text>
       <TextInput
+        editable={!saving}
+        placeholderTextColor={appColors.secondary}
         accessibilityLabel={t('manualHistory.form.titleLabel')}
         onChangeText={setTitle}
         placeholder={t('manualHistory.form.titlePlaceholder')}
@@ -154,18 +157,34 @@ export default function ManualHistoryForm({
         testID="manual-history-title-input"
         value={title}
       />
+      <Text style={styles.fieldLabel}>
+        {t('manualHistory.form.detailsLabel')}{' '}
+        {t('manualHistory.form.required')}
+      </Text>
       <TextInput
+        editable={!saving}
+        placeholderTextColor={appColors.secondary}
         accessibilityLabel={t('manualHistory.form.detailsLabel')}
         multiline
+        scrollEnabled={false}
+        // The page owns scrolling; growing content must never become an independent editor viewport.
+        onContentSizeChange={event =>
+          setDetailsHeight(Math.max(96, event.nativeEvent.contentSize.height))
+        }
         onChangeText={setDetails}
         placeholder={t('manualHistory.form.detailsPlaceholder')}
         returnKeyType="done"
         submitBehavior="blurAndSubmit"
-        style={[styles.input, styles.detailsInput]}
+        style={[
+          styles.input,
+          styles.detailsInput,
+          { minHeight: detailsHeight },
+        ]}
         testID="manual-history-details-input"
         value={details}
       />
       <ManualHistoryDateControls
+        disabled={saving}
         dateUnknown={dateUnknown}
         effectiveDate={effectiveDate}
         inline={inlineDateControls}
@@ -179,18 +198,27 @@ export default function ManualHistoryForm({
         }}
       />
       {isCorrection ? (
-        <TextInput
-          accessibilityLabel={t('manualHistory.form.correctionNoteLabel')}
-          onChangeText={setCorrectionNote}
-          placeholder={t('manualHistory.form.correctionNotePlaceholder')}
-          style={styles.input}
-          testID="manual-history-correction-note-input"
-          value={correctionNote}
-        />
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>
+            {t('manualHistory.form.correctionNoteLabel')}
+          </Text>
+          <TextInput
+            editable={!saving}
+            placeholderTextColor={appColors.secondary}
+            accessibilityLabel={t('manualHistory.form.correctionNoteLabel')}
+            onChangeText={setCorrectionNote}
+            placeholder={t('manualHistory.form.correctionNotePlaceholder')}
+            style={styles.input}
+            testID="manual-history-correction-note-input"
+            value={correctionNote}
+          />
+        </View>
       ) : null}
       {validationError ? (
         <Text
           accessibilityRole="alert"
+          accessibilityLiveRegion="assertive"
+          style={styles.error}
           testID="manual-history-validation-error"
         >
           {validationError}
@@ -209,6 +237,7 @@ export default function ManualHistoryForm({
         }
       />
       <Button
+        variant="secondary"
         disabled={saving}
         onPress={onClose}
         testID="manual-history-form-close"
@@ -217,24 +246,3 @@ export default function ManualHistoryForm({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  form: {
-    alignSelf: 'center',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    gap: 10,
-    maxWidth: MANUAL_HISTORY_FORM_MAX_WIDTH,
-    padding: 14,
-    width: '100%',
-  },
-  sectionTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  fieldLabel: { color: '#17212b', fontWeight: '600' },
-  input: {
-    borderColor: '#a8b3bf',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 10,
-  },
-  detailsInput: { minHeight: 72, textAlignVertical: 'top' },
-});
