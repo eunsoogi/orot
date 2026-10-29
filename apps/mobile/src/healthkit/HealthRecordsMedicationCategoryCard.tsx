@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -8,53 +7,26 @@ import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import { healthRecordCategoryTitle } from './healthRecordsLibraryModel';
-import type { HealthRecordsMedicationLoader } from './healthRecordsMedicationLibrary';
-import {
-  emptyHealthRecordsMedicationData,
-  loadEmptyHealthRecordsMedicationData,
-} from './healthRecordsMedicationLibrary';
+import type { useHealthRecordsMedicationSummary } from './useHealthRecordsMedicationSummary';
+import { HealthRecordsCategoryHeading } from './HealthRecordsCategoryHeading';
 
 interface HealthRecordsMedicationCategoryCardProps {
-  readonly loadMedicationData?: HealthRecordsMedicationLoader;
+  readonly summary: ReturnType<typeof useHealthRecordsMedicationSummary>;
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
 }
 
 /** Shows stored medication events as a summary instead of a numeric chart. */
 export function HealthRecordsMedicationCategoryCard({
-  loadMedicationData = loadEmptyHealthRecordsMedicationData,
+  summary,
   onOpenDetail,
 }: HealthRecordsMedicationCategoryCardProps) {
-  const [data, setData] = useState(emptyHealthRecordsMedicationData);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(
-    'loading',
-  );
-  const generation = useRef(0);
+  const { data, status, reload } = summary;
   const title = healthRecordCategoryTitle('medications');
   const medicationCount = data.totalDefinitions ?? data.definitions.length;
   const doseCount = data.totalDoseEvents ?? data.doseEvents.length;
   const latestDose = [...data.doseEvents].sort((left, right) =>
     right.effectiveAt.localeCompare(left.effectiveAt),
   )[0];
-
-  const reload = useCallback(async () => {
-    const request = ++generation.current;
-    setStatus('loading');
-    try {
-      const next = await loadMedicationData();
-      if (request !== generation.current) return;
-      setData(next);
-      setStatus('ready');
-    } catch {
-      if (request === generation.current) setStatus('failed');
-    }
-  }, [loadMedicationData]);
-
-  useEffect(() => {
-    reload();
-    return () => {
-      generation.current += 1;
-    };
-  }, [reload]);
 
   const message =
     status === 'loading'
@@ -71,35 +43,38 @@ export function HealthRecordsMedicationCategoryCard({
 
   return (
     <View style={styles.card} testID="health-record-category-medications">
-      <View style={styles.heading}>
-        <View style={styles.icon}>
-          <AppSymbol
-            name="pills.fill"
-            size={26}
-            color={appColors.primaryAction}
+      <HealthRecordsCategoryHeading
+        icon={
+          <View style={styles.icon}>
+            <AppSymbol
+              name="pills.fill"
+              size={26}
+              color={appColors.primaryAction}
+            />
+          </View>
+        }
+        action={
+          <AppButton
+            accessibilityHint={t('healthRecords.detailHint', { title })}
+            onPress={() =>
+              onOpenDetail({ category: 'medications', period: 'month' })
+            }
+            testID="health-record-open-detail-medications"
+            title={t('healthRecords.detail')}
+            variant="secondary"
           />
-        </View>
-        <View style={styles.copy}>
-          <Text accessibilityRole="header" style={styles.title}>
-            {title + ' 기록'}
-          </Text>
-          <Text style={styles.summary} testID="health-record-medications-count">
-            {t('healthRecords.medicationCountSummary', {
-              medications: medicationCount,
-              doseEvents: doseCount,
-            })}
-          </Text>
-        </View>
-        <AppButton
-          accessibilityHint={t('healthRecords.detailHint', { title })}
-          onPress={() =>
-            onOpenDetail({ category: 'medications', period: 'month' })
-          }
-          testID="health-record-open-detail-medications"
-          title={t('healthRecords.detail')}
-          variant="secondary"
-        />
-      </View>
+        }
+      >
+        <Text accessibilityRole="header" style={styles.title}>
+          {title + ' 기록'}
+        </Text>
+        <Text style={styles.summary} testID="health-record-medications-count">
+          {t('healthRecords.medicationCountSummary', {
+            medications: medicationCount,
+            doseEvents: doseCount,
+          })}
+        </Text>
+      </HealthRecordsCategoryHeading>
       <Text
         accessibilityRole={status === 'failed' ? 'alert' : undefined}
         style={status === 'failed' ? styles.error : styles.message}
@@ -107,6 +82,30 @@ export function HealthRecordsMedicationCategoryCard({
       >
         {message}
       </Text>
+      {latestDose ? (
+        <View style={styles.copy}>
+          <Text style={styles.message}>
+            {latestDose.dose?.amount === undefined
+              ? t('healthRecords.medicationDoseNotRecorded')
+              : t('healthRecords.medicationDose', {
+                  amount: latestDose.dose.amount,
+                  unit: latestDose.dose.unit,
+                })}
+          </Text>
+          <Text style={styles.summary}>
+            {formatRecordedAt(latestDose.effectiveAt)}
+          </Text>
+          <Text style={styles.summary}>
+            {t('healthRecords.medicationSource', {
+              source:
+                latestDose.provenance.source?.sourceName ??
+                (latestDose.provenance.source?.system === 'healthkit'
+                  ? 'HealthKit'
+                  : t('healthRecords.medicationSourceUnavailable')),
+            })}
+          </Text>
+        </View>
+      ) : null}
       {status === 'failed' ? (
         <AppButton
           onPress={() => {
@@ -130,7 +129,6 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
   },
-  heading: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   icon: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
@@ -139,7 +137,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 52,
   },
-  copy: { flex: 1, gap: 4 },
+  copy: { minWidth: 0, gap: 4 },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
   summary: { color: appColors.secondary, fontSize: 13 },
   message: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
