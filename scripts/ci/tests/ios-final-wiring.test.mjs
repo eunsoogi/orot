@@ -84,9 +84,9 @@ test('full integration execution preserves profile observations and every regist
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   // The three picker journeys repeat across Debug health-import and Release fixtures.
-  assert.equal(scheduled.length, 203);
+  assert.equal(scheduled.length, 204);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 200);
+  assert.equal(identifiers.size, 201);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

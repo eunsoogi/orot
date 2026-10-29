@@ -6,15 +6,15 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('fixture groups partition UI cases including document-import and orientation journeys', () => {
+test('fixture groups partition appointment, document-import, and orientation journeys', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [11, 11, 8, 27],
+    [11, 11, 8, 28],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 57);
+  assert.equal(original.length, 58);
   const manualHistory = [
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
