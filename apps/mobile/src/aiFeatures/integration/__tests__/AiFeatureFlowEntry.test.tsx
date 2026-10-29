@@ -103,7 +103,10 @@ test('keeps an article-open failure inside the literature page', async () => {
       onOpenArticle={open}
       serviceDependencies={{
         externalEvidence: {
-          search: jest.fn(async () => ({ status: 'available', publications })),
+          search: jest.fn(async () => ({
+            status: 'available' as const,
+            publications,
+          })),
         },
       }}
     />,

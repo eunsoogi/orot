@@ -86,7 +86,11 @@ test('uses the production history route lane for a selected Duo preview and comp
       )?.width,
     ).toBe(primaryWidth);
     const sections = screen.getByTestId('conversation-history-layout').children;
-    expect(sections.map(section => section.props.testID)).toEqual([
+    expect(
+      sections
+        .filter(section => typeof section !== 'string')
+        .map(section => section.props.testID),
+    ).toEqual([
       'conversation-history-layout-primary',
       'conversation-history-layout-secondary',
     ]);
