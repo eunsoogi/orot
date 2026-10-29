@@ -6,6 +6,8 @@ import {
 } from '@testing-library/react-native';
 import type { Appointment } from '@orot/storage';
 import App from '../App';
+import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
+import { createAppleSelectionOption } from '../src/providers/selection/options';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 import {
   homeJournal,
@@ -124,11 +126,61 @@ test.each(['manual', 'ongoing-calendar'] as const)(
     ).toBeTruthy();
     expect(within(destination).queryByText(other.clinicLabel!)).toBeNull();
     expect(mockLoadQuestions).not.toHaveBeenCalledWith(other.id);
+    expect(
+      within(destination).getByTestId('home-preparation-unsupported'),
+    ).toHaveTextContent(/AI 질문 생성은 지원하지/);
     await fireEvent.press(screen.getByTestId('navigation-back'));
     expect(
       within(await screen.findByTestId('home-next-appointment')).getByText(
         shown.clinicLabel!,
       ),
     ).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('home-prepare-visit'));
+    await fireEvent.press(
+      await screen.findByTestId('home-preparation-open-schedule'),
+    );
+    expect(await screen.findByTestId('calendar-screen')).toBeTruthy();
+    expect(
+      screen.getByTestId('navigation-tab-schedule').props.accessibilityState,
+    ).toEqual(expect.objectContaining({ selected: true }));
   },
 );
+
+test('a valid future Calendar visit still reaches the actual editable generation route', async () => {
+  const shown = appointment('생성할 Calendar 예약', 3_600_000, true);
+  const store = createAppointmentStore([shown]);
+  const option = createAppleSelectionOption('available');
+  const query = jest
+    .spyOn(defaultVisitQuestionRouteOperations, 'loadAppointment')
+    .mockResolvedValue(shown);
+  try {
+    await render(
+      <App
+        loadAppointments={async () => store.repository}
+        loadRecordings={async () => []}
+        loadSymptoms={async () => homeJournal([])}
+        aiFeatureServiceDependencies={{
+          selectedAi: {
+            selectionStore: {
+              load: async () => ({
+                providerId: option.provider.id,
+                modelId: option.modelId,
+              }),
+              save: async () => {},
+              clear: async () => {},
+            },
+            loadAppleOption: async () => option,
+          },
+        }}
+      />,
+    );
+    await fireEvent.press(await screen.findByTestId('home-prepare-visit'));
+    expect(
+      await screen.findByTestId('next-visit-questions-route'),
+    ).toBeTruthy();
+    expect(await screen.findByTestId('next-visit-generate')).toBeEnabled();
+    expect(query).toHaveBeenCalled();
+  } finally {
+    query.mockRestore();
+  }
+});

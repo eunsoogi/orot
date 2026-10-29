@@ -1,5 +1,6 @@
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
+import { canGenerateHomeVisit } from './HomeVisitQuestionsRoute';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
@@ -57,8 +58,12 @@ export function AppRouteContent({
   const reminderRuntime = useAppointmentReminderRuntime();
   function openHomePreparation() {
     if (!nextAppointment || !reminderRuntime) return;
-    // Bind the saved preparation page to the displayed visit, not the generator's different Calendar-only query.
-    const route = actions.push('appointment-preparation');
+    // Eligible visits retain the existing generator. Other visits keep exact-ID saved preparation and an explicit next action.
+    const route = actions.push(
+      canGenerateHomeVisit(nextAppointment)
+        ? 'visit-questions'
+        : 'appointment-preparation',
+    );
     if (route)
       reminderRuntime.homePreparationTargets.set(route.key, nextAppointment.id);
   }
@@ -142,6 +147,9 @@ export function AppRouteContent({
         <AppointmentPreparationRoute
           routeKey={actions.route.key}
           loadSavedQuestions={loadSavedVisitQuestions}
+          onOpenSchedule={async () => {
+            if (await actions.onHome()) selectTab('schedule');
+          }}
         />
       );
     case 'unified-import':
