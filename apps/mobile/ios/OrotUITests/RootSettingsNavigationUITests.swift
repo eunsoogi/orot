@@ -1,7 +1,7 @@
 import XCTest
 
 extension RootNavigationUITests {
-    /// Starts from portrait, verifies Settings geometry, then restores the captured orientation.
+    /// Starts from portrait, verifies Settings geometry, then restores a valid initial orientation.
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
@@ -29,7 +29,7 @@ extension RootNavigationUITests {
                 }
             }
             app.terminate()
-            XCUIDevice.shared.orientation = initialOrientation
+            XCUIDevice.shared.orientation = initialOrientation.isPortrait || initialOrientation.isLandscape ? initialOrientation : .portrait
         }
 
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
