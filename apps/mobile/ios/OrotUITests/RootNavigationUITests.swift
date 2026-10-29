@@ -32,13 +32,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
-        let recent = UITestConditions.element(app, "home-open-records")
+        let recordingAction = UITestConditions.element(app, "home-new-recording")
         let bar = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").toolbar
         let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
-        XCTAssertTrue(recent.exists && !recent.frame.isEmpty)
+        XCTAssertTrue(recordingAction.exists && recordingAction.isHittable && !recordingAction.frame.isEmpty)
         XCTAssertTrue(root.exists && !root.frame.isEmpty)
-        XCTAssertLessThanOrEqual(recent.frame.maxY, bar.frame.minY)
-        // Preserve the original root-tab clearance bound using the live native bar frame.
+        // A fresh Core launch can omit recent records, so use its always-present recording action for clearance.
+        XCTAssertLessThanOrEqual(recordingAction.frame.maxY, bar.frame.minY)
         let bottomClearance = root.frame.maxY - bar.frame.maxY
         XCTAssertGreaterThanOrEqual(bottomClearance, 22)
         XCTAssertLessThanOrEqual(bottomClearance, 26)
