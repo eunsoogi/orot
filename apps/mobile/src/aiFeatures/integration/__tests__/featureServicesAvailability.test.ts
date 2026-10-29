@@ -121,6 +121,51 @@ test.each([
   },
 );
 
+test.each([
+  {
+    name: 'Korean health question',
+    question: '어떤 건강 문제가 있는지 알려줘',
+  },
+  {
+    name: 'English health question',
+    question:
+      'What does my health data stored here say about my blood pressure?',
+  },
+])(
+  'routes a substantive $name through the selected grounded provider',
+  async ({ question }) => {
+    const source = localData([]);
+    const readInventory = jest.fn(async () => completeInventory);
+    Object.assign(source.data.repository, { readInventory });
+    const selection = selectionStore({
+      providerId: apple.provider.id,
+      modelId: apple.modelId,
+    });
+    const ragRunner = jest.fn(async () => ({
+      status: 'no_evidence' as const,
+    })) as unknown as typeof runRagConversationTurn;
+    const services = createAiFeatureServices(consent, {
+      selectedAi: {
+        selectionStore: selection,
+        loadAppleOption: async () => apple,
+      },
+      loadLocalData: async () => source.data,
+      ragRunner,
+    });
+
+    const outcome = await services.sendRagMessage(question, []);
+
+    expect(outcome.status).not.toBe('answer');
+    expect(selection.load).toHaveBeenCalledTimes(1);
+    expect(readInventory).not.toHaveBeenCalled();
+    expect(ragRunner).toHaveBeenCalledTimes(1);
+    expect(ragRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ question }),
+      expect.anything(),
+    );
+  },
+);
+
 test('turns inventory read errors into a retryable local retrieval outcome', async () => {
   const source = localData([]);
   Object.assign(source.data.repository, {

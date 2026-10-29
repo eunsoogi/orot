@@ -18,6 +18,8 @@ test.each([
   'Can you see whether my blood pressure is normal?',
   'Can you check my health data from last month?',
   'How many steps did I take today?',
+  '어떤 건강 문제가 있는지 알려줘',
+  'What does my health data stored here say about my blood pressure?',
 ])(
   'leaves a clinical data request on the grounded answer path: %s',
   question => {
