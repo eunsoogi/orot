@@ -15,7 +15,6 @@ import type { MedicalDocumentImportService } from '../medicalDocumentImportServi
 import {
   medicalDocumentReviewCompactGeometry,
   medicalDocumentReviewDuoGeometry,
-  medicalDocumentReviewDuoPanelViolations,
   medicalDocumentReviewInsets,
 } from '../testSupport/medicalDocumentReviewGeometryFixtures';
 
@@ -125,8 +124,8 @@ beforeEach(() => {
       this: { readonly props: { readonly testID?: string } },
       callback,
     ) {
-      // Match the measured route host to its containing window; geometry alone clips the panels.
-      if (this.props.testID === 'records-document-review-layout-host') {
+      // Give the shared frame full host bounds so it can select one usable Duo region.
+      if (this.props.testID === 'records-document-review-layout-frame-host') {
         const parent = Dimensions.get('window');
         callback(0, 0, parent.width, parent.height);
       }
@@ -138,7 +137,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('reflows the production Records review inside its measured Duo and parent regions', async () => {
+test('keeps the production review and preview vertical inside one measured Duo region', async () => {
   const selected = stagedDocument();
   const service = importService({
     selectDocument: jest.fn().mockResolvedValue(selected),
@@ -152,16 +151,28 @@ test('reflows the production Records review inside its measured Duo and parent r
   await fireEvent.press(screen.getByTestId('records-import-medical-document'));
   await screen.findByTestId('medical-document-review-title');
 
-  const layoutStyle = () =>
-    StyleSheet.flatten(
-      screen.getByTestId('records-document-review-layout').props.style,
-    );
-  const direction = () => layoutStyle()?.flexDirection;
-  const panelWidth = (side: 'primary' | 'secondary') =>
-    StyleSheet.flatten(
-      screen.getByTestId(`records-document-review-layout-${side}`).props.style,
-    )?.width as number;
-  expect(direction()).toBe('row');
+  const style = (testID: string) =>
+    StyleSheet.flatten(screen.getByTestId(testID).props.style);
+  const expectVerticalFlow = () =>
+    [
+      'records-document-review-layout',
+      'records-document-review-layout-frame',
+    ].forEach(testID => expect(style(testID)?.flexDirection).toBe('column'));
+  const measuredLaneWidth = () =>
+    style('records-document-review-layout-frame-primary')?.width as number;
+  const reflowToCompact = async () =>
+    act(async () => {
+      Dimensions.set({ window: viewport(320), screen: viewport(320) });
+      await fireEvent(
+        screen.getByTestId('navigation-window-geometry-sensor'),
+        'geometryChange',
+        { nativeEvent: medicalDocumentReviewCompactGeometry },
+      );
+    });
+  expectVerticalFlow();
+  expect(
+    screen.queryByTestId('records-document-review-layout-frame-secondary'),
+  ).toBeNull();
   expect(screen.getByTestId('records-test-viewport').props.style.width).toBe(
     Dimensions.get('window').width,
   );
@@ -171,15 +182,20 @@ test('reflows the production Records review inside its measured Duo and parent r
     'geometryChange',
     { nativeEvent: medicalDocumentReviewDuoGeometry },
   );
-  expect(direction()).toBe('row');
-  expect(
-    medicalDocumentReviewDuoPanelViolations({
-      leadingInset: Number(layoutStyle()?.marginStart ?? 0),
-      primaryWidth: panelWidth('primary'),
-      columnGap: Number(layoutStyle()?.columnGap ?? 0),
-      secondaryWidth: panelWidth('secondary'),
-    }),
-  ).toEqual([]);
+  expectVerticalFlow();
+  const measuredLeadingInset = Number(
+    style('records-document-review-layout-frame')?.marginStart ?? 0,
+  );
+  const division = medicalDocumentReviewDuoGeometry.reservedRegions.find(
+    region => region.kind === 'division',
+  );
+  if (!division) throw new Error('The Duo fixture needs a display division.');
+  expect(measuredLeadingInset).toBeGreaterThanOrEqual(
+    medicalDocumentReviewDuoGeometry.safeAreaInsets.left,
+  );
+  expect(measuredLeadingInset + measuredLaneWidth()).toBeLessThanOrEqual(
+    division.frame.x,
+  );
 
   await act(async () => {
     Dimensions.set({
@@ -187,7 +203,7 @@ test('reflows the production Records review inside its measured Duo and parent r
       screen: viewport(1000, 1.5),
     });
   });
-  expect(direction()).toBe('column');
+  expectVerticalFlow();
   expect(
     screen.getByTestId('medical-document-review-filename'),
   ).toHaveTextContent(selected.displayName);
@@ -197,19 +213,12 @@ test('reflows the production Records review inside its measured Duo and parent r
   expect(screen.getByTestId('medical-document-save')).toBeEnabled();
   expect(screen.getByTestId('medical-document-cancel')).toBeEnabled();
 
-  await act(async () => {
-    Dimensions.set({ window: viewport(320), screen: viewport(320) });
-    await fireEvent(
-      screen.getByTestId('navigation-window-geometry-sensor'),
-      'geometryChange',
-      { nativeEvent: medicalDocumentReviewCompactGeometry },
-    );
-  });
-  expect(direction()).toBe('column');
+  await reflowToCompact();
+  expectVerticalFlow();
   expect(screen.getByTestId('records-test-viewport').props.style.width).toBe(
     Dimensions.get('window').width,
   );
-  expect(panelWidth('primary')).toBeLessThanOrEqual(320);
+  expect(measuredLaneWidth()).toBeLessThanOrEqual(320);
   expect(screen.getByTestId('medical-document-review-title')).toBeTruthy();
   expect(screen.getByTestId('medical-document-review-text-0')).toBeTruthy();
   expect(service.selectDocument).toHaveBeenCalledTimes(1);
@@ -221,14 +230,7 @@ test('reflows the production Records review inside its measured Duo and parent r
     ),
   ).toBeTruthy();
 
-  await act(async () => {
-    Dimensions.set({ window: viewport(320), screen: viewport(320) });
-    await fireEvent(
-      screen.getByTestId('navigation-window-geometry-sensor'),
-      'geometryChange',
-      { nativeEvent: medicalDocumentReviewCompactGeometry },
-    );
-  });
+  await reflowToCompact();
   expect(
     screen.getByTestId('medical-document-review-text-0'),
   ).toHaveTextContent('Synthetic source page one');
@@ -241,7 +243,6 @@ test('reflows the production Records review inside its measured Duo and parent r
   expect(service.saveDocument).toHaveBeenCalledTimes(2);
   expect(service.saveDocument).toHaveBeenNthCalledWith(1, selected);
   expect(service.saveDocument).toHaveBeenNthCalledWith(2, selected);
-  expect(service.selectDocument).toHaveBeenCalledTimes(1);
   expect(await screen.findByText('문서와 출처를 저장했어요.')).toBeTruthy();
   expect(screen.queryByTestId('medical-document-review-title')).toBeNull();
 });

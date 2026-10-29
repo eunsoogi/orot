@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Dimensions } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import RecordingScreen from '../RecordingScreen';
 import { completed, createService } from '../recordingScreenSupport';
 
@@ -18,6 +18,15 @@ async function setWindow(width: number, fontScale: number) {
   );
 }
 
+// Resolve composed styles so layout assertions do not depend on style-array shape.
+function expectVerticalContentFlow() {
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('recording-content-columns').props.style,
+    ),
+  ).toMatchObject({ flexDirection: 'column' });
+}
+
 afterEach(async () => {
   await act(() => Dimensions.set({ window: originalWindow }));
 });
@@ -29,9 +38,7 @@ test('keeps consent and active recording state through width and text-scale refl
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);
 
   await screen.findByTestId('recording-status');
-  expect(
-    screen.getByTestId('recording-content-columns').props.style,
-  ).toMatchObject({ flexDirection: 'column' });
+  expectVerticalContentFlow();
   expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('recording-consent'));
@@ -50,9 +57,7 @@ test('keeps consent and active recording state through width and text-scale refl
   );
 
   await setWindow(320, 1);
-  expect(
-    screen.getByTestId('recording-content-columns').props.style,
-  ).toMatchObject({ flexDirection: 'column' });
+  expectVerticalContentFlow();
   expect(screen.getByTestId('recording-status')).toHaveTextContent('녹음 중');
   expect(screen.getByTestId('recording-duration')).toHaveTextContent('00:05');
   expect(screen.getByTestId('recording-consent-status')).toHaveTextContent(
@@ -61,9 +66,7 @@ test('keeps consent and active recording state through width and text-scale refl
   expect(screen.getByTestId('recording-consent')).toBeDisabled();
 
   await setWindow(983, 1.5);
-  expect(
-    screen.getByTestId('recording-content-columns').props.style,
-  ).toMatchObject({ flexDirection: 'column' });
+  expectVerticalContentFlow();
   expect(screen.getByTestId('recording-status')).toHaveTextContent('녹음 중');
   expect(screen.getByTestId('recording-duration')).toHaveTextContent('00:05');
   expect(screen.getByTestId('recording-consent-status')).toHaveTextContent(

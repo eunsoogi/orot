@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { VerticalPageSections } from '../layout/VerticalPageSections';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
 import {
@@ -58,10 +58,10 @@ export function RecordsRoute({
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
 
-  // One measured wrapper reflows review details and preview without replacing the staged request.
+  // Keep review actions before every extracted page inside the Records scene's single scroll owner.
   if (stagedDocument) {
     return (
-      <AdaptiveColumns
+      <VerticalPageSections
         primary={
           <MedicalDocumentReview
             document={stagedDocument}
@@ -72,6 +72,7 @@ export function RecordsRoute({
           />
         }
         secondary={<MedicalDocumentReviewPreview document={stagedDocument} />}
+        sectionGap={hubSpacing.item}
         testID="records-document-review-layout"
       />
     );
