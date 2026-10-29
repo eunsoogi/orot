@@ -110,6 +110,13 @@ export default function ManualHistoryScreen({
       return;
     }
 
+    // Publish the committed new id before refresh, whose failure must not hide a saved correction.
+    setEntries(current => [
+      saved,
+      ...current.filter(
+        entry => entry.id !== previous?.id && entry.id !== saved.id,
+      ),
+    ]);
     setFormOpen(false);
     if (formKey) {
       clearDraft(formKey);

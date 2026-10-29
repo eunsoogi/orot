@@ -43,6 +43,15 @@ export function ManualHistoryEntryCard({
 }) {
   return (
     <View style={styles.card} testID={'manual-history-entry-' + entry.id}>
+      {/* Metadata stays outside the grouped button so VoiceOver retains each date, kind and source. */}
+      <View style={styles.metadata}>
+        <Text style={styles.date} testID={'manual-history-date-' + entry.id}>
+          {dateLabel(entry)}
+        </Text>
+        <Text style={[styles.badge, kindColors[entry.kind]]}>
+          {kindLabel(entry.kind)}
+        </Text>
+      </View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('manualHistory.details') + ': ' + entry.title}
@@ -52,27 +61,14 @@ export function ManualHistoryEntryCard({
         style={styles.summary}
         testID={'manual-history-details-' + entry.id}
       >
-        <View style={styles.copy}>
-          <View style={styles.metadata}>
-            <Text
-              style={styles.date}
-              testID={'manual-history-date-' + entry.id}
-            >
-              {dateLabel(entry)}
-            </Text>
-            <Text style={[styles.badge, kindColors[entry.kind]]}>
-              {kindLabel(entry.kind)}
-            </Text>
-          </View>
-          <Text style={styles.entryTitle}>{entry.title}</Text>
-          <Text style={styles.source}>{entryStatus(entry)}</Text>
-        </View>
+        <Text style={[styles.entryTitle, styles.copy]}>{entry.title}</Text>
         <AppSymbol
           name={expanded ? 'chevron.up' : 'chevron.down'}
           color={appColors.secondary}
           size={18}
         />
       </Pressable>
+      <Text style={styles.source}>{entryStatus(entry)}</Text>
       {children}
     </View>
   );
