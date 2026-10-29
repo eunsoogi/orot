@@ -3,6 +3,11 @@ import XCTest
 /// Extends the existing geometry journey without changing the system's window arrangement.
 @MainActor
 enum NavigationWindowGeometryUITestConditions {
+    typealias GeometryPayload = NavigationGeometryReservedRegionMatcher.GeometryPayload
+    typealias GeometryRect = NavigationGeometryReservedRegionMatcher.GeometryRect
+    typealias GeometryInsets = NavigationGeometryReservedRegionMatcher.GeometryInsets
+    typealias GeometryRegion = NavigationGeometryReservedRegionMatcher.GeometryRegion
+
     /// Binds a logical route identity to distinct UIKit callback, provider context, and public window samples.
     struct GeometryReceipt {
         let routeKey: String
@@ -43,47 +48,6 @@ enum NavigationWindowGeometryUITestConditions {
             GeometryPayload(windowBounds: windowBounds, safeAreaInsets: safeAreaInsets,
                             reservedRegionsSupported: reservedRegionsSupported, reservedRegions: reservedRegions)
         }
-    }
-
-    /// Carries native or public UIKit measurements in the same window coordinate system.
-    struct GeometryPayload: Decodable {
-        let windowBounds: GeometryRect
-        let safeAreaInsets: GeometryInsets
-        let reservedRegionsSupported: Bool
-        let reservedRegions: [GeometryRegion]
-
-        /// Compares every shared geometry field while allowing half-point UIKit rounding.
-        func matches(_ other: GeometryPayload) -> Bool {
-            NavigationWindowGeometryUITestConditions.rectMatches(windowBounds, other.windowBounds)
-                && NavigationWindowGeometryUITestConditions.insetsMatch(safeAreaInsets, other.safeAreaInsets)
-                && reservedRegionsSupported == other.reservedRegionsSupported
-                && NavigationWindowGeometryUITestConditions.regionsMatch(reservedRegions, other.reservedRegions)
-        }
-    }
-
-    /// Rectangles are expressed in UIWindow points so route frames share the native measurement basis.
-    struct GeometryRect: Decodable {
-        let x: Double
-        let y: Double
-        let width: Double
-        let height: Double
-    }
-
-    /// Carries the four safe-area edge values reported for a UIWindow.
-    struct GeometryInsets: Decodable {
-        let top: Double
-        let right: Double
-        let bottom: Double
-        let left: Double
-    }
-
-    /// Retains a system-reserved frame and its UIKit margin metadata without changing its semantics.
-    struct GeometryRegion: Decodable {
-        let id: String
-        let kind: String
-        let frame: GeometryRect
-        let margins: GeometryInsets
-        let isActive: Bool
     }
 
     static func tap(_ app: XCUIApplication, _ identifier: String) {
@@ -210,23 +174,17 @@ enum NavigationWindowGeometryUITestConditions {
 
     /// Allows half-point floating rounding while still requiring actual frame agreement.
     nonisolated static func rectMatches(_ first: GeometryRect, _ second: GeometryRect) -> Bool {
-        abs(first.x - second.x) <= 0.5 && abs(first.y - second.y) <= 0.5 &&
-            abs(first.width - second.width) <= 0.5 && abs(first.height - second.height) <= 0.5
+        NavigationGeometryReservedRegionMatcher.rectMatches(first, second)
     }
 
     /// Allows half-point rounding while requiring all four safe-area edges to agree.
     private nonisolated static func insetsMatch(_ first: GeometryInsets, _ second: GeometryInsets) -> Bool {
-        abs(first.top - second.top) <= 0.5 && abs(first.right - second.right) <= 0.5 &&
-            abs(first.bottom - second.bottom) <= 0.5 && abs(first.left - second.left) <= 0.5
+        NavigationGeometryReservedRegionMatcher.insetsMatch(first, second)
     }
 
-    /// Matches reservations by stable kind and id because UIKit may return them in a different order.
+    /// Keeps the view-facing assertion on the same pure comparison used by host regressions.
     private nonisolated static func regionsMatch(_ first: [GeometryRegion], _ second: [GeometryRegion]) -> Bool {
-        guard first.count == second.count else { return false }
-        return first.allSatisfy { region in
-            guard let match = second.first(where: { $0.id == region.id && $0.kind == region.kind }) else { return false }
-            return region.isActive == match.isActive && rectMatches(region.frame, match.frame) && insetsMatch(region.margins, match.margins)
-        }
+        NavigationGeometryReservedRegionMatcher.regionsMatch(first, second)
     }
 
     /// Converts a normalized receipt rectangle for usable-region overlap checks.
