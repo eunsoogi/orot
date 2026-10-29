@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { NavigationContext } from '@react-navigation/native';
 import { Alert, ScrollView, TextInput, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -22,6 +23,14 @@ export function HealthReviewScreen({
 }) {
   const { controller, state, consent, setCitation } = useHealthReviewSession();
   const inset = useNavigationContentInset();
+  const navigation = useContext(NavigationContext);
+  const [providerRevision, setProviderRevision] = useState(0);
+  useEffect(() => {
+    // Retained stack scenes need a fresh saved model when provider settings closes.
+    return navigation?.addListener('focus', () =>
+      setProviderRevision(revision => revision + 1),
+    );
+  }, [navigation]);
   useEffect(() => {
     controller.refresh();
   }, [controller]);
@@ -60,7 +69,7 @@ export function HealthReviewScreen({
             embedded
             onPress={onProvider}
             resolveSelectedAi={resolveSelectedAiProvider}
-            revision={0}
+            revision={providerRevision}
           />
           <Text>{copy.scope}</Text>
           <Text>{copy.privacy}</Text>

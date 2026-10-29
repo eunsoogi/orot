@@ -1,9 +1,12 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   within,
 } from '@testing-library/react-native';
+import { NavigationContext } from '@react-navigation/native';
+import { t } from '../../i18n';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import { ReviewResult } from '../ReviewResult';
@@ -52,6 +55,37 @@ it('places the shared AI selection in the heading and opens provider settings', 
   ).toBeOnTheScreen();
   await fireEvent.press(selector);
   expect(onProvider).toHaveBeenCalledTimes(1);
+  resolve.mockRestore();
+});
+
+it('refreshes the saved model after returning to a retained review scene', async () => {
+  let focus = () => {};
+  const navigation = {
+    addListener: (_event: string, listener: () => void) => {
+      focus = listener;
+      return () => {};
+    },
+  };
+  const resolve = jest
+    .spyOn(provider, 'resolveSelectedAiProvider')
+    .mockResolvedValueOnce({ status: 'selection-required' })
+    .mockResolvedValue({ status: 'unavailable' });
+  await render(
+    <NavigationContext.Provider value={navigation as never}>
+      <HealthReviewSessionProvider service={service}>
+        <HealthReviewScreen onSource={jest.fn()} onProvider={jest.fn()} />
+      </HealthReviewSessionProvider>
+    </NavigationContext.Provider>,
+  );
+  expect(
+    await screen.findByLabelText(new RegExp(t('provider.selection.rowPrompt'))),
+  ).toBeOnTheScreen();
+  await act(async () => focus());
+  expect(
+    await screen.findByLabelText(
+      new RegExp(t('provider.selection.rowUnavailable')),
+    ),
+  ).toBeOnTheScreen();
   resolve.mockRestore();
 });
 

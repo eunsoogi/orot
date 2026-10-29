@@ -52,6 +52,13 @@ it('keeps the previous instant on cancel and applies an explicit selection on do
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
   expect(onChange).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('health-review-measuredAt-0'));
+  await fireEvent.press(screen.getByRole('button', { name: 'date' }));
+  await fireEvent(
+    screen.getByTestId('health-review-time-picker'),
+    'requestClose',
+  );
+  expect(onChange).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('health-review-measuredAt-0'));
   await fireEvent.press(screen.getByRole('button', { name: 'time' }));
   await fireEvent.press(screen.getByRole('button', { name: '완료' }));
   expect(onChange).toHaveBeenCalledWith({

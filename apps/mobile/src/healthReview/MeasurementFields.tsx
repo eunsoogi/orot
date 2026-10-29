@@ -98,6 +98,7 @@ export function MeasurementFields({
         onChangeText={value => set('source', value)}
       />
       <Modal
+        testID="health-review-time-picker"
         visible={draft !== null}
         animationType="slide"
         onRequestClose={() => setDraft(null)}
