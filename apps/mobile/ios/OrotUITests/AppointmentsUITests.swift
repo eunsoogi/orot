@@ -1,6 +1,6 @@
 import XCTest
 
-/// Uses the real manual form and encrypted repository; the fixture runner isolates each case before launch.
+/// Exercises manual next-visit identity across the appointment list and Home with encrypted persistence.
 final class AppointmentsUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -18,11 +18,11 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         UITestConditions.value(UITestConditions.element(app, "appointments-empty"), equals: "등록된 예약이 없어요.")
         tap(app, "appointment-add")
         fill(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45", note: "Bring the test results.")
-        visible(app, "Cardiology clinic")
-        visible(app, "2027년 6월 2일 09:45 · 현지 시간")
-        visible(app, "Bring the test results.")
-        visible(app, "예정")
-        XCTAssertTrue(app.buttons["Cardiology clinic 예약 취소"].exists)
+        XCTAssertTrue(UITestConditions.element(app, "appointment-next-visit-manual-1").waitForAppearance(), app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "appointments-back")
+        NavigationUITestConditions.route(app, markers: ["home-next-appointment"])
+        let homeClinic = app.staticTexts["Cardiology clinic"]
+        XCTAssertTrue(homeClinic.exists && homeClinic.isHittable, app.debugDescription)
         app.terminate()
         try launch(app)
         visible(app, "Cardiology clinic")
@@ -39,15 +39,15 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let cancel = app.buttons["Neurology clinic 예약 취소"]
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         cancel.tap()
-        visible(app, "취소됨")
         XCTAssertFalse(app.buttons["예약 취소"].exists)
+        XCTAssertFalse(UITestConditions.element(app, "appointment-next-visit-manual-1").exists, app.debugDescription)
         app.terminate()
         try launch(app)
         visible(app, "Neurology clinic")
         visible(app, "2027년 6월 3일 10:15 · 현지 시간")
         visible(app, "취소됨")
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["home-open-schedule"])
     }
 
     /// Keeps selected details and the form through native size and appearance changes.
