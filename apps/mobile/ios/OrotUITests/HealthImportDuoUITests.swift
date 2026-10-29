@@ -72,17 +72,17 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(feature.waitForAppearance(), app.debugDescription)
         // Observe RN's localized checkbox value without saving or starting HealthKit work.
         let initialValue = try XCTUnwrap(feature.value as? String)
-        feature.tap()
+        tap(app, "health-data-feature-heartRate")
         let selectedValue = try XCTUnwrap(feature.value as? String)
         XCTAssertNotEqual(selectedValue, initialValue, app.debugDescription)
 
         let layout = node(app, "health-data-layout")
-        let primary = node(app, "health-data-layout-primary")
-        let secondary = node(app, "health-data-layout-secondary")
-        XCTAssertTrue(layout.exists && primary.exists && secondary.exists, app.debugDescription)
-        XCTAssertTrue(primary.frame.contains(feature.frame), app.debugDescription)
-        XCTAssertTrue(permission.exists && secondary.frame.contains(permission.frame), app.debugDescription)
-        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        let page = app.scrollViews.matching(identifier: "health-data-scroll").firstMatch
+        XCTAssertEqual(app.scrollViews.matching(NSPredicate(format: "identifier BEGINSWITH %@", "health-data-")).count, 1, app.debugDescription)
+        // Both choices and final actions must belong to the same native scroll owner.
+        XCTAssertTrue(page.descendants(matching: .any).matching(identifier: "health-data-feature-heartRate").firstMatch.exists, app.debugDescription)
+        XCTAssertTrue(page.descendants(matching: .any).matching(identifier: "health-data-permission-status").firstMatch.exists, app.debugDescription)
+        UITestConditions.scrollTo(node(app, "health-data-save"), in: app)
         _ = try AppearanceUITestConditions.select(
             false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 },
         )
@@ -97,7 +97,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         waitForWidthChange(layout, from: portraitWidth)
         XCTAssertEqual(feature.value as? String, selectedValue, app.debugDescription)
         XCTAssertTrue(permission.exists, app.debugDescription)
-        XCTAssertFalse(primary.frame.intersects(secondary.frame), app.debugDescription)
+        UITestConditions.scrollTo(node(app, "health-data-save"), in: app)
     }
 
     @MainActor
