@@ -132,9 +132,13 @@ describe('ProviderSelectionFlow', () => {
     expect(
       screen.getByText(providerSelectionText.chatGPTAccountSignedOut),
     ).toBeTruthy();
+    const accountAction = screen.getByTestId('chatgpt-account-action');
+    expect(accountAction.props.accessibilityLabel).toBe(
+      providerSelectionText.chatGPTReauthorize,
+    );
     expect(
-      screen.getByText(providerSelectionText.chatGPTReauthorize),
-    ).toBeTruthy();
+      screen.queryByText(providerSelectionText.chatGPTReauthorize),
+    ).toBeNull();
     expect(
       screen.getByText(providerSelectionText.unavailableSelection),
     ).toBeTruthy();
