@@ -14,7 +14,7 @@ const identifiers = [...source.matchAll(/func (test\w+)\(/g)].map(
 );
 
 test('every HealthReview method reaches default Core UI and one independent full-plan task', () => {
-  assert.equal(identifiers.length, 7);
+  assert.equal(identifiers.length, 8);
   const [task] = iosTestCohortTasks('health-review-ui');
   assert.equal(task.profile, 'core');
   assert.equal(task.suite, 'ui');
