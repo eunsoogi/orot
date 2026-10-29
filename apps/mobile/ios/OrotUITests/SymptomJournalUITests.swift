@@ -15,7 +15,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try launchJournal(app)
         guard tap(app, "symptom-add") else { return }
-        SymptomJournalUITestObservations.assertFullContentFormLane(app)
+        SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic intermittent tingling", multiline: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "create-description-focused")
         if singleOnsetObservation {
@@ -66,14 +66,14 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard severityCompleted else { return }
         accessory(app, "symptom-keyboard-save-severity")
         guard visible(app, "Synthetic intermittent tingling") else { return }
-        guard visible(app, "Your severity: 6/10") else { return }
-        guard visible(app, "User-entered · not clinician-confirmed") else { return }
+        guard visible(app, "내가 느낀 불편 정도: 6/10") else { return }
+        guard visible(app, "직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.") else { return }
         let description = app.staticTexts.matching(NSPredicate(format:
             "identifier BEGINSWITH 'symptom-' AND identifier ENDSWITH '-description'")).firstMatch
-        XCTAssertTrue(description.exists && description.isHittable)
         let cardID = String(description.identifier.dropLast("-description".count))
         // Remove only the card's wrapper; the stored entry ID retains its own symptom- prefix.
         let entryID = String(cardID.dropFirst("symptom-".count))
+        XCTAssertTrue(description.exists && description.isHittable && UITestConditions.element(app, "symptom-select-" + entryID).label == "증상 기록 선택: Synthetic intermittent tingling")
         // The selected summary is local to this existing journal route.
         guard tap(app, "symptom-select-" + entryID) else { return }
         UITestConditions.value(
@@ -83,9 +83,9 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         let onset = UITestConditions.element(app, cardID + "-onset")
         XCTAssertTrue(onset.exists)
         let originalOnset = UITestConditions.text(onset)
-        XCTAssertEqual(originalOnset, "2025-04-02 at 09:30 (local time)")
+        XCTAssertTrue(originalOnset.contains("2025년 4월 2일") && originalOnset.contains("09:30") && originalOnset.contains("현지 시각"))
         guard tap(app, "symptom-edit-" + entryID) else { return }
-        SymptomJournalUITestObservations.assertFullContentFormLane(app)
+        SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "before-edit-accessory-wait")
         accessory(app, "symptom-keyboard-save-description")
@@ -98,18 +98,18 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard replace(app, "symptom-filter-through-date", "2025-04-02") else { return }
         guard replace(app, "symptom-filter-through-time", "09:30") else { return }
         accessory(app, "symptom-filter-keyboard-apply-through-time")
-        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Active")
+        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "계속되고 있어요")
         guard tap(app, "symptom-resolve-" + entryID) else { return }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-empty")))
         guard tap(app, "symptom-filter-resolved", towardTop: true) else { return }
-        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Resolved")
+        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "나아졌어요")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
         capture(app, "symptom-journal-resolved")
         app.terminate()
         try launchJournal(app)
-        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "Resolved")
+        UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "나아졌어요")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
-        guard visible(app, "User-entered · not clinician-confirmed") else { return }
+        guard visible(app, "직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.") else { return }
         capture(app, "symptom-journal-persisted-after-relaunch")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
@@ -117,7 +117,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
 
     @MainActor
     private func launchJournal(_ app: XCUIApplication) throws {
-        // No provider, HealthKit, clock, or database adapter replaces the journal's product path.
+        // English device settings exercise the Korean-only copy through the real journal route.
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         // The passive marker is opted in for this scenario; diagnostic-only early-exit flags remain separate.
         app.launchArguments += ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
@@ -130,7 +130,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         XCTAssertTrue(open.isHittable)
         open.tap()
         NavigationUITestConditions.route(app, markers: ["symptoms-title"])
-        XCTAssertFalse(UITestConditions.element(app, "symptoms-back").exists)
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-title")) && UITestConditions.element(app, "symptoms-title").label == "증상 일지" && !UITestConditions.element(app, "symptoms-back").exists)
     }
 
     @MainActor

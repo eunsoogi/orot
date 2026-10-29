@@ -9,7 +9,6 @@ import type { NavigationRouteActions } from '../../navigation';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { AppNavigationRoute } from '../appNavigationRoute';
-import { expectDuoPanelsInsideNativeRegions } from '../testSupport/healthRecordsDuoLayoutAssertions';
 
 const measurableView = View as unknown as {
   prototype: {
@@ -183,8 +182,11 @@ test('uses native usable regions and retains a category through compact, narrow,
       { nativeEvent: geometry(900, 445) },
     );
   });
-  expect(direction()).toBe('row');
-  expectDuoPanelsInsideNativeRegions('health-data-layout', geometry(900, 445));
+  // The whole page uses one native region even when two columns would otherwise fit.
+  expect(direction()).toBe('column');
+  expect(primaryStyle().width).toBe(445);
+  expect(screen.queryByTestId('health-data-layout-secondary')).toBeNull();
+  expect(screen.getAllByTestId(/^health-data-.*scroll$/)).toHaveLength(1);
   expect(
     screen.getByTestId('health-data-feature-status-heartRate'),
   ).toHaveTextContent('자동 동기화 켜짐');

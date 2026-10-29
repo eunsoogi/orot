@@ -3,6 +3,7 @@ import type { ExternalMedicalPublication } from './europePmc';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { getExternalMedicalEvidenceCopy } from './copy';
+import { appColors } from '../layout/appColors';
 
 interface ExternalMedicalEvidenceSelectedSourceProps {
   readonly copy: ReturnType<typeof getExternalMedicalEvidenceCopy>;
@@ -43,6 +44,12 @@ export function ExternalMedicalEvidenceSelectedSource({
 }
 
 const styles = StyleSheet.create({
-  details: { gap: 8 },
+  // A divider separates provenance from the list without introducing another card or viewport.
+  details: {
+    gap: 8,
+    borderTopColor: appColors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 16,
+  },
   title: { fontSize: 17, fontWeight: '700' },
 });

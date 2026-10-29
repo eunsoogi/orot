@@ -55,7 +55,10 @@ enum MedicalDocumentPickerTestFixtures {
         private static func textPDF() -> Data {
             let bounds = CGRect(x: 0, y: 0, width: 612, height: 792)
             return UIGraphicsPDFRenderer(bounds: bounds).pdfData { renderer in
-                for text in ["Synthetic medical document page one", "Synthetic medical document page two"] {
+                // Keep deterministic first-page payloads and duplicates, with enough sections to require real page scrolling.
+                let pages = ["Synthetic medical document page one", "Synthetic medical document page two"]
+                    + (3 ... 12).map { "Synthetic medical document page \($0)" }
+                for text in pages {
                     renderer.beginPage()
                     text.draw(
                         at: CGPoint(x: 30, y: 40),

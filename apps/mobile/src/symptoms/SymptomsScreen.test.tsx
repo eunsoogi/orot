@@ -88,8 +88,10 @@ describe('SymptomsScreen', () => {
     await renderScreen({ entries: [entry], onUpdate, onResolve });
 
     expect(
-      screen.getByText('User-entered · not clinician-confirmed'),
-    ).toBeTruthy();
+      screen.getAllByText(
+        '직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.',
+      ),
+    ).toHaveLength(2);
     await fireEvent.press(screen.getByTestId('symptom-edit-' + entry.id));
     await fireEvent.changeText(
       screen.getByTestId('symptom-description'),
@@ -121,11 +123,13 @@ describe('SymptomsScreen', () => {
       screen.getByTestId('symptoms-selected-description').props.children,
     ).toBe(entry.description);
     expect(screen.getByTestId('symptoms-selected-status').props.children).toBe(
-      'Active',
+      '계속되고 있어요',
     );
     expect(
-      screen.getAllByText('User-entered · not clinician-confirmed'),
-    ).toHaveLength(2);
+      screen.getAllByText(
+        '직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.',
+      ),
+    ).toHaveLength(3);
     expect(screen.getByTestId(`symptom-edit-${entry.id}`)).toBeTruthy();
     expect(screen.getByTestId(`symptom-resolve-${entry.id}`)).toBeTruthy();
   });
@@ -181,7 +185,9 @@ describe('SymptomsScreen', () => {
     await fireEvent.press(screen.getByTestId('symptom-save'));
 
     expect(
-      await screen.findByText('Enter a valid local onset date and time.'),
+      await screen.findByText(
+        '증상 시작 날짜와 시각을 올바르게 입력해 주세요.',
+      ),
     ).toBeTruthy();
     expect(onCreate).not.toHaveBeenCalled();
   });

@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { SymptomEntry, SymptomEntryFilter } from '@orot/storage';
+import { t } from '../i18n';
 import { openLocalSymptomJournal } from './localRepository';
 import type { SymptomJournalRepository } from './localRepository';
 import type { NewSymptomDraft, SymptomEdit } from './types';
@@ -39,8 +40,8 @@ export function useSymptomJournal(
           setEntries([]);
           setError(
             repository.current
-              ? 'Symptoms could not be loaded. Try again.'
-              : 'Symptoms could not be opened. Try again.',
+              ? t('symptoms.journal.loadError')
+              : t('symptoms.journal.openError'),
           );
         }
       } finally {

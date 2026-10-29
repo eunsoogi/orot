@@ -97,8 +97,8 @@ test('requires query consent and presents provenance and dates', async () => {
   });
   await fireEvent(queryInput, 'blur');
   expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
-    borderColor: appColors.secondary,
-    borderWidth: 1,
+    borderColor: 'transparent',
+    borderWidth: 2,
   });
   await fireEvent.changeText(queryInput, 'sleep and blood pressure');
   expect(screen.getByTestId('external-evidence-search')).not.toBeDisabled();
@@ -123,8 +123,8 @@ test('requires query consent and presents provenance and dates', async () => {
   );
   const sourceDetails = within(selectedSource);
   expect(sourceDetails.getByText(publication.title)).toBeTruthy();
-  expect(StyleSheet.flatten(firstResult.props.style).backgroundColor).toEqual(
-    appColors.surface,
+  expect(StyleSheet.flatten(firstResult.props.style).borderBottomWidth).toBe(
+    StyleSheet.hairlineWidth,
   );
   expect(sourceDetails.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();
   expect(
@@ -145,9 +145,11 @@ test('requires query consent and presents provenance and dates', async () => {
     selected: true,
   });
   expect(StyleSheet.flatten(secondResult.props.style)).toMatchObject({
-    borderColor: appColors.primaryText,
-    borderWidth: 2,
+    paddingLeft: 16,
   });
+  expect(
+    screen.getByTestId('external-evidence-selection-MED-67890'),
+  ).toBeTruthy();
   expect(sourceDetails.getByText(secondPublication.title)).toBeTruthy();
   await fireEvent.press(
     screen.getByTestId('external-evidence-open-selected-source'),
