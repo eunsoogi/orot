@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { HealthKitAutoSyncResult } from '../healthkit/autoSync';
 import {
@@ -127,29 +127,29 @@ export function SettingsSyncStatusRoute({
     >
       <AdaptiveColumns
         primary={
-          <SettingsSyncStatusHealthPanel
-            attemptedFeatures={attemptedFeatures}
-            calendarSync={calendarSync}
-            loadFailed={loadFailed}
-            message={message}
-            onOpenSystemSettings={openSystemSettings}
-            retryReadbackFailed={retryReadbackFailed}
-            selected={selected}
-            snapshot={snapshot}
-          />
-        }
-        secondary={
-          <SettingsSyncStatusRecoveryPanel
-            hasSelection={selected.length > 0}
-            loaded={loaded}
-            onConfigureHealthData={onConfigureHealthData}
-            onOpenSystemSettings={openSystemSettings}
-            onRetry={() => {
-              retry();
-            }}
-            openSettingsError={openSettingsError}
-            retrying={retrying}
-          />
+          <View style={styles.pageSections}>
+            <SettingsSyncStatusHealthPanel
+              attemptedFeatures={attemptedFeatures}
+              calendarSync={calendarSync}
+              loadFailed={loadFailed}
+              message={message}
+              onOpenSystemSettings={openSystemSettings}
+              retryReadbackFailed={retryReadbackFailed}
+              selected={selected}
+              snapshot={snapshot}
+            />
+            <SettingsSyncStatusRecoveryPanel
+              hasSelection={selected.length > 0}
+              loaded={loaded}
+              onConfigureHealthData={onConfigureHealthData}
+              onOpenSystemSettings={openSystemSettings}
+              onRetry={() => {
+                retry();
+              }}
+              openSettingsError={openSettingsError}
+              retrying={retrying}
+            />
+          </View>
         }
         testID="settings-sync-status-layout"
       />
@@ -159,11 +159,12 @@ export function SettingsSyncStatusRoute({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  pageSections: { gap: 16 },
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 32,
   },
 });

@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { NavigationContext } from '@react-navigation/native';
 import { Alert, ScrollView, TextInput, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -7,11 +8,12 @@ import { useNavigationContentInset } from '../navigation/useNavigationContentIns
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { healthReviewText as copy } from '../i18n/healthReview';
 import { useHealthReviewSession } from './HealthReviewSession';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { AiProviderSelectorRow } from '../aiFeatures/integration/AiProviderSelectorRow';
+import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { SafetyForm } from './SafetyForm';
 import { ReviewResult } from './ReviewResult';
 
-/** Keeps review actions explicit while stable panels reflow around measured content space. */
+/** Keeps the title, inputs, safety guidance and actions in one continuous page. */
 export function HealthReviewScreen({
   onSource,
   onProvider,
@@ -21,6 +23,14 @@ export function HealthReviewScreen({
 }) {
   const { controller, state, consent, setCitation } = useHealthReviewSession();
   const inset = useNavigationContentInset();
+  const navigation = useContext(NavigationContext);
+  const [providerRevision, setProviderRevision] = useState(0);
+  useEffect(() => {
+    // Retained stack scenes need a fresh saved model when provider settings closes.
+    return navigation?.addListener('focus', () =>
+      setProviderRevision(revision => revision + 1),
+    );
+  }, [navigation]);
   useEffect(() => {
     controller.refresh();
   }, [controller]);
@@ -48,107 +58,101 @@ export function HealthReviewScreen({
     <ScrollView
       testID="health-review-screen"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
       style={styles.screen}
       contentContainerStyle={[styles.container, inset]}
     >
-      {/* Keep route copy in the measured primary lane during reflow. */}
-      <AdaptiveColumns
-        testID="health-review-layout"
-        primary={
-          <View style={styles.panel}>
-            <View style={styles.heading} testID="health-review-heading">
-              <Text accessibilityRole="header">{copy.title}</Text>
-              <Text>{copy.scope}</Text>
-              <Text>{copy.privacy}</Text>
-            </View>
-            <ReviewResult
-              state={state}
-              onSource={reference => {
-                if (!state.invocation) return;
-                setCitation({
-                  reference,
-                  readSource: state.invocation.readSource,
-                });
-                onSource();
+      <View style={styles.panel} testID="health-review-layout">
+        <View style={styles.heading} testID="health-review-heading">
+          <Text accessibilityRole="header">{copy.title}</Text>
+          <AiProviderSelectorRow
+            embedded
+            onPress={onProvider}
+            resolveSelectedAi={resolveSelectedAiProvider}
+            revision={providerRevision}
+          />
+          <Text>{copy.scope}</Text>
+          <Text>{copy.privacy}</Text>
+        </View>
+        <Text>{copy.name}</Text>
+        <TextInput
+          accessibilityLabel={copy.name}
+          placeholder={copy.name}
+          value={state.name}
+          style={styles.input}
+          onChangeText={controller.setName}
+          editable={!state.busy}
+          testID="health-review-name"
+        />
+        <SafetyForm
+          draft={state.draft}
+          onChange={controller.setDraft}
+          disabled={state.busy}
+        />
+        <ReviewResult
+          state={state}
+          onSource={reference => {
+            if (!state.invocation) return;
+            setCitation({ reference, readSource: state.invocation.readSource });
+            onSource();
+          }}
+        />
+        {state.error ? (
+          <Text accessibilityRole="alert" testID="health-review-error">
+            {state.error === 'input' ? copy.inputError : copy.storageError}
+          </Text>
+        ) : null}
+        {state.busy ? (
+          <Text accessibilityRole="alert">{copy.progress}</Text>
+        ) : null}
+        <View style={styles.actions}>
+          {state.result?.status === 'needs_clarification' ? (
+            <AppButton
+              title={copy.continue}
+              disabled={state.busy}
+              testID="health-review-continue"
+              onPress={() => {
+                controller.run(consent, true);
               }}
             />
-            {state.error ? (
-              <Text accessibilityRole="alert" testID="health-review-error">
-                {state.error === 'input' ? copy.inputError : copy.storageError}
-              </Text>
-            ) : null}
-          </View>
-        }
-        secondary={
-          <View style={styles.panel}>
+          ) : null}
+          <AppButton
+            title={copy.fresh}
+            disabled={state.busy}
+            testID="health-review-start"
+            onPress={() => {
+              controller.run(consent);
+            }}
+          />
+          {state.busy ? (
             <AppButton
-              title={copy.provider}
-              testID="health-review-provider"
-              onPress={onProvider}
+              title={copy.cancel}
+              testID="health-review-cancel"
+              onPress={controller.cancel}
             />
-            <TextInput
-              accessibilityLabel={copy.name}
-              placeholder={copy.name}
-              value={state.name}
-              onChangeText={controller.setName}
-              editable={!state.busy}
-              testID="health-review-name"
-            />
-            <SafetyForm
-              draft={state.draft}
-              onChange={controller.setDraft}
-              disabled={state.busy}
-            />
-            <View style={styles.actions}>
-              {state.result?.status === 'needs_clarification' ? (
-                <AppButton
-                  title={copy.continue}
-                  disabled={state.busy}
-                  testID="health-review-continue"
-                  onPress={() => {
-                    controller.run(consent, true);
-                  }}
-                />
-              ) : null}
+          ) : null}
+        </View>
+        <View style={styles.requests}>
+          <Text accessibilityRole="header">{copy.requests}</Text>
+          {state.requests.map(({ source, pending }) => (
+            <View key={source.id} style={styles.request}>
               <AppButton
-                title={copy.fresh}
+                title={`${source.title}: ${pending ? copy.pending : copy.terminal}`}
                 disabled={state.busy}
-                testID="health-review-start"
-                onPress={() => {
-                  controller.run(consent);
-                }}
+                testID={`health-review-request-${source.id}`}
+                onPress={() => controller.select(source.id)}
               />
-              {state.busy ? (
-                <AppButton
-                  title={copy.cancel}
-                  testID="health-review-cancel"
-                  onPress={controller.cancel}
-                />
-              ) : null}
+              <AppButton
+                title={copy.remove}
+                disabled={state.busy}
+                accessibilityLabel={`${source.title}: ${copy.remove}`}
+                testID={`health-review-delete-${source.id}`}
+                onPress={() => remove(source.id)}
+              />
             </View>
-            <View style={styles.requests}>
-              <Text accessibilityRole="header">{copy.requests}</Text>
-              {state.requests.map(({ source, pending }) => (
-                <View key={source.id} style={styles.request}>
-                  <AppButton
-                    title={`${source.title}: ${pending ? copy.pending : copy.terminal}`}
-                    disabled={state.busy}
-                    testID={`health-review-request-${source.id}`}
-                    onPress={() => controller.select(source.id)}
-                  />
-                  <AppButton
-                    title={copy.remove}
-                    disabled={state.busy}
-                    accessibilityLabel={`${source.title}: ${copy.remove}`}
-                    testID={`health-review-delete-${source.id}`}
-                    onPress={() => remove(source.id)}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        }
-      />
+          ))}
+        </View>
+      </View>
     </ScrollView>
   );
 }

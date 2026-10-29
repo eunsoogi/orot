@@ -104,7 +104,7 @@ test('keeps consent, separate actions, and selected evidence across measured ref
   const onSummarize = jest.fn(async () => consent);
   const onGenerate = jest.fn(async () => result);
   const onOpenSource = jest.fn();
-  measuredWidths.set('disease-hypotheses-columns-host', {
+  measuredWidths.set('disease-hypotheses-columns-frame-host', {
     x: 0,
     width: 390,
   });
@@ -126,19 +126,19 @@ test('keeps consent, separate actions, and selected evidence across measured ref
   expect(onSummarize).toHaveBeenCalledTimes(1);
   expect(onGenerate).not.toHaveBeenCalled();
 
-  measuredWidths.set('disease-hypotheses-columns-host', {
+  measuredWidths.set('disease-hypotheses-columns-frame-host', {
     x: 0,
     width: 1400,
   });
   await setWindowSize(1400, 1);
-  expect(columnsAxis()).toBe('row');
+  expect(columnsAxis()).toBe('column');
   expect(
     screen.getByTestId('disease-hypotheses-consent-required'),
   ).toBeTruthy();
   expect(screen.getByTestId('symptom-summary-generate')).toBeTruthy();
   expect(screen.getByTestId('disease-hypotheses-generate')).toBeTruthy();
 
-  measuredWidths.set('disease-hypotheses-columns-host', {
+  measuredWidths.set('disease-hypotheses-columns-frame-host', {
     x: 0,
     width: 720,
   });
@@ -154,12 +154,12 @@ test('keeps consent, separate actions, and selected evidence across measured ref
   expect(onGenerate).toHaveBeenCalledTimes(1);
   expect(onSummarize).toHaveBeenCalledTimes(1);
 
-  measuredWidths.set('disease-hypotheses-columns-host', {
+  measuredWidths.set('disease-hypotheses-columns-frame-host', {
     x: 0,
     width: 1400,
   });
   await setWindowSize(1400, 1);
-  expect(columnsAxis()).toBe('row');
+  expect(columnsAxis()).toBe('column');
   expect(screen.getByText('선택한 기록에서 검토할 가능성')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
   expect(onOpenSource).toHaveBeenCalledWith(reference);

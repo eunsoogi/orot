@@ -52,7 +52,7 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
         UITestConditions.value(selectedTitle, equals: "합성 외래 방문")
         let confirmationPanel = UITestConditions.element(
             app,
-            "schedule-adaptive-columns-secondary",
+            "calendar-selection",
         )
         let confirm = UITestConditions.element(app, "calendar-confirm-selected")
 
@@ -237,7 +237,7 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
         UITestConditions.value(title, equals: "합성 외래 방문")
         let confirmationPanel = UITestConditions.element(
             app,
-            "schedule-adaptive-columns-secondary",
+            "calendar-selection",
         )
         let confirm = UITestConditions.element(app, "calendar-confirm-selected")
         XCTAssertTrue(confirmationPanel.frame.contains(title.frame), app.debugDescription)

@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { ConversationScreen } from '../ConversationScreen';
@@ -62,7 +67,7 @@ test('uses borderless native Glass surfaces and one action control for Send and 
   expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
 });
 
-test('floats over scrolling content while reserving its measured height for the final answer', async () => {
+test('keeps the composer inside the conversation page', async () => {
   await render(
     <ConversationScreen
       onBack={jest.fn()}
@@ -71,19 +76,12 @@ test('floats over scrolling content while reserving its measured height for the 
     />,
   );
   const composer = screen.getByTestId('rag-conversation-composer');
-  expect(StyleSheet.flatten(composer.props.style)).toMatchObject({
-    position: 'absolute',
-    bottom: 0,
-  });
-  await fireEvent(composer, 'layout', {
-    nativeEvent: { layout: { height: 184 } },
-  });
+  expect(StyleSheet.flatten(composer.props.style).position).toBeUndefined();
   expect(
-    StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-history').props
-        .contentContainerStyle,
-    ).paddingBottom,
-  ).toBe(204);
+    within(screen.getByTestId('rag-conversation-history')).getByTestId(
+      'rag-conversation-composer',
+    ),
+  ).toBeTruthy();
 });
 
 test('shares a 44pt single-line baseline and grows without flex compressing the text', async () => {
@@ -101,7 +99,6 @@ test('shares a 44pt single-line baseline and grows without flex compressing the 
   expect(fieldStyle.padding ?? 0).toBe(0);
   expect(StyleSheet.flatten(input().props.style)).toMatchObject({
     minHeight: 44,
-    maxHeight: 96,
     lineHeight: 22,
     paddingTop: 11,
     paddingBottom: 11,

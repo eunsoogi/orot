@@ -1,15 +1,14 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { HealthKitFeature } from '../types';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
-import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
+import { VerticalPageSections as AdaptiveColumns } from '../../layout/VerticalPageSections';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
-import { useNavigationPrimaryAction } from '../../navigation/useNavigationPrimaryAction';
-import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
+import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { EventKitImportSection } from './EventKitImportSection';
 import { EventKitSourceCard } from './EventKitSourceCard';
@@ -65,8 +64,8 @@ export function HealthKitImportScreen({
     onRunStarted,
   );
   const inset = useNavigationContentInset();
-  const [candidateAction, setCandidateAction] =
-    useState<NavigationPrimaryAction>();
+  const hasSharedNavigation =
+    useContext(NavigationPrimaryActionContext) !== null;
   const [candidateSaving, setCandidateSaving] = useState(false);
   const { selected, eventKitSelected, progress, run, isRunning } = state;
   const phase = progress?.phase ?? 'queued';
@@ -75,24 +74,6 @@ export function HealthKitImportScreen({
     eventKitSelected &&
     Boolean(progress?.eventKit.candidates.length) &&
     !progress?.eventKit.appointmentConfirmed;
-  const importAction: NavigationPrimaryAction = isRunning
-    ? {
-        label: copy.cancelButton,
-        accessibilityLabel: copy.cancelButton,
-        testID: 'unified-import-cancel',
-        disabled: phase === 'cancelling',
-        onPress: () => run?.cancel(),
-      }
-    : {
-        label: copy.importButton,
-        accessibilityLabel: copy.importButton,
-        testID: 'unified-import-start',
-        disabled: !hasSelection,
-        onPress: state.startImport,
-      };
-  const hasSharedAction = useNavigationPrimaryAction(
-    candidateAction ?? importAction,
-  );
   useNavigationLeaveStateRegistration({
     canLeave: !candidateSaving,
     hasUnsavedChanges: false,
@@ -115,7 +96,7 @@ export function HealthKitImportScreen({
         testID="unified-import-columns"
         primary={
           <View style={styles.panel} testID="unified-import-source-selection">
-            {onBack && !hasSharedAction ? (
+            {onBack && !hasSharedNavigation ? (
               <AppButton
                 onPress={onBack}
                 testID="healthkit-unified-import-back"
@@ -195,29 +176,23 @@ export function HealthKitImportScreen({
               progress={progress?.eventKit ?? null}
               run={run}
               selected={eventKitSelected}
-              onPrimaryActionChange={
-                hasSharedAction ? setCandidateAction : undefined
-              }
               onSavingChange={setCandidateSaving}
             />
-            {!hasSharedAction ? (
-              <>
-                <AppButton
-                  accessibilityState={{ busy: isRunning }}
-                  disabled={!hasSelection || isRunning}
-                  onPress={state.startImport}
-                  title={copy.importButton}
-                  testID="unified-import-start"
-                />
-                {run && isRunning ? (
-                  <AppButton
-                    onPress={() => run.cancel()}
-                    title={copy.cancelButton}
-                    testID="unified-import-cancel"
-                    variant="secondary"
-                  />
-                ) : null}
-              </>
+            <AppButton
+              accessibilityState={{ busy: isRunning }}
+              disabled={!hasSelection || isRunning || candidateSaving}
+              onPress={state.startImport}
+              title={copy.importButton}
+              testID="unified-import-start"
+            />
+            {run && isRunning ? (
+              <AppButton
+                disabled={phase === 'cancelling'}
+                onPress={() => run.cancel()}
+                title={copy.cancelButton}
+                testID="unified-import-cancel"
+                variant="secondary"
+              />
             ) : null}
           </View>
         }

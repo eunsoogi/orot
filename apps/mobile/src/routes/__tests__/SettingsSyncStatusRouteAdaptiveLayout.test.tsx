@@ -9,7 +9,6 @@ import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter'
 import { createNavigationController } from '../../navigation/navigationController';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import type { AppNavigationRoute } from '../appNavigationRoute';
-import { expectDuoPanelsInsideNativeRegions } from '../testSupport/healthRecordsDuoLayoutAssertions';
 
 jest.mock('../../healthkit/autoSyncLocal', () => ({
   loadLocalHealthKitAutoSyncSelection: jest.fn(async () => ['sleep']),
@@ -181,8 +180,15 @@ test('adapts the production Settings sync route to native usable regions and tex
   const layout = () => screen.getByTestId('settings-sync-status-layout');
   const direction = () =>
     StyleSheet.flatten(layout().props.style)?.flexDirection;
-  expect(direction()).toBe('row');
-  expectDuoPanelsInsideNativeRegions('settings-sync-status-layout', payload);
+  expect(direction()).toBe('column');
+  expect(
+    screen.queryByTestId('settings-sync-status-layout-secondary'),
+  ).toBeNull();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('settings-sync-status-layout-primary').props.style,
+    )?.width,
+  ).toBeLessThanOrEqual(445);
   expect(
     screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
   ).toBe(false);

@@ -10,6 +10,7 @@ export const healthReviewText = {
   fresh: '새 검토 시작',
   continue: '입력한 정보로 계속',
   cancel: '검토 취소',
+  progress: '건강 검토를 진행하고 있어요.',
   remove: '검토 요청 삭제',
   removeDetail:
     '이 요청과 연결된 대기 상태를 삭제해요. 가져온 건강 기록은 유지돼요.',
@@ -24,7 +25,10 @@ export const healthReviewText = {
   reading: '혈압 입력 (선택)',
   systolic: '수축기 혈압 (mmHg)',
   diastolic: '이완기 혈압 (mmHg)',
-  measuredAt: '측정 시각 (예: 2026-10-27T09:00:00+09:00)',
+  measuredAt: '측정 시각',
+  chooseTime: '날짜와 시간 선택',
+  done: '완료',
+  cancelPicker: '취소',
   source: '측정 출처 (사용한 기기 등)',
   repeat: '반복 측정 추가',
   inputError:

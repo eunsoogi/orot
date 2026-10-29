@@ -21,6 +21,7 @@ export interface NextVisitSessionSnapshot {
 }
 
 const Context = createContext<{
+  readonly scope: string;
   readonly snapshot: NextVisitSessionSnapshot | null;
   readonly attach: (props: NextVisitQuestionsRouteProps, view: object) => void;
 } | null>(null);
@@ -43,11 +44,17 @@ export function NextVisitQuestionsSessionProvider({
     null,
   );
   const currentSnapshot = useRef<NextVisitSessionSnapshot | null>(null);
+  const currentScope = useRef('default');
+  const [scope, setScope] = useState('default');
   const seenViews = useRef(new WeakSet<object>());
-  const publish = useCallback((value: NextVisitSessionSnapshot) => {
-    currentSnapshot.current = value;
-    setSnapshot(value);
-  }, []);
+  const publish = useCallback(
+    (ownerScope: string, value: NextVisitSessionSnapshot) => {
+      if (currentScope.current !== ownerScope) return;
+      currentSnapshot.current = value;
+      setSnapshot(value);
+    },
+    [],
+  );
   useLayoutEffect(() => {
     // Provider changes must invalidate in-flight work even while the visit route is absent.
     setInputs(current =>
@@ -59,6 +66,17 @@ export function NextVisitQuestionsSessionProvider({
   const attach = useCallback(
     (props: NextVisitQuestionsRouteProps, view: object) => {
       latest.current = props;
+      const nextScope = props.sessionScope ?? 'default';
+      if (currentScope.current !== nextScope) {
+        // A new entry has a different target. Reset its owner/controller before publishing any old draft or task.
+        currentScope.current = nextScope;
+        currentSnapshot.current = null;
+        setSnapshot(null);
+        setScope(nextScope);
+        seenViews.current.add(view);
+        setInputs(retainedVisitInputs(() => latest.current!));
+        return;
+      }
       if (!seenViews.current.has(view)) {
         seenViews.current.add(view);
         // One bounded appointment lookup per reentry detects edits made while this screen was absent.
@@ -74,25 +92,34 @@ export function NextVisitQuestionsSessionProvider({
     [],
   );
   return (
-    <Context.Provider value={{ snapshot, attach }}>
+    <Context.Provider value={{ snapshot, scope, attach }}>
       {children}
-      {inputs ? <SessionOwner inputs={inputs} publish={publish} /> : null}
+      {inputs ? (
+        <SessionOwner
+          key={scope}
+          scope={scope}
+          inputs={inputs}
+          publish={publish}
+        />
+      ) : null}
     </Context.Provider>
   );
 }
 
 // Publication updates subscribers without rerendering this headless owner through its parent.
 const SessionOwner = memo(function NextVisitSessionOwner({
+  scope,
   inputs,
   publish,
 }: {
   readonly inputs: NextVisitQuestionsRouteProps;
-  readonly publish: (snapshot: NextVisitSessionSnapshot) => void;
+  readonly scope: string;
+  readonly publish: (scope: string, snapshot: NextVisitSessionSnapshot) => void;
 }) {
   const route = useNextVisitQuestionsRoute(inputs);
   const controller = useNextVisitQuestionsController(route);
   useLayoutEffect(() => {
-    publish({ route, controller });
+    publish(scope, { route, controller });
   });
   return null;
 });
@@ -105,7 +132,16 @@ export function useNextVisitQuestionsSession(
   const attach = context?.attach;
   const view = useRef({}).current;
   useLayoutEffect(() => {
-    attach?.(props, view);
+    // Hidden retained route views cannot replace the active entry's operation callbacks or scope.
+    if (props.sessionActive !== false) attach?.(props, view);
   }, [attach, props, view]);
-  return context;
+  return context
+    ? {
+        ...context,
+        snapshot:
+          context.scope === (props.sessionScope ?? 'default')
+            ? context.snapshot
+            : null,
+      }
+    : null;
 }

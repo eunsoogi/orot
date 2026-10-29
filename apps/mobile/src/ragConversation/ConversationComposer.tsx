@@ -12,7 +12,7 @@ import { ConversationGlassAction } from './ConversationGlassAction';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
-/** Bounds the whole composer while long drafts scroll and stop/send remain reachable. */
+/** Lets the page scroll as the multiline draft grows, keeping the action with it. */
 export function ConversationComposer({
   value,
   busy,
@@ -30,24 +30,11 @@ export function ConversationComposer({
 }) {
   const navigationInset = useNavigationContentInset();
   const copy = getRagConversationCopy();
-  const { fontScale, height } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
   const textScale = Math.max(1, fontScale);
-  // Native text scales its 22pt line but not the two 11pt insets. Reserve a full
-  // scaled line, then bound multiline growth to a third of the viewport.
+  // Native text scales its line but not its insets; reserve a full scaled line.
   const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
-  const maximumHeight = Math.max(
-    minimumHeight,
-    Math.min(Math.ceil(96 * textScale), Math.floor(height / 3)),
-  );
   const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
-  const [contentHeight, setContentHeight] = useState(minimumHeight);
-  const boundedHeight = Math.max(
-    minimumHeight,
-    Math.min(maximumHeight, contentHeight),
-  );
-  useEffect(() => {
-    if (!value) setContentHeight(minimumHeight);
-  }, [value, minimumHeight]);
   useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
   return (
     <View
@@ -85,25 +72,7 @@ export function ConversationComposer({
             editable
             maxLength={1000}
             multiline
-            scrollEnabled={
-              value
-                ? boundedHeight >= maximumHeight
-                : placeholderHeight > maximumHeight
-            }
-            onContentSizeChange={event => {
-              // Native size includes padding. Keep typed content intrinsic: a fixed nonempty
-              // height prevents Fabric from relaying multiline layout changes on iOS.
-              if (value)
-                setContentHeight(
-                  Math.max(
-                    minimumHeight,
-                    Math.min(
-                      maximumHeight,
-                      event.nativeEvent.contentSize.height,
-                    ),
-                  ),
-                );
-            }}
+            scrollEnabled={false}
             onChangeText={onChangeText}
             placeholder={copy.placeholder}
             placeholderTextColor={appColors.secondary}
@@ -113,12 +82,9 @@ export function ConversationComposer({
             // shrinks independently. Typed content remains intrinsic for Fabric layout.
             style={[
               styles.input,
-              { minHeight: minimumHeight, maxHeight: maximumHeight },
+              { minHeight: minimumHeight },
               !value && {
-                height: Math.max(
-                  minimumHeight,
-                  Math.min(maximumHeight, placeholderHeight),
-                ),
+                height: Math.max(minimumHeight, placeholderHeight),
               },
             ]}
             testID="rag-conversation-input"

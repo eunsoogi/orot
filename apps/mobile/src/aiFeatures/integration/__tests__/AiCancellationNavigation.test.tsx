@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -7,6 +8,7 @@ import {
 import { Button, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { DiseaseHypothesesScreen } from '../../../diseaseHypotheses/DiseaseHypothesesScreen';
+import type { DiseaseHypothesisRunOutcome } from '../../../diseaseHypotheses/task';
 import { ConversationScreen } from '../../../ragConversation/ConversationScreen';
 import { NextVisitQuestionsScreen } from '../../../nextVisitQuestions/NextVisitQuestionsScreen';
 import { makeProps } from '../../../nextVisitQuestions/testSupport/fixtures';
@@ -36,7 +38,7 @@ function Shell({ children }: { readonly children: ReactNode }) {
   );
 }
 
-test('visit questions use the same bottom cancel label and abort the pending request', async () => {
+test('visit questions cancel from the page and abort the pending request', async () => {
   let signal: AbortSignal | undefined;
   const props = makeProps({
     onGenerate: (_appointment, _selection, current) => {
@@ -51,19 +53,22 @@ test('visit questions use the same bottom cancel label and abort the pending req
   );
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
   expect(
-    within(screen.getByTestId('content')).queryByTestId(
+    within(screen.getByTestId('bottom-navigation')).queryByTestId(
       'next-visit-generation-cancel',
     ),
   ).toBeNull();
   await fireEvent.press(
-    within(screen.getByTestId('bottom-navigation')).getByText('요청 취소'),
+    within(screen.getByTestId('next-visit-questions-scroll')).getByTestId(
+      'next-visit-generation-cancel',
+    ),
   );
   expect(signal?.aborted).toBe(true);
   expect(screen.getByTestId('next-visit-generate')).toBeTruthy();
 });
 
-test('symptom analysis cancels from the bottom navigation without a duplicate body control', async () => {
+test('symptom analysis cancels from the page without a duplicate navigation control', async () => {
   let signal: AbortSignal | undefined;
+  let finish!: (outcome: DiseaseHypothesisRunOutcome) => void;
   await render(
     <Shell>
       <DiseaseHypothesesScreen
@@ -72,23 +77,39 @@ test('symptom analysis cancels from the bottom navigation without a duplicate bo
         onOpenSource={jest.fn()}
         onGenerate={current => {
           signal = current;
-          return new Promise(() => {});
+          return new Promise(resolve => {
+            finish = resolve;
+          });
         }}
       />
     </Shell>,
   );
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(
-    within(screen.getByTestId('content')).queryByTestId(
+    within(screen.getByTestId('bottom-navigation')).queryByTestId(
       'disease-hypotheses-cancel',
     ),
   ).toBeNull();
-  const cancel = within(screen.getByTestId('bottom-navigation')).getByText(
-    '요청 취소',
-  );
+  const cancel = within(
+    screen.getByTestId('disease-hypotheses-screen'),
+  ).getByTestId('disease-hypotheses-cancel');
   await fireEvent.press(cancel);
   expect(signal?.aborted).toBe(true);
   expect(screen.getByTestId('disease-hypotheses-cancelled')).toBeTruthy();
+  await act(async () => {
+    finish({
+      status: 'workflow',
+      result: {
+        status: 'consent_required',
+        reason: 'Late synthetic response',
+        checkpoint: {} as never,
+      },
+    });
+  });
+  expect(screen.getByTestId('disease-hypotheses-cancelled')).toBeTruthy();
+  expect(
+    screen.queryByTestId('disease-hypotheses-consent-required'),
+  ).toBeNull();
   expect(
     within(screen.getByTestId('bottom-navigation')).queryByText('요청 취소'),
   ).toBeNull();

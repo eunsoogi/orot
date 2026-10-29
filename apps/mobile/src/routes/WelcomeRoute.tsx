@@ -4,11 +4,20 @@ import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { AppButton } from '../layout/AppButton';
+import { hubSpacing } from '../layout/hubSpacing';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel, RecentRecordsPanel } from './HomeSummaryPanels';
+import {
+  HomeOngoingSymptoms,
+  HomePreparationQuestions,
+} from './HomePreparationPanels';
+import {
+  useHomePreparationData,
+  type HomePreparationLoaders,
+} from './useHomePreparationData';
 
-interface WelcomeRouteProps {
+export interface WelcomeRouteProps extends HomePreparationLoaders {
   readonly appointment: Appointment | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
   readonly recentRecording: RecordingSourceRecord | null;
@@ -18,9 +27,11 @@ interface WelcomeRouteProps {
   readonly onPrepareVisit: () => void;
   readonly onOpenSchedule: () => void;
   readonly onOpenRecords: () => void;
+  readonly onOpenSymptoms: () => void;
+  readonly onOpenRecording: () => void;
 }
 
-/** Shows only the next real appointment and the most recent saved source on Home. */
+/** Keeps visit preparation, active symptoms, recent audio and capture in one ordered page. */
 export default function WelcomeRoute({
   appointment,
   appointmentState,
@@ -31,7 +42,22 @@ export default function WelcomeRoute({
   onPrepareVisit,
   onOpenSchedule,
   onOpenRecords,
+  onOpenSymptoms,
+  onOpenRecording,
+  loadSymptoms,
+  loadSavedVisitQuestions,
 }: WelcomeRouteProps) {
+  const preparation = useHomePreparationData(appointment?.id, {
+    loadSymptoms,
+    loadSavedVisitQuestions,
+  });
+  const showCaptureGuidance =
+    appointmentState === 'ready' &&
+    !appointment &&
+    recordingState === 'ready' &&
+    !recentRecording &&
+    preparation.symptomState === 'ready' &&
+    preparation.symptoms.length === 0;
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -54,27 +80,60 @@ export default function WelcomeRoute({
         <Text style={styles.message}>{t('home.greeting')}</Text>
       </View>
 
-      {/* The route shell reserves safe and navigation regions; only these two summaries reflow inside it. */}
-      <AdaptiveColumns
-        primary={
-          <NextVisitPanel
-            appointment={appointment}
-            appointmentState={appointmentState}
-            onOpenSchedule={onOpenSchedule}
-            onPrepareVisit={onPrepareVisit}
-            onRetryAppointments={onRetryAppointments}
+      {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
+      <View style={styles.sections} testID="home-overview-sections">
+        {showCaptureGuidance ? (
+          <Text testID="home-capture-guidance" style={styles.message}>
+            {t('home.captureGuidance')}
+          </Text>
+        ) : (
+          <>
+            <NextVisitPanel
+              appointment={appointment}
+              appointmentState={appointmentState}
+              onOpenSchedule={onOpenSchedule}
+              onPrepareVisit={onPrepareVisit}
+              onRetryAppointments={onRetryAppointments}
+            >
+              {appointment ? (
+                <HomePreparationQuestions
+                  questions={
+                    preparation.questions?.appointmentId === appointment.id
+                      ? preparation.questions
+                      : null
+                  }
+                  state={preparation.questionState}
+                  onRetry={preparation.retry}
+                />
+              ) : null}
+            </NextVisitPanel>
+            <HomeOngoingSymptoms
+              symptoms={preparation.symptoms}
+              state={preparation.symptomState}
+              onRetry={preparation.retry}
+              onOpen={onOpenSymptoms}
+            />
+            <RecentRecordsPanel
+              recentRecording={recentRecording}
+              recordingState={recordingState}
+              onOpenRecords={onOpenRecords}
+              onRetryRecordings={onRetryRecordings}
+            />
+          </>
+        )}
+        <AppButton
+          title={t('home.newRecording')}
+          onPress={onOpenRecording}
+          testID="home-new-recording"
+        />
+        {showCaptureGuidance ? (
+          <AppButton
+            title={t('symptoms.title')}
+            onPress={onOpenSymptoms}
+            testID="home-capture-symptom"
           />
-        }
-        secondary={
-          <RecentRecordsPanel
-            recentRecording={recentRecording}
-            recordingState={recordingState}
-            onOpenRecords={onOpenRecords}
-            onRetryRecordings={onRetryRecordings}
-          />
-        }
-        testID="home-adaptive-columns"
-      />
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -82,13 +141,14 @@ export default function WelcomeRoute({
 const styles = StyleSheet.create({
   container: {
     // Let the shared ScrollView measure long Dynamic Type content past its viewport.
-    gap: 28,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 28,
+    gap: hubSpacing.item,
+    paddingHorizontal: hubSpacing.horizontal,
+    paddingTop: hubSpacing.top,
+    paddingBottom: hubSpacing.bottom,
     backgroundColor: appColors.background,
   },
   header: { gap: 8 },
+  sections: { gap: hubSpacing.item, minWidth: 0 },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   message: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
 });

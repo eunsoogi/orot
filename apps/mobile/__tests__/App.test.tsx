@@ -86,7 +86,7 @@ test('keeps Home compact and groups calendar and appointment management under Sc
 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
   // Home's own adaptive panels need the full usable lane to choose their columns.
-  expect(screen.getByTestId('home-adaptive-columns')).toBeTruthy();
+  expect(screen.getByTestId('home-overview-sections')).toBeTruthy();
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();

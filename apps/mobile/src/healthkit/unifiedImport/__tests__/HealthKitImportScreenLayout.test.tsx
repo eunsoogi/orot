@@ -56,9 +56,9 @@ const measureSpy = jest
 afterAll(() => measureSpy.mockRestore());
 
 function remeasure(width: number, x = 0) {
-  windowBounds.set('unified-import-columns-host', { x, width });
+  windowBounds.set('unified-import-columns-frame-host', { x, width });
   return fireEvent(
-    screen.getByTestId('unified-import-columns-host'),
+    screen.getByTestId('unified-import-columns-frame-host'),
     'layout',
     {
       nativeEvent: { layout: { x: 0, y: 0, width, height: 600 } },
@@ -119,7 +119,7 @@ test('keeps source scope and live import progress in separate mounted panels dur
   ).toBeNull();
 
   await remeasure(1500);
-  expect(axis()).toBe('row');
+  expect(axis()).toBe('column');
   expect(
     within(sourcePanel).getByTestId('unified-import-toggle-heartRate').props
       .accessibilityState.checked,
@@ -204,16 +204,11 @@ test('reflows Duo regions and falls back for narrow hosts', async () => {
     { nativeEvent: duoGeometry },
   );
   await remeasure(1700);
-  expect(axis()).toBe('row');
+  expect(axis()).toBe('column');
   expect(activityContent.getByTestId('unified-import-cancel')).toBeTruthy();
   expect(
     StyleSheet.flatten(
-      screen.getByTestId('unified-import-columns-primary').props.style,
-    )?.width,
-  ).toBeGreaterThan(0);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('unified-import-columns-secondary').props.style,
+      screen.getByTestId('unified-import-columns-frame-primary').props.style,
     )?.width,
   ).toBeGreaterThan(0);
   expect(featureStatus).toHaveTextContent(

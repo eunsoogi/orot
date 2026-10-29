@@ -64,8 +64,6 @@ test('keeps an empty saved extracted-source detail distinct from original-file s
   expect(screen.getByTestId('medical-document-source-empty')).toHaveTextContent(
     '저장된 텍스트 내용이 없어요.',
   );
-  expect(
-    screen.getByTestId('medical-document-source-detail-layout-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('medical-document-source-evidence')).toBeTruthy();
   expect(screen.queryByText(/원본 파일|PDF 파일 상태|하이라이트/)).toBeNull();
 });

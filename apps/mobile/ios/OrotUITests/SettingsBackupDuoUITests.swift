@@ -105,16 +105,14 @@ extension RootNavigationUITests {
         _ app: XCUIApplication,
         expectsStacked: Bool = false,
     ) throws {
-        let primary = UITestConditions.element(app, "settings-backup-layout-primary")
-        let secondary = UITestConditions.element(app, "settings-backup-layout-secondary")
+        let primary = UITestConditions.element(app, "settings-backup-status-panel")
+        let secondary = UITestConditions.element(app, "settings-backup-recovery-panel")
         XCTAssertTrue(primary.exists && secondary.exists)
         let primaryFrame = primary.frame
         let secondaryFrame = secondary.frame
-        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
-            primaryFrame.maxX <= secondaryFrame.minX + 1
         let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
             primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(sideBySide || stacked, "Backup panels must reflow without overlap")
+        XCTAssertTrue(stacked, "Backup sections must share one vertical page")
         if expectsStacked {
             XCTAssertTrue(stacked, "Accessibility XXXL text needs one readable backup column")
         }

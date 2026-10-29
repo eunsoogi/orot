@@ -25,7 +25,7 @@ import {
   isAppAiRoute,
   useAppAiServices,
 } from './src/routes/AppAiFeatureScene';
-import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import { renderVisitQuestionsRoute } from './src/routes/HomeVisitQuestionsRoute';
 import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
@@ -38,6 +38,7 @@ import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
 import { useAppHomeData } from './src/routes/useAppHomeData';
+import { useHomeActivity } from './src/routes/useHomeActivity';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
@@ -103,7 +104,11 @@ function App({
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
-  const homeData = useAppHomeData(loadAppointments, loadRecordings);
+  const homeData = useAppHomeData(
+    loadAppointments,
+    loadRecordings,
+    useHomeActivity(appNavigation, activeTab),
+  );
   const backupPreparation = useBackupPreparation();
 
   useEffect(() => {
@@ -186,6 +191,7 @@ function App({
                   />
                 ) : (
                   <AppRouteContent
+                    {...homeData}
                     loadSavedVisitQuestions={
                       ai.services.loadSavedVisitQuestions
                     }
@@ -193,15 +199,8 @@ function App({
                     loadSymptoms={loadSymptoms}
                     activeTab={activeTab}
                     selectTab={setActiveTab}
-                    appointmentRepository={homeData.appointmentRepository}
                     backupPreparationState={backupPreparation.state}
                     retryBackupPreparation={backupPreparation.retry}
-                    appointmentState={homeData.appointmentState}
-                    nextAppointment={homeData.nextAppointment}
-                    recordings={homeData.recordings}
-                    recordingState={homeData.recordingState}
-                    refreshAppointments={homeData.refreshAppointments}
-                    refreshRecordings={homeData.refreshRecordings}
                     calendarBridge={calendarBridge}
                     calendarSync={calendarSync}
                     selectedProvider={selectedProvider}

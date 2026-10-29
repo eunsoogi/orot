@@ -7,7 +7,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 
-/** Keeps the conversation history scrollable while the composer stays mounted. */
+/** Owns the full conversation page, including its evidence and composer. */
 export function ConversationHistory({
   messages,
   pendingMessage,
@@ -16,6 +16,7 @@ export function ConversationHistory({
   onLinkError,
   bottomInset = 0,
   header,
+  footer,
   citationsInPanelForMessageId,
 }: {
   readonly messages: readonly DisplayMessage[];
@@ -29,6 +30,7 @@ export function ConversationHistory({
   readonly onLinkError: () => void;
   readonly bottomInset?: number;
   readonly header?: ReactNode;
+  readonly footer?: ReactNode;
   readonly citationsInPanelForMessageId?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -80,6 +82,7 @@ export function ConversationHistory({
           </Text>
         ) : null}
       </View>
+      {footer}
     </ScrollView>
   );
 }

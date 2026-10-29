@@ -207,14 +207,11 @@ extension RootNavigationUITests {
 
     /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
-    private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked: Bool = false) throws {
+    private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
         let stacked = try verifyAdaptivePanels(app, prefix: "settings-layout", navigationID: "navigation-tab-settings")
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)
-        if expectsStacked || navigation.toolbar.frame.height > navigation.toolbar.frame.width {
-            let widthRequiresStack = try NavigationGeometryUITestConditions.expectsStacked(app, host: UITestConditions.element(app, "settings-layout-host").frame)
-            XCTAssertEqual(stacked, expectsStacked || widthRequiresStack, "Settings panels must match the active text and usable width")
-        }
+        XCTAssertTrue(stacked, "Settings sections must share one vertical page")
         if navigation.toolbar.frame.height <= navigation.toolbar.frame.width {
             try NavigationUITestConditions.contentAboveBar(
                 app,
@@ -236,6 +233,17 @@ extension RootNavigationUITests {
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
     @MainActor
     private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
-        try NavigationGeometryUITestConditions.verifyPanels(app, prefix: prefix, navigationID: navigationID, testCase: self)
+        let ids = prefix == "settings-layout" ? ["settings-section-integrations", "settings-section-data-management"] :
+            prefix == "settings-provider-panels" ? ["settings-provider-local-panel", "settings-provider-connected-panel"] : ["settings-accounts-list", "settings-accounts-actions"]
+        let first = UITestConditions.element(app, ids[0]), second = UITestConditions.element(app, ids[1])
+        XCTAssertTrue(first.exists && second.exists, app.debugDescription)
+        let host = UITestConditions.element(app, "\(prefix)-host")
+        XCTAssertTrue(host.exists && host.frame.insetBy(dx: -1, dy: -1).contains(first.frame) && host.frame.insetBy(dx: -1, dy: -1).contains(second.frame))
+        let navigation = try NavigationUITestConditions.navigationAction(app, navigationID)
+        try NavigationUITestConditions.panelSnapshot(app, frames: ["window": app.frame, "host": host.frame, "primary": first.frame, "secondary": second.frame, "navigation": navigation.toolbar.frame], testCase: self)
+        if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
+            XCTAssertLessThanOrEqual(max(first.frame.maxX, second.frame.maxX), navigation.toolbar.frame.minX + 1)
+        }
+        return first.frame.maxY <= second.frame.minY + 1 && abs(first.frame.minX - second.frame.minX) <= 1
     }
 }

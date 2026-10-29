@@ -11,7 +11,7 @@ interface MedicalDocumentSourceViewProps {
   readonly onBack: () => void;
 }
 
-/** Keeps saved metadata and spans in measured regions while the Records scene owns vertical scrolling. */
+/** Keeps saved metadata and spans in one measured region while the Records scene scrolls. */
 export function MedicalDocumentSourceView({
   document,
   onBack,
@@ -19,57 +19,57 @@ export function MedicalDocumentSourceView({
   return (
     <AdaptiveColumns
       primary={
-        <View
-          style={[styles.panel, styles.summaryContent]}
-          testID="medical-document-source-view"
-        >
-          <Pressable
-            accessibilityRole="button"
-            onPress={onBack}
-            style={styles.backButton}
-            testID="medical-document-source-back"
+        <View>
+          <View
+            style={[styles.panel, styles.summaryContent]}
+            testID="medical-document-source-view"
           >
-            <Text style={styles.backText}>
-              {t('medicalDocument.source.back')}
+            <Pressable
+              accessibilityRole="button"
+              onPress={onBack}
+              style={styles.backButton}
+              testID="medical-document-source-back"
+            >
+              <Text style={styles.backText}>
+                {t('medicalDocument.source.back')}
+              </Text>
+            </Pressable>
+            <Text
+              accessibilityRole="header"
+              style={styles.title}
+              testID="medical-document-source-title"
+            >
+              {document.title ?? t('medicalDocument.source.untitled')}
             </Text>
-          </Pressable>
-          <Text
-            accessibilityRole="header"
-            style={styles.title}
-            testID="medical-document-source-title"
-          >
-            {document.title ?? t('medicalDocument.source.untitled')}
-          </Text>
-          <Text
-            style={styles.detailStatus}
-            testID="medical-document-source-review-state"
-          >
-            {reviewStateText(document.reviewState.status)}
-          </Text>
-          <Text
-            style={styles.ingestedAt}
-            testID="medical-document-source-imported-at"
-          >
-            {t('medicalDocument.source.importedAt', {
-              date: formatDateTime(new Date(document.ingestedAt)),
-            })}
-          </Text>
-        </View>
-      }
-      secondary={
-        <View
-          style={[styles.panel, styles.evidenceContent]}
-          testID="medical-document-source-evidence"
-        >
-          {document.evidenceSpans.length === 0 ? (
-            <Text testID="medical-document-source-empty">
-              {t('medicalDocument.source.empty')}
+            <Text
+              style={styles.detailStatus}
+              testID="medical-document-source-review-state"
+            >
+              {reviewStateText(document.reviewState.status)}
             </Text>
-          ) : (
-            document.evidenceSpans.map((span, index) => (
-              <EvidenceExcerpt key={span.id} span={span} index={index} />
-            ))
-          )}
+            <Text
+              style={styles.ingestedAt}
+              testID="medical-document-source-imported-at"
+            >
+              {t('medicalDocument.source.importedAt', {
+                date: formatDateTime(new Date(document.ingestedAt)),
+              })}
+            </Text>
+          </View>
+          <View
+            style={[styles.panel, styles.evidenceContent]}
+            testID="medical-document-source-evidence"
+          >
+            {document.evidenceSpans.length === 0 ? (
+              <Text testID="medical-document-source-empty">
+                {t('medicalDocument.source.empty')}
+              </Text>
+            ) : (
+              document.evidenceSpans.map((span, index) => (
+                <EvidenceExcerpt key={span.id} span={span} index={index} />
+              ))
+            )}
+          </View>
         </View>
       }
       testID="medical-document-source-detail-layout"

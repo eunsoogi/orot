@@ -37,7 +37,7 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         citation.tap()
         NavigationUITestConditions.route(app, markers: ["ai-feature-source-detail"])
         XCTAssertTrue(app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."].exists)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["ai-feature-source-detail", "ai-feature-source-detail-columns-primary", "ai-feature-source-detail-columns-secondary"], name: "evidence-source-content-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["ai-feature-source-detail", "ai-feature-source-detail-columns-primary"], name: "evidence-source-content-boundary", testCase: self)
         let source = node(app, "ai-feature-source-section-1")
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
@@ -98,11 +98,11 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         )
         XCTAssertEqual(UITestConditions.wait(for: [orientationChanged]), .completed)
 
-        let primary = node(app, "ai-feature-source-detail-columns-primary")
-        let secondary = node(app, "ai-feature-source-detail-columns-secondary")
+        let primary = node(app, "ai-feature-source-selection")
+        let secondary = node(app, "ai-feature-source-content")
         XCTAssertTrue(UITestConditions.exists(primary), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(secondary), app.debugDescription)
-        XCTAssertGreaterThan(secondary.frame.minX, primary.frame.maxX)
+        XCTAssertGreaterThanOrEqual(secondary.frame.minY, primary.frame.maxY)
         XCTAssertTrue(app.staticTexts["합성 저장 기록"].exists)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")

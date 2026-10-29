@@ -25,8 +25,10 @@ enum DisclosureLayoutUITestObservations {
             testCase.node(app, "inference-disclosure-allow"),
             testCase.node(app, "inference-disclosure-cancel"),
         ]
+        let page = testCase.node(app, "inference-disclosure-content")
         for control in controls {
             XCTAssertTrue(control.exists, control.debugDescription)
+            FormUITestConditions.reveal(control, in: app, scroll: page)
             XCTAssertFalse(control.frame.isEmpty, control.debugDescription)
             XCTAssertTrue(modal.frame.contains(control.frame), control.debugDescription)
             XCTAssertTrue(control.isHittable, control.debugDescription)

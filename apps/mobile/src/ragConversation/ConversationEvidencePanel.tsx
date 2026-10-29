@@ -1,5 +1,5 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { ConversationSources } from './ConversationSources';
 import type { DisplayMessage } from './ConversationMessage';
@@ -11,12 +11,10 @@ export function ConversationEvidencePanel({
   messages,
   onOpenSource,
   onLinkError,
-  bottomInset,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
-  readonly bottomInset: number;
 }) {
   const latestAssistant = messages
     .slice()
@@ -31,13 +29,8 @@ export function ConversationEvidencePanel({
         {copy.evidenceTitle}
       </Text>
       <Text style={styles.evidenceDescription}>{copy.evidenceDescription}</Text>
-      <ScrollView
-        contentContainerStyle={[
-          styles.evidenceContent,
-          { paddingBottom: bottomInset + 20 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        style={styles.evidenceSources}
+      <View
+        style={styles.evidenceContent}
         testID="rag-conversation-evidence-list"
       >
         {references.length > 0 ? (
@@ -54,7 +47,7 @@ export function ConversationEvidencePanel({
             {copy.evidenceEmpty}
           </Text>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }

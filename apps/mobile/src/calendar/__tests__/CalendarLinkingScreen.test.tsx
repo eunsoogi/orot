@@ -78,8 +78,8 @@ describe('Calendar linking screen', () => {
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     expect(screen.getByTestId('calendar-selection')).toBeTruthy();
     expect(
-      screen.getByTestId('schedule-adaptive-columns-secondary'),
-    ).toBeTruthy();
+      screen.queryByTestId('schedule-adaptive-columns-secondary'),
+    ).toBeNull();
     await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
 
     expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(selected);
@@ -93,8 +93,8 @@ describe('Calendar linking screen', () => {
       await screen.findByTestId('schedule-next-visit-summary'),
     ).toBeTruthy();
     expect(
-      screen.getByTestId('schedule-adaptive-columns-secondary'),
-    ).toBeTruthy();
+      screen.queryByTestId('schedule-adaptive-columns-secondary'),
+    ).toBeNull();
     expect(screen.getByTestId('schedule-next-visit-title')).toBeTruthy();
   });
 

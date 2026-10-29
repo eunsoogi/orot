@@ -40,8 +40,9 @@ enum ScheduleCalendarAdaptiveLayoutUITestConditions {
     ) {
         let viewport = UITestConditions.element(app, "navigation-content-region")
         let host = UITestConditions.element(app, "schedule-adaptive-columns-host")
-        let primary = UITestConditions.element(app, "schedule-adaptive-columns-primary")
-        let secondary = UITestConditions.element(app, "schedule-adaptive-columns-secondary")
+        let primary = UITestConditions.element(app, "calendar-month-view")
+        let selection = UITestConditions.element(app, "calendar-selection")
+        let secondary = selection.exists ? selection : UITestConditions.element(app, "schedule-next-visit-summary")
         XCTAssertTrue(viewport.exists && !viewport.frame.isEmpty, app.debugDescription, file: file, line: line)
         XCTAssertTrue(host.exists && !host.frame.isEmpty, app.debugDescription, file: file, line: line)
         XCTAssertTrue(primary.exists && !primary.frame.isEmpty, app.debugDescription, file: file, line: line)
@@ -64,13 +65,8 @@ enum ScheduleCalendarAdaptiveLayoutUITestConditions {
                 XCTFail("The native Schedule rail is unavailable: \(error)", file: file, line: line)
             }
         }
-        XCTAssertTrue((1 ... 2).contains(layout.columns), "Unsupported Schedule column count", file: file, line: line)
-        if layout.columns == 2 {
-            XCTAssertEqual(primary.frame.minY, secondary.frame.minY, accuracy: 1, file: file, line: line)
-            XCTAssertLessThanOrEqual(primary.frame.maxX, secondary.frame.minX + 0.5, file: file, line: line)
-        } else {
-            XCTAssertFalse(primary.frame.intersects(secondary.frame), file: file, line: line)
-        }
+        XCTAssertEqual(layout.columns, 1, "Schedule must use one measured region", file: file, line: line)
+        XCTAssertLessThanOrEqual(primary.frame.maxY, secondary.frame.minY + 0.5, file: file, line: line)
     }
 
     static func changeOrientation(

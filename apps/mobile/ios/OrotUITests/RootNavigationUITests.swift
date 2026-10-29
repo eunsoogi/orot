@@ -185,7 +185,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         tap(app, "ai-feature-rag-conversation")
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.waitForAppearance())
-        // Focus the composer without sending text or calling a model; this checks only native navigation geometry.
+        FormUITestConditions.reveal(input, in: app, scrollID: "rag-conversation-history")
         input.tap()
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)

@@ -44,8 +44,8 @@ extension RootNavigationUITests {
     @MainActor
     private func verifyProviderSelectionLayout(_ app: XCUIApplication) throws {
         let prefix = "provider-selection-feature-panels"
-        let primary = UITestConditions.element(app, "\(prefix)-primary")
-        let secondary = UITestConditions.element(app, "\(prefix)-secondary")
+        let primary = UITestConditions.element(app, "provider-selection-local-panel")
+        let secondary = UITestConditions.element(app, "provider-selection-connected-panel")
         let host = UITestConditions.element(app, "\(prefix)-host")
         XCTAssertTrue(primary.waitForAppearance() && secondary.waitForAppearance() && host.waitForAppearance(), app.debugDescription)
 
@@ -62,11 +62,11 @@ extension RootNavigationUITests {
         let secondaryFrame = secondary.frame
         XCTAssertTrue(host.frame.insetBy(dx: -1, dy: -1).contains(primaryFrame))
         XCTAssertTrue(host.frame.insetBy(dx: -1, dy: -1).contains(secondaryFrame))
-        let columns = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 && primaryFrame.maxX <= secondaryFrame.minX + 1
         let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 && primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(columns || stacked, "Provider panels must use one readable column or two measured columns")
+        XCTAssertTrue(stacked, "Provider sections must share one vertical page")
 
         let footer = UITestConditions.element(app, "provider-selection-footer")
+        FormUITestConditions.reveal(footer, in: app, scrollID: "provider-selection-screen")
         XCTAssertTrue(footer.exists && footer.isHittable, app.debugDescription)
         let disabledAction = app.buttons["이 AI 사용"]
         XCTAssertTrue(disabledAction.exists && !disabledAction.isEnabled, app.debugDescription)

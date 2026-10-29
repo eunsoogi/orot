@@ -55,7 +55,7 @@ test('reflows from measured modal geometry while keeping the consent summary and
   });
 
   expect(modal.props.presentationStyle).toBe('pageSheet');
-  expect(content.props.stickyHeaderIndices).toEqual([1]);
+  expect(content.props.stickyHeaderIndices).toBeUndefined();
   expect(
     within(summary).getByTestId('inference-disclosure-recipient-card'),
   ).toBeTruthy();
@@ -70,8 +70,8 @@ test('reflows from measured modal geometry while keeping the consent summary and
   ).toBeTruthy();
   expect(within(footer).getAllByRole('button')).toHaveLength(2);
   expect(
-    within(content).queryByTestId('inference-disclosure-footer'),
-  ).toBeNull();
+    within(content).getByTestId('inference-disclosure-footer'),
+  ).toBeTruthy();
 
   // The Modal inset wins over the caller's larger value while the footer keeps its minimum padding.
   await fireEvent(safeArea, 'insetsChange', {

@@ -83,8 +83,8 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
     private func verifyPrivacyPanels(_ app: XCUIApplication) throws {
         let scroll = UITestConditions.element(app, "settings-privacy-scroll")
         let columns = UITestConditions.element(app, "settings-privacy-columns")
-        let primary = UITestConditions.element(app, "settings-privacy-columns-primary")
-        let secondary = UITestConditions.element(app, "settings-privacy-columns-secondary")
+        let primary = UITestConditions.element(app, "settings-privacy-permissions")
+        let secondary = UITestConditions.element(app, "settings-privacy-external-transfer")
         XCTAssertTrue(UITestConditions.exists(scroll))
         XCTAssertTrue(UITestConditions.exists(columns))
         XCTAssertTrue(UITestConditions.exists(primary))
@@ -97,11 +97,9 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(contentFrame.maxX, scroll.frame.maxX + 1)
         XCTAssertTrue(contentFrame.contains(primaryFrame))
         XCTAssertTrue(contentFrame.contains(secondaryFrame))
-        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
-            primaryFrame.maxX <= secondaryFrame.minX + 1
         let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
             primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(sideBySide || stacked, "Panels must follow measured non-overlapping axes")
+        XCTAssertTrue(stacked, "Permission and transfer sections must share one vertical page")
 
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)

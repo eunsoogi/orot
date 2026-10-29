@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Button } from 'react-native';
 import {
   NavigationPrimaryActionContext,
@@ -30,7 +35,7 @@ function Route({ props }: { readonly props: Props }) {
   );
 }
 
-test('edits saved questions through one shell action even while the provider is unavailable', async () => {
+test('edits saved questions through one page action even while the provider is unavailable', async () => {
   const props = makeProps({
     onSaveReviewedQuestions: jest.fn(async (_visit, reviewed, caveats) => ({
       questions: reviewed,
@@ -60,6 +65,11 @@ test('edits saved questions through one shell action even while the provider is 
   expect(screen.getByText('합성 진료 예약')).toBeTruthy();
   expect(screen.queryByTestId('next-visit-provider')).toBeNull();
   expect(screen.getAllByTestId('next-visit-review-save')).toHaveLength(1);
+  expect(
+    within(screen.getByTestId('next-visit-questions-scroll')).getByTestId(
+      'next-visit-review-save',
+    ),
+  ).toBeTruthy();
   expect(
     screen.getByTestId('next-visit-question-priority-indicator-0'),
   ).toBeTruthy();

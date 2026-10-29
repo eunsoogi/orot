@@ -10,6 +10,10 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     @objc var onSelectSession: RCTDirectEventBlock?
     @objc var onDeleteSession: RCTDirectEventBlock?
     @objc var onCreateSession: RCTDirectEventBlock?
+    @objc var onContentHeightChange: RCTDirectEventBlock? {
+        didSet { onContentHeightChange?(["height": table.contentSize.height]) }
+    }
+
     @objc var headerTitle = "" {
         didSet { updateHeaderText() }
     }
@@ -41,11 +45,18 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     private let createButton = UIButton(type: .system)
     private let createSymbol = AppSymbolView()
     private var sections = [(title: String, rows: [[String: Any]])]()
+    private var contentSizeObservation: NSKeyValueObservation?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         table.dataSource = self
         table.delegate = self
+        // The enclosing React page owns vertical scrolling; UIKit still owns row swipes.
+        table.isScrollEnabled = false
+        contentSizeObservation = table.observe(\.contentSize, options: [.new]) { [weak self] table, _ in
+            guard table.contentSize.height.isFinite else { return }
+            self?.onContentHeightChange?(["height": table.contentSize.height])
+        }
         table.backgroundColor = .clear
         // History uses the requested physical right-to-left deletion gesture in every locale.
         table.semanticContentAttribute = .forceLeftToRight

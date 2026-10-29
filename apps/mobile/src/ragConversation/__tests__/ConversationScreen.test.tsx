@@ -28,7 +28,7 @@ const reference = {
   reviewState: 'reviewed' as const,
 };
 
-test('keeps short input compact and scrolls long drafts within a bounded height', async () => {
+test('keeps draft text in the page scroll as the input grows', async () => {
   await render(
     <ConversationScreen
       onBack={jest.fn()}
@@ -39,7 +39,6 @@ test('keeps short input compact and scrolls long drafts within a bounded height'
   const input = screen.getByTestId('rag-conversation-input');
   expect(StyleSheet.flatten(input.props.style)).toMatchObject({
     minHeight: 44,
-    maxHeight: 96,
   });
   expect(input.props.scrollEnabled).toBe(false);
   await fireEvent.changeText(input, '합성 첫째 줄\n합성 둘째 줄\n합성 셋째 줄');
@@ -47,7 +46,7 @@ test('keeps short input compact and scrolls long drafts within a bounded height'
     nativeEvent: { contentSize: { height: 300 } },
   });
   expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
-    true,
+    false,
   );
   await fireEvent.changeText(input, '짧은 합성 질문');
   await fireEvent(input, 'contentSizeChange', {
@@ -55,7 +54,6 @@ test('keeps short input compact and scrolls long drafts within a bounded height'
   });
   expect(StyleSheet.flatten(input.props.style)).toMatchObject({
     minHeight: 44,
-    maxHeight: 96,
   });
   expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
     false,

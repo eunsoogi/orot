@@ -84,6 +84,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             let field = node(app, "rag-conversation-composer-field")
             let baseline = field.frame.height
             let input = node(app, "rag-conversation-input")
+            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
             input.tap()
             input.typeText("complete synthetic\nsecond line\nthird line")
             let grows = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in field.frame.height > baseline + 10 }, object: nil)
@@ -101,6 +102,8 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             XCTAssertEqual(UITestConditions.wait(for: [clearsHeight]), .completed)
             let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
             XCTAssertTrue(UITestConditions.exists(citation))
+            let conversationPage = node(app, "rag-conversation-history")
+            FormUITestConditions.reveal(citation, in: app, scroll: conversationPage)
             let readable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 citation.isHittable && citation.frame.maxY <= self.node(app, "rag-conversation-composer").frame.minY
             }, object: nil)
@@ -111,6 +114,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
             node(app, "rag-conversation-new-session").tap()
+            FormUITestConditions.reveal(input, in: app, scroll: conversationPage)
             input.tap()
             input.typeText("pending synthetic")
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -123,26 +127,22 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
                 input.tap()
                 input.typeText("draft while the answer is in progress")
                 XCTAssertEqual(reopenConversation(app), pendingRowID)
-                let primary = node(app, "rag-conversation-columns-primary")
-                let evidence = node(app, "rag-conversation-columns-secondary")
                 // Simulator rotation covers viewport reflow, not Duo hardware or OS Split View.
+                let previousWidth = app.frame.width
                 XCUIDevice.shared.orientation = .landscapeLeft
-                let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                    let first = primary.frame, second = evidence.frame
-                    return !first.isEmpty && !second.isEmpty &&
-                        abs(first.minY - second.minY) < 1 && second.minX >= first.maxX
-                }, object: nil)
+                let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - previousWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [expanded]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
+                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
                 XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
+                let expandedWidth = app.frame.width
                 XCUIDevice.shared.orientation = .portrait
-                let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                    let first = primary.frame, second = evidence.frame
-                    return !first.isEmpty && !second.isEmpty && second.minY >= first.maxY - 1
-                }, object: nil)
+                let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - expandedWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [compact]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
+                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
+                XCTAssertTrue(stop.isHittable, stop.debugDescription)
             }
             let stopFrame = stop.frame
             RecordingFixtureUITestConditions.capture(app, "conversation-streaming-\(suffix)", testCase: self)

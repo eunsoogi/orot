@@ -1,14 +1,25 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { NavigationContext } from '@react-navigation/native';
+import { t } from '../../i18n';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import { ReviewResult } from '../ReviewResult';
 import { SafetyPolicyActionSchema } from '@orot/domain';
 import { healthReviewText as copy } from '../../i18n/healthReview';
 import type { HealthReviewService } from '../service';
+import * as provider from '../../aiFeatures/integration/provider';
 import {
   emptyHealthReviewSafety,
   healthReviewSafetyInput,
 } from '../safetyInput';
+
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 
 jest.mock('../../agent/execution/useInferenceConsent', () => ({
   useInferenceConsent: () => ({
@@ -24,6 +35,58 @@ const service: HealthReviewService = {
   delete: jest.fn(),
 };
 
+it('places the shared AI selection in the heading and opens provider settings', async () => {
+  const resolve = jest
+    .spyOn(provider, 'resolveSelectedAiProvider')
+    .mockResolvedValue({ status: 'selection-required' });
+  const onProvider = jest.fn();
+  await render(
+    <HealthReviewSessionProvider service={service}>
+      <HealthReviewScreen onSource={jest.fn()} onProvider={onProvider} />
+    </HealthReviewSessionProvider>,
+  );
+  const selector = await screen.findByTestId('ai-feature-select-provider');
+  expect(
+    within(screen.getByTestId('health-review-heading')).getByTestId(
+      'ai-feature-select-provider',
+    ),
+  ).toBeOnTheScreen();
+  await fireEvent.press(selector);
+  expect(onProvider).toHaveBeenCalledTimes(1);
+  resolve.mockRestore();
+});
+
+it('refreshes the saved model after returning to a retained review scene', async () => {
+  let focus = () => {};
+  const navigation = {
+    addListener: (_event: string, listener: () => void) => {
+      focus = listener;
+      return () => {};
+    },
+  };
+  const resolve = jest
+    .spyOn(provider, 'resolveSelectedAiProvider')
+    .mockResolvedValueOnce({ status: 'selection-required' })
+    .mockResolvedValue({ status: 'unavailable' });
+  await render(
+    <NavigationContext.Provider value={navigation as never}>
+      <HealthReviewSessionProvider service={service}>
+        <HealthReviewScreen onSource={jest.fn()} onProvider={jest.fn()} />
+      </HealthReviewSessionProvider>
+    </NavigationContext.Provider>,
+  );
+  expect(
+    await screen.findByLabelText(new RegExp(t('provider.selection.rowPrompt'))),
+  ).toBeOnTheScreen();
+  await act(async () => focus());
+  expect(
+    await screen.findByLabelText(
+      new RegExp(t('provider.selection.rowUnavailable')),
+    ),
+  ).toBeOnTheScreen();
+  resolve.mockRestore();
+});
+
 it('retains authored name and genuine safety answers while the view leaves and returns', async () => {
   const wrapper = (visible: boolean) => (
     <HealthReviewSessionProvider service={service}>
@@ -38,7 +101,7 @@ it('retains authored name and genuine safety answers while the view leaves and r
     '이번 주 건강 기록',
   );
   await fireEvent.press(
-    screen.getByRole('button', { name: '대상 정보: 임신 중이 아닌 성인' }),
+    screen.getByRole('radio', { name: '대상 정보: 임신 중이 아닌 성인' }),
   );
   await view.rerender(wrapper(false));
   await view.rerender(wrapper(true));
@@ -46,9 +109,9 @@ it('retains authored name and genuine safety answers while the view leaves and r
     '이번 주 건강 기록',
   );
   expect(
-    screen.getByRole('button', {
+    screen.getByRole('radio', {
       name: '대상 정보: 임신 중이 아닌 성인',
-      selected: true,
+      checked: true,
     }),
   ).toBeOnTheScreen();
   expect(service.start).not.toHaveBeenCalled();

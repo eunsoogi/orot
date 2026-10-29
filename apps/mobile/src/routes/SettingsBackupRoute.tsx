@@ -60,10 +60,6 @@ export function SettingsBackupRoute({
               </Text>
               <BackupStatusRecovery state={state} onRetry={onPrepare} />
             </View>
-          </View>
-        }
-        secondary={
-          <View style={styles.column}>
             <View
               style={styles.section}
               testID="settings-backup-recovery-panel"
@@ -112,7 +108,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    paddingTop: 24,
+    paddingTop: 16,
   },
   column: {
     flexGrow: 1,
