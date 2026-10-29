@@ -1,4 +1,6 @@
 import type { HealthObservationPageLoader } from '@orot/storage';
+import { NavigationContext } from '@react-navigation/native';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { HealthRecordsDetailScreen } from '../healthkit/HealthRecordsDetailScreen';
 import { HealthRecordsLibraryScreen } from '../healthkit/HealthRecordsLibraryScreen';
@@ -28,6 +30,21 @@ export function HealthRecordsRoute({
   route,
   selection,
 }: HealthRecordsRouteProps) {
+  const navigation = useContext(NavigationContext);
+  const importPending = useRef(false);
+  const [refreshRevision, setRefreshRevision] = useState(0);
+  useEffect(
+    () =>
+      navigation?.addListener('focus', () => {
+        // The retained library refreshes local storage after import return, including
+        // cancellation. Neither selection nor the native scroll owner is remounted.
+        if (importPending.current) {
+          importPending.current = false;
+          setRefreshRevision(value => value + 1);
+        }
+      }),
+    [navigation],
+  );
   if (route === 'health-records-detail') {
     if (!selection) {
       return (
@@ -65,7 +82,10 @@ export function HealthRecordsRoute({
       loadMedicationData={loadMedicationData}
       loadObservations={loadObservations}
       onBack={actions.onBack}
-      onOpenHealthImport={() => actions.push('unified-import')}
+      refreshRevision={refreshRevision}
+      onOpenHealthImport={() => {
+        importPending.current = actions.push('unified-import') !== null;
+      }}
       onOpenDetail={detail => {
         onSelectionChange(detail);
         actions.push('health-records-detail');
