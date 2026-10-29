@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { StagedMedicalDocument } from './medicalDocumentNativeBridge';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
+import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
 
 interface MedicalDocumentReviewProps {
@@ -16,7 +17,7 @@ interface MedicalDocumentReviewPreviewProps {
   readonly document: StagedMedicalDocument;
 }
 
-/** Keeps review status and its original actions attached to the staged request. */
+/** Keeps review status and save/discard actions attached to the selected staged request. */
 export function MedicalDocumentReview({
   message,
   document,
@@ -123,14 +124,15 @@ export function MedicalDocumentReviewPreview({
 }
 
 const styles = StyleSheet.create({
+  // The shared page flow supplies the section seam, so panel padding caps the full document once.
   detailsPanel: {
     flexGrow: 1,
     minWidth: 0,
     backgroundColor: appColors.background,
     gap: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: hubSpacing.horizontal,
     paddingTop: 24,
-    paddingBottom: 24,
+    paddingBottom: 0,
   },
   previewPanel: {
     flexGrow: 1,
@@ -138,8 +140,8 @@ const styles = StyleSheet.create({
     minHeight: 0,
     backgroundColor: appColors.background,
     gap: 14,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: hubSpacing.horizontal,
+    paddingTop: 0,
     paddingBottom: 24,
   },
   title: { color: appColors.text, fontSize: 28, fontWeight: '700' },

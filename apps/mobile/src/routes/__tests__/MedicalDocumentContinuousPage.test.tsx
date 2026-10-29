@@ -5,7 +5,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { Dimensions, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -14,6 +14,7 @@ import type { MedicalDocumentImportService } from '../../medicalDocuments/medica
 import type { StagedMedicalDocument } from '../../medicalDocuments/medicalDocumentNativeBridge';
 import { RecordsRoute } from '../RecordsRoute';
 import type { AppNavigationRoute } from '../appNavigationRoute';
+import { hubSpacing } from '../../layout/hubSpacing';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('react-native-safe-area-context', () => {
@@ -126,6 +127,19 @@ test.each([1, 2])(
       screen.getByTestId('records-import-medical-document'),
     );
     const content = pageContent();
+    const flow = content.getByTestId('records-document-review-layout');
+    const primary = content.getByTestId(
+      'records-document-review-layout-primary',
+    );
+    const secondary = content.getByTestId(
+      'records-document-review-layout-secondary',
+    );
+    expect(StyleSheet.flatten(flow.props.style)).toMatchObject({
+      flexDirection: 'column',
+      gap: hubSpacing.item,
+    });
+    expect(flow.children[0]).toBe(primary);
+    expect(flow.children[1]).toBe(secondary);
     expect(
       content.getByTestId('medical-document-review-description'),
     ).toHaveTextContent(/진단과 약 변경은 자동으로 확정되지 않아요\./);

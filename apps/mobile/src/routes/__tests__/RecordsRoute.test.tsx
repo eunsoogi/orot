@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 import { RecordsRoute, type RecordsRouteProps } from '../RecordsRoute';
 import type { MedicalDocumentImportService } from '../../medicalDocuments/medicalDocumentImportService';
+import { hubSpacing } from '../../layout/hubSpacing';
 
-// Render both adaptive panels together; real width and text thresholds are covered natively.
+// Keep route behavior deterministic; measured geometry and native reachability have dedicated coverage.
 jest.mock('../../layout/AdaptiveColumns', () => {
   const ReactRuntime = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
@@ -124,6 +126,54 @@ test('shows extracted text in the measured single panel before saving medical ev
   expect(service.saveDocument).toHaveBeenCalledWith(selected);
   expect(screen.queryByTestId('medical-document-save')).toBeNull();
   expect(screen.getByText('문서와 출처를 저장했어요.')).toBeTruthy();
+});
+
+test('keeps staged review and extracted pages in one ordered vertical flow', async () => {
+  const selected = document('document-flow', 'Synthetic document text');
+  const service = importService({
+    selectDocument: jest.fn().mockResolvedValue(selected),
+  });
+  await renderRecordsRoute({ documentImportService: service });
+
+  await fireEvent.press(screen.getByTestId('records-import-medical-document'));
+
+  const flow = await screen.findByTestId('records-document-review-layout');
+  const primary = screen.getByTestId('records-document-review-layout-primary');
+  const secondary = screen.getByTestId(
+    'records-document-review-layout-secondary',
+  );
+  expect(StyleSheet.flatten(flow.props.style)).toMatchObject({
+    flexDirection: 'column',
+    gap: hubSpacing.item,
+  });
+  expect(flow.children[0]).toBe(primary);
+  expect(flow.children[1]).toBe(secondary);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('medical-document-review-details').props.style,
+    )?.paddingHorizontal,
+  ).toBe(hubSpacing.horizontal);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('medical-document-review-preview-panel').props.style,
+    )?.paddingHorizontal,
+  ).toBe(hubSpacing.horizontal);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('medical-document-review-details').props.style,
+    )?.paddingBottom,
+  ).toBe(0);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('medical-document-review-preview-panel').props.style,
+    )?.paddingTop,
+  ).toBe(0);
+  expect(screen.getByTestId('medical-document-review-title')).toBeTruthy();
+  expect(
+    screen.getByTestId('medical-document-review-text-0'),
+  ).toHaveTextContent(selected.sections[0]!.text);
+  expect(screen.getByTestId('medical-document-save')).toBeEnabled();
+  expect(screen.getByTestId('medical-document-cancel')).toBeEnabled();
 });
 
 test('discards a reviewed document when the user cancels import', async () => {
