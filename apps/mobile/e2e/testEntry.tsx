@@ -30,16 +30,23 @@ import {
   type TestEntrySettingsManager,
 } from './testEntrySettingsObservation';
 
-const { settings, observation: initialSettingsObservation } =
-  readInitialTestEntrySettings(
-    NativeModules.SettingsManager as TestEntrySettingsManager | undefined,
-  );
-const route = selectTestRoute(settings);
+const {
+  settings,
+  route,
+  observation: initialSettingsObservation,
+  appearanceObservation,
+  reminderObservation,
+} = readInitialTestEntrySettings(
+  NativeModules.SettingsManager as TestEntrySettingsManager | undefined,
+  selectTestRoute,
+);
 const lifecycleObservation = initialSettingsObservation.lifecycleObservation;
-const appearanceObservation =
-  settings.OROT_TEST_APPEARANCE_OBSERVATION === 'YES';
-const reminderObservation = settings.OROT_TEST_REMINDER_OBSERVATION === 'YES';
 const geometryObservation = initialSettingsObservation.geometryObservation;
+// Keep the selected route beside the one initial flag snapshot for the AI diagnostic case.
+const initialTestEntryObservation = {
+  selectedRoute: route,
+  ...initialSettingsObservation,
+};
 if (lifecycleObservation) {
   registerNavigationTestObserver(value =>
     NativeModules.OrotTestControl.recordObservation(value),
@@ -90,15 +97,6 @@ function IntegrationTestHost() {
         style={StyleSheet.absoluteFill}
         testID="integration-test-host"
       />
-      {/* Keep diagnostics in the idle test host and expose only the initial allowlisted flag snapshot. */}
-      <Text
-        accessible
-        accessibilityLabel={JSON.stringify(initialSettingsObservation)}
-        style={[styles.geometryMarker, styles.geometryMarkerText]}
-        testID="test-entry-settings-observation"
-      >
-        {t('probe.layout.layoutObservation')}
-      </Text>
     </View>
   );
 }
@@ -158,6 +156,16 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
       {children}
       {lifecycleObservation ? (
         <View pointerEvents="none" style={styles.geometryMarker}>
+          {route === 'ai-feature-visit-questions' ? (
+            <Text
+              accessible
+              accessibilityLabel={JSON.stringify(initialTestEntryObservation)}
+              style={styles.geometryMarkerText}
+              testID="test-entry-settings-observation"
+            >
+              {t('probe.layout.layoutObservation')}
+            </Text>
+          ) : null}
           <Text
             ref={navigationMarker}
             accessible

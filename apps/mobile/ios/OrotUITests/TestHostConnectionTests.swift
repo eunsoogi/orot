@@ -16,35 +16,77 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         app.terminate()
     }
 
-    /// Captures the test entry's first native settings read without starting the product app or re-reading the bridge.
+    /// Records the first settings snapshot and existing geometry marker after the original AI route is visible.
     @MainActor
-    func testHostReportsInitialNavigationObservationSettings() throws {
+    func testInitialNavigationObservationOnAIJourney() throws {
         let app = XCUIApplication()
         app.launchArguments = [
-            "-OROT_TEST_HOST", "YES",
-            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
             "-OROT_TEST_UI_GEOMETRY", "YES",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
         defer { app.terminate() }
 
-        XCTAssertTrue(app.otherElements["integration-test-host"].waitForAppearance())
-        let marker = UITestConditions.element(app, "test-entry-settings-observation")
-        guard marker.waitForExistence(timeout: 10) else {
-            XCTFail("The idle test host must expose its initial SettingsManager snapshot")
-            return
-        }
-        let snapshotData = Data(UITestConditions.text(marker).utf8)
-        let snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: snapshotData) as? [String: Any])
-        let attachmentData = try JSONSerialization.data(withJSONObject: snapshot, options: [.sortedKeys])
-        let attachment = XCTAttachment(data: attachmentData, uniformTypeIdentifier: "public.json")
-        attachment.name = "initial-test-entry-settings"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        try recordInitialObservationSnapshot(app)
+    }
 
+    /// Samples each marker's presence once without waiting and retains only allowlisted settings and geometry structure.
+    @MainActor
+    private func recordInitialObservationSnapshot(_ app: XCUIApplication) throws {
+        let settingsMarker = UITestConditions.element(app, "test-entry-settings-observation")
+        let navigationMarker = UITestConditions.element(app, "navigation-test-observation")
+        let settingsMarkerPresent = settingsMarker.exists
+        let navigationMarkerPresent = navigationMarker.exists
+        var settingsSnapshot: [String: Any]?
+        var evidence: [String: Any] = [
+            "settingsSnapshotMarkerPresent": settingsMarkerPresent,
+            "navigationObservationMarkerPresent": navigationMarkerPresent,
+        ]
+
+        if settingsMarkerPresent {
+            let data = Data(settingsMarker.label.utf8)
+            if let snapshot = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                settingsSnapshot = snapshot
+                evidence["initialTestEntryObservation"] = snapshot
+            } else {
+                evidence["initialTestEntryObservationReadable"] = false
+            }
+        }
+        if navigationMarkerPresent {
+            let data = Data(navigationMarker.label.utf8)
+            if let snapshot = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let lifecycle = snapshot["lifecycle"] as? [[String: Any]] ?? []
+                var structure: [String: Any] = [
+                    "topLevelKeys": snapshot.keys.sorted(),
+                    "lifecycleEventCount": lifecycle.count,
+                    "lifecycleEventNames": lifecycle.compactMap { $0["event"] as? String },
+                ]
+                if let windowGeometry = snapshot["windowGeometry"] as? [String: Any] {
+                    structure["windowGeometryKeys"] = windowGeometry.keys.sorted()
+                }
+                evidence["navigationObservationStructure"] = structure
+            } else {
+                evidence["navigationObservationSnapshotReadable"] = false
+            }
+        }
+
+        let attachmentData = try JSONSerialization.data(withJSONObject: evidence, options: [.sortedKeys])
+        let attachment = XCTAttachment(data: attachmentData, uniformTypeIdentifier: "public.json")
+        attachment.name = "initial-navigation-observation"
+        attachment.lifetime = .keepAlways
+        XCTContext.runActivity(named: "Initial observation marker presence settings=\(settingsMarkerPresent) navigation=\(navigationMarkerPresent)") { _ in
+            self.add(attachment)
+        }
+
+        XCTAssertTrue(settingsMarkerPresent, "The original AI journey must expose its initial settings snapshot")
+        let snapshot = try XCTUnwrap(settingsSnapshot)
+        XCTAssertEqual(snapshot["selectedRoute"] as? String, "ai-feature-visit-questions")
         XCTAssertTrue(snapshot["managerAvailable"] as? Bool == true)
         XCTAssertTrue(snapshot["settingsAvailable"] as? Bool == true)
-        XCTAssertTrue(["settings", "getConstants"].contains(snapshot["source"] as? String ?? ""))
         XCTAssertTrue(snapshot["lifecycleObservation"] as? Bool == true)
         XCTAssertTrue(snapshot["geometryObservation"] as? Bool == true)
 

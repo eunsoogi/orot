@@ -118,7 +118,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   assert.equal(duoInventory.length, 47);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
-    'OrotUITests/TestHostConnectionTests/testHostReportsInitialNavigationObservationSettings',
+    'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
     'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
     'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
