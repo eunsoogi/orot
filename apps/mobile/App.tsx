@@ -103,7 +103,11 @@ function App({
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
-  const homeData = useAppHomeData(loadAppointments, loadRecordings);
+  const homeData = useAppHomeData(
+    loadAppointments,
+    loadRecordings,
+    activeTab === 'home',
+  );
   const backupPreparation = useBackupPreparation();
 
   useEffect(() => {
@@ -186,6 +190,7 @@ function App({
                   />
                 ) : (
                   <AppRouteContent
+                    {...homeData}
                     loadSavedVisitQuestions={
                       ai.services.loadSavedVisitQuestions
                     }
@@ -193,15 +198,8 @@ function App({
                     loadSymptoms={loadSymptoms}
                     activeTab={activeTab}
                     selectTab={setActiveTab}
-                    appointmentRepository={homeData.appointmentRepository}
                     backupPreparationState={backupPreparation.state}
                     retryBackupPreparation={backupPreparation.retry}
-                    appointmentState={homeData.appointmentState}
-                    nextAppointment={homeData.nextAppointment}
-                    recordings={homeData.recordings}
-                    recordingState={homeData.recordingState}
-                    refreshAppointments={homeData.refreshAppointments}
-                    refreshRecordings={homeData.refreshRecordings}
                     calendarBridge={calendarBridge}
                     calendarSync={calendarSync}
                     selectedProvider={selectedProvider}

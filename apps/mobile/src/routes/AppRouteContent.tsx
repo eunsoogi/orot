@@ -67,6 +67,10 @@ export function AppRouteContent({
             onPrepareVisit={openVisitQuestions}
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
+            loadSymptoms={loadSymptoms}
+            loadSavedVisitQuestions={loadSavedVisitQuestions}
+            onOpenSymptoms={() => actions.push('symptoms')}
+            onOpenRecording={openRecording}
           />
         );
       case 'records':

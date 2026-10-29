@@ -43,7 +43,9 @@ test('opens the encrypted journal through Records and retains its query after re
       loadSymptoms={loadSymptoms}
     />,
   );
-  expect(loadSymptoms).not.toHaveBeenCalled();
+  // Home reads the active summary; entering the journal still loads its own retained query.
+  expect(loadSymptoms).toHaveBeenCalledTimes(1);
+  expect(journal.list).toHaveBeenCalledWith({ status: 'active' });
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
   await fireEvent.press(screen.getByTestId('symptoms-open'));
   expect(

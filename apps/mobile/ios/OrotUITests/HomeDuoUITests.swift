@@ -54,53 +54,65 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         ]
         app.launch()
         XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
-        try verifyHomePanelsAndNavigationLane(app, expectsStackedPanels: true)
+        try verifyHomePanelsAndNavigationLane(app)
         let largeTextPreparation = app.buttons.matching(identifier: "home-prepare-visit").firstMatch
         UITestConditions.scrollTo(largeTextPreparation, in: app)
         largeTextPreparation.tap()
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        let recording = UITestConditions.element(app, "home-new-recording")
+        UITestConditions.scrollTo(recording, in: app)
+        XCTAssertTrue(recording.exists && recording.isHittable)
+        recording.tap()
+        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        let symptoms = UITestConditions.element(app, "home-open-symptoms")
+        UITestConditions.scrollTo(symptoms, in: app)
+        symptoms.tap()
+        NavigationUITestConditions.route(app, markers: ["symptoms-layout"])
+        XCTAssertTrue(UITestConditions.element(app, "symptom-synthetic-home-active-description").exists)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        let recent = UITestConditions.element(app, "home-recent-recording")
+        UITestConditions.scrollTo(recent, in: app)
+        recent.tap()
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
-    /// Checks the actual panel frames against each other and against the live root navigation surface.
+    /// Compare content-relative positions while scrolling, so larger text cannot pass by clipping lower actions.
     @MainActor
     private func verifyHomePanelsAndNavigationLane(
         _ app: XCUIApplication,
-        expectsStackedPanels: Bool = false,
     ) throws {
-        let primary = UITestConditions.element(app, "home-adaptive-columns-primary")
-        let secondary = UITestConditions.element(app, "home-adaptive-columns-secondary")
-        XCTAssertTrue(primary.waitForAppearance())
-        XCTAssertTrue(secondary.waitForAppearance())
-        let primaryFrame = primary.frame
-        let secondaryFrame = secondary.frame
-        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
-            primaryFrame.maxX <= secondaryFrame.minX + 1
-        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
-            primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(
-            sideBySide || stacked,
-            "Home panels must follow one readable measured column or two non-overlapping columns: primary=\(primaryFrame), secondary=\(secondaryFrame)",
-        )
-        if expectsStackedPanels {
-            XCTAssertTrue(stacked, "Large text must retain a single readable Home column")
-        }
-
+        let page = UITestConditions.element(app, "home-overview-sections")
+        XCTAssertTrue(page.waitForAppearance())
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         XCTAssertTrue(navigation.control.isSelected)
+        var previousY: CGFloat = -1
+        for identifier in ["home-prepare-visit", "home-open-symptoms", "home-recent-recording", "home-new-recording"] {
+            let action = UITestConditions.element(app, identifier)
+            UITestConditions.scrollTo(action, in: app)
+            XCTAssertTrue(action.exists && action.isHittable, identifier)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
+            let relativeY = action.frame.minY - page.frame.minY
+            XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, symptoms, recent audio, capture")
+            previousY = relativeY
+            XCTAssertGreaterThanOrEqual(action.frame.minX, page.frame.minX - 1)
+            XCTAssertLessThanOrEqual(action.frame.maxX, page.frame.maxX + 1)
+        }
         if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
-            // The live right rail marks expanded Duo geometry, where regular text should use both panels.
-            if !expectsStackedPanels {
-                XCTAssertTrue(sideBySide, "Expanded Home panels should use the measured Duo content width")
-            }
-            XCTAssertLessThanOrEqual(max(primaryFrame.maxX, secondaryFrame.maxX), navigation.toolbar.frame.minX + 1,
+            XCTAssertLessThanOrEqual(page.frame.maxX, navigation.toolbar.frame.minX + 1,
                                      "Home content must stay outside the measured right navigation lane")
         } else {
             try NavigationUITestConditions.contentAboveBar(
                 app,
                 scrollID: "navigation-route-scroll",
-                contentID: "home-open-records",
+                contentID: "home-new-recording",
                 navigationID: "navigation-tab-home",
             )
         }
