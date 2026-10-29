@@ -40,8 +40,9 @@ test('registers unsaved drafts, changes their revision, and blocks navigation du
     hasUnsavedChanges: false,
   });
   await fireEvent.press(screen.getByTestId('symptom-add'));
+  await fireEvent.press(screen.getByTestId('symptom-onset-manual'));
   expect(source?.readState().hasUnsavedChanges).toBe(true);
-  expect(screen.getByTestId('symptom-filter-active')).toBeDisabled();
+  expect(screen.queryByTestId('symptom-filter-active')).toBeNull();
   const previousRevision = source?.readState().inputRevision;
   await fireEvent.changeText(
     screen.getByTestId('symptom-description'),

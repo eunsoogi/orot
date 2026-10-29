@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
 		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */; };
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
@@ -281,6 +282,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalControlUITestConditions.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalRegression.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
@@ -876,6 +878,7 @@
 				B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */,
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
 				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
+				B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */,
 				6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */,
 				A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
@@ -1345,6 +1348,7 @@
 				A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */,
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
 				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
+				B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */,
 				081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */,
 				F9DD5D73A89A4091A7E3B176 /* SymptomJournalAccessibilityUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,

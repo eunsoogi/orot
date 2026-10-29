@@ -14,9 +14,11 @@ export default StyleSheet.create({
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
     justifyContent: 'space-between',
   },
-  title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   sectionTitle: { color: appColors.text, fontSize: 15, fontWeight: '600' },
   message: { color: appColors.secondary, fontSize: 15 },
   hint: { color: appColors.secondary, fontSize: 13 },

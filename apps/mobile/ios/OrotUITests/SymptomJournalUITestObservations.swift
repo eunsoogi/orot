@@ -4,6 +4,32 @@ import XCTest
 /// Journal observations preserve original evidence while keeping per-field focus probes separate from gesture control.
 @MainActor
 enum SymptomJournalUITestObservations {
+    @MainActor
+    static func launchJournal(_ app: XCUIApplication) throws {
+        // English device settings exercise the Korean-only copy through the real journal route.
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        // The passive marker is opted in for this scenario; diagnostic-only early-exit flags remain separate.
+        app.launchArguments += ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        app.launch()
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        let open = UITestConditions.element(app, "symptoms-open")
+        XCTAssertTrue(UITestConditions.exists(open))
+        FormUITestConditions.reveal(open, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(open.isHittable)
+        open.tap()
+        NavigationUITestConditions.route(app, markers: ["symptoms-title"])
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-title")) && UITestConditions.element(app, "symptoms-title").label == "증상 일지" && !UITestConditions.element(app, "symptoms-back").exists)
+    }
+
+    /// Manual entry remains available for real keyboard recovery and focus evidence.
+    static func openManualOnset(_ app: XCUIApplication) {
+        let manual = UITestConditions.element(app, "symptom-onset-manual")
+        FormUITestConditions.reveal(manual, in: app, scrollID: "symptoms-scroll")
+        XCTAssertTrue(manual.exists && manual.isHittable)
+        manual.tap()
+    }
+
     /// Checks the editor against the route viewport while preserving the screen's existing side padding.
     static func assertFullContentFormLane(_ app: XCUIApplication, testCase: XCTestCase) {
         let description = UITestConditions.element(app, "symptom-description")
@@ -30,8 +56,8 @@ enum SymptomJournalUITestObservations {
             return
         }
         let descriptionFrame = description.frame
-        // Preserve the full outer lane: 20-point screen padding and 14-point form padding on each side.
-        let usableWidth = scroll.frame.width - 68
+        // The full-width editor contains one section: 20-point page padding, 16-point section padding and its 1-point border.
+        let usableWidth = scroll.frame.width - 2 * (20 + 16 + 1)
         XCTAssertGreaterThan(usableWidth, 0)
         XCTAssertEqual(outer.width, usableWidth, accuracy: 1)
         XCTAssertEqual(inset["x"], 1)

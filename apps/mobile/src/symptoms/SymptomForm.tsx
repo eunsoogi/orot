@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { Button, Keyboard, Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { SymptomEntry } from '@orot/storage';
 import TextInput from './SymptomTextInput';
-import { toSymptomTimestamp } from './dateTime';
+import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
 import SymptomCreateFields from './SymptomCreateFields';
 import styles from './SymptomForm.styles';
-import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
+import SymptomSeverityField from './SymptomSeverityField';
+import SymptomFormActions from './SymptomFormActions';
 import type { NewSymptomDraft, SymptomEdit } from './types';
-import {
-  formKeyboardFields,
-  formInputAccessoryID,
-} from './symptomFormKeyboard';
+import { formInputAccessoryID } from './symptomFormKeyboard';
 import { t } from '../i18n';
+import SymptomEditContext from './SymptomEditContext';
 
 type SymptomFormProps = {
   onCancel: () => void;
@@ -35,8 +34,17 @@ export default function SymptomForm({
   const [severity, setSeverity] = useState(
     entry?.severity === undefined ? '' : String(entry.severity),
   );
-  const [onsetDate, setOnsetDate] = useState('');
-  const [onsetTime, setOnsetTime] = useState('');
+  // Capture one local instant on entry; rerenders and folding must not move onset.
+  const [initialInstant] = useState(
+    () => entry?.effectiveAt ?? new Date().toISOString(),
+  );
+  const initialOnset = toLocalSymptomDateTime(initialInstant);
+  const [onsetDate, setOnsetDate] = useState(initialOnset.date);
+  const [onsetTime, setOnsetTime] = useState(initialOnset.time);
+  const [selectedOnset, setSelectedOnset] = useState<string | null>(
+    initialInstant,
+  );
+  const [selectedResolved, setSelectedResolved] = useState<string | null>(null);
   const [resolvedDate, setResolvedDate] = useState('');
   const [resolvedTime, setResolvedTime] = useState('');
   const [status, setStatus] = useState<SymptomEntry['status'] | null>(null);
@@ -84,7 +92,11 @@ export default function SymptomForm({
         onCancel();
         return;
       }
-      const onsetAt = toSymptomTimestamp(onsetDate, onsetTime);
+      const onsetAt = matchingSelectedInstant(
+        selectedOnset,
+        onsetDate,
+        onsetTime,
+      );
       if (!onsetAt) {
         setError(t('symptoms.journal.form.validation.onset'));
         return;
@@ -102,7 +114,11 @@ export default function SymptomForm({
       if (status === 'active') {
         await onCreate({ ...details, status });
       } else {
-        const resolvedAt = toSymptomTimestamp(resolvedDate, resolvedTime);
+        const resolvedAt = matchingSelectedInstant(
+          selectedResolved,
+          resolvedDate,
+          resolvedTime,
+        );
         if (!resolvedAt) {
           setError(t('symptoms.journal.form.validation.resolved'));
           return;
@@ -129,16 +145,23 @@ export default function SymptomForm({
           ? t('symptoms.journal.form.editTitle')
           : t('symptoms.journal.form.newTitle')}
       </Text>
-      <TextInput
-        accessibilityLabel={t('symptoms.journal.form.description.label')}
-        multiline
-        onChangeText={change(setDescription)}
-        placeholder={t('symptoms.journal.form.description.placeholder')}
-        inputAccessoryViewID={formInputAccessoryID('description', mode)}
-        style={[styles.input, styles.description]}
-        testID="symptom-description"
-        value={description}
-      />
+      <Text style={styles.hint}>{t('symptoms.journal.form.subtitle')}</Text>
+      <View style={styles.section}>
+        <Text style={styles.fieldLabel}>
+          {t('symptoms.journal.form.description.title')}
+        </Text>
+        <TextInput
+          accessibilityLabel={t('symptoms.journal.form.description.label')}
+          multiline
+          onChangeText={change(setDescription)}
+          placeholder={t('symptoms.journal.form.description.placeholder')}
+          inputAccessoryViewID={formInputAccessoryID('description', mode)}
+          style={[styles.input, styles.description]}
+          testID="symptom-description"
+          value={description}
+        />
+      </View>
+      {mode === 'edit' ? <SymptomEditContext entry={entry} /> : null}
       {mode === 'create' ? (
         <SymptomCreateFields
           inputAccessoryViewIDs={{
@@ -147,6 +170,10 @@ export default function SymptomForm({
             resolvedDate: formInputAccessoryID('resolvedDate'),
             resolvedTime: formInputAccessoryID('resolvedTime'),
           }}
+          onsetInstant={selectedOnset}
+          resolvedInstant={selectedResolved}
+          onSelectOnset={setSelectedOnset}
+          onSelectResolved={setSelectedResolved}
           onsetDate={onsetDate}
           onsetTime={onsetTime}
           resolvedDate={resolvedDate}
@@ -159,81 +186,51 @@ export default function SymptomForm({
           status={status}
         />
       ) : null}
-      <TextInput
-        accessibilityLabel={t('symptoms.journal.form.bodySite.label')}
-        onChangeText={change(setBodySite)}
-        inputAccessoryViewID={formInputAccessoryID('bodySite')}
-        placeholder={t('symptoms.journal.form.bodySite.placeholder')}
-        style={styles.input}
-        testID="symptom-body-site"
-        value={bodySite}
-      />
-      <TextInput
-        accessibilityLabel={t('symptoms.journal.form.severity.label')}
-        keyboardType="number-pad"
-        onChangeText={change(setSeverity)}
-        inputAccessoryViewID={formInputAccessoryID('severity')}
-        placeholder={t('symptoms.journal.form.severity.placeholder')}
-        style={styles.input}
-        testID="symptom-severity"
-        value={severity}
-      />
-      <Text style={styles.hint}>
-        {t('symptoms.journal.form.severity.hint')}
-      </Text>
+      <View style={styles.section}>
+        <Text style={styles.fieldLabel}>
+          {t('symptoms.journal.form.bodySite.title')}
+        </Text>
+        <TextInput
+          accessibilityLabel={t('symptoms.journal.form.bodySite.label')}
+          onChangeText={change(setBodySite)}
+          inputAccessoryViewID={formInputAccessoryID('bodySite')}
+          placeholder={t('symptoms.journal.form.bodySite.placeholder')}
+          style={styles.input}
+          testID="symptom-body-site"
+          value={bodySite}
+        />
+      </View>
+      <SymptomSeverityField value={severity} onChange={change(setSeverity)} />
       {error ? (
-        <Text accessibilityRole="alert" testID="symptom-form-error">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="symptom-form-error"
+        >
           {error}
         </Text>
       ) : null}
-      <Button
-        disabled={saving || (mode === 'create' && status === null)}
-        onPress={() => {
-          save();
-        }}
-        testID="symptom-save"
-        title={
-          saving
-            ? t('symptoms.journal.form.saving')
-            : mode === 'edit'
-              ? t('symptoms.journal.form.saveChanges')
-              : t('symptoms.journal.form.save')
-        }
+      <SymptomFormActions
+        mode={mode}
+        saving={saving}
+        needsStatus={mode === 'create' && status === null}
+        onSave={save}
+        onCancel={onCancel}
       />
-      <Button
-        disabled={saving}
-        onPress={onCancel}
-        testID="symptom-form-cancel"
-        title={t('symptoms.journal.form.close')}
-      />
-      {Platform.OS === 'ios' ? (
-        <SymptomKeyboardAccessoryGroup
-          actions={[
-            {
-              label:
-                mode === 'edit'
-                  ? t('symptoms.journal.form.saveChanges')
-                  : t('symptoms.journal.form.save'),
-              testID: 'symptom-keyboard-save',
-              disabled: saving || (mode === 'create' && status === null),
-              onPress: () => {
-                Keyboard.dismiss();
-                save();
-              },
-            },
-            {
-              label: t('symptoms.journal.form.close'),
-              testID: 'symptom-keyboard-close',
-              disabled: saving,
-              onPress: () => {
-                Keyboard.dismiss();
-                onCancel();
-              },
-            },
-          ]}
-          fields={formKeyboardFields(mode)}
-        />
-      ) : null}
+      <Text style={styles.hint}>{t('symptoms.journal.provenance')}</Text>
     </View>
   );
+}
+
+/** Native selections retain repeated-hour instants; manual changes use strict local parsing. */
+function matchingSelectedInstant(
+  selected: string | null,
+  date: string,
+  time: string,
+): string | null {
+  if (selected) {
+    const local = toLocalSymptomDateTime(selected);
+    if (local.date === date && local.time === time) return selected;
+  }
+  return toSymptomTimestamp(date, time);
 }

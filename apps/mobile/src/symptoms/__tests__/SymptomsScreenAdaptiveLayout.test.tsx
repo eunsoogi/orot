@@ -1,11 +1,5 @@
 import { SymptomEntrySchema } from '@orot/storage';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -90,11 +84,8 @@ function expectFormInFullContentLane() {
     minWidth: 0,
     width: '100%',
   });
-  expect(
-    within(screen.getByTestId('symptoms-layout')).queryByTestId(
-      'symptom-description',
-    ),
-  ).toBeNull();
+  expect(screen.queryByTestId('symptoms-layout')).toBeNull();
+  expect(screen.queryByTestId('symptom-filter-active')).toBeNull();
 }
 
 beforeEach(() => {
@@ -118,6 +109,7 @@ test('the symptom route shares the full usable lane and keeps selection through 
         route.name === 'symptoms' ? (
           <SymptomsScreen
             entries={[entry]}
+            filter={{ status: 'active' }}
             onBack={jest.fn()}
             onRetry={jest.fn()}
             onFilterChange={onFilterChange}
@@ -141,76 +133,46 @@ test('the symptom route shares the full usable lane and keeps selection through 
   await fireEvent.press(screen.getByTestId('symptom-filter-active'));
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const layout = screen.getByTestId('symptoms-layout');
-  const direction = () => StyleSheet.flatten(layout.props.style)?.flexDirection;
-  const width = () => StyleSheet.flatten(layout.props.style)?.width;
+  expect(StyleSheet.flatten(layout.props.style)?.flexDirection).toBe('column');
+  expect(screen.queryByTestId('symptoms-layout-secondary')).toBeNull();
 
   await fireEvent.press(screen.getByTestId(`symptom-edit-${entry.id}`));
-  const editDescription = screen.getByTestId('symptom-description');
-  await fireEvent.changeText(editDescription, 'Synthetic edit draft');
-  await fireEvent(editDescription, 'focus', { nativeEvent: {} });
-  expectFormInFullContentLane();
-
-  await fireEvent(sensor, 'geometryChange', {
-    nativeEvent: geometry(900, true),
-  });
-  expect(direction()).toBe('row');
-  expect(width()).toBeGreaterThan(800);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('symptoms-layout-primary').props.style,
-    )?.width,
-  ).toBeGreaterThan(320);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('symptoms-layout-secondary').props.style,
-    )?.width,
-  ).toBeGreaterThan(320);
-  expect(
-    screen.getByTestId('symptom-filter-active').props.accessibilityState
-      ?.selected,
-  ).toBe(true);
-  expect(
-    screen.getByTestId('symptoms-selected-description').props.children,
-  ).toBe(entry.description);
-  expect(screen.getByTestId('symptom-description')).toHaveProp(
-    'value',
+  await fireEvent.changeText(
+    screen.getByTestId('symptom-description'),
     'Synthetic edit draft',
   );
-  expectFormInFullContentLane();
-
-  await act(async () => {
-    Dimensions.set({ window: viewport(500), screen: viewport(500) });
-    await fireEvent(sensor, 'geometryChange', {
-      nativeEvent: geometry(500, false),
-    });
+  await fireEvent(screen.getByTestId('symptom-description'), 'focus', {
+    nativeEvent: {},
   });
-  expect(direction()).toBe('column');
-  expect(
-    screen.getByTestId('symptom-filter-active').props.accessibilityState
-      ?.selected,
-  ).toBe(true);
-  expect(
-    screen.getByTestId('symptoms-selected-description').props.children,
-  ).toBe(entry.description);
-  expect(screen.getByTestId('symptom-description')).toHaveProp(
-    'value',
-    'Synthetic edit draft',
-  );
-  expectFormInFullContentLane();
-
-  await act(async () => {
-    Dimensions.set({ window: viewport(900, 1.5), screen: viewport(900, 1.5) });
-    await fireEvent(sensor, 'geometryChange', {
-      nativeEvent: geometry(900, false),
+  for (const [width, divided, fontScale] of [
+    [900, true, 1],
+    [500, false, 1],
+    [900, false, 1.5],
+  ] as const) {
+    await act(async () => {
+      Dimensions.set({
+        window: viewport(width, fontScale),
+        screen: viewport(width, fontScale),
+      });
+      await fireEvent(sensor, 'geometryChange', {
+        nativeEvent: geometry(width, divided),
+      });
     });
-  });
-  expect(direction()).toBe('column');
-  expect(screen.getByTestId('symptoms-selected-summary')).toBeTruthy();
-  expect(onFilterChange).toHaveBeenCalledWith({ status: 'active' });
-
+    expect(screen.getByTestId('symptom-description')).toHaveProp(
+      'value',
+      'Synthetic edit draft',
+    );
+    expectFormInFullContentLane();
+  }
   await fireEvent.press(screen.getByTestId('symptom-form-cancel'));
+  expect(
+    screen.getByTestId(`symptom-${entry.id}-description`),
+  ).toHaveTextContent(entry.description);
+  expect(
+    screen.getByTestId('symptom-filter-active').props.accessibilityState
+      ?.selected,
+  ).toBe(true);
   await fireEvent.press(screen.getByTestId('symptom-add'));
-  expectFormInFullContentLane();
   await fireEvent.changeText(
     screen.getByTestId('symptom-description'),
     'Synthetic create draft',
@@ -231,4 +193,5 @@ test('the symptom route shares the full usable lane and keeps selection through 
       ?.selected,
   ).toBe(true);
   expectFormInFullContentLane();
+  expect(onFilterChange).toHaveBeenCalledWith({ status: 'active' });
 });

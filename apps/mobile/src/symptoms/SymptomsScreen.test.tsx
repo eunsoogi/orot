@@ -53,6 +53,7 @@ describe('SymptomsScreen', () => {
     const onCreate = jest.fn();
     await renderScreen({ onCreate });
     await fireEvent.press(screen.getByTestId('symptom-add'));
+    await fireEvent.press(screen.getByTestId('symptom-onset-manual'));
 
     expect(screen.getByTestId('symptom-save')).toBeDisabled();
     await fireEvent.changeText(
@@ -91,7 +92,8 @@ describe('SymptomsScreen', () => {
       screen.getAllByText(
         '직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.',
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    await fireEvent.press(screen.getByTestId(`symptom-select-${entry.id}`));
     await fireEvent.press(screen.getByTestId('symptom-edit-' + entry.id));
     await fireEvent.changeText(
       screen.getByTestId('symptom-description'),
@@ -114,22 +116,22 @@ describe('SymptomsScreen', () => {
     const entry = sampleSymptom();
     await renderScreen({ entries: [entry] });
 
-    expect(screen.getByTestId('symptoms-selection-empty')).toBeTruthy();
+    expect(screen.queryByTestId('symptoms-selection-empty')).toBeNull();
     const selector = screen.getByTestId(`symptom-select-${entry.id}`);
     await fireEvent.press(selector);
 
     expect(selector.props.accessibilityState?.selected).toBe(true);
     expect(
-      screen.getByTestId('symptoms-selected-description').props.children,
+      screen.getByTestId(`symptom-${entry.id}-description`).props.children,
     ).toBe(entry.description);
-    expect(screen.getByTestId('symptoms-selected-status').props.children).toBe(
-      '계속되고 있어요',
-    );
+    expect(
+      screen.getByTestId(`symptom-${entry.id}-status`).props.children,
+    ).toBe('계속되고 있어요');
     expect(
       screen.getAllByText(
         '직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.',
       ),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     expect(screen.getByTestId(`symptom-edit-${entry.id}`)).toBeTruthy();
     expect(screen.getByTestId(`symptom-resolve-${entry.id}`)).toBeTruthy();
   });
@@ -138,6 +140,7 @@ describe('SymptomsScreen', () => {
     const onFilterChange = jest.fn();
     await renderScreen({ onFilterChange });
     await fireEvent.press(screen.getByTestId('symptom-filter-active'));
+    await fireEvent.press(screen.getByTestId('symptom-filter-period'));
     await fireEvent.changeText(
       screen.getByTestId('symptom-filter-from-date'),
       '2026-04-20',
@@ -169,6 +172,7 @@ describe('SymptomsScreen', () => {
     const onCreate = jest.fn();
     await renderScreen({ onCreate });
     await fireEvent.press(screen.getByTestId('symptom-add'));
+    await fireEvent.press(screen.getByTestId('symptom-onset-manual'));
     await fireEvent.changeText(
       screen.getByTestId('symptom-description'),
       'Synthetic test entry',

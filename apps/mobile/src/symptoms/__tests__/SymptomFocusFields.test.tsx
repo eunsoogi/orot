@@ -36,6 +36,13 @@ describe('symptom fields participating in focus reveal', () => {
         </SymptomFocusRevealContext.Provider>,
       );
       await fireEvent.press(screen.getByTestId('symptom-status-resolved'));
+      if (suffix.startsWith('onset-') || suffix.startsWith('resolved-')) {
+        await fireEvent.press(
+          screen.getByTestId(
+            `symptom-${suffix.startsWith('onset-') ? 'onset' : 'resolved'}-manual`,
+          ),
+        );
+      }
       const field = screen.getByTestId('symptom-' + suffix);
       await fireEvent(field, 'focus', { nativeEvent: {} });
       expect(reveal.focusInput).toHaveBeenCalledWith(expect.anything());
@@ -60,6 +67,7 @@ describe('symptom fields participating in focus reveal', () => {
           <SymptomFilters onFilterChange={jest.fn()} />
         </SymptomFocusRevealContext.Provider>,
       );
+      await fireEvent.press(screen.getByTestId('symptom-filter-period'));
       await fireEvent(screen.getByTestId('symptom-filter-' + suffix), 'focus', {
         nativeEvent: {},
       });

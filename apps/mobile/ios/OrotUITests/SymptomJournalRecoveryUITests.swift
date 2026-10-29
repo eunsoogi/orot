@@ -15,6 +15,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         let add = UITestConditions.element(app, "symptom-add")
         XCTAssertTrue(add.exists && add.isHittable)
         add.tap()
+        SymptomJournalUITestObservations.openManualOnset(app)
         let description = app.textViews["symptom-description"]
         XCTAssertTrue(description.exists)
         // The native accessibility tree reports this text view's label and placeholder together.
@@ -64,6 +65,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             UITestConditions.element(app, "symptom-save-recovery-2-status").label,
             "계속되고 있어요",
         )
+        SymptomJournalControlUITestConditions.resolutionRetriesWithoutLosingInlineEntry(app, id: "save-recovery-2")
     }
 
     @MainActor
@@ -75,6 +77,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         let add = UITestConditions.element(app, "symptom-add")
         XCTAssertTrue(add.exists && add.isHittable)
         add.tap()
+        SymptomJournalUITestObservations.openManualOnset(app)
         let description = app.textViews["symptom-description"]
         XCTAssertTrue(FormUITestConditions.replace(
             description,

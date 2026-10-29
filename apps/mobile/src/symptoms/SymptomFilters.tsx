@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { t } from '../i18n';
 import type { SymptomFilter, SymptomStatus } from './types';
-import TextInput from './SymptomTextInput';
+import SymptomFilterRange from './SymptomFilterRange';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import { toLocalSymptomDateTime, toSymptomTimestamp } from './dateTime';
 import { symptomStatusLabel } from './presentation';
@@ -67,6 +67,7 @@ export default function SymptomFilters({
   const [throughDate, setThroughDate] = useState(through?.date ?? '');
   const [throughTime, setThroughTime] = useState(through?.time ?? '');
   const [error, setError] = useState('');
+  const [rangeExpanded, setRangeExpanded] = useState(Boolean(from || through));
 
   async function applyFilters(nextStatus = statusFilter) {
     setError('');
@@ -157,69 +158,65 @@ export default function SymptomFilters({
         <Text style={styles.sectionTitle}>
           {t('symptoms.journal.dateFilter.title')}
         </Text>
-        <View style={styles.row}>
-          <TextInput
-            editable={!disabled}
-            accessibilityLabel={t('symptoms.journal.dateFilter.startDate')}
-            inputAccessoryViewID={filterInputAccessoryID('fromDate')}
-            onChangeText={setFromDate}
-            placeholder="YYYY-MM-DD"
-            style={[styles.input, styles.halfInput]}
-            testID="symptom-filter-from-date"
-            value={fromDate}
-          />
-          <TextInput
-            editable={!disabled}
-            accessibilityLabel={t('symptoms.journal.dateFilter.startTime')}
-            inputAccessoryViewID={filterInputAccessoryID('fromTime')}
-            onChangeText={setFromTime}
-            placeholder="HH:MM"
-            style={[styles.input, styles.halfInput]}
-            testID="symptom-filter-from-time"
-            value={fromTime}
-          />
-        </View>
-        <View style={styles.row}>
-          <TextInput
-            editable={!disabled}
-            accessibilityLabel={t('symptoms.journal.dateFilter.endDate')}
-            inputAccessoryViewID={filterInputAccessoryID('throughDate')}
-            onChangeText={setThroughDate}
-            placeholder="YYYY-MM-DD"
-            style={[styles.input, styles.halfInput]}
-            testID="symptom-filter-through-date"
-            value={throughDate}
-          />
-          <TextInput
-            editable={!disabled}
-            accessibilityLabel={t('symptoms.journal.dateFilter.endTime')}
-            inputAccessoryViewID={filterInputAccessoryID('throughTime')}
-            onChangeText={setThroughTime}
-            placeholder="HH:MM"
-            style={[styles.input, styles.halfInput]}
-            testID="symptom-filter-through-time"
-            value={throughTime}
-          />
-        </View>
-        <Text style={styles.hint}>
-          {t('symptoms.journal.dateFilter.guidance')}
-        </Text>
-        <Button
+        <Pressable
           disabled={disabled}
-          onPress={() => {
-            applyFilters();
-          }}
-          testID="symptom-filter-apply"
-          title={t('symptoms.journal.dateFilter.apply')}
-        />
-        <Button
-          disabled={disabled}
-          onPress={() => {
-            clearTimeRange();
-          }}
-          testID="symptom-filter-clear-time"
-          title={t('symptoms.journal.dateFilter.clear')}
-        />
+          accessibilityRole="button"
+          accessibilityState={{ expanded: rangeExpanded }}
+          onPress={() => setRangeExpanded(value => !value)}
+          style={styles.choice}
+          testID="symptom-filter-period"
+        >
+          <Text style={styles.choiceLabel}>
+            {fromDate || throughDate
+              ? `${fromDate} ${fromTime} – ${throughDate} ${throughTime}`
+              : t('symptoms.journal.dateFilter.all')}
+          </Text>
+        </Pressable>
+        {rangeExpanded ? (
+          <>
+            <SymptomFilterRange
+              disabled={disabled}
+              values={[fromDate, fromTime, throughDate, throughTime]}
+              onChange={[
+                setFromDate,
+                setFromTime,
+                setThroughDate,
+                setThroughTime,
+              ]}
+              accessoryID={index =>
+                filterInputAccessoryID(
+                  (
+                    [
+                      'fromDate',
+                      'fromTime',
+                      'throughDate',
+                      'throughTime',
+                    ] as const
+                  )[index]!,
+                )
+              }
+            />
+            <Text style={styles.hint}>
+              {t('symptoms.journal.dateFilter.guidance')}
+            </Text>
+            <Button
+              disabled={disabled}
+              onPress={() => {
+                applyFilters();
+              }}
+              testID="symptom-filter-apply"
+              title={t('symptoms.journal.dateFilter.apply')}
+            />
+            <Button
+              disabled={disabled}
+              onPress={() => {
+                clearTimeRange();
+              }}
+              testID="symptom-filter-clear-time"
+              title={t('symptoms.journal.dateFilter.clear')}
+            />
+          </>
+        ) : null}
       </View>
       {Platform.OS === 'ios' ? (
         <SymptomKeyboardAccessoryGroup
