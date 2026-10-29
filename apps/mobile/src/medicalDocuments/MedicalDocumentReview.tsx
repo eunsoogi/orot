@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { StagedMedicalDocument } from './medicalDocumentNativeBridge';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -80,7 +80,7 @@ export function MedicalDocumentReview({
   );
 }
 
-/** Keeps extracted source pages in a separate scrollable adaptive panel. */
+/** Contributes every extracted page's intrinsic height to the Records scene's scroll owner. */
 export function MedicalDocumentReviewPreview({
   document,
 }: MedicalDocumentReviewPreviewProps) {
@@ -89,10 +89,9 @@ export function MedicalDocumentReviewPreview({
       style={styles.previewPanel}
       testID="medical-document-review-preview-panel"
     >
-      <ScrollView
+      <View
         accessibilityLabel={t('medicalDocument.review.content')}
-        style={styles.preview}
-        contentContainerStyle={styles.previewContent}
+        style={[styles.preview, styles.previewContent]}
         testID="medical-document-review-content"
       >
         {document.sections.map((section, index) => (
@@ -118,7 +117,7 @@ export function MedicalDocumentReviewPreview({
             </Text>
           </View>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -134,7 +133,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   previewPanel: {
-    flex: 1,
+    flexGrow: 1,
     minWidth: 0,
     minHeight: 0,
     backgroundColor: appColors.background,
@@ -148,8 +147,6 @@ const styles = StyleSheet.create({
   description: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   preview: {
-    flex: 1,
-    minHeight: 0,
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,

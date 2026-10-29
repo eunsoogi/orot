@@ -1,5 +1,5 @@
 import type { EvidenceSpan } from '@orot/domain';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { formatDateTime, t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
@@ -11,7 +11,7 @@ interface MedicalDocumentSourceViewProps {
   readonly onBack: () => void;
 }
 
-/** Keeps saved details beside their extracted spans using current measured usable regions. */
+/** Keeps saved metadata and spans in measured regions while the Records scene owns vertical scrolling. */
 export function MedicalDocumentSourceView({
   document,
   onBack,
@@ -19,9 +19,8 @@ export function MedicalDocumentSourceView({
   return (
     <AdaptiveColumns
       primary={
-        <ScrollView
-          contentContainerStyle={styles.summaryContent}
-          style={styles.panel}
+        <View
+          style={[styles.panel, styles.summaryContent]}
           testID="medical-document-source-view"
         >
           <Pressable
@@ -55,12 +54,11 @@ export function MedicalDocumentSourceView({
               date: formatDateTime(new Date(document.ingestedAt)),
             })}
           </Text>
-        </ScrollView>
+        </View>
       }
       secondary={
-        <ScrollView
-          contentContainerStyle={styles.evidenceContent}
-          style={styles.panel}
+        <View
+          style={[styles.panel, styles.evidenceContent]}
           testID="medical-document-source-evidence"
         >
           {document.evidenceSpans.length === 0 ? (
@@ -72,7 +70,7 @@ export function MedicalDocumentSourceView({
               <EvidenceExcerpt key={span.id} span={span} index={index} />
             ))
           )}
-        </ScrollView>
+        </View>
       }
       testID="medical-document-source-detail-layout"
     />
@@ -139,7 +137,6 @@ function locatorText(span: EvidenceSpan): string {
 
 const styles = StyleSheet.create({
   panel: {
-    flex: 1,
     minWidth: 0,
     minHeight: 0,
     backgroundColor: appColors.background,
