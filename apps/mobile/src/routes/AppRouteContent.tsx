@@ -1,4 +1,6 @@
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
+import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
+import { canGenerateHomeVisit } from './HomeVisitQuestionsRoute';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
@@ -53,6 +55,18 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
+  const reminderRuntime = useAppointmentReminderRuntime();
+  function openHomePreparation() {
+    if (!nextAppointment || !reminderRuntime) return;
+    // Eligible visits retain the existing generator. Other visits keep exact-ID saved preparation and an explicit next action.
+    const route = actions.push(
+      canGenerateHomeVisit(nextAppointment)
+        ? 'visit-questions'
+        : 'appointment-preparation',
+    );
+    if (route)
+      reminderRuntime.homePreparationTargets.set(route.key, nextAppointment.id);
+  }
   if (actions.route.name === 'home') {
     switch (activeTab) {
       case 'home':
@@ -64,9 +78,13 @@ export function AppRouteContent({
             recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
             onRetryRecordings={() => refreshRecordings()}
-            onPrepareVisit={openVisitQuestions}
+            onPrepareVisit={openHomePreparation}
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
+            loadSymptoms={loadSymptoms}
+            loadSavedVisitQuestions={loadSavedVisitQuestions}
+            onOpenSymptoms={() => actions.push('symptoms')}
+            onOpenRecording={openRecording}
           />
         );
       case 'records':
@@ -129,6 +147,9 @@ export function AppRouteContent({
         <AppointmentPreparationRoute
           routeKey={actions.route.key}
           loadSavedQuestions={loadSavedVisitQuestions}
+          onOpenSchedule={async () => {
+            if (await actions.onHome()) selectTab('schedule');
+          }}
         />
       );
     case 'unified-import':

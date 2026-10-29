@@ -8,8 +8,11 @@ import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { appointmentTimeLabel } from './nextAppointment';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
+import type { ReactNode } from 'react';
+import { hubSpacing } from '../layout/hubSpacing';
 
 interface NextVisitPanelProps {
+  readonly children?: ReactNode;
   readonly appointment: Appointment | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
   readonly onRetryAppointments: () => void;
@@ -24,8 +27,9 @@ interface RecentRecordsPanelProps {
   readonly onOpenRecords: () => void;
 }
 
-/** Keeps the appointment recovery states and the existing preparation action in Home's primary panel. */
+/** Keeps visit details, saved-question guidance and recovery before the existing preparation action. */
 export function NextVisitPanel({
+  children,
   appointment,
   appointmentState,
   onRetryAppointments,
@@ -64,6 +68,7 @@ export function NextVisitPanel({
               nextAppointment.calendarEventSnapshot?.title ??
               t('appointments.fallbackTitle')}
           </Text>
+          {children}
           <AppButton
             onPress={onPrepareVisit}
             testID="home-prepare-visit"
@@ -85,7 +90,7 @@ export function NextVisitPanel({
   );
 }
 
-/** Keeps recent-record loading, empty, failure, and open behavior in Home's secondary panel. */
+/** Keeps recent-record loading, empty, failure and open behavior within Home's ordered page. */
 export function RecentRecordsPanel({
   recentRecording,
   recordingState,
@@ -146,11 +151,11 @@ const styles = StyleSheet.create({
   recentHeading: { color: appColors.secondary, fontSize: 14 },
   recordingCopy: { flex: 1, gap: 4 },
   recordingTitle: { color: appColors.text, fontSize: 16, fontWeight: '500' },
-  section: { gap: 12 },
+  section: { gap: hubSpacing.item },
   sectionHeading: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: hubSpacing.item,
     minHeight: 32,
   },
   sectionTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
