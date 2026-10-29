@@ -1,12 +1,12 @@
 import XCTest
 
 extension RootNavigationUITests {
-    /// Starts from portrait, verifies Settings geometry, and restores a valid original orientation.
+    /// Starts from portrait, verifies Settings geometry, then restores the captured orientation.
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
+        // Start from a supported baseline instead of assuming Simulator orientation is already established.
         XCUIDevice.shared.orientation = .portrait
-        defer { XCUIDevice.shared.orientation = initialOrientation.isPortrait || initialOrientation.isLandscape ? initialOrientation : .portrait }
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
@@ -29,12 +29,13 @@ extension RootNavigationUITests {
                 }
             }
             app.terminate()
+            XCUIDevice.shared.orientation = initialOrientation
         }
 
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        // Establish that UIKit and shared navigation geometry are live before rotation assertions use this width.
-        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        // The Settings route emits the adaptive geometry used as the rotation baseline.
+        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
 
