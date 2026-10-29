@@ -104,6 +104,12 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(reopened))
         reopened.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-library-panel")))
+        // Mounting precedes the list query. Require settled empty content and reject failed reads.
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-library-empty")))
+        let loadError = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "녹음 목록을 불러오지 못했어요."),
+        ).firstMatch
+        XCTAssertFalse(loadError.exists, app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "recording-delete-\(sourceId)").exists)
     }
 
