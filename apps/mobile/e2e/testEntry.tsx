@@ -25,24 +25,21 @@ import { registerNavigationTestObserver } from '../src/navigation/navigationTest
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
+import {
+  readInitialTestEntrySettings,
+  type TestEntrySettingsManager,
+} from './testEntrySettingsObservation';
 
-const settingsManager = NativeModules.SettingsManager as
-  | {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    }
-  | undefined;
-const settings =
-  settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
+const { settings, observation: initialSettingsObservation } =
+  readInitialTestEntrySettings(
+    NativeModules.SettingsManager as TestEntrySettingsManager | undefined,
+  );
 const route = selectTestRoute(settings);
-const lifecycleObservation =
-  settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ||
-  settings.OROT_TEST_EXPORT_OBSERVATION === 'YES';
+const lifecycleObservation = initialSettingsObservation.lifecycleObservation;
 const appearanceObservation =
   settings.OROT_TEST_APPEARANCE_OBSERVATION === 'YES';
 const reminderObservation = settings.OROT_TEST_REMINDER_OBSERVATION === 'YES';
-const geometryObservation =
-  settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation;
+const geometryObservation = initialSettingsObservation.geometryObservation;
 if (lifecycleObservation) {
   registerNavigationTestObserver(value =>
     NativeModules.OrotTestControl.recordObservation(value),
@@ -86,12 +83,23 @@ function IntegrationTestHost() {
     return <Application />;
   }
   return (
-    <View
-      accessible
-      accessibilityLabel="Integration test host"
-      style={styles.host}
-      testID="integration-test-host"
-    />
+    <View style={styles.host}>
+      <View
+        accessible
+        accessibilityLabel="Integration test host"
+        style={StyleSheet.absoluteFill}
+        testID="integration-test-host"
+      />
+      {/* Keep diagnostics in the idle test host and expose only the initial allowlisted flag snapshot. */}
+      <Text
+        accessible
+        accessibilityLabel={JSON.stringify(initialSettingsObservation)}
+        style={[styles.geometryMarker, styles.geometryMarkerText]}
+        testID="test-entry-settings-observation"
+      >
+        {t('probe.layout.layoutObservation')}
+      </Text>
+    </View>
   );
 }
 

@@ -1,6 +1,7 @@
 /** Explicit native regressions that opt in to the dedicated iPhone Duo runtime. */
 export const duoTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
+  'OrotUITests/TestHostConnectionTests/testHostReportsInitialNavigationObservationSettings',
   'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
   // Keep keyboard-open navigation checks selectable on the dedicated Duo runtime.
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
