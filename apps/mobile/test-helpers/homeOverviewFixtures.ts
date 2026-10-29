@@ -18,7 +18,11 @@ export function homeJournal(
   entries = [activeHomeSymptom],
 ): SymptomJournalRepository {
   return {
-    list: jest.fn(async () => entries),
+    list: jest.fn(async filter =>
+      entries.filter(
+        entry => !filter?.status || entry.status === filter.status,
+      ),
+    ),
     create: jest.fn(),
     update: jest.fn(),
     resolve: jest.fn(),

@@ -51,7 +51,7 @@ export default function WelcomeRoute({
     loadSymptoms,
     loadSavedVisitQuestions,
   });
-  const newUser =
+  const showCaptureGuidance =
     appointmentState === 'ready' &&
     !appointment &&
     recordingState === 'ready' &&
@@ -82,9 +82,9 @@ export default function WelcomeRoute({
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="home-overview-sections">
-        {newUser ? (
-          <Text testID="home-first-action-guidance" style={styles.message}>
-            {t('home.newUser')}
+        {showCaptureGuidance ? (
+          <Text testID="home-capture-guidance" style={styles.message}>
+            {t('home.captureGuidance')}
           </Text>
         ) : (
           <>
@@ -126,11 +126,11 @@ export default function WelcomeRoute({
           onPress={onOpenRecording}
           testID="home-new-recording"
         />
-        {newUser ? (
+        {showCaptureGuidance ? (
           <AppButton
             title={t('symptoms.title')}
             onPress={onOpenSymptoms}
-            testID="home-first-symptom"
+            testID="home-capture-symptom"
           />
         ) : null}
       </View>

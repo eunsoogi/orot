@@ -13,6 +13,7 @@ import { formatDateTime } from '../i18n';
 import { appointmentStartTime } from '../calendar/appointmentTime';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { resolveAppointmentReminderTarget } from './reminderPlan';
+import { selectNextAppointment } from '../routes/nextAppointment';
 
 /** A tap opens preparation for this visit, even when another visit is sooner.
  * Only reviewed local questions are read; opening a notification never starts inference.
@@ -41,6 +42,12 @@ export function AppointmentPreparationRoute({
     inputRevision: 0,
   });
   const retry = useCallback(() => setAttempt(value => value + 1), []);
+  useEffect(
+    () => () => {
+      runtime?.homePreparationTargets.delete(routeKey);
+    },
+    [runtime, routeKey],
+  );
   useEffect(() => {
     if (!focused) return;
     let active = true;
@@ -50,12 +57,21 @@ export function AppointmentPreparationRoute({
       if (!runtime || !loadSavedQuestions)
         throw new Error('Preparation unavailable.');
       const target = runtime.targets.get(routeKey);
-      const resolve = async () =>
-        resolveAppointmentReminderTarget(
+      const resolve = async () => {
+        const appointments = await runtime.list();
+        const homeId = runtime.homePreparationTargets.get(routeKey);
+        // Home accepts the displayed active visit until its known end. Notification taps retain their strict future/time-key validation.
+        if (homeId)
+          return selectNextAppointment(
+            appointments.filter(appointment => appointment.id === homeId),
+            Date.now(),
+          );
+        return resolveAppointmentReminderTarget(
           target,
-          await runtime.list(),
+          appointments,
           Date.now(),
         );
+      };
       const appointment = await resolve();
       if (!appointment) throw new Error('Stale appointment.');
       const saved = await loadSavedQuestions(appointment.id);

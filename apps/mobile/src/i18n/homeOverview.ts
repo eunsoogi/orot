@@ -1,8 +1,8 @@
 export const homeOverviewKo = {
   'home.ongoingSymptoms': '기록 중인 증상',
   'home.openSymptoms': '증상 일지 확인',
-  'home.newUser':
-    '첫 기록을 남겨 보세요. 진료 내용을 녹음하거나 지금 느끼는 증상을 기록할 수 있어요.',
+  'home.captureGuidance':
+    '다음 진료를 준비하거나 지금 느끼는 증상을 기록해 보세요. 새 상담은 녹음으로 남길 수 있어요.',
   'home.newRecording': '새 상담 녹음',
   'home.preparationQuestions': '진료 전 확인할 질문',
   'home.preparationPending':

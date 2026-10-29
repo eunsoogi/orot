@@ -29,7 +29,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertEqual(app.buttons.matching(identifier: "home-prepare-visit").count, 1)
         UITestConditions.scrollTo(preparation, in: app)
         preparation.tap()
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control.isSelected)
@@ -58,7 +58,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         let largeTextPreparation = app.buttons.matching(identifier: "home-prepare-visit").firstMatch
         UITestConditions.scrollTo(largeTextPreparation, in: app)
         largeTextPreparation.tap()
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         let recording = UITestConditions.element(app, "home-new-recording")

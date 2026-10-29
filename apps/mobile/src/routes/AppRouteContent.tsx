@@ -1,4 +1,5 @@
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
+import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
 import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
@@ -53,6 +54,14 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
+  const reminderRuntime = useAppointmentReminderRuntime();
+  function openHomePreparation() {
+    if (!nextAppointment || !reminderRuntime) return;
+    // Bind the saved preparation page to the displayed visit, not the generator's different Calendar-only query.
+    const route = actions.push('appointment-preparation');
+    if (route)
+      reminderRuntime.homePreparationTargets.set(route.key, nextAppointment.id);
+  }
   if (actions.route.name === 'home') {
     switch (activeTab) {
       case 'home':
@@ -64,7 +73,7 @@ export function AppRouteContent({
             recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
             onRetryRecordings={() => refreshRecordings()}
-            onPrepareVisit={openVisitQuestions}
+            onPrepareVisit={openHomePreparation}
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
             loadSymptoms={loadSymptoms}
