@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import {
   enterHomeGenerator,
@@ -44,6 +50,14 @@ test('provider and source detours retain A, while a new Home B entry and the AI 
   expect(inputB.props.value).toMatch(/^Home B:/);
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
+  const entryPage = screen.getByTestId('ai-features-screen');
+  expect(entryPage.type).toBe('RCTScrollView');
+  expect(
+    entryPage.queryAll(node => node.type === 'RCTScrollView'),
+  ).toHaveLength(0);
+  expect(
+    within(entryPage).getByTestId('ai-feature-visit-questions'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('ai-feature-visit-questions'));
   expect(await screen.findByTestId('next-visit-generate')).toBeEnabled();
   expect(screen.queryByTestId('next-visit-question-text-0')).toBeNull();

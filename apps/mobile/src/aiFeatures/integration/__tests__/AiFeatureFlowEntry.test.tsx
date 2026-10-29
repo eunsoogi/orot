@@ -40,6 +40,10 @@ test('exposes provider selection from the feature entry', async () => {
   );
 
   const page = screen.getByTestId('ai-feature-entry-page');
+  const embeddedEntry = within(page).getByTestId('ai-features-screen');
+  expect(
+    embeddedEntry.queryAll(node => node.type === 'RCTScrollView'),
+  ).toHaveLength(0);
   expect(within(page).getByTestId('ai-feature-select-provider')).toBeTruthy();
   expect(within(page).getByTestId('ai-feature-rag-conversation')).toBeTruthy();
   expect(screen.getAllByTestId('ai-feature-select-provider')).toHaveLength(1);
