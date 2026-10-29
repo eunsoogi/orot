@@ -13,6 +13,7 @@ export type LibraryLoadState = 'loading' | 'ready' | 'failed';
 export function useAppHomeData(
   loadAppointments: () => Promise<AppointmentRepository>,
   loadRecordings: () => Promise<readonly RecordingSourceRecord[]>,
+  homeActive = true,
 ) {
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
@@ -25,6 +26,9 @@ export function useAppHomeData(
   const [recordingState, setRecordingState] =
     useState<LibraryLoadState>('loading');
   const activeRef = useRef(false);
+  const appointmentRequest = useRef(0);
+  const recordingRequest = useRef(0);
+  const previousHomeActive = useRef(homeActive);
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
@@ -50,30 +54,34 @@ export function useAppHomeData(
   }, [appointments, now]);
 
   const refreshAppointments = useCallback(async () => {
+    const request = ++appointmentRequest.current;
     if (activeRef.current) setAppointmentState('loading');
     try {
       const repository = await loadAppointments();
-      if (!activeRef.current) return;
+      if (!activeRef.current || request !== appointmentRequest.current) return;
       const next = await repository.list();
-      if (!activeRef.current) return;
+      if (!activeRef.current || request !== appointmentRequest.current) return;
       setAppointmentRepository(repository);
       setAppointments(next);
       // Select the new snapshot against its receipt time, including visits that have already ended.
       setNow(Date.now());
       setAppointmentState('ready');
     } catch {
-      if (activeRef.current) setAppointmentState('failed');
+      if (activeRef.current && request === appointmentRequest.current)
+        setAppointmentState('failed');
     }
   }, [loadAppointments]);
   const refreshRecordings = useCallback(async () => {
+    const request = ++recordingRequest.current;
     if (activeRef.current) setRecordingState('loading');
     try {
       const next = await loadRecordings();
-      if (!activeRef.current) return;
+      if (!activeRef.current || request !== recordingRequest.current) return;
       setRecordings(next);
       setRecordingState('ready');
     } catch {
-      if (activeRef.current) setRecordingState('failed');
+      if (activeRef.current && request === recordingRequest.current)
+        setRecordingState('failed');
     }
   }, [loadRecordings]);
 
@@ -83,8 +91,26 @@ export function useAppHomeData(
     refreshRecordings().catch(() => undefined);
     return () => {
       activeRef.current = false;
+      appointmentRequest.current += 1;
+      recordingRequest.current += 1;
     };
   }, [refreshAppointments, refreshRecordings]);
+
+  useEffect(() => {
+    // Root-tab scenes can remain mounted. A return to Home must include recordings or visits saved elsewhere.
+    if (homeActive && !previousHomeActive.current) {
+      refreshAppointments().catch(() => undefined);
+      refreshRecordings().catch(() => undefined);
+    }
+    previousHomeActive.current = homeActive;
+    const subscription = AppState.addEventListener('change', state => {
+      if (homeActive && state === 'active') {
+        refreshAppointments().catch(() => undefined);
+        refreshRecordings().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, [homeActive, refreshAppointments, refreshRecordings]);
 
   const nextAppointment = useMemo(
     () => selectNextAppointment(appointments, now),

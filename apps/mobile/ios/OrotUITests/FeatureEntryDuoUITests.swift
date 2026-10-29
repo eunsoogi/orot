@@ -64,14 +64,13 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
               UITestConditions.exists(node(app, "navigation-right-rail")),
               UITestConditions.exists(rail), !rail.frame.isEmpty
         else {
-            throw XCTSkip("Duo content-lane geometry is unavailable; this run cannot prove expanded-panel placement.")
+            XCTFail("Duo content-lane geometry is unavailable; this run cannot prove entry placement.")
+            return
         }
 
         let screen = node(app, "ai-features-screen")
         let columns = node(app, "ai-feature-columns")
-        let primary = node(app, "ai-feature-columns-primary")
-        let secondary = node(app, "ai-feature-columns-secondary")
-        for element in [screen, columns, primary, secondary] {
+        for element in [screen, columns] {
             XCTAssertTrue(UITestConditions.exists(element), app.debugDescription)
             XCTAssertFalse(element.frame.isEmpty, element.debugDescription)
         }
@@ -81,37 +80,19 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         // A scene-owned single region is roughly half the Duo lane and fails this ratio check.
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
 
-        // Native divisions may leave host width unused, so panels need containment rather than host filling.
-        let minimumColumnWidth: CGFloat = 320
-        let columnGap: CGFloat = 24
-        let frameTolerance: CGFloat = 0.5
-        let horizontalGap = secondary.frame.minX - primary.frame.maxX
-        let panelsShareRow = primary.frame.minY < secondary.frame.maxY &&
-            secondary.frame.minY < primary.frame.maxY
-
-        for panel in [primary, secondary] {
-            XCTAssertGreaterThanOrEqual(panel.frame.minX, columns.frame.minX - frameTolerance, panel.debugDescription)
-            XCTAssertLessThanOrEqual(panel.frame.maxX, columns.frame.maxX + frameTolerance, panel.debugDescription)
-            XCTAssertGreaterThanOrEqual(panel.frame.minX, viewport.frame.minX - frameTolerance, panel.debugDescription)
-            XCTAssertLessThanOrEqual(panel.frame.maxX, viewport.frame.maxX + frameTolerance, panel.debugDescription)
-            XCTAssertFalse(panel.frame.intersects(rail.frame), panel.debugDescription)
-        }
-
-        if panelsShareRow, horizontalGap >= 0 {
-            XCTAssertGreaterThanOrEqual(primary.frame.width, minimumColumnWidth, primary.debugDescription)
-            XCTAssertGreaterThanOrEqual(secondary.frame.width, minimumColumnWidth, secondary.debugDescription)
-            XCTAssertGreaterThanOrEqual(horizontalGap, columnGap - 1, app.debugDescription)
-        } else {
-            XCTAssertLessThanOrEqual(abs(primary.frame.minX - secondary.frame.minX), 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(abs(primary.frame.width - secondary.frame.width), 1, app.debugDescription)
-            XCTAssertGreaterThanOrEqual(secondary.frame.minY - primary.frame.maxY, columnGap - 1, app.debugDescription)
-        }
-
+        // Normalize against the page while scrolling to measure equal real gaps at variable text heights.
+        var previousBottom: CGFloat?
         for id in ["visit-questions", "disease-hypotheses", "rag-conversation", "external-evidence"] {
             let action = node(app, "ai-feature-\(id)")
             XCTAssertTrue(UITestConditions.exists(action), app.debugDescription)
             FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen")
             XCTAssertTrue(action.isHittable, action.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            let relativeTop = action.frame.minY - columns.frame.minY
+            if let previousBottom {
+                XCTAssertEqual(relativeTop - previousBottom, 16, accuracy: 1, "Every neighboring entry uses the same point gap")
+            }
+            previousBottom = action.frame.maxY - columns.frame.minY
             XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.minX - 0.5)
             XCTAssertLessThanOrEqual(action.frame.maxX, viewport.frame.maxX + 0.5)
             XCTAssertFalse(action.frame.intersects(rail.frame), action.debugDescription)
