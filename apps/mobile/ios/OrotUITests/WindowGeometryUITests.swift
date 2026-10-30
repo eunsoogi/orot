@@ -21,13 +21,21 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
     @MainActor
     private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: Bool = false) throws {
         let app = XCUIApplication()
-        app.launchArguments = [
+        let inputObservation = ProcessInfo.processInfo.environment["OROT_TEST_ENCOUNTER_INPUT_OBSERVATION"] == "1"
+            ? EncounterInputObservation()
+            : nil
+        var launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
             "-OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE", "synthetic",
             "-OROT_TEST_UI_GEOMETRY", "YES",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
+        // Share one run ID across runner brackets and UIKit snapshots only for an explicit diagnostic run.
+        if let inputObservation {
+            launchArguments += ["-OROT_TEST_ENCOUNTER_INPUT_OBSERVATION", inputObservation.run.uuidString]
+        }
+        app.launchArguments = launchArguments
         app.launch()
         defer { app.terminate() }
 
@@ -60,7 +68,13 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
 
         let question = FormUITestConditions.multilineInput(app, identifier: "next-visit-question-text-0")
         let draft = "합성 초안 유지"
-        XCTAssertTrue(FormUITestConditions.replace(question, with: draft, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(FormUITestConditions.replace(
+            question,
+            with: draft,
+            in: app,
+            scrollID: "next-visit-questions-scroll",
+            observeInput: inputObservation?.record,
+        ))
 
         let source = UITestConditions.element(app, "next-visit-source-0-0")
         FormUITestConditions.reveal(

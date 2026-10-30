@@ -6,6 +6,10 @@
     @MainActor final class EncounterInputObservationWindow: UIWindow {
         let trace: EncounterInputTrace
         private var step = 0
+        private let observedInputIdentifiers: Set<String> = [
+            "encounter-text-candidate-0",
+            "next-visit-question-text-0",
+        ]
 
         init(windowScene: UIWindowScene, run: UUID) {
             trace = EncounterInputTrace(run: run)
@@ -53,12 +57,14 @@
             trace.append(phase, step: step, target: snapshot())
         }
 
-        /// The fixed synthetic editor selector is used only for matching and never serialized.
+        /// Only the fixed synthetic encounter and visit-question editor selectors match; neither is serialized.
         private func owns(_ view: UIView) -> Bool {
             var node: UIView? = view
             var matched = false
             while let current = node, current !== self {
-                if current.accessibilityIdentifier == "encounter-text-candidate-0" {
+                if let identifier = current.accessibilityIdentifier,
+                   observedInputIdentifiers.contains(identifier)
+                {
                     matched = true
                 }
                 node = current.superview

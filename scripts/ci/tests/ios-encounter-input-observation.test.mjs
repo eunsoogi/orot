@@ -120,6 +120,22 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
     assert.match(window, /textDidChangeNotification/);
     assert.match(window, /event\.type == \.presses/);
     assert.match(window, /inputs\.count == 1/);
+    assert.ok(window.includes('"encounter-text-candidate-0"'));
+    assert.ok(window.includes('"next-visit-question-text-0"'));
+    assert.match(window, /observedInputIdentifiers\.contains\(identifier\)/);
+    const questionJourney = readFileSync(
+      'apps/mobile/ios/OrotUITests/WindowGeometryUITests.swift',
+      'utf8',
+    );
+    assert.match(
+      questionJourney,
+      /ProcessInfo\.processInfo\.environment\["OROT_TEST_ENCOUNTER_INPUT_OBSERVATION"\] == "1"/,
+    );
+    assert.match(
+      questionJourney,
+      /launchArguments \+= \["-OROT_TEST_ENCOUNTER_INPUT_OBSERVATION", inputObservation\.run\.uuidString\]/,
+    );
+    assert.match(questionJourney, /observeInput: inputObservation\?\.record/);
     const delegate = readFileSync('apps/mobile/ios/OrotMobile/AppDelegate.swift', 'utf8');
     assert.match(
       delegate,
