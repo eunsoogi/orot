@@ -6,6 +6,8 @@ import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
 import type { AiFeatureLocalData } from '../src/aiFeatures/integration/localData';
+import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/taskContract';
+import { localEvidenceFingerprint } from '../src/agent/visitQuestions/evidence';
 import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
 
 const SOURCE_RECORD_ID = 'synthetic-evidence-source-duo-record';
@@ -43,6 +45,29 @@ export const evidenceSourceDuoFixtureRecords = {
 const sourceChunk: EvidenceChunk = chunkEvidenceSpan(
   evidenceSourceDuoFixtureRecords.excerpt,
 );
+
+/** Keeps the visit-question citation anchored to the exact persisted Duo fixture rows. */
+export const evidenceSourceDuoVisitQuestionCitation: VisitQuestionEvidenceItem =
+  {
+    sourceKind: 'personal_record',
+    sourceId: sourceChunk.metadata.sourceId,
+    sourceRevision: localEvidenceFingerprint([
+      {
+        sourceId: SOURCE_RECORD_ID,
+        revision: localEvidenceFingerprint(
+          evidenceSourceDuoFixtureRecords.source,
+        ),
+      },
+    ]),
+    evidenceId: sourceChunk.metadata.evidenceId,
+    evidenceRevision: localEvidenceFingerprint(
+      evidenceSourceDuoFixtureRecords.excerpt,
+    ),
+    locator: sourceChunk.metadata.evidenceLocator,
+    effectiveTime: sourceChunk.metadata.effectiveTime,
+    reviewState: 'unreviewed',
+    content: sourceChunk.text,
+  };
 
 /** Seeds only the reserved synthetic source and refuses to replace an unexpected existing row. */
 export async function seedEvidenceSourceDuoRecords(

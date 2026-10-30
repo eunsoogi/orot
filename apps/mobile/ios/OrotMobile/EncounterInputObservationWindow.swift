@@ -53,7 +53,7 @@
             trace.append(phase, step: step, target: snapshot())
         }
 
-        /// The fixed synthetic editor selector is used only for matching and never serialized.
+        /// The fixed synthetic encounter editor selector is used only for matching and never serialized.
         private func owns(_ view: UIView) -> Bool {
             var node: UIView? = view
             var matched = false
@@ -83,7 +83,8 @@
             let input = !truncated && inputs.count == 1 ? inputs.first : nil
             let range = input?.selectedRange
             return .init(matches: inputs.count, truncated: truncated, length: input?.text.utf16.count,
-                         location: range?.location, selectionLength: range?.length, focused: input?.isFirstResponder, keyWindow: isKeyWindow)
+                         location: range?.location, selectionLength: range?.length, focused: input?.isFirstResponder,
+                         keyWindow: isKeyWindow, inputIdentity: nil, windowID: nil)
         }
 
         /// Native uptime is receipt time. It must not be mistaken for JS occurrence or native prop application.

@@ -210,3 +210,21 @@ test('a Duo selection rejects Core-only cases when none of the selected cases be
     rmSync(rejected.directory, { recursive: true, force: true });
   }
 });
+
+// The allowlist must admit this existing keyboard case before the runner invokes Xcode.
+test('a keyboard navigation case is selectable on the dedicated Duo profile', () => {
+  const identifier =
+    'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt';
+  const accepted = fixture(0, 'duo', 'all', [identifier]);
+  try {
+    assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);
+    assert.deepEqual(
+      accepted.calls
+        .find((call) => call.name === 'xcodebuild')
+        .args.filter((argument) => argument.startsWith('-only-testing:')),
+      ['-only-testing:' + identifier],
+    );
+  } finally {
+    rmSync(accepted.directory, { recursive: true, force: true });
+  }
+});
