@@ -34,7 +34,13 @@ export function verifyCompilerEvidence(receipt, log, response) {
   const lines = log.split('\n');
   const headers = lines
     .map((line, index) => ({ line, index }))
-    .filter(({ line }) => line.startsWith('SwiftDriver') && /\bOrotMobile\b/.test(line));
+    // Job discovery reports status rather than a compiler invocation; classify every other SwiftDriver record.
+    .filter(
+      ({ line }) =>
+        line.startsWith('SwiftDriver') &&
+        !line.startsWith('SwiftDriverJobDiscovery ') &&
+        /\bOrotMobile\b/.test(line),
+    );
   const success = lines.findIndex((line) => line.includes('** BUILD SUCCEEDED **'));
   if (success < 0 || headers.some(({ index }) => index >= success))
     throw new Error('App compiler records are not from the successful build');

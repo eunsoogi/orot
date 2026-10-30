@@ -162,3 +162,9 @@ test('rejects conflicting or unsupported compiler records and unexecuted bundlin
   ])
     assert.throws(() => verify({ ...receipt, logSha: digest(altered) }, settings, altered));
 });
+
+test('accepts ordinary Xcode SwiftDriver job discovery records', () => {
+  const discovery = `SwiftDriverJobDiscovery normal arm64 Compiling bridging header ${target}`;
+  const observed = log.replace('** BUILD SUCCEEDED **', discovery + '\n** BUILD SUCCEEDED **');
+  assert.doesNotThrow(() => verify({ ...receipt, logSha: digest(observed) }, settings, observed));
+});
