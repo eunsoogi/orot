@@ -53,7 +53,8 @@ extension AppointmentsUITests {
         recordLabelOnlyQuery()
 
         XCTAssertEqual(homeClinicMatchCount, 1, app.debugDescription)
-        guard let homeClinic, let homeClinicLabel else { return }
+        // The later Home assertions need one identified clinic element and its label.
+        guard homeClinic != nil, let homeClinicLabel else { return }
         XCTAssertEqual(homeClinicLabel, initialClinic, app.debugDescription)
         XCTAssertTrue(homeClinicExists && homeClinicIsHittable, app.debugDescription)
         app.terminate()
