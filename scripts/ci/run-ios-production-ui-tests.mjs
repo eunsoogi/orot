@@ -44,6 +44,7 @@ const plist = (path, key) =>
 const sha = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const appId = 'com.orot.mobile';
 const installedApp = () => command('xcrun', ['simctl', 'get_app_container', udid, appId, 'app']);
+const dataContainer = () => command('xcrun', ['simctl', 'get_app_container', udid, appId, 'data']);
 const metadata = (path) => ({
   id: plist(path, 'CFBundleIdentifier'),
   executable: plist(path, 'CFBundleExecutable'),
@@ -101,6 +102,8 @@ try {
         bundleId: bundleInfo.id,
         bundlePath: '__TESTHOST__/PlugIns/OrotUITests.xctest',
         appId,
+        productionAppPath: app,
+        runnerPath: runner,
         binaryHash: product.binarySha,
         installedHash: installedProduct.binarySha,
         jsBundleHash: product.jsBundleSha,
@@ -134,8 +137,21 @@ try {
         input,
         product,
         sourceSha: evidence.sourceSha,
+        dataContainer: dataContainer(),
         bundleHash: sha(join(bundle, bundleInfo.executable)),
         runnerHash: sha(join(runner, runnerInfo.executable)),
+        verifySource() {
+          const current = appIdentity(app);
+          if (
+            realpathSync(appPath) !== app ||
+            realpathSync(runnerPath) !== runner ||
+            current.binarySha !== product.binarySha ||
+            current.jsBundleSha !== product.jsBundleSha ||
+            sha(join(runner, runnerInfo.executable)) !== this.runnerHash ||
+            sha(join(bundle, bundleInfo.executable)) !== this.bundleHash
+          )
+            throw new Error('Validated source products changed before test execution');
+        },
       };
     },
     preflight: cancellationPreflight,
@@ -171,6 +187,28 @@ try {
         directory,
         installedRunner,
         installedApp: installedApp(),
+        resolveInstalled: () => {
+          const appPath = installedApp();
+          const runnerPath = command('xcrun', [
+            'simctl',
+            'get_app_container',
+            udid,
+            context.runnerInfo.id,
+            'app',
+          ]);
+          const current = appIdentity(appPath);
+          const bundle = join(runnerPath, 'PlugIns', 'OrotUITests.xctest');
+          if (
+            current.binarySha !== context.product.binarySha ||
+            current.jsBundleSha !== context.product.jsBundleSha ||
+            metadata(runnerPath).id !== context.runnerInfo.id ||
+            metadata(bundle).id !== context.bundleInfo.id ||
+            sha(join(runnerPath, context.runnerInfo.executable)) !== context.runnerHash ||
+            sha(join(bundle, context.bundleInfo.executable)) !== context.bundleHash
+          )
+            throw new Error('Reinstalled products differ from validated products');
+          return { appPath, runnerPath };
+        },
         cancellationProbe,
       });
     },
@@ -182,6 +220,14 @@ try {
       )
         throw new Error('Production app changed during the run');
       console.log(JSON.stringify({ stage: 'production_product_unchanged', ...installed }));
+      // A container path match is an observation, not proof that user data survived.
+      console.log(
+        JSON.stringify({
+          stage: 'production_data_container',
+          samePath: dataContainer() === context.dataContainer,
+          dataPreservation: 'unverified',
+        }),
+      );
     },
   });
   console.log(JSON.stringify({ stage: 'harness_finished', outcome }));

@@ -21,21 +21,27 @@ const input = {
   configuration: 'Release',
   entry: 'index.js',
   orotTests: false,
+  productionAppPath: '/verified/Orot.app',
+  runnerPath: '/verified/OrotUITests-Runner.app',
   testingEnvironment: {},
 };
 
-test('destination contract selects one UI case and never installs a target app', () => {
+test('Simulator contract selects only the verified production app and runner products', () => {
   validateProductionInputs(input);
   const run = productionTestRun(input);
-  assert.equal(run.OrotUITests.UseDestinationArtifacts, true);
+  assert.equal(run.OrotUITests.TestHostPath, input.runnerPath);
+  assert.equal(run.OrotUITests.TestBundlePath, input.bundlePath);
+  assert.equal(run.OrotUITests.UITargetAppPath, input.productionAppPath);
+  assert.deepEqual(run.OrotUITests.DependentProductPaths, [
+    input.productionAppPath,
+    input.runnerPath,
+    `${input.runnerPath}/PlugIns/OrotUITests.xctest`,
+  ]);
   assert.equal(run.OrotUITests.TestHostBundleIdentifier, input.runnerId);
-  assert.equal(run.OrotUITests.TestBundleDestinationRelativePath, input.bundlePath);
-  assert.equal(run.OrotUITests.UITargetAppBundleIdentifier, input.appId);
   for (const field of [
-    'TestHostPath',
-    'TestBundlePath',
-    'UITargetAppPath',
-    'DependentProductPaths',
+    'UseDestinationArtifacts',
+    'TestBundleDestinationRelativePath',
+    'UITargetAppBundleIdentifier',
     'CommandLineArguments',
   ])
     assert.equal(field in run.OrotUITests, false);

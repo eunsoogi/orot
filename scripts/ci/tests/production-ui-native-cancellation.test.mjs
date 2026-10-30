@@ -6,8 +6,14 @@ test('signals only the owned Xcode group after matching runner and app readiness
   const sent = [];
   const live = [
     { pid: 10, group: 10, identity: 'xcode', state: 'S', command: '/xcodebuild' },
-    { pid: 20, group: 20, identity: 'runner', state: 'S', command: '/runner/OrotUITests-Runner' },
-    { pid: 30, group: 30, identity: 'app', state: 'S', command: '/app/Orot' },
+    {
+      pid: 20,
+      group: 20,
+      identity: 'runner',
+      state: 'S',
+      command: '/new-runner/OrotUITests-Runner',
+    },
+    { pid: 30, group: 30, identity: 'app', state: 'S', command: '/new-app/Orot' },
   ];
   let callbacks;
   let marked = false;
@@ -18,6 +24,7 @@ test('signals only the owned Xcode group after matching runner and app readiness
       udid: 'owned',
       runnerPath: '/runner',
       appPath: '/app',
+      resolveInstalled: () => ({ runnerPath: '/new-runner', appPath: '/new-app' }),
       prepare: () => ['test'],
     },
     {
@@ -89,6 +96,40 @@ test('a readiness frame with an unrelated runner cannot trigger SIGINT', async (
         },
         snapshot: () => rows,
         matchesExecutable: () => false,
+      },
+    ),
+  );
+  assert.deepEqual(sent, ['SIGTERM']);
+});
+
+test('reinstalled product verification failure prevents cancellation readiness', async () => {
+  let callbacks;
+  const sent = [];
+  await assert.rejects(
+    runProductionCancellationProbe(
+      {
+        runnerPath: '/runner',
+        appPath: '/app',
+        prepare: () => [],
+        resolveInstalled: () => {
+          throw new Error('product changed');
+        },
+      },
+      {
+        startProbe: async (value) => {
+          callbacks = value;
+          return { port: 123, token: 'token', markCancellationRequested() {}, async close() {} };
+        },
+        runChild: async (_command, _args, { onSpawn }) => {
+          onSpawn({ pid: 10, cancel: (signal) => sent.push(signal) });
+          try {
+            callbacks.onReady({ runnerPid: 20 });
+          } catch (error) {
+            callbacks.onFailure(error);
+          }
+          return { code: null, signal: 'SIGTERM', cancellation: 'SIGTERM' };
+        },
+        snapshot: () => [{ pid: 10, group: 10, identity: 'xcode', state: 'S' }],
       },
     ),
   );

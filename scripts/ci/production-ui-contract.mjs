@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { isAbsolute, join } from 'node:path';
 
 /** Production verification is an explicit route and is never part of fixture defaults. */
 export const productionConversationTest =
@@ -42,7 +43,7 @@ export function productionTestingEnvironment(environment, testRoot) {
   );
 }
 
-/** Construct only the destination-backed UI target; no fixture product path is retained. */
+/** Bind Simulator installation to validated production and runner paths, never fixture products. */
 export function productionTestRun(input, probe) {
   validateProductionInputs(input);
   if (
@@ -64,10 +65,15 @@ export function productionTestRun(input, probe) {
       BlueprintName: 'OrotUITests',
       IsUITestBundle: true,
       IsXCTRunnerHostedTestBundle: true,
-      UseDestinationArtifacts: true,
+      TestHostPath: input.runnerPath,
+      TestBundlePath: input.bundlePath,
+      UITargetAppPath: input.productionAppPath,
+      DependentProductPaths: [
+        input.productionAppPath,
+        input.runnerPath,
+        join(input.runnerPath, 'PlugIns/OrotUITests.xctest'),
+      ],
       TestHostBundleIdentifier: input.runnerId,
-      TestBundleDestinationRelativePath: input.bundlePath,
-      UITargetAppBundleIdentifier: input.appId,
       TestingEnvironmentVariables: testingEnvironment,
       OnlyTestIdentifiers: [
         (probe ? productionCancellationTest : productionConversationTest).slice(
@@ -82,6 +88,8 @@ export function productionTestRun(input, probe) {
 export function validateProductionInputs(input) {
   if (
     !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(input.udid ?? '') ||
+    !isAbsolute(input.productionAppPath ?? '') ||
+    !isAbsolute(input.runnerPath ?? '') ||
     input.appId !== 'com.orot.mobile' ||
     !/^com\.orot\.mobile\.[A-Za-z0-9.-]+$/.test(input.bundleId ?? '') ||
     input.runnerId !== input.bundleId + '.xctrunner' ||

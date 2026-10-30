@@ -14,7 +14,7 @@ function executable(row, path) {
 
 /** Cancel only after an authenticated XCTest readiness frame and preserve pre-close process evidence. */
 export async function runProductionCancellationProbe(
-  { runnerPath, appPath, prepare },
+  { runnerPath, appPath, resolveInstalled = () => ({ runnerPath, appPath }), prepare },
   {
     startProbe = startProductionCancellationProbe,
     runChild = runOwned,
@@ -30,12 +30,15 @@ export async function runProductionCancellationProbe(
     onReady({ runnerPid }) {
       if (!owned) throw new Error('Xcode process ownership is unavailable');
       const rows = snapshot();
+      // Xcode may reinstall products and assign new Simulator container paths.
+      const installed = resolveInstalled();
       const xcode = rows.find((row) => row.pid === owned.pid && row.group === owned.pid);
       const runner = rows.find(
         (row) =>
-          row.pid === runnerPid && matchesExecutable(row, join(runnerPath, 'OrotUITests-Runner')),
+          row.pid === runnerPid &&
+          matchesExecutable(row, join(installed.runnerPath, 'OrotUITests-Runner')),
       );
-      const apps = rows.filter((row) => matchesExecutable(row, join(appPath, 'Orot')));
+      const apps = rows.filter((row) => matchesExecutable(row, join(installed.appPath, 'Orot')));
       if (!xcode || xcode.identity !== xcodeIdentity || !runner || apps.length !== 1)
         throw new Error('Owned Xcode, runner or app identity is unavailable');
       if ([xcode, runner, apps[0]].some((row) => row.state.startsWith('Z')))

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import {
   productionCancellationTest,
   productionConversationTest,
@@ -18,12 +19,15 @@ export async function runProductionTest({
   directory,
   installedRunner,
   installedApp,
+  resolveInstalled,
   cancellationProbe,
 }) {
   const testRun = join(directory, 'production.xctestrun');
   const selected = cancellationProbe ? productionCancellationTest : productionConversationTest;
   const prepare = (probe) => {
-    writeFileSync(testRun, JSON.stringify(productionTestRun(context.input, probe)));
+    context.verifySource();
+    const expected = productionTestRun(context.input, probe);
+    writeFileSync(testRun, JSON.stringify(expected));
     execFileSync('plutil', ['-convert', 'xml1', testRun], { timeout: 30000 });
     const configured = JSON.parse(
       execFileSync('plutil', ['-convert', 'json', '-o', '-', testRun], {
@@ -36,7 +40,17 @@ export async function runProductionTest({
       !Array.isArray(identifiers) ||
       identifiers.length !== 1 ||
       identifiers[0] !== selected.slice('OrotUITests/'.length) ||
-      configured.OrotUITests?.UseDestinationArtifacts !== true
+      !isDeepStrictEqual(configured, expected) ||
+      configured.OrotUITests?.UITargetAppPath !== context.input.productionAppPath ||
+      configured.OrotUITests?.TestHostPath !== context.input.runnerPath ||
+      configured.OrotUITests?.TestBundlePath !== context.input.bundlePath ||
+      JSON.stringify(configured.OrotUITests?.DependentProductPaths) !==
+        JSON.stringify([
+          context.input.productionAppPath,
+          context.input.runnerPath,
+          join(context.input.runnerPath, 'PlugIns/OrotUITests.xctest'),
+        ]) ||
+      'UseDestinationArtifacts' in configured.OrotUITests
     )
       throw new Error('Generated production test selection is not exact');
     return [
@@ -69,6 +83,7 @@ export async function runProductionTest({
         udid,
         runnerPath: installedRunner,
         appPath: installedApp,
+        resolveInstalled,
         prepare,
       });
     const result = await runOwned('xcodebuild', prepare());
