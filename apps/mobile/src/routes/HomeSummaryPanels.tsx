@@ -63,7 +63,11 @@ export function NextVisitPanel({
           <Text style={styles.appointmentTime}>
             {appointmentTimeLabel(nextAppointment)}
           </Text>
-          <Text style={styles.appointmentClinic}>
+          {/* Keep the displayed clinic independently addressable in native accessibility queries. */}
+          <Text
+            style={styles.appointmentClinic}
+            testID="home-next-appointment-clinic"
+          >
             {nextAppointment.clinicLabel ??
               nextAppointment.calendarEventSnapshot?.title ??
               t('appointments.fallbackTitle')}

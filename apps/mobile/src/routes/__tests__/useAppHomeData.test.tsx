@@ -59,6 +59,25 @@ test('never shows an already-ended appointment received between clock ticks', as
   expect(result.current.nextAppointment).toBeNull();
 });
 
+test('uses the next-visit rule for cancelled, rescheduled, and later Home entries', async () => {
+  const { result, store } = await setup();
+  const at = (id: string, offset: number, status: Appointment['status']) => ({
+    ...appointment,
+    id,
+    effectiveAt: new Date(origin + offset).toISOString(),
+    endsAt: new Date(origin + offset + 60_000).toISOString(),
+    status,
+  });
+  const cancelled = at('cancelled', 60_000, 'cancelled');
+  const rescheduled = at('rescheduled', 120_000, 'rescheduled');
+  const later = at('later', 180_000, 'scheduled');
+  store.repository.list.mockResolvedValue([cancelled, rescheduled, later]);
+
+  await act(async () => result.current.refreshAppointments());
+
+  expect(result.current.nextAppointment).toEqual(rescheduled);
+});
+
 test('reads actual newly saved sources and visits after returning to the Home tab', async () => {
   const store = createAppointmentStore([]);
   const loadAppointments = async () => store.repository;
