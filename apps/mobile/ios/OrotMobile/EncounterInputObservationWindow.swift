@@ -6,10 +6,6 @@
     @MainActor final class EncounterInputObservationWindow: UIWindow {
         let trace: EncounterInputTrace
         private var step = 0
-        private let observedInputIdentifiers: Set<String> = [
-            "encounter-text-candidate-0",
-            "next-visit-question-text-0",
-        ]
 
         init(windowScene: UIWindowScene, run: UUID) {
             trace = EncounterInputTrace(run: run)
@@ -57,14 +53,12 @@
             trace.append(phase, step: step, target: snapshot())
         }
 
-        /// Only the fixed synthetic encounter and visit-question editor selectors match; neither is serialized.
+        /// The fixed synthetic encounter editor selector is used only for matching and never serialized.
         private func owns(_ view: UIView) -> Bool {
             var node: UIView? = view
             var matched = false
             while let current = node, current !== self {
-                if let identifier = current.accessibilityIdentifier,
-                   observedInputIdentifiers.contains(identifier)
-                {
+                if current.accessibilityIdentifier == "encounter-text-candidate-0" {
                     matched = true
                 }
                 node = current.superview
@@ -89,7 +83,8 @@
             let input = !truncated && inputs.count == 1 ? inputs.first : nil
             let range = input?.selectedRange
             return .init(matches: inputs.count, truncated: truncated, length: input?.text.utf16.count,
-                         location: range?.location, selectionLength: range?.length, focused: input?.isFirstResponder, keyWindow: isKeyWindow)
+                         location: range?.location, selectionLength: range?.length, focused: input?.isFirstResponder,
+                         keyWindow: isKeyWindow, inputIdentity: nil, windowID: nil)
         }
 
         /// Native uptime is receipt time. It must not be mistaken for JS occurrence or native prop application.

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The existing HealthReview gate takes precedence when both valid flags are supplied.
+/// SceneDelegate gives HealthReview and visit-question observation windows precedence.
 /// Invalid or missing Encounter flags never enable the bridge, notifications or window subclass.
 enum EncounterInputGate {
     static func session(defaults: UserDefaults = .standard) -> UUID? {
@@ -9,7 +9,7 @@ enum EncounterInputGate {
     }
 }
 
-/// Only value types with fixed vocabulary escape UIKit. Lengths and ranges use UTF-16 code units.
+/// Only scalar state and run/window UUIDs escape UIKit; lengths and ranges use UTF-16 code units.
 @MainActor final class EncounterInputTrace {
     enum Phase: String, Codable { case beforePress, afterPress, textChanged, beganEditing, endedEditing, reactReceipt }
     enum ReactEvent: String, Codable { case changeText, controlledCommit }
@@ -21,6 +21,9 @@ enum EncounterInputGate {
         let selectionLength: Int?
         let focused: Bool?
         let keyWindow: Bool
+        /// These identities contain no UI object or text and are set only by the visit-question observer.
+        let inputIdentity: Int?
+        let windowID: UUID?
     }
 
     struct Record: Codable {

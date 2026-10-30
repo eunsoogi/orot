@@ -21,7 +21,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
     @MainActor
     private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: Bool = false) throws {
         let app = XCUIApplication()
-        let inputObservation = ProcessInfo.processInfo.environment["OROT_TEST_ENCOUNTER_INPUT_OBSERVATION"] == "1"
+        let inputObservation = ProcessInfo.processInfo.environment["OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION"] == "1"
             ? EncounterInputObservation()
             : nil
         var launchArguments = [
@@ -33,7 +33,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         ]
         // Share one run ID across runner brackets and UIKit snapshots only for an explicit diagnostic run.
         if let inputObservation {
-            launchArguments += ["-OROT_TEST_ENCOUNTER_INPUT_OBSERVATION", inputObservation.run.uuidString]
+            launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", inputObservation.run.uuidString]
         }
         app.launchArguments = launchArguments
         app.launch()
