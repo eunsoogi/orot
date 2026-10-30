@@ -11,6 +11,7 @@ import {
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
+  productionConversationTest,
   productionTestRun,
   productionTestingEnvironment,
   verifyProductionTestSymbols,
@@ -180,7 +181,7 @@ try {
           binarySha: context.product.binarySha,
           jsBundleSha: context.product.jsBundleSha,
           runnerId: context.runnerInfo.id,
-          test: 'OrotUITests/ProductionRagConversationUITests/testProductionConversation',
+          test: productionConversationTest,
         }),
       );
       const started = new Date();
@@ -196,7 +197,7 @@ try {
           resolve(resultPath),
           '-parallel-testing-enabled',
           'NO',
-          '-only-testing:OrotUITests/ProductionRagConversationUITests/testProductionConversation',
+          '-only-testing:' + productionConversationTest,
         ]);
       } finally {
         console.log(

@@ -1,5 +1,9 @@
 import { isDeepStrictEqual } from 'node:util';
 
+/** Production verification is an explicit route and is never part of fixture defaults. */
+export const productionConversationTest =
+  'OrotUITests/ProductionRagConversationUITests/testProductionConversation';
+
 /** Fail before installing a runner that cannot expose the selected XCTest case. */
 export function verifyProductionTestSymbols(symbols, strings) {
   if (
@@ -48,7 +52,7 @@ export function productionTestRun(input) {
       TestBundleDestinationRelativePath: input.bundlePath,
       UITargetAppBundleIdentifier: input.appId,
       TestingEnvironmentVariables: input.testingEnvironment,
-      OnlyTestIdentifiers: ['ProductionRagConversationUITests/testProductionConversation'],
+      OnlyTestIdentifiers: [productionConversationTest.slice('OrotUITests/'.length)],
     },
   };
 }
