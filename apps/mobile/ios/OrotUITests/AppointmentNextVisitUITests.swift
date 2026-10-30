@@ -34,36 +34,28 @@ extension AppointmentsUITests {
         XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
         NavigationUITestConditions.route(app, markers: ["home-next-appointment"])
-        let homeClinic = app.staticTexts[initialClinic]
-        // Keep one short-circuiting observation before collecting any later accessibility diagnostics.
-        let homeClinicExists = homeClinic.exists
-        let homeClinicIsHittable = homeClinicExists && homeClinic.isHittable
-        var homeClinicDiagnostics = ""
-        if !homeClinicExists || !homeClinicIsHittable {
-            let sameLabelTexts = app.staticTexts.matching(
-                NSPredicate(format: "label == %@", initialClinic),
-            )
-            let sameLabelCount = sameLabelTexts.count
-            let sampleCount = min(sameLabelCount, 3)
-            let samples = (0 ..< sampleCount).map { index in
-                let candidate = sameLabelTexts.element(boundBy: index)
-                let candidateExists = candidate.exists
-                let candidateIsHittable = candidateExists && candidate.isHittable
-                return "candidate[\(index)] id=\(candidate.identifier) label=\(candidate.label) frame=\(candidate.frame.debugDescription) exists=\(candidateExists) isHittable=\(candidateIsHittable)"
-            }
-            let hittabilityObservation = homeClinicExists ? String(homeClinicIsHittable) : "not queried because exists was false"
-            let samplesObservation = samples.isEmpty ? "none" : samples.joined(separator: "; ")
-            homeClinicDiagnostics = """
-            Original Home clinic assertion: exists=\(homeClinicExists), isHittable=\(hittabilityObservation).
-            Same-label StaticText count=\(sameLabelCount); sampled \(samples.count) of \(sameLabelCount): \(samplesObservation).
-            Follow-up accessibility reads and the screenshot are sequential observations after the original check. They add unmeasured time, synchronous accessibility IPC may block XCTest, and they do not establish the original check's state.
-            """
-            let attachment = XCTAttachment(screenshot: app.screenshot())
-            attachment.name = "home-next-appointment-clinic-assertion"
-            attachment.lifetime = .keepAlways
-            add(attachment)
+        let homeClinicMatches = app.staticTexts.matching(identifier: "home-next-appointment-clinic")
+        let homeClinicMatchCount = homeClinicMatches.count
+        let homeClinic = homeClinicMatchCount == 1 ? homeClinicMatches.element(boundBy: 0) : nil
+        let homeClinicExists = homeClinic?.exists ?? false
+        let homeClinicIsHittable = homeClinicExists && (homeClinic?.isHittable ?? false)
+        let homeClinicLabel = homeClinic?.label
+
+        // Capture both Home queries before assertions because this journey stops at its first failure.
+        let recordLabelOnlyQuery = {
+            let labelOnlyClinic = app.staticTexts[initialClinic]
+            let labelOnlyExists = labelOnlyClinic.exists
+            let labelOnlyIsHittable = labelOnlyExists && labelOnlyClinic.isHittable
+            XCTContext.runActivity(
+                named: "Prior Home clinic label query, diagnostic only: exists=\(labelOnlyExists), isHittable=\(labelOnlyIsHittable)",
+            ) { _ in }
         }
-        XCTAssertTrue(homeClinicExists && homeClinicIsHittable, "\(homeClinicDiagnostics)\n\(app.debugDescription)")
+        recordLabelOnlyQuery()
+
+        XCTAssertEqual(homeClinicMatchCount, 1, app.debugDescription)
+        guard let homeClinic, let homeClinicLabel else { return }
+        XCTAssertEqual(homeClinicLabel, initialClinic, app.debugDescription)
+        XCTAssertTrue(homeClinicExists && homeClinicIsHittable, app.debugDescription)
         app.terminate()
         try launch(app)
         visible(app, initialClinic)
