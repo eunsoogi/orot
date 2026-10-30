@@ -1,3 +1,4 @@
+import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
 import { canGenerateHomeVisit } from './HomeVisitQuestionsRoute';
@@ -55,6 +56,7 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
+  const active = useIsFocused();
   const reminderRuntime = useAppointmentReminderRuntime();
   function openHomePreparation() {
     if (!nextAppointment || !reminderRuntime) return;
@@ -190,6 +192,7 @@ export function AppRouteContent({
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen
+          active={active}
           repository={appointmentRepository}
           onAppointmentsChanged={() => refreshAppointments()}
         />

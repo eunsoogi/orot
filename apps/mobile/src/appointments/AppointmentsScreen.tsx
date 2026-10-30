@@ -1,6 +1,6 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { useMemo } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { AppState, ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -11,28 +11,74 @@ import AppointmentCard from './AppointmentCard';
 import AppointmentForm from './AppointmentForm';
 import styles from './appointmentsStyles';
 import { useAppointmentsScreenState } from './useAppointmentsScreenState';
+import {
+  appointmentDisplayUntil,
+  isEligibleNextVisit,
+  selectNextAppointment,
+} from '../routes/nextAppointment';
 
 interface AppointmentsScreenProps {
+  active?: boolean;
   repository: AppointmentRepository;
   onAppointmentsChanged?: () => void;
 }
 
-/** Shows selectable appointments beside the selected record and its existing actions. */
+/** Separates next-visit eligibility from detail selection while retaining each record's actions. */
 export default function AppointmentsScreen({
+  active = true,
   repository,
   onAppointmentsChanged,
 }: AppointmentsScreenProps) {
   const navigationInset = useNavigationContentInset();
   const state = useAppointmentsScreenState({
+    active,
     repository,
     onAppointmentsChanged,
   });
+  const reloadAppointments = state.reload;
+  const [now, setNow] = useState(Date.now);
+  // Retained routes need a fresh eligibility snapshot when a visit reaches its exclusive end.
+  useEffect(() => {
+    if (active) setNow(Date.now());
+  }, [active, state.appointments]);
+  useEffect(() => {
+    if (!active) return;
+    const nextBoundary = Math.min(
+      ...state.appointments
+        .filter(appointment => isEligibleNextVisit(appointment, now))
+        .map(appointmentDisplayUntil),
+    );
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.max(1, Math.min(60_000, nextBoundary - now)),
+    );
+    const subscription = AppState.addEventListener('change', appState => {
+      if (appState === 'active') {
+        setNow(Date.now());
+        reloadAppointments().catch(() => undefined);
+      }
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [active, now, state.appointments, reloadAppointments]);
   const selectedAppointment = useMemo(
     () =>
       state.appointments.find(
         appointment => appointment.id === state.selectedAppointmentId,
       ) ?? null,
     [state.appointments, state.selectedAppointmentId],
+  );
+  const nextAppointment = useMemo(
+    () => selectNextAppointment(state.appointments, now),
+    [state.appointments, now],
+  );
+  const upcomingAppointments = state.appointments.filter(appointment =>
+    isEligibleNextVisit(appointment, now),
+  );
+  const historicalAppointments = state.appointments.filter(
+    appointment => !isEligibleNextVisit(appointment, now),
   );
 
   // The selected ID belongs to this screen so measured panel changes do not reset selection.
@@ -88,14 +134,50 @@ export default function AppointmentsScreen({
         <Text testID="appointments-empty">{t('appointments.empty')}</Text>
       ) : (
         <View style={styles.list} testID="appointments-list">
-          {state.appointments.map(appointment => (
-            <AppointmentListItem
-              key={appointment.id}
-              appointment={appointment}
-              selected={appointment.id === state.selectedAppointmentId}
-              onSelect={() => state.setSelectedAppointmentId(appointment.id)}
-            />
-          ))}
+          {upcomingAppointments.length > 0 ? (
+            <View
+              style={styles.listSection}
+              testID="appointments-section-upcoming"
+            >
+              <Text accessibilityRole="header" style={styles.listSectionTitle}>
+                {t('appointments.section.upcoming')}
+              </Text>
+              {upcomingAppointments.map(appointment => (
+                <AppointmentListItem
+                  key={appointment.id}
+                  appointment={appointment}
+                  history={false}
+                  nextVisit={appointment.id === nextAppointment?.id}
+                  selected={appointment.id === state.selectedAppointmentId}
+                  onSelect={() =>
+                    state.setSelectedAppointmentId(appointment.id)
+                  }
+                />
+              ))}
+            </View>
+          ) : null}
+          {historicalAppointments.length > 0 ? (
+            <View
+              style={styles.listSection}
+              testID="appointments-section-history"
+            >
+              <Text accessibilityRole="header" style={styles.listSectionTitle}>
+                {t('appointments.section.history')}
+              </Text>
+              {historicalAppointments.map(appointment => (
+                <AppointmentListItem
+                  key={appointment.id}
+                  appointment={appointment}
+                  history
+                  nextVisit={false}
+                  selected={appointment.id === state.selectedAppointmentId}
+                  onSelect={() =>
+                    state.setSelectedAppointmentId(appointment.id)
+                  }
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       )}
       <Button
