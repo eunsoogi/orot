@@ -92,8 +92,8 @@ final class EncounterInputObservation {
     }
 }
 
-// Keep the scalar model host-compilable without XCTest; only the UI-test target adds attachments.
-#if canImport(XCTest)
+// Keep UI accessibility and attachment APIs out of host harnesses; only test-enabled iOS builds expose them.
+#if OROT_TESTS && os(iOS) && canImport(XCTest)
     import XCTest
 
     @MainActor extension EncounterInputObservation {
