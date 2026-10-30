@@ -70,10 +70,12 @@ pnpm ios:build
 
 이 검사는 별도로 선택하는 `ProductionRagConversationUITests/testProductionConversation` 한 사례입니다. 일반 core와 Duo 실행 목록에는 포함하지 않습니다. 먼저 테스트 제품을 별도 DerivedData에 `node scripts/ci/build-ios-tests.mjs core <test-derived-data>`로 빌드하고, 운영 Release 앱은 별도 위치에서 빌드해 사용자가 소유한 Simulator에 설치합니다. 테스트 제품의 `Orot.app`은 운영 앱과 같은 식별자를 가질 수 있으므로 설치하지 마세요.
 
-운영 제품 소유자는 같은 빌드의 깨끗한 source SHA, 실행한 Xcode 인자, `ENTRY_FILE`, 성공한 빌드 로그, `OrotMobile` 대상의 Release build settings JSON과 각 파일의 SHA-256, 운영 바이너리와 `main.jsbundle`의 SHA-256을 보존합니다. receipt JSON은 `sourceSha`, `sourceClean`, `binarySha`, `jsBundleSha`, `logSha`, `settingsSha`, `argv`, `entryFile`을 포함합니다. `entryFile`은 명시되지 않았다면 `null`, 기본 entry라면 `index.js`입니다. 빌드 기록의 작성자와 source 연결은 실행자가 원본에서 확인해야 합니다. 해시와 필드 일치만으로 작성자나 빌드 출처가 인증되지는 않습니다.
+운영 제품 소유자는 같은 빌드의 깨끗한 source SHA, 실행한 Xcode 인자, `ENTRY_FILE`, 성공한 빌드 로그, `OrotMobile` 대상의 Release build settings JSON과 각 파일의 SHA-256, 운영 바이너리와 `main.jsbundle`의 SHA-256을 보존합니다. 격리된 빌드가 실행 중일 때 로그의 `Orot.SwiftFileList` 원본 경로와 내용을 캡처하고, 해당 컴파일 기록 전후의 해시와 캡처 구간 시각을 보존합니다. 파일 목록은 절대 Swift 소스 경로만 포함해야 하며 중첩 response나 옵션은 허용하지 않습니다. 사후에 발견한 파일을 그 빌드에서 캡처했다고 간주하지 않습니다. 전후 해시 일치와 생산자가 소유한 빌드 구간은 컴파일러가 읽은 정확한 순간의 원자적 증명이나 완전한 빌드 격리 증명이 아닙니다.
+
+receipt JSON은 `sourceSha`, `sourceClean`, `binarySha`, `jsBundleSha`, `logSha`, `settingsSha`, `argv`, `entryFile`, `swiftResponsePath`, `swiftResponseSha`, `swiftResponseBeforeSha`, `swiftResponseAfterSha`, `captureStartedAt`, `captureEndedAt`, `responseCapturedDuringBuild`를 포함합니다. `responseCapturedDuringBuild`는 생산자가 보존한 빌드 실행 중 캡처 구간과 전후 해시를 가리키며, 컴파일러가 읽은 순간을 직접 관측했다는 뜻이 아닙니다. 시각은 UTC ISO 8601 밀리초 형식으로 기록합니다. `argv`에는 실행한 인자를 그대로 기록합니다. Xcode가 인자 없는 기본 동작으로 `build`를 선택했다면 별도 `build` 토큰을 추가하지 않습니다. `entryFile`은 명시되지 않았다면 `null`, 기본 entry라면 `index.js`입니다. 도구는 세 종류의 app SwiftDriver 인자, 실제 핵심 Swift 컴파일 및 일반 entry의 JavaScript 빌드 기록을 함께 확인합니다. Swift 조건 설정이 누락돼도 이를 빈 값으로 바꾸지 않으며, 완전한 컴파일러와 response 증거가 없으면 거절합니다. 다른 생성 입력과 module map 등은 신뢰된 생산자 빌드 경계에 남습니다. 빌드 기록의 작성자와 source 연결 및 캡처 구간은 실행자가 원본에서 확인해야 합니다. 해시와 필드 일치만으로 작성자나 빌드 출처가 인증되지는 않습니다.
 
 ```sh
-node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> <test-products.xctestrun> <production-Orot.app> <receipt.json> <settings.json> <build.log> <result.xcresult>
+node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> <test-products.xctestrun> <production-Orot.app> <receipt.json> <settings.json> <build.log> <captured-SwiftFileList> <result.xcresult>
 ```
 
 도구는 설치된 운영 앱과 제공된 제품의 식별자·바이너리와 JavaScript 번들 해시 및 Apple SDK 심볼을 검사하고, 테스트 러너만 설치합니다. Xcode의 `UseDestinationArtifacts`로 이미 설치된 앱을 사용하며 fixture 초기화나 제거를 실행하지 않습니다. 취소 preflight는 소유한 프로세스 그룹의 신호 전달만 확인하므로 실제 Xcode와 Simulator의 종료 및 정리 결과는 별도 관측해야 합니다. 새 대화를 만들고 Apple Intelligence를 선택한 뒤 입력한 질문이 정확히 일치할 때만 한 번 전송합니다. 동의 화면이 나타나면 자동 승인하지 않고 해당 단계에서 실패합니다.

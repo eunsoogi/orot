@@ -10,14 +10,37 @@ const settings = JSON.stringify([
     buildSettings: {
       CONFIGURATION: 'Release',
       PLATFORM_NAME: 'iphonesimulator',
-      SWIFT_ACTIVE_COMPILATION_CONDITIONS: '',
       OTHER_SWIFT_FLAGS: '',
       GCC_PREPROCESSOR_DEFINITIONS: '',
     },
   },
 ]);
+const responsePath = '/tmp/derived/Build/Intermediates.noindex/Orot.SwiftFileList';
+const response = '/tmp/source/AppDelegate.swift\n/tmp/source/AppleFoundationModelsSession.swift\n';
+const command = `/Applications/Xcode.app/usr/bin/swiftc -module-name Orot -target arm64-apple-ios27.1-simulator @${responsePath} -D COCOAPODS -Xfrontend -serialize-debugging-options`;
+const target = "(in target 'OrotMobile' from project 'OrotMobile')";
+const headers = [
+  ['SwiftDriver', 'builtin-SwiftDriver'],
+  ['SwiftDriver\\ Compilation\\ Requirements', 'builtin-Swift-Compilation-Requirements'],
+  ['SwiftDriver\\ Compilation', 'builtin-Swift-Compilation'],
+];
+const driver = headers
+  .map(
+    ([header, wrapper]) =>
+      `${header} OrotMobile normal arm64 com.apple.xcode.tools.swift.compiler ${target}\n    cd /tmp/source\n    ${wrapper} -- ${command}`,
+  )
+  .join('\n');
 const log =
-  'xcodebuild -scheme OrotMobile -configuration Release -sdk iphonesimulator build\nexport ENTRY_FILE=index.js\n** BUILD SUCCEEDED **\n';
+  [
+    'xcodebuild -scheme OrotMobile -configuration Release -sdk iphonesimulator build',
+    'export ENTRY_FILE=index.js',
+    driver,
+    `SwiftCompile normal arm64 /tmp/source/AppDelegate.swift ${target}`,
+    `SwiftCompile normal arm64 /tmp/source/AppleFoundationModelsSession.swift ${target}`,
+    '+ /usr/bin/node /node/react-native/scripts/bundle.js bundle --entry-file index.js --platform ios --dev false --bundle-output /tmp/derived/Build/Products/Release-iphonesimulator/main.jsbundle --assets-dest /tmp/derived/Build/Products/Release-iphonesimulator/Orot.app',
+    '+ /tools/hermesc -out /tmp/derived/Build/Products/Release-iphonesimulator/Orot.app/main.jsbundle /tmp/derived/Build/Products/Release-iphonesimulator/main.jsbundle',
+    '** BUILD SUCCEEDED **',
+  ].join('\n') + '\n';
 const receipt = {
   sourceSha: 'a'.repeat(40),
   sourceClean: true,
@@ -25,61 +48,117 @@ const receipt = {
   jsBundleSha: 'c'.repeat(64),
   logSha: digest(log),
   settingsSha: digest(settings),
+  swiftResponsePath: responsePath,
+  swiftResponseSha: digest(response),
+  swiftResponseBeforeSha: digest(response),
+  swiftResponseAfterSha: digest(response),
+  captureStartedAt: '2026-10-30T00:00:00.000Z',
+  captureEndedAt: '2026-10-30T00:01:00.000Z',
+  responseCapturedDuringBuild: true,
   argv: [
-    'xcodebuild',
-    'build',
+    '-workspace',
+    'apps/mobile/ios/OrotMobile.xcworkspace',
     '-scheme',
     'OrotMobile',
     '-configuration',
     'Release',
     '-sdk',
     'iphonesimulator',
+    '-destination',
+    'generic/platform=iOS Simulator',
+    '-derivedDataPath',
+    '/tmp/derived',
+    'ARCHS=arm64',
   ],
-  entryFile: null,
+  entryFile: 'index.js',
 };
+const verify = (
+  proof = receipt,
+  actualSettings = settings,
+  actualLog = log,
+  actualResponse = response,
+  js = 'c'.repeat(64),
+) =>
+  verifyProductionProvenance(proof, actualSettings, actualLog, 'b'.repeat(64), js, actualResponse);
 
-test('matches production evidence to the installed binary and rejects absent or mismatched evidence', () => {
+test('accepts captured compiler evidence even when the settings key is omitted', () => {
+  assert.equal(verify().sourceSha, receipt.sourceSha);
   assert.equal(
-    verifyProductionProvenance(receipt, settings, log, 'b'.repeat(64), 'c'.repeat(64)).sourceSha,
+    verify({ ...receipt, argv: ['xcodebuild', ...receipt.argv, 'build'] }).sourceSha,
     receipt.sourceSha,
   );
+  assert.throws(() => verify(receipt, settings, log, null));
+});
+
+test('rejects missing or mismatched producer, product, and response evidence', () => {
   for (const patch of [
     { sourceSha: '' },
-    { binarySha: 'c'.repeat(64) },
+    { sourceClean: false },
+    { binarySha: 'd'.repeat(64) },
     { jsBundleSha: '' },
     { logSha: '' },
+    { responseCapturedDuringBuild: false },
+    { swiftResponsePath: '/tmp/other/Orot.SwiftFileList' },
+    { swiftResponseSha: '' },
+    { swiftResponseAfterSha: '' },
+    { captureEndedAt: '' },
+    { captureEndedAt: '2026-10-29T23:59:00.000Z' },
     { entryFile: 'e2e/testEntry.tsx' },
-    { argv: ['xcodebuild', 'build', '-configuration', 'Debug'] },
+    { argv: [...receipt.argv, 'clean'] },
+  ])
+    assert.throws(() => verify({ ...receipt, ...patch }));
+  assert.throws(() => verify(receipt, settings, log + 'changed'));
+  assert.throws(() => verify(receipt, settings, log, response, 'd'.repeat(64)));
+  assert.throws(() => verify(receipt, settings, log, response + '@nested\n'));
+});
+
+test('rejects unsupported source settings and indirect compiler inputs', () => {
+  const badSettings = settings.replace(
+    '"OTHER_SWIFT_FLAGS":""',
+    '"OTHER_SWIFT_FLAGS":"-DOROT_TESTS"',
+  );
+  assert.throws(() => verify({ ...receipt, settingsSha: digest(badSettings) }, badSettings));
+  for (const badResponse of [
+    response + '@nested\n',
+    response + '-DOROT_TESTS\n',
+    '/tmp/source/AppDelegate.swift\n',
   ])
     assert.throws(() =>
-      verifyProductionProvenance(
-        { ...receipt, ...patch },
+      verify(
+        {
+          ...receipt,
+          swiftResponseSha: digest(badResponse),
+          swiftResponseBeforeSha: digest(badResponse),
+          swiftResponseAfterSha: digest(badResponse),
+        },
         settings,
         log,
-        'b'.repeat(64),
-        'c'.repeat(64),
+        badResponse,
       ),
     );
-  assert.throws(() =>
-    verifyProductionProvenance(receipt, settings, log + 'modified', 'b'.repeat(64), 'c'.repeat(64)),
-  );
 });
 
-test('rejects a Release setting with a fixture compiler flag', () => {
-  const altered = settings.replace('"OTHER_SWIFT_FLAGS":""', '"OTHER_SWIFT_FLAGS":"-DOROT_TESTS"');
-  assert.throws(() =>
-    verifyProductionProvenance(
-      { ...receipt, settingsSha: digest(altered) },
-      altered,
-      log,
-      'b'.repeat(64),
-      'c'.repeat(64),
+test('rejects conflicting or unsupported compiler records and unexecuted bundling', () => {
+  for (const altered of [
+    log.replace('normal arm64', 'normal x86_64'),
+    log.replace(command, command + ' -D OROT_TESTS'),
+    log.replaceAll(command, command + ' -Xfrontend -load-plugin-library'),
+    log.replaceAll(command, command + ' @/tmp/extra'),
+    log.replaceAll(command, command + ' -filelist /tmp/extra'),
+    log.replace(
+      '** BUILD SUCCEEDED **',
+      `SwiftDriver OrotMobile normal x86_64 compiler ${target}\n** BUILD SUCCEEDED **`,
     ),
-  );
-});
-
-test('rejects an installed JavaScript bundle that differs from the producer receipt', () => {
-  assert.throws(() =>
-    verifyProductionProvenance(receipt, settings, log, 'b'.repeat(64), 'd'.repeat(64)),
-  );
+    log.replace(
+      'SwiftCompile normal arm64 /tmp/source/AppDelegate.swift',
+      'SkippedCompile normal arm64 /tmp/source/AppDelegate.swift',
+    ),
+    log.replace(
+      '--entry-file index.js --platform ios --dev false',
+      '--entry-file fixture.js --platform ios --dev false',
+    ),
+    log.replace('--entry-file index.js', '--entry-file index.js --entry-file fixture.js'),
+    log.replace('/tools/hermesc -out', '/tools/echo -out'),
+  ])
+    assert.throws(() => verify({ ...receipt, logSha: digest(altered) }, settings, altered));
 });

@@ -32,12 +32,13 @@ const [
   receiptPath,
   settingsPath,
   logPath,
+  swiftResponsePath,
   resultPath,
   ...extra
 ] = process.argv.slice(2);
 if (!resultPath || extra.length)
   throw new Error(
-    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <result.xcresult>',
+    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <swift-response> <result.xcresult>',
   );
 const command = (tool, args) =>
   execFileSync(tool, args, {
@@ -98,6 +99,7 @@ try {
         readFileSync(logPath, 'utf8'),
         installedProduct.binarySha,
         installedProduct.jsBundleSha,
+        readFileSync(swiftResponsePath, 'utf8'),
       );
       const input = {
         udid,
