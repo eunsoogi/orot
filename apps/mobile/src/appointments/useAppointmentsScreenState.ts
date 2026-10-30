@@ -10,12 +10,14 @@ import {
 } from './dateTime';
 
 interface UseAppointmentsScreenStateOptions {
+  active: boolean;
   repository: AppointmentRepository;
   onAppointmentsChanged?: () => void;
 }
 
-/** Owns appointment loading, selection, and form state while layout panels reflow. */
+/** Keeps detail selection local and reloads its snapshot when a retained route regains focus. */
 export function useAppointmentsScreenState({
+  active,
   repository,
   onAppointmentsChanged,
 }: UseAppointmentsScreenStateOptions) {
@@ -70,8 +72,8 @@ export function useAppointmentsScreenState({
   );
 
   useEffect(() => {
-    reload().catch(() => undefined);
-  }, [reload]);
+    if (active) reload().catch(() => undefined);
+  }, [active, reload]);
 
   function startNewAppointment() {
     setEditing(null);

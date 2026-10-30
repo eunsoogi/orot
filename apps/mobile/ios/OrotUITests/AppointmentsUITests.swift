@@ -1,53 +1,10 @@
 import XCTest
 
-/// Uses the real manual form and encrypted repository; the fixture runner isolates each case before launch.
+/// Owns native appointment selection and responsive-layout coverage.
 final class AppointmentsUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
-    }
-
-    @MainActor
-    func testCreationEditingAndCancellationSurviveProcessRestarts() throws {
-        let app = XCUIApplication()
-        defer {
-            // Host latency is not a functional oracle; always terminate the owned app.
-            app.terminate()
-        }
-        try launch(app)
-        UITestConditions.value(UITestConditions.element(app, "appointments-empty"), equals: "등록된 예약이 없어요.")
-        tap(app, "appointment-add")
-        fill(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45", note: "Bring the test results.")
-        visible(app, "Cardiology clinic")
-        visible(app, "2027년 6월 2일 09:45 · 현지 시간")
-        visible(app, "Bring the test results.")
-        visible(app, "예정")
-        XCTAssertTrue(app.buttons["Cardiology clinic 예약 취소"].exists)
-        app.terminate()
-        try launch(app)
-        visible(app, "Cardiology clinic")
-        visible(app, "2027년 6월 2일 09:45 · 현지 시간")
-        visible(app, "Bring the test results.")
-
-        let edit = app.buttons["수정"]
-        XCTAssertTrue(edit.exists && edit.isHittable)
-        edit.tap()
-        fill(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15", note: "")
-        visible(app, "Neurology clinic")
-        visible(app, "2027년 6월 3일 10:15 · 현지 시간")
-        visible(app, "일정 변경")
-        let cancel = app.buttons["Neurology clinic 예약 취소"]
-        XCTAssertTrue(cancel.exists && cancel.isHittable)
-        cancel.tap()
-        visible(app, "취소됨")
-        XCTAssertFalse(app.buttons["예약 취소"].exists)
-        app.terminate()
-        try launch(app)
-        visible(app, "Neurology clinic")
-        visible(app, "2027년 6월 3일 10:15 · 현지 시간")
-        visible(app, "취소됨")
-        try NavigationUITestConditions.tapNavigation(app, "appointments-back")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     /// Keeps selected details and the form through native size and appearance changes.
@@ -137,7 +94,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false, extra: [String] = []) throws {
+    func launch(_ app: XCUIApplication, largeText: Bool = false, extra: [String] = []) throws {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "appointments-title"), equals: "예약")
@@ -213,7 +170,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func fill(_ app: XCUIApplication, clinic: String, date: String, time: String, note: String) {
+    func fill(_ app: XCUIApplication, clinic: String, date: String, time: String, note: String) {
         for (field, value) in [("clinic", clinic), ("date", date), ("time", time), ("note", note)] {
             let input = app.textFields.matching(identifier: "appointment-\(field)-input").firstMatch
             XCTAssertTrue(UITestConditions.exists(input))
@@ -225,7 +182,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func tap(_ app: XCUIApplication, _ identifier: String) {
+    func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target))
         FormUITestConditions.reveal(target, in: app, scrollID: "appointments-scroll")
@@ -233,7 +190,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func visible(_ app: XCUIApplication, _ text: String) {
+    func visible(_ app: XCUIApplication, _ text: String) {
         let target = app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
         XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         FormUITestConditions.reveal(target, in: app, scrollID: "appointments-scroll", towardTop: true)
