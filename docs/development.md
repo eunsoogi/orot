@@ -74,6 +74,8 @@ pnpm ios:build
 
 receipt JSON은 `sourceSha`, `sourceClean`, `binarySha`, `jsBundleSha`, `logSha`, `settingsSha`, `argv`, `entryFile`, `swiftResponsePath`, `swiftResponseSha`, `swiftResponseBeforeSha`, `swiftResponseAfterSha`, `captureStartedAt`, `captureEndedAt`, `responseCapturedDuringBuild`를 포함합니다. `responseCapturedDuringBuild`는 생산자가 보존한 빌드 실행 중 캡처 구간과 전후 해시를 가리키며, 컴파일러가 읽은 순간을 직접 관측했다는 뜻이 아닙니다. 시각은 UTC ISO 8601 밀리초 형식으로 기록합니다. `argv`에는 실행한 인자를 그대로 기록합니다. Xcode가 인자 없는 기본 동작으로 `build`를 선택했다면 별도 `build` 토큰을 추가하지 않습니다. `entryFile`은 명시되지 않았다면 `null`, 기본 entry라면 `index.js`입니다. 도구는 세 종류의 app SwiftDriver 인자, 실제 핵심 Swift 컴파일 및 일반 entry의 JavaScript 빌드 기록을 함께 확인합니다. Swift 조건 설정이 누락돼도 이를 빈 값으로 바꾸지 않으며, 완전한 컴파일러와 response 증거가 없으면 거절합니다. 다른 생성 입력과 module map 등은 신뢰된 생산자 빌드 경계에 남습니다. 빌드 기록의 작성자와 source 연결 및 캡처 구간은 실행자가 원본에서 확인해야 합니다. 해시와 필드 일치만으로 작성자나 빌드 출처가 인증되지는 않습니다.
 
+밀리초 단위의 시작과 종료 시각이 같을 수 있으며, 이는 실제 캡처 시간이 0이었다는 뜻이 아닙니다. 종료 시각이 시작보다 이르거나 캡처·해시 증거가 누락되면 검증은 실패합니다.
+
 ```sh
 node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> <test-products.xctestrun> <production-Orot.app> <receipt.json> <settings.json> <build.log> <captured-SwiftFileList> <result.xcresult>
 ```

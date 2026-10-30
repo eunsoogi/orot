@@ -8,7 +8,8 @@ export function verifyCompilerEvidence(receipt, log, response) {
     typeof response !== 'string' ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(receipt.captureStartedAt ?? '') ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(receipt.captureEndedAt ?? '') ||
-    !(Date.parse(receipt.captureStartedAt) < Date.parse(receipt.captureEndedAt)) ||
+    // A capture may span less than one millisecond; equal rounded timestamps do not prove zero elapsed time.
+    !(Date.parse(receipt.captureStartedAt) <= Date.parse(receipt.captureEndedAt)) ||
     !/^\/[A-Za-z0-9_./-]+\/Orot\.SwiftFileList$/.test(receipt.swiftResponsePath ?? '') ||
     receipt.swiftResponsePath.split('/').includes('..') ||
     !receipt.swiftResponsePath.startsWith(derived + '/Build/Intermediates.noindex/') ||
@@ -22,7 +23,7 @@ export function verifyCompilerEvidence(receipt, log, response) {
     !files.length ||
     files.some(
       (line) =>
-        !/^\/[A-Za-z0-9_./-]+\.swift$/.test(line) ||
+        !/^\/[A-Za-z0-9_+./-]+\.swift$/.test(line) ||
         line.split('/').includes('..') ||
         line.includes('OROT_TESTS'),
     ) ||

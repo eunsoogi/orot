@@ -84,10 +84,33 @@ const verify = (
 test('accepts captured compiler evidence even when the settings key is omitted', () => {
   assert.equal(verify().sourceSha, receipt.sourceSha);
   assert.equal(
+    verify({ ...receipt, captureEndedAt: receipt.captureStartedAt }).sourceSha,
+    receipt.sourceSha,
+  );
+  assert.equal(
     verify({ ...receipt, argv: ['xcodebuild', ...receipt.argv, 'build'] }).sourceSha,
     receipt.sourceSha,
   );
   assert.throws(() => verify(receipt, settings, log, null));
+});
+
+test('accepts a captured Swift source path containing a plus character', () => {
+  const captured = response + '/tmp/source/RecordingModule+Commands.swift\n';
+  const sha = digest(captured);
+  assert.equal(
+    verify(
+      {
+        ...receipt,
+        swiftResponseSha: sha,
+        swiftResponseBeforeSha: sha,
+        swiftResponseAfterSha: sha,
+      },
+      settings,
+      log,
+      captured,
+    ).sourceSha,
+    receipt.sourceSha,
+  );
 });
 
 test('rejects missing or mismatched producer, product, and response evidence', () => {
@@ -103,6 +126,10 @@ test('rejects missing or mismatched producer, product, and response evidence', (
     { swiftResponseAfterSha: '' },
     { captureEndedAt: '' },
     { captureEndedAt: '2026-10-29T23:59:00.000Z' },
+    { captureEndedAt: '2026-10-29T23:59:59.999Z' },
+    { captureStartedAt: '2026-13-30T00:00:00.000Z' },
+    { captureEndedAt: receipt.captureStartedAt, responseCapturedDuringBuild: false },
+    { captureEndedAt: receipt.captureStartedAt, swiftResponseAfterSha: 'd'.repeat(64) },
     { entryFile: 'e2e/testEntry.tsx' },
     { argv: [...receipt.argv, 'clean'] },
   ])
@@ -121,6 +148,8 @@ test('rejects unsupported source settings and indirect compiler inputs', () => {
   for (const badResponse of [
     response + '@nested\n',
     response + '-DOROT_TESTS\n',
+    response + '/tmp/source/Bad Name.swift\n',
+    response + '/tmp/source/../Other.swift\n',
     '/tmp/source/AppDelegate.swift\n',
   ])
     assert.throws(() =>
