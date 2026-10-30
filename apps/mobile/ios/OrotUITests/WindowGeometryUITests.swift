@@ -23,6 +23,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
+            "-OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE", "synthetic",
             "-OROT_TEST_UI_GEOMETRY", "YES",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
@@ -70,8 +71,19 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         )
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-source-content")))
-        NavigationWindowGeometryUITestConditions.tap(app, "next-visit-source-close")
+        // The opt-in saved fixture exercises the integrated source route without user records.
+        let sourceDetail = UITestConditions.element(app, "ai-feature-source-detail")
+        XCTAssertTrue(UITestConditions.exists(sourceDetail))
+        let sourceContent = UITestConditions.element(app, "ai-feature-source-content")
+        XCTAssertTrue(UITestConditions.exists(sourceContent), app.debugDescription)
+        // The persisted fixture places the excerpt after its saved source record.
+        let excerptSection = UITestConditions.element(app, "ai-feature-source-section-1")
+        XCTAssertTrue(excerptSection.exists && excerptSection.isHittable, app.debugDescription)
+        XCTAssertEqual(excerptSection.label, "원문 발췌 2", app.debugDescription)
+        excerptSection.tap()
+        let originalExcerpt = app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."]
+        XCTAssertTrue(originalExcerpt.exists, app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         let restoredQuestion = try waitForGeometry(app, routeKey: questionRoute)
         NavigationWindowGeometryUITestConditions.assertGeometry(restoredQuestion)
