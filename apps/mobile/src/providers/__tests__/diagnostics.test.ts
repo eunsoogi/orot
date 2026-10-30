@@ -21,6 +21,46 @@ test('identifies a skipped required source without exposing source or query cont
   );
 });
 
+test.each([
+  [
+    'The model did not perform the required evidence lookup.',
+    'task_required_lookup',
+  ],
+  [
+    'The model must request evidence through a provider tool call.',
+    'task_tool_protocol',
+  ],
+  [
+    'An evidence-independent response must not claim source citations.',
+    'task_independent_citations',
+  ],
+])(
+  'reports the fixed validation token for a missing evidence boundary',
+  (reason, token) => {
+    reportWorkflowOutcome('rag', 'invalid_output', undefined, reason);
+    expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+      ['rag', 'validation', token],
+      ['rag', 'workflow', 'invalid_output'],
+    ]);
+  },
+);
+
+test.each([
+  undefined,
+  'toString',
+  'constructor',
+  '__proto__',
+  'hasOwnProperty',
+  'The model did not perform the required evidence lookup. private suffix',
+  'synthetic private content',
+])('keeps unknown or prototype-like validation reason %s private', reason => {
+  reportWorkflowOutcome('rag', 'invalid_output', undefined, reason);
+  expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+    ['rag', 'validation', 'other'],
+    ['rag', 'workflow', 'invalid_output'],
+  ]);
+});
+
 test.each(['json', 'object', 'type', 'citations', 'value', 'fields', 'need'])(
   'reports the closed envelope category %s without content',
   code => {
