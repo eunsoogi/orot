@@ -51,6 +51,10 @@ test('shows the next saved appointment and recent recording on Home', async () =
   expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
   expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
   expect(screen.getAllByTestId('home-prepare-visit')).toHaveLength(1);
+  // This identity keeps the visible clinic line distinct from duplicate native text wrappers.
+  expect(screen.getByTestId('home-next-appointment-clinic')).toHaveTextContent(
+    '새봄의원',
+  );
   expect(screen.getByText('새봄의원')).toBeTruthy();
   expect(screen.getByText('상담 녹음')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();

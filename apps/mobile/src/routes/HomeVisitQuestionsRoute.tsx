@@ -6,6 +6,7 @@ import type { NextVisitQuestionsRouteProps } from '../aiFeatures/integration/Nex
 import { defaultVisitQuestionRouteOperations as defaults } from '../aiFeatures/integration/visitQuestionsRouteOperations';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
 import { nextVisitQuestionsCopy as copy } from '../nextVisitQuestions/copy';
+import { isEligibleNextVisit } from './nextAppointment';
 
 /** This is only an entry eligibility check. The generator still performs its original current-query, fingerprint and consent validation. */
 export function canGenerateHomeVisit(
@@ -13,8 +14,7 @@ export function canGenerateHomeVisit(
   now = Date.now(),
 ): boolean {
   return (
-    (appointment.status === 'scheduled' ||
-      appointment.status === 'rescheduled') &&
+    isEligibleNextVisit(appointment, now) &&
     appointment.provenance.origin === 'user_reported' &&
     Boolean(
       appointment.calendarEventIdentifier && appointment.calendarEventSnapshot,

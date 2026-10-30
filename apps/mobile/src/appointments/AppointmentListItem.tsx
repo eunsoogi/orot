@@ -1,7 +1,7 @@
 import { Pressable } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { AppText as Text } from '../layout/AppText';
-import { formatDateTime } from '../i18n';
+import { formatDateTime, t } from '../i18n';
 import styles from './appointmentsStyles';
 import {
   appointmentClinicName,
@@ -10,23 +10,38 @@ import {
 
 interface AppointmentListItemProps {
   appointment: Appointment;
+  history: boolean;
+  nextVisit: boolean;
   selected: boolean;
   onSelect: () => void;
 }
 
-/** Provides one accessible selection action for the appointment detail panel. */
+/** Separates the selectable detail record from the identity used as the next visit. */
 export function AppointmentListItem({
   appointment,
+  history,
+  nextVisit,
   selected,
   onSelect,
 }: AppointmentListItemProps) {
   const clinicName = appointmentClinicName(appointment);
   const dateTime = formatDateTime(new Date(appointment.effectiveAt));
-  const status = appointmentStatusLabel(appointment);
+  const status =
+    history &&
+    (appointment.status === 'scheduled' || appointment.status === 'rescheduled')
+      ? t('appointments.status.past')
+      : appointmentStatusLabel(appointment);
+  const nextVisitLabel = t('appointments.nextVisit');
+  const accessibilityLabel = [
+    clinicName,
+    dateTime,
+    ...(nextVisit ? [nextVisitLabel] : []),
+    status,
+  ].join(', ');
 
   return (
     <Pressable
-      accessibilityLabel={`${clinicName}, ${dateTime}, ${status}`}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onSelect}
@@ -38,7 +53,15 @@ export function AppointmentListItem({
     >
       <Text style={styles.clinic}>{clinicName}</Text>
       <Text>{dateTime}</Text>
-      <Text>{status}</Text>
+      {nextVisit ? (
+        <Text
+          style={styles.nextVisitBadge}
+          testID={`appointment-next-visit-${appointment.id}`}
+        >
+          {nextVisitLabel}
+        </Text>
+      ) : null}
+      <Text style={history ? styles.historyStatus : undefined}>{status}</Text>
     </Pressable>
   );
 }
