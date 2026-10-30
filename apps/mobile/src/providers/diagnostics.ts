@@ -55,6 +55,12 @@ export function reportWorkflowOutcome(
       'The task responder returned malformed structured output.': 'task_json',
       'The task requires a source-kind lookup before its final answer.':
         'task_required_source',
+      'The model did not perform the required evidence lookup.':
+        'task_required_lookup',
+      'The model must request evidence through a provider tool call.':
+        'task_tool_protocol',
+      'An evidence-independent response must not claim source citations.':
+        'task_independent_citations',
       'The task responder returned an invalid envelope: json.':
         'task_envelope_json',
       'The task responder returned an invalid envelope: object.':
@@ -75,7 +81,7 @@ export function reportWorkflowOutcome(
       'The selected model returned an incomplete or unsupported response.':
         'task_incomplete',
     };
-    // Compare exact local reasons; never send a free-form reason to the native sink.
+    // Map exact evidence-policy reasons to fixed tokens; never send free-form task text to native.
     providerDiagnostic(
       feature,
       'validation',

@@ -204,3 +204,47 @@ test('allows literature-only research and makes limited-search attribution visib
     answer: expect.stringContaining('일부 검색 결과'),
   });
 });
+
+test.each([
+  [
+    'an empty synthetic library',
+    { batch: { items: [], coverage: [], conflicts: [] }, chunks: [] },
+    false,
+  ],
+  ['a populated synthetic library', snapshot(baseReference), true],
+])(
+  'preserves a safe provider recovery category for %s',
+  async (_scenario, current, shouldSearch) => {
+    jest
+      .mocked(runMultiAgentWorkflow)
+      .mockReset()
+      .mockResolvedValueOnce({
+        status: 'unavailable',
+        reason:
+          'Private provider detail that must not reach the conversation UI.',
+        providerErrorCode: 'authentication_required',
+        checkpoint: {} as never,
+      });
+    const search = jest.fn(
+      async (_query: string, chunks: readonly EvidenceChunk[]) =>
+        chunks.length
+          ? [{ chunk: chunks[0]!, score: 1, lexicalRank: 1, vectorRank: 1 }]
+          : [],
+    );
+
+    const outcome = await runRagConversationTurn({
+      question: 'Can you see my health records?',
+      previousMessages: [],
+      loadCurrentEvidence: async () => current,
+      rag: { search },
+      workflow: {} as never,
+    });
+
+    expect(outcome).toEqual({
+      status: 'failure',
+      kind: 'provider_authentication',
+    });
+    expect(JSON.stringify(outcome)).not.toContain('Private provider detail');
+    expect(search).toHaveBeenCalledTimes(shouldSearch ? 1 : 0);
+  },
+);

@@ -6,7 +6,6 @@ import {
 import type {
   EvidenceBatch,
   EvidenceItem,
-  EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
@@ -21,16 +20,13 @@ import type {
   RagConversationCurrentEvidence,
   RagConversationMessage,
 } from './task';
+import { failureFromWorkflow } from './outcome';
+import type { RagConversationOutcome } from './outcome';
 
-export type RagConversationOutcome =
-  | { readonly status: 'no_evidence' }
-  | {
-      readonly status: 'answer';
-      readonly answer: string;
-      readonly citations: readonly EvidenceReference[];
-    }
-  | { readonly status: 'insufficient' }
-  | { readonly status: 'unavailable' };
+export type {
+  RagConversationFailureKind,
+  RagConversationOutcome,
+} from './outcome';
 
 /** Screen observers receive safe progress and task-projected text, never request or evidence payloads. */
 export type RagConversationObserver = Pick<
@@ -106,8 +102,11 @@ export async function runRagConversationTurn(
   invocation: MultiAgentInvocation = {},
 ): Promise<RagConversationOutcome> {
   const question = options.question.trim();
-  if (!question || question.length > 1000) return { status: 'unavailable' };
+  if (!question || question.length > 1000)
+    return { status: 'failure', kind: 'validation_failed' };
+  let stage: 'data' | 'workflow' = 'data';
   try {
+    providerDiagnostic('rag', 'data', 'started');
     const snapshot = await options.loadCurrentEvidence(
       question,
       invocation.signal ?? new AbortController().signal,
@@ -118,9 +117,11 @@ export async function runRagConversationTurn(
           signal: invocation.signal,
         })
       : [];
+    providerDiagnostic('rag', 'data', 'completed');
     const initialEvidence = selectEvidence(snapshot.batch, hits);
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
+    stage = 'workflow';
     providerDiagnostic('rag', 'workflow', 'started');
     const result = await runMultiAgentWorkflow(
       {
@@ -173,11 +174,17 @@ export async function runRagConversationTurn(
         citations: result.citations,
       };
     }
-    return result.status === 'needs_clarification'
-      ? { status: 'insufficient' }
-      : { status: 'unavailable' };
-  } catch {
-    providerDiagnostic('rag', 'workflow', 'failed');
-    return { status: 'unavailable' };
+    return failureFromWorkflow(result);
+  } catch (error) {
+    if (
+      invocation.signal?.aborted ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      return { status: 'failure', kind: 'cancelled' };
+    providerDiagnostic('rag', stage, 'failed');
+    return {
+      status: 'failure',
+      kind: stage === 'data' ? 'retrieval_failed' : 'unavailable',
+    };
   }
 }
