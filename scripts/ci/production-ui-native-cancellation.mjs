@@ -103,12 +103,14 @@ export async function runProductionCancellationProbe(
       ownedAxRequest: ready && !runnerAlive ? 'completed-before-cancellation' : 'unknown',
     };
     console.log(JSON.stringify(evidence));
+    // A crash signal after our interrupt is not evidence of a clean cancellation.
     if (
       observedError ||
       probe.failure ||
       !ready ||
       result.cancellation !== 'SIGINT' ||
       result.code === 0 ||
+      (result.signal && result.signal !== 'SIGINT') ||
       group.length ||
       runnerAlive
     )

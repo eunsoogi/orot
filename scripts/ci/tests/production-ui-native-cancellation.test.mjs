@@ -135,3 +135,32 @@ test('reinstalled product verification failure prevents cancellation readiness',
   );
   assert.deepEqual(sent, ['SIGTERM']);
 });
+
+test('an Xcode crash after SIGINT cannot be reported as successful cancellation', async () => {
+  let callbacks;
+  let reads = 0;
+  const rows = [
+    { pid: 10, group: 10, identity: 'xcode', state: 'S', command: '/xcodebuild' },
+    { pid: 20, group: 20, identity: 'runner', state: 'S', command: '/runner/OrotUITests-Runner' },
+    { pid: 30, group: 30, identity: 'app', state: 'S', command: '/app/Orot' },
+  ];
+  await assert.rejects(
+    runProductionCancellationProbe(
+      { runnerPath: '/runner', appPath: '/app', prepare: () => [] },
+      {
+        startProbe: async (value) => {
+          callbacks = value;
+          return { port: 123, token: 'token', markCancellationRequested() {}, async close() {} };
+        },
+        runChild: async (_command, _args, { onSpawn }) => {
+          onSpawn({ pid: 10, cancel() {} });
+          callbacks.onReady({ runnerPid: 20 });
+          return { code: null, signal: 'SIGABRT', cancellation: 'SIGINT' };
+        },
+        snapshot: () => (++reads < 3 ? rows : []),
+        matchesExecutable: (row, path) => row.command === path,
+      },
+    ),
+    /cleanup did not meet/,
+  );
+});
