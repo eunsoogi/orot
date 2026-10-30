@@ -11,7 +11,7 @@ enum EncounterInputGate {
 
 /// Only scalar state and run/window UUIDs escape UIKit; lengths and ranges use UTF-16 code units.
 @MainActor final class EncounterInputTrace {
-    enum Phase: String, Codable { case beforePress, afterPress, textChanged, beganEditing, endedEditing, reactReceipt }
+    enum Phase: String, Codable { case beforePress, afterPress, textChanged, beganEditing, endedEditing, reactReceipt, publicUIKitRead }
     enum ReactEvent: String, Codable { case changeText, controlledCommit }
     struct Target: Codable {
         let matches: Int
@@ -38,8 +38,22 @@ enum EncounterInputGate {
         let reactLength: Int?
     }
 
+    /// The accessibility value returns only a same-run scalar sample from the live UIKit window.
+    struct UIKitSnapshot: Codable {
+        let run: UUID
+        let sampleSequence: Int
+        let sampleUptime: TimeInterval
+        let target: Target
+        let recentEvents: [Record]
+        let eventBufferTruncated: Bool
+    }
+
+    /// Bound each accessibility attachment while retaining the latest selection transitions.
+    private static let recentEventLimit = 256
     private let run: UUID
     private var sequence = 0
+    private var recentEvents: [Record] = []
+    private var eventBufferTruncated = false
     private let emit: @MainActor (Record) throws -> Void
     private var overflowReported = false
 
@@ -48,9 +62,18 @@ enum EncounterInputGate {
         self.emit = emit
     }
 
+    var bufferedEvents: [Record] {
+        recentEvents
+    }
+
+    var bufferedEventsTruncated: Bool {
+        eventBufferTruncated
+    }
+
     /// A throwing sink preserves event delivery; overflow explicitly makes later coverage unknown.
     func append(_ phase: Phase, step: Int, target: Target, reactEvent: ReactEvent? = nil, reactSequence: Int? = nil, reactLength: Int? = nil) {
         guard sequence < 4096 else {
+            eventBufferTruncated = true
             if !overflowReported {
                 print("OROT_ENCOUNTER_INPUT_OVERFLOW"); overflowReported = true
             }
@@ -59,6 +82,11 @@ enum EncounterInputGate {
         sequence += 1
         let record = Record(run: run, sequence: sequence, step: step, uptime: ProcessInfo.processInfo.systemUptime,
                             phase: phase, target: target, reactEvent: reactEvent, reactSequence: reactSequence, reactLength: reactLength)
+        if recentEvents.count == Self.recentEventLimit {
+            recentEvents.removeFirst()
+            eventBufferTruncated = true
+        }
+        recentEvents.append(record)
         do { try emit(record) } catch { print("OROT_ENCOUNTER_INPUT_UNKNOWN") }
     }
 

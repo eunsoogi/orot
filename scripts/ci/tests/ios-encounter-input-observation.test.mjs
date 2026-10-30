@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -8,85 +8,8 @@ import test from 'node:test';
 test('scalar traces preserve ordering, error isolation, gates and bounded output', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-input-observer-'));
   try {
-    writeFileSync(
-      join(directory, 'main.swift'),
-      String.raw`import Foundation
-@main struct Control {
-  @MainActor static func main() throws {
-    let run = UUID()
-    let suite = "encounter-observation-" + UUID().uuidString
-    let defaults = UserDefaults(suiteName: suite)!
-    defer { defaults.removePersistentDomain(forName: suite) }
-    precondition(EncounterInputGate.session(defaults: defaults) == nil)
-    defaults.set("private-recording-id", forKey: "OROT_TEST_ENCOUNTER_INPUT_OBSERVATION")
-    precondition(EncounterInputGate.session(defaults: defaults) == nil)
-    defaults.set(run.uuidString, forKey: "OROT_TEST_ENCOUNTER_INPUT_OBSERVATION")
-    precondition(EncounterInputGate.session(defaults: defaults) == run)
-    defaults.set("invalid", forKey: "OROT_TEST_FORM_OBSERVATION")
-    precondition(EncounterInputGate.session(defaults: defaults) == run)
-    defaults.set(UUID().uuidString, forKey: "OROT_TEST_FORM_OBSERVATION")
-    precondition(EncounterInputGate.session(defaults: defaults) == nil)
-    defaults.removeObject(forKey: "OROT_TEST_ENCOUNTER_INPUT_OBSERVATION")
-    precondition(EncounterInputGate.session(defaults: defaults) == nil)
-    var records: [EncounterInputTrace.Record] = []
-    let trace = EncounterInputTrace(run: run) { records.append($0) }
-    let selected = EncounterInputTrace.Target(matches: 1, truncated: false, length: 12, location: 0,
-      selectionLength: 12, focused: true, keyWindow: true, inputIdentity: 1, windowID: run)
-    let empty = EncounterInputTrace.Target(matches: 1, truncated: false, length: 0, location: 0,
-      selectionLength: 0, focused: true, keyWindow: true, inputIdentity: nil, windowID: nil)
-    trace.append(.beforePress, step: 1, target: selected)
-    trace.append(.textChanged, step: 2, target: empty)
-    trace.append(.afterPress, step: 1, target: empty)
-    trace.append(.reactReceipt, step: 3, target: empty, reactEvent: .changeText, reactSequence: 1, reactLength: 0)
-    precondition(records.map(\.sequence) == [1,2,3,4])
-    precondition(records.map(\.step) == [1,2,1,3])
-    precondition(records.allSatisfy { $0.run == run })
-    precondition(zip(records, records.dropFirst()).allSatisfy { $0.uptime <= $1.uptime })
-    let data = try JSONEncoder().encode(records)
-    let decoded = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
-    precondition(Set(decoded[0].keys) == Set(["run","sequence","step","uptime","phase","target"]))
-    precondition(Set((decoded[0]["target"] as! [String: Any]).keys) == Set(["matches","truncated","length","location","selectionLength","focused","keyWindow","inputIdentity","windowID"]))
-    precondition(!String(decoding: data, as: UTF8.self).contains("private-recording-id"))
-    let visitSuite = suite + "-visit-question"
-    let visitDefaults = UserDefaults(suiteName: visitSuite)!
-    defer { visitDefaults.removePersistentDomain(forName: visitSuite) }
-    let visitRun = UUID()
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == nil)
-    visitDefaults.set(visitRun.uuidString, forKey: VisitQuestionInputGate.key)
-    visitDefaults.set("wrong-scenario", forKey: "OROT_TEST_SCENARIO")
-    visitDefaults.set("synthetic", forKey: "OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE")
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == nil)
-    visitDefaults.set("ai-feature-visit-questions", forKey: "OROT_TEST_SCENARIO")
-    visitDefaults.set("production", forKey: "OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE")
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == nil)
-    visitDefaults.set("synthetic", forKey: "OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE")
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == visitRun)
-    visitDefaults.set(UUID().uuidString, forKey: "OROT_TEST_FORM_OBSERVATION")
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == nil)
-    visitDefaults.removeObject(forKey: "OROT_TEST_FORM_OBSERVATION")
-    visitDefaults.set(UUID().uuidString, forKey: "OROT_TEST_ENCOUNTER_INPUT_OBSERVATION")
-    precondition(VisitQuestionInputGate.session(defaults: visitDefaults) == nil)
-    let failure = NSError(domain: "private-health-error", code: 7)
-    var attempts = 0
-    let throwing = EncounterInputTrace(run: run) { _ in attempts += 1; throw failure }
-    throwing.append(.beforePress, step: 1, target: selected)
-    throwing.append(.afterPress, step: 1, target: empty)
-    precondition(attempts == 2)
-    for index in 5...4100 { trace.append(.textChanged, step: index, target: empty) }
-    precondition(records.count == 4096)
-    var runner: [EncounterInputObservation.Record] = []
-    let bracket = EncounterInputObservation(run: run) { runner.append($0) }
-    bracket.record(.beforeSelect); bracket.record(.afterSelect)
-    bracket.record(.beforeDelete); bracket.record(.afterDelete)
-    precondition(runner.map(\.step) == [1,2,3,4])
-    precondition(runner.allSatisfy { $0.run == run })
-    let broken = EncounterInputObservation(run: run) { _ in throw failure }
-    broken.record(.beforeSelect); broken.record(.afterSelect)
-    print("scalar-controls-pass")
-  }
-}`,
-    );
     const binary = join(directory, 'control');
+    const controlSource = 'scripts/ci/tests/fixtures/ios-encounter-input-observation-control.swift';
     const compilerPath = execFileSync('which', ['swiftc'], { encoding: 'utf8' }).trim();
     const compilerVersion = execFileSync('swiftc', ['--version'], { encoding: 'utf8' }).trim();
     const compilerArgs = [
@@ -100,7 +23,7 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
       'apps/mobile/ios/OrotMobile/EncounterInputTrace.swift',
       'apps/mobile/ios/OrotMobile/VisitQuestionInputGate.swift',
       'apps/mobile/ios/OrotUITests/EncounterInputObservation.swift',
-      join(directory, 'main.swift'),
+      controlSource,
       '-o',
       binary,
     ];
@@ -159,6 +82,13 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
     assert.match(questionWindow, /input\?\.isFirstResponder/);
     assert.match(questionWindow, /inputs\.count == 1/);
     assert.match(questionWindow, /windowID: windowID/);
+    assert.match(questionWindow, /override var accessibilityValue/);
+    assert.match(questionWindow, /publicUIKitSnapshot/);
+    assert.match(questionWindow, /accessibilityIdentifier = "visit-question-input-observation"/);
+    assert.match(questionWindow, /isUserInteractionEnabled = false/);
+    assert.match(questionWindow, /trace\.append\(\.publicUIKitRead/);
+    assert.match(questionWindow, /recentEvents: trace\.bufferedEvents/);
+    assert.match(questionWindow, /eventBufferTruncated: trace\.bufferedEventsTruncated/);
     const visitGate = readFileSync(
       'apps/mobile/ios/OrotMobile/VisitQuestionInputGate.swift',
       'utf8',
@@ -183,7 +113,26 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
       questionJourney,
       /launchArguments \+= \["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", inputObservation\.run\.uuidString\]/,
     );
-    assert.match(questionJourney, /observeInput: inputObservation\?\.record/);
+    assert.match(questionJourney, /observeInput: inputObservation\.map/);
+    const visitRunner = readFileSync(
+      'apps/mobile/ios/OrotUITests/EncounterInputObservation.swift',
+      'utf8',
+    );
+    assert.match(visitRunner, /func captureUIKit\(/);
+    assert.match(visitRunner, /visit-question-input-observation/);
+    assert.match(visitRunner, /XCTAttachment\(data:/);
+    assert.match(visitRunner, /runMatches/);
+    assert.match(visitRunner, /struct UIKitSnapshot: Codable/);
+    assert.match(visitRunner, /recentEvents: \[NativeEvent\]/);
+    assert.match(visitRunner, /eventBufferTruncated: Bool/);
+    assert.match(visitRunner, /JSONDecoder\(\)\.decode\(UIKitSnapshot\.self/);
+    assert.match(visitRunner, /snapshotStatus: status/);
+    assert.match(visitRunner, /testCase\.add\(attachment\)/);
+    assert.equal(visitRunner.includes('최근 증상 변화를 어떻게 정리할까요?'), false);
+    assert.match(
+      questionJourney,
+      /observeInput: inputObservation\.map \{ observation in[\s\S]+captureUIKit\(phase, app: app, testCase: self\)/,
+    );
     const delegate = readFileSync('apps/mobile/ios/OrotMobile/AppDelegate.swift', 'utf8');
     assert.match(
       delegate,

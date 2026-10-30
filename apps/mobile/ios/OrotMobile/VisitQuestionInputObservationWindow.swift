@@ -1,18 +1,46 @@
 #if OROT_TESTS
     import UIKit
 
+    /// Expose a live, test-only UIKit sample through the public accessibility value channel.
+    @MainActor private final class VisitQuestionInputSnapshotMarker: UIView {
+        weak var observationWindow: VisitQuestionInputObservationWindow?
+
+        override var accessibilityValue: String? {
+            get { observationWindow?.publicUIKitSnapshot() ?? "{\"status\":\"unavailable\"}" }
+            set { super.accessibilityValue = newValue }
+        }
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isAccessibilityElement = true
+            isUserInteractionEnabled = false
+            accessibilityIdentifier = "visit-question-input-observation"
+            accessibilityLabel = "Visit question input observation"
+        }
+
+        required init?(coder _: NSCoder) {
+            nil
+        }
+    }
+
     /// Observe one synthetic visit-question editor without changing input, focus, hit testing or gesture delivery.
     @MainActor final class VisitQuestionInputObservationWindow: UIWindow {
         let trace: EncounterInputTrace
+        private let run: UUID
         private let windowID = UUID()
         private var step = 0
+        private var publicSnapshotSequence = 0
         private weak var identifiedInput: UITextView?
         private var nextInputIdentity = 0
         private var currentInputIdentity: Int?
+        private lazy var snapshotMarker = VisitQuestionInputSnapshotMarker(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
 
         init(windowScene: UIWindowScene, run: UUID) {
+            self.run = run
             trace = EncounterInputTrace(run: run)
             super.init(windowScene: windowScene)
+            snapshotMarker.observationWindow = self
+            addSubview(snapshotMarker)
             let center = NotificationCenter.default
             center.addObserver(self, selector: #selector(changed(_:)), name: UITextView.textDidChangeNotification, object: nil)
             center.addObserver(self, selector: #selector(began(_:)), name: UITextView.textDidBeginEditingNotification, object: nil)
@@ -88,6 +116,27 @@
             return .init(matches: inputs.count, truncated: truncated, length: input?.text.utf16.count,
                          location: range?.location, selectionLength: range?.length, focused: input?.isFirstResponder,
                          keyWindow: isKeyWindow, inputIdentity: identity(for: input), windowID: windowID)
+        }
+
+        /// XCTest reads this accessibility value to sample the current UIKit selection synchronously.
+        /// The bounded trace and returned payload share one run ID and contain scalar state only.
+        func publicUIKitSnapshot() -> String {
+            guard publicSnapshotSequence < 4096 else { return "{\"status\":\"overflow\"}" }
+            publicSnapshotSequence += 1
+            let target = snapshot()
+            trace.append(.publicUIKitRead, step: step, target: target)
+            let sample = EncounterInputTrace.UIKitSnapshot(
+                run: run,
+                sampleSequence: publicSnapshotSequence,
+                sampleUptime: ProcessInfo.processInfo.systemUptime,
+                target: target,
+                recentEvents: trace.bufferedEvents,
+                eventBufferTruncated: trace.bufferedEventsTruncated,
+            )
+            guard let data = try? JSONEncoder().encode(sample), let value = String(data: data, encoding: .utf8) else {
+                return "{\"status\":\"encoding-failed\"}"
+            }
+            return value
         }
 
         private func identity(for input: UITextView?) -> Int? {

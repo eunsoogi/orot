@@ -73,7 +73,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
             with: draft,
             in: app,
             scrollID: "next-visit-questions-scroll",
-            observeInput: inputObservation?.record,
+            observeInput: inputObservation.map { observation in
+                { phase in observation.captureUIKit(phase, app: app, testCase: self) }
+            },
         ))
 
         let source = UITestConditions.element(app, "next-visit-source-0-0")
