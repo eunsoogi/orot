@@ -1,8 +1,62 @@
+import Darwin
 import XCTest
 
 /// Opt-in observation of an existing production installation. No fixture state or consent is injected.
 @MainActor
 final class ProductionRagConversationUITests: XCTestCase {
+    /// The opt-in probe never enters the conversation path or submits a question.
+    func testProductionCancellationBeforeSend() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let rawPort = environment["OROT_PRODUCTION_CANCEL_PORT"],
+              let port = UInt16(rawPort), port > 0,
+              let token = environment["OROT_PRODUCTION_CANCEL_TOKEN"], UUID(uuidString: token) != nil
+        else { throw failure("cancellation_probe_configuration_missing") }
+        let app = XCUIApplication(bundleIdentifier: "com.orot.mobile")
+        app.launchArguments = ["-OROT_PROVIDER_DIAGNOSTICS", "-OROT_NATIVE_TOOL_TRACE"]
+        app.launch()
+        defer { app.terminate() }
+        // Complete a real AX query before announcing readiness without recording its contents.
+        _ = try app.windows.firstMatch.snapshot()
+        try await holdCancellationProbe(port: port, token: token)
+    }
+
+    /// Keep the socket read off the main actor. EOF or unexpected data always fails the probe.
+    private func holdCancellationProbe(port: UInt16, token: String) async throws -> Never {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let connection = socket(AF_INET, SOCK_STREAM, 0)
+                    guard connection >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+                    defer { close(connection) }
+                    var noSignal: Int32 = 1
+                    guard setsockopt(connection, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size)) == 0 else {
+                        throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+                    }
+                    var address = sockaddr_in()
+                    address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+                    address.sin_family = sa_family_t(AF_INET)
+                    address.sin_port = port.bigEndian
+                    address.sin_addr.s_addr = inet_addr("127.0.0.1")
+                    let connected = withUnsafePointer(to: &address) {
+                        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                            connect(connection, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                        }
+                    }
+                    guard connected == 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+                    let frame = Array("v1 ready \(token) \(getpid())\n".utf8)
+                    let sent = frame.withUnsafeBytes { bytes in send(connection, bytes.baseAddress, bytes.count, 0) }
+                    guard sent == frame.count else { throw NSError(domain: "ProductionCancellationProbe", code: 1) }
+                    var byte: UInt8 = 0
+                    _ = read(connection, &byte, 1)
+                    // No host response can release the probe into the ordinary conversation test.
+                    throw NSError(domain: "ProductionCancellationProbe", code: 2)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     func testProductionConversation() throws {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "com.orot.mobile")

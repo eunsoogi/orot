@@ -1,26 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  productionConversationTest,
-  productionTestRun,
   productionTestingEnvironment,
   verifyProductionTestSymbols,
   validateProductionInputs,
 } from './production-ui-contract.mjs';
 import { cancellationPreflight, runOwned } from './production-ui-cancellation.mjs';
 import { executeProductionUi } from './production-ui-execution.mjs';
+import { runProductionTest } from './production-ui-runner.mjs';
 import { verifyProductionProvenance } from './production-ui-provenance.mjs';
-import { readProductionTrace } from './production-ui-diagnostics.mjs';
 import { verifyAppleModelProduct } from './verify-apple-model-product.mjs';
 import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 import { iosTestBuildSpec } from './ios-test-config.mjs';
@@ -37,10 +28,11 @@ const [
   resultPath,
   ...extra
 ] = process.argv.slice(2);
-if (!resultPath || extra.length)
+if (!resultPath || extra.length > 1 || (extra.length && extra[0] !== '--cancellation-probe'))
   throw new Error(
-    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <swift-response> <result.xcresult>',
+    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <swift-response> <result.xcresult> [--cancellation-probe]',
   );
+const cancellationProbe = extra.length === 1;
 const command = (tool, args) =>
   execFileSync(tool, args, {
     encoding: 'utf8',
@@ -88,6 +80,7 @@ try {
       verifyProductionTestSymbols(
         command('xcrun', ['nm', '-j', testBinary]),
         command('strings', [testBinary]),
+        cancellationProbe,
       );
       const app = realpathSync(appPath);
       const installed = installedApp();
@@ -171,42 +164,15 @@ try {
       )
         throw new Error('Installed runner or production app differs from validated products');
       directory = mkdtempSync(join(tmpdir(), 'orot-production-ui-'));
-      const testRun = join(directory, 'production.xctestrun');
-      writeFileSync(testRun, JSON.stringify(productionTestRun(context.input)));
-      command('plutil', ['-convert', 'xml1', testRun]);
-      console.log(
-        JSON.stringify({
-          stage: 'runner_ready',
-          sourceSha: context.sourceSha,
-          binarySha: context.product.binarySha,
-          jsBundleSha: context.product.jsBundleSha,
-          runnerId: context.runnerInfo.id,
-          test: productionConversationTest,
-        }),
-      );
-      const started = new Date();
-      let result;
-      try {
-        result = await runOwned('xcodebuild', [
-          'test-without-building',
-          '-xctestrun',
-          testRun,
-          '-destination',
-          'platform=iOS Simulator,id=' + udid,
-          '-resultBundlePath',
-          resolve(resultPath),
-          '-parallel-testing-enabled',
-          'NO',
-          '-only-testing:' + productionConversationTest,
-        ]);
-      } finally {
-        console.log(
-          JSON.stringify({ stage: 'native_trace', ...readProductionTrace(udid, started) }),
-        );
-      }
-      if (result.code !== 0 || result.signal || result.cancellation)
-        throw new Error('Native test failed or was cancelled: ' + JSON.stringify(result));
-      return result;
+      return runProductionTest({
+        context,
+        udid,
+        resultPath,
+        directory,
+        installedRunner,
+        installedApp: installedApp(),
+        cancellationProbe,
+      });
     },
     verifyAfter(context) {
       const installed = appIdentity(installedApp());

@@ -82,6 +82,8 @@ node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> 
 
 도구는 설치된 운영 앱과 제공된 제품의 식별자·바이너리와 JavaScript 번들 해시 및 Apple SDK 심볼을 검사하고, 테스트 러너만 설치합니다. Xcode의 `UseDestinationArtifacts`로 이미 설치된 앱을 사용하며 fixture 초기화나 제거를 실행하지 않습니다. 취소 preflight는 소유한 프로세스 그룹의 신호 전달만 확인하므로 실제 Xcode와 Simulator의 종료 및 정리 결과는 별도 관측해야 합니다. 새 대화를 만들고 Apple Intelligence를 선택한 뒤 입력한 질문이 정확히 일치할 때만 한 번 전송합니다. 동의 화면이 나타나면 자동 승인하지 않고 해당 단계에서 실패합니다.
 
+전송 전 취소 경계만 확인하려면 위 명령 끝에 `--cancellation-probe`를 명시하고, 소유한 일회용 Simulator를 사용합니다. 이 경로는 전송 기능이 없는 별도 XCTest만 선택합니다. 앱을 실행하고 접근성 snapshot이 완료된 뒤 일회성 loopback 식별자를 확인해야 해당 Xcode 프로세스 그룹에 SIGINT를 보냅니다. 준비 신호가 없는데 경과 시간만으로 전송 시점을 추정하지 않습니다. 로그는 완료된 snapshot과 소유한 테스트 프로세스의 종료를 기록합니다. 앱이 계속 실행 중이면 일회용 Simulator 정리는 별도로 확인합니다. 실제 대화 전송, SDK 응답 또는 일반 대화 테스트의 취소 성공을 뜻하지 않습니다.
+
 결과의 단계 기록은 테스트 진행 상황입니다. 도구는 실행 시간 이후의 Simulator 로그에서 허용된 native lifecycle 필드만 출력하며, 로그를 읽지 못하거나 항목이 없으면 미확인으로 남깁니다. `sdk_generation_completed`는 SDK 완료이며, 최종 검증된 답변과 출처 열기는 각각 별도 결과입니다. 기록된 요청과 bridge 호출 ID는 SDK 호출 ID가 아닙니다. 시간 범위에 다른 요청이 있었다면 어느 요청의 이벤트인지 별도 확인해야 합니다. 모델을 사용할 수 없거나 단계가 실패하면 실제 상태를 기록하고 모의 응답이나 테스트 실행 성공을 실제 모델 수락으로 취급하지 않습니다. 운영 앱의 기존 데이터와 다른 작업의 Simulator를 보존하세요.
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.

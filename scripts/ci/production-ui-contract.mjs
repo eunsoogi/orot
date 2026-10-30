@@ -3,12 +3,16 @@ import { isDeepStrictEqual } from 'node:util';
 /** Production verification is an explicit route and is never part of fixture defaults. */
 export const productionConversationTest =
   'OrotUITests/ProductionRagConversationUITests/testProductionConversation';
+export const productionCancellationTest =
+  'OrotUITests/ProductionRagConversationUITests/testProductionCancellationBeforeSend';
+export const productionTestInventory = [productionConversationTest, productionCancellationTest];
 
 /** Fail before installing a runner that cannot expose the selected XCTest case. */
-export function verifyProductionTestSymbols(symbols, strings) {
+export function verifyProductionTestSymbols(symbols, strings, probe = false) {
   if (
     !symbols.includes('OrotUITests32ProductionRagConversationUITests') ||
-    !strings.includes('testProductionConversationAndReturnError:')
+    !strings.includes('testProductionConversationAndReturnError:') ||
+    (probe && !strings.includes('testProductionCancellationBeforeSendWithCompletionHandler:'))
   )
     throw new Error('Production conversation test is absent from the runner');
 }
@@ -39,8 +43,21 @@ export function productionTestingEnvironment(environment, testRoot) {
 }
 
 /** Construct only the destination-backed UI target; no fixture product path is retained. */
-export function productionTestRun(input) {
+export function productionTestRun(input, probe) {
   validateProductionInputs(input);
+  if (
+    probe &&
+    (!Number.isInteger(probe.port) ||
+      probe.port < 1 ||
+      probe.port > 65535 ||
+      !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(probe.token ?? ''))
+  )
+    throw new Error('Invalid production cancellation probe');
+  const testingEnvironment = { ...input.testingEnvironment };
+  if (probe) {
+    testingEnvironment.OROT_PRODUCTION_CANCEL_PORT = String(probe.port);
+    testingEnvironment.OROT_PRODUCTION_CANCEL_TOKEN = probe.token;
+  }
   return {
     __xctestrun_metadata__: { FormatVersion: 1 },
     OrotUITests: {
@@ -51,8 +68,12 @@ export function productionTestRun(input) {
       TestHostBundleIdentifier: input.runnerId,
       TestBundleDestinationRelativePath: input.bundlePath,
       UITargetAppBundleIdentifier: input.appId,
-      TestingEnvironmentVariables: input.testingEnvironment,
-      OnlyTestIdentifiers: [productionConversationTest.slice('OrotUITests/'.length)],
+      TestingEnvironmentVariables: testingEnvironment,
+      OnlyTestIdentifiers: [
+        (probe ? productionCancellationTest : productionConversationTest).slice(
+          'OrotUITests/'.length,
+        ),
+      ],
     },
   };
 }

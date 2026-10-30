@@ -88,7 +88,7 @@ export async function cancellationPreflight({
 export async function runOwned(
   command,
   args,
-  { spawnChild = spawn, signalBus = process, signalGroup = process.kill } = {},
+  { spawnChild = spawn, signalBus = process, signalGroup = process.kill, onSpawn = () => {} } = {},
 ) {
   const child = spawnChild(command, args, { detached: true, stdio: 'inherit' });
   let cancellation;
@@ -96,9 +96,11 @@ export async function runOwned(
   let pendingSignal;
   let childError;
   let spawned = false;
+  let finished = false;
   const interrupt = () => cancel('SIGINT');
   const terminate = () => cancel('SIGTERM');
   function cancel(signal) {
+    if (finished || !['SIGINT', 'SIGTERM'].includes(signal)) return;
     cancellation ??= signal;
     pendingSignal = signal;
     deliver();
@@ -115,6 +117,12 @@ export async function runOwned(
   child.once('spawn', () => {
     spawned = true;
     deliver();
+    try {
+      onSpawn({ pid: child.pid, cancel });
+    } catch (error) {
+      childError = error;
+      cancel('SIGTERM');
+    }
   });
   signalBus.on('SIGINT', interrupt);
   signalBus.on('SIGTERM', terminate);
@@ -124,7 +132,10 @@ export async function runOwned(
         if (!spawned) reject(error);
         else childError ??= error;
       });
-      child.once('close', (code, signal) => resolve({ code, signal, cancellation }));
+      child.once('close', (code, signal) => {
+        finished = true;
+        resolve({ code, signal, cancellation });
+      });
     });
     if (signalError) throw signalError;
     if (childError) throw childError;

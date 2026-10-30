@@ -163,3 +163,26 @@ test('owned runner retains cancellation handlers after a post-spawn child error 
   assert.equal(await outcome, 'failed');
   assert.equal(bus.listenerCount('SIGTERM'), 0);
 });
+
+test('a readiness owner can cancel only the spawned process group', async () => {
+  const bus = new EventEmitter();
+  const child = new EventEmitter();
+  child.pid = 42;
+  const sent = [];
+  let owned;
+  const execution = runOwned('test-child', [], {
+    spawnChild: () => child,
+    signalBus: bus,
+    signalGroup: (pid, signal) => sent.push([pid, signal]),
+    onSpawn: (value) => {
+      owned = value;
+    },
+  });
+  child.emit('spawn');
+  assert.equal(owned.pid, 42);
+  owned.cancel('SIGINT');
+  child.emit('close', null, 'SIGINT');
+  const result = await execution;
+  assert.deepEqual(sent, [[-42, 'SIGINT']]);
+  assert.equal(result.cancellation, 'SIGINT');
+});

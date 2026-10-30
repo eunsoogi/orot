@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
-import { productionConversationTest } from '../production-ui-contract.mjs';
+import { productionTestInventory } from '../production-ui-contract.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 
 function assertTestMethodDeclared(identifier) {
@@ -118,8 +118,10 @@ test('each profile declares unique existing cases and every test method is sched
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }
-  seen.add(productionConversationTest);
-  assertTestMethodDeclared(productionConversationTest);
+  for (const identifier of productionTestInventory) {
+    seen.add(identifier);
+    assertTestMethodDeclared(identifier);
+  }
   for (const target of ['OrotIntegrationTests', 'OrotUITests']) {
     for (const file of readdirSync(`apps/mobile/ios/${target}`).filter(
       (file) => file.endsWith('.swift') || file.endsWith('.m'),

@@ -44,12 +44,34 @@ test('destination contract selects one UI case and never installs a target app',
   ]);
 });
 
+test('explicit cancellation probe selects only a no-Send case with bounded runner configuration', () => {
+  const probe = { port: 12345, token: '11111111-1111-4111-8111-111111111111' };
+  const run = productionTestRun(input, probe);
+  assert.deepEqual(run.OrotUITests.OnlyTestIdentifiers, [
+    'ProductionRagConversationUITests/testProductionCancellationBeforeSend',
+  ]);
+  assert.deepEqual(run.OrotUITests.TestingEnvironmentVariables, {
+    OROT_PRODUCTION_CANCEL_PORT: '12345',
+    OROT_PRODUCTION_CANCEL_TOKEN: probe.token,
+  });
+  assert.throws(() => productionTestRun(input, { ...probe, port: 0 }));
+  assert.throws(() => productionTestRun(input, { ...probe, token: 'invalid' }));
+});
+
 test('runner must expose the named test class and method', () => {
   const symbols = 'OrotUITests32ProductionRagConversationUITests';
   const names = 'testProductionConversationAndReturnError:';
   assert.doesNotThrow(() => verifyProductionTestSymbols(symbols, names));
   assert.throws(() => verifyProductionTestSymbols(symbols, ''));
   assert.throws(() => verifyProductionTestSymbols('', names));
+  assert.throws(() => verifyProductionTestSymbols(symbols, names, true));
+  assert.doesNotThrow(() =>
+    verifyProductionTestSymbols(
+      symbols,
+      names + '\ntestProductionCancellationBeforeSendWithCompletionHandler:',
+      true,
+    ),
+  );
 });
 
 test('Xcode runner environment rejects injected variables and resolves only its products root', () => {
