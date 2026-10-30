@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { productionTestInventory } from '../production-ui-contract.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 
 function assertTestMethodDeclared(identifier) {
@@ -114,6 +115,10 @@ test('each profile declares unique existing cases and every test method is sched
     assertTestMethodDeclared(identifier);
   }
   for (const identifier of iosTestInventory('core', 'authentication')) {
+    seen.add(identifier);
+    assertTestMethodDeclared(identifier);
+  }
+  for (const identifier of productionTestInventory) {
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }
