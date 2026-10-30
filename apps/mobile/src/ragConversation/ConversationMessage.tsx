@@ -31,6 +31,12 @@ export function ConversationMessage({
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
+  // Native production verification needs a stable target for completed text, apart from citation controls.
+  const messageTextTestID = message.streaming
+    ? 'rag-conversation-stream'
+    : user
+      ? undefined
+      : 'rag-conversation-answer-body';
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
       <View style={!user && styles.assistantBody}>
@@ -48,7 +54,7 @@ export function ConversationMessage({
           <MessageText
             selectable
             style={[styles.messageText, user && styles.userText]}
-            testID={message.streaming ? 'rag-conversation-stream' : undefined}
+            testID={messageTextTestID}
           >
             {message.content}
           </MessageText>

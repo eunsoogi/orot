@@ -118,6 +118,18 @@ final class ProductionRagConversationUITests: XCTestCase {
             throw failure(status)
         }
         guard sourceLists.count > 0 else { throw failure("validated_citations_unavailable") }
+        // Citations do not prove that the completed assistant body itself is displayed.
+        let answerBody = node(app, "rag-conversation-answer-body")
+        let history = node(app, "rag-conversation-history")
+        guard answerBody.exists, history.exists else { throw failure("assistant_answer_body_unavailable") }
+        let answerText = UITestConditions.text(answerBody).trimmingCharacters(in: .whitespacesAndNewlines)
+        let visibleAnswerFrame = answerBody.frame.intersection(history.frame)
+        guard !answerText.isEmpty,
+              !visibleAnswerFrame.isNull,
+              visibleAnswerFrame.width > 0,
+              visibleAnswerFrame.height > 0
+        else { throw failure("assistant_answer_body_not_visible") }
+        stage("assistant_answer_body_visible")
         let sources = sourceLists.firstMatch
         stage("validated_citations_visible")
         let source = sources.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "원문 근거 열기")).firstMatch
