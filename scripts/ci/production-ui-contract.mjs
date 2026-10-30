@@ -63,6 +63,8 @@ export function validateProductionInputs(input) {
     input.bundlePath !== '__TESTHOST__/PlugIns/OrotUITests.xctest' ||
     !/^[a-f0-9]{64}$/.test(input.binaryHash ?? '') ||
     input.binaryHash !== input.installedHash ||
+    !/^[a-f0-9]{64}$/.test(input.jsBundleHash ?? '') ||
+    input.jsBundleHash !== input.installedJsBundleHash ||
     input.configuration !== 'Release' ||
     input.entry !== 'index.js' ||
     input.orotTests !== false

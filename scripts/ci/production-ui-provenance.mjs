@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 
 /** Match producer-supplied build evidence to the installed bytes; it does not authenticate its author. */
-export function verifyProductionProvenance(receipt, settingsText, log, binarySha) {
+export function verifyProductionProvenance(receipt, settingsText, log, binarySha, jsBundleSha) {
   const argv = receipt?.argv;
   const validHash = (value, length) => new RegExp(`^[a-f0-9]{${length}}$`).test(value ?? '');
   if (
@@ -11,6 +11,8 @@ export function verifyProductionProvenance(receipt, settingsText, log, binarySha
     receipt.sourceClean !== true ||
     !validHash(receipt?.binarySha, 64) ||
     receipt.binarySha !== binarySha ||
+    !validHash(receipt?.jsBundleSha, 64) ||
+    receipt.jsBundleSha !== jsBundleSha ||
     !validHash(receipt?.logSha, 64) ||
     receipt.logSha !== digest(log) ||
     !validHash(receipt?.settingsSha, 64) ||
@@ -48,5 +50,9 @@ export function verifyProductionProvenance(receipt, settingsText, log, binarySha
     )
   )
     throw new Error('Production build settings do not establish a non-fixture Release');
-  return { sourceSha: receipt.sourceSha, binarySha: receipt.binarySha };
+  return {
+    sourceSha: receipt.sourceSha,
+    binarySha: receipt.binarySha,
+    jsBundleSha: receipt.jsBundleSha,
+  };
 }

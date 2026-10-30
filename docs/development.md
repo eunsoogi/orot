@@ -70,13 +70,13 @@ pnpm ios:build
 
 이 검사는 별도로 선택하는 `ProductionRagConversationUITests/testProductionConversation` 한 사례입니다. 일반 core와 Duo 실행 목록에는 포함하지 않습니다. 먼저 테스트 제품을 별도 DerivedData에 `node scripts/ci/build-ios-tests.mjs core <test-derived-data>`로 빌드하고, 운영 Release 앱은 별도 위치에서 빌드해 사용자가 소유한 Simulator에 설치합니다. 테스트 제품의 `Orot.app`은 운영 앱과 같은 식별자를 가질 수 있으므로 설치하지 마세요.
 
-운영 제품 소유자는 같은 빌드의 깨끗한 source SHA, 실행한 Xcode 인자, `ENTRY_FILE`, 성공한 빌드 로그, `OrotMobile` 대상의 Release build settings JSON과 각 파일의 SHA-256, 운영 바이너리 SHA-256을 보존합니다. receipt JSON은 `sourceSha`, `sourceClean`, `binarySha`, `logSha`, `settingsSha`, `argv`, `entryFile`을 포함합니다. `entryFile`은 명시되지 않았다면 `null`, 기본 entry라면 `index.js`입니다. 빌드 기록의 작성자와 source 연결은 실행자가 원본에서 확인해야 합니다. 해시와 필드 일치만으로 작성자나 빌드 출처가 인증되지는 않습니다.
+운영 제품 소유자는 같은 빌드의 깨끗한 source SHA, 실행한 Xcode 인자, `ENTRY_FILE`, 성공한 빌드 로그, `OrotMobile` 대상의 Release build settings JSON과 각 파일의 SHA-256, 운영 바이너리와 `main.jsbundle`의 SHA-256을 보존합니다. receipt JSON은 `sourceSha`, `sourceClean`, `binarySha`, `jsBundleSha`, `logSha`, `settingsSha`, `argv`, `entryFile`을 포함합니다. `entryFile`은 명시되지 않았다면 `null`, 기본 entry라면 `index.js`입니다. 빌드 기록의 작성자와 source 연결은 실행자가 원본에서 확인해야 합니다. 해시와 필드 일치만으로 작성자나 빌드 출처가 인증되지는 않습니다.
 
 ```sh
 node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> <test-products.xctestrun> <production-Orot.app> <receipt.json> <settings.json> <build.log> <result.xcresult>
 ```
 
-도구는 설치된 운영 앱과 제공된 제품의 식별자·바이너리 해시 및 Apple SDK 심볼을 검사하고, 테스트 러너만 설치합니다. Xcode의 `UseDestinationArtifacts`로 이미 설치된 앱을 사용하며 fixture 초기화나 제거를 실행하지 않습니다. 취소 preflight는 소유한 프로세스 그룹의 신호 전달만 확인하므로 실제 Xcode와 Simulator의 종료 및 정리 결과는 별도 관측해야 합니다. 새 대화를 만들고 Apple Intelligence를 선택한 뒤 입력한 질문이 정확히 일치할 때만 한 번 전송합니다. 동의 화면이 나타나면 자동 승인하지 않고 해당 단계에서 실패합니다.
+도구는 설치된 운영 앱과 제공된 제품의 식별자·바이너리와 JavaScript 번들 해시 및 Apple SDK 심볼을 검사하고, 테스트 러너만 설치합니다. Xcode의 `UseDestinationArtifacts`로 이미 설치된 앱을 사용하며 fixture 초기화나 제거를 실행하지 않습니다. 취소 preflight는 소유한 프로세스 그룹의 신호 전달만 확인하므로 실제 Xcode와 Simulator의 종료 및 정리 결과는 별도 관측해야 합니다. 새 대화를 만들고 Apple Intelligence를 선택한 뒤 입력한 질문이 정확히 일치할 때만 한 번 전송합니다. 동의 화면이 나타나면 자동 승인하지 않고 해당 단계에서 실패합니다.
 
 결과의 단계 기록은 테스트 진행 상황입니다. 도구는 실행 시간 이후의 Simulator 로그에서 허용된 native lifecycle 필드만 출력하며, 로그를 읽지 못하거나 항목이 없으면 미확인으로 남깁니다. `sdk_generation_completed`는 SDK 완료이며, 최종 검증된 답변과 출처 열기는 각각 별도 결과입니다. 기록된 요청과 bridge 호출 ID는 SDK 호출 ID가 아닙니다. 시간 범위에 다른 요청이 있었다면 어느 요청의 이벤트인지 별도 확인해야 합니다. 모델을 사용할 수 없거나 단계가 실패하면 실제 상태를 기록하고 모의 응답이나 테스트 실행 성공을 실제 모델 수락으로 취급하지 않습니다. 운영 앱의 기존 데이터와 다른 작업의 Simulator를 보존하세요.
 

@@ -40,7 +40,11 @@ if (!resultPath || extra.length)
     'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <result.xcresult>',
   );
 const command = (tool, args) =>
-  execFileSync(tool, args, { encoding: 'utf8', timeout: 30000 }).trim();
+  execFileSync(tool, args, {
+    encoding: 'utf8',
+    timeout: 30000,
+    maxBuffer: 64 * 1024 * 1024,
+  }).trim();
 const plist = (path, key) =>
   command('plutil', ['-extract', key, 'raw', '-o', '-', join(path, 'Info.plist')]);
 const sha = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -50,13 +54,13 @@ const metadata = (path) => ({
   id: plist(path, 'CFBundleIdentifier'),
   executable: plist(path, 'CFBundleExecutable'),
 });
-const appHash = (path) => {
+const appIdentity = (path) => {
   const info = metadata(path);
   if (info.id !== appId || info.executable !== 'Orot')
     throw new Error('Unexpected production app identity');
   const verified = verifyAppleModelProduct('production', path);
   if (verified.binaries.length !== 1) throw new Error('Expected one Release app binary');
-  return verified.binaries[0].sha256;
+  return { binarySha: verified.binaries[0].sha256, jsBundleSha: sha(join(path, 'main.jsbundle')) };
 };
 
 let directory;
@@ -85,14 +89,15 @@ try {
       );
       const app = realpathSync(appPath);
       const installed = installedApp();
-      const productHash = appHash(app);
-      const installedHash = appHash(installed);
+      const product = appIdentity(app);
+      const installedProduct = appIdentity(installed);
       const evidence = JSON.parse(readFileSync(receiptPath, 'utf8'));
       verifyProductionProvenance(
         evidence,
         readFileSync(settingsPath, 'utf8'),
         readFileSync(logPath, 'utf8'),
-        installedHash,
+        installedProduct.binarySha,
+        installedProduct.jsBundleSha,
       );
       const input = {
         udid,
@@ -100,8 +105,10 @@ try {
         bundleId: bundleInfo.id,
         bundlePath: '__TESTHOST__/PlugIns/OrotUITests.xctest',
         appId,
-        binaryHash: productHash,
-        installedHash,
+        binaryHash: product.binarySha,
+        installedHash: installedProduct.binarySha,
+        jsBundleHash: product.jsBundleSha,
+        installedJsBundleHash: installedProduct.jsBundleSha,
         configuration: 'Release',
         entry: evidence.entryFile ?? 'index.js',
         orotTests: false,
@@ -129,9 +136,10 @@ try {
         runnerInfo,
         bundleInfo,
         input,
-        productHash,
+        product,
         sourceSha: evidence.sourceSha,
         bundleHash: sha(join(bundle, bundleInfo.executable)),
+        runnerHash: sha(join(runner, runnerInfo.executable)),
       };
     },
     preflight: cancellationPreflight,
@@ -149,11 +157,14 @@ try {
         'app',
       ]);
       const installedBundle = join(installedRunner, 'PlugIns', 'OrotUITests.xctest');
+      const installedProduct = appIdentity(installedApp());
       if (
         metadata(installedRunner).id !== context.runnerInfo.id ||
         metadata(installedBundle).id !== context.bundleInfo.id ||
+        sha(join(installedRunner, context.runnerInfo.executable)) !== context.runnerHash ||
         sha(join(installedBundle, context.bundleInfo.executable)) !== context.bundleHash ||
-        appHash(installedApp()) !== context.productHash
+        installedProduct.binarySha !== context.product.binarySha ||
+        installedProduct.jsBundleSha !== context.product.jsBundleSha
       )
         throw new Error('Installed runner or production app differs from validated products');
       directory = mkdtempSync(join(tmpdir(), 'orot-production-ui-'));
@@ -164,7 +175,8 @@ try {
         JSON.stringify({
           stage: 'runner_ready',
           sourceSha: context.sourceSha,
-          binarySha: context.productHash,
+          binarySha: context.product.binarySha,
+          jsBundleSha: context.product.jsBundleSha,
           runnerId: context.runnerInfo.id,
           test: 'OrotUITests/ProductionRagConversationUITests/testProductionConversation',
         }),
@@ -194,11 +206,13 @@ try {
       return result;
     },
     verifyAfter(context) {
-      if (appHash(installedApp()) !== context.productHash)
+      const installed = appIdentity(installedApp());
+      if (
+        installed.binarySha !== context.product.binarySha ||
+        installed.jsBundleSha !== context.product.jsBundleSha
+      )
         throw new Error('Production app changed during the run');
-      console.log(
-        JSON.stringify({ stage: 'production_binary_unchanged', binarySha: context.productHash }),
-      );
+      console.log(JSON.stringify({ stage: 'production_product_unchanged', ...installed }));
     },
   });
   console.log(JSON.stringify({ stage: 'harness_finished', outcome }));

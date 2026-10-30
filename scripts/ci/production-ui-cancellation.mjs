@@ -30,28 +30,34 @@ export async function cancellationPreflight() {
 }
 
 /** Relay cancellation only to the process group created for this invocation. */
-export async function runOwned(command, args) {
-  const child = spawn(command, args, { detached: true, stdio: 'inherit' });
+export async function runOwned(
+  command,
+  args,
+  { spawnChild = spawn, signalBus = process, signalGroup = process.kill } = {},
+) {
+  const child = spawnChild(command, args, { detached: true, stdio: 'inherit' });
   let cancellation;
   let signalError;
+  let pendingSignal;
   const interrupt = () => cancel('SIGINT');
   const terminate = () => cancel('SIGTERM');
   function cancel(signal) {
-    if (cancellation) return;
-    cancellation = signal;
+    cancellation ??= signal;
+    pendingSignal = signal;
     deliver();
   }
   function deliver() {
-    if (!child.pid || !cancellation) return;
+    if (!child.pid || !pendingSignal) return;
     try {
-      process.kill(-child.pid, cancellation);
+      signalGroup(-child.pid, pendingSignal);
     } catch (error) {
       if (error.code !== 'ESRCH') signalError = error;
     }
+    pendingSignal = undefined;
   }
   child.once('spawn', deliver);
-  process.on('SIGINT', interrupt);
-  process.on('SIGTERM', terminate);
+  signalBus.on('SIGINT', interrupt);
+  signalBus.on('SIGTERM', terminate);
   try {
     const result = await new Promise((resolve, reject) => {
       child.once('error', reject);
@@ -60,7 +66,7 @@ export async function runOwned(command, args) {
     if (signalError) throw signalError;
     return result;
   } finally {
-    process.removeListener('SIGINT', interrupt);
-    process.removeListener('SIGTERM', terminate);
+    signalBus.removeListener('SIGINT', interrupt);
+    signalBus.removeListener('SIGTERM', terminate);
   }
 }

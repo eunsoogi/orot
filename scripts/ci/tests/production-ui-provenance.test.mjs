@@ -22,6 +22,7 @@ const receipt = {
   sourceSha: 'a'.repeat(40),
   sourceClean: true,
   binarySha: 'b'.repeat(64),
+  jsBundleSha: 'c'.repeat(64),
   logSha: digest(log),
   settingsSha: digest(settings),
   argv: [
@@ -39,21 +40,28 @@ const receipt = {
 
 test('matches production evidence to the installed binary and rejects absent or mismatched evidence', () => {
   assert.equal(
-    verifyProductionProvenance(receipt, settings, log, 'b'.repeat(64)).sourceSha,
+    verifyProductionProvenance(receipt, settings, log, 'b'.repeat(64), 'c'.repeat(64)).sourceSha,
     receipt.sourceSha,
   );
   for (const patch of [
     { sourceSha: '' },
     { binarySha: 'c'.repeat(64) },
+    { jsBundleSha: '' },
     { logSha: '' },
     { entryFile: 'e2e/testEntry.tsx' },
     { argv: ['xcodebuild', 'build', '-configuration', 'Debug'] },
   ])
     assert.throws(() =>
-      verifyProductionProvenance({ ...receipt, ...patch }, settings, log, 'b'.repeat(64)),
+      verifyProductionProvenance(
+        { ...receipt, ...patch },
+        settings,
+        log,
+        'b'.repeat(64),
+        'c'.repeat(64),
+      ),
     );
   assert.throws(() =>
-    verifyProductionProvenance(receipt, settings, log + 'modified', 'b'.repeat(64)),
+    verifyProductionProvenance(receipt, settings, log + 'modified', 'b'.repeat(64), 'c'.repeat(64)),
   );
 });
 
@@ -65,6 +73,13 @@ test('rejects a Release setting with a fixture compiler flag', () => {
       altered,
       log,
       'b'.repeat(64),
+      'c'.repeat(64),
     ),
+  );
+});
+
+test('rejects an installed JavaScript bundle that differs from the producer receipt', () => {
+  assert.throws(() =>
+    verifyProductionProvenance(receipt, settings, log, 'b'.repeat(64), 'd'.repeat(64)),
   );
 });
