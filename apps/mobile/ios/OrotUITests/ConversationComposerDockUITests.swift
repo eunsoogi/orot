@@ -20,6 +20,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
         input.typeText("complete synthetic\nsecond line\nthird line")
         XCTAssertTrue(send.isHittable)
+        ConversationComposerDockUITestConditions.waitForKeyboardClearance(composer, in: app)
         XCTAssertLessThanOrEqual(composer.frame.maxY, app.keyboards.firstMatch.frame.minY + 1)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         send.tap()
@@ -51,6 +52,23 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 /// Verifies fixed controls against their dock and actual occluding system surfaces.
 @MainActor
 enum ConversationComposerDockUITestConditions {
+    /// Observe the actual keyboard boundary after its layout changes, without substituting a delay.
+    static func waitForKeyboardClearance(_ dock: XCUIElement, in app: XCUIApplication) {
+        let keyboard = app.keyboards.firstMatch
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            dock.exists && keyboard.exists && dock.frame.maxY <= keyboard.frame.minY + 1
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+    }
+
+    /// Rotation is ready for the next action only when the actual control is inside the window and hittable.
+    static func waitForWindowControl(_ control: XCUIElement, in app: XCUIApplication) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            control.exists && control.isHittable && app.frame.contains(control.frame)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+    }
+
     /// The stream must retain a readable line inside the real scroll viewport.
     static func assertStreamVisible(in app: XCUIApplication) {
         let history = UITestConditions.element(app, "rag-conversation-history")
