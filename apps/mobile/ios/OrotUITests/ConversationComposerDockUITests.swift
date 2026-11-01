@@ -22,7 +22,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
         typeOnKeyboard("a\na\na", in: app)
         let multiline = input.value as? String
-        XCTAssertEqual(multiline, "a\na\na")
+        XCTAssertEqual(multiline?.lowercased(), "a\na\na")
         typeOnKeyboard("a", in: app)
         tapKey(app.keyboards.firstMatch.keys["delete"], in: app)
         XCTAssertEqual(input.value as? String, multiline)
@@ -36,8 +36,8 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(citation.isHittable)
         XCTAssertLessThanOrEqual(citation.frame.maxY, composer.frame.minY + 1)
         input.tap()
-        typeOnKeyboard("pending", in: app)
-        XCTAssertEqual(input.value as? String, "pending")
+        typeOnKeyboard("apending", in: app)
+        XCTAssertEqual((input.value as? String)?.lowercased(), "apending")
         XCTAssertTrue(send.isHittable)
         send.tap()
         let cancel = app.buttons.matching(identifier: "rag-conversation-cancel").firstMatch
@@ -47,7 +47,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         cancel.tap()
         input.tap()
-        typeOnKeyboard("failure", in: app)
+        typeOnKeyboard("afailure", in: app)
         XCTAssertTrue((input.value as? String)?.contains("failure") == true)
         XCTAssertTrue(send.isHittable)
         send.tap()
@@ -62,7 +62,8 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
     private func typeOnKeyboard(_ text: String, in app: XCUIApplication) {
         let keyboard = app.keyboards.firstMatch
         for character in text {
-            let key = character == "\n" ? keyboard.buttons["Return"] : keyboard.keys[String(character)]
+            // The system changes key labels with auto-capitalization; select the visible letter in either state.
+            let key = character == "\n" ? keyboard.buttons["Return"] : keyboard.keys.matching(NSPredicate(format: "label ==[c] %@", String(character))).firstMatch
             tapKey(key, in: app)
         }
     }
