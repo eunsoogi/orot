@@ -21,12 +21,12 @@ extension FormScrollGeometryRegression {
             ["identity": id, "windowIdentity": window, "hasWindow": true, "windowHidden": false,
              "hidden": false, "ancestorHidden": false, "visibilityTraversalComplete": true, "alpha": 1.0]
         }
-        let scrollView = view("scroll", CGRect(x: 0, y: 62, width: 402, height: 812))
+        let scrollView = view("scroll", CGRect(x: 0, y: 62, width: 402, height: 812)).merging(["bounds": frame(CGRect(x: 0, y: 0, width: 402, height: 812))]) { _, new in new }
         let context: [String: Any] = [
             "startedAtMs": 102.0, "endedAtMs": 103.0, "windowIdentity": window,
             "scrollCount": 1, "targetCount": 1, "windowBounds": frame(app), "windowFrameInScreen": frame(app),
             "clippingGeometryComplete": true, "modelClipIntersectionEmpty": true, "modelClipIntersection": NSNull(),
-            "scroll": ["view": scrollView, "clipsToBounds": true, "isDragging": false, "isDecelerating": false, "isTracking": false],
+            "scroll": ["view": scrollView, "clipsToBounds": true, "isDragging": false, "isDecelerating": false, "isTracking": false, "contentOffset": ["x": 0.0, "y": 0.0], "contentSize": ["width": 402.0, "height": 1200.0]],
             "target": ["identifier": "observed-target", "view": view("target", target), "visibility": visibility("target"),
                        "sameSelectedScroll": true, "nearestScrollIdentity": "scroll"],
             "clippingAncestors": [scrollView.merging(["hasLayerMask": false]) { _, new in new }],
@@ -91,30 +91,77 @@ extension FormScrollGeometryRegression {
         var changed = geometry
         changed["interaction"] = mismatched
         XCTAssertNil(resolve(snapshot(changed)))
-        // A status control must satisfy the same temporal, identity, and clipping boundaries as the original field.
-        let candidate: [String: Any] = ["id": "target", "windowID": window, "frame": frame(target), "hidden": false,
-                                        "alpha": 1.0, "ancestorHidden": false, "nearestScrollID": "scroll",
-                                        "sameSelectedScroll": true, "clippingComplete": true]
-        let controls: [String: Any] = ["startedAtMs": 103.0, "endedAtMs": 103.5, "windowID": window,
-                                       "truncated": false, "selectionComplete": true,
-                                       "controls": [["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [candidate]]]]
+        // A status plan uses the native target rather than any earlier AX direction.
+        let groups: [[String: Any]] = [
+            ["role": "symptom-description", "count": 1, "truncated": false, "candidates": [["id": "editor", "windowID": window, "nearestScrollID": "scroll", "sameSelectedScroll": true, "hidden": false, "ancestorHidden": false, "alpha": 1.0, "clippingComplete": true, "clippedFrameEmpty": true, "frame": frame(editor)]]],
+            ["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [["id": "target", "windowID": window, "nearestScrollID": "scroll", "sameSelectedScroll": true, "hidden": false, "ancestorHidden": false, "alpha": 1.0, "clippingComplete": true, "frame": frame(target)]]],
+        ] + ["symptom-save", "symptom-form-cancel", "navigation-page-action-overflow", "navigation-back"].map { ["role": $0, "count": 0, "truncated": false, "candidates": []] }
+            + [["role": "navigation-home", "count": 1, "truncated": false, "candidates": [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(CGRect(x: 314, y: 792, width: 64, height: 48))]]]]
+        let declared: [String: Any] = ["startedAtMs": 103.0, "endedAtMs": 103.5, "windowID": window, "truncated": false,
+                                       "selectionComplete": true, "selectedScrollCount": 1,
+                                       "scroll": ["id": "scroll", "tracking": false, "dragging": false, "decelerating": false, "offset": ["x": 0.0, "y": 0.0], "size": ["width": 402.0, "height": 1200.0], "bounds": frame(CGRect(x: 0, y: 0, width: 402, height: 812))], "controls": groups]
         var statusGeometry = geometry
-        statusGeometry["declaredControls"] = controls
-        // A matching endpoint alone cannot prove that scrolling or layout stayed still between samples.
-        XCTAssertNil(resolve(snapshot(statusGeometry), identifier: "symptom-status-active"))
-        for motion in ["moved-and-returned", "programmatic-layout", "missing-interval", "last-sample-only"] {
-            var unproven = statusGeometry
-            unproven["motionEvidence"] = ["status": motion]
-            XCTAssertNil(resolve(snapshot(unproven), identifier: "symptom-status-active"), motion)
+        statusGeometry["declaredControls"] = declared
+        let keyboardEvent: [String: Any] = ["event": "symptom-native-keyboard-frame", "phase": "did-change-frame", "receivedAtMs": 102.0, "endFrameInScreen": frame(CGRect(x: 0, y: 874, width: 402, height: 270))]
+        func statusSnapshot(_ value: [String: Any], event: [String: Any]) -> [String: Any] {
+            ["atMs": 104.0, "symptomScrollTrace": ["events": [event], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
         }
-        for altered: [String: Any] in [["frame": frame(target.offsetBy(dx: 0, dy: 20))], ["windowID": "other"], ["clippingComplete": false], ["sameSelectedScroll": false]] {
-            let candidate = candidate.merging(altered) { _, new in new }
+        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45) -> FormScrollGeometryJournalPlan.Plan? {
+            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, controls: blocks, identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
+        }
+        let upward = try XCTUnwrap(plan(statusGeometry))
+        XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
+        XCTAssertLessThanOrEqual(abs(upward.end.dy - upward.start.dy), viewport.height * 0.45)
+        XCTAssertNil(plan(statusGeometry, blocks: [viewport]))
+        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 226)))
+        let partialKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 546, width: 402, height: 328))]) { _, new in new }
+        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 226), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: partialKeyboard))
+        let matchingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 590, width: 402, height: 284))]) { _, new in new }
+        XCTAssertNotNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 284), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: matchingKeyboard))
+        let overlappingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 400, width: 402, height: 474))]) { _, new in new }
+        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 400, width: 402, height: 474), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: overlappingKeyboard))
+        var blockedGroups = groups
+        let leftBlock = CGRect(x: 10, y: 300, width: 15, height: 10)
+        let rightBlock = CGRect(x: 380, y: 300, width: 15, height: 10)
+        blockedGroups[blockedGroups.count - 2]["count"] = 1
+        blockedGroups[blockedGroups.count - 2]["candidates"] = [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(leftBlock)]]
+        blockedGroups[blockedGroups.count - 1]["candidates"] = [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(rightBlock)]]
+        var blockedGeometry = statusGeometry
+        blockedGeometry["declaredControls"] = declared.merging(["controls": blockedGroups]) { _, new in new }
+        XCTAssertNil(plan(blockedGeometry, blocks: [leftBlock, rightBlock]))
+        var belowGroups = groups
+        var below = try XCTUnwrap((belowGroups[1]["candidates"] as? [[String: Any]])?.first)
+        below["frame"] = frame(CGRect(x: 207, y: 850, width: 160, height: 80))
+        belowGroups[1]["candidates"] = [below]
+        var belowGeometry = statusGeometry
+        belowGeometry["declaredControls"] = declared.merging(["controls": belowGroups]) { _, new in new }
+        let downward = try XCTUnwrap(plan(belowGeometry))
+        XCTAssertLessThan(downward.end.dy, downward.start.dy)
+        for changed: [String: Any] in [["selectionComplete": false], ["truncated": true], ["windowID": "other"]] {
             var rejected = statusGeometry
-            rejected["declaredControls"] = controls.merging(["controls": [["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [candidate]]]]) { _, new in new }
-            XCTAssertNil(resolve(snapshot(rejected), identifier: "symptom-status-active"))
+            rejected["declaredControls"] = declared.merging(changed) { _, new in new }
+            XCTAssertNil(plan(rejected))
         }
         var duplicate = statusGeometry
-        duplicate["declaredControls"] = controls.merging(["controls": [["role": "symptom-status-active", "count": 2, "truncated": false, "candidates": [candidate, candidate]]]]) { _, new in new }
-        XCTAssertNil(resolve(snapshot(duplicate), identifier: "symptom-status-active"))
+        var duplicateGroups = groups
+        duplicateGroups[1]["count"] = 2
+        duplicate["declaredControls"] = declared.merging(["controls": duplicateGroups]) { _, new in new }
+        XCTAssertNil(plan(duplicate))
+        var clippedGroups = groups
+        var clipped = try XCTUnwrap((clippedGroups[1]["candidates"] as? [[String: Any]])?.first)
+        clipped["clippingComplete"] = false
+        clippedGroups[1]["candidates"] = [clipped]
+        var incomplete = statusGeometry
+        incomplete["declaredControls"] = declared.merging(["controls": clippedGroups]) { _, new in new }
+        XCTAssertNil(plan(incomplete))
+        var changedInput = statusGeometry
+        changedInput["input"] = view("editor", editor.offsetBy(dx: 1, dy: 0))
+        XCTAssertNil(plan(changedInput))
+        for changedScroll: [String: Any] in [["offset": ["x": 0.0, "y": 1.0]], ["size": ["width": 402.0, "height": 1201.0]], ["bounds": frame(CGRect(x: 0, y: 0, width: 402, height: 811))], ["tracking": true]] {
+            let originalScroll = try XCTUnwrap(declared["scroll"] as? [String: Any])
+            var rejected = statusGeometry
+            rejected["declaredControls"] = declared.merging(["scroll": originalScroll.merging(changedScroll) { _, new in new }]) { _, new in new }
+            XCTAssertNil(plan(rejected))
+        }
     }
 }

@@ -122,7 +122,7 @@ enum SymptomJournalUITestObservations {
         return usable
     }
 
-    /// Diagnose focus loss at the unchanged edit cursor tap; geometry and screenshots are observations, not new pass conditions.
+    /// Observe focus loss at the unchanged edit cursor tap without adding a pass condition.
     @MainActor
     static func cursorTap(_ app: XCUIApplication, input: XCUIElement, phase: String) {
         func geometry(_ element: XCUIElement) -> String {
@@ -170,32 +170,41 @@ enum SymptomJournalUITestObservations {
     }
 
     /// A multiline editor can consume an overlapping form drag. Prefer the clear right gutter, then the left, without changing vertical travel.
-    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], start: CGVector, end: CGVector, evaluationStartedAtMs: Double) -> (start: CGVector, end: CGVector)? {
+    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, keyboard: CGRect?, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], proposed: () -> (start: CGVector, end: CGVector)?, evaluationStartedAtMs: Double, maximumScrollFraction: CGFloat) -> FormScrollGeometryJournalPlan.Plan? {
         let element = app.textViews["symptom-description"]
         // Without a text editor this overlap boundary is absent; other journal scrolling keeps its existing behavior.
-        guard element.exists else { return (start, end) }
+        guard element.exists else {
+            guard let original = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
+            return .init(start: original.start, end: original.end, target: target, viewport: viewport)
+        }
         let editorReadStartedAtMs = Date().timeIntervalSince1970 * 1000
         var editor = element.frame
         let editorReadEndedAtMs = Date().timeIntervalSince1970 * 1000
         if !FormScrollGeometry.valid(editor) {
             // Read once for both validation and diagnostics. Rejected samples never trigger another query or gesture.
             let identifier = targetIdentifier()
+            var freshPlan: FormScrollGeometryJournalPlan.Plan?
+            let original = identifier == "symptom-status-active" ? nil : proposed()
             XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
                 let marker = UITestConditions.element(app, "navigation-test-observation")
                 let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
                 let payload = marker.exists ? UITestConditions.text(marker) : "{\"status\":\"unavailable\"}"
                 let markerReadEndedAtMs = Date().timeIntervalSince1970 * 1000
                 let snapshot = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any]
-                let nativeEditor = target.flatMap {
-                    FormScrollGeometry.clippedJournalEditor(snapshot, application: application, viewport: viewport, target: $0,
+                let nativeEditor = target.flatMap { target in original.flatMap { original in
+                    FormScrollGeometry.clippedJournalEditor(snapshot, application: application, viewport: viewport, target: target,
                                                             identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs,
-                                                            readEndedAtMs: markerReadEndedAtMs, start: start, end: end)
-                }
+                                                            readEndedAtMs: markerReadEndedAtMs, start: original.start, end: original.end)
+                } }
                 let keyboardReadStartedAtMs = Date().timeIntervalSince1970 * 1000
-                let keyboard = app.keyboards.firstMatch
-                let keyboardExists = keyboard.exists
-                let keyboardFrame = keyboardExists ? String(describing: keyboard.frame) : "absent"
+                let keyboardElement = app.keyboards.firstMatch
+                let keyboardExists = keyboardElement.exists
+                let measuredKeyboard = keyboardExists ? keyboardElement.frame : nil
+                let keyboardFrame = measuredKeyboard.map { String(describing: $0) } ?? "absent"
                 let keyboardReadEndedAtMs = Date().timeIntervalSince1970 * 1000
+                if identifier == "symptom-status-active", keyboard == measuredKeyboard {
+                    freshPlan = FormScrollGeometryJournalPlan.make(snapshot: snapshot, application: application, usableViewport: viewport, keyboard: measuredKeyboard, controls: controls, identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs, readEndedAtMs: markerReadEndedAtMs, maximumScrollFraction: maximumScrollFraction)
+                }
                 let observation: [String: Any] = [
                     "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
                     "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
@@ -205,8 +214,7 @@ enum SymptomJournalUITestObservations {
                     "nativeEditorAccepted": nativeEditor != nil,
                     "resolvedEditorFrame": nativeEditor.map { String(describing: $0) } ?? "unavailable",
                     "navigationAXFrames": controls.map { String(describing: $0) },
-                    "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
-                                                       "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
+                    "preGutterGestureInScreenPoints": original.map { ["start": String(describing: CGPoint(x: application.minX + $0.start.dx, y: application.minY + $0.start.dy)), "end": String(describing: CGPoint(x: application.minX + $0.end.dx, y: application.minY + $0.end.dy))] } as Any? ?? NSNull(),
                     "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardFrame,
                     "keyboardReadStartedAtMs": keyboardReadStartedAtMs, "keyboardReadEndedAtMs": keyboardReadEndedAtMs,
                     // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
@@ -217,17 +225,21 @@ enum SymptomJournalUITestObservations {
                 record.name = "journal-invalid-editor-gutter"
                 record.lifetime = .keepAlways
                 activity.add(record)
-                if let nativeEditor {
-                    editor = nativeEditor
-                }
+                editor = nativeEditor ?? editor
+            }
+            if identifier == "symptom-status-active" {
+                guard let freshPlan else { XCTFail("The journal status requires a coherent native gesture plan"); return nil }
+                return freshPlan
             }
         }
+        guard let original = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
+        let start = original.start, end = original.end
         guard let target, let segment = sideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end).last else {
             XCTFail("The journal form requires a clear side gutter inside the usable viewport: editor=\(editor), target=\(String(describing: target)), viewport=\(viewport), controls=\(controls)")
             return nil
         }
         print("Journal gutter: editor=\(editor), target=\(target), viewport=\(viewport), side=\(segment.side), start=\(segment.from), end=\(segment.to)")
-        return (CGVector(dx: segment.from.x - application.minX, dy: start.dy), CGVector(dx: segment.to.x - application.minX, dy: end.dy))
+        return .init(start: CGVector(dx: segment.from.x - application.minX, dy: start.dy), end: CGVector(dx: segment.to.x - application.minX, dy: end.dy), target: target, viewport: viewport)
     }
 
     /// Validate the entire vertical segment, including endpoints and blocker edges, from the same captured frames.

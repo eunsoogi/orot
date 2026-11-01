@@ -4,7 +4,7 @@
     /// Samples fixed symptom controls without input contents or arbitrary accessibility identifiers.
     @MainActor
     enum SymptomControlGeometryObservation {
-        private static let roles = ["symptom-description", "symptom-onset-date", "symptom-onset-time", "symptom-status-active", "symptom-save", "symptom-form-cancel", "navigation-back", "navigation-home"]
+        private static let roles = ["symptom-description", "symptom-onset-date", "symptom-onset-time", "symptom-status-active", "symptom-save", "symptom-form-cancel", "navigation-page-action-overflow", "navigation-back", "navigation-home"]
 
         static func capture(input: UITextView, views: [UIView], window: UIWindow, truncated: Bool, identity: (NSObject) -> String) -> [String: Any] {
             let started = Date().timeIntervalSince1970 * 1000
@@ -18,7 +18,7 @@
             let focusRole = focused.count == 1 ? (roles.first { (known[$0] ?? []).contains(focused[0]) } ?? "other") : focused.isEmpty ? "none" : "ambiguous"
             var result: [String: Any] = ["startedAtMs": started, "windowID": identity(window), "truncated": truncated, "focusCount": focused.count, "otherWindowFocusCount": otherWindowFocusCount, "focusScope": "visited-views-in-window", "focusRole": truncated ? "unknown" : focusRole, "selectionComplete": selectionComplete]
             var controls: [[String: Any]] = []
-            for role in roles.prefix(4) {
+            for role in roles {
                 let candidates = known[role] ?? []
                 controls.append(["role": role, "count": candidates.count, "truncated": candidates.count > 4, "candidates": candidates.prefix(4).map { control in
                     candidate(control, role: role, known: known, selected: selected, window: window, identity: identity)

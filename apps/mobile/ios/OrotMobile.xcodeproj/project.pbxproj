@@ -12,6 +12,7 @@
 		A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000002 /* ConversationHitUITestObservation.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
 		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */; };
+		C49300000000000000000001 /* FormScrollGeometryJournalPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */; };
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
 		A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */; };
 		AC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */; };
@@ -300,6 +301,7 @@
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalRegression.swift; sourceTree = "<group>"; };
+		C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalPlan.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
 		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
 		BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderFailureOrigin.swift; sourceTree = "<group>"; };
@@ -956,6 +958,7 @@
 				FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */,
 				F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */,
 				D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */,
+				C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */,
 			);
 			name = OrotUITests;
 			path = OrotUITests;
@@ -1445,6 +1448,7 @@
 				9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */,
 				A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */,
 				D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */,
+				C49300000000000000000001 /* FormScrollGeometryJournalPlan.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
