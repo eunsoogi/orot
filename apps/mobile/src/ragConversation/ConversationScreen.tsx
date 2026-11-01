@@ -182,6 +182,7 @@ export function ConversationScreen({
             }
           >
             <ConversationHistory
+              compact={composerLayout.compact}
               header={header}
               messages={messages}
               pendingMessage={pendingMessage}

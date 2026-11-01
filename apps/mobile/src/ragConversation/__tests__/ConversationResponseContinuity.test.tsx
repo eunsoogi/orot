@@ -28,6 +28,20 @@ test('keeps the same answer mounted when the streamed draft becomes the validate
   await view.rerender(
     <ConversationHistory
       {...props}
+      compact
+      messages={[]}
+      pendingMessage={{
+        id: 42,
+        content: '이미 표시된 답변',
+        activity: '작성 중',
+      }}
+    />,
+  );
+  expect(timing).toHaveBeenCalledTimes(1);
+  await view.rerender(
+    <ConversationHistory
+      {...props}
+      compact
       messages={[
         {
           id: 42,

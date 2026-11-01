@@ -17,6 +17,7 @@ export function ConversationHistory({
   bottomInset = 0,
   header,
   footer,
+  compact = false,
   citationsInPanelForMessageId,
 }: {
   readonly messages: readonly DisplayMessage[];
@@ -31,6 +32,7 @@ export function ConversationHistory({
   readonly bottomInset?: number;
   readonly header?: ReactNode;
   readonly footer?: ReactNode;
+  readonly compact?: boolean;
   readonly citationsInPanelForMessageId?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -44,7 +46,9 @@ export function ConversationHistory({
     <ScrollView
       ref={historyView}
       style={styles.history}
-      contentContainerStyle={{ paddingBottom: bottomInset + 20 }}
+      contentContainerStyle={{
+        paddingBottom: bottomInset + (compact ? 0 : 20),
+      }}
       keyboardShouldPersistTaps="handled"
       onScroll={({ nativeEvent }) => {
         const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
@@ -63,6 +67,8 @@ export function ConversationHistory({
       testID="rag-conversation-history"
     >
       {header}
+      {/* In a short viewport, following the end must reach the latest message, not its evidence footer. */}
+      {compact ? footer : null}
       <View style={styles.container}>
         {!messages.length && (
           <View style={styles.empty}>
@@ -80,6 +86,7 @@ export function ConversationHistory({
             message={message}
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}
+            compact={compact}
             // Keep one source action per latest answer; older answers retain inline citations.
             showCitations={message.id !== citationsInPanelForMessageId}
           />
@@ -94,7 +101,7 @@ export function ConversationHistory({
           </Text>
         ) : null}
       </View>
-      {footer}
+      {!compact ? footer : null}
     </ScrollView>
   );
 }
