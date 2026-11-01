@@ -1,21 +1,21 @@
 import XCTest
 
 extension RootNavigationUITests {
-    /// Verifies Settings panels follow live Duo geometry without moving route actions or the right navigation lane.
+    /// Starts from portrait, verifies Settings geometry, then restores a valid initial orientation.
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
-        XCTAssertTrue(initialOrientation.isPortrait || initialOrientation.isLandscape)
+        // Start from a supported baseline instead of assuming Simulator orientation is already established.
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_TEST_UI_GEOMETRY", "YES",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ] + AppearanceUITestConditions.observationArguments
+        ] + AppearanceUITestConditions.observationArguments + (ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" ? ["-OROT_TEST_DEVICE_ORIENTATION_PROBE", "YES"] : [])
         app.launch()
         var appearanceSnapshot: AppearanceUITestConditions.Snapshot?
-        var regularTitleHeight: CGFloat = 0
         defer {
             if let appearanceSnapshot, app.state == .runningForeground {
                 do {
@@ -29,12 +29,14 @@ extension RootNavigationUITests {
                 }
             }
             app.terminate()
-            XCUIDevice.shared.orientation = initialOrientation
+            XCUIDevice.shared.orientation = initialOrientation.isPortrait || initialOrientation.isLandscape ? initialOrientation : .portrait
         }
 
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
+        // The Settings route emits the adaptive geometry used as the rotation baseline.
+        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
+        let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
 
         appearanceSnapshot = try AppearanceUITestConditions.select(
@@ -52,14 +54,13 @@ extension RootNavigationUITests {
             appearanceSnapshot = nil
         }
 
-        let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let rotatedAt = Date().timeIntervalSince1970 * 1000
-        XCUIDevice.shared.orientation = initialOrientation.isLandscape ? .portrait : .landscapeLeft
+        XCUIDevice.shared.orientation = .landscapeLeft
+        NavigationWindowGeometryUITestConditions.captureRotationProbe(app, requestedAt: rotatedAt, testCase: self)
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: rotatedAt, width: initialWindow.width, differs: true)
         try verifySettingsPanels(app)
-
         let returnedAt = Date().timeIntervalSince1970 * 1000
-        XCUIDevice.shared.orientation = initialOrientation
+        XCUIDevice.shared.orientation = .portrait
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: returnedAt, width: initialWindow.width)
         try verifySettingsPanels(app)
 
@@ -207,7 +208,7 @@ extension RootNavigationUITests {
 
     /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
-    private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
+    func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
         let stacked = try verifyAdaptivePanels(app, prefix: "settings-layout", navigationID: "navigation-tab-settings")
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)

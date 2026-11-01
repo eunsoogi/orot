@@ -2,9 +2,43 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 
 const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
+// These cases are manually selected diagnostics, never part of a default test inventory.
+export const rotationDiagnosticTests = [
+  'OrotUITests/TestHostConnectionTests/testSystemBrowserRotationControl',
+  'OrotUITests/TestHostConnectionTests/testUIKitCalibrationRotationControl',
+];
 
 /** Resolves the destination, fixture guard, and complete explicit Duo ownership. */
-export function resolveIosTestProfileSelection(profile, tests, preparationPhase) {
+export function resolveIosTestProfileSelection(
+  profile,
+  tests,
+  preparationPhase,
+  rotationControl,
+  rotationCalibration,
+) {
+  const [control, calibration] = rotationDiagnosticTests;
+  if (
+    preparationPhase === 'rotation-control' ||
+    preparationPhase === 'rotation-calibration' ||
+    rotationControl !== undefined ||
+    rotationCalibration !== undefined ||
+    tests.includes(control) ||
+    tests.includes(calibration)
+  ) {
+    const browserRun =
+      preparationPhase === 'rotation-control' &&
+      rotationControl === 'YES' &&
+      rotationCalibration === undefined &&
+      tests[0] === control;
+    const calibrationRun =
+      preparationPhase === 'rotation-calibration' &&
+      rotationCalibration === 'YES' &&
+      rotationControl === undefined &&
+      tests[0] === calibration;
+    if (profile !== 'duo' || tests.length !== 1 || (!browserRun && !calibrationRun))
+      throw new Error('Rotation control requires its explicit single Duo diagnostic');
+    return { fixtureSelection: null, hostPreparation: false, isFixtureProfile: false };
+  }
   const hostPreparation = isIosHostPreparation(tests, preparationPhase);
   const isFixtureProfile = fixtureProfiles.includes(profile);
   const profileCandidates = profile === 'duo' ? [...fixtureProfiles, 'duo'] : fixtureProfiles;

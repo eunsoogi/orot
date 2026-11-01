@@ -25,7 +25,11 @@ import type {
 } from '../src/providers/selection/types';
 import type { NextVisitQuestion } from '../src/nextVisitQuestions/types';
 import { createVisitGenerationVisualRun } from './visitGenerationVisualState';
-import { selectAiFeatureProbeDependencies } from './evidenceSourceDuoProbeFixture';
+import { syntheticDiseaseCitation } from './aiFeatureVisitQuestionsSyntheticEvidence';
+import {
+  evidenceSourceDuoVisitQuestionCitation,
+  selectAiFeatureProbeDependencies,
+} from './evidenceSourceDuoProbeFixture';
 
 const launchSettings =
   NativeModules.SettingsManager?.settings ??
@@ -66,14 +70,14 @@ const syntheticDiseaseRunner: NonNullable<
         {
           title: task ? '합성 증상 요약' : '합성 가능성 평가',
           summary: '합성 기록을 사용해 화면 동작만 확인했어요.',
-          supportingEvidence: [syntheticCitation],
+          supportingEvidence: [syntheticDiseaseCitation],
           contraryEvidence: [],
           uncertainty: '합성 자료로는 실제 상태를 판단할 수 없어요.',
           missingData: ['실제 건강 기록'],
         },
       ],
     },
-    citations: [syntheticCitation],
+    citations: [syntheticDiseaseCitation],
     coverage: [],
     checkpoint: {} as never,
   },
@@ -117,36 +121,25 @@ const syntheticAppointment: Appointment = {
   status: 'scheduled',
   clinicLabel: '합성 진료 예약',
 };
-const syntheticCitation: VisitQuestionEvidenceItem = {
-  sourceKind: 'personal_record',
-  sourceId: 'synthetic-ai-feature-e2e-record',
-  sourceRevision: 'revision-1',
-  evidenceId: 'synthetic-ai-feature-e2e-span',
-  evidenceRevision: 'revision-1',
-  locator: { kind: 'synthetic-span', id: 'synthetic-ai-feature-e2e-span' },
-  effectiveTime: '2035-05-20T09:00:00.000Z',
-  reviewState: 'unreviewed',
-  content: '합성 기록: 최근 증상 변화를 확인할 수 있어요.',
-};
 const syntheticQuestions: readonly NextVisitQuestion<VisitQuestionEvidenceItem>[] =
   [
     {
       questionText: '최근 증상 변화를 어떻게 정리할까요?',
       rationale: '합성 기록에서 확인할 시간과 변화를 정리합니다.',
       priority: 'routine',
-      citations: [syntheticCitation],
+      citations: [evidenceSourceDuoVisitQuestionCitation],
     },
     {
       questionText: '언제 증상이 달라졌는지 어떻게 설명할까요?',
       rationale: '진료 전에 변화가 시작된 시점을 구분합니다.',
       priority: 'routine',
-      citations: [syntheticCitation],
+      citations: [evidenceSourceDuoVisitQuestionCitation],
     },
     {
       questionText: '추가로 확인할 기록이 있을까요?',
       rationale: '현재 화면에서 다루지 못한 기록을 확인합니다.',
       priority: 'routine',
-      citations: [syntheticCitation],
+      citations: [evidenceSourceDuoVisitQuestionCitation],
     },
   ];
 const visitQuestionOperations: VisitQuestionRouteOperations = {

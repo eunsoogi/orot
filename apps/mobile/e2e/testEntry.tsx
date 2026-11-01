@@ -25,24 +25,28 @@ import { registerNavigationTestObserver } from '../src/navigation/navigationTest
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
+import {
+  readInitialTestEntrySettings,
+  type TestEntrySettingsManager,
+} from './testEntrySettingsObservation';
 
-const settingsManager = NativeModules.SettingsManager as
-  | {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    }
-  | undefined;
-const settings =
-  settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
-const route = selectTestRoute(settings);
-const lifecycleObservation =
-  settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ||
-  settings.OROT_TEST_EXPORT_OBSERVATION === 'YES';
-const appearanceObservation =
-  settings.OROT_TEST_APPEARANCE_OBSERVATION === 'YES';
-const reminderObservation = settings.OROT_TEST_REMINDER_OBSERVATION === 'YES';
-const geometryObservation =
-  settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation;
+const {
+  settings,
+  route,
+  observation: initialSettingsObservation,
+  appearanceObservation,
+  reminderObservation,
+} = readInitialTestEntrySettings(
+  NativeModules.SettingsManager as TestEntrySettingsManager | undefined,
+  selectTestRoute,
+);
+const lifecycleObservation = initialSettingsObservation.lifecycleObservation;
+const geometryObservation = initialSettingsObservation.geometryObservation;
+// Keep the selected route beside the one initial flag snapshot for the AI diagnostic case.
+const initialTestEntryObservation = {
+  selectedRoute: route,
+  ...initialSettingsObservation,
+};
 if (lifecycleObservation) {
   registerNavigationTestObserver(value =>
     NativeModules.OrotTestControl.recordObservation(value),
@@ -86,12 +90,14 @@ function IntegrationTestHost() {
     return <Application />;
   }
   return (
-    <View
-      accessible
-      accessibilityLabel="Integration test host"
-      style={styles.host}
-      testID="integration-test-host"
-    />
+    <View style={styles.host}>
+      <View
+        accessible
+        accessibilityLabel="Integration test host"
+        style={StyleSheet.absoluteFill}
+        testID="integration-test-host"
+      />
+    </View>
   );
 }
 
@@ -150,6 +156,16 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
       {children}
       {lifecycleObservation ? (
         <View pointerEvents="none" style={styles.geometryMarker}>
+          {route === 'ai-feature-visit-questions' ? (
+            <Text
+              accessible
+              accessibilityLabel={JSON.stringify(initialTestEntryObservation)}
+              style={styles.geometryMarkerText}
+              testID="test-entry-settings-observation"
+            >
+              {t('probe.layout.layoutObservation')}
+            </Text>
+          ) : null}
           <Text
             ref={navigationMarker}
             accessible

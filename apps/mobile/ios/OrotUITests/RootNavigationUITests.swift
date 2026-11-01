@@ -32,13 +32,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
-        let recent = UITestConditions.element(app, "home-open-records")
+        let recordingAction = UITestConditions.element(app, "home-new-recording")
         let bar = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").toolbar
         let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
-        XCTAssertTrue(recent.exists && !recent.frame.isEmpty)
+        XCTAssertTrue(recordingAction.exists && recordingAction.isHittable && !recordingAction.frame.isEmpty)
         XCTAssertTrue(root.exists && !root.frame.isEmpty)
-        XCTAssertLessThanOrEqual(recent.frame.maxY, bar.frame.minY)
-        // Preserve the original root-tab clearance bound using the live native bar frame.
+        // A fresh Core launch can omit recent records, so use its always-present recording action for clearance.
+        XCTAssertLessThanOrEqual(recordingAction.frame.maxY, bar.frame.minY)
         let bottomClearance = root.frame.maxY - bar.frame.maxY
         XCTAssertGreaterThanOrEqual(bottomClearance, 22)
         XCTAssertLessThanOrEqual(bottomClearance, 26)
@@ -57,10 +57,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         XCTAssertTrue(home.control.isSelected)
-        let selection = UITestConditions.element(app, "navigation-root-selection-indicator")
-        XCTAssertTrue(selection.exists)
-        XCTAssertEqual(selection.frame.width, selection.frame.height, accuracy: 0.5)
-        try NavigationGeometryUITestConditions.verifyRootBoundaries(app, testCase: self)
+        let rootFrame = try NavigationGeometryUITestConditions.verifyRootBoundaries(app, testCase: self)
         XCTAssertEqual(home.control.label, "홈 탭")
         XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(home.toolbar.frame.height, home.toolbar.frame.width)
@@ -68,9 +65,12 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control.isSelected)
         tap(app, "records-new-recording")
-        try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
+        let contextualFrame = try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let homeAction = try NavigationUITestConditions.navigationAction(app, "navigation-home")
+        // Compare native UIKit frames captured in the same UIWindow across route navigation.
+        let contextualFrames = [contextualFrame, back.control.frame, homeAction.control.frame]
+        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: contextualFrames)
         XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertEqual(homeAction.control.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(homeAction.control.frame.midY, back.control.frame.midY)

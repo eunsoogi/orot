@@ -40,6 +40,8 @@ const { fixtureSelection, hostPreparation, isFixtureProfile } = resolveIosTestPr
   profile,
   tests,
   process.env.OROT_IOS_TEST_PHASE,
+  process.env.TEST_RUNNER_OROT_ROTATION_CONTROL,
+  process.env.TEST_RUNNER_OROT_ROTATION_CALIBRATION,
 );
 const fixtureSession = /^[a-f0-9-]{36}$/i.test(
   process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION ?? '',

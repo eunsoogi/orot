@@ -1,8 +1,96 @@
 import XCTest
 
+extension NavigationWindowGeometryUITestConditions {
+    /// Preserve the native and shared geometry after a requested rotation only during an opt-in diagnostic run.
+    static func captureRotationProbe(_ app: XCUIApplication, requestedAt: Double, testCase: XCTestCase) {
+        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" else { return }
+        print("OROT_SETTINGS_ROTATION_DEVICE orientation=\(XCUIDevice.shared.orientation.rawValue) requestedAtMs=\(requestedAt)")
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "settings-after-landscape-request")
+    }
+
+    /// The opt-in probe emits only bounded stage names and uptime, never accessibility values.
+    static func logSettingsProbe(_ stage: String, attempt: Int, app: XCUIApplication, requestedAt: Double?) {
+        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" else { return }
+        if attempt <= 3 {
+            print("OROT_SETTINGS_GEOMETRY_PROBE attempt=\(attempt) stage=\(stage) uptime=\(ProcessInfo.processInfo.systemUptime)")
+        }
+        guard attempt == 100, stage == "not-ready", let requestedAt else { return }
+        // A single later scalar snapshot distinguishes delayed notifications from the initial rotation sample.
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        guard marker.exists,
+              let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+              let geometry = report["windowGeometry"] as? [String: Any],
+              let lifecycle = report["lifecycle"] as? [[String: Any]] else { return }
+        let nativeAt = lifecycle.last(where: { $0["event"] as? String == "window-geometry-context" })?["atMs"] as? Double
+        let sharedAt = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" })?["atMs"] as? Double
+        let selected = geometry.filter { ["sceneOrientation", "orientationPolicy", "windowBounds", "sampleStartedAtMs", "sampleEndedAtMs"].contains($0.key) }
+        let result: [String: Any] = ["requestedAtMs": requestedAt, "geometry": selected,
+                                     "nativeAtMs": nativeAt as Any? ?? NSNull(), "sharedAtMs": sharedAt as Any? ?? NSNull()]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: result), let json = String(data: bytes, encoding: .utf8) else { return }
+        print("OROT_SETTINGS_ROTATION_LATER \(json)")
+    }
+
+    static func settingsMarkerValue(_ app: XCUIApplication, log: (String) -> Void) -> String? {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        log("before-exists")
+        guard marker.exists else { log("missing"); return nil }
+        log("before-value")
+        let value = UITestConditions.text(marker)
+        log("after-value")
+        return value
+    }
+}
+
 /// Extends the existing geometry journey without changing the system's window arrangement.
 @MainActor
 enum NavigationWindowGeometryUITestConditions {
+    typealias GeometryPayload = NavigationGeometryReservedRegionMatcher.GeometryPayload
+    typealias GeometryRect = NavigationGeometryReservedRegionMatcher.GeometryRect
+    typealias GeometryInsets = NavigationGeometryReservedRegionMatcher.GeometryInsets
+    typealias GeometryRegion = NavigationGeometryReservedRegionMatcher.GeometryRegion
+
+    /// Binds a logical route identity to distinct UIKit callback, provider context, and public window samples.
+    struct GeometryReceipt {
+        let routeKey: String
+        let native: GeometryPayload
+        let eventSnapshot: GeometrySnapshot
+        let contextSnapshot: GeometrySnapshot
+        let publicUIKit: GeometryPayload
+        let adaptive: (routeKey: String, width: Double, columns: Int)?
+
+        var matchesPublicUIKit: Bool {
+            native.matches(publicUIKit)
+                && eventSnapshot.payload.matches(publicUIKit)
+                && contextSnapshot.payload.matches(publicUIKit)
+                && NavigationWindowGeometryUITestConditions.rectMatches(contextSnapshot.safeAreaFrame, expectedSafeAreaFrame)
+        }
+
+        var expectedSafeAreaFrame: GeometryRect {
+            // Apply each UIWindow inset once when deriving its native safe rectangle.
+            GeometryRect(
+                x: publicUIKit.windowBounds.x + publicUIKit.safeAreaInsets.left,
+                y: publicUIKit.windowBounds.y + publicUIKit.safeAreaInsets.top,
+                width: max(0, publicUIKit.windowBounds.width - publicUIKit.safeAreaInsets.left - publicUIKit.safeAreaInsets.right),
+                height: max(0, publicUIKit.windowBounds.height - publicUIKit.safeAreaInsets.top - publicUIKit.safeAreaInsets.bottom),
+            )
+        }
+    }
+
+    /// Decodes normalized UIWindow geometry, safe-area bounds, and usable-region output.
+    struct GeometrySnapshot: Decodable {
+        let windowBounds: GeometryRect
+        let safeAreaInsets: GeometryInsets
+        let reservedRegionsSupported: Bool
+        let reservedRegions: [GeometryRegion]
+        let safeAreaFrame: GeometryRect
+        let usableRegions: [GeometryRect]
+
+        var payload: GeometryPayload {
+            GeometryPayload(windowBounds: windowBounds, safeAreaInsets: safeAreaInsets,
+                            reservedRegionsSupported: reservedRegionsSupported, reservedRegions: reservedRegions)
+        }
+    }
+
     static func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target))
@@ -99,6 +187,21 @@ enum NavigationWindowGeometryUITestConditions {
         testCase.add(screenshot)
     }
 
+    /// Checks received and committed UIKit geometry, including active reservations and usable regions.
+    static func assertGeometry(_ receipt: GeometryReceipt, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(receipt.native.matches(receipt.publicUIKit), "The RN native event must match public UIKit bounds and all four insets", file: file, line: line)
+        XCTAssertTrue(receipt.eventSnapshot.payload.matches(receipt.publicUIKit), "The native callback must normalize the received geometry", file: file, line: line)
+        XCTAssertTrue(receipt.contextSnapshot.payload.matches(receipt.publicUIKit), "The provider context must retain the normalized native geometry", file: file, line: line)
+        XCTAssertTrue(rectMatches(receipt.contextSnapshot.safeAreaFrame, receipt.expectedSafeAreaFrame), file: file, line: line)
+        XCTAssertEqual(receipt.contextSnapshot.reservedRegionsSupported, receipt.publicUIKit.reservedRegionsSupported, file: file, line: line)
+        XCTAssertTrue(regionsMatch(receipt.contextSnapshot.reservedRegions, receipt.publicUIKit.reservedRegions), file: file, line: line)
+        for region in receipt.contextSnapshot.reservedRegions where region.isActive {
+            for usable in receipt.contextSnapshot.usableRegions {
+                XCTAssertFalse(cgRect(region.frame).intersects(cgRect(usable)), "Active reserved regions must be absent from usable content rectangles", file: file, line: line)
+            }
+        }
+    }
+
     private static func rect(_ value: Any?) throws -> CGRect {
         let values = try XCTUnwrap(value as? [String: Double])
         return try CGRect(x: XCTUnwrap(values["x"]), y: XCTUnwrap(values["y"]),
@@ -108,5 +211,25 @@ enum NavigationWindowGeometryUITestConditions {
     private static func matches(_ first: CGRect, _ second: CGRect) -> Bool {
         abs(first.minX - second.minX) <= 0.5 && abs(first.minY - second.minY) <= 0.5 &&
             abs(first.width - second.width) <= 0.5 && abs(first.height - second.height) <= 0.5
+    }
+
+    /// Allows half-point floating rounding while still requiring actual frame agreement.
+    nonisolated static func rectMatches(_ first: GeometryRect, _ second: GeometryRect) -> Bool {
+        NavigationGeometryReservedRegionMatcher.rectMatches(first, second)
+    }
+
+    /// Allows half-point rounding while requiring all four safe-area edges to agree.
+    private nonisolated static func insetsMatch(_ first: GeometryInsets, _ second: GeometryInsets) -> Bool {
+        NavigationGeometryReservedRegionMatcher.insetsMatch(first, second)
+    }
+
+    /// Keeps the view-facing assertion on the same pure comparison used by host regressions.
+    private nonisolated static func regionsMatch(_ first: [GeometryRegion], _ second: [GeometryRegion]) -> Bool {
+        NavigationGeometryReservedRegionMatcher.regionsMatch(first, second)
+    }
+
+    /// Converts a normalized receipt rectangle for usable-region overlap checks.
+    private static func cgRect(_ rect: GeometryRect) -> CGRect {
+        CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height)
     }
 }
