@@ -11,10 +11,10 @@ test('fixture groups partition appointment, document-import, and orientation jou
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [11, 11, 8, 28],
+    [11, 11, 8, 29],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 58);
+  assert.equal(original.length, 59);
   const manualHistory = [
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',

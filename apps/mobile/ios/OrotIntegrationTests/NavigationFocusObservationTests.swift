@@ -79,6 +79,45 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         }
         try assertDockObserverRejectsOtherWindowDuplicate()
         try assertConversationObservationIsOneShot()
+        try assertDateSelectionPhaseIsolation()
+    }
+
+    /// Session, owner and phase bind samples; stale and duplicate requests cannot masquerade as a single receipt.
+    @MainActor
+    private func assertDateSelectionPhaseIsolation() throws {
+        let observer = SymptomDateSelectionObservation.shared, session = UUID().uuidString
+        let identity: (NSObject) -> String = { _ in "anonymous" }
+        _ = observer.cached(session: session, owner: "owner", identity: identity)
+        let generation = try XCTUnwrap(observer.generationForTesting)
+        observer.receive(session: UUID().uuidString, owner: "owner", generation: generation, phase: "before")
+        XCTAssertTrue((observer.cached(session: session, owner: "owner", identity: identity)["samples"] as? [String: Any])?.isEmpty == true)
+        observer.receive(session: session, owner: "owner", generation: generation, phase: "before")
+        observer.receive(session: session, owner: "owner", generation: generation, phase: "after")
+        let samples = try XCTUnwrap(observer.cached(session: session, owner: "owner", identity: identity)["samples"] as? [String: [String: Any]])
+        XCTAssertEqual(samples["before"]?["sampleCount"] as? Int, 1)
+        XCTAssertEqual(samples["after"]?["sampleCount"] as? Int, 1)
+        let again = try XCTUnwrap(observer.cached(session: session, owner: "owner", identity: identity)["samples"] as? [String: [String: Any]])
+        XCTAssertEqual(again["after"]?["endedAtMs"] as? Double, samples["after"]?["endedAtMs"] as? Double)
+        observer.receive(session: session, owner: "owner", generation: generation, phase: "before")
+        let duplicate = try XCTUnwrap(observer.cached(session: session, owner: "owner", identity: identity)["samples"] as? [String: [String: Any]])
+        XCTAssertEqual(duplicate["before"]?["status"] as? String, "duplicate")
+        observer.invalidate(owner: "owner")
+        _ = observer.cached(session: session, owner: "new-owner", identity: identity)
+        observer.receive(session: session, owner: "owner", generation: generation, phase: "after")
+        XCTAssertTrue((observer.cached(session: session, owner: "new-owner", identity: identity)["samples"] as? [String: Any])?.isEmpty == true)
+        observer.invalidate(owner: "new-owner")
+        _ = observer.cached(session: session, owner: "pending-owner", identity: identity)
+        let pendingGeneration = try XCTUnwrap(observer.generationForTesting)
+        observer.receive(session: session, owner: "pending-owner", generation: pendingGeneration, phase: "after")
+        XCTAssertTrue((observer.cached(session: session, owner: "replacement", identity: identity)["samples"] as? [String: Any])?.isEmpty == true)
+        observer.invalidate(owner: "replacement")
+        _ = observer.cached(session: session, owner: "duplicate-owner", identity: identity)
+        let duplicateGeneration = try XCTUnwrap(observer.generationForTesting)
+        observer.receive(session: session, owner: "duplicate-owner", generation: duplicateGeneration, phase: "after")
+        observer.receive(session: session, owner: "duplicate-owner", generation: duplicateGeneration, phase: "after")
+        let repeated = try XCTUnwrap(observer.cached(session: session, owner: "duplicate-owner", identity: identity)["samples"] as? [String: [String: Any]])
+        XCTAssertEqual(repeated["after"]?["status"] as? String, "duplicate")
+        observer.invalidate(owner: "duplicate-owner")
     }
 
     /// Polling cannot sample; a nonce and its owner bind exactly one notification to one cache.

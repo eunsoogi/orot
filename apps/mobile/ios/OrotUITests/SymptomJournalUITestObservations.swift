@@ -176,7 +176,7 @@ enum SymptomJournalUITestObservations {
         if !FormScrollGeometry.valid(editor) {
             // Read once for both validation and diagnostics. Rejected samples never trigger another query or gesture.
             let identifier = targetIdentifier()
-            let nativeTarget = ["symptom-status-active", "symptom-form-error"].contains(identifier)
+            let nativeTarget = ["symptom-description", "symptom-status-active", "symptom-form-error"].contains(identifier)
             var freshPlan: FormScrollGeometryJournalPlan.Plan?
             let original = nativeTarget ? nil : proposed()
             XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
