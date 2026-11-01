@@ -90,6 +90,7 @@
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
 		BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
+		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
 		2C23D9984D5148FD953E8DAC /* NavigationGeometryReservedRegionMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */; };
@@ -397,6 +398,7 @@
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
 		DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGeometryView.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
+		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationWindowGeometryUITestConditions.swift; sourceTree = "<group>"; };
 		CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryReservedRegionMatcher.swift; sourceTree = "<group>"; };
@@ -697,6 +699,7 @@
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
+				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
 				B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */,
 				DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */,
 				C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */,
@@ -1204,6 +1207,7 @@
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
 				BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
+				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,

@@ -66,12 +66,31 @@
             }
             // Masks expose controller policy without recording the controller's content or identity.
             let rootController = window.rootViewController
-            let activeController = rootController?.presentedViewController ?? rootController
+            var activeController = rootController
+            var presentationStyles: [Int] = []
+            while let next = activeController?.presentedViewController {
+                presentationStyles.append(next.modalPresentationStyle.rawValue)
+                activeController = next
+            }
             let orientationPolicy: [String: Any] = [
                 "device": UIDevice.current.orientation.rawValue,
                 "sceneActivation": window.windowScene?.activationState.rawValue as Any? ?? NSNull(),
                 "rootSupportedMask": rootController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
                 "activeSupportedMask": activeController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
+                "presentedStyles": presentationStyles,
+                "declaredOrientations": Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String] ?? [],
+                "sceneDelegateOverridesMask": window.windowScene?.delegate?.responds(to: NSSelectorFromString("supportedInterfaceOrientationsForWindowScene:")) ?? false,
+                "controllerPrefersLock": if #available(iOS 26.0, *) {
+                    activeController?.prefersInterfaceOrientationLocked as Any? ?? NSNull()
+                } else {
+                    NSNull()
+                },
+                "sceneLocked": if #available(iOS 26.0, *) {
+                    window.windowScene?.effectiveGeometry.isInterfaceOrientationLocked as Any? ?? NSNull()
+                } else {
+                    NSNull()
+                },
+                "notificationProbe": UserDefaults.standard.string(forKey: "OROT_TEST_DEVICE_ORIENTATION_PROBE") == "YES" ? NavigationRotationProbe.shared.snapshot() : ["enabled": false],
             ]
             let ended = Date().timeIntervalSince1970 * 1000
             return [

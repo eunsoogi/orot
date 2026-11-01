@@ -13,7 +13,7 @@ extension RootNavigationUITests {
             "-OROT_TEST_UI_GEOMETRY", "YES",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ] + AppearanceUITestConditions.observationArguments
+        ] + AppearanceUITestConditions.observationArguments + (ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" ? ["-OROT_TEST_DEVICE_ORIENTATION_PROBE", "YES"] : [])
         app.launch()
         var appearanceSnapshot: AppearanceUITestConditions.Snapshot?
         defer {
