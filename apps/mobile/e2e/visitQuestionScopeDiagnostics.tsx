@@ -3,6 +3,7 @@ import { NextVisitQuestionsRoute } from '../src/aiFeatures/integration/NextVisit
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { audit } from './visitQuestionScopeInventory';
+import { visitQuestionResponseShape } from './visitQuestionResponseShape';
 import {
   beginScopeObservation,
   dispatchScoped,
@@ -51,7 +52,7 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
           return dispatchScoped(
             token,
             () => check(true),
-            () => {
+            async () => {
               const payloadEvidence = providerEvidenceCount(token, args[0]);
               report(
                 JSON.stringify({
@@ -61,7 +62,15 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
                 }),
               );
               calls += 1;
-              return original.generate(...args);
+              const callNumber = calls;
+              const result = await original.generate(...args);
+              if (result.ok)
+                console.info(
+                  'OROT_SYNTHETIC_RESPONSE',
+                  callNumber,
+                  JSON.stringify(visitQuestionResponseShape(result.value)),
+                );
+              return result;
             },
           );
         },
@@ -83,7 +92,18 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
                   }),
                 );
                 calls += 1;
-                yield* original.stream!(...args);
+                const callNumber = calls;
+                for await (const event of original.stream!(...args)) {
+                  if (event.ok && event.value.type === 'completed')
+                    console.info(
+                      'OROT_SYNTHETIC_RESPONSE',
+                      callNumber,
+                      JSON.stringify(
+                        visitQuestionResponseShape(event.value.response),
+                      ),
+                    );
+                  yield event;
+                }
               },
             }
           : {}),

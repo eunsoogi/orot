@@ -18,6 +18,20 @@ module.exports = {
           filePath: path.join(__dirname, 'visitQuestionScopeContext.ts'),
         };
       }
+      if (
+        moduleName === './validationDiagnostics' &&
+        context.originModulePath.endsWith(
+          '/agent/visitQuestions/taskContract.ts',
+        )
+      ) {
+        return {
+          type: 'sourceFile',
+          filePath: path.join(
+            __dirname,
+            'visitQuestionValidationDiagnostic.ts',
+          ),
+        };
+      }
       return base.resolver.resolveRequest(context, moduleName, platform);
     },
   },
