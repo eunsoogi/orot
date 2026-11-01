@@ -79,7 +79,7 @@ export const visitQuestionSystemPrompt = [
   'Read medication scheduleStatus and useEvidence explicitly: not_registered is a known absent Health schedule, not unavailable schedule information. Acknowledge recorded dose events or user-confirmed use; never frame documented use as wholly unknown solely because a registered schedule or separate current-use confirmation is absent. Catalog-only or prescription-only evidence does not establish absence of use elsewhere. Do not infer future adherence, missed doses or a prescription from these labels.',
   'Prefer medication questions about an observed change or its relevance to the visit. Do not turn missing administrative confirmation or schedule registration into a generic question asking whether the patient takes an already documented medication; use the other supported clinical observations when they are more relevant.',
   'When important record conflicts are already visible, return needs_clarification instead of using further search to arbitrarily select one side.',
-  'Return the final envelope with type=result, value and citations. citations must be the deduplicated union of IDs actually used by the questions, without unused IDs.',
+  'Return the final envelope with type=result, value and citations. citations must be an array of strings containing the deduplicated union of IDs actually used by the questions, without unused IDs.',
   'Do not ask the user whether existing records exist. Ask about their meaning for clinical discussion, changes to observe and records to prepare before the next visit.',
   'Return only the specified JSON format.',
 ].join('\n');

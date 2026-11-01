@@ -6,7 +6,6 @@ import {
   selectedOption,
 } from '../testing/workflowFixtures';
 import { hasUnsupportedDateOrValue } from '../questionFacts';
-import { t } from '../../../i18n';
 
 const supported =
   '기간 평균 심박수 72회/분을 바탕으로 다음 진료 전 어떤 변화를 기록하면 좋을까요?';
@@ -202,7 +201,7 @@ test('requires fresh consent before the correction payload and stops when it is 
   }
 });
 
-test('does not add a numeric correction after the shared model-call budget is exhausted', async () => {
+test('keeps numeric correction bounded after two model-selected searches', async () => {
   const prepared = preparedContext();
   const lookup = (id: string) =>
     JSON.stringify({
@@ -216,13 +215,12 @@ test('does not add a numeric correction after the shared model-call budget is ex
         },
       ],
     });
-  // Two model-selected local lookups consume the first two model calls; the
-  // third result is invalid, so no correction call can fit the original ceiling.
+  // Two lookups leave one correction call, which must still pass evidence validation.
   const { provider, requests } = makeProvider([
     lookup('first-lookup'),
     lookup('second-lookup'),
     output(unsupported),
-    output(supported),
+    output(unsupported),
   ]);
   const { selection, option } = selectedOption(provider, 'on-device');
   const result = await runVisitQuestionWorkflow({
@@ -230,13 +228,10 @@ test('does not add a numeric correction after the shared model-call budget is ex
     selection,
     providerOptions: [option],
   });
-  expect(result).toMatchObject({
-    status: 'unavailable',
-    message: t('visitQuestions.workflowResults.failure.budgetExceeded'),
-  });
-  expect(requests).toHaveLength(3);
+  expect(result.status).toBe('rejected_output');
+  expect(requests).toHaveLength(4);
   expect(prepared.searchEvidence).toHaveBeenCalledTimes(2);
-  expect(JSON.stringify(requests)).not.toContain(
+  expect(JSON.stringify(requests)).toContain(
     'The previous questions failed exact',
   );
 });

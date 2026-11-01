@@ -82,7 +82,8 @@ export async function runVisitQuestionWorkflow(input: {
   }
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
 
-  const budget = EVIDENCE_WORKFLOW_BUDGET;
+  // Leave room within the shared maximum for one malformed-envelope correction after two searches.
+  const budget = { ...EVIDENCE_WORKFLOW_BUDGET, maxModelCalls: 4 };
   const maxInitialItems = budget.maxEvidenceItems - 3;
   if (input.prepared.evidence.batch.items.length > maxInitialItems) {
     return {

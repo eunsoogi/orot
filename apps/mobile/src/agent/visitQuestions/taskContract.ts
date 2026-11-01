@@ -134,8 +134,18 @@ export function createVisitQuestionTaskResponder() {
         },
       ];
     },
+    correctionInstructionForInvalidEnvelope(
+      reason: string,
+    ): string | undefined {
+      // Regenerate malformed syntax only; the runtime still validates every returned citation.
+      if (
+        reason !== 'The task responder returned an invalid envelope: citations.'
+      )
+        return undefined;
+      return 'Return the complete result envelope with citations as an array of exact current evidenceId strings used by the questions. Include their unique union without unused or invented IDs. Use only supplied evidence and preserve all safety and Korean question constraints.';
+    },
     correctionInstructionForInvalidResult(reason: string): string | undefined {
-      // Both corrections share the runtime's single retry and original budget, consent and freshness checks.
+      // All corrections share one retry and the original budget, consent and freshness checks.
       // Missing evidence, conflicts, unsafe copy and invalid citation bindings remain terminal.
       if (
         reason ===
