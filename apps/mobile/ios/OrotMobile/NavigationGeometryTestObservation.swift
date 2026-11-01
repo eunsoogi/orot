@@ -72,6 +72,16 @@
                 presentationStyles.append(next.modalPresentationStyle.rawValue)
                 activeController = next
             }
+            let controllerPrefersLock: Any = if #available(iOS 26.0, *) {
+                activeController?.prefersInterfaceOrientationLocked as Any? ?? NSNull()
+            } else {
+                NSNull()
+            }
+            let sceneLocked: Any = if #available(iOS 26.0, *) {
+                window.windowScene?.effectiveGeometry.isInterfaceOrientationLocked as Any? ?? NSNull()
+            } else {
+                NSNull()
+            }
             let orientationPolicy: [String: Any] = [
                 "device": UIDevice.current.orientation.rawValue,
                 "sceneActivation": window.windowScene?.activationState.rawValue as Any? ?? NSNull(),
@@ -80,16 +90,8 @@
                 "presentedStyles": presentationStyles,
                 "declaredOrientations": Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String] ?? [],
                 "sceneDelegateOverridesMask": window.windowScene?.delegate?.responds(to: NSSelectorFromString("supportedInterfaceOrientationsForWindowScene:")) ?? false,
-                "controllerPrefersLock": if #available(iOS 26.0, *) {
-                    activeController?.prefersInterfaceOrientationLocked as Any? ?? NSNull()
-                } else {
-                    NSNull()
-                },
-                "sceneLocked": if #available(iOS 26.0, *) {
-                    window.windowScene?.effectiveGeometry.isInterfaceOrientationLocked as Any? ?? NSNull()
-                } else {
-                    NSNull()
-                },
+                "controllerPrefersLock": controllerPrefersLock,
+                "sceneLocked": sceneLocked,
                 "notificationProbe": UserDefaults.standard.string(forKey: "OROT_TEST_DEVICE_ORIENTATION_PROBE") == "YES" ? NavigationRotationProbe.shared.snapshot() : ["enabled": false],
             ]
             let ended = Date().timeIntervalSince1970 * 1000
