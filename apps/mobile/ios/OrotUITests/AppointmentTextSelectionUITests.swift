@@ -173,9 +173,21 @@ enum AppointmentTextSelectionUITestConditions {
         in app: XCUIApplication,
         measure: (_ step: String, _ operation: () -> Void) -> Void,
     ) -> Bool {
+        let observe = SymptomDateSelectionUITestObservation.enabled && input.identifier == "symptom-onset-date"
+        let before = observe ? SymptomDateSelectionUITestObservation.request("before") : 0
+        if observe {
+            _ = UITestConditions.text(UITestConditions.element(app, "navigation-test-observation"))
+        }
+        let pressStart = Date().timeIntervalSince1970 * 1000
         measure("select-existing") { input.press(forDuration: 1) }
+        let pressEnd = Date().timeIntervalSince1970 * 1000
+        let after = observe ? SymptomDateSelectionUITestObservation.request("after") : 0
         let selectAll = app.menuItems["Select All"]
-        guard selectAll.exists, selectAll.isHittable else {
+        let available = selectAll.exists && selectAll.isHittable
+        if observe {
+            SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, afterRequest: after)
+        }
+        guard available else {
             if input.identifier == "symptom-onset-date", ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1",
                ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil
             {

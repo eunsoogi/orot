@@ -5,6 +5,9 @@ import XCTest
 final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     func testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances() throws {
+        if SymptomDateSelectionUITestObservation.enabled {
+            SymptomDateSelectionUITestObservation.verifyCorrelation()
+        }
         let app = XCUIApplication()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -75,7 +78,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-UIPreferredContentSizeCategoryName", category.rawValue,
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
-        ] + AppearanceUITestConditions.observationArguments
+        ] + AppearanceUITestConditions.observationArguments + (SymptomDateSelectionUITestObservation.enabled ? ["-OROT_TEST_DATE_SELECTION_OBSERVATION", SymptomDateSelectionUITestObservation.session] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
