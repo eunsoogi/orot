@@ -12,7 +12,7 @@ import { ConversationGlassAction } from './ConversationGlassAction';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
-/** Lets the page scroll as the multiline draft grows, keeping the action with it. */
+/** Bounds the multiline editor so the history and action retain usable space. */
 export function ConversationComposer({
   value,
   busy,
@@ -20,6 +20,8 @@ export function ConversationComposer({
   onSend,
   onCancel,
   onLayout,
+  compact = false,
+  maximumInputHeight,
 }: {
   readonly value: string;
   readonly busy: boolean;
@@ -27,18 +29,29 @@ export function ConversationComposer({
   readonly onSend: () => void;
   readonly onCancel: () => void;
   readonly onLayout?: ViewProps['onLayout'];
+  readonly compact?: boolean;
+  readonly maximumInputHeight?: number;
 }) {
-  const navigationInset = useNavigationContentInset();
+  const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
   const copy = getRagConversationCopy();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, height } = useWindowDimensions();
   const textScale = Math.max(1, fontScale);
   // Native text scales its line but not its insets; reserve a full scaled line.
   const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
+  // Reserve reading space while allowing at least one scaled line of input.
+  const maximumHeight = Math.max(
+    minimumHeight,
+    Math.min(height * 0.2, 160 * textScale, maximumInputHeight ?? Infinity),
+  );
   const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
   useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
   return (
     <View
-      style={[styles.composerArea, navigationInset]}
+      style={[
+        styles.composerArea,
+        compact && styles.compactComposerArea,
+        navigationInset,
+      ]}
       testID="rag-conversation-composer"
       onLayout={onLayout}
     >
@@ -72,7 +85,7 @@ export function ConversationComposer({
             editable
             maxLength={1000}
             multiline
-            scrollEnabled={false}
+            scrollEnabled
             onChangeText={onChangeText}
             placeholder={copy.placeholder}
             placeholderTextColor={appColors.secondary}
@@ -82,9 +95,12 @@ export function ConversationComposer({
             // shrinks independently. Typed content remains intrinsic for Fabric layout.
             style={[
               styles.input,
-              { minHeight: minimumHeight },
+              { minHeight: minimumHeight, maxHeight: maximumHeight },
               !value && {
-                height: Math.max(minimumHeight, placeholderHeight),
+                height: Math.min(
+                  maximumHeight,
+                  Math.max(minimumHeight, placeholderHeight),
+                ),
               },
             ]}
             testID="rag-conversation-input"
@@ -97,9 +113,11 @@ export function ConversationComposer({
           testID="rag-conversation-action-slot"
         />
       </View>
-      <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
-        {copy.disclaimer}
-      </Text>
+      {!compact ? (
+        <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
+          {copy.disclaimer}
+        </Text>
+      ) : null}
     </View>
   );
 }

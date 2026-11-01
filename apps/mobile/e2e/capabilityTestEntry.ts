@@ -49,7 +49,14 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
       require('./evidenceVisualProbeEntry');
       break;
     case 'conversation-visual':
-      require('./conversationVisualProbeEntry');
+      require('./conversationVisualProbeEntry').registerConversationVisualProbe(
+        false,
+      );
+      break;
+    case 'conversation-failure-visual':
+      require('./conversationVisualProbeEntry').registerConversationVisualProbe(
+        true,
+      );
       break;
     case 'summary-visual':
       require('./summaryVisualProbeEntry');

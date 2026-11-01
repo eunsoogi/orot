@@ -8,7 +8,7 @@
         private final class Registration {
             let session: String
             let owner: String
-            let generation = UUID().uuidString
+            let generation = UUID().uuidString; weak var dockRoot: UIView?
             init(session: String, owner: String) {
                 self.session = session; self.owner = owner
             }
@@ -19,6 +19,7 @@
         private var owner = ""
         private var identity: ((NSObject) -> String)?
         private var result: [String: Any] = [:]
+        private var dockSlots: [String: [String: Any]] = [:]
         private var sampled = false
         // Retain callback contexts until process exit so an already queued notification cannot dereference freed memory.
         private var registrations: [Registration] = []
@@ -35,18 +36,25 @@
                 self.owner = owner
                 self.identity = identity
                 result = [:]
+                dockSlots = [:]
                 sampled = false
-                let name = "com.orot.tests.conversation-hit.\(session)" as CFString
-                let registration = Registration(session: session, owner: owner)
+                let registration = Registration(session: session, owner: owner); let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }; registration.dockRoot = windows.count == 1 ? windows.first?.rootViewController?.view : nil; _ = registration.dockRoot?.keyboardLayoutGuide
                 registrations.append(registration)
                 activeRegistration = registration
-                CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), Unmanaged.passUnretained(registration).toOpaque(), { _, observer, name, _, _ in
-                    guard let observer, let name, let session = (name.rawValue as String).components(separatedBy: ".").last else { return }
-                    let registration = Unmanaged<Registration>.fromOpaque(observer).takeUnretainedValue()
-                    DispatchQueue.main.async { ConversationHitObservationTrigger.shared.receive(session: session, owner: registration.owner, generation: registration.generation) }
-                }, name, nil, .deliverImmediately)
+                for phase in ["legacy", "send-ready", "cancel-ready"] {
+                    let suffix = phase == "legacy" ? "" : ".\(phase)"
+                    let name = "com.orot.tests.conversation-hit.\(session)\(suffix)" as CFString
+                    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), Unmanaged.passUnretained(registration).toOpaque(), { _, observer, name, _, _ in
+                        guard let observer, let name else { return }
+                        let registration = Unmanaged<Registration>.fromOpaque(observer).takeUnretainedValue()
+                        let raw = name.rawValue as String
+                        let phase = raw.hasSuffix(".send-ready") ? "send-ready" : raw.hasSuffix(".cancel-ready") ? "cancel-ready" : "legacy"
+                        DispatchQueue.main.async { ConversationHitObservationTrigger.shared.receive(session: registration.session, owner: registration.owner, generation: registration.generation, phase: phase) }
+                    }, name, nil, .deliverImmediately)
+                }
             }
-            return result
+            guard !dockSlots.isEmpty else { return result }
+            return result.merging(["dockSlots": dockSlots], uniquingKeysWith: { _, new in new })
         }
 
         func invalidate(owner: String) {
@@ -56,6 +64,7 @@
             self.owner = ""
             identity = nil
             result = [:]
+            dockSlots = [:]
             sampled = false
         }
 
@@ -70,8 +79,14 @@
             activeRegistration?.generation
         }
 
-        func receive(session: String, owner: String, generation: String) {
-            guard session == self.session, owner == self.owner, generation == activeRegistration?.generation, !sampled, let identity else { return }
+        func receive(session: String, owner: String, generation: String, phase: String = "legacy") {
+            guard session == self.session, owner == self.owner, generation == activeRegistration?.generation, let identity else { return }
+            if phase != "legacy" {
+                guard ["send-ready", "cancel-ready"].contains(phase), dockSlots[phase] == nil else { return }
+                dockSlots[phase] = ["session": session, "owner": owner, "generation": generation, "phase": phase, "sampleCount": 1, "sample": ConversationHitTestObservation.dockSnapshot(phase: phase, identity: identity, expectedRoot: activeRegistration?.dockRoot)]
+                return
+            }
+            guard !sampled else { return }
             sampled = true
             let received = Date().timeIntervalSince1970 * 1000
             result = ["session": session, "receivedAtMs": received, "sampleCount": 1, "sample": ConversationHitTestObservation.snapshot(identity: identity)]
@@ -81,6 +96,81 @@
     /// Samples fixed controls without reading message text or arbitrary accessibility metadata.
     enum ConversationHitTestObservation {
         private static let roles = ["rag-conversation-send", "rag-conversation-history", "rag-conversation-input", "rag-conversation-sessions-toggle", "rag-conversation-new-session", "navigation-page-action-overflow", "navigation-page-action-toolbar", "navigation-toolbar", "navigation-back", "navigation-home"]
+
+        /// Samples the real controls and keyboard guide in a single window without inspecting their content.
+        static func dockSnapshot(phase: String, identity: (NSObject) -> String, expectedRoot: UIView?) -> [String: Any] {
+            let start = Date().timeIntervalSince1970 * 1000
+            let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }
+            guard windows.count == 1, let window = windows.first, let scene = window.windowScene,
+                  let root = window.rootViewController?.view, root.window === window, root === expectedRoot
+            else { return ["status": "unavailable", "reason": "window-or-root", "windowCount": windows.count, "startedAtMs": start] }
+            let rootFrame = root.convert(root.bounds, to: window); let keyboard = root.convert(root.keyboardLayoutGuide.layoutFrame, to: window)
+            guard rootFrame.equalTo(window.bounds), !keyboard.isEmpty,
+                  keyboard.height > root.safeAreaInsets.bottom, window.bounds.contains(keyboard)
+            else { return ["status": "unavailable", "reason": "keyboard-or-root", "rootFrame": rect(rootFrame), "windowBounds": rect(window.bounds), "keyboard": rect(keyboard), "startedAtMs": start] }
+            let actionRole = phase == "send-ready" ? "rag-conversation-send" : "rag-conversation-cancel"
+            let wanted = ["rag-conversation-history", "rag-conversation-composer", "rag-conversation-composer-field", "rag-conversation-input", actionRole]
+            var queue: [UIView] = [window], found: [String: [UIView]] = [:], navigation: [CGRect] = [], count = 0
+            while !queue.isEmpty, count < 3000 {
+                let view = queue.removeFirst(); count += 1
+                if let role = view.accessibilityIdentifier, ["navigation-toolbar", "navigation-page-action-toolbar"].contains(role), view.window === window, !view.isHidden, view.alpha > 0.01 {
+                    navigation.append(view.convert(view.bounds, to: window))
+                }
+                if let role = view.accessibilityIdentifier, wanted.contains(role), view.window === window {
+                    if role == "rag-conversation-input", view is UITextView {
+                        found[role, default: []].append(view)
+                    } else if role == actionRole, view is UIButton {
+                        found[role, default: []].append(view)
+                    } else if ["rag-conversation-history", "rag-conversation-composer", "rag-conversation-composer-field"].contains(role) {
+                        found[role, default: []].append(view)
+                    }
+                }
+                queue.append(contentsOf: view.subviews)
+            }
+            guard queue.isEmpty, wanted.allSatisfy({ found[$0]?.count == 1 }), let action = found[actionRole]?.first as? UIButton
+            else { return ["status": "unavailable", "startedAtMs": start, "counts": wanted.map { found[$0]?.count ?? 0 }] }
+            var controls: [[String: Any]] = [], valid = true, transition = window.rootViewController?.transitionCoordinator?.isAnimated == true
+            for role in wanted {
+                guard let view = found[role]?.first else { continue }
+                let frame = view.convert(view.bounds, to: window)
+                var clipped = frame, ancestor: UIView? = view
+                while let node = ancestor, node !== window {
+                    if node.clipsToBounds {
+                        clipped = clipped.intersection(node.convert(node.bounds, to: window))
+                    }
+                    if node.isHidden || node.alpha <= 0.01 || !node.isUserInteractionEnabled {
+                        valid = false
+                    }
+                    if !(node.layer.animationKeys() ?? []).isEmpty {
+                        transition = true
+                    }
+                    if let presentation = node.layer.presentation(), !presentation.frame.equalTo(node.layer.frame) {
+                        transition = true
+                    }
+                    ancestor = node.superview
+                }
+                guard ancestor === window else { valid = false; continue }
+                let interactive = role != "rag-conversation-history" && role != "rag-conversation-composer"
+                if frame.isEmpty || !window.bounds.contains(frame) || !clipped.equalTo(frame) || (interactive && (frame.intersects(keyboard) || navigation.contains(where: { $0.intersects(frame) }))) {
+                    valid = false
+                }
+                controls.append(["role": role, "frame": rect(frame), "clippedFrame": rect(clipped)])
+            }
+            if let history = found["rag-conversation-history"]?.first, let composer = found["rag-conversation-composer"]?.first,
+               history.convert(history.bounds, to: window).maxY > composer.convert(composer.bounds, to: window).minY + 1
+            {
+                valid = false
+            }
+            let actionFrame = action.convert(action.bounds, to: window)
+            var hit = window.hitTest(CGPoint(x: actionFrame.midX, y: actionFrame.midY), with: nil)
+            while let node = hit, node !== action {
+                hit = node.superview
+            }
+            if hit !== action || !action.isEnabled {
+                valid = false
+            }
+            return ["status": transition ? "transition" : valid ? "available" : "occluded", "windowID": identity(window), "sceneID": identity(scene), "windowBounds": rect(window.bounds), "keyboard": rect(keyboard), "controls": controls, "startedAtMs": start, "endedAtMs": Date().timeIntervalSince1970 * 1000]
+        }
 
         static func snapshot(identity: (NSObject) -> String) -> [String: Any] {
             precondition(Thread.isMainThread)

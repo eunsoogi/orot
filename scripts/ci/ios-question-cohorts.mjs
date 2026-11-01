@@ -10,7 +10,10 @@ export const questionCohorts = {
   'questions-conversation': {
     ...questionFixture,
     // Keep the composer/appearance journey intact with its own preparation and artifact budget.
-    cases: ['KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances'],
+    cases: [
+      'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
+      'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
+    ],
   },
   'questions-accessibility': {
     ...questionFixture,
@@ -18,6 +21,8 @@ export const questionCohorts = {
     cases: [
       'KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
       'KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
+      'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
+      'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
     ],
   },
   'questions-summary': {

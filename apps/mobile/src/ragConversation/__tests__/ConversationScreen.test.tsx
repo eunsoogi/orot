@@ -3,6 +3,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
@@ -28,7 +29,7 @@ const reference = {
   reviewState: 'reviewed' as const,
 };
 
-test('keeps draft text in the page scroll as the input grows', async () => {
+test('keeps the composer outside the conversation scroll and bounds long drafts', async () => {
   await render(
     <ConversationScreen
       onBack={jest.fn()}
@@ -36,28 +37,14 @@ test('keeps draft text in the page scroll as the input grows', async () => {
       onSend={jest.fn()}
     />,
   );
+  const history = screen.getByTestId('rag-conversation-history');
+  const composer = screen.getByTestId('rag-conversation-composer');
+  expect(within(history).queryByTestId('rag-conversation-composer')).toBeNull();
+  expect(composer.parent).toBe(history.parent);
   const input = screen.getByTestId('rag-conversation-input');
-  expect(StyleSheet.flatten(input.props.style)).toMatchObject({
-    minHeight: 44,
-  });
-  expect(input.props.scrollEnabled).toBe(false);
-  await fireEvent.changeText(input, '합성 첫째 줄\n합성 둘째 줄\n합성 셋째 줄');
-  await fireEvent(input, 'contentSizeChange', {
-    nativeEvent: { contentSize: { height: 300 } },
-  });
-  expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
-    false,
-  );
-  await fireEvent.changeText(input, '짧은 합성 질문');
-  await fireEvent(input, 'contentSizeChange', {
-    nativeEvent: { contentSize: { height: 32 } },
-  });
-  expect(StyleSheet.flatten(input.props.style)).toMatchObject({
-    minHeight: 44,
-  });
-  expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
-    false,
-  );
+  await fireEvent.changeText(input, '합성 질문\n'.repeat(80));
+  expect(StyleSheet.flatten(input.props.style).maxHeight).toBeGreaterThan(44);
+  expect(input.props.scrollEnabled).toBe(true);
 });
 
 test('cancel releases the composer and discards a late answer', async () => {

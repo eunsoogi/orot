@@ -10,11 +10,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     @MainActor
     func testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen() throws {
         let app = XCUIApplication()
-        app.launchArguments = [
-            "-OROT_TEST_SCENARIO", "safe-area",
-            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ]
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "safe-area", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         XCUIDevice.shared.orientation = .portrait
         app.launch()
         defer { app.terminate() }
@@ -62,6 +58,8 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        // This journey verifies a portrait-to-landscape transition even after an interrupted run.
+        XCUIDevice.shared.orientation = .portrait
         app.launch()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -73,6 +71,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             app.terminate()
         }
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        XCTAssertGreaterThan(app.frame.height, app.frame.width)
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if original == nil {
@@ -84,7 +83,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             let field = node(app, "rag-conversation-composer-field")
             let baseline = field.frame.height
             let input = node(app, "rag-conversation-input")
-            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText("complete synthetic\nsecond line\nthird line")
             let grows = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in field.frame.height > baseline + 10 }, object: nil)
@@ -114,7 +113,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
             node(app, "rag-conversation-new-session").tap()
-            FormUITestConditions.reveal(input, in: app, scroll: conversationPage)
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText("pending synthetic")
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -133,15 +132,15 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
                 let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - previousWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [expanded]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
-                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
+                ConversationComposerDockUITestConditions.assertReachable(stop, in: app)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
-                XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
+                ConversationComposerDockUITestConditions.assertStreamVisible(in: app)
                 let expandedWidth = app.frame.width
                 XCUIDevice.shared.orientation = .portrait
                 let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - expandedWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [compact]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
-                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
+                ConversationComposerDockUITestConditions.assertReachable(stop, in: app)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
             }
             let stopFrame = stop.frame
@@ -178,6 +177,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             let pendingUndoReflow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - pendingUndoWidth) > 0.5 }, object: nil)
             XCTAssertEqual(UITestConditions.wait(for: [pendingUndoReflow]), .completed)
             let undo = node(app, "conversation-history-undo")
+            FormUITestConditions.reveal(undo, in: app, scrollID: "conversation-history-page", keyboardMayBeVisible: false)
             XCTAssertTrue(UITestConditions.exists(undo) && undo.isHittable && app.frame.contains(undo.frame))
             undo.tap()
             XCUIDevice.shared.orientation = .portrait

@@ -49,7 +49,7 @@ test('ignores stale native frame height after clearing a large draft', async () 
     nativeEvent: { contentSize: { height: 500 } },
   });
   expect(inputStyle().height).toBeLessThanOrEqual(180);
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(input().props.scrollEnabled).toBe(true);
 });
 
 test('fits scaled placeholder lines without fixing typed content height', async () => {
@@ -60,41 +60,41 @@ test('fits scaled placeholder lines without fixing typed content height', async 
   await fireEvent(placeholderMeasurement(), 'layout', {
     nativeEvent: { layout: { height: 180 } },
   });
-  expect(inputStyle().height).toBe(180);
+  expect(inputStyle().height).toBe(Math.min(180, dimensions.height * 0.2));
   expect(placeholderMeasurement().props).toMatchObject({
     accessible: false,
     accessibilityElementsHidden: true,
     importantForAccessibility: 'no-hide-descendants',
     pointerEvents: 'none',
   });
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(input().props.scrollEnabled).toBe(true);
   await view.rerender(<ConversationComposer {...props} value="합성 질문" />);
   expect(inputStyle().height).toBeUndefined();
 });
 
-test('lets large drafts grow, then resets a cleared editor and a changed text size', async () => {
+test('bounds large drafts, then resets a cleared editor and a changed text size', async () => {
   const view = await render(
     <ConversationComposer {...props} value={'첫 줄\n둘째 줄\n셋째 줄'} />,
   );
   await fireEvent(placeholderMeasurement(), 'layout', {
     nativeEvent: { layout: { height: 180 } },
   });
-  expect(inputStyle().maxHeight).toBeUndefined();
+  expect(inputStyle().maxHeight).toBe(dimensions.height * 0.2);
   await fireEvent(input(), 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 500 } },
   });
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(input().props.scrollEnabled).toBe(true);
   expect(inputStyle().height).toBeUndefined();
   await view.rerender(<ConversationComposer {...props} value="" />);
-  expect(input().props.scrollEnabled).toBe(false);
-  expect(inputStyle().height).toBe(180);
+  expect(input().props.scrollEnabled).toBe(true);
+  expect(inputStyle().height).toBe(Math.min(180, dimensions.height * 0.2));
   // UITextView can report its previous frame after clearing. That stale size
   // must not enlarge the independent placeholder measurement again.
   await fireEvent(input(), 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 500 } },
   });
-  expect(inputStyle().height).toBe(180);
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(inputStyle().height).toBe(Math.min(180, dimensions.height * 0.2));
+  expect(input().props.scrollEnabled).toBe(true);
   await act(() => {
     Native.Dimensions.set({ window: { ...dimensions, fontScale: 1 } });
   });

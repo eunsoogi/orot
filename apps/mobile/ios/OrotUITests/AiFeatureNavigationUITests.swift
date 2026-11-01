@@ -64,9 +64,11 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
-        FormUITestConditions.replace(input, with: "test", in: app, scrollID: "rag-conversation-history")
+        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
+        input.tap()
+        input.typeText("test")
         input.typeText("\n")
-        FormUITestConditions.reveal(send, in: app, scrollID: "rag-conversation-history")
+        ConversationComposerDockUITestConditions.assertReachable(send, in: app)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
         send.tap()
         message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")

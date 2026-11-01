@@ -27,7 +27,7 @@ const leaveState = {
 };
 
 /** Production conversation/session/navigation components with an explicitly synthetic sender. */
-function ConversationVisualProbe() {
+function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
   const [controller] = useState(() =>
     createNavigationController<Route>('conversation'),
   );
@@ -68,7 +68,11 @@ function ConversationVisualProbe() {
               onBack={onBack}
               onOpenHistory={() => navigation.push('history')}
               onOpenSource={() => navigation.push('evidence')}
-              onSend={sendSyntheticConversation}
+              onSend={
+                failure
+                  ? async () => ({ status: 'unavailable' })
+                  : sendSyntheticConversation
+              }
             />
           );
         }}
@@ -77,4 +81,9 @@ function ConversationVisualProbe() {
   );
 }
 
-AppRegistry.registerComponent(appName, () => ConversationVisualProbe);
+/** Select the synthetic outcome before interaction, independent of keyboard text correction. */
+export function registerConversationVisualProbe(failure: boolean) {
+  AppRegistry.registerComponent(appName, () => () => (
+    <ConversationVisualProbe failure={failure} />
+  ));
+}

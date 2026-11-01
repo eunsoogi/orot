@@ -33,7 +33,7 @@ enum ConversationHistoryUITestConditions {
                 let suffix = "\(largeText ? "maximum-text" : "default-text")-\(dark ? "dark" : "light")"
                 NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
                 let input = node(app, "rag-conversation-input")
-                FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+                ConversationComposerDockUITestConditions.assertReachable(input, in: app)
                 input.tap()
                 input.typeText(question)
                 app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -94,7 +94,7 @@ enum ConversationHistoryUITestConditions {
 
         func send(_ question: String) {
             let input = node(app, "rag-conversation-input")
-            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText(question)
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -117,7 +117,14 @@ enum ConversationHistoryUITestConditions {
         let preview = node(app, "conversation-history-preview")
         firstConversation.tap()
 
-        if UITestConditions.exists(preview) {
+        let history = node(app, "conversation-history-screen")
+        let conversation = node(app, "rag-conversation-screen")
+        // Selection terminates either in a wide preview or in the compact conversation route.
+        let selection = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            (history.exists && preview.exists) || (!history.exists && conversation.exists)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [selection]), .completed)
+        if history.exists, preview.exists {
             reveal(preview, in: page)
             XCTAssertTrue(UITestConditions.exists(preview.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", firstQuestion),
@@ -131,7 +138,7 @@ enum ConversationHistoryUITestConditions {
             XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
         } else {
             // Compact layouts have no preview and return to the selected conversation.
-            XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+            XCTAssertTrue(UITestConditions.exists(conversation))
             XCTAssertTrue(app.staticTexts[firstQuestion].exists)
         }
     }

@@ -23,11 +23,13 @@ export function ConversationMessage({
   onOpenSource,
   onLinkError,
   showCitations = true,
+  compact = false,
 }: {
   readonly message: DisplayMessage;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
   readonly showCitations?: boolean;
+  readonly compact?: boolean;
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
@@ -39,9 +41,33 @@ export function ConversationMessage({
       : message.incomplete
         ? 'rag-conversation-incomplete-body'
         : 'rag-conversation-answer-body';
+  const activity = message.activity ? (
+    <Text
+      accessibilityLiveRegion="polite"
+      style={styles.activity}
+      testID={
+        message.streaming
+          ? 'rag-conversation-progress'
+          : message.incomplete
+            ? 'rag-conversation-incomplete-activity'
+            : undefined
+      }
+    >
+      {message.activity}
+    </Text>
+  ) : null;
+  // Keep the last streamed line at the end of a short reading viewport.
+  const activityBeforeText = compact && message.streaming;
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
-      <View style={!user && styles.assistantBody}>
+      <View
+        style={
+          !user && [
+            styles.assistantBody,
+            activityBeforeText && styles.compactStreamingBody,
+          ]
+        }
+      >
         {message.incomplete && message.content ? (
           <>
             <Text style={styles.activity}>
@@ -52,6 +78,7 @@ export function ConversationMessage({
             </Text>
           </>
         ) : null}
+        {activityBeforeText ? activity : null}
         {message.content ? (
           <MessageText
             selectable
@@ -61,21 +88,7 @@ export function ConversationMessage({
             {message.content}
           </MessageText>
         ) : null}
-        {message.activity ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={styles.activity}
-            testID={
-              message.streaming
-                ? 'rag-conversation-progress'
-                : message.incomplete
-                  ? 'rag-conversation-incomplete-activity'
-                  : undefined
-            }
-          >
-            {message.activity}
-          </Text>
-        ) : null}
+        {!activityBeforeText ? activity : null}
         {showCitations ? (
           <ConversationSources
             references={message.citations ?? []}
