@@ -10,11 +10,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     @MainActor
     func testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen() throws {
         let app = XCUIApplication()
-        app.launchArguments = [
-            "-OROT_TEST_SCENARIO", "safe-area",
-            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ]
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "safe-area", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         XCUIDevice.shared.orientation = .portrait
         app.launch()
         defer { app.terminate() }
@@ -62,6 +58,8 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        // This journey verifies a portrait-to-landscape transition even after an interrupted run.
+        XCUIDevice.shared.orientation = .portrait
         app.launch()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -73,6 +71,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             app.terminate()
         }
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        XCTAssertGreaterThan(app.frame.height, app.frame.width)
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if original == nil {

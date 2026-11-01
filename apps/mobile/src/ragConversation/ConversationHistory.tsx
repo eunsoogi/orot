@@ -37,8 +37,15 @@ export function ConversationHistory({
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
+  const userScrolling = useRef(false);
   const viewportHeight = useRef(0);
   const messageEnd = useRef<number | null>(null);
+  const scrollGeometry = useRef<{
+    height: number;
+    contentHeight: number;
+    offset: number;
+  } | null>(null);
+  const expectedOffset = useRef<number | null>(null);
   // A single keyed list preserves the mounted answer across draft validation and cancellation.
   const visibleMessages: readonly DisplayMessage[] = pendingMessage
     ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
@@ -46,12 +53,23 @@ export function ConversationHistory({
   const followLatest = () => {
     if (!visibleMessages.length || !followsBottom.current) return;
     if (compact) {
-      if (messageEnd.current !== null && viewportHeight.current > 0)
+      if (messageEnd.current !== null && viewportHeight.current > 0) {
+        expectedOffset.current = Math.max(
+          0,
+          messageEnd.current - viewportHeight.current,
+        );
         historyView.current?.scrollTo({
-          y: Math.max(0, messageEnd.current - viewportHeight.current),
+          y: expectedOffset.current,
           animated: false,
         });
-    } else historyView.current?.scrollToEnd({ animated: true });
+      }
+    } else {
+      const geometry = scrollGeometry.current;
+      expectedOffset.current = geometry
+        ? Math.max(0, geometry.contentHeight - geometry.height)
+        : null;
+      historyView.current?.scrollToEnd({ animated: false });
+    }
   };
 
   return (
@@ -66,8 +84,68 @@ export function ConversationHistory({
         viewportHeight.current = nativeEvent.layout.height;
         followLatest();
       }}
+      onScrollBeginDrag={() => {
+        userScrolling.current = true;
+        expectedOffset.current = null;
+      }}
+      onScrollEndDrag={() => {
+        userScrolling.current = false;
+      }}
+      onMomentumScrollBegin={() => {
+        userScrolling.current = true;
+      }}
+      onMomentumScrollEnd={() => {
+        userScrolling.current = false;
+      }}
       onScroll={({ nativeEvent }) => {
         const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+        const previous = scrollGeometry.current;
+        const changed =
+          previous !== null &&
+          (previous.height !== layoutMeasurement.height ||
+            previous.contentHeight !== contentSize.height);
+        scrollGeometry.current = {
+          height: layoutMeasurement.height,
+          contentHeight: contentSize.height,
+          offset: contentOffset.y,
+        };
+        if (previous && Math.abs(contentOffset.y - previous.offset) < 1) return;
+        // Geometry changes and our own offset corrections do not imply reader intent.
+        if (changed && !userScrolling.current) {
+          expectedOffset.current = null;
+          const maximum = Math.max(
+            0,
+            contentSize.height - layoutMeasurement.height,
+          );
+          const clampedPrevious = Math.min(
+            Math.max(0, previous.offset),
+            maximum,
+          );
+          if (
+            Math.abs(contentOffset.y - clampedPrevious) < 1 ||
+            (followsBottom.current &&
+              previous.height !== layoutMeasurement.height &&
+              Math.abs(
+                previous.offset -
+                  Math.max(0, previous.contentHeight - previous.height),
+              ) < 1 &&
+              Math.abs(contentOffset.y - maximum) < 1)
+          )
+            return;
+        }
+        const expected = expectedOffset.current;
+        expectedOffset.current = null;
+        if (
+          !userScrolling.current &&
+          expected !== null &&
+          Math.abs(
+            Math.min(
+              expected,
+              Math.max(0, contentSize.height - layoutMeasurement.height),
+            ) - contentOffset.y,
+          ) < 1
+        )
+          return;
         // Only follow streamed content while the reader remains near the bottom.
         followsBottom.current =
           compact && messageEnd.current !== null
@@ -77,6 +155,10 @@ export function ConversationHistory({
               ) < 48
             : contentSize.height - contentOffset.y - layoutMeasurement.height <
               48;
+      }}
+      onScrollToTop={() => {
+        expectedOffset.current = null;
+        followsBottom.current = false;
       }}
       scrollEventThrottle={16}
       onContentSizeChange={() => {
