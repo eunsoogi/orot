@@ -37,10 +37,22 @@ export function ConversationHistory({
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
+  const viewportHeight = useRef(0);
+  const messageEnd = useRef<number | null>(null);
   // A single keyed list preserves the mounted answer across draft validation and cancellation.
   const visibleMessages: readonly DisplayMessage[] = pendingMessage
     ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
     : messages;
+  const followLatest = () => {
+    if (!visibleMessages.length || !followsBottom.current) return;
+    if (compact) {
+      if (messageEnd.current !== null && viewportHeight.current > 0)
+        historyView.current?.scrollTo({
+          y: Math.max(0, messageEnd.current - viewportHeight.current),
+          animated: false,
+        });
+    } else historyView.current?.scrollToEnd({ animated: true });
+  };
 
   return (
     <ScrollView
@@ -50,25 +62,32 @@ export function ConversationHistory({
         paddingBottom: bottomInset + (compact ? 0 : 20),
       }}
       keyboardShouldPersistTaps="handled"
+      onLayout={({ nativeEvent }) => {
+        viewportHeight.current = nativeEvent.layout.height;
+        followLatest();
+      }}
       onScroll={({ nativeEvent }) => {
         const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
         // Only follow streamed content while the reader remains near the bottom.
         followsBottom.current =
-          contentSize.height - contentOffset.y - layoutMeasurement.height < 48;
+          compact && messageEnd.current !== null
+            ? Math.abs(
+                Math.max(0, messageEnd.current - layoutMeasurement.height) -
+                  contentOffset.y,
+              ) < 48
+            : contentSize.height - contentOffset.y - layoutMeasurement.height <
+              48;
       }}
       scrollEventThrottle={16}
       onContentSizeChange={() => {
         // Preserve the initial header position in empty conversations. Once an
         // answer exists, following its bottom must not leave a large fixed header
         // consuming the reading area at accessibility text sizes.
-        if (visibleMessages.length && followsBottom.current)
-          historyView.current?.scrollToEnd({ animated: true });
+        followLatest();
       }}
       testID="rag-conversation-history"
     >
       {header}
-      {/* In a short viewport, following the end must reach the latest message, not its evidence footer. */}
-      {compact ? footer : null}
       <View style={styles.container}>
         {!messages.length && (
           <View style={styles.empty}>
@@ -101,7 +120,16 @@ export function ConversationHistory({
           </Text>
         ) : null}
       </View>
-      {!compact ? footer : null}
+      {/* The footer stays in place while compact follow targets the end of messages. */}
+      <View
+        collapsable={false}
+        onLayout={event => {
+          messageEnd.current = event.nativeEvent.layout.y;
+          if (compact) followLatest();
+        }}
+        testID="rag-conversation-message-end"
+      />
+      {footer}
     </ScrollView>
   );
 }

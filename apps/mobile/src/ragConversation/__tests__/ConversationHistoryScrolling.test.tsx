@@ -28,7 +28,8 @@ test('does not follow new content after the reader scrolls away from the bottom'
   scrollToEnd.mockRestore();
 });
 
-test('keeps evidence scrollable before the latest message in a compact viewport', async () => {
+test('follows the latest message before evidence while preserving a reader scroll', async () => {
+  const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
   await render(
     <ConversationHistory
       compact
@@ -42,16 +43,29 @@ test('keeps evidence scrollable before the latest message in a compact viewport'
   );
   const history = screen.getByTestId('rag-conversation-history');
   const footer = screen.getByTestId('evidence');
-  const message = screen.getByText('최근 질문');
+  const end = screen.getByTestId('rag-conversation-message-end');
   const content = footer.parent!;
-  let messageSection = message;
-  while (messageSection.parent && messageSection.parent !== content)
-    messageSection = messageSection.parent;
-  expect(messageSection.parent).toBe(content);
-  expect(content.children.indexOf(footer)).toBeLessThan(
-    content.children.indexOf(messageSection),
+  expect(end.parent).toBe(content);
+  expect(content.children.indexOf(end)).toBeLessThan(
+    content.children.indexOf(footer),
   );
   expect(history.props.contentContainerStyle.paddingBottom).toBe(0);
+  await fireEvent(history, 'layout', {
+    nativeEvent: { layout: { height: 34 } },
+  });
+  await fireEvent(end, 'layout', { nativeEvent: { layout: { y: 1000 } } });
+  expect(scrollTo).toHaveBeenLastCalledWith({ y: 966, animated: false });
+  await fireEvent.scroll(history, {
+    nativeEvent: {
+      contentOffset: { x: 0, y: 400 },
+      contentSize: { width: 300, height: 1300 },
+      layoutMeasurement: { width: 300, height: 34 },
+    },
+  });
+  scrollTo.mockClear();
+  await fireEvent(end, 'layout', { nativeEvent: { layout: { y: 1100 } } });
+  expect(scrollTo).not.toHaveBeenCalled();
+  scrollTo.mockRestore();
 });
 
 test('puts streaming text after its activity in the short reading viewport', async () => {
@@ -71,4 +85,46 @@ test('puts streaming text after its activity in the short reading viewport', asy
   expect(stream.parent!.children.indexOf(activity)).toBeLessThan(
     stream.parent!.children.indexOf(stream),
   );
+});
+
+test('keeps a reader position when the viewport changes to compact', async () => {
+  const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+  const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+  const page = (compact: boolean) => (
+    <ConversationHistory
+      compact={compact}
+      messages={[{ id: 1, role: 'user', content: '이전 질문' }]}
+      pendingMessage={null}
+      error=""
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+      footer={<Text>근거와 안내</Text>}
+    />
+  );
+  const view = await render(page(false));
+  const history = screen.getByTestId('rag-conversation-history');
+  await fireEvent.scroll(history, {
+    nativeEvent: {
+      contentOffset: { x: 0, y: 100 },
+      contentSize: { width: 300, height: 1200 },
+      layoutMeasurement: { width: 300, height: 400 },
+    },
+  });
+  scrollTo.mockClear();
+  scrollToEnd.mockClear();
+  await view.rerender(page(true));
+  await fireEvent(history, 'layout', {
+    nativeEvent: { layout: { height: 34 } },
+  });
+  await fireEvent(
+    screen.getByTestId('rag-conversation-message-end'),
+    'layout',
+    {
+      nativeEvent: { layout: { y: 1000 } },
+    },
+  );
+  expect(scrollTo).not.toHaveBeenCalled();
+  expect(scrollToEnd).not.toHaveBeenCalled();
+  scrollTo.mockRestore();
+  scrollToEnd.mockRestore();
 });
