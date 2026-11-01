@@ -84,7 +84,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             let field = node(app, "rag-conversation-composer-field")
             let baseline = field.frame.height
             let input = node(app, "rag-conversation-input")
-            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText("complete synthetic\nsecond line\nthird line")
             let grows = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in field.frame.height > baseline + 10 }, object: nil)
@@ -114,7 +114,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
             node(app, "rag-conversation-new-session").tap()
-            FormUITestConditions.reveal(input, in: app, scroll: conversationPage)
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText("pending synthetic")
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -133,7 +133,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
                 let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - previousWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [expanded]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
-                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
+                ConversationComposerDockUITestConditions.assertReachable(stop, in: app)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
                 XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
                 let expandedWidth = app.frame.width
@@ -141,7 +141,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
                 let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - expandedWidth) > 0.5 }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [compact]), .completed)
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
-                FormUITestConditions.reveal(stop, in: app, scroll: conversationPage)
+                ConversationComposerDockUITestConditions.assertReachable(stop, in: app)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
             }
             let stopFrame = stop.frame

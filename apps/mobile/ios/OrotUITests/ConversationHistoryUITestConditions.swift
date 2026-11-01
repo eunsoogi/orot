@@ -33,7 +33,7 @@ enum ConversationHistoryUITestConditions {
                 let suffix = "\(largeText ? "maximum-text" : "default-text")-\(dark ? "dark" : "light")"
                 node(app, "rag-conversation-new-session").tap()
                 let input = node(app, "rag-conversation-input")
-                FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+                ConversationComposerDockUITestConditions.assertReachable(input, in: app)
                 input.tap()
                 input.typeText(question)
                 app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
@@ -95,7 +95,7 @@ enum ConversationHistoryUITestConditions {
 
         func send(_ question: String) {
             let input = node(app, "rag-conversation-input")
-            FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
+            ConversationComposerDockUITestConditions.assertReachable(input, in: app)
             input.tap()
             input.typeText(question)
             app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
