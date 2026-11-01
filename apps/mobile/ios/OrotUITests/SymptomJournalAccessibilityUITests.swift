@@ -117,8 +117,12 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     /// Operate the seeded card through the same selection and edit actions as a user.
     @MainActor
     private func openSeededEdit(_ app: XCUIApplication) throws -> Bool {
-        if !UITestConditions.element(app, "symptom-edit-keyboard-seed").exists {
-            try tapFinal(app, "symptom-select-keyboard-seed", stage: "large-keyboard-select")
+        let selected = UITestConditions.element(app, "symptom-select-keyboard-seed")
+        guard FormUITestConditions.reveal(selected, in: app, scrollID: "symptoms-scroll") != nil else { return false }
+        guard selected.exists, selected.isHittable else { XCTFail("Seeded record must be selectable"); return false }
+        // An offscreen edit action is not evidence that its selected card is collapsed.
+        if !selected.isSelected {
+            selected.tap()
         }
         try tapFinal(app, "symptom-edit-keyboard-seed", stage: "large-keyboard-edit")
         let exists = UITestConditions.exists(app.textViews["symptom-description"])
