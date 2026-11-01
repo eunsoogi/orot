@@ -19,7 +19,7 @@ function fixture() {
   writeFileSync(runFile, 'verified product archive identity');
   writeFileSync(ownerFile, JSON.stringify(owner));
   const environment = {
-    DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
+    DEVELOPER_DIR: '/Applications/Xcode_27.2.app/Contents/Developer',
   };
   return { root, resultsDirectory, runFile, ownerFile, owner, environment };
 }

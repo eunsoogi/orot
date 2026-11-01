@@ -12,7 +12,7 @@ import {
 
 test('Face ID setup launches the product app on its exact owned Simulator', () => {
   const owner = { udid: 'AB275C8A-0339-4668-9FA2-C9D37DD15CA6' };
-  const deviceHubPath = '/Applications/Xcode_27.1.app/Contents/Applications/DeviceHub.app';
+  const deviceHubPath = '/Applications/Xcode_27.2.app/Contents/Applications/DeviceHub.app';
   const invocations = [];
   const output = launchFaceIdOwnerApp(owner, {
     deviceHubPath,

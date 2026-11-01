@@ -41,7 +41,7 @@ for (const [cohort, count] of [
     const callsPath = join(value.root, 'calls.jsonl');
     const ownerPath = join(value.root, 'owner.json');
     const output = join(value.root, 'results');
-    const runFile = join(value.products, 'OrotTests_iphonesimulator27.1-arm64.xctestrun');
+    const runFile = join(value.products, 'OrotTests_iphonesimulator27.2-arm64.xctestrun');
     // Only Apple/resource commands are synthetic. The real coordinator, native CLI and exact result oracle execute.
     const program = `#!${process.execPath}
 const fs=require('node:fs'), path=require('node:path'), args=process.argv.slice(2), name=path.basename(process.argv[1]);
@@ -74,7 +74,7 @@ else if(name==='xcrun' && args[0]==='xcresulttool' && args[1]==='get') {
           env: {
             ...value.env,
             PROFILE: 'core',
-            DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
+            DEVELOPER_DIR: '/Applications/Xcode_27.2.app/Contents/Developer',
           },
           encoding: 'utf8',
           timeout: 15000,

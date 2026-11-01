@@ -152,7 +152,7 @@ async function runAuthenticationSelection(profile, testRun, ownerPath, directory
   if (!developerDirectory || !isAbsolute(developerDirectory))
     throw new Error('Face ID automation requires the selected Xcode developer directory');
   if (developerDirectory !== iosXcodeDeveloperDirectory)
-    throw new Error('Face ID automation must use the pinned Xcode 27.1 runner');
+    throw new Error('Face ID automation must use the pinned Xcode 27.2 runner');
   const deviceHubPath = resolve(developerDirectory, '../Applications/DeviceHub.app');
   if (!existsSync(deviceHubPath)) throw new Error('The selected Xcode does not include Device Hub');
 
