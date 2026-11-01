@@ -107,13 +107,14 @@
                     if length >= 0, start >= 0, start <= end, end <= length {
                         result.merge(["status": "available", "viewID": identity(field), "windowID": identity(window), "focused": field.isFirstResponder, "documentLength": length, "selectionStart": start, "selectionEnd": end]) { _, new in new }
                         if end > start {
-                            var rejection: String?
-                            let geometry = selectionGeometry(field: field, range: selected, window: window, rejection: { rejection = $0 }, identity: identity)
+                            var rejection: String?, clipFailure: [String: Any]?
+                            let geometry = selectionGeometry(field: field, range: selected, window: window, rejection: { rejection = $0 }, clipFailure: { clipFailure = $0 }, identity: identity)
                             if let geometry {
                                 result["selectionGeometry"] = geometry
                                 result["dock"] = SymptomDockControlObservation.capture(views: views, window: window, truncated: !pending.isEmpty, identity: identity)
                             } else if let rejection {
                                 result["selectionGeometryRejection"] = rejection
+                                result["selectionClipFailure"] = clipFailure
                             }
                         }
                     }
@@ -127,7 +128,7 @@
         }
 
         /// The public selection rect belongs to textInputView; reject incomplete clipping or an unrelated native hit.
-        static func selectionGeometry(field: UITextField, range: UITextRange, window: UIWindow, rejection: (String) -> Void = { _ in }, identity: (NSObject) -> String) -> [String: Any]? {
+        static func selectionGeometry(field: UITextField, range: UITextRange, window: UIWindow, rejection: (String) -> Void = { _ in }, clipFailure: ([String: Any]) -> Void = { _ in }, identity: (NSObject) -> String) -> [String: Any]? {
             // Record only the first failed public geometry boundary; never loosen a retap guard.
             func reject(_ reason: String) -> [String: Any]? { rejection(reason); return nil }
             guard #available(iOS 17.4, *) else { return reject("unsupportedOS") }
@@ -148,7 +149,13 @@
                 guard view.layer.mask == nil, view.transform.isIdentity, CATransform3DIsIdentity(view.layer.transform), view === window || view.window === window else { return reject("ancestorOwnershipOrTransform") }
                 if view.clipsToBounds || view.layer.masksToBounds {
                     let clip = view.convert(view.bounds, to: window)
-                    guard finite(clip), clip.contains(rect) else { return reject("ancestorClipping") }
+                    guard finite(clip), clip.contains(rect) else {
+                        // Preserve only public geometry from the first failed clip in this same sample.
+                        var failure: [String: Any] = ["valid": finite(clip), "depth": depth, "ancestorID": identity(view), "isInput": view === input, "isField": view === field, "isScroll": view is UIScrollView, "clipsToBounds": view.clipsToBounds, "masksToBounds": view.layer.masksToBounds, "selection": NavigationGeometryTestObservation.finiteRect(rect), "field": NavigationGeometryTestObservation.finiteRect(fieldFrame)]
+                        if finite(clip) { failure["clip"] = NavigationGeometryTestObservation.finiteRect(clip) }
+                        clipFailure(failure)
+                        return reject("ancestorClipping")
+                    }
                 }
                 if view === field {
                     reachedField = true
