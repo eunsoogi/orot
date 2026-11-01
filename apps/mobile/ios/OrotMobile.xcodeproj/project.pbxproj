@@ -10,6 +10,7 @@
 		B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */; };
 		29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */; };
 		A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000002 /* ConversationHitUITestObservation.swift */; };
+		D49300000000000000000001 /* SymptomDateSelectionUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
 		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */; };
 		C49300000000000000000001 /* FormScrollGeometryJournalPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */; };
@@ -97,6 +98,7 @@
 		B49300000000000000000001 /* SymptomControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49300000000000000000002 /* SymptomControlGeometryObservation.swift */; };
 		B49300000000000000000003 /* SymptomDockControlObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49300000000000000000004 /* SymptomDockControlObservation.swift */; };
 		A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000004 /* ConversationHitTestObservation.swift */; };
+		D49300000000000000000003 /* SymptomDateSelectionObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49300000000000000000004 /* SymptomDateSelectionObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
@@ -300,6 +302,7 @@
 		B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalControlUITestConditions.swift; sourceTree = "<group>"; };
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
+		D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomDateSelectionUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalRegression.swift; sourceTree = "<group>"; };
 		C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalPlan.swift; sourceTree = "<group>"; };
@@ -414,6 +417,7 @@
 		B49300000000000000000002 /* SymptomControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomControlGeometryObservation.swift; path = OrotMobile/SymptomControlGeometryObservation.swift; sourceTree = "<group>"; };
 		B49300000000000000000004 /* SymptomDockControlObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomDockControlObservation.swift; path = OrotMobile/SymptomDockControlObservation.swift; sourceTree = "<group>"; };
 		A49300000000000000000004 /* ConversationHitTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationHitTestObservation.swift; path = OrotMobile/ConversationHitTestObservation.swift; sourceTree = "<group>"; };
+		D49300000000000000000004 /* SymptomDateSelectionObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomDateSelectionObservation.swift; path = OrotMobile/SymptomDateSelectionObservation.swift; sourceTree = "<group>"; };
 		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationWindowGeometryUITestConditions.swift; sourceTree = "<group>"; };
@@ -719,6 +723,7 @@
 				B49300000000000000000002 /* SymptomControlGeometryObservation.swift */,
 				B49300000000000000000004 /* SymptomDockControlObservation.swift */,
 				A49300000000000000000004 /* ConversationHitTestObservation.swift */,
+				D49300000000000000000004 /* SymptomDateSelectionObservation.swift */,
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
 				B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */,
 				DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */,
@@ -923,6 +928,7 @@
 				B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */,
 				22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */,
 				A49300000000000000000002 /* ConversationHitUITestObservation.swift */,
+				D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */,
 				6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */,
 				A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
@@ -1235,6 +1241,7 @@
 				B49300000000000000000001 /* SymptomControlGeometryObservation.swift in Sources */,
 				B49300000000000000000003 /* SymptomDockControlObservation.swift in Sources */,
 				A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */,
+				D49300000000000000000003 /* SymptomDateSelectionObservation.swift in Sources */,
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
@@ -1407,6 +1414,7 @@
 				B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */,
 				29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */,
 				A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */,
+				D49300000000000000000001 /* SymptomDateSelectionUITestObservation.swift in Sources */,
 				081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */,
 				F9DD5D73A89A4091A7E3B176 /* SymptomJournalAccessibilityUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,

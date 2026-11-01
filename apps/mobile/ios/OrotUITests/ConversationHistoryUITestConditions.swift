@@ -31,14 +31,13 @@ enum ConversationHistoryUITestConditions {
                     }
                 })
                 let suffix = "\(largeText ? "maximum-text" : "default-text")-\(dark ? "dark" : "light")"
-                node(app, "rag-conversation-new-session").tap()
+                NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
                 let input = node(app, "rag-conversation-input")
                 FormUITestConditions.reveal(input, in: app, scroll: node(app, "rag-conversation-history"))
                 input.tap()
                 input.typeText(question)
                 app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
-                FormUITestConditions.reveal(node(app, "rag-conversation-sessions-toggle"), in: app, scroll: node(app, "rag-conversation-history"))
-                node(app, "rag-conversation-sessions-toggle").tap()
+                NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
                 XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
                 _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
                 // UIKit exposes the title as a child StaticText, not the container cell's label.
@@ -102,11 +101,9 @@ enum ConversationHistoryUITestConditions {
         }
 
         send(firstQuestion)
-        FormUITestConditions.reveal(node(app, "rag-conversation-new-session"), in: app, scroll: node(app, "rag-conversation-history"))
-        node(app, "rag-conversation-new-session").tap()
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
         send(secondQuestion)
-        FormUITestConditions.reveal(node(app, "rag-conversation-sessions-toggle"), in: app, scroll: node(app, "rag-conversation-history"))
-        node(app, "rag-conversation-sessions-toggle").tap()
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
 
         let rows = app.descendants(matching: .any).matching(

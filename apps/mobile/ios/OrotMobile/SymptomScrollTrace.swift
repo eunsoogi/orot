@@ -13,12 +13,13 @@
         private var selection: [String: Any] = ["reason": "not-refreshed", "attached": false]
         private var traceEvents: [[String: Any]] = []
         private var recordedCount = 0
+        private var latestKeyboard: [String: Any]?
         private var descriptionAccessory: [String: Any] = ["status": "not-refreshed"]
 
         /// Selection and a separate 64-event history remain observable when RN events evict the shared lifecycle ring.
         func snapshot() -> [String: Any] {
             ["traceID": traceID, "selection": selection, "events": traceEvents, "capacity": 64,
-             "recordedCount": recordedCount, "droppedCount": recordedCount - traceEvents.count,
+             "recordedCount": recordedCount, "droppedCount": recordedCount - traceEvents.count, "latestKeyboard": latestKeyboard as Any? ?? NSNull(),
              "descriptionAccessory": descriptionAccessory,
              "atMs": Date().timeIntervalSince1970 * 1000]
         }
@@ -87,6 +88,7 @@
             }
             scroll = nil
             taggedView = nil
+            latestKeyboard = nil
             selection["attached"] = false
             selection["reason"] = "detached"
         }
@@ -200,6 +202,8 @@
             observation["event"] = event
             observation["sequence"] = recordedCount
             observation["receivedAtMs"] = Date().timeIntervalSince1970 * 1000
+            // Preserve the latest transition independently of pan eviction; stop() invalidates its owner.
+            latestKeyboard = event == "symptom-native-keyboard-frame" ? observation : latestKeyboard
             traceEvents.append(observation)
             if traceEvents.count > 64 {
                 traceEvents.removeFirst(traceEvents.count - 64)
