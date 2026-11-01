@@ -1,6 +1,36 @@
 import XCTest
 
 final class TestHostConnectionTests: OrotFailFastTestCase {
+    /// Compare the same device request with Safari's public XCUI window, without reading browser content.
+    @MainActor
+    func testSystemBrowserRotationControl() throws {
+        guard ProcessInfo.processInfo.environment["OROT_ROTATION_CONTROL"] == "YES" else {
+            throw XCTSkip("Explicit rotation control opt-in required")
+        }
+        let browser = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCUIDevice.shared.orientation = .portrait
+        browser.launch()
+        defer { browser.terminate(); XCUIDevice.shared.orientation = .portrait }
+        XCTAssertEqual(browser.state, .runningForeground)
+        let window = browser.windows.firstMatch
+        XCTAssertTrue(window.exists)
+        let initial = window.frame
+        XCTAssertFalse(initial.isEmpty)
+        let requestedAt = Date().timeIntervalSince1970 * 1000
+        XCUIDevice.shared.orientation = .landscapeLeft
+        var attempts = 0
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            attempts += 1
+            let frame = window.frame
+            if attempts == 1 || attempts == 100 || abs(frame.width - initial.width) > 0.5 {
+                // Log scalar geometry only; Safari contents and browsing data are not read.
+                print("OROT_BROWSER_ROTATION requestedAtMs=\(requestedAt) sampledAtMs=\(Date().timeIntervalSince1970 * 1000) bundle=com.apple.mobilesafari state=\(browser.state.rawValue) device=\(XCUIDevice.shared.orientation.rawValue) window=\(frame) initial=\(initial) attempt=\(attempts)")
+            }
+            return abs(frame.width - initial.width) > 0.5
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+    }
+
     /// A first connection check proves an actual XCUI runner can launch the app and read its test-only host.
     /// It is target wiring evidence, not the completed Speech or product journey.
     @MainActor
