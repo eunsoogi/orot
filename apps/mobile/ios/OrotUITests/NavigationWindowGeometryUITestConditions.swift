@@ -2,9 +2,9 @@ import XCTest
 
 extension NavigationWindowGeometryUITestConditions {
     /// Preserve the native and shared geometry after a requested rotation only during an opt-in diagnostic run.
-    static func captureRotationProbe(_ app: XCUIApplication, testCase: XCTestCase) {
+    static func captureRotationProbe(_ app: XCUIApplication, requestedAt: Double, testCase: XCTestCase) {
         guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" else { return }
-        print("OROT_SETTINGS_ROTATION_DEVICE orientation=\(XCUIDevice.shared.orientation.rawValue)")
+        print("OROT_SETTINGS_ROTATION_DEVICE orientation=\(XCUIDevice.shared.orientation.rawValue) requestedAtMs=\(requestedAt)")
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "settings-after-landscape-request")
     }
 

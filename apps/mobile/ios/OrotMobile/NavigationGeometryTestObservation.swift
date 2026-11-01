@@ -64,11 +64,21 @@
             } else {
                 NSNull()
             }
+            // Masks expose controller policy without recording the controller's content or identity.
+            let rootController = window.rootViewController
+            let activeController = rootController?.presentedViewController ?? rootController
+            let orientationPolicy: [String: Any] = [
+                "device": UIDevice.current.orientation.rawValue,
+                "sceneActivation": window.windowScene?.activationState.rawValue as Any? ?? NSNull(),
+                "rootSupportedMask": rootController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
+                "activeSupportedMask": activeController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
+            ]
             let ended = Date().timeIntervalSince1970 * 1000
             return [
                 // Compare the actual window contract; a root or sensor may be smaller.
                 "windowBounds": rect(window.bounds),
                 "sceneOrientation": sceneOrientation,
+                "orientationPolicy": orientationPolicy,
                 "safeAreaInsets": insets(window.safeAreaInsets),
                 "reservedRegionsSupported": regionsSupported,
                 "reservedRegions": regions,
