@@ -177,7 +177,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             let pendingUndoReflow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - pendingUndoWidth) > 0.5 }, object: nil)
             XCTAssertEqual(UITestConditions.wait(for: [pendingUndoReflow]), .completed)
             let undo = node(app, "conversation-history-undo")
-            ConversationComposerDockUITestConditions.waitForWindowControl(undo, in: app)
+            ConversationHistoryUITestConditions.reveal(undo, in: node(app, "conversation-history-page"))
             XCTAssertTrue(UITestConditions.exists(undo) && undo.isHittable && app.frame.contains(undo.frame))
             undo.tap()
             XCUIDevice.shared.orientation = .portrait

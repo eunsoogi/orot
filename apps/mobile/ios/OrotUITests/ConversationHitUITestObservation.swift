@@ -4,6 +4,7 @@ import XCTest
 /// Records only geometry and state after the original Send assertion has already failed.
 @MainActor
 enum ConversationHitUITestObservation {
+    private static var dockGenerations: [String: String] = [:]
     struct Initial {
         let startedAtMs: Double
         let endedAtMs: Double
@@ -42,6 +43,41 @@ enum ConversationHitUITestObservation {
         }
         XCTAssertTrue(initial.enabled)
         XCTAssertTrue(initial.hittable)
+    }
+
+    /// Each named slot captures one native geometry sample; unavailable or transitional data cannot pass.
+    static func assertDockGeometry(_ app: XCUIApplication, phase: String, session: String, testCase: XCTestCase) {
+        let notification = CFNotificationName("com.orot.tests.conversation-hit.\(session).\(phase)" as CFString)
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notification, nil, nil, true)
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard marker.exists, let data = UITestConditions.text(marker).data(using: .utf8),
+                  let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                  let hit = payload["conversationHit"] as? [String: Any],
+                  let slots = hit["dockSlots"] as? [String: Any]
+            else { return false }
+            return slots[phase] != nil
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "conversation-dock-\(phase)")
+        let hit = snapshot?["conversationHit"] as? [String: Any]
+        let slots = hit?["dockSlots"] as? [String: Any]
+        let slot = slots?[phase] as? [String: Any]
+        let sample = slot?["sample"] as? [String: Any]
+        XCTAssertEqual(slot?["session"] as? String, session)
+        XCTAssertEqual(slot?["owner"] as? String, snapshot?["observerID"] as? String)
+        XCTAssertEqual(slot?["phase"] as? String, phase)
+        XCTAssertEqual(slot?["sampleCount"] as? Int, 1)
+        let generation = slot?["generation"] as? String
+        XCTAssertNotNil(generation.flatMap(UUID.init(uuidString:)))
+        if let generation {
+            if let original = dockGenerations[session] {
+                XCTAssertEqual(generation, original)
+            } else {
+                dockGenerations[session] = generation
+            }
+        }
+        XCTAssertEqual(sample?["status"] as? String, "available", "Dock sample: \(String(describing: sample))")
     }
 
     static func capture(_ app: XCUIApplication, send: XCUIElement, initial: Initial, session: String, testCase: XCTestCase) {

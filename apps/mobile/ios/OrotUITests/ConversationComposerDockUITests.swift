@@ -5,7 +5,8 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
     @MainActor
     func testDockRemainsReachableAcrossConversationStates() {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        let observationSession = UUID().uuidString
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         let history = UITestConditions.element(app, "rag-conversation-history")
@@ -20,8 +21,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
         input.typeText("complete synthetic\nsecond line\nthird line")
         XCTAssertTrue(send.isHittable)
-        ConversationComposerDockUITestConditions.waitForKeyboardClearance(composer, in: app)
-        XCTAssertLessThanOrEqual(composer.frame.maxY, app.keyboards.firstMatch.frame.minY + 1)
+        ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         send.tap()
         let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
@@ -36,6 +36,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         let cancel = app.buttons.matching(identifier: "rag-conversation-cancel").firstMatch
         XCTAssertTrue(UITestConditions.exists(cancel))
         XCTAssertTrue(cancel.isHittable)
+        ConversationHitUITestObservation.assertDockGeometry(app, phase: "cancel-ready", session: observationSession, testCase: self)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         cancel.tap()
         input.tap()
@@ -52,23 +53,6 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 /// Verifies fixed controls against their dock and actual occluding system surfaces.
 @MainActor
 enum ConversationComposerDockUITestConditions {
-    /// Observe the actual keyboard boundary after its layout changes, without substituting a delay.
-    static func waitForKeyboardClearance(_ dock: XCUIElement, in app: XCUIApplication) {
-        let keyboard = app.keyboards.firstMatch
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            dock.exists && keyboard.exists && dock.frame.maxY <= keyboard.frame.minY + 1
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-    }
-
-    /// Rotation is ready for the next action only when the actual control is inside the window and hittable.
-    static func waitForWindowControl(_ control: XCUIElement, in app: XCUIApplication) {
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            control.exists && control.isHittable && app.frame.contains(control.frame)
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-    }
-
     /// The stream must retain a readable line inside the real scroll viewport.
     static func assertStreamVisible(in app: XCUIApplication) {
         let history = UITestConditions.element(app, "rag-conversation-history")
