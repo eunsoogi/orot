@@ -76,6 +76,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
             observeInput: inputObservation.map { observation in
                 { phase in observation.captureUIKit(phase, app: app, testCase: self) }
             },
+            useNativeSelectAllMenu: true,
         ))
 
         let source = UITestConditions.element(app, "next-visit-source-0-0")

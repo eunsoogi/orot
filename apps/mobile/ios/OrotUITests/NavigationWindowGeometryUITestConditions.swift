@@ -1,5 +1,23 @@
 import XCTest
 
+extension NavigationWindowGeometryUITestConditions {
+    /// The opt-in probe emits only bounded stage names and uptime, never accessibility values.
+    static func logSettingsProbe(_ stage: String, attempt: Int) {
+        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1", attempt <= 3 else { return }
+        print("OROT_SETTINGS_GEOMETRY_PROBE attempt=\(attempt) stage=\(stage) uptime=\(ProcessInfo.processInfo.systemUptime)")
+    }
+
+    static func settingsMarkerValue(_ app: XCUIApplication, log: (String) -> Void) -> String? {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        log("before-exists")
+        guard marker.exists else { log("missing"); return nil }
+        log("before-value")
+        let value = UITestConditions.text(marker)
+        log("after-value")
+        return value
+    }
+}
+
 /// Extends the existing geometry journey without changing the system's window arrangement.
 @MainActor
 enum NavigationWindowGeometryUITestConditions {

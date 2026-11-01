@@ -62,6 +62,11 @@ final class EncounterInputObservation {
     private(set) var lastRecord: Record?
     private let emit: (Record) throws -> Void
 
+    /// A sample is usable only if UIKit read it during this runner's accessibility request.
+    static func containsSample(_ sample: TimeInterval, after start: TimeInterval, through end: TimeInterval) -> Bool {
+        start.isFinite && sample.isFinite && end.isFinite && start <= sample && sample <= end
+    }
+
     init(run: UUID = UUID(), emit: @escaping (Record) throws -> Void = log) {
         self.run = run
         self.emit = emit
@@ -102,6 +107,8 @@ final class EncounterInputObservation {
             let runner: Record?
             let snapshotStatus: String
             let runMatches: Bool?
+            let readEndedUptime: TimeInterval?
+            let sampleWithinRunnerBracket: Bool?
             let publicUIKit: UIKitSnapshot?
         }
 
@@ -114,24 +121,42 @@ final class EncounterInputObservation {
             let count = marker.count
             var snapshot: UIKitSnapshot?
             var status: String
+            var readEndedUptime: TimeInterval?
             if count == 0 {
                 status = "marker-missing"
             } else if count != 1 {
                 status = "marker-ambiguous"
-            } else if let raw = marker.firstMatch.value as? String,
-                      let data = raw.data(using: .utf8),
-                      let decoded = try? JSONDecoder().decode(UIKitSnapshot.self, from: data)
-            {
-                snapshot = decoded
-                status = decoded.run == run ? "captured" : "run-mismatch"
             } else {
-                status = "snapshot-unavailable"
+                let raw = marker.firstMatch.value as? String
+                // Record the end before parsing, so a delayed or stale accessibility value cannot pass the bracket.
+                readEndedUptime = ProcessInfo.processInfo.systemUptime
+                if let raw, let data = raw.data(using: .utf8),
+                   let decoded = try? JSONDecoder().decode(UIKitSnapshot.self, from: data)
+                {
+                    snapshot = decoded
+                    if decoded.run != run {
+                        status = "run-mismatch"
+                    } else if let runner, let end = readEndedUptime,
+                              Self.containsSample(decoded.sampleUptime, after: runner.uptime, through: end)
+                    {
+                        status = "captured"
+                    } else {
+                        status = "outside-runner-bracket"
+                    }
+                } else {
+                    status = "snapshot-unavailable"
+                }
             }
             let payload = CapturedUIKitObservation(
                 run: run,
                 runner: runner,
                 snapshotStatus: status,
                 runMatches: snapshot.map { $0.run == run },
+                readEndedUptime: readEndedUptime,
+                sampleWithinRunnerBracket: snapshot.flatMap { sample in
+                    guard let runner, let end = readEndedUptime else { return nil }
+                    return Self.containsSample(sample.sampleUptime, after: runner.uptime, through: end)
+                },
                 publicUIKit: snapshot,
             )
             do {

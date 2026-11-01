@@ -3,6 +3,11 @@ import Foundation
 /// Host-executable contract fixture for the test-only UIKit observation payload.
 @main struct Control {
     @MainActor static func main() throws {
+        // A sample outside the actual runner read interval cannot establish the observed selection.
+        precondition(EncounterInputObservation.containsSample(11, after: 10, through: 12))
+        precondition(!EncounterInputObservation.containsSample(9, after: 10, through: 12))
+        precondition(!EncounterInputObservation.containsSample(13, after: 10, through: 12))
+        precondition(!EncounterInputObservation.containsSample(.nan, after: 10, through: 12))
         let run = UUID()
         let suite = "encounter-observation-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!

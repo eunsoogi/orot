@@ -14,12 +14,18 @@ enum NavigationGeometryUITestConditions {
                          width: CGFloat? = nil, differs: Bool = false) throws -> Snapshot
     {
         var observed: Snapshot?
+        var attempts = 0
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard let value = read(app, after: requestedAt) else { return false }
+            attempts += 1
+            let log: (String) -> Void = { stage in
+                NavigationWindowGeometryUITestConditions.logSettingsProbe(stage, attempt: attempts)
+            }
+            guard let value = read(app, after: requestedAt, log: log) else { log("not-ready"); return false }
             if let width {
                 let changed = abs(value.window.width - width) > 0.5
-                guard changed == differs else { return false }
+                guard changed == differs else { log("width-mismatch"); return false }
             }
+            log("ready")
             observed = value
             return true
         }, object: nil)
@@ -27,10 +33,9 @@ enum NavigationGeometryUITestConditions {
         return try XCTUnwrap(observed)
     }
 
-    private static func read(_ app: XCUIApplication, after requestedAt: Double?) -> Snapshot? {
-        let marker = UITestConditions.element(app, "navigation-test-observation")
-        guard marker.exists,
-              let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+    private static func read(_ app: XCUIApplication, after requestedAt: Double?, log: (String) -> Void) -> Snapshot? {
+        guard let text = NavigationWindowGeometryUITestConditions.settingsMarkerValue(app, log: log),
+              let report = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
               let reference = report["windowGeometry"] as? [String: Any],
               let window = rect(reference["windowBounds"]),
               let lifecycle = report["lifecycle"] as? [[String: Any]],
