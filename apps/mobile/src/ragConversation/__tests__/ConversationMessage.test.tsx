@@ -58,6 +58,10 @@ test('shows publication provenance and opens only its validated canonical articl
       onLinkError={jest.fn()}
     />,
   );
+  // Native production verification needs the final answer body apart from its citation controls.
+  expect(screen.getByTestId('rag-conversation-answer-body')).toHaveTextContent(
+    '답변',
+  );
   expect(screen.getByText('Europe PMC · 조회 2026-10-11')).toBeTruthy();
   expect(
     screen.getByTestId('rag-conversation-sources').props

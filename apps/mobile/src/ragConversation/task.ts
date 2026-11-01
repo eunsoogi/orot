@@ -60,6 +60,14 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskVersion: '5',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
+  // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
+  correctionInstructionForInvalidEnvelope(reason) {
+    if (
+      reason !== 'The task responder returned an invalid envelope: citations.'
+    )
+      return undefined;
+    return 'Return the complete result envelope with citations as an array of exact current evidenceId strings used in the answer. Use each ID at most once and do not invent references. Preserve only facts supported by the supplied evidence; an evidence-independent conversation has an empty citations array.';
+  },
   isEvidenceIndependentResult(value) {
     return isObject(value) && value.answerKind === 'conversation';
   },

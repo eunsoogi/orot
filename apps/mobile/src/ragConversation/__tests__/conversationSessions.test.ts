@@ -44,7 +44,6 @@ test('keeps pending answers and histories with their originating session when sw
   ).toEqual(['첫 합성 질문', '첫 번째 답변']);
   store.dispose();
 });
-
 test('explicit stop cancels only its session and discards a late answer', async () => {
   const store = createConversationSessions();
   const first = store.getSnapshot().activeId;
@@ -62,6 +61,9 @@ test('explicit stop cancels only its session and discards a late answer', async 
   store.setDraft(second, '보존할 합성 초안');
   store.cancel(first);
   expect(signal?.aborted).toBe(true);
+  expect(
+    store.getSnapshot().sessions.find(session => session.id === first)?.draft,
+  ).toBe('중지할 합성 질문');
   finish({ status: 'answer', answer: '버려야 할 늦은 답변', citations: [] });
   await pending;
   expect(

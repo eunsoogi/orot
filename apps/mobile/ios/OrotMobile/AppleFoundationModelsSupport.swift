@@ -124,7 +124,7 @@ func rejectApplePromise(_ reject: RCTPromiseRejectBlock, _ error: NSError) {
     reject(error.userInfo["code"] as? String ?? "APPLE_MODEL_ERROR", error.localizedDescription, error)
 }
 
-/// Closed stage codes distinguish app preparation from provider failures without logging health data.
+/// Closed diagnostic tokens preserve failure boundaries without logging health or task content.
 @objc(OrotProviderDiagnostics)
 final class OrotProviderDiagnostics: NSObject {
     @objc static func requiresMainQueueSetup() -> Bool {
@@ -150,6 +150,7 @@ final class OrotProviderDiagnostics: NSObject {
                "task_question_shape", "task_question_form", "task_question_safety",
                "task_envelope_json", "task_envelope_object", "task_envelope_type", "task_envelope_citations",
                "task_envelope_value", "task_envelope_fields", "task_envelope_need",
+               "task_required_lookup", "task_tool_protocol", "task_independent_citations",
                "task_summary_fields", "task_summary_citations", "task_summary_certainty",
                "task_summary_section_count", "task_summary_sources", "task_summary_medication", "task_summary_language",
                "task_summary_medication_completion", "task_summary_medication_unknown", "task_summary_medication_missing_data",

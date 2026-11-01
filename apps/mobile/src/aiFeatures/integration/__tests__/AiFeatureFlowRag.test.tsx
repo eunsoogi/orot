@@ -75,3 +75,61 @@ test('shows the insufficient-evidence response from the integrated RAG route', a
   expect(ragRunner).toHaveBeenCalledTimes(1);
   expect(partialData.readCandidates).toHaveBeenCalledTimes(1);
 });
+
+test('routes a new-session composer change to its active draft and preserves the prior draft', async () => {
+  const source = localData([]);
+  const ragRunner = jest.fn() as unknown as typeof runRagConversationTurn;
+
+  await render(
+    <AiFeatureRoute
+      onBack={jest.fn()}
+      onOpenArticle={jest.fn()}
+      serviceDependencies={{
+        selectedAi: {
+          selectionStore: selectionStore({
+            providerId: apple.provider.id,
+            modelId: apple.modelId,
+          }),
+          loadAppleOption: async () => apple,
+        },
+        loadLocalData: async () => source.data,
+        ragRunner,
+      }}
+    />,
+  );
+
+  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
+  const input = screen.getByTestId('rag-conversation-input');
+  await fireEvent.changeText(input, 'synthetic prior draft');
+  expect(input.props.value).toBe('synthetic prior draft');
+  expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(
+    false,
+  );
+
+  await fireEvent.press(screen.getByTestId('rag-conversation-new-session'));
+  const newInput = screen.getByTestId('rag-conversation-input');
+  expect(newInput.props.value).toBe('');
+  expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
+  await fireEvent.changeText(newInput, 'synthetic new-session question');
+  expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+    'synthetic new-session question',
+  );
+  expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(
+    false,
+  );
+
+  // Select the older session through the history native-event boundary; this checks retained UI state, not store setup.
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  const history = screen.getByTestId('conversation-history-list');
+  expect(history.props.rows).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: 1, selected: false }),
+      expect.objectContaining({ id: 2, selected: true }),
+    ]),
+  );
+  await fireEvent(history, 'selectSession', { nativeEvent: { id: 1 } });
+  expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+    'synthetic prior draft',
+  );
+  expect(ragRunner).not.toHaveBeenCalled();
+});

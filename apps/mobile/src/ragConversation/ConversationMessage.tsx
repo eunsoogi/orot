@@ -13,6 +13,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;
+  /** Failed prompts stay visible when the user has already drafted a different question. */
+  readonly failed?: boolean;
 }
 
 /** Citation labels reveal source type and date; opaque record aliases remain implementation details. */
@@ -29,6 +31,14 @@ export function ConversationMessage({
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
+  // Native production verification needs a stable target for completed text, apart from citation controls.
+  const messageTextTestID = message.streaming
+    ? 'rag-conversation-stream'
+    : user
+      ? undefined
+      : message.incomplete
+        ? 'rag-conversation-incomplete-body'
+        : 'rag-conversation-answer-body';
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
       <View style={!user && styles.assistantBody}>
@@ -46,7 +56,7 @@ export function ConversationMessage({
           <MessageText
             selectable
             style={[styles.messageText, user && styles.userText]}
-            testID={message.streaming ? 'rag-conversation-stream' : undefined}
+            testID={messageTextTestID}
           >
             {message.content}
           </MessageText>
@@ -55,7 +65,13 @@ export function ConversationMessage({
           <Text
             accessibilityLiveRegion="polite"
             style={styles.activity}
-            testID={message.streaming ? 'rag-conversation-progress' : undefined}
+            testID={
+              message.streaming
+                ? 'rag-conversation-progress'
+                : message.incomplete
+                  ? 'rag-conversation-incomplete-activity'
+                  : undefined
+            }
           >
             {message.activity}
           </Text>
