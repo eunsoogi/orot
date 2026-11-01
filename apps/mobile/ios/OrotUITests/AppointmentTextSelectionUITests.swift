@@ -182,10 +182,9 @@ enum AppointmentTextSelectionUITestConditions {
         let pressStart = Date().timeIntervalSince1970 * 1000
         measure("select-existing", doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
         let pressEnd = Date().timeIntervalSince1970 * 1000
-        let after = observe ? SymptomDateSelectionUITestObservation.request("after") : 0
         let selectAll = app.menuItems["Select All"]
         let available = selectAll.exists && selectAll.isHittable
-        let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, afterRequest: after, planRetap: doubleTapProbe) : nil
+        let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, planRetap: doubleTapProbe) : nil
         if doubleTapProbe {
             if let point {
                 SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app)

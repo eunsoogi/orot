@@ -2,6 +2,17 @@ import CoreGraphics
 
 /// Keep the native hit-tested center only when the independently observed AX viewport contains its region.
 enum SymptomRetapViewport {
+    static func stableScene(_ first: [String: Any], _ last: [String: Any]) -> Bool {
+        guard let scene = first["sceneID"] as? String, !scene.isEmpty, scene != "unavailable", last["sceneID"] as? String == scene,
+              let orientation = first["sceneOrientation"] as? Int, [1, 2, 3, 4].contains(orientation), last["sceneOrientation"] as? Int == orientation,
+              first["sceneTransitionObserved"] as? Bool == false, last["sceneTransitionObserved"] as? Bool == false else { return false }
+        return true
+    }
+
+    static func orderedAX(end: Double, request: Double, nativeStart: Double) -> Bool {
+        [end, request, nativeStart].allSatisfy(\.isFinite) && end <= request && request <= nativeStart
+    }
+
     static func point(selection: CGRect, viewport: CGRect) -> CGPoint? {
         guard !selection.isNull, !selection.isInfinite, selection.width > 0, selection.height > 0,
               [selection.minX, selection.minY, selection.maxX, selection.maxY].allSatisfy(\.isFinite),
@@ -29,7 +40,10 @@ enum SymptomDateSelectionUITestObservation {
         return time
     }
 
-    static func record(_ app: XCUIApplication, beforeRequest: Double, pressStart: Double, pressEnd: Double, afterRequest: Double, planRetap: Bool) -> CGPoint? {
+    static func record(_ app: XCUIApplication, beforeRequest: Double, pressStart: Double, pressEnd: Double, planRetap: Bool) -> CGPoint? {
+        // Capture AX first so the existing one-shot native after sample follows the screen reads.
+        let ax = planRetap ? captureAX(app) : nil
+        let afterRequest = request("after")
         let marker = UITestConditions.element(app, "navigation-test-observation")
         let payload = marker.exists ? UITestConditions.text(marker) : ""
         let snapshot = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any]
@@ -38,10 +52,11 @@ enum SymptomDateSelectionUITestObservation {
         let before = samples?["before"], after = samples?["after"]
         let valid = correlated(before: before, after: after, session: native?["session"] as? String,
                                beforeRequest: beforeRequest, pressStart: pressStart, pressEnd: pressEnd, afterRequest: afterRequest)
-        let point: CGPoint? = if planRetap, valid, let after, let markerAt = snapshot?["atMs"] as? Double,
+        let point: CGPoint? = if planRetap, valid, let ax, let after, let markerAt = snapshot?["atMs"] as? Double,
+                                 let started = after["startedAtMs"] as? Double, SymptomRetapViewport.orderedAX(end: ax.ended, request: afterRequest, nativeStart: started),
                                  let ended = after["endedAtMs"] as? Double, ended <= markerAt
         {
-            retapPoint(app, after: after, trace: snapshot?["symptomScrollTrace"] as? [String: Any])
+            retapPoint(ax, after: after, trace: snapshot?["symptomScrollTrace"] as? [String: Any])
         } else {
             nil
         }
@@ -57,33 +72,34 @@ enum SymptomDateSelectionUITestObservation {
         return point
     }
 
-    /// A planned point is used only when current AX geometry agrees with the one-shot native selection sample.
-    private static func retapPoint(_ app: XCUIApplication, after: [String: Any], trace: [String: Any]?) -> CGPoint? {
-        guard let geometry = after["selectionGeometry"] as? [String: Any], geometry["hitOwned"] as? Bool == true,
-              let original = frame(geometry["selection"]), let selected = frame(geometry["visibleSelection"]), original.contains(selected), let nativeField = frame(geometry["field"]), let nativeWindow = frame(geometry["window"]),
-              let orientation = geometry["orientation"] as? Int, matchesOrientation(orientation),
-              let start = after["selectionStart"] as? Int, let end = after["selectionEnd"] as? Int, start < end else { return nil }
+    /// Capture the existing AX constraints once before the native receipt; never resample after hit-testing.
+    private static func captureAX(_ app: XCUIApplication) -> (app: CGRect, field: CGRect, keyboard: CGRect?, viewport: CGRect, buttons: [CGRect], ended: Double)? {
         let input = app.textFields.matching(identifier: "symptom-onset-date")
         guard input.count == 1 else { return nil }
         let field = input.element(boundBy: 0), appFrame = app.frame
-        guard field.exists, field.isHittable, same(field.frame, nativeField), same(appFrame, nativeWindow), nativeField.contains(selected), appFrame.contains(selected) else { return nil }
-        let keyboard = app.keyboards.firstMatch
-        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
-        if let keyboardFrame {
-            guard valid(keyboardFrame), !keyboardFrame.intersects(selected) else { return nil }
-        }
-        // The AX viewport can be smaller than the native scroll clip; never move the hit-tested point to compensate.
-        let scroll = UITestConditions.element(app, "symptoms-scroll")
-        guard scroll.exists else { return nil }
-        let usable = FormUITestConditions.unobstructedScrollFrame(scroll.frame, target: nativeField, in: app)
-        guard let viewport = FormScrollGeometry.current(application: appFrame, scroll: usable, keyboard: keyboardFrame, input: nativeField, referenceSize: nil)?.viewport,
-              let point = SymptomRetapViewport.point(selection: selected, viewport: viewport) else { return nil }
-        guard safeNativeEvidence(trace: trace, after: after, geometry: geometry, appFrame: appFrame, nativeField: nativeField, nativeWindow: nativeWindow, selected: selected) else { return nil }
-        let overlay = UITestConditions.element(app, "navigation-action-bar-overlay")
-        guard overlay.exists else { return nil }
+        guard field.exists, field.isHittable else { return nil }
+        let fieldFrame = field.frame, keyboard = app.keyboards.firstMatch, keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        let scroll = UITestConditions.element(app, "symptoms-scroll"), overlay = UITestConditions.element(app, "navigation-action-bar-overlay")
+        guard scroll.exists, overlay.exists else { return nil }
+        let usable = FormUITestConditions.unobstructedScrollFrame(scroll.frame, target: fieldFrame, in: app)
+        guard let viewport = FormScrollGeometry.current(application: appFrame, scroll: usable, keyboard: keyboardFrame, input: fieldFrame, referenceSize: nil)?.viewport else { return nil }
         let buttons = overlay.descendants(matching: .button).allElementsBoundByIndex
-        guard !buttons.isEmpty, buttons.allSatisfy(\.exists), safeButtons(buttons.map(\.frame), selected: selected) else { return nil }
-        return CGPoint(x: point.x - appFrame.minX, y: point.y - appFrame.minY)
+        guard !buttons.isEmpty, buttons.allSatisfy(\.exists) else { return nil }
+        return (appFrame, fieldFrame, keyboardFrame, viewport, buttons.map(\.frame), Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// The returned point is the same center already hit-tested in the later native sample.
+    private static func retapPoint(_ ax: (app: CGRect, field: CGRect, keyboard: CGRect?, viewport: CGRect, buttons: [CGRect], ended: Double), after: [String: Any], trace: [String: Any]?) -> CGPoint? {
+        guard let geometry = after["selectionGeometry"] as? [String: Any], geometry["hitOwned"] as? Bool == true,
+              let original = frame(geometry["selection"]), let selected = frame(geometry["visibleSelection"]), original.contains(selected),
+              let nativeField = frame(geometry["field"]), let nativeWindow = frame(geometry["window"]),
+              let start = after["selectionStart"] as? Int, let end = after["selectionEnd"] as? Int, start < end,
+              same(ax.field, nativeField), same(ax.app, nativeWindow), nativeField.contains(selected), ax.app.contains(selected),
+              let point = SymptomRetapViewport.point(selection: selected, viewport: ax.viewport),
+              ax.keyboard.map({ valid($0) && !$0.intersects(selected) }) ?? true,
+              safeButtons(ax.buttons, selected: selected),
+              safeNativeEvidence(trace: trace, after: after, geometry: geometry, appFrame: ax.app, nativeField: nativeField, nativeWindow: nativeWindow, selected: selected) else { return nil }
+        return CGPoint(x: point.x - ax.app.minX, y: point.y - ax.app.minY)
     }
 
     private static func safeNativeEvidence(trace: [String: Any]?, after: [String: Any], geometry: [String: Any], appFrame: CGRect, nativeField: CGRect, nativeWindow: CGRect, selected: CGRect) -> Bool {
@@ -136,16 +152,6 @@ enum SymptomDateSelectionUITestObservation {
         app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: point.x, dy: point.y)).tap()
     }
 
-    private static func matchesOrientation(_ orientation: Int) -> Bool {
-        switch XCUIDevice.shared.orientation {
-        case .portrait: orientation == 1
-        case .portraitUpsideDown: orientation == 2
-        case .landscapeLeft: orientation == 4
-        case .landscapeRight: orientation == 3
-        default: false
-        }
-    }
-
     private static func frame(_ value: Any?) -> CGRect? {
         guard let data = value as? [String: Double], let x = data["x"], let y = data["y"], let width = data["width"], let height = data["height"] else { return nil }
         let rect = CGRect(x: x, y: y, width: width, height: height)
@@ -172,7 +178,7 @@ enum SymptomDateSelectionUITestObservation {
         guard session == self.session, let before, let after,
               before["phase"] as? String == "before", after["phase"] as? String == "after",
               before["status"] as? String == "available", after["status"] as? String == "available",
-              before["sampleCount"] as? Int == 1, after["sampleCount"] as? Int == 1,
+              before["sampleCount"] as? Int == 1, after["sampleCount"] as? Int == 1, SymptomRetapViewport.stableScene(before, after),
               before["focused"] as? Bool == true, after["focused"] as? Bool == true,
               let view = before["viewID"] as? String, !view.isEmpty, view != "unavailable", after["viewID"] as? String == view,
               let window = before["windowID"] as? String, !window.isEmpty, window != "unavailable", after["windowID"] as? String == window,
@@ -188,8 +194,8 @@ enum SymptomDateSelectionUITestObservation {
 
     /// Missing, stale, duplicated or different-owner receipts never establish the press boundary.
     static func verifyCorrelation() {
-        let first: [String: Any] = ["phase": "before", "status": "available", "sampleCount": 1, "focused": true, "viewID": "view", "windowID": "window", "documentLength": 10, "selectionStart": 0, "selectionEnd": 0, "startedAtMs": 2.0, "endedAtMs": 3.0]
-        let last: [String: Any] = ["phase": "after", "status": "available", "sampleCount": 1, "focused": true, "viewID": "view", "windowID": "window", "documentLength": 10, "selectionStart": 0, "selectionEnd": 10, "startedAtMs": 7.0, "endedAtMs": 8.0]
+        let first: [String: Any] = ["phase": "before", "status": "available", "sampleCount": 1, "focused": true, "viewID": "view", "windowID": "window", "sceneID": "scene", "sceneOrientation": 1, "sceneTransitionObserved": false, "documentLength": 10, "selectionStart": 0, "selectionEnd": 0, "startedAtMs": 2.0, "endedAtMs": 3.0]
+        let last: [String: Any] = ["phase": "after", "status": "available", "sampleCount": 1, "focused": true, "viewID": "view", "windowID": "window", "sceneID": "scene", "sceneOrientation": 1, "sceneTransitionObserved": false, "documentLength": 10, "selectionStart": 0, "selectionEnd": 10, "startedAtMs": 7.0, "endedAtMs": 8.0]
         func accepts(_ before: [String: Any]?, _ after: [String: Any]?, _ receiptSession: String?) -> Bool {
             correlated(before: before, after: after, session: receiptSession, beforeRequest: 1, pressStart: 4, pressEnd: 5, afterRequest: 6)
         }

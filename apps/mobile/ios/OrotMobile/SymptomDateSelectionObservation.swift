@@ -123,6 +123,7 @@
                     let start = field.offset(from: beginning, to: selected.start), end = field.offset(from: beginning, to: selected.end)
                     if length >= 0, start >= 0, start <= end, end <= length {
                         result.merge(["status": "available", "viewID": identity(field), "windowID": identity(window), "focused": field.isFirstResponder, "documentLength": length, "selectionStart": start, "selectionEnd": end]) { _, new in new }
+                        result.merge(sceneObservation(field: field, window: window, identity: identity)) { _, new in new }
                         if end > start {
                             var rejection: String?, clipFailure: [String: Any]?
                             let geometry = selectionGeometry(field: field, range: selected, window: window, rejection: { rejection = $0 }, clipFailure: { clipFailure = $0 }, identity: identity)
@@ -142,6 +143,21 @@
             }
             result["endedAtMs"] = Date().timeIntervalSince1970 * 1000
             return result
+        }
+
+        /// Record only observed scene state; an incomplete responder chain cannot establish stability.
+        private static func sceneObservation(field: UITextField, window: UIWindow, identity: (NSObject) -> String) -> [String: Any] {
+            guard #available(iOS 26.0, *), let scene = window.windowScene, let root = window.rootViewController else { return [:] }
+            var responder: UIResponder? = field, depth = 0, foundOwner = false, foundRoot = false, transitioning = scene.effectiveGeometry.isInteractivelyResizing
+            while let current = responder, depth < 64 {
+                if let controller = current as? UIViewController {
+                    foundOwner = true; transitioning = transitioning || controller.transitionCoordinator != nil
+                    if controller === root { foundRoot = true }
+                }
+                responder = current.next; depth += 1
+            }
+            guard responder == nil, foundOwner, foundRoot else { return [:] }
+            return ["sceneID": identity(scene), "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue, "sceneTransitionObserved": transitioning]
         }
 
         /// Derive one visible selection region from complete public clipping and hit-test its exact center.
