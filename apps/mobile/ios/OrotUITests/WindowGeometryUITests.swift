@@ -102,6 +102,8 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         XCTAssertTrue(originalExcerpt.exists, app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        // Preserve the synthetic route observation before waiting, so a stale or missing event is distinguishable.
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "question-after-source-return")
         let restoredQuestion = try waitForGeometry(app, routeKey: questionRoute)
         NavigationWindowGeometryUITestConditions.assertGeometry(restoredQuestion)
 
