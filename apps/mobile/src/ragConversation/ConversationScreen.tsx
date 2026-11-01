@@ -149,7 +149,9 @@ export function ConversationScreen({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={
+        !navigationRouteKey && Platform.OS === 'ios' ? 'padding' : undefined
+      }
       style={styles.screen}
       testID="rag-conversation-screen"
     >
@@ -157,33 +159,33 @@ export function ConversationScreen({
         routeKey={navigationRouteKey}
         testID="rag-conversation-columns"
         primary={
-          <ConversationHistory
-            header={header}
-            messages={messages}
-            pendingMessage={pendingMessage}
-            error={error}
-            onOpenSource={onOpenSource}
-            onLinkError={onLinkError}
-            citationsInPanelForMessageId={latestAssistantMessageId}
-            footer={
-              <>
+          <View style={styles.content}>
+            <ConversationHistory
+              header={header}
+              messages={messages}
+              pendingMessage={pendingMessage}
+              error={error}
+              onOpenSource={onOpenSource}
+              onLinkError={onLinkError}
+              citationsInPanelForMessageId={latestAssistantMessageId}
+              footer={
                 <ConversationEvidencePanel
                   messages={messages}
                   onOpenSource={onOpenSource}
                   onLinkError={onLinkError}
                 />
-                <ConversationComposer
-                  value={draft}
-                  busy={busy}
-                  onChangeText={value => store.setDraft(id, value)}
-                  onSend={() => {
-                    store.send(id, onSend);
-                  }}
-                  onCancel={cancel}
-                />
-              </>
-            }
-          />
+              }
+            />
+            <ConversationComposer
+              value={draft}
+              busy={busy}
+              onChangeText={value => store.setDraft(id, value)}
+              onSend={() => {
+                store.send(id, onSend);
+              }}
+              onCancel={cancel}
+            />
+          </View>
         }
       />
     </KeyboardAvoidingView>

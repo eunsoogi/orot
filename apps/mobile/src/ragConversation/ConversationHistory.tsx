@@ -7,7 +7,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 
-/** Owns the full conversation page, including its evidence and composer. */
+/** Owns the single scrollable conversation and evidence viewport. */
 export function ConversationHistory({
   messages,
   pendingMessage,
@@ -34,6 +34,7 @@ export function ConversationHistory({
   readonly citationsInPanelForMessageId?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
+  const followsBottom = useRef(true);
   // A single keyed list preserves the mounted answer across draft validation and cancellation.
   const visibleMessages: readonly DisplayMessage[] = pendingMessage
     ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
@@ -45,11 +46,18 @@ export function ConversationHistory({
       style={styles.history}
       contentContainerStyle={{ paddingBottom: bottomInset + 20 }}
       keyboardShouldPersistTaps="handled"
+      onScroll={({ nativeEvent }) => {
+        const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+        // Only follow streamed content while the reader remains near the bottom.
+        followsBottom.current =
+          contentSize.height - contentOffset.y - layoutMeasurement.height < 48;
+      }}
+      scrollEventThrottle={16}
       onContentSizeChange={() => {
         // Preserve the initial header position in empty conversations. Once an
         // answer exists, following its bottom must not leave a large fixed header
         // consuming the reading area at accessibility text sizes.
-        if (visibleMessages.length)
+        if (visibleMessages.length && followsBottom.current)
           historyView.current?.scrollToEnd({ animated: true });
       }}
       testID="rag-conversation-history"

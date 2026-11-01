@@ -67,7 +67,7 @@ test('uses borderless native Glass surfaces and one action control for Send and 
   expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
 });
 
-test('keeps the composer inside the conversation page', async () => {
+test('keeps the composer outside the conversation scroll', async () => {
   await render(
     <ConversationScreen
       onBack={jest.fn()}
@@ -78,10 +78,10 @@ test('keeps the composer inside the conversation page', async () => {
   const composer = screen.getByTestId('rag-conversation-composer');
   expect(StyleSheet.flatten(composer.props.style).position).toBeUndefined();
   expect(
-    within(screen.getByTestId('rag-conversation-history')).getByTestId(
+    within(screen.getByTestId('rag-conversation-history')).queryByTestId(
       'rag-conversation-composer',
     ),
-  ).toBeTruthy();
+  ).toBeNull();
 });
 
 test('shares a 44pt single-line baseline and grows without flex compressing the text', async () => {
@@ -116,8 +116,8 @@ test('shares a 44pt single-line baseline and grows without flex compressing the 
   await fireEvent(input(), 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 88 } },
   });
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(input().props.scrollEnabled).toBe(true);
   await view.rerender(<ConversationComposer {...props} value="" />);
-  expect(input().props.scrollEnabled).toBe(false);
+  expect(input().props.scrollEnabled).toBe(true);
   expect(StyleSheet.flatten(input().props.style).height).toBe(44);
 });

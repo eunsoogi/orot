@@ -10,7 +10,10 @@ export const questionCohorts = {
   'questions-conversation': {
     ...questionFixture,
     // Keep the composer/appearance journey intact with its own preparation and artifact budget.
-    cases: ['KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances'],
+    cases: [
+      'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
+      'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
+    ],
   },
   'questions-accessibility': {
     ...questionFixture,

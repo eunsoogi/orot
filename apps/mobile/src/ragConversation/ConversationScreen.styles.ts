@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** Keeps conversation content and controls in the same page flow. */
+/** Gives the history a flexible viewport above the fixed composer. */
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   header: { paddingHorizontal: 20, paddingTop: 16, gap: 8 },
@@ -21,7 +21,8 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  history: { flex: 1 },
+  content: { flex: 1, minHeight: 0 },
+  history: { flex: 1, minHeight: 0 },
   evidencePanel: {
     minWidth: 0,
     marginHorizontal: 20,
