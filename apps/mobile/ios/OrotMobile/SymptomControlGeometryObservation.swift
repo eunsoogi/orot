@@ -48,7 +48,16 @@
                 }
             }
             let activation = sameWindow ? window.convert(control.accessibilityActivationPoint, from: nil as UIWindow?) : .zero
-            return ["id": identity(control), "windowID": control.window.map(identity) ?? "unavailable", "frame": sameWindow ? rect(frame) : NSNull(), "firstResponder": control.isFirstResponder, "hidden": control.isHidden, "alpha": control.alpha, "ancestorHidden": chain.views.contains { $0.isHidden || $0.alpha <= 0 }, "nearestScrollID": scroll.map(identity) ?? "unavailable", "sameSelectedScroll": selected.flatMap { chosen in scroll.map { $0 === chosen } } as Any? ?? NSNull(), "clippingComplete": complete, "clippedFrame": complete ? rect(clip) : NSNull(), "clippedFrameEmpty": complete ? (clip.isNull || clip.isEmpty) as Any : NSNull(), "centerHit": sameWindow ? hit(window, point: CGPoint(x: frame.midX, y: frame.midY), known: known, selected: selected, identity: identity) : ["status": "unavailable"], "activationHit": sameWindow ? hit(window, point: activation, known: known, selected: selected, identity: identity) : ["status": "unavailable"]]
+            var result: [String: Any] = ["id": identity(control), "windowID": control.window.map(identity) ?? "unavailable", "firstResponder": control.isFirstResponder, "hidden": control.isHidden, "alpha": control.alpha, "ancestorHidden": chain.views.contains { $0.isHidden || $0.alpha <= 0 }]
+            result["frame"] = sameWindow ? rect(frame) as Any : NSNull()
+            result["nearestScrollID"] = scroll.map(identity) ?? "unavailable"
+            result["sameSelectedScroll"] = selected.flatMap { chosen in scroll.map { $0 === chosen } } as Any? ?? NSNull()
+            result["clippingComplete"] = complete
+            result["clippedFrame"] = complete ? rect(clip) as Any : NSNull()
+            result["clippedFrameEmpty"] = complete ? (clip.isNull || clip.isEmpty) as Any : NSNull()
+            result["centerHit"] = sameWindow ? hit(window, point: CGPoint(x: frame.midX, y: frame.midY), known: known, selected: selected, identity: identity) : ["status": "unavailable"]
+            result["activationHit"] = sameWindow ? hit(window, point: activation, known: known, selected: selected, identity: identity) : ["status": "unavailable"]
+            return result
         }
 
         private static func hit(_ window: UIWindow, point: CGPoint, known: [String: [UIView]], selected: UIScrollView?, identity: (NSObject) -> String) -> [String: Any] {
