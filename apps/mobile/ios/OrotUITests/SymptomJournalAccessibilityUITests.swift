@@ -87,23 +87,13 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         guard try openSeededEdit(app), focusDescription(app) else { return }
         XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
+        guard let saved = typeVisibleLetter(app, previous: "아픔") else { return }
         guard try tapKeyboardAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
         guard try openSeededEdit(app), focusDescription(app) else { return }
         let description = app.textViews["symptom-description"]
-        XCTAssertEqual(description.value as? String, "아픔")
+        XCTAssertEqual(description.value as? String, saved)
         XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
-        let keyboard = app.keyboards.firstMatch
-        let letter = keyboard.keys["Q"]
-        guard keyboard.exists, letter.exists, letter.isHittable, app.frame.intersects(keyboard.frame),
-              FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
-              keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
-        else {
-            XCTFail("A visible keyboard letter is required for the edit"); return
-        }
-        letter.tap()
-        guard let changed = description.value as? String, changed != "아픔" else {
-            XCTFail("The real keyboard tap must change the draft"); return
-        }
+        guard let changed = typeVisibleLetter(app, previous: saved) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
         XCTAssertTrue(UITestConditions.exists(keep) && keep.isHittable); keep.tap()
@@ -113,7 +103,25 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable); discard.tap()
         guard try openSeededEdit(app) else { return }
         XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
-        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, saved)
+    }
+
+    /// Type only through a visible native key and require the actual controlled value to change.
+    @MainActor
+    private func typeVisibleLetter(_ app: XCUIApplication, previous: String) -> String? {
+        let description = app.textViews["symptom-description"]
+        let keyboard = app.keyboards.firstMatch, letter = keyboard.keys["Q"]
+        guard keyboard.exists, letter.exists, letter.isHittable, app.frame.intersects(keyboard.frame),
+              FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
+              keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
+        else {
+            XCTFail("A visible keyboard letter is required for the edit"); return nil
+        }
+        letter.tap()
+        guard let changed = description.value as? String, changed != previous else {
+            XCTFail("The real keyboard tap must change the draft"); return nil
+        }
+        return changed
     }
 
     /// Operate the seeded card through the same selection and edit actions as a user.
