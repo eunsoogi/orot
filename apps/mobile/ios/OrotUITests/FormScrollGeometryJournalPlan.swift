@@ -18,7 +18,7 @@ enum FormScrollGeometryJournalPlan {
     }
 
     static func make(snapshot: [String: Any]?, application: CGRect, usableViewport: CGRect, keyboard: CGRect?, earlierKeyboard: CGRect? = nil, controls: [CGRect], identifier: String, evaluationStartedAtMs: Double, readEndedAtMs: Double, maximumScrollFraction: CGFloat) -> Plan? {
-        guard ["symptom-status-active", "symptom-form-error"].contains(identifier), FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
+        guard ["symptom-description", "symptom-status-active", "symptom-form-error"].contains(identifier), FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
               controls.allSatisfy(FormScrollGeometry.valid), let snapshot, let markerAt = snapshot["atMs"] as? Double,
               let trace = snapshot["symptomScrollTrace"] as? [String: Any], let accessory = trace["descriptionAccessory"] as? [String: Any],
               accessory["truncated"] as? Bool == false, accessory["inputCount"] as? Int == 1,
@@ -40,7 +40,7 @@ enum FormScrollGeometryJournalPlan {
               let scroll = context["scroll"] as? [String: Any], scroll["clipsToBounds"] as? Bool == true,
               scroll["isDragging"] as? Bool == false, scroll["isDecelerating"] as? Bool == false, scroll["isTracking"] as? Bool == false,
               let scrollView = scroll["view"] as? [String: Any], let scrollID = scrollView["identity"] as? String,
-              let nativeKeyboard = keyboardFootprint(keyboard, trace: trace, scrollID: scrollID, application: application, before: startAt),
+              let nativeKeyboards = keyboardFootprints(keyboard, earlier: earlierKeyboard, trace: trace, declared: declared, scrollID: scrollID, application: application, before: startAt, allowInitialAbsence: identifier == "symptom-description"),
               let scrollFrame = frame(scrollView["windowFrame"]), scrollView["sameWindow"] as? Bool == true,
               let selected = declared["scroll"] as? [String: Any], selected["id"] as? String == scrollID,
               selected["tracking"] as? Bool == false, selected["dragging"] as? Bool == false, selected["decelerating"] as? Bool == false,
@@ -54,16 +54,17 @@ enum FormScrollGeometryJournalPlan {
               let publicInput = geometry["accessibilityView"] as? [String: Any], publicInput["identity"] as? String == editorID,
               let editorFrame = frame(editor["frame"]), let inputFrame = frame(nativeInput["windowFrame"]), let publicFrame = frame(publicInput["windowFrame"]), same(editorFrame, inputFrame), same(editorFrame, publicFrame),
               let target = unique(identifier, groups: groups, window: windowID, scroll: scrollID),
-              target["clippingComplete"] as? Bool == true, let targetID = target["id"] as? String, !targetID.isEmpty, targetID != editorID, targetID != "unavailable", let targetFrame = frame(target["frame"])
+              target["clippingComplete"] as? Bool == true, let targetID = target["id"] as? String, !targetID.isEmpty, targetID != "unavailable", let targetFrame = frame(target["frame"]),
+              identifier == "symptom-description" ? (targetID == editorID && same(targetFrame, editorFrame)) : targetID != editorID
         else { return nil }
         guard let nativeControls = dockBlockers(declared: declared, window: windowID),
               earlierKeyboard.map(FormScrollGeometry.valid) ?? true else { return nil }
         let nativeViewport = usableViewport.intersection(scrollFrame).intersection(application)
-        guard let layout = FormScrollGeometry(application: application, scroll: nativeViewport, keyboard: keyboard, reservedKeyboard: nativeKeyboard),
+        guard let layout = FormScrollGeometry(application: application, scroll: nativeViewport, keyboard: keyboard, reservedKeyboard: nativeKeyboards.first),
               !layout.contains(targetFrame), let x = layout.horizontalPosition(outside: editorFrame),
               let gesture = layout.gesture(target: targetFrame, towardTop: false, horizontalPosition: x, maximumScrollFraction: maximumScrollFraction)
         else { return nil }
-        let blockers = [editorFrame, targetFrame, nativeKeyboard] + controls + nativeControls + [keyboard, earlierKeyboard].compactMap(\.self)
+        let blockers = [editorFrame, targetFrame] + nativeKeyboards + controls + nativeControls + [keyboard, earlierKeyboard].compactMap(\.self)
         guard let segment = FormScrollGeometry.journalSideSegments(application: application, viewport: layout.viewport, editor: editorFrame, blockers: blockers, start: gesture.start, end: gesture.end).last else { return nil }
         return Plan(start: CGVector(dx: segment.from.x - application.minX, dy: segment.from.y - application.minY), end: CGVector(dx: segment.to.x - application.minX, dy: segment.to.y - application.minY), target: targetFrame, viewport: layout.viewport)
     }
@@ -90,9 +91,22 @@ enum FormScrollGeometryJournalPlan {
         return result
     }
 
-    private static func keyboardFootprint(_ keyboard: CGRect?, trace: [String: Any], scrollID: String, application: CGRect, before: Double) -> CGRect? {
+    private static func keyboardFootprints(_ keyboard: CGRect?, earlier: CGRect?, trace: [String: Any], declared: [String: Any], scrollID: String, application: CGRect, before: Double, allowInitialAbsence: Bool) -> [CGRect]? {
         guard let traceID = trace["traceID"] as? String, !traceID.isEmpty, let events = trace["events"] as? [[String: Any]] else { return nil }
         let keyboardEvents = events.filter { $0["event"] as? String == "symptom-native-keyboard-frame" }
+        // Initial absence is an observed state, not a claim about unobserved keyboard configurations.
+        if keyboardEvents.isEmpty {
+            guard allowInitialAbsence, keyboard == nil, earlier == nil, declared["focusCount"] as? Int == 0,
+                  declared["otherWindowFocusCount"] as? Int == 0, declared["focusRole"] as? String == "none",
+                  trace["droppedCount"] as? Int == 0, trace["recordedCount"] as? Int == events.count,
+                  let selection = trace["selection"] as? [String: Any], selection["attached"] as? Bool == true,
+                  selection["reason"] as? String == "attached", selection["scrollViewID"] as? String == scrollID,
+                  let first = events.first, first["event"] as? String == "symptom-native-scroll-trace",
+                  first["phase"] as? String == "attached", first["traceID"] as? String == traceID,
+                  first["scrollViewID"] as? String == scrollID, first["sequence"] as? Int == 1,
+                  let attachedAt = first["receivedAtMs"] as? Double, attachedAt.isFinite, attachedAt <= before else { return nil }
+            return []
+        }
         guard zip(keyboardEvents, keyboardEvents.dropFirst()).allSatisfy({ first, second in
             guard let left = first["sequence"] as? Int, let right = second["sequence"] as? Int,
                   let earlier = first["receivedAtMs"] as? Double, let later = second["receivedAtMs"] as? Double else { return false }
@@ -103,9 +117,9 @@ enum FormScrollGeometryJournalPlan {
         latest["phase"] as? String == "did-change-frame", let at = latest["receivedAtMs"] as? Double, at.isFinite, at <= before,
         let native = frame(latest["endFrameInScreen"])
         else { return nil }
-        guard let keyboard else { return native.intersects(application) ? nil : native }
+        guard let keyboard else { return native.intersects(application) ? nil : [native] }
         guard FormScrollGeometry.valid(keyboard), native.intersects(application), native.insetBy(dx: -0.0001, dy: -0.0001).contains(keyboard) else { return nil }
-        return native
+        return [native]
     }
 
     private static func frame(_ value: Any?) -> CGRect? {
