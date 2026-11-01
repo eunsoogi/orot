@@ -2,6 +2,62 @@ import XCTest
 
 /// Exercises the fixed dock against the real keyboard using the synthetic conversation sender.
 final class ConversationComposerDockUITests: OrotFailFastTestCase {
+    /// Checks failure recovery from a fresh conversation without relying on a prior scroll position.
+    @MainActor
+    func testFailureKeepsComposerReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        let history = UITestConditions.element(app, "rag-conversation-history")
+        let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        input.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
+        typeOnKeyboard("afailure", in: app)
+        XCTAssertEqual((input.value as? String)?.lowercased(), "afailure")
+        XCTAssertTrue(send.isHittable)
+        send.tap()
+        let error = UITestConditions.element(app, "rag-conversation-error")
+        XCTAssertTrue(UITestConditions.exists(error))
+        FormUITestConditions.reveal(error, in: app, scroll: history, requireHittable: false)
+        XCTAssertTrue(error.exists)
+        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
+        ConversationComposerDockUITestConditions.assertReachable(send, in: app)
+    }
+
+    /// A compact history selection returns to the conversation before its page action is used.
+    @MainActor
+    func testCompactHistorySelectionReturnsToConversation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        input.tap()
+        input.typeText("history selection")
+        app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
+        let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(citation))
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        let history = UITestConditions.element(app, "conversation-history-screen")
+        let row = UITestConditions.element(app, "conversation-history-session-1")
+        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(row))
+        XCTAssertGreaterThan(app.frame.height, app.frame.width)
+        XCTAssertFalse(UITestConditions.element(app, "conversation-history-preview").exists)
+        XCTAssertTrue(row.isHittable)
+        row.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
+        XCTAssertFalse(history.exists)
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        XCTAssertFalse(citation.exists)
+    }
+
     @MainActor
     func testDockRemainsReachableAcrossConversationStates() {
         let app = XCUIApplication()

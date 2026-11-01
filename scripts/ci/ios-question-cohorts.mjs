@@ -21,6 +21,8 @@ export const questionCohorts = {
     cases: [
       'KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
       'KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
+      'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
+      'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
     ],
   },
   'questions-summary': {
