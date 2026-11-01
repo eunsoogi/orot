@@ -1,5 +1,12 @@
 import XCTest
 
+/// Runs the journal geometry contract independently of the system share-sheet journey.
+final class FormScrollGeometryJournalRegression: XCTestCase {
+    func testFreshJournalGestureBoundaries() throws {
+        try FormScrollGeometryRegression.verifyClippedJournalEditor()
+    }
+}
+
 /// Exercise the existing geometry regression entry point with the observed offscreen-editor shape.
 extension FormScrollGeometryRegression {
     static func verifyClippedJournalEditor() throws {

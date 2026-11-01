@@ -74,4 +74,5 @@ export const coreTests = [
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
   'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+  'OrotUITests/FormScrollGeometryJournalRegression/testFreshJournalGestureBoundaries',
 ];
