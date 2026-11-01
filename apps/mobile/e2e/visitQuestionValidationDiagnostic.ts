@@ -1,4 +1,5 @@
-import { reportVisitQuestionValidation as original } from '../src/agent/visitQuestions/validationDiagnostics';
+import { createVisitQuestionTaskResponder as original } from '../src/agent/visitQuestions/taskContract';
+import { currentScopeGeneration } from './visitQuestionScopeGuard';
 
 const reasons: Readonly<Record<string, string>> = {
   'The response must be an object.': 'value_object',
@@ -19,17 +20,22 @@ const reasons: Readonly<Record<string, string>> = {
   'A visit question must end with a question mark.': 'question_form',
 };
 
-/** Preserve the production observer and expose only a fixed reason code in the opt-in bundle. */
-export function reportVisitQuestionValidation(
-  ...args: Parameters<typeof original>
-) {
-  original(...args);
-  const result = args[0];
-  if (result.status === 'invalid') {
-    const code =
-      result.reason && Object.hasOwn(reasons, result.reason)
-        ? reasons[result.reason]
-        : 'other';
-    console.info(`OROT_SYNTHETIC_VALIDATION ${code}`);
-  }
+/** The production validator runs unchanged; late results must not be attributed to a newer run. */
+export function createVisitQuestionTaskResponder() {
+  const token = currentScopeGeneration();
+  const task = original();
+  return {
+    ...task,
+    validateResult(...args: Parameters<typeof task.validateResult>) {
+      const result = task.validateResult(...args);
+      if (token === currentScopeGeneration() && result.status === 'invalid') {
+        const code =
+          result.reason && Object.hasOwn(reasons, result.reason)
+            ? reasons[result.reason]
+            : 'other';
+        console.info(`OROT_SYNTHETIC_VALIDATION ${code}`);
+      }
+      return result;
+    },
+  };
 }

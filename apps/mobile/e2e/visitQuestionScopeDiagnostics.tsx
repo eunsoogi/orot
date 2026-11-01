@@ -3,7 +3,7 @@ import { NextVisitQuestionsRoute } from '../src/aiFeatures/integration/NextVisit
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { audit } from './visitQuestionScopeInventory';
-import { visitQuestionResponseShape } from './visitQuestionResponseShape';
+import { observeVisitQuestionResponse } from './visitQuestionResponseShape';
 import {
   beginScopeObservation,
   dispatchScoped,
@@ -65,11 +65,7 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
               const callNumber = calls;
               const result = await original.generate(...args);
               if (result.ok)
-                console.info(
-                  'OROT_SYNTHETIC_RESPONSE',
-                  callNumber,
-                  JSON.stringify(visitQuestionResponseShape(result.value)),
-                );
+                observeVisitQuestionResponse(token, callNumber, result.value);
               return result;
             },
           );
@@ -95,12 +91,10 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
                 const callNumber = calls;
                 for await (const event of original.stream!(...args)) {
                   if (event.ok && event.value.type === 'completed')
-                    console.info(
-                      'OROT_SYNTHETIC_RESPONSE',
+                    observeVisitQuestionResponse(
+                      token,
                       callNumber,
-                      JSON.stringify(
-                        visitQuestionResponseShape(event.value.response),
-                      ),
+                      event.value.response,
                     );
                   yield event;
                 }

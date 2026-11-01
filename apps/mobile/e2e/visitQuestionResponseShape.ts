@@ -1,4 +1,5 @@
 import type { LanguageModelResponse } from '@orot/model-runtime';
+import { currentScopeGeneration } from './visitQuestionScopeGuard';
 
 type Kind =
   'missing' | 'null' | 'string' | 'number' | 'boolean' | 'object' | 'array';
@@ -71,4 +72,19 @@ export function visitQuestionResponseShape(response: LanguageModelResponse) {
       key => !['type', 'value', 'citations'].includes(key),
     ).length,
   };
+}
+
+/** Observe only the owning run while returning the original provider response unchanged. */
+export function observeVisitQuestionResponse(
+  token: number,
+  call: number,
+  response: LanguageModelResponse,
+) {
+  if (token === currentScopeGeneration())
+    console.info(
+      'OROT_SYNTHETIC_RESPONSE',
+      call,
+      JSON.stringify(visitQuestionResponseShape(response)),
+    );
+  return response;
 }

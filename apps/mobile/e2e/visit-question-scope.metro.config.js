@@ -19,10 +19,8 @@ module.exports = {
         };
       }
       if (
-        moduleName === './validationDiagnostics' &&
-        context.originModulePath.endsWith(
-          '/agent/visitQuestions/taskContract.ts',
-        )
+        moduleName === './taskContract' &&
+        context.originModulePath.endsWith('/agent/visitQuestions/workflow.ts')
       ) {
         return {
           type: 'sourceFile',
