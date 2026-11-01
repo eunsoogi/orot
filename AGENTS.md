@@ -30,6 +30,10 @@ This file applies to the entire repository and all subdirectories. System, devel
 
 - `pnpm format:write` modifies files included in formatting checks. If you run it, inspect the resulting diff and rerun `pnpm lint` and `pnpm format:check` (`MUST`).
 - For changes that require an iOS Simulator build and Detox validation, follow the preparation requirements and commands in [`docs/development.md`](docs/development.md) (`MUST`). For changed-file line-count checks, use the same document's Source line policy (`MUST`).
+- At task completion, an owner MUST shut down and delete Simulators created for the task after preserving required test results, screenshots, logs, and build provenance outside the device.
+- Before shutdown or deletion, an owner MUST verify each exact device UDID and its current ownership and active use. A Simulator still used or explicitly reserved by another active task MUST NOT be shut down or deleted. A transfer MUST name a new active owner; possible future reuse does not count as cleanup.
+- After cleanup, an owner MUST read the Simulator inventory and confirm that each deleted UDID is absent. For an orchestrated child task, the parent orchestrator MUST perform or verify cleanup as part of accepting and cleaning up the completed child.
+- Detailed executable cleanup commands MUST remain in [`docs/development.md`](docs/development.md) and MUST NOT be duplicated here.
 - Do not arbitrarily narrow the check scope or skip failures (`MUST NOT`). If an exclusion is necessary, use an approved path restriction and state which files were omitted (`MUST`).
 
 ## Pull request requirements
