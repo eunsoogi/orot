@@ -8,7 +8,7 @@
         private final class Registration {
             let session: String
             let owner: String
-            let generation = UUID().uuidString
+            let generation = UUID().uuidString; weak var dockRoot: UIView?
             init(session: String, owner: String) {
                 self.session = session; self.owner = owner
             }
@@ -38,7 +38,7 @@
                 result = [:]
                 dockSlots = [:]
                 sampled = false
-                let registration = Registration(session: session, owner: owner)
+                let registration = Registration(session: session, owner: owner); let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }; registration.dockRoot = windows.count == 1 ? windows.first?.rootViewController?.view : nil; _ = registration.dockRoot?.keyboardLayoutGuide
                 registrations.append(registration)
                 activeRegistration = registration
                 for phase in ["legacy", "send-ready", "cancel-ready"] {
@@ -83,7 +83,7 @@
             guard session == self.session, owner == self.owner, generation == activeRegistration?.generation, let identity else { return }
             if phase != "legacy" {
                 guard ["send-ready", "cancel-ready"].contains(phase), dockSlots[phase] == nil else { return }
-                dockSlots[phase] = ["session": session, "owner": owner, "generation": generation, "phase": phase, "sampleCount": 1, "sample": ConversationHitTestObservation.dockSnapshot(phase: phase, identity: identity)]
+                dockSlots[phase] = ["session": session, "owner": owner, "generation": generation, "phase": phase, "sampleCount": 1, "sample": ConversationHitTestObservation.dockSnapshot(phase: phase, identity: identity, expectedRoot: activeRegistration?.dockRoot)]
                 return
             }
             guard !sampled else { return }
@@ -98,11 +98,11 @@
         private static let roles = ["rag-conversation-send", "rag-conversation-history", "rag-conversation-input", "rag-conversation-sessions-toggle", "rag-conversation-new-session", "navigation-page-action-overflow", "navigation-page-action-toolbar", "navigation-toolbar", "navigation-back", "navigation-home"]
 
         /// Samples the real controls and keyboard guide in a single window without inspecting their content.
-        static func dockSnapshot(phase: String, identity: (NSObject) -> String) -> [String: Any] {
+        static func dockSnapshot(phase: String, identity: (NSObject) -> String, expectedRoot: UIView?) -> [String: Any] {
             let start = Date().timeIntervalSince1970 * 1000
             let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }
             guard windows.count == 1, let window = windows.first, let scene = window.windowScene,
-                  let root = window.rootViewController?.view, root.window === window
+                  let root = window.rootViewController?.view, root.window === window, root === expectedRoot
             else { return ["status": "unavailable", "reason": "window-or-root", "windowCount": windows.count, "startedAtMs": start] }
             let rootFrame = root.convert(root.bounds, to: window); let keyboard = root.convert(root.keyboardLayoutGuide.layoutFrame, to: window)
             guard rootFrame.equalTo(window.bounds), !keyboard.isEmpty,
