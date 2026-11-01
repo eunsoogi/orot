@@ -98,7 +98,8 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     private func fill(_ app: XCUIApplication, _ identifier: String, _ text: String) -> Bool {
         let input = identifier == "symptom-description" ? app.textViews[identifier] : app.textFields[identifier]
-        let completed = FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll")
+        // The date field's command shortcut left existing text after deletion; verify the system menu action instead.
+        let completed = FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll", useNativeSelectAllMenu: identifier == "symptom-onset-date")
         XCTAssertTrue(completed)
         return completed
     }
