@@ -186,7 +186,7 @@ describe('visit-question shared workflow', () => {
     ).toMatchObject({ result: { status: 'ready' }, requestCount: 1 });
     expect(
       await runWithQuestion('복용량 5 g을 진료에서 확인할까요?'),
-    ).toMatchObject({ result: { status: 'unavailable' }, requestCount: 2 });
+    ).toMatchObject({ result: { status: 'rejected_output' }, requestCount: 2 });
   });
 
   it('does not call the selected provider when remote payload consent is declined', async () => {

@@ -39,6 +39,8 @@ export const nextVisitQuestionsCopy = {
     invalidResult:
       '질문 후보를 확인할 수 없어 표시하지 않았어요. 다시 시도해 주세요.',
     needsClarification: '현재 자료만으로는 질문을 준비하기 어려워요.',
+    clarificationNextStep:
+      '관련 건강 기록을 확인하거나 보완한 뒤 다시 질문을 만들어 주세요.',
     refreshRequired:
       '자료가 바뀌었어요. 최신 내용을 확인한 뒤 다시 시도해 주세요.',
     providerUnavailable:

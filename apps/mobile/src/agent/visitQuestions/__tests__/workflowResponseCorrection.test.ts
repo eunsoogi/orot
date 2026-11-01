@@ -94,7 +94,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(2);
   });
 
@@ -119,7 +119,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(3);
   });
 
@@ -138,7 +138,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 
@@ -160,7 +160,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 
@@ -183,7 +183,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 

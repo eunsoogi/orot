@@ -23,7 +23,10 @@ export type VisitQuestionWorkflowResult =
     }
   | {
       readonly status:
-        'needs_clarification' | 'refresh_required' | 'unavailable';
+        | 'needs_clarification'
+        | 'refresh_required'
+        | 'rejected_output'
+        | 'unavailable';
       readonly message: string;
       readonly memoryStatus: ReadyContext['evidence']['memoryStatus'];
     }
@@ -73,9 +76,11 @@ export async function mapVisitQuestionWorkflowResult(input: {
       status:
         result.status === 'needs_clarification'
           ? 'needs_clarification'
-          : result.status === 'stale_evidence'
-            ? 'refresh_required'
-            : 'unavailable',
+          : result.status === 'invalid_output'
+            ? 'rejected_output'
+            : result.status === 'stale_evidence'
+              ? 'refresh_required'
+              : 'unavailable',
       message,
       memoryStatus: prepared.evidence.memoryStatus,
     };
@@ -102,7 +107,7 @@ export async function mapVisitQuestionWorkflowResult(input: {
     [...questionCitationKeys].some(key => !resultCitationKeys.has(key))
   ) {
     return {
-      status: 'unavailable',
+      status: 'rejected_output',
       message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
       memoryStatus: prepared.evidence.memoryStatus,
     };
@@ -115,7 +120,7 @@ export async function mapVisitQuestionWorkflowResult(input: {
       const original = aliases.originalOf(reference);
       if (!original) {
         return {
-          status: 'unavailable',
+          status: 'rejected_output',
           message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
           memoryStatus: prepared.evidence.memoryStatus,
         };

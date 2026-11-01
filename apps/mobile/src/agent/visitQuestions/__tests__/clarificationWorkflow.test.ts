@@ -43,7 +43,7 @@ function expectInvalidClarificationFallback(
   unsafeText: string,
 ) {
   expect(result).toMatchObject({
-    status: 'unavailable',
+    status: 'rejected_output',
     message: t('visitQuestions.workflowResults.failure.invalidOutput'),
   });
   expect(JSON.stringify(result)).not.toContain(unsafeText);

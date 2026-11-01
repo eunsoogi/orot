@@ -140,7 +140,12 @@ export function useQuestionGeneration<
         return;
       }
       setPhase('error');
-      setMessage(outcome.message);
+      // Clarification requires better evidence, not a blind repeat of the same request.
+      setMessage(
+        outcome.status === 'needs_clarification'
+          ? `${outcome.message} ${copy.generation.clarificationNextStep}`
+          : outcome.message,
+      );
     } catch {
       acceptingEvents = false;
       if (request.signal.aborted || activeGeneration.current !== request)

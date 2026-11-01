@@ -46,9 +46,23 @@ describe('visit-question workflow result mapping', () => {
           checkpoint: {} as never,
         },
       });
-      expect(result.status).toBe(extra ? 'unavailable' : 'ready');
+      expect(result.status).toBe(extra ? 'rejected_output' : 'ready');
     },
   );
+
+  it('distinguishes rejected provider output from an unavailable provider', async () => {
+    const prepared = preparedContext();
+    const result = await mapVisitQuestionWorkflowResult({
+      result: {
+        status: 'invalid_output',
+        reason: 'invalid',
+        checkpoint: {} as never,
+      },
+      aliases: createVisitQuestionEvidenceAliases(prepared.evidence.batch),
+      prepared,
+    });
+    expect(result.status).toBe('rejected_output');
+  });
 
   it('preserves the runtime-validated clarification message for incomplete coverage', async () => {
     const prepared = preparedContext();

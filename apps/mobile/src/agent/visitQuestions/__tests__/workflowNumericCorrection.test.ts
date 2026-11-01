@@ -123,7 +123,7 @@ test('stops after one rejected numeric correction without accepting or storing t
       selection,
       providerOptions: [option],
     });
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(2);
     expect(JSON.stringify(result)).not.toContain('77회/분');
     expect(await f.records.list('visit_question')).toEqual([]);
@@ -150,7 +150,7 @@ test.each([
         selection,
         providerOptions: [option],
       });
-      expect(result.status).toBe('unavailable');
+      expect(result.status).toBe('rejected_output');
       expect(requests).toHaveLength(1);
     } finally {
       f.close();
@@ -170,7 +170,7 @@ test('does not publish unsafe final question copy even when its numeric facts ma
       selection,
       providerOptions: [option],
     });
-    expect(result).toMatchObject({ status: 'unavailable' });
+    expect(result).toMatchObject({ status: 'rejected_output' });
     expect(requests).toHaveLength(1);
     expect(JSON.stringify(result)).not.toContain('약을 중단하세요');
   } finally {

@@ -217,7 +217,11 @@ test('shows insufficient evidence without creating a question review list', asyn
   await render(<NextVisitQuestionsScreen {...makeProps({ onGenerate })} />);
 
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
-  expect(await screen.findByText('합성 근거가 부족합니다.')).toBeTruthy();
+  expect(
+    await screen.findByTestId('next-visit-generation-message'),
+  ).toHaveTextContent(
+    '합성 근거가 부족합니다. 관련 건강 기록을 확인하거나 보완한 뒤 다시 질문을 만들어 주세요.',
+  );
   expect(
     screen.getByText('현재 확인된 근거가 부족해 질문을 만들지 않았어요.'),
   ).toBeTruthy();
