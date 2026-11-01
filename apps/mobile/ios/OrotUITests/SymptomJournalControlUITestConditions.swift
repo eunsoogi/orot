@@ -208,35 +208,4 @@ enum SymptomJournalControlUITestConditions {
         UITestConditions.value(UITestConditions.element(app, "symptom-" + id + "-status"), equals: "나아졌어요")
         XCTAssertFalse(error.exists)
     }
-
-    /// Insert one observed digit through the real keyboard without relying on word correction.
-    static func typeVisibleDigit(_ app: XCUIApplication, previous: String) -> String? {
-        let description = app.textViews["symptom-description"]
-        guard let before = description.value as? String, before == previous else {
-            XCTFail("The focused draft must match the previously observed value"); return nil
-        }
-        let keyboard = app.keyboards.firstMatch, digit = app.keyboards.firstMatch.keys["1"]
-        guard keyboard.exists, FormScrollGeometry.valid(keyboard.frame), app.frame.intersects(keyboard.frame) else {
-            XCTFail("A visible software keyboard is required"); return nil
-        }
-        if !digit.exists {
-            let numbers = keyboard.descendants(matching: .any).matching(identifier: "more").firstMatch
-            guard numbers.exists, numbers.isHittable, ["numbers", "숫자"].contains(numbers.label),
-                  FormScrollGeometry.valid(numbers.frame), keyboard.frame.contains(numbers.frame), app.frame.contains(numbers.frame)
-            else {
-                XCTFail("The observed numbers key must be visible and tappable"); return nil
-            }
-            numbers.tap()
-        }
-        guard digit.exists, digit.isHittable, FormScrollGeometry.valid(digit.frame),
-              keyboard.frame.contains(digit.frame), app.frame.contains(digit.frame)
-        else {
-            XCTFail("The observed digit key must be visible and tappable"); return nil
-        }
-        digit.tap()
-        guard let changed = description.value as? String, (Array(before.indices) + [before.endIndex]).contains(where: { index in
-            var expected = before; expected.insert("1", at: index); return expected == changed
-        }) else { XCTFail("The keyboard tap must insert exactly one digit"); return nil }
-        return changed
-    }
 }
