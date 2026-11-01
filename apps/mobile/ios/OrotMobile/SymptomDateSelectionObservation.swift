@@ -58,7 +58,13 @@
                 samples[phase] = ["phase": phase, "sampleCount": 2, "status": "duplicate"]
                 return
             }
-            samples[phase] = Self.snapshot(identity: identity).merging(["phase": phase, "sampleCount": 1]) { _, new in new }
+            let received = Date().timeIntervalSince1970 * 1000
+            let sample = Self.snapshot(identity: identity).merging(["phase": phase, "sampleCount": 1, "receivedAtMs": received, "session": session]) { _, new in new }
+            samples[phase] = sample
+            // A synthetic opt-in records this one receipt independently of the periodic marker delivery.
+            if let data = try? JSONSerialization.data(withJSONObject: sample, options: [.sortedKeys]), let line = String(data: data, encoding: .utf8) {
+                NSLog("OROT_DATE_SELECTION %@", line)
+            }
         }
 
         /// Read positions and object ownership only; never read the document contents.
