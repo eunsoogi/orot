@@ -84,6 +84,13 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             in: app,
             scrollID: "symptoms-scroll",
         ))
+        if ProcessInfo.processInfo.environment["OROT_TEST_FORM_OBSERVATION"] == "YES" {
+            let keyboard = app.keyboards.firstMatch
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "symptom-cancel-pre-tap-native")
+            let visible = keyboard.exists && app.frame.intersects(keyboard.frame)
+            XCTAssertTrue(visible, "The cancellation diagnostic requires an intersecting keyboard")
+            guard visible else { return }
+        }
         let cancel = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-form-cancel", label: "취소")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         print("Cancel touch evidence: uptime=\(ProcessInfo.processInfo.systemUptime), frame=\(cancel.frame), window=\(app.frame), scroll=\(UITestConditions.element(app, "symptoms-scroll").frame), keyboard=\(app.keyboards.firstMatch.exists ? String(describing: app.keyboards.firstMatch.frame) : "absent"), hittable=\(cancel.isHittable)")
