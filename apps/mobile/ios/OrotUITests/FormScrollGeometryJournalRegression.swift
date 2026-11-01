@@ -100,7 +100,13 @@ extension FormScrollGeometryRegression {
                                        "controls": [["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [candidate]]]]
         var statusGeometry = geometry
         statusGeometry["declaredControls"] = controls
-        XCTAssertEqual(resolve(snapshot(statusGeometry), identifier: "symptom-status-active"), editor)
+        // A matching endpoint alone cannot prove that scrolling or layout stayed still between samples.
+        XCTAssertNil(resolve(snapshot(statusGeometry), identifier: "symptom-status-active"))
+        for motion in ["moved-and-returned", "programmatic-layout", "missing-interval", "last-sample-only"] {
+            var unproven = statusGeometry
+            unproven["motionEvidence"] = ["status": motion]
+            XCTAssertNil(resolve(snapshot(unproven), identifier: "symptom-status-active"), motion)
+        }
         for altered: [String: Any] in [["frame": frame(target.offsetBy(dx: 0, dy: 20))], ["windowID": "other"], ["clippingComplete": false], ["sameSelectedScroll": false]] {
             let candidate = candidate.merging(altered) { _, new in new }
             var rejected = statusGeometry
