@@ -190,6 +190,7 @@ export function useNextVisitQuestionsRoute(
       resolveSelectedAi,
       refreshAppointment,
       invalidateProviderLookup,
+      setProvider,
     ],
   );
 
