@@ -167,7 +167,7 @@ private struct InputObservation: CustomStringConvertible {
 
 @MainActor
 enum AppointmentTextSelectionUITestConditions {
-    /// Measures the observed system edit action so the appointment path preserves its existing timing diagnostics.
+    /// Return only after the date fixture verifies a full selection or the appointment path activates Select All.
     static func selectAll(
         _ input: XCUIElement,
         in app: XCUIApplication,
@@ -178,18 +178,19 @@ enum AppointmentTextSelectionUITestConditions {
         let doubleTapProbe = observe && !tripleTapProbe && ProcessInfo.processInfo.environment["OROT_SYMPTOM_DOUBLE_TAP_OBSERVATION"] == "1"
         let before = observe ? SymptomDateSelectionUITestObservation.prepare(app) : 0
         let pressStart = Date().timeIntervalSince1970 * 1000
-        measure("select-existing", tripleTapProbe ? { input.tap(withNumberOfTaps: 3, numberOfTouches: 1) } : doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
+        measure("select-existing", observe && !doubleTapProbe ? { input.tap(withNumberOfTaps: 3, numberOfTouches: 1) } : doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
         let pressEnd = Date().timeIntervalSince1970 * 1000
         let selectAll = app.menuItems["Select All"]
         // Selection probes never activate a command or modify the date.
-        let available = !doubleTapProbe && !tripleTapProbe && selectAll.exists && selectAll.isHittable
-        let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, planRetap: doubleTapProbe) : nil
+        let available = !observe && selectAll.exists && selectAll.isHittable
+        let selection = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, planRetap: doubleTapProbe) : nil
         if doubleTapProbe || tripleTapProbe {
-            if let point {
+            if let point = selection?.point {
                 SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app, inspectSelectAll: true)
             }
             XCTFail("Date selection diagnostic stops before editing"); return false
         }
+        if observe { let full = selection?.full == true; XCTAssertTrue(full, "Date selection must cover the entire field"); return full }
         guard available else {
             if input.identifier == "symptom-onset-date", ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1",
                ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil

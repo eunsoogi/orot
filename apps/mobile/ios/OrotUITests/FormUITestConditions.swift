@@ -120,8 +120,8 @@ enum FormUITestConditions {
             measure("placeholder-read") { current != input.placeholderValue }
         }
         if shouldReplace {
-            // Keep Command-A for unrelated forms. The fixtures appointment probe left the caret at the end and
-            // one Delete removed only the trailing character, so appointment edits use the observed native Select All action.
+            // Keep Command-A for unrelated forms. The date fixture verifies the full native selection;
+            // appointment edits retain the observed system Select All action.
             observeCursorTap?("before-select-all")
             observeInput?(.beforeSelect)
             if useNativeSelectAllMenu {

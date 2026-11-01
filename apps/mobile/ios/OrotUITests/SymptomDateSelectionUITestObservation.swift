@@ -9,6 +9,10 @@ enum SymptomRetapViewport {
         return true
     }
 
+    static func fullSelection(_ sample: [String: Any]) -> Bool {
+        (sample["documentLength"] as? Int).map { $0 > 0 && sample["selectionStart"] as? Int == 0 && sample["selectionEnd"] as? Int == $0 } ?? false
+    }
+
     static func orderedAX(end: Double, request: Double, nativeStart: Double) -> Bool {
         [end, request, nativeStart].allSatisfy(\.isFinite) && end <= request && request <= nativeStart
     }
@@ -45,7 +49,7 @@ enum SymptomDateSelectionUITestObservation {
         return time
     }
 
-    static func record(_ app: XCUIApplication, beforeRequest: Double, pressStart: Double, pressEnd: Double, planRetap: Bool) -> CGPoint? {
+    static func record(_ app: XCUIApplication, beforeRequest: Double, pressStart: Double, pressEnd: Double, planRetap: Bool) -> (point: CGPoint?, full: Bool) {
         // Capture AX first so the existing one-shot native after sample follows the screen reads.
         let ax = planRetap ? captureAX(app) : nil
         let afterRequest = request("after")
@@ -74,7 +78,7 @@ enum SymptomDateSelectionUITestObservation {
         attachment.name = "synthetic-date-selection"
         attachment.lifetime = .keepAlways
         XCTContext.runActivity(named: "Synthetic date selection observation") { $0.add(attachment) }
-        return point
+        return (point, valid && (after.map(SymptomRetapViewport.fullSelection) ?? false))
     }
 
     /// Capture the existing AX constraints once before the native receipt; never resample after hit-testing.
