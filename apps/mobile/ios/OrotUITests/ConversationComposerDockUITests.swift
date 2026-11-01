@@ -14,9 +14,9 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
+        input.typeText("pending")
+        XCTAssertEqual(input.value as? String, "pending")
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
-        typeOnKeyboard("apending", in: app)
-        XCTAssertEqual((input.value as? String)?.lowercased(), "apending")
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
         send.tap()
@@ -39,9 +39,9 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
+        input.typeText("a")
+        XCTAssertEqual(input.value as? String, "a")
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
-        typeOnKeyboard("a", in: app)
-        XCTAssertEqual((input.value as? String)?.lowercased(), "a")
         XCTAssertTrue(send.isHittable)
         send.tap()
         let error = UITestConditions.element(app, "rag-conversation-error")
