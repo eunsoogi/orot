@@ -111,7 +111,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     private func typeVisibleLetter(_ app: XCUIApplication, previous: String) -> String? {
         let description = app.textViews["symptom-description"]
         let keyboard = app.keyboards.firstMatch
-        guard keyboard.exists, let letter = ["Q", "W"].map({ keyboard.keys[$0] }).first(where: { $0.exists && $0.isHittable }), app.frame.intersects(keyboard.frame),
+        guard keyboard.exists, let letter = ["Q", "W", "q", "w"].map({ keyboard.keys[$0] }).first(where: { $0.exists && $0.isHittable }), app.frame.intersects(keyboard.frame),
               FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
               keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
         else {
