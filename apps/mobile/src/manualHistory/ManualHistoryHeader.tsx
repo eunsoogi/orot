@@ -5,13 +5,15 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { styles } from './manualHistoryScreenStyles';
 
-/** Keeps attribution and recovery notices in the page while announcing failures on iOS. */
+/** Shows page attribution and a local Back action only when the screen is standalone. */
 export function ManualHistoryHeader({
+  backButtonVisible,
   onBack,
   saving,
   error,
   notice,
 }: {
+  readonly backButtonVisible: boolean;
   readonly onBack: () => void;
   readonly saving: boolean;
   readonly error: string;
@@ -30,13 +32,15 @@ export function ManualHistoryHeader({
         >
           {t('manualHistory.title')}
         </Text>
-        <Button
-          variant="secondary"
-          disabled={saving}
-          onPress={onBack}
-          testID="manual-history-back"
-          title={t('manualHistory.back')}
-        />
+        {backButtonVisible ? (
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onPress={onBack}
+            testID="manual-history-back"
+            title={t('manualHistory.back')}
+          />
+        ) : null}
       </View>
       <Text style={styles.message}>{t('manualHistory.subtitle')}</Text>
       <Text style={styles.provenanceNote}>{t('manualHistory.provenance')}</Text>

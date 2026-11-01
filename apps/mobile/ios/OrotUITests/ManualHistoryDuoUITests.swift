@@ -226,3 +226,25 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(selected.frame.maxX, list.frame.maxX + 1, app.debugDescription)
     }
 }
+
+enum ManualHistoryBackUITestSupport {
+    /// Starts at the window edge while keeping the gesture inside the route viewport.
+    @MainActor
+    static func swipeBack(_ app: XCUIApplication) {
+        XCTAssertFalse(UITestConditions.element(app, "manual-history-back").exists, app.debugDescription)
+        let scroll = UITestConditions.element(app, "manual-history-scroll")
+        let frame = scroll.frame
+        let window = app.frame
+        XCTAssertTrue(!frame.isEmpty && !window.isEmpty, app.debugDescription)
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let y = frame.midY - window.minY
+        let start = origin.withOffset(CGVector(dx: window.width * 0.01, dy: y))
+        let end = origin.withOffset(CGVector(dx: window.width * 0.91, dy: y))
+        start.press(
+            forDuration: 0.1,
+            thenDragTo: end,
+            withVelocity: XCUIGestureVelocity(rawValue: 500),
+            thenHoldForDuration: 0,
+        )
+    }
+}
