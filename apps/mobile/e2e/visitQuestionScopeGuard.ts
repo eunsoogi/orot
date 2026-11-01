@@ -10,7 +10,11 @@ import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
 // Identifiers are fixture constants and never included in diagnostic output.
 export const expectedEvent =
   '9FA8207E-29E0-4203-8401-2775C20CB2F8:53BCA732-7729-4091-B401-4E6A870B098A';
-export const expectedSymptom = 'symptom-36f42b052c1b26c6a1633c486b14d6a8';
+export const expectedSymptoms = [
+  'symptom-36f42b052c1b26c6a1633c486b14d6a8',
+  'symptom-e4f4f9c20c0263b6744494dcd839c7ae',
+  'symptom-c1af3921105213c49bb44cc81226cdba',
+] as const;
 
 let contextReady = false;
 let generation = 0;
@@ -146,21 +150,22 @@ export function acceptScopeEvidence(
       visitQuestionCitationKey(item),
     );
     const locator = item.locator;
+    const id = item.sourceId;
     if (
       item.sourceKind !== 'personal_record' ||
-      item.sourceId !== expectedSymptom ||
-      item.evidenceId !== expectedSymptom ||
+      !expectedSymptoms.some(expected => expected === id) ||
+      item.evidenceId !== id ||
       !locator ||
       typeof locator !== 'object' ||
       Array.isArray(locator) ||
       !('kind' in locator) ||
       locator.kind !== 'structured_record' ||
       !('recordId' in locator) ||
-      locator.recordId !== expectedSymptom ||
+      locator.recordId !== id ||
       metadata?.recordKind !== 'symptom_entry' ||
-      metadata.evidenceRecordId !== expectedSymptom ||
+      metadata.evidenceRecordId !== id ||
       !metadata.sourceRecordIds.length ||
-      metadata.sourceRecordIds.some(id => id !== expectedSymptom)
+      metadata.sourceRecordIds.some(sourceId => sourceId !== id)
     )
       rejectScope(token, 'evidence_mismatch');
     observed.add(visitQuestionCitationKey(item));

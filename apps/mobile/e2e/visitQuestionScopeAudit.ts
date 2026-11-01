@@ -12,7 +12,7 @@ export function auditVisitQuestionScope(
   snapshot: ScopeSnapshot,
   selected: Appointment,
   expectedEventId: string,
-  expectedSymptomId: string,
+  expectedSymptomIds: readonly string[],
 ) {
   const appointment = snapshot.appointments[0];
   const appointmentMatch =
@@ -21,8 +21,9 @@ export function auditVisitQuestionScope(
     selected.calendarEventIdentifier === expectedEventId &&
     appointment.calendarEventIdentifier === expectedEventId;
   const symptomMatch =
-    snapshot.symptomIds.length === 1 &&
-    snapshot.symptomIds[0] === expectedSymptomId;
+    snapshot.symptomIds.length === expectedSymptomIds.length &&
+    new Set(snapshot.symptomIds).size === expectedSymptomIds.length &&
+    snapshot.symptomIds.every(id => expectedSymptomIds.includes(id));
   // The fixture has no reviewed memory. Any memory would need its own explicit allowlist.
   const memoryMatch = snapshot.memorySourceIds.length === 0;
   const otherEmpty = Object.values(snapshot.otherCounts).every(n => n === 0);

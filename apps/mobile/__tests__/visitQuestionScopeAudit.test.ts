@@ -7,7 +7,7 @@ import {
   acceptScopeEvidence,
   beginScopeObservation,
   dispatchScoped,
-  expectedSymptom,
+  expectedSymptoms,
   observedEvidenceCount,
   providerEvidenceCount,
   rejectScope,
@@ -23,17 +23,20 @@ const appointment = {
 } as Appointment;
 const snapshot: ScopeSnapshot = {
   appointments: [appointment],
-  symptomIds: ['synthetic-symptom'],
+  symptomIds: [
+    'synthetic-symptom',
+    'synthetic-symptom-2',
+    'synthetic-symptom-3',
+  ],
   otherCounts: { transcript: 0, health: 0 },
   memorySourceIds: [] as string[][],
 };
 const audit = (value = snapshot, selected = appointment) =>
-  auditVisitQuestionScope(
-    value,
-    selected,
-    'synthetic-event',
+  auditVisitQuestionScope(value, selected, 'synthetic-event', [
     'synthetic-symptom',
-  );
+    'synthetic-symptom-2',
+    'synthetic-symptom-3',
+  ]);
 
 test('accepts only the confirmed fixture sources', () => {
   expect(audit().ok).toBe(true);
@@ -45,6 +48,22 @@ test('accepts only the confirmed fixture sources', () => {
 test('rejects changed appointments, evidence, and unknown memory provenance', () => {
   expect(audit(snapshot, { ...appointment, id: 'other' }).ok).toBe(false);
   expect(audit({ ...snapshot, symptomIds: ['other'] }).ok).toBe(false);
+  expect(
+    audit({
+      ...snapshot,
+      symptomIds: [
+        snapshot.symptomIds[0]!,
+        snapshot.symptomIds[0]!,
+        snapshot.symptomIds[2]!,
+      ],
+    }).ok,
+  ).toBe(false);
+  expect(
+    audit({ ...snapshot, symptomIds: [...snapshot.symptomIds, 'other'] }).ok,
+  ).toBe(false);
+  expect(
+    audit({ ...snapshot, symptomIds: [...snapshot.symptomIds].reverse() }).ok,
+  ).toBe(true);
   expect(audit({ ...snapshot, otherCounts: { transcript: 1 } }).ok).toBe(false);
   expect(audit({ ...snapshot, memorySourceIds: [[]] }).ok).toBe(false);
   expect(audit({ ...snapshot, memorySourceIds: [['other']] }).ok).toBe(false);
@@ -59,19 +78,19 @@ test('requires the instrumented context and audits actual tool evidence before r
   expect(() => requireScopeContext(token)).not.toThrow();
   const item = {
     sourceKind: 'personal_record',
-    sourceId: expectedSymptom,
+    sourceId: expectedSymptoms[0],
     sourceRevision: 'r',
-    evidenceId: expectedSymptom,
+    evidenceId: expectedSymptoms[0],
     evidenceRevision: 'r',
-    locator: { kind: 'structured_record', recordId: expectedSymptom },
+    locator: { kind: 'structured_record', recordId: expectedSymptoms[0] },
     effectiveTime: null,
     reviewState: 'unreviewed',
     content: 'synthetic',
   } as const;
   const metadata = {
     recordKind: 'symptom_entry',
-    evidenceRecordId: expectedSymptom,
-    sourceRecordIds: [expectedSymptom],
+    evidenceRecordId: expectedSymptoms[0],
+    sourceRecordIds: [expectedSymptoms[0]],
   };
   const collection = {
     batch: { items: [item] },

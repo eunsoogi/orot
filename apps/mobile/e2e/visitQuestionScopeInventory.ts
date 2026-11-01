@@ -5,7 +5,7 @@ import {
   openLocalStorage,
 } from '../src/storage/secureDatabase';
 import { auditVisitQuestionScope } from './visitQuestionScopeAudit';
-import { expectedEvent, expectedSymptom } from './visitQuestionScopeGuard';
+import { expectedEvent, expectedSymptoms } from './visitQuestionScopeGuard';
 
 const otherKinds: readonly RecordKind[] = [
   'source_record',
@@ -61,6 +61,6 @@ export async function audit(selected: Appointment) {
     },
     selected,
     expectedEvent,
-    expectedSymptom,
+    expectedSymptoms,
   );
 }
