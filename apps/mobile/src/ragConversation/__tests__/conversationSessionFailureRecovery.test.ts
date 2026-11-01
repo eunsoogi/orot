@@ -1,5 +1,5 @@
 import { createConversationSessions } from '../conversationSessions';
-import { getRagConversationFailureCopy } from '../copy';
+import { getRagConversationCopy, getRagConversationFailureCopy } from '../copy';
 import type { RagConversationOutcome } from '../service';
 import type { RagConversationMessage } from '../task';
 
@@ -94,6 +94,14 @@ test('keeps failed output incomplete while preserving history and retrying once'
     failed.messages.find(message => message.content === failedQuestion),
   ).toMatchObject({ failed: true });
   expect(failed.messages.at(-1)).toMatchObject({ incomplete: true });
+  expect(failed.messages.at(-1)).toMatchObject({
+    activity: getRagConversationFailureCopy('validation_failed'),
+  });
+  expect(failed.messages.at(-1)?.activity).not.toBe(
+    getRagConversationCopy().unavailable,
+  );
+  expect(failed.error).toBe(getRagConversationFailureCopy('validation_failed'));
+  expect(failed.messages.at(-1)?.citations).toBeUndefined();
 
   let retryHistory: readonly RagConversationMessage[] = [];
   store.setDraft(id, failedQuestion);
@@ -120,6 +128,48 @@ test('keeps failed output incomplete while preserving history and retrying once'
   ).toMatchObject({ incomplete: true });
   store.dispose();
 });
+
+test('shows validation guidance without creating an empty answer when no text streamed', async () => {
+  const store = createConversationSessions();
+  const id = store.getSnapshot().activeId;
+  store.setDraft(id, '실패한 질문');
+  await store.send(id, async () => ({
+    status: 'failure',
+    kind: 'validation_failed',
+  }));
+  const failed = store
+    .getSnapshot()
+    .sessions.find(session => session.id === id)!;
+  expect(failed.error).toBe(getRagConversationFailureCopy('validation_failed'));
+  expect(failed.error).not.toBe(getRagConversationCopy().unavailable);
+  expect(failed.draft).toBe('실패한 질문');
+  expect(
+    failed.messages.filter(message => message.role === 'assistant'),
+  ).toHaveLength(0);
+  store.dispose();
+});
+
+test.each(['provider_refused', 'cancelled'] as const)(
+  'keeps %s guidance on an incomplete stream',
+  async kind => {
+    const store = createConversationSessions();
+    const id = store.getSnapshot().activeId;
+    store.setDraft(id, '질문');
+    await store.send(id, async (_question, _history, _signal, observer) => {
+      observer?.onTaskStreamEvent?.({ type: 'text_delta', text: '부분 답변' });
+      return { status: 'failure', kind };
+    });
+    const failed = store
+      .getSnapshot()
+      .sessions.find(session => session.id === id)!;
+    expect(failed.error).toBe(getRagConversationFailureCopy(kind));
+    expect(failed.messages.at(-1)).toMatchObject({
+      incomplete: true,
+      activity: getRagConversationFailureCopy(kind),
+    });
+    store.dispose();
+  },
+);
 
 test('keeps a newer cancelled retry available after the earlier turn settles late', async () => {
   const store = createConversationSessions();

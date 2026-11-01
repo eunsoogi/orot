@@ -36,7 +36,9 @@ export function ConversationMessage({
     ? 'rag-conversation-stream'
     : user
       ? undefined
-      : 'rag-conversation-answer-body';
+      : message.incomplete
+        ? 'rag-conversation-incomplete-body'
+        : 'rag-conversation-answer-body';
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
       <View style={!user && styles.assistantBody}>
@@ -63,7 +65,13 @@ export function ConversationMessage({
           <Text
             accessibilityLiveRegion="polite"
             style={styles.activity}
-            testID={message.streaming ? 'rag-conversation-progress' : undefined}
+            testID={
+              message.streaming
+                ? 'rag-conversation-progress'
+                : message.incomplete
+                  ? 'rag-conversation-incomplete-activity'
+                  : undefined
+            }
           >
             {message.activity}
           </Text>

@@ -77,7 +77,11 @@ export function ConversationHistory({
           />
         ))}
         {error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
+          <Text
+            accessibilityRole="alert"
+            style={styles.error}
+            testID="rag-conversation-error"
+          >
             {error}
           </Text>
         ) : null}

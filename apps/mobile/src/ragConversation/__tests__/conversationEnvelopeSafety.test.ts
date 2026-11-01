@@ -5,7 +5,26 @@ import { createConversationSessions } from '../conversationSessions';
 import {
   fixture,
   malformed,
+  response,
 } from '../testSupport/conversationEnvelopeFixtures';
+
+test('rejects citations on an independent conversation without correction', async () => {
+  const f = fixture();
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: { answerKind: 'conversation', answer: '답변' },
+      citations: ['synthetic-evidence'],
+    }),
+  );
+  const outcome = await runRagConversationTurn(f.options);
+  expect(outcome).toMatchObject({
+    status: 'failure',
+    kind: 'validation_failed',
+  });
+  await expectNoCommittedAnswer(outcome);
+  expect(f.generate).toHaveBeenCalledTimes(1);
+});
 
 async function expectNoCommittedAnswer(outcome: RagConversationOutcome) {
   const sessions = createConversationSessions();

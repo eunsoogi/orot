@@ -188,13 +188,10 @@ export function createConversationSessionRequests(
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          retainPartial(id, copy.unavailable);
-          restoreFailedPrompt(
-            id,
-            question,
-            userMessageId,
-            getRagConversationFailureCopy(kind),
-          );
+          // A retained stream and its retry guidance must describe the same failure.
+          const failureCopy = getRagConversationFailureCopy(kind);
+          retainPartial(id, failureCopy);
+          restoreFailedPrompt(id, question, userMessageId, failureCopy);
           return;
         }
         const content =

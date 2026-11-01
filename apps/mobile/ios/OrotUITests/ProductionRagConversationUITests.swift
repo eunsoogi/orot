@@ -125,8 +125,39 @@ final class ProductionRagConversationUITests: XCTestCase {
         if node(app, "inference-disclosure-sheet").exists {
             throw failure("consent_required")
         }
-        for (text, status) in failures where app.staticTexts[text].exists {
-            throw failure(status)
+        let error = node(app, "rag-conversation-error")
+        if error.exists, UITestConditions.text(error) == failures.first(where: { $0.1 == "validation_failed" })?.0 {
+            stage("validation_failure_visible")
+            let partial = node(app, "rag-conversation-incomplete-activity")
+            if partial.exists {
+                guard UITestConditions.text(partial) == UITestConditions.text(error) else { throw failure("partial_failure_copy_mismatch") }
+                stage("incomplete_partial_validation_visible")
+            } else {
+                stage("no_incomplete_partial_visible")
+            }
+            guard (try? input.snapshot().value as? String) == question else { throw failure("retry_draft_mismatch") }
+            guard sourceLists.count == 0 else { throw failure("failed_turn_has_citations") }
+            stage("failed_draft_restored")
+            // Retry the same restored turn once; never submit a replacement question.
+            try tap(app, "rag-conversation-send")
+            stage("same_turn_retried_once")
+            let cleared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !error.exists }, object: nil)
+            guard UITestConditions.wait(for: [cleared]) == .completed else { throw failure("retry_not_started") }
+            let retryFinished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                sourceLists.count > 0 || error.exists || self.node(app, "inference-disclosure-sheet").exists ||
+                    failures.prefix(2).contains { app.staticTexts[$0.0].exists }
+            }, object: nil)
+            guard UITestConditions.wait(for: [retryFinished]) == .completed else { throw failure("retry_result_unavailable") }
+            if node(app, "inference-disclosure-sheet").exists { throw failure("retry_consent_required") }
+            if error.exists {
+                let retryError = UITestConditions.text(error)
+                let status = failures.first { $0.0 == retryError }?.1 ?? "unknown_failure"
+                throw failure("retry_\(status)")
+            }
+        } else {
+            for (text, status) in failures where app.staticTexts[text].exists {
+                throw failure(status)
+            }
         }
         guard sourceLists.count > 0 else { throw failure("validated_citations_unavailable") }
         // Citations do not prove that the completed assistant body itself is displayed.
