@@ -40,6 +40,8 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow';
   const manualHistoryReflow =
     'OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow';
+  const manualHistoryOpenActions =
+    'OrotUITests/ManualHistoryDuoUITests/testOpenDuoPageActionsPreserveDraftAndSave';
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const aiFeatureEntry =
@@ -115,7 +117,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 49);
+  assert.equal(duoInventory.length, 50);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
@@ -145,6 +147,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     contextualDeparture,
     manualHistoryRecovery,
     manualHistoryReflow,
+    manualHistoryOpenActions,
     duoKeyboardSave,
     fourSidedOcclusion,
     recordingShareDismissal,
@@ -184,6 +187,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     activeTranscriptionReflow,
     manualAppointmentReflow,
     manualHistoryRecovery,
+    manualHistoryOpenActions,
     settingsAccounts,
     privacySettingsReflow,
     healthLibraryReflow,

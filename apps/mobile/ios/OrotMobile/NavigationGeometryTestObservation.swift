@@ -12,6 +12,8 @@
             let readAtMs = Date().timeIntervalSince1970 * 1000
             var result = geometrySnapshot(identity: identity)
             result["appVoiceOver"] = voiceOverState(running: running, readAtMs: readAtMs)
+            // The main-thread precondition above also guards this opt-in UIKit sample.
+            result["dockControls"] = MainActor.assumeIsolated { NavigationControlGeometryObservation.snapshot(identity: identity) }
             return result
         }
 

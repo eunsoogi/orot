@@ -12,6 +12,7 @@ export const navigationText = {
     label: '닫기',
     accessibilityLabel: '현재 화면 닫기',
   },
+  closeActionMenu: '동작 메뉴 닫기',
   home: {
     label: '홈',
     accessibilityLabel: '홈 화면으로 이동',

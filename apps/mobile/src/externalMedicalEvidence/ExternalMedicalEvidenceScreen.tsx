@@ -2,6 +2,7 @@ import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { publicMedicalQueryConsent } from '../agent/execution/publicMedicalQueryConsent';
 import type { ReactNode } from 'react';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { getExternalMedicalEvidenceCopy } from './copy';
@@ -126,8 +127,20 @@ export function ExternalMedicalEvidenceScreen({
   }
 
   function handleSearch() {
-    search().catch(() => setState({ status: 'unavailable' }));
+    return search().catch(() => setState({ status: 'unavailable' }));
   }
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'search-evidence',
+      label: copy.search,
+      accessibilityLabel: copy.search,
+      testID: 'external-evidence-search',
+      systemImageName: 'magnifyingglass',
+      disabled: !query.trim() || state.status === 'loading',
+      busy: state.status === 'loading',
+      onPress: handleSearch,
+    },
+  ]);
 
   return (
     <>
@@ -140,6 +153,7 @@ export function ExternalMedicalEvidenceScreen({
         <ExternalMedicalEvidencePresentation
           copy={copy}
           inputFocused={inputFocused}
+          hasActionDock={hasDock}
           onBack={onBack}
           onInputBlur={() => setInputFocused(false)}
           onInputFocus={() => setInputFocused(true)}
@@ -148,7 +162,9 @@ export function ExternalMedicalEvidenceScreen({
             inputRevision.current += 1;
             setQuery(value);
           }}
-          onSearch={handleSearch}
+          onSearch={() => {
+            handleSearch();
+          }}
           onSelectPublication={selectPublication}
           providerSelection={providerSelection}
           query={query}

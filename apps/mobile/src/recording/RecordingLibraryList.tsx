@@ -8,6 +8,7 @@ import RecordingLibrarySummaryRow from './RecordingLibrarySummaryRow';
 import type { RecordingLibrarySummary } from './recordingLibraryService';
 import type { RecordingSourceRecord } from './recordingTypes';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 /** Keeps list feedback and saved-source actions separate from the selected review content. */
 export default function RecordingLibraryList({
@@ -27,6 +28,22 @@ export default function RecordingLibraryList({
   readonly onDelete: (source: RecordingSourceRecord) => void;
   readonly onNewRecording?: () => void;
 }) {
+  const label = t('recording.start');
+  const hasDock = useNavigationRouteActions(
+    onNewRecording
+      ? [
+          {
+            id: 'new-recording',
+            label,
+            accessibilityLabel: label,
+            testID: 'saved-recordings-new',
+            systemImageName: 'mic.fill',
+            disabled,
+            onPress: onNewRecording,
+          },
+        ]
+      : [],
+  );
   return (
     <>
       <View style={styles.libraryHeading}>
@@ -36,7 +53,7 @@ export default function RecordingLibraryList({
         >
           {t('recording.library.title')}
         </Text>
-        {onNewRecording ? (
+        {onNewRecording && !hasDock ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('recording.start')}

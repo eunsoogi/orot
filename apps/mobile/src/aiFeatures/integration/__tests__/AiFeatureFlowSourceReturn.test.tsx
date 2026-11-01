@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
+import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
+import { pressPageAction } from '../testSupport/pressPageAction';
 import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { referenceOnly } from '../testSupport/personalEvidenceTestSupport';
@@ -130,7 +132,10 @@ test('preserves generated hypotheses after opening and returning from their cita
   );
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  await pressPageAction(
+    screen.getByTestId('navigation-page-action-overflow'),
+    getDiseaseHypothesisCopy().generate,
+  );
   expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();
   await fireEvent.press(
     screen.getByRole('button', { name: /^원문 근거 열기 · 검토한 메모/ }),

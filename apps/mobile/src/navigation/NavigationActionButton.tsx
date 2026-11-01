@@ -4,6 +4,7 @@ import { appColors } from '../layout/appColors';
 interface NavigationActionButtonProps {
   readonly accessibilityLabel: string;
   readonly disabled: boolean;
+  readonly busy?: boolean;
   readonly isDarkAppearance: boolean;
   readonly label: string;
   readonly onPress: () => void;
@@ -15,6 +16,7 @@ interface NavigationActionButtonProps {
 export function NavigationActionButton({
   accessibilityLabel,
   disabled,
+  busy,
   isDarkAppearance,
   label,
   onPress,
@@ -25,7 +27,7 @@ export function NavigationActionButton({
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, busy }}
       disabled={disabled}
       onPress={onPress}
       style={[

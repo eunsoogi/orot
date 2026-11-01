@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationViewport } from './NavigationViewport';
 import { NavigationActionBar } from './NavigationActionBar';
@@ -16,7 +16,7 @@ import { useNavigationSnapshot } from './useNavigationSnapshot';
 import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
-import { appColors } from '../layout/appColors';
+import { navigationRouteAdapterStyles as styles } from './navigationRouteAdapterStyles';
 import { observeNavigationTest } from './navigationTestObservation';
 import { NavigationGeometryProvider } from './NavigationGeometryProvider';
 import {
@@ -212,7 +212,9 @@ export function NavigationRouteAdapter<Name extends string>({
       leaveDisabled={activeLeaveDisabled}
       showHome={showHome}
       homeAction={homeAction}
-      primaryAction={primary.action ?? primaryAction}
+      pageActions={primary.actions}
+      primaryAction={primary.actions.length ? undefined : primaryAction}
+      routeKey={snapshot.currentRoute.key}
       rootTabs={routeRootTabs}
       surface={surface}
     />
@@ -244,7 +246,3 @@ export function NavigationRouteAdapter<Name extends string>({
     </NavigationMotionContext.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: appColors.background },
-});

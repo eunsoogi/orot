@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
-import { AppButton } from '../layout/AppButton';
+import { EncounterReviewActions } from './EncounterReviewActions';
 import { appColors } from '../layout/appColors';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { EncounterReviewController } from './controller';
@@ -75,64 +75,24 @@ export function EncounterReviewPanel({
           ))}
         </View>
       ) : null}
-      {pending ? (
-        <View style={styles.actions}>
-          <AppButton
-            title={copy.save}
-            disabled={
-              disabled ||
-              !state.selected.length ||
-              state.candidates.some(
-                candidate =>
-                  state.selected.includes(candidate.id) &&
-                  !candidate.text.trim(),
-              )
-            }
-            onPress={() => controller.decide('approve')}
-            testID="encounter-save"
-          />
-          <AppButton
-            title={copy.deny}
-            disabled={disabled}
-            onPress={() => controller.decide('deny')}
-            testID="encounter-deny"
-            variant="secondary"
-          />
-        </View>
-      ) : null}
-      {!busy && !pending ? (
-        <View style={styles.actions}>
-          <AppButton
-            title={
-              state.status === 'idle' || state.status === 'no-transcript'
-                ? copy.start
-                : copy.restart
-            }
-            disabled={disabled}
-            onPress={() => {
-              controller.start(consent);
-            }}
-            testID="encounter-start"
-          />
-        </View>
-      ) : null}
-      {!busy && ['cancelled', 'unavailable'].includes(state.status) ? (
-        <AppButton
-          title={copy.restore}
-          disabled={disabled}
-          onPress={() => controller.restore()}
-          testID="encounter-restore"
-          variant="secondary"
-        />
-      ) : null}
-      {busy && state.status !== 'loading' ? (
-        <AppButton
-          title={copy.cancel}
-          onPress={() => controller.cancel()}
-          testID="encounter-cancel"
-          variant="secondary"
-        />
-      ) : null}
+      <EncounterReviewActions
+        status={state.status}
+        hasPending={Boolean(pending)}
+        disabled={disabled}
+        saveDisabled={
+          disabled ||
+          !state.selected.length ||
+          state.candidates.some(
+            candidate =>
+              state.selected.includes(candidate.id) && !candidate.text.trim(),
+          )
+        }
+        onStart={() => controller.start(consent)}
+        onSave={() => controller.decide('approve')}
+        onDeny={() => controller.decide('deny')}
+        onRestore={() => controller.restore()}
+        onCancel={() => controller.cancel()}
+      />
       {disclosureSheet}
     </View>
   );
@@ -151,5 +111,4 @@ const styles = StyleSheet.create({
   boundary: { color: appColors.secondary, lineHeight: 22 },
   status: { fontWeight: '500', lineHeight: 22 },
   candidates: { gap: 12 },
-  actions: { gap: 12 },
 });

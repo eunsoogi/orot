@@ -38,6 +38,7 @@ interface ExternalMedicalEvidencePresentationProps {
   readonly query: string;
   readonly onQueryChange: (query: string) => void;
   readonly inputFocused: boolean;
+  readonly hasActionDock?: boolean;
   readonly onInputFocus: () => void;
   readonly onInputBlur: () => void;
   readonly state: ExternalMedicalEvidenceSearchState;
@@ -57,6 +58,7 @@ export function ExternalMedicalEvidencePresentation({
   query,
   onQueryChange,
   inputFocused,
+  hasActionDock = false,
   onInputFocus,
   onInputBlur,
   state,
@@ -103,16 +105,18 @@ export function ExternalMedicalEvidencePresentation({
             testID="external-evidence-query"
             value={query}
           />
-          <Button
-            accessibilityState={{
-              busy: state.status === 'loading',
-              disabled: !query.trim() || state.status === 'loading',
-            }}
-            disabled={!query.trim() || state.status === 'loading'}
-            onPress={onSearch}
-            testID="external-evidence-search"
-            title={copy.search}
-          />
+          {!hasActionDock ? (
+            <Button
+              accessibilityState={{
+                busy: state.status === 'loading',
+                disabled: !query.trim() || state.status === 'loading',
+              }}
+              disabled={!query.trim() || state.status === 'loading'}
+              onPress={onSearch}
+              testID="external-evidence-search"
+              title={copy.search}
+            />
+          ) : null}
           {state.status === 'available' ? (
             <View
               style={styles.resultList}

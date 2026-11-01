@@ -3,6 +3,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface MedicalDocumentImportActionProps {
   readonly opening: boolean;
@@ -16,14 +17,21 @@ export function MedicalDocumentImportAction({
   disabled,
   onPress,
 }: MedicalDocumentImportActionProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.card, disabled && styles.disabled]}
-      testID="records-import-medical-document"
-    >
+  const label = t('medicalDocument.import.title');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'add-medical-document',
+      label,
+      accessibilityLabel: label,
+      testID: 'records-import-medical-document',
+      systemImageName: 'doc.badge.plus',
+      disabled,
+      busy: opening,
+      onPress,
+    },
+  ]);
+  const content = (
+    <>
       <View style={styles.icon}>
         <AppSymbol name="doc.text" size={28} color={appColors.primaryText} />
       </View>
@@ -35,7 +43,22 @@ export function MedicalDocumentImportAction({
             : t('medicalDocument.import.summary')}
         </Text>
       </View>
-      <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+      {!hasDock ? (
+        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+      ) : null}
+    </>
+  );
+  return hasDock ? (
+    <View style={[styles.card, disabled && styles.disabled]}>{content}</View>
+  ) : (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.card, disabled && styles.disabled]}
+      testID="records-import-medical-document"
+    >
+      {content}
     </Pressable>
   );
 }

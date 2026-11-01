@@ -9,6 +9,7 @@ import CalendarLinkingScreen from '../calendar/CalendarLinkingScreen';
 import type { CalendarBridge } from '../calendar/types';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface ScheduleRouteProps {
   readonly appointmentRepository: AppointmentRepository | null;
@@ -32,6 +33,21 @@ export function ScheduleRoute({
   onOpenMedicalAppointments,
   onAppointmentsChanged,
 }: ScheduleRouteProps) {
+  const label = t('appointments.retry');
+  const hasDock = useNavigationRouteActions(
+    !appointmentRepository && appointmentState === 'failed'
+      ? [
+          {
+            id: 'retry-schedule',
+            label,
+            accessibilityLabel: label,
+            testID: 'schedule-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: onRetry,
+          },
+        ]
+      : [],
+  );
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -67,7 +83,7 @@ export function ScheduleRoute({
             ? t('appointments.opening')
             : t('appointments.openError')}
         </Text>
-        {appointmentState === 'failed' ? (
+        {appointmentState === 'failed' && !hasDock ? (
           <AppButton
             onPress={onRetry}
             testID="schedule-retry"

@@ -5,6 +5,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { healthReviewStyles as styles } from './styles';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { healthReviewText as copy } from '../i18n/healthReview';
 import { useHealthReviewSession } from './HealthReviewSession';
@@ -23,6 +24,43 @@ export function HealthReviewScreen({
 }) {
   const { controller, state, consent, setCitation } = useHealthReviewSession();
   const inset = useNavigationContentInset();
+  const hasDock = useNavigationRouteActions([
+    ...(state.busy
+      ? [
+          {
+            id: 'cancel-health-review',
+            label: copy.cancel,
+            accessibilityLabel: copy.cancel,
+            testID: 'health-review-cancel',
+            systemImageName: 'xmark',
+            onPress: controller.cancel,
+          },
+        ]
+      : []),
+    ...(state.result?.status === 'needs_clarification'
+      ? [
+          {
+            id: 'continue-health-review',
+            label: copy.continue,
+            accessibilityLabel: copy.continue,
+            testID: 'health-review-continue',
+            systemImageName: 'arrow.right',
+            disabled: state.busy,
+            onPress: () => controller.run(consent, true),
+          },
+        ]
+      : []),
+    {
+      id: 'start-health-review',
+      label: copy.fresh,
+      accessibilityLabel: copy.fresh,
+      testID: 'health-review-start',
+      systemImageName: 'sparkles',
+      disabled: state.busy,
+      busy: state.busy,
+      onPress: () => controller.run(consent),
+    },
+  ]);
   const navigation = useContext(NavigationContext);
   const [providerRevision, setProviderRevision] = useState(0);
   useEffect(() => {
@@ -105,33 +143,35 @@ export function HealthReviewScreen({
         {state.busy ? (
           <Text accessibilityRole="alert">{copy.progress}</Text>
         ) : null}
-        <View style={styles.actions}>
-          {state.result?.status === 'needs_clarification' ? (
+        {!hasDock ? (
+          <View style={styles.actions}>
+            {state.result?.status === 'needs_clarification' ? (
+              <AppButton
+                title={copy.continue}
+                disabled={state.busy}
+                testID="health-review-continue"
+                onPress={() => {
+                  controller.run(consent, true);
+                }}
+              />
+            ) : null}
             <AppButton
-              title={copy.continue}
+              title={copy.fresh}
               disabled={state.busy}
-              testID="health-review-continue"
+              testID="health-review-start"
               onPress={() => {
-                controller.run(consent, true);
+                controller.run(consent);
               }}
             />
-          ) : null}
-          <AppButton
-            title={copy.fresh}
-            disabled={state.busy}
-            testID="health-review-start"
-            onPress={() => {
-              controller.run(consent);
-            }}
-          />
-          {state.busy ? (
-            <AppButton
-              title={copy.cancel}
-              testID="health-review-cancel"
-              onPress={controller.cancel}
-            />
-          ) : null}
-        </View>
+            {state.busy ? (
+              <AppButton
+                title={copy.cancel}
+                testID="health-review-cancel"
+                onPress={controller.cancel}
+              />
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.requests}>
           <Text accessibilityRole="header">{copy.requests}</Text>
           {state.requests.map(({ source, pending }) => (

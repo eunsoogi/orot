@@ -68,7 +68,12 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
 
   expect(screen.getByTestId('unified-import-start')).toBeDisabled();
   expect(
-    within(screen.getByTestId('unified-import-scroll')).getByTestId(
+    within(screen.getByTestId('unified-import-scroll')).queryByTestId(
+      'unified-import-start',
+    ),
+  ).toBeNull();
+  expect(
+    within(screen.getByTestId('navigation-page-action-surface')).getByTestId(
       'unified-import-start',
     ),
   ).toBeTruthy();

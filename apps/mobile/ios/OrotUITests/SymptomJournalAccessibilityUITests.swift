@@ -1,10 +1,13 @@
 import UIKit
 import XCTest
 
-/// Exercises the remaining large-text boundary through the real journal route and its isolated recovery fixture.
+/// Exercises large-text journal actions through the real route and an isolated recovery fixture.
 final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     func testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances() throws {
+        if SymptomDateSelectionUITestObservation.enabled {
+            SymptomDateSelectionUITestObservation.verifyCorrelation()
+        }
         let app = XCUIApplication()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -59,20 +62,114 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         guard fill(app, "symptom-description", canceled) else { return }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         try tapFinal(app, "symptom-form-cancel", stage: "large-korean-cancel")
+        let discard = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
+        XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable)
+        discard.tap()
         XCTAssertFalse(app.staticTexts[canceled].exists)
         XCTAssertTrue(saved.exists)
         XCTAssertTrue(UITestConditions.element(app, "symptom-add").exists)
     }
 
+    /// Edit a valid synthetic record through real controls before the first keyboard focus.
+    @MainActor
+    func testLargeTextKeyboardKeepsSaveAndCancelActionsUsable() throws {
+        let app = XCUIApplication()
+        var original: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let original {
+                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
+                catch { XCTFail("Could not restore journal appearance: \(error)") }
+            }
+            app.terminate()
+        }
+        try launchJournal(app, category: .accessibilityExtraExtraExtraLarge, editFixture: true)
+        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
+        guard try openSeededEdit(app), focusDescription(app) else { return }
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
+        _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
+        // Accept any caret position while proving one insertion preserved the entire original value.
+        let insert: (String, String) -> String? = { original, token in
+            app.typeText(token)
+            guard let value = app.textViews["symptom-description"].value as? String else { XCTFail("Description must have a value"); return nil }
+            let parts = value.components(separatedBy: token)
+            guard parts.count == 2, parts.joined() == original else { XCTFail("One token must be inserted without changing the original text"); return nil }
+            return value
+        }
+        guard let saved = insert("아픔", "12345") else { return }
+        guard try tapKeyboardAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
+        guard try openSeededEdit(app) else { return }
+        let description = app.textViews["symptom-description"]
+        let persisted = description.value as? String
+        XCTAssertEqual(persisted, saved)
+        guard persisted == saved, focusDescription(app) else { return }
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
+        guard let changed = insert(saved, "67890") else { return }
+        guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
+        let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
+        guard UITestConditions.exists(keep), keep.isHittable else { XCTFail("Continue editing must be tappable"); return }
+        keep.tap()
+        let kept = description.value as? String
+        XCTAssertEqual(kept, changed)
+        guard kept == changed, focusDescription(app) else { return }
+        guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
+        let discard = alert.buttons["내용 버리고 나가기"]
+        guard UITestConditions.exists(discard), discard.isHittable else { XCTFail("Discard must be tappable"); return }
+        discard.tap()
+        guard try openSeededEdit(app) else { return }
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, saved)
+    }
+
+    /// Operate the seeded card through the same selection and edit actions as a user.
+    @MainActor
+    private func openSeededEdit(_ app: XCUIApplication) throws -> Bool {
+        let selected = UITestConditions.element(app, "symptom-select-keyboard-seed")
+        guard FormUITestConditions.reveal(selected, in: app, scrollID: "symptoms-scroll") != nil else { return false }
+        guard selected.exists, selected.isHittable else { XCTFail("Seeded record must be selectable"); return false }
+        // An offscreen edit action is not evidence that its selected card is collapsed.
+        if !selected.isSelected {
+            selected.tap()
+        }
+        try tapFinal(app, "symptom-edit-keyboard-seed", stage: "large-keyboard-edit")
+        let exists = UITestConditions.exists(app.textViews["symptom-description"])
+        XCTAssertTrue(exists)
+        return exists
+    }
+
+    /// Request the actual software keyboard by tapping the existing description without changing it.
+    @MainActor
+    private func focusDescription(_ app: XCUIApplication) -> Bool {
+        let input = app.textViews["symptom-description"]
+        guard FormUITestConditions.reveal(input, in: app, scrollID: "symptoms-scroll") != nil else { return false }
+        guard input.exists, input.isHittable else { XCTFail("Description must be tappable"); return false }
+        input.tap(); return true
+    }
+
+    /// Capture a real on-screen keyboard and an unobscured, tappable page action before activation.
+    @MainActor
+    private func tapKeyboardAction(_ app: XCUIApplication, id: String, label: String) throws -> Bool {
+        let action = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
+        let keyboard = app.keyboards.firstMatch, window = app.frame
+        guard action.exists, action.isHittable, keyboard.exists else { XCTFail("Action and keyboard must be present and hittable"); return false }
+        let actionFrame = action.frame, keyboardFrame = keyboard.frame
+        guard FormScrollGeometry.valid(window), FormScrollGeometry.valid(actionFrame), FormScrollGeometry.valid(keyboardFrame),
+              window.intersects(keyboardFrame), window.contains(actionFrame), !actionFrame.intersects(keyboardFrame)
+        else {
+            XCTFail("Page action must remain in the window outside the visible keyboard"); return false
+        }
+        XCTContext.runActivity(named: "Keyboard action: window=\(window), action=\(actionFrame), keyboard=\(keyboardFrame)") { _ in }
+        action.tap(); return true
+    }
+
     /// Request the supported accessibility size; assertEnvironment separately checks its actual effective native trait.
     @MainActor
-    private func launchJournal(_ app: XCUIApplication, category: UIContentSizeCategory) throws {
+    private func launchJournal(_ app: XCUIApplication, category: UIContentSizeCategory, recovery: Bool = true, editFixture: Bool = false) throws {
         app.launchArguments = [
-            "-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "symptom-journal-save-recovery",
+            "-OROT_TEST_PROFILE", "core",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-UIPreferredContentSizeCategoryName", category.rawValue,
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
-        ] + AppearanceUITestConditions.observationArguments
+        ] + (recovery ? ["-OROT_E2E_PROBE", "symptom-journal-save-recovery"] : []) + (editFixture ? ["-OROT_SYMPTOM_EDIT_FIXTURE", "YES"] : []) + AppearanceUITestConditions.observationArguments + (SymptomDateSelectionUITestObservation.enabled ? ["-OROT_TEST_DATE_SELECTION_OBSERVATION", SymptomDateSelectionUITestObservation.session] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
@@ -95,7 +192,8 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     private func fill(_ app: XCUIApplication, _ identifier: String, _ text: String) -> Bool {
         let input = identifier == "symptom-description" ? app.textViews[identifier] : app.textFields[identifier]
-        let completed = FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll")
+        // The date field's command shortcut left existing text after deletion; verify the full selection before editing.
+        let completed = FormUITestConditions.replace(input, with: text, in: app, scrollID: "symptoms-scroll", useNativeSelectAllMenu: identifier == "symptom-onset-date")
         XCTAssertTrue(completed)
         return completed
     }
@@ -109,8 +207,9 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     /// The existing reveal helper excludes the keyboard and floating navigation controls; record the actual successful target, without a new size threshold.
     @MainActor
     private func tapFinal(_ app: XCUIApplication, _ identifier: String, stage: String) throws {
-        let target = UITestConditions.element(app, identifier)
-        let frame = try XCTUnwrap(FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll"))
+        let labels = ["symptom-add": "증상 기록 추가", "symptom-save": "증상 기록 저장", "symptom-form-cancel": "취소"]
+        let target = labels[identifier].map { NavigationPageActionUITestConditions.pageAction(app, id: identifier, label: $0) } ?? UITestConditions.element(app, identifier)
+        let frame = labels[identifier] != nil ? target.frame : try XCTUnwrap(FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll"))
         let hittable = target.exists && target.isHittable
         XCTAssertTrue(hittable)
         let evidence: [String: Any] = [

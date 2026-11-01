@@ -46,7 +46,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             scrollID: "symptoms-scroll",
         ))
 
-        let keyboardSave = UITestConditions.element(app, "symptom-keyboard-save-onsetTime")
+        let keyboardSave = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(keyboardSave.exists && keyboardSave.isHittable)
         keyboardSave.tap()
         let error = UITestConditions.element(app, "symptom-form-error")
@@ -54,8 +54,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         XCTAssertEqual(error.label, "증상 기록을 저장하지 못했어요. 다시 시도해 주세요.")
         XCTAssertEqual(description.value as? String, "Synthetic symptom save retry")
 
-        let retry = UITestConditions.element(app, "symptom-save")
-        FormUITestConditions.reveal(retry, in: app, scrollID: "symptoms-scroll")
+        let retry = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(retry.exists && retry.isHittable)
         retry.tap()
         let saved = app.staticTexts["Synthetic symptom save retry"]
@@ -85,10 +84,29 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             in: app,
             scrollID: "symptoms-scroll",
         ))
-        let cancel = UITestConditions.element(app, "symptom-form-cancel")
-        FormUITestConditions.reveal(cancel, in: app, scrollID: "symptoms-scroll")
+        if ProcessInfo.processInfo.environment["OROT_TEST_FORM_OBSERVATION"] == "YES" {
+            let keyboard = app.keyboards.firstMatch
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "symptom-cancel-pre-tap-native")
+            let visible = keyboard.exists && app.frame.intersects(keyboard.frame)
+            XCTAssertTrue(visible, "The cancellation diagnostic requires an intersecting keyboard")
+            guard visible else { return }
+        }
+        let cancel = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-form-cancel", label: "취소")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
+        print("Cancel touch evidence: uptime=\(ProcessInfo.processInfo.systemUptime), frame=\(cancel.frame), window=\(app.frame), scroll=\(UITestConditions.element(app, "symptoms-scroll").frame), keyboard=\(app.keyboards.firstMatch.exists ? String(describing: app.keyboards.firstMatch.frame) : "absent"), hittable=\(cancel.isHittable)")
         cancel.tap()
+        let alert = app.alerts["저장하지 않은 내용이 있어요"]
+        XCTAssertTrue(UITestConditions.exists(alert), app.debugDescription)
+        let keep = alert.buttons["계속 편집"]
+        XCTAssertTrue(keep.exists && keep.isHittable)
+        keep.tap()
+        XCTAssertEqual(description.value as? String, "Synthetic canceled symptom")
+        let cancelAgain = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-form-cancel", label: "취소")
+        XCTAssertTrue(cancelAgain.exists && cancelAgain.isHittable)
+        cancelAgain.tap()
+        let discard = alert.buttons["내용 버리고 나가기"]
+        XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable)
+        discard.tap()
 
         let empty = UITestConditions.element(app, "symptoms-empty")
         XCTAssertTrue(empty.waitForAppearance())
@@ -199,6 +217,10 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             "-AppleLanguages", "(\(language))",
             "-AppleLocale", locale,
         ]
+        // Opt in only for a targeted touch diagnostic; normal fixture runs keep their original window.
+        if let observation = ProcessInfo.processInfo.environment["OROT_TEST_FORM_OBSERVATION"] {
+            app.launchArguments += ["-OROT_TEST_FORM_OBSERVATION", observation]
+        }
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])

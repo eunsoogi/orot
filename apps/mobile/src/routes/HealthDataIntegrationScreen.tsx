@@ -7,6 +7,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useHealthDataRouteActions } from './useHealthDataRouteActions';
 import { HealthDataAuthorizationRecoveryNotice } from './HealthDataAuthorizationRecoveryNotice';
 import { HealthDataFeatureSelection } from './HealthDataFeatureSelection';
 import type { HealthDataIntegrationStatus } from './HealthDataIntegrationStatus';
@@ -38,6 +39,13 @@ export function HealthDataIntegrationScreen({
   readonly statusLoadFailed: boolean;
 }) {
   const inset = useNavigationContentInset();
+  const hasDock = useHealthDataRouteActions({
+    loadFailed,
+    loaded,
+    saving,
+    onRetryLoad,
+    onSave,
+  });
   // Consume the shell's scroll clearance once; the measured wrapper owns horizontal regions.
   const page = (
     <ScrollView
@@ -70,12 +78,14 @@ export function HealthDataIntegrationScreen({
           >
             {t('settings.healthData.loadError')}
           </Text>
-          <AppButton
-            onPress={onRetryLoad}
-            testID="health-data-load-retry"
-            title={t('appointments.retry')}
-            variant="secondary"
-          />
+          {!hasDock ? (
+            <AppButton
+              onPress={onRetryLoad}
+              testID="health-data-load-retry"
+              title={t('appointments.retry')}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       ) : null}
       <View style={styles.statusCard}>
@@ -137,19 +147,21 @@ export function HealthDataIntegrationScreen({
           </View>
         ) : null}
       </View>
-      <AppButton
-        accessibilityState={{ busy: saving }}
-        disabled={!loaded || saving}
-        onPress={() => {
-          onSave();
-        }}
-        testID="health-data-save"
-        title={
-          saving
-            ? t('settings.healthData.saving')
-            : t('settings.healthData.save')
-        }
-      />
+      {!hasDock ? (
+        <AppButton
+          accessibilityState={{ busy: saving }}
+          disabled={!loaded || saving}
+          onPress={() => {
+            onSave();
+          }}
+          testID="health-data-save"
+          title={
+            saving
+              ? t('settings.healthData.saving')
+              : t('settings.healthData.save')
+          }
+        />
+      ) : null}
       <Text
         accessibilityLiveRegion="polite"
         style={styles.status}

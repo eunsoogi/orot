@@ -3,6 +3,7 @@ import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import type { BackupPreparationDisplayState } from './useBackupPreparation';
 
 function messageKey(state: BackupPreparationDisplayState) {
@@ -28,6 +29,19 @@ export default function BackupStatusRecovery({
   state,
   onRetry,
 }: BackupStatusRecoveryProps) {
+  const label = t('backup.prepare');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'prepare-backup',
+      label,
+      accessibilityLabel: label,
+      testID: 'backup-prepare',
+      systemImageName: 'arrow.clockwise',
+      disabled: state === 'checking',
+      busy: state === 'checking',
+      onPress: onRetry,
+    },
+  ]);
   return (
     <View
       accessibilityLabel={t('backup.title')}
@@ -46,12 +60,14 @@ export default function BackupStatusRecovery({
         {t(messageKey(state))}
       </Text>
       <Text style={styles.copy}>{t('backup.settingsPath')}</Text>
-      <Button
-        disabled={state === 'checking'}
-        onPress={onRetry}
-        testID="backup-prepare"
-        title={t('backup.prepare')}
-      />
+      {!hasDock ? (
+        <Button
+          disabled={state === 'checking'}
+          onPress={onRetry}
+          testID="backup-prepare"
+          title={t('backup.prepare')}
+        />
+      ) : null}
     </View>
   );
 }

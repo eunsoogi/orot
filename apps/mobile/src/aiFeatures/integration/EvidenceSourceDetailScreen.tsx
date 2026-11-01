@@ -1,4 +1,5 @@
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -40,6 +41,21 @@ export function EvidenceSourceDetailScreen({
   const navigationInset = useNavigationContentInset();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
+  const retryLabel = t('appointments.retry');
+  const hasDock = useNavigationRouteActions(
+    state.status === 'unavailable'
+      ? [
+          {
+            id: 'retry-source',
+            label: retryLabel,
+            accessibilityLabel: retryLabel,
+            testID: 'ai-feature-source-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: () => setAttempt(value => value + 1),
+          },
+        ]
+      : [],
+  );
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -123,11 +139,13 @@ export function EvidenceSourceDetailScreen({
           >
             {t('aiFeatures.source.unavailable')}
           </Text>
-          <AppButton
-            onPress={() => setAttempt(value => value + 1)}
-            testID="ai-feature-source-retry"
-            title={t('appointments.retry')}
-          />
+          {!hasDock ? (
+            <AppButton
+              onPress={() => setAttempt(value => value + 1)}
+              testID="ai-feature-source-retry"
+              title={t('appointments.retry')}
+            />
+          ) : null}
         </View>
       ) : null}
       {state.status === 'available' ? (

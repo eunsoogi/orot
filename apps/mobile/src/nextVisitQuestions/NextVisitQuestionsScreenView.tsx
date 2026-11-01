@@ -74,7 +74,12 @@ export function NextVisitQuestionsScreenView<
     isSaving,
     generateLabel,
     hasSharedAction,
-  } = useNextVisitPrimaryAction(controller);
+  } = useNextVisitPrimaryAction(
+    controller,
+    canGenerate,
+    savedQuestions.length > 0,
+    () => controller.startReview(savedQuestions, savedCaveats),
+  );
 
   const openSource = (reference: TReference) => {
     // Integrated navigation owns one detail screen; only standalone callers use the local sheet.
@@ -139,16 +144,6 @@ export function NextVisitQuestionsScreenView<
           theme={props.theme}
         />
       ) : null}
-      {isReviewing && hasSharedAction ? (
-        <ActionButton
-          disabled={isSaving}
-          label={copy.review.cancel}
-          onPress={controller.cancelReview}
-          theme={props.theme}
-          variant="secondary"
-          testID="next-visit-review-cancel"
-        />
-      ) : null}
       <SavedQuestionsSection
         caveats={savedCaveats}
         errorMessage={savedError?.message}
@@ -162,7 +157,10 @@ export function NextVisitQuestionsScreenView<
         status={savedStatus}
         theme={props.theme}
       />
-      {!isReviewing && savedQuestions.length > 0 && !isGenerating ? (
+      {!hasSharedAction &&
+      !isReviewing &&
+      savedQuestions.length > 0 &&
+      !isGenerating ? (
         <ActionButton
           disabled={!canGenerate}
           label={copy.saved.generateAgain}

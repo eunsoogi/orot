@@ -65,6 +65,22 @@ final class NavigationWindowRailHost: UIView {
 
 /// The same fixed controls can bind to a local bottom surface or the window rail host.
 enum NavigationRailConstraints {
+    /// Keeps the compact rail width in sync without replacing mounted controls.
+    static func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
+        NavigationGlassButton.setUsesRightRail(usesRightRail, for: action, button: button)
+        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: usesRightRail) else {
+            constraints.removeValue(forKey: action.id)?.isActive = false
+            return
+        }
+        if let constraint = constraints[action.id] {
+            constraint.constant = width
+        } else {
+            let constraint = button.widthAnchor.constraint(equalToConstant: width)
+            constraint.isActive = true
+            constraints[action.id] = constraint
+        }
+    }
+
     /// One flexible gap separates Back from retained trailing actions in either axis.
     static func configureFlexibleSpace(_ spacer: UIView, in stack: UIStackView) {
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -87,59 +103,24 @@ enum NavigationRailConstraints {
     }
 }
 
-/// Decodes the React Native toolbar payload and supplies defaults for optional action flags.
-struct NavigationActionDescriptor: Equatable {
-    let id: String
-    let label: String
-    let accessibilityLabel: String
-    let testID: String
-    let systemImageName: String?
-    let disabled: Bool
-    let primary: Bool
-    let selected: Bool
-    let rootTab: Bool
-    let showsTitleWithSystemImage: Bool
-    let titleBelowImage: Bool
-
-    init?(_ value: Any) {
-        guard
-            let payload = value as? [String: Any],
-            let id = payload["id"] as? String,
-            let label = payload["label"] as? String,
-            let accessibilityLabel = payload["accessibilityLabel"] as? String,
-            let testID = payload["testID"] as? String
-        else {
-            return nil
-        }
-
-        self.id = id
-        self.label = label
-        self.accessibilityLabel = accessibilityLabel
-        self.testID = testID
-        systemImageName = payload["systemImageName"] as? String
-        disabled = payload["disabled"] as? Bool ?? false
-        primary = payload["primary"] as? Bool ?? false
-        selected = payload["selected"] as? Bool ?? false
-        rootTab = payload["rootTab"] as? Bool ?? false
-        showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
-        titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
+/// Measures configured UIKit controls, including the native minimum and button insets.
+enum NavigationPageMetrics {
+    static func payload(_ request: NSDictionary, width: CGFloat, lastKey: inout String) -> [String: Any]? {
+        guard width > 0, let revision = request["revision"] as? String, let values = request["actions"] as? [Any] else { return nil }
+        let key = "\(revision):\(width)"
+        guard key != lastKey else { return nil }
+        lastKey = key
+        return ["revision": revision, "width": width, "widths": widths(values)]
     }
-}
 
-/** Cross-fades native navigation action updates from their current state and honors Reduce Motion. */
-enum NavigationToolbarTransition {
-    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            changes()
-            return
+    static func widths(_ values: [Any]) -> [CGFloat] {
+        values.compactMap { value in
+            guard let action = NavigationActionDescriptor(value) else { return nil }
+            let button = NavigationGlassButton.make(for: action, onAction: { _ in })
+            let title = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width + 24
+            let minimum: CGFloat = action.id == "page:overflow" ? 44 : max(88, title)
+            return ceil(max(minimum, button.sizeThatFits(CGSize(width: 10000, height: 48)).width))
         }
-
-        UIView.transition(
-            with: view,
-            duration: 0.14,
-            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
-            animations: changes,
-        )
     }
 }
 

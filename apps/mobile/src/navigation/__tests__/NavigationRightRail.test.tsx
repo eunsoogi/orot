@@ -164,9 +164,8 @@ test('moves root actions into the right lane without losing route state or botto
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).not.toContain('primary');
   expect(
-    screen.getByTestId('navigation-primary-action-surface-actions').props
-      .children,
-  ).toBe('primary');
+    screen.getByTestId('navigation-page-action-surface-actions').props.children,
+  ).toBe('page:primary');
   expect(screen.getByTestId('route-draft').props.children).toBe('edited');
   expect(lifecycle).toEqual({ mounted: 2, unmounted: 0 });
 

@@ -10,6 +10,17 @@ import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter'
 import { createNavigationController } from '../../navigation/navigationController';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import MedicalAppointmentRoute from '../MedicalAppointmentRoute';
+import { pressPageAction } from '../../aiFeatures/integration/testSupport/pressPageAction';
+
+async function pressAppointmentAction(testID: string, label: string) {
+  const direct = screen.queryByTestId(testID);
+  if (direct) await fireEvent.press(direct);
+  else
+    await pressPageAction(
+      screen.getByTestId('navigation-page-action-overflow'),
+      label,
+    );
+}
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -209,11 +220,11 @@ test('keeps the production manual form within usable geometry and guards its dra
     'Synthetic clinic draft',
   );
 
-  await fireEvent.press(screen.getByTestId('appointment-form-cancel'));
+  await pressAppointmentAction('appointment-form-cancel', '닫기');
   expect(store.getAppointments()).toHaveLength(0);
   await fireEvent.press(screen.getByTestId('appointment-add'));
   await enterDraft('Saved synthetic clinic');
-  await fireEvent.press(screen.getByTestId('appointment-save'));
+  await pressAppointmentAction('appointment-save', '저장');
   await screen.findByTestId('appointment-select-manual-1');
   expect(store.getAppointments()[0]).toMatchObject({
     clinicLabel: 'Saved synthetic clinic',
@@ -225,7 +236,7 @@ test('keeps the production manual form within usable geometry and guards its dra
     screen.getByTestId('appointment-clinic-input'),
     'Edited synthetic clinic',
   );
-  await fireEvent.press(screen.getByTestId('appointment-save'));
+  await pressAppointmentAction('appointment-save', '저장');
   expect(store.getAppointments()[0]).toMatchObject({
     clinicLabel: 'Edited synthetic clinic',
     note: 'Bring the test results.',

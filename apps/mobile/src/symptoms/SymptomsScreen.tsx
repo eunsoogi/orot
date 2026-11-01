@@ -12,6 +12,7 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useSymptomAddAction } from './useSymptomAddAction';
 import SymptomJournalEntries from './SymptomJournalEntries';
 import SymptomEntryCard from './SymptomEntryCard';
 import SymptomForm from './SymptomForm';
@@ -77,6 +78,15 @@ export default function SymptomsScreen({
   });
   // New typing invalidates a pending discard confirmation from the shared toolbar.
   const draftChanged = () => setInputRevision(value => value + 1);
+  const startCreating = () => {
+    setCreating(true);
+    diagnosticScroll.current?.scrollTo({ y: 0, animated: false });
+  };
+  const hasActionDock = useSymptomAddAction(
+    !creating && !editing,
+    loading || !canWrite || saving,
+    startCreating,
+  );
 
   async function resolve(entry: SymptomEntry) {
     setError('');
@@ -158,13 +168,8 @@ export default function SymptomsScreen({
                   onBack={onBack}
                   onFilterChange={onFilterChange}
                   canAdd={!loading && canWrite && !saving}
-                  onAdd={() => {
-                    setCreating(true);
-                    diagnosticScroll.current?.scrollTo({
-                      y: 0,
-                      animated: false,
-                    });
-                  }}
+                  showAdd={!hasActionDock}
+                  onAdd={startCreating}
                 >
                   {loadError ? (
                     <>

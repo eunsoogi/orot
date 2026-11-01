@@ -13,6 +13,7 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import type { ConversationHistoryRow } from './ConversationHistoryScreen';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface NativeHistoryProps extends ViewProps {
   readonly rows: readonly ConversationHistoryRow[];
@@ -32,6 +33,7 @@ interface NativeHistoryProps extends ViewProps {
   readonly onContentHeightChange: (
     event: NativeSyntheticEvent<{ height: number }>,
   ) => void;
+  readonly showsNewSession: boolean;
 }
 
 const NativeHistory =
@@ -56,6 +58,16 @@ export function ConversationHistoryListPane({
   readonly rows: readonly ConversationHistoryRow[];
 }) {
   const [nativeHeight, setNativeHeight] = useState(1);
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'new-history-session',
+      label: '새 대화',
+      accessibilityLabel: '새 대화',
+      testID: 'conversation-history-new',
+      systemImageName: 'plus',
+      onPress: onCreateSession,
+    },
+  ]);
   return (
     <View style={styles.pane}>
       {!NativeHistory ? (
@@ -64,16 +76,22 @@ export function ConversationHistoryListPane({
             <Text accessibilityRole="header" style={styles.heading}>
               대화 기록
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="새 대화"
-              style={styles.newButton}
-              onPress={onCreateSession}
-              testID="conversation-history-new"
-            >
-              <ComposerGlassBackground />
-              <AppSymbol name="plus" size={20} color={appColors.primaryText} />
-            </Pressable>
+            {!hasDock ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="새 대화"
+                style={styles.newButton}
+                onPress={onCreateSession}
+                testID="conversation-history-new"
+              >
+                <ComposerGlassBackground />
+                <AppSymbol
+                  name="plus"
+                  size={20}
+                  color={appColors.primaryText}
+                />
+              </Pressable>
+            ) : null}
           </View>
           <Text style={styles.count}>{rows.length}개의 대화</Text>
         </View>
@@ -86,6 +104,7 @@ export function ConversationHistoryListPane({
           headerTitle="대화 기록"
           headerCount={`${rows.length}개의 대화`}
           newSessionLabel="새 대화"
+          showsNewSession={!hasDock}
           headerTextColor={appColors.text}
           headerSecondaryColor={appColors.secondary}
           headerTintColor={appColors.primaryText}

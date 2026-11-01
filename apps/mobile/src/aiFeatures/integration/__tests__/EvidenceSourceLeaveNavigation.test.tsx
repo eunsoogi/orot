@@ -10,6 +10,8 @@ import {
   searchFixtureEvidence,
 } from '../featureServiceFixtures';
 import { AiFeatureRoute } from '../AiFeatureRoute';
+import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
+import { pressPageAction } from '../testSupport/pressPageAction';
 import type { AiFeatureServiceDependencies } from '../featureServices';
 
 jest.mock(
@@ -73,7 +75,10 @@ test('leaves a read-only citation without confirmation and ignores its late rere
   );
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
-  await fireEvent.press(route.getByTestId('disease-hypotheses-generate'));
+  await pressPageAction(
+    route.getByTestId('navigation-page-action-overflow'),
+    getDiseaseHypothesisCopy().generate,
+  );
   const openSource = await route.findByLabelText(/원문 근거 열기/);
   const earlierReads = listRecords.mock.calls.length;
   blockViewerRead = true;

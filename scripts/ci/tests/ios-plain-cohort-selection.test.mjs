@@ -8,7 +8,7 @@ import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
 
 for (const [cohort, count] of [
-  ['core-ui', 4],
+  ['core-ui', 5],
   ['health-review-ui', 8],
   ['recording-evidence', 6],
 ]) {

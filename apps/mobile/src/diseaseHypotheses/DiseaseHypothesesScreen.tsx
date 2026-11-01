@@ -18,6 +18,7 @@ import type { SymptomSummaryHistory } from './savedSummaries';
 import { SummaryHeader } from './SummaryHeader';
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { DiseaseHypothesesScreenOutput } from './DiseaseHypothesesScreenOutput';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface DiseaseHypothesesScreenProps {
   readonly onOpenHistory?: () => void;
@@ -57,6 +58,64 @@ export function DiseaseHypothesesScreen({
   const canRetry =
     state.status === 'error' || state.status === 'consent_required';
   const hasOutput = state.status !== 'idle' || preview.length > 0;
+  const busy = state.status === 'loading';
+  const summaryLabel =
+    canRetry && lastOperation === 'summary'
+      ? copy.summaryRetry
+      : copy.summaryGenerate;
+  const assessmentLabel =
+    canRetry && lastOperation === 'assessment' ? copy.retry : copy.generate;
+  const hasDock = useNavigationRouteActions([
+    ...(busy
+      ? [
+          {
+            id: 'cancel-hypotheses',
+            label: copy.cancel,
+            accessibilityLabel: copy.cancel,
+            testID: 'disease-hypotheses-cancel',
+            systemImageName: 'xmark',
+            onPress: cancel,
+          },
+        ]
+      : []),
+    ...(onSummarize
+      ? [
+          {
+            id: 'generate-summary',
+            label: summaryLabel,
+            accessibilityLabel: summaryLabel,
+            testID: 'symptom-summary-generate',
+            systemImageName: 'text.alignleft',
+            disabled: busy,
+            busy,
+            onPress: () => generate(onSummarize, 'summary'),
+          },
+        ]
+      : []),
+    {
+      id: 'generate-hypotheses',
+      label: assessmentLabel,
+      accessibilityLabel: assessmentLabel,
+      testID: 'disease-hypotheses-generate',
+      systemImageName: 'sparkles',
+      disabled: busy,
+      busy,
+      onPress: () => generate(),
+    },
+    ...(summaryHistory && onOpenHistory
+      ? [
+          {
+            id: 'summary-history',
+            label: '저장된 요약 보기',
+            accessibilityLabel: '저장된 요약 보기',
+            testID: 'symptom-summary-history-open',
+            systemImageName: 'clock.arrow.circlepath',
+            disabled: busy,
+            onPress: onOpenHistory,
+          },
+        ]
+      : []),
+  ]);
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -90,7 +149,9 @@ export function DiseaseHypothesesScreen({
             <SummaryHeader
               title={onSummarize ? copy.summaryTitle : copy.title}
               disabled={state.status === 'loading'}
-              onOpenHistory={summaryHistory ? onOpenHistory : undefined}
+              onOpenHistory={
+                !hasDock && summaryHistory ? onOpenHistory : undefined
+              }
             />
             {providerSelection}
             {summaryHistory ? (
@@ -109,7 +170,7 @@ export function DiseaseHypothesesScreen({
             <Text>
               {onSummarize ? copy.summaryExplanation : copy.explanation}
             </Text>
-            {onSummarize ? (
+            {!hasDock && onSummarize ? (
               <Button
                 variant="neutral"
                 disabled={state.status === 'loading'}
@@ -125,20 +186,22 @@ export function DiseaseHypothesesScreen({
                 }
               />
             ) : null}
-            <Button
-              variant={onSummarize ? 'neutral' : 'primary'}
-              disabled={state.status === 'loading'}
-              accessibilityState={{ busy: state.status === 'loading' }}
-              onPress={() => {
-                generate();
-              }}
-              testID="disease-hypotheses-generate"
-              title={
-                canRetry && lastOperation === 'assessment'
-                  ? copy.retry
-                  : copy.generate
-              }
-            />
+            {!hasDock ? (
+              <Button
+                variant={onSummarize ? 'neutral' : 'primary'}
+                disabled={state.status === 'loading'}
+                accessibilityState={{ busy: state.status === 'loading' }}
+                onPress={() => {
+                  generate();
+                }}
+                testID="disease-hypotheses-generate"
+                title={
+                  canRetry && lastOperation === 'assessment'
+                    ? copy.retry
+                    : copy.generate
+                }
+              />
+            ) : null}
           </View>
         }
         secondary={
@@ -148,7 +211,7 @@ export function DiseaseHypothesesScreen({
               activity={activity}
               preview={preview}
               lastOperation={lastOperation}
-              hasSharedCancel={false}
+              hasSharedCancel={hasDock}
               onCancel={cancel}
               onOpenProviderSelection={onOpenProviderSelection}
               onOpenSource={onOpenSource}

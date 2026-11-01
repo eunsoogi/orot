@@ -10,6 +10,7 @@ import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import { healthRecordPeriodTitle } from './healthRecordsLibraryModel';
 import { healthRecordPeriods } from './healthRecordsDetailModel';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 /** Shows period selection and honest loaded counts while the selected period remains paged. */
 export function HealthRecordsDetailHeader({
@@ -36,6 +37,23 @@ export function HealthRecordsDetailHeader({
   readonly hasMore: boolean;
 }) {
   const appearance = healthRecordCategoryPresentation[selection.category];
+  const label = t('healthRecords.retry');
+  const initialFailure =
+    loadState === 'failed' && observationCount === 0 && !hasMore;
+  const hasDock = useNavigationRouteActions(
+    initialFailure
+      ? [
+          {
+            id: 'retry-health-detail',
+            label,
+            accessibilityLabel: label,
+            testID: 'health-records-detail-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: onRetry,
+          },
+        ]
+      : [],
+  );
   return (
     <View style={styles.header}>
       <View style={styles.topBar}>
@@ -120,12 +138,14 @@ export function HealthRecordsDetailHeader({
           <Text accessibilityRole="alert" style={styles.error}>
             {t('healthRecords.error')}
           </Text>
-          <AppButton
-            onPress={onRetry}
-            testID="health-records-detail-retry"
-            title={t('healthRecords.retry')}
-            variant="secondary"
-          />
+          {!hasDock ? (
+            <AppButton
+              onPress={onRetry}
+              testID="health-records-detail-retry"
+              title={t('healthRecords.retry')}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       ) : null}
     </View>

@@ -19,18 +19,19 @@ import {
 } from '../testSupport/fixtures';
 
 function Route({ props }: { readonly props: Props }) {
-  const { host, action } = useNavigationPrimaryActionHost('questions');
+  const { host, actions } = useNavigationPrimaryActionHost('questions');
   return (
     <NavigationPrimaryActionContext.Provider value={host}>
       <NextVisitQuestionsScreen {...props} />
-      {action ? (
+      {actions.map(action => (
         <Button
+          key={action.id}
           testID={action.testID}
           title={action.label}
           disabled={action.disabled}
           onPress={action.onPress}
         />
-      ) : null}
+      ))}
     </NavigationPrimaryActionContext.Provider>
   );
 }
@@ -66,10 +67,10 @@ test('edits saved questions through one page action even while the provider is u
   expect(screen.queryByTestId('next-visit-provider')).toBeNull();
   expect(screen.getAllByTestId('next-visit-review-save')).toHaveLength(1);
   expect(
-    within(screen.getByTestId('next-visit-questions-scroll')).getByTestId(
+    within(screen.getByTestId('next-visit-questions-scroll')).queryByTestId(
       'next-visit-review-save',
     ),
-  ).toBeTruthy();
+  ).toBeNull();
   expect(
     screen.getByTestId('next-visit-question-priority-indicator-0'),
   ).toBeTruthy();

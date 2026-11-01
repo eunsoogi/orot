@@ -51,6 +51,8 @@
             DispatchQueue.main.async {
                 self.symptomScrollTrace?.stop()
                 self.symptomScrollTrace = nil
+                ConversationHitObservationTrigger.shared.invalidate(owner: self.navigationObservationID)
+                SymptomDateSelectionObservation.shared.invalidate(owner: self.navigationObservationID)
             }
             super.invalidate()
         }
@@ -156,8 +158,8 @@
                 resolve(["navigation": observations, "events": self.gestureEvents,
                          "presentations": presentations,
                          "lifecycle": TestLifecycleObservation.snapshot(),
-                         "windowGeometry": NavigationGeometryTestObservation.snapshot(identity: UserDefaults.standard.string(forKey: "OROT_TEST_NAVIGATION_FOCUS_OBSERVATION") == "YES" ? { self.observationIdentifier($0, prefix: "view") } : nil),
-                         "symptomScrollTrace": self.symptomScrollTrace?.snapshot() ?? [:],
+                         "conversationHit": ConversationHitObservationTrigger.shared.cached(session: UserDefaults.standard.string(forKey: "OROT_TEST_CONVERSATION_HIT_OBSERVATION"), owner: self.navigationObservationID, identity: { [weak owner = self] object in owner?.observationIdentifier(object, prefix: "view") ?? "unavailable" }), "windowGeometry": NavigationGeometryTestObservation.snapshot(identity: UserDefaults.standard.string(forKey: "OROT_TEST_NAVIGATION_FOCUS_OBSERVATION") == "YES" ? { self.observationIdentifier($0, prefix: "view") } : nil),
+                         "symptomScrollTrace": self.symptomScrollTrace?.snapshot() ?? [:], "symptomDateSelection": SymptomDateSelectionObservation.shared.cached(session: UserDefaults.standard.string(forKey: "OROT_TEST_DATE_SELECTION_OBSERVATION"), owner: self.navigationObservationID, identity: { [weak owner = self] object in owner?.observationIdentifier(object, prefix: "view") ?? "unavailable" }),
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])
             }
         }

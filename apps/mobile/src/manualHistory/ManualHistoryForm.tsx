@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
-import { AppButton as Button } from '../layout/AppButton';
+import { ManualHistoryFormActions } from './ManualHistoryFormActions';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { ManualHistoryKindControls } from './ManualHistoryKindControls';
@@ -224,24 +224,11 @@ export default function ManualHistoryForm({
           {validationError}
         </Text>
       ) : null}
-      <Button
-        disabled={saving}
-        onPress={save}
-        testID="manual-history-save"
-        title={
-          saving
-            ? t('manualHistory.form.saving')
-            : isCorrection
-              ? t('manualHistory.form.saveCorrection')
-              : t('manualHistory.form.save')
-        }
-      />
-      <Button
-        variant="secondary"
-        disabled={saving}
-        onPress={onClose}
-        testID="manual-history-form-close"
-        title={t('manualHistory.form.close')}
+      <ManualHistoryFormActions
+        saving={saving}
+        isCorrection={isCorrection}
+        onSave={save}
+        onClose={onClose}
       />
     </View>
   );

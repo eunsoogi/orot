@@ -4,6 +4,7 @@ import { AppButton as Button } from '../layout/AppButton';
 import { ManualHistoryHeader } from './ManualHistoryHeader';
 import { styles } from './manualHistoryScreenStyles';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { t } from '../i18n';
 import { ManualHistoryEntryBrowser } from './ManualHistoryEntryBrowser';
 import ManualHistoryForm from './ManualHistoryForm';
@@ -70,6 +71,22 @@ export default function ManualHistoryScreen({
     setNotice('');
     setFormOpen(true);
   }
+  const addLabel = t('manualHistory.add');
+  const hasDock = useNavigationRouteActions(
+    formOpen
+      ? []
+      : [
+          {
+            id: 'add-history',
+            label: addLabel,
+            accessibilityLabel: addLabel,
+            testID: 'manual-history-add',
+            systemImageName: 'plus',
+            disabled: saving,
+            onPress: startNewEntry,
+          },
+        ],
+  );
 
   function startCorrection(entry: ManualHistoryScreenRecord) {
     if (savingRef.current) return;
@@ -187,7 +204,7 @@ export default function ManualHistoryScreen({
         notice={notice}
       />
 
-      {!formOpen ? (
+      {!formOpen && !hasDock ? (
         <Button
           variant="secondary"
           disabled={saving}
@@ -195,7 +212,7 @@ export default function ManualHistoryScreen({
           testID="manual-history-add"
           title={t('manualHistory.add')}
         />
-      ) : (
+      ) : formOpen ? (
         <ManualHistoryForm
           // Replace field state when switching entries, then restore that entry's saved draft.
           key={formKey ?? 'new'}
@@ -208,7 +225,7 @@ export default function ManualHistoryScreen({
           onSave={saveEntry}
           saving={saving}
         />
-      )}
+      ) : null}
       <ManualHistoryEntryBrowser
         deleting={saving}
         entries={entries}

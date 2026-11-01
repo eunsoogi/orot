@@ -12,6 +12,16 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var onAction: RCTBubblingEventBlock?
+    @objc var pageMetricsRequest: NSDictionary = [:] {
+        didSet { setNeedsLayout() }
+    }
+
+    @objc var onPageMetrics: RCTDirectEventBlock? {
+        didSet { setNeedsLayout() }
+    }
+
+    private var lastPageMetricsKey = ""
+    @objc var isPageDock: Bool = false
     /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
     @objc var geometryLayoutRevision: String? {
         didSet { (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout() }
@@ -102,17 +112,21 @@ final class NavigationGlassSurfaceView: UIView {
             updatePresentation()
         }
         super.layoutSubviews()
+        if let onPageMetrics, let metrics = NavigationPageMetrics.payload(pageMetricsRequest, width: bounds.width, lastKey: &lastPageMetricsKey) {
+            onPageMetrics(metrics)
+        }
         publishNavigationGeometry(from: self)
     }
 
     /// The mounted host owns measurement, including layout changes outside the React surface.
     func publishNavigationGeometry(from parent: UIView) {
         let controls: UIView = rootBar.isHidden ? innerActions : rootBar
-        guard controls.superview === parent else { return }
+        guard !isPageDock, controls.superview === parent else { return }
         NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions)
     }
 
     private func render(_ descriptors: [NavigationActionDescriptor]) {
+        innerActions.accessibilityIdentifier = descriptors.allSatisfy { $0.id.hasPrefix("page:") } ? "navigation-page-action-toolbar" : "navigation-toolbar"
         let wasRoot = renderedActions.contains(where: \.rootTab)
         let isRoot = descriptors.contains(where: \.rootTab)
         let animated = !renderedActions.isEmpty
@@ -172,7 +186,7 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.alignment = usesRightRail ? .fill : .center
         for (id, button) in contextualButtons {
             guard let action = renderedActions.first(where: { $0.id == id }) else { continue }
-            updateFixedWidth(for: action, button: button)
+            NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }
         rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
         innerActions.isHidden = rootBar.isHidden == false
@@ -203,8 +217,8 @@ final class NavigationGlassSurfaceView: UIView {
                 button = NavigationGlassButton.make(for: action, onAction: onAction)
                 contextualButtons[action.id] = button
             }
-            NavigationGlassButton.updateMinimumWidth(for: action, button: button, constraints: &contextualButtonWidthConstraints)
-            updateFixedWidth(for: action, button: button)
+            NavigationGlassButton.updateMinimumWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonWidthConstraints)
+            NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonFixedWidthConstraints)
         }
 
         var orderedViews: [UIView] = []
@@ -223,22 +237,6 @@ final class NavigationGlassSurfaceView: UIView {
                 innerActions.removeArrangedSubview(view)
             }
             innerActions.insertArrangedSubview(view, at: index)
-        }
-    }
-
-    /// Changes the compact Home width in place while Back remains 48pt in either layout.
-    private func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton) {
-        NavigationGlassButton.setUsesRightRail(layoutMode != "bottom", for: action, button: button)
-        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: layoutMode != "bottom") else {
-            contextualButtonFixedWidthConstraints.removeValue(forKey: action.id)?.isActive = false
-            return
-        }
-        if let constraint = contextualButtonFixedWidthConstraints[action.id] {
-            constraint.constant = width
-        } else {
-            let constraint = button.widthAnchor.constraint(equalToConstant: width)
-            constraint.isActive = true
-            contextualButtonFixedWidthConstraints[action.id] = constraint
         }
     }
 

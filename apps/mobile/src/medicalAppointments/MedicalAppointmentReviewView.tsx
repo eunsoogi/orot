@@ -5,6 +5,7 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
 import { MedicalAppointmentCandidateCard } from './MedicalAppointmentCandidateCard';
@@ -46,6 +47,25 @@ export function MedicalAppointmentReviewView(props: Props) {
   const unavailable =
     props.providerUnavailable ||
     props.provider?.availability.status === 'unavailable';
+  const importLabel = props.calendarLoading
+    ? copy.calendarSyncing
+    : props.loading
+      ? copy.loading
+      : props.classifying
+        ? copy.classifying
+        : copy.loadCalendar;
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'import-medical-appointments',
+      label: importLabel,
+      accessibilityLabel: copy.loadCalendar,
+      testID: 'medical-appointment-import',
+      systemImageName: 'calendar.badge.plus',
+      disabled: !props.providerReady || busy || props.calendarUnavailable,
+      busy,
+      onPress: props.onImport,
+    },
+  ]);
   return (
     <ScrollView
       testID="medical-appointment-review-scroll"
@@ -88,26 +108,28 @@ export function MedicalAppointmentReviewView(props: Props) {
               <Text accessibilityRole="alert">{props.message}</Text>
             ) : null}
             <View style={styles.actions}>
-              <AppButton
-                testID="medical-appointment-import"
-                disabled={
-                  !props.providerReady || busy || props.calendarUnavailable
-                }
-                onPress={() => {
-                  props.onImport();
-                }}
-                accessibilityLabel={copy.loadCalendar}
-                accessibilityState={{ busy }}
-                title={
-                  props.calendarLoading
-                    ? copy.calendarSyncing
-                    : props.loading
-                      ? copy.loading
-                      : props.classifying
-                        ? copy.classifying
-                        : copy.loadCalendar
-                }
-              />
+              {!hasDock ? (
+                <AppButton
+                  testID="medical-appointment-import"
+                  disabled={
+                    !props.providerReady || busy || props.calendarUnavailable
+                  }
+                  onPress={() => {
+                    props.onImport();
+                  }}
+                  accessibilityLabel={copy.loadCalendar}
+                  accessibilityState={{ busy }}
+                  title={
+                    props.calendarLoading
+                      ? copy.calendarSyncing
+                      : props.loading
+                        ? copy.loading
+                        : props.classifying
+                          ? copy.classifying
+                          : copy.loadCalendar
+                  }
+                />
+              ) : null}
               {props.calendarUnavailable && props.onOpenCalendarSettings ? (
                 <AppButton
                   onPress={props.onOpenCalendarSettings}

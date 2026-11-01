@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
 import { HealthRecordsCategoryFilter } from './HealthRecordsCategoryFilter';
 import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 export type HealthRecordsLibraryLoadState = 'loading' | 'ready' | 'failed';
 
@@ -17,6 +18,7 @@ interface HealthRecordsLibraryHeaderProps {
   readonly loadState: HealthRecordsLibraryLoadState;
   readonly onBack: () => void;
   readonly onRetry: () => void;
+  readonly retryInDock?: boolean;
   readonly onSelectCategory: (category: HealthRecordFilter) => void;
   readonly observationCount: number;
   readonly selectedCategory: HealthRecordFilter;
@@ -30,10 +32,26 @@ export function HealthRecordsLibraryHeader({
   loadState,
   onBack,
   onRetry,
+  retryInDock = true,
   onSelectCategory,
   observationCount,
   selectedCategory,
 }: HealthRecordsLibraryHeaderProps) {
+  const label = t('healthRecords.retry');
+  const hasDock = useNavigationRouteActions(
+    loadState === 'failed' && retryInDock
+      ? [
+          {
+            id: 'retry-health-library',
+            label,
+            accessibilityLabel: label,
+            testID: 'health-records-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: onRetry,
+          },
+        ]
+      : [],
+  );
   return (
     <View style={styles.header}>
       <View style={styles.topBar}>
@@ -75,12 +93,14 @@ export function HealthRecordsLibraryHeader({
           >
             {t('healthRecords.error')}
           </Text>
-          <AppButton
-            onPress={onRetry}
-            testID="health-records-retry"
-            title={t('healthRecords.retry')}
-            variant="secondary"
-          />
+          {!hasDock || !retryInDock ? (
+            <AppButton
+              onPress={onRetry}
+              testID="health-records-retry"
+              title={t('healthRecords.retry')}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       ) : null}
       {loadState === 'ready' &&

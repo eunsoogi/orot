@@ -39,3 +39,19 @@ test('restores a retained draft action after an overlay and calls the latest sav
   expect(updated).toHaveBeenCalledTimes(1);
   expect(original).not.toHaveBeenCalled();
 });
+
+test('registers a retained screen first mounted without focus when it becomes active', async () => {
+  function FocusHost({ active }: { active: boolean }) {
+    const { host, action } = useNavigationPrimaryActionHost('draft');
+    return (
+      <NavigationPrimaryActionContext.Provider value={active ? host : null}>
+        <DraftAction onSave={jest.fn()} />
+        <Text testID="focused-action">{action?.label ?? 'none'}</Text>
+      </NavigationPrimaryActionContext.Provider>
+    );
+  }
+  const view = await render(<FocusHost active={false} />);
+  expect(screen.getByTestId('focused-action')).toHaveTextContent('none');
+  await view.rerender(<FocusHost active />);
+  expect(screen.getByTestId('focused-action')).toHaveTextContent('질문 저장');
+});

@@ -15,6 +15,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try SymptomJournalUITestObservations.launchJournal(app)
         guard tap(app, "symptom-add") else { return }
+        SymptomJournalControlUITestConditions.assertDockStaysFixedDuringFormScroll(app, testCase: self)
         SymptomJournalControlUITestConditions.confirmedPickerPersists(app)
     }
 
@@ -79,7 +80,8 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         }
         // A failed edit already recorded an assertion; never wait for a keyboard action after that failure.
         guard severityCompleted else { return }
-        accessory(app, "symptom-keyboard-save-severity")
+        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        guard SymptomJournalControlUITestConditions.tapPageAction(app, id: "symptom-save", label: "증상 기록 저장") else { return }
         guard visible(app, "Synthetic intermittent tingling") else { return }
         guard visible(app, "직접 입력한 기록이며 의료진이 확인한 정보는 아니에요.") else { return }
         let description = app.staticTexts.matching(NSPredicate(format:
@@ -104,7 +106,8 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         SymptomJournalUITestObservations.assertFullContentFormLane(app, testCase: self)
         guard replace(app, "symptom-description", "Synthetic tingling after lunch\nUsually in the afternoon", multiline: true, observeCursorTap: true) else { return }
         NavigationUITestConditions.symptomAccessorySnapshot(app, testCase: self, phase: "before-edit-accessory-wait")
-        accessory(app, "symptom-keyboard-save-description")
+        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        guard SymptomJournalControlUITestConditions.tapPageAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
         UITestConditions.value(UITestConditions.element(app, cardID + "-description"),
                                equals: "Synthetic tingling after lunch\nUsually in the afternoon")
         UITestConditions.value(UITestConditions.element(app, cardID + "-onset"), equals: originalOnset)
@@ -114,7 +117,7 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard replace(app, "symptom-filter-from-time", "09:30") else { return }
         guard replace(app, "symptom-filter-through-date", "2025-04-02") else { return }
         guard replace(app, "symptom-filter-through-time", "09:30") else { return }
-        accessory(app, "symptom-filter-keyboard-apply-through-time")
+        SymptomJournalControlUITestConditions.tapAccessory(app, id: "symptom-filter-keyboard-apply-through-time")
         UITestConditions.value(UITestConditions.element(app, cardID + "-status"), equals: "계속되고 있어요")
         guard tap(app, "symptom-resolve-" + entryID) else { return }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "symptoms-empty")))
@@ -211,6 +214,9 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false) -> Bool {
+        if identifier == "symptom-add" {
+            return SymptomJournalControlUITestConditions.tapPageAction(app, id: identifier, label: "증상 기록 추가")
+        }
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target))
         let revealed = FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll", towardTop: towardTop) != nil
@@ -219,13 +225,6 @@ final class SymptomJournalUITests: OrotFailFastTestCase {
         guard revealed, hittable else { return false }
         target.tap()
         return true
-    }
-
-    @MainActor
-    private func accessory(_ app: XCUIApplication, _ identifier: String) {
-        let button = UITestConditions.element(app, identifier)
-        XCTAssertTrue(UITestConditions.exists(button) && button.isHittable)
-        button.tap()
     }
 
     @MainActor

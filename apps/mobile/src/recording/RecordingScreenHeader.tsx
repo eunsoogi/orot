@@ -6,6 +6,7 @@ import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackgro
 import { t } from '../i18n';
 import { recordingControlStyles as styles } from './RecordingControls.styles';
 import type { RecordingStatus } from './recordingTypes';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 /** Keeps the screen title and saved-recording action above the adaptive panels. */
 export default function RecordingScreenHeader({
@@ -21,6 +22,27 @@ export default function RecordingScreenHeader({
   readonly stateReady: boolean;
   readonly status: RecordingStatus;
 }) {
+  const label = t('recording.library.title');
+  const disabled =
+    controlsBusy ||
+    (status !== 'idle' && status !== 'completed') ||
+    sourceRetryPending ||
+    !stateReady;
+  const hasDock = useNavigationRouteActions(
+    onOpenSavedRecordings
+      ? [
+          {
+            id: 'recording-history',
+            label,
+            accessibilityLabel: label,
+            testID: 'recording-open-saved',
+            systemImageName: 'clock.arrow.circlepath',
+            disabled,
+            onPress: onOpenSavedRecordings,
+          },
+        ]
+      : [],
+  );
   return (
     <View style={styles.headingRow}>
       <Text
@@ -30,7 +52,7 @@ export default function RecordingScreenHeader({
       >
         {t('recording.title')}
       </Text>
-      {onOpenSavedRecordings ? (
+      {onOpenSavedRecordings && !hasDock ? (
         <Pressable
           accessibilityLabel={t('recording.library.title')}
           accessibilityRole="button"

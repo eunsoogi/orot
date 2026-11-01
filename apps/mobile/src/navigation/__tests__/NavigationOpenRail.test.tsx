@@ -108,14 +108,13 @@ test('retains draft and disabled primary action across continuous Open geometry 
   ).toEqual(expect.objectContaining({ width: 66, height: 669, right: 0 }));
   expect(
     screen.getByTestId('navigation-right-rail-insets').props.children,
-  ).toBe('18,136');
+  ).toBe('18,204');
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');
   expect(
-    screen.getByTestId('navigation-primary-action-surface-actions').props
-      .children,
-  ).toBe('primary:true');
+    screen.getByTestId('navigation-page-action-surface-actions').props.children,
+  ).toBe('page:primary:true');
 
   await rerender(<Fixture geometry={rotatedGeometry} />);
   expect(screen.getByTestId('draft').props.children).toBe('edited');
@@ -128,7 +127,10 @@ test('retains draft and disabled primary action across continuous Open geometry 
   expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
   expect(
     screen.getByTestId('navigation-bar-fallback-actions').props.children,
-  ).toBe('back:false,home:false,primary:true');
+  ).toBe('back:false,home:false');
+  expect(
+    screen.getByTestId('navigation-page-action-surface-actions').props.children,
+  ).toBe('page:primary:true');
   expect(screen.getByTestId('draft').props.children).toBe('edited');
 
   await rerender(<Fixture geometry={rotatedGeometry} />);
@@ -137,9 +139,8 @@ test('retains draft and disabled primary action across continuous Open geometry 
   ).toBe('right');
   expect(screen.getByTestId('draft').props.children).toBe('edited');
   expect(
-    screen.getByTestId('navigation-primary-action-surface-actions').props
-      .children,
-  ).toBe('primary:true');
+    screen.getByTestId('navigation-page-action-surface-actions').props.children,
+  ).toBe('page:primary:true');
 });
 
 test('requests the observed left edge from the native surface and returns to the right without losing the draft', async () => {

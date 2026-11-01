@@ -9,6 +9,7 @@ RCT_EXPORT_VIEW_PROPERTY(rows, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(headerTitle, NSString)
 RCT_EXPORT_VIEW_PROPERTY(headerCount, NSString)
 RCT_EXPORT_VIEW_PROPERTY(newSessionLabel, NSString)
+RCT_EXPORT_VIEW_PROPERTY(showsNewSession, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(headerTextColor, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(headerSecondaryColor, UIColor)
 RCT_EXPORT_VIEW_PROPERTY(headerTintColor, UIColor)
@@ -36,6 +37,10 @@ RCT_EXPORT_VIEW_PROPERTY(onComposerPress, RCTDirectEventBlock)
 // Keep measured rail placement with action descriptors so UIKit can move
 // existing controls in place.
 RCT_EXPORT_VIEW_PROPERTY(actions, NSArray)
+// Page controls share the lane but never replace navigation's measured frame.
+RCT_EXPORT_VIEW_PROPERTY(isPageDock, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(pageMetricsRequest, NSDictionary)
+RCT_EXPORT_VIEW_PROPERTY(onPageMetrics, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onAction, RCTBubblingEventBlock)
 // A committed React overlay move requests fresh UIKit measurement without supplying a navigation
 // frame.

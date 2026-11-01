@@ -30,6 +30,7 @@ export const duoTests = [
   'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
   'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow',
   'OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow',
+  'OrotUITests/ManualHistoryDuoUITests/testOpenDuoPageActionsPreserveDraftAndSave',
   'OrotUITests/NextVisitReviewUITests/testDuoRightRailKeepsKeyboardSaveInsideTheContentLane',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',

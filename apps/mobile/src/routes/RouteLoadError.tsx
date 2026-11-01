@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 /** Keeps route-opening errors readable and retryable inside the current usable route area. */
 export function RouteLoadError({
@@ -15,6 +16,17 @@ export function RouteLoadError({
   readonly message: string;
   readonly onRetry: () => void | Promise<unknown>;
 }) {
+  const label = t('appointments.retry');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'retry-route-load',
+      label,
+      accessibilityLabel: label,
+      testID: 'route-load-retry',
+      systemImageName: 'arrow.clockwise',
+      onPress: onRetry,
+    },
+  ]);
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -28,11 +40,13 @@ export function RouteLoadError({
       <View style={styles.container} testID="route-load-error-content">
         <Text accessibilityRole="header">{title}</Text>
         <Text accessibilityRole="alert">{message}</Text>
-        <AppButton
-          onPress={onRetry}
-          testID="route-load-retry"
-          title={t('appointments.retry')}
-        />
+        {!hasDock ? (
+          <AppButton
+            onPress={onRetry}
+            testID="route-load-retry"
+            title={t('appointments.retry')}
+          />
+        ) : null}
       </View>
     </NavigationRouteScrollView>
   );

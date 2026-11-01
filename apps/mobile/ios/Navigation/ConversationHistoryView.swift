@@ -26,6 +26,11 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         didSet { updateHeaderText() }
     }
 
+    /// The page dock may own creation; hidden controls leave both layout and accessibility.
+    @objc var showsNewSession = true {
+        didSet { createButton.isHidden = !showsNewSession; setNeedsLayout() }
+    }
+
     @objc var headerTextColor: UIColor = .label {
         didSet { heading.textColor = headerTextColor }
     }
@@ -143,7 +148,10 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
             createSymbol.heightAnchor.constraint(equalToConstant: 20),
         ])
         createButton.accessibilityIdentifier = "conversation-history-new"
-        createButton.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        // UIStackView collapses the hidden button when the dock owns creation.
+        let createWidth = createButton.widthAnchor.constraint(equalToConstant: 44)
+        createWidth.priority = .defaultHigh
+        createWidth.isActive = true
         createButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
         createButton.addAction(UIAction { [weak self] _ in self?.onCreateSession?([:]) }, for: .touchUpInside)
         header.addArrangedSubview(titleRow)

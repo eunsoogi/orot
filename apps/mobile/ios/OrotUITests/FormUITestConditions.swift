@@ -59,29 +59,30 @@ enum FormUITestConditions {
             } else {
                 position = avoidTarget || focusedKeyboardFrame != nil ? targetFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
             }
-            guard let position, var gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: position, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) else {
-                XCTFail("The form gesture has invalid coordinates")
-                return nil
-            }
+            let proposed = { position.flatMap { geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: $0, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) } }
+            var gesture: (start: CGVector, end: CGVector)
+            var gestureReference = (targetFrame, geometry.viewport)
             if journalScroll {
-                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, target: targetFrame, targetIdentifier: { target.identifier }, controls: controls ?? [], start: gesture.start, end: gesture.end, evaluationStartedAtMs: geometryReadStartedAtMs) else { return nil }
-                gesture = gutter
+                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, keyboard: keyboardFrame, target: targetFrame, targetIdentifier: { target.identifier }, controls: controls ?? [], latestControls: { navigationControlFrames(app) }, proposed: proposed, evaluationStartedAtMs: geometryReadStartedAtMs, maximumScrollFraction: maximumScrollFraction) else { return nil }
+                (gesture, gestureReference) = ((gutter.start, gutter.end), (gutter.target, gutter.viewport))
+            } else {
+                guard let original = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
+                gesture = original
             }
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(gesture.start)
             let end = origin.withOffset(gesture.end)
-            // Default-speed short drags can move a tall row beyond the opposite edge. Use slow movement only
-            // once the target intersects the viewport; keep fast travel, containment, hit testing and the gesture budget.
-            let velocity: XCUIGestureVelocity = targetFrame.map { geometry.viewport.intersects($0) } == true ? .slow : .default
+            // Slow down only for an intersecting target; containment and the gesture budget still apply.
+            let velocity: XCUIGestureVelocity = gestureReference.0.map { gestureReference.1.intersects($0) } == true ? .slow : .default
             if stopAfterFirstFocusDrag {
                 print("Journal single focus drag start=\(gesture.start), end=\(gesture.end), velocity=\(velocity)")
             }
             XCTContext.runActivity(named: "Measured form scroll \(attempt + 1): \(lastObservation)") { _ in
                 // Observe the same reserved boundary around the existing gesture, without changing its coordinates or budget.
                 observeFocusGesture?("before-scroll-\(attempt + 1)", focusedKeyboardFrame)
-                observeFirstDrag?(applicationFrame, geometry.viewport, targetFrame, controls ?? [], gesture.start, gesture.end)
-                FormScrollObservation.around(scrollObservation, step: attempt + 1, target: targetFrame,
+                observeFirstDrag?(applicationFrame, gestureReference.1, gestureReference.0, controls ?? [], gesture.start, gesture.end)
+                FormScrollObservation.around(scrollObservation, step: attempt + 1, target: gestureReference.0,
                                              start: CGPoint(x: gesture.start.dx + applicationFrame.minX, y: gesture.start.dy + applicationFrame.minY),
                                              end: CGPoint(x: gesture.end.dx + applicationFrame.minX, y: gesture.end.dy + applicationFrame.minY))
                 {
@@ -119,8 +120,8 @@ enum FormUITestConditions {
             measure("placeholder-read") { current != input.placeholderValue }
         }
         if shouldReplace {
-            // Keep Command-A for unrelated forms. The fixtures appointment probe left the caret at the end and
-            // one Delete removed only the trailing character, so appointment edits use the observed native Select All action.
+            // Keep Command-A for unrelated forms. The date fixture verifies the full native selection;
+            // appointment edits retain the observed system Select All action.
             observeCursorTap?("before-select-all")
             observeInput?(.beforeSelect)
             if useNativeSelectAllMenu {
@@ -240,8 +241,7 @@ enum FormUITestConditions {
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) -> Bool {
-        // Native key synthesis has completed and waited for the app to idle. A missed edit
-        // cannot finish later without another action; fail with its actual value instead of polling forever.
+        // Once native editing finishes and the app idles, compare the actual value without polling.
         let value = input.value as? String ?? ""
         let observed = text.isEmpty && value == input.placeholderValue ? "" : value
         XCTAssertEqual(observed, text, "The completed native edit must replace the entire input value")
