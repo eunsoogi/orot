@@ -106,9 +106,15 @@
                     let start = field.offset(from: beginning, to: selected.start), end = field.offset(from: beginning, to: selected.end)
                     if length >= 0, start >= 0, start <= end, end <= length {
                         result.merge(["status": "available", "viewID": identity(field), "windowID": identity(window), "focused": field.isFirstResponder, "documentLength": length, "selectionStart": start, "selectionEnd": end]) { _, new in new }
-                        if end > start, let geometry = selectionGeometry(field: field, range: selected, window: window, identity: identity) {
-                            result["selectionGeometry"] = geometry
-                            result["dock"] = SymptomDockControlObservation.capture(views: views, window: window, truncated: !pending.isEmpty, identity: identity)
+                        if end > start {
+                            var rejection: String?
+                            let geometry = selectionGeometry(field: field, range: selected, window: window, rejection: { rejection = $0 }, identity: identity)
+                            if let geometry {
+                                result["selectionGeometry"] = geometry
+                                result["dock"] = SymptomDockControlObservation.capture(views: views, window: window, truncated: !pending.isEmpty, identity: identity)
+                            } else if let rejection {
+                                result["selectionGeometryRejection"] = rejection
+                            }
                         }
                     }
                 }
@@ -121,31 +127,34 @@
         }
 
         /// The public selection rect belongs to textInputView; reject incomplete clipping or an unrelated native hit.
-        static func selectionGeometry(field: UITextField, range: UITextRange, window: UIWindow, identity: (NSObject) -> String) -> [String: Any]? {
-            guard #available(iOS 17.4, *) else { return nil }
+        static func selectionGeometry(field: UITextField, range: UITextRange, window: UIWindow, rejection: (String) -> Void = { _ in }, identity: (NSObject) -> String) -> [String: Any]? {
+            // Record only the first failed public geometry boundary; never loosen a retap guard.
+            func reject(_ reason: String) -> [String: Any]? { rejection(reason); return nil }
+            guard #available(iOS 17.4, *) else { return reject("unsupportedOS") }
             let input = field.textInputView
-            guard field.isFirstResponder, field.window === window, input.window === window, input === field || input.isDescendant(of: field), let scene = window.windowScene else { return nil }
+            guard field.isFirstResponder, field.window === window, input.window === window, input === field || input.isDescendant(of: field), let scene = window.windowScene else { return reject("inputOwnership") }
             let allRects = field.selectionRects(for: range)
             guard allRects.allSatisfy({ value in
                 let rect = value.rect
                 return !rect.isNull && !rect.isInfinite && [rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy(\.isFinite)
-            }) else { return nil }
+            }) else { return reject("nonfiniteSelectionRects") }
             let rects = allRects.filter { $0.rect.width > 0 && $0.rect.height > 0 }
-            guard rects.count == 1, let selected = rects.first, selected.transform.isIdentity else { return nil }
+            guard rects.count == 1, let selected = rects.first else { return reject("selectionRectCount") }
+            guard selected.transform.isIdentity else { return reject("selectionTransform") }
             let rect = input.convert(selected.rect, to: window), fieldFrame = field.convert(field.bounds, to: window)
-            guard finite(rect), finite(fieldFrame), window.bounds.contains(rect), fieldFrame.contains(rect) else { return nil }
+            guard finite(rect), finite(fieldFrame), window.bounds.contains(rect), fieldFrame.contains(rect) else { return reject("selectionContainment") }
             var current: UIView? = input, reachedWindow = false, reachedField = false, depth = 0, scrollers: [UIScrollView] = []
             while let view = current, depth < 64 {
-                guard view.layer.mask == nil, view.transform.isIdentity, CATransform3DIsIdentity(view.layer.transform), view === window || view.window === window else { return nil }
+                guard view.layer.mask == nil, view.transform.isIdentity, CATransform3DIsIdentity(view.layer.transform), view === window || view.window === window else { return reject("ancestorOwnershipOrTransform") }
                 if view.clipsToBounds || view.layer.masksToBounds {
                     let clip = view.convert(view.bounds, to: window)
-                    guard finite(clip), clip.contains(rect) else { return nil }
+                    guard finite(clip), clip.contains(rect) else { return reject("ancestorClipping") }
                 }
                 if view === field {
                     reachedField = true
                 }
                 if let scroll = view as? UIScrollView {
-                    guard !scroll.isTracking, !scroll.isDragging, !scroll.isDecelerating else { return nil }
+                    guard !scroll.isTracking, !scroll.isDragging, !scroll.isDecelerating else { return reject("scrollMotion") }
                     if reachedField {
                         scrollers.append(scroll)
                     }
@@ -156,12 +165,13 @@
                 current = view.superview
                 depth += 1
             }
-            guard reachedWindow, reachedField, scrollers.count == 1, let scroll = scrollers.first, !scroll.isTracking, !scroll.isDragging, !scroll.isDecelerating,
-                  let hit = window.hitTest(CGPoint(x: rect.midX, y: rect.midY), with: nil), hit === field || hit.isDescendant(of: field) else { return nil }
+            guard reachedWindow, reachedField, scrollers.count == 1, let scroll = scrollers.first else { return reject("scrollAncestry") }
+            guard !scroll.isTracking, !scroll.isDragging, !scroll.isDecelerating else { return reject("scrollMotion") }
+            guard let hit = window.hitTest(CGPoint(x: rect.midX, y: rect.midY), with: nil), hit === field || hit.isDescendant(of: field) else { return reject("hitOwnership") }
             let screenRect = window.convert(rect, to: window.screen.coordinateSpace)
             let screenField = window.convert(fieldFrame, to: window.screen.coordinateSpace)
             let screenWindow = window.convert(window.bounds, to: window.screen.coordinateSpace)
-            guard finite(screenRect), finite(screenField), finite(screenWindow) else { return nil }
+            guard finite(screenRect), finite(screenField), finite(screenWindow) else { return reject("screenConversion") }
             let orientation: Int = if #available(iOS 16.0, *) {
                 scene.effectiveGeometry.interfaceOrientation.rawValue
             } else {

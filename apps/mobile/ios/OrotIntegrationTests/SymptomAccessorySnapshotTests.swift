@@ -165,7 +165,9 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         let geometry = SymptomDateSelectionObservation.selectionGeometry(field: date, range: range, window: window) { _ in "anonymous" }
         XCTAssertEqual(geometry?["hitOwned"] as? Bool, true)
         date.layer.mask = CALayer()
-        XCTAssertNil(SymptomDateSelectionObservation.selectionGeometry(field: date, range: range, window: window) { _ in "anonymous" })
+        var rejection: String?
+        XCTAssertNil(SymptomDateSelectionObservation.selectionGeometry(field: date, range: range, window: window, rejection: { rejection = $0 }) { _ in "anonymous" })
+        XCTAssertEqual(rejection, "ancestorOwnershipOrTransform")
         date.layer.mask = nil
         let views: [UIView] = [window, controller.view, scroll, input, date, status, error]
         let identity: (NSObject) -> String = { object in object === window ? "window" : object === scroll ? "scroll" : "control" }
