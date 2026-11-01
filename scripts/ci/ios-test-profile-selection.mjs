@@ -4,20 +4,34 @@ import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
 
 /** Resolves the destination, fixture guard, and complete explicit Duo ownership. */
-export function resolveIosTestProfileSelection(profile, tests, preparationPhase, rotationControl) {
+export function resolveIosTestProfileSelection(
+  profile,
+  tests,
+  preparationPhase,
+  rotationControl,
+  rotationCalibration,
+) {
   const control = 'OrotUITests/TestHostConnectionTests/testSystemBrowserRotationControl';
+  const calibration = 'OrotUITests/TestHostConnectionTests/testUIKitCalibrationRotationControl';
   if (
     preparationPhase === 'rotation-control' ||
+    preparationPhase === 'rotation-calibration' ||
     rotationControl !== undefined ||
-    tests.includes(control)
+    rotationCalibration !== undefined ||
+    tests.includes(control) ||
+    tests.includes(calibration)
   ) {
-    if (
-      profile !== 'duo' ||
-      preparationPhase !== 'rotation-control' ||
-      rotationControl !== 'YES' ||
-      tests.length !== 1 ||
-      tests[0] !== control
-    )
+    const browserRun =
+      preparationPhase === 'rotation-control' &&
+      rotationControl === 'YES' &&
+      rotationCalibration === undefined &&
+      tests[0] === control;
+    const calibrationRun =
+      preparationPhase === 'rotation-calibration' &&
+      rotationCalibration === 'YES' &&
+      rotationControl === undefined &&
+      tests[0] === calibration;
+    if (profile !== 'duo' || tests.length !== 1 || (!browserRun && !calibrationRun))
       throw new Error('Rotation control requires its explicit single Duo diagnostic');
     return { fixtureSelection: null, hostPreparation: false, isFixtureProfile: false };
   }

@@ -32,3 +32,30 @@ test('rotation control is admitted only as an explicit single Duo diagnostic', (
     }
   }
 });
+
+test('UIKit calibration is admitted only as an explicit single Duo diagnostic', () => {
+  const calibration = 'OrotUITests/TestHostConnectionTests/testUIKitCalibrationRotationControl';
+  const enabled = {
+    OROT_IOS_TEST_PHASE: 'rotation-calibration',
+    TEST_RUNNER_OROT_ROTATION_CALIBRATION: 'YES',
+  };
+  assert.ok(!iosTestInventory('duo').includes(calibration));
+  for (const [profile, selected, env, accepted] of [
+    ['duo', [calibration], enabled, true],
+    ['duo', [calibration], {}, false],
+    ['core', [calibration], enabled, false],
+    ['duo', [calibration, hostConnectionTest], enabled, false],
+    ['duo', [calibration], { ...enabled, TEST_RUNNER_OROT_ROTATION_CONTROL: 'YES' }, false],
+  ]) {
+    const run = fixture(0, profile, 'all', selected, env);
+    try {
+      assert.equal(run.outcome.status === 0, accepted, run.outcome.stderr);
+      assert.equal(
+        run.calls.some((call) => call.name === 'xcodebuild'),
+        accepted,
+      );
+    } finally {
+      rmSync(run.directory, { recursive: true, force: true });
+    }
+  }
+});

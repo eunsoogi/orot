@@ -7,7 +7,21 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         guard ProcessInfo.processInfo.environment["OROT_ROTATION_CONTROL"] == "YES" else {
             throw XCTSkip("Explicit rotation control opt-in required")
         }
-        let browser = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        try observeRotationControl(bundle: "com.apple.mobilesafari", markerID: nil)
+    }
+
+    /// The disposable calibration app exposes only its own orientation and window metadata.
+    @MainActor
+    func testUIKitCalibrationRotationControl() throws {
+        guard ProcessInfo.processInfo.environment["OROT_ROTATION_CALIBRATION"] == "YES" else {
+            throw XCTSkip("Explicit UIKit calibration opt-in required")
+        }
+        try observeRotationControl(bundle: "org.orot.rotation-calibration", markerID: "rotation-calibration-observation")
+    }
+
+    @MainActor
+    private func observeRotationControl(bundle: String, markerID: String?) throws {
+        let browser = XCUIApplication(bundleIdentifier: bundle)
         XCUIDevice.shared.orientation = .portrait
         browser.launch()
         defer { browser.terminate(); XCUIDevice.shared.orientation = .portrait }
@@ -16,6 +30,11 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         XCTAssertTrue(window.exists)
         let initial = window.frame
         XCTAssertFalse(initial.isEmpty)
+        if let markerID {
+            let marker = browser.staticTexts[markerID]
+            XCTAssertTrue(marker.exists)
+            print("OROT_CALIBRATION_BEFORE \(marker.value as? String ?? "unavailable")")
+        }
         let requestedAt = Date().timeIntervalSince1970 * 1000
         XCUIDevice.shared.orientation = .landscapeLeft
         var attempts = 0
@@ -24,7 +43,11 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
             let frame = window.frame
             if attempts == 1 || attempts == 100 || abs(frame.width - initial.width) > 0.5 {
                 // Log scalar geometry only; Safari contents and browsing data are not read.
-                print("OROT_BROWSER_ROTATION requestedAtMs=\(requestedAt) sampledAtMs=\(Date().timeIntervalSince1970 * 1000) bundle=com.apple.mobilesafari state=\(browser.state.rawValue) device=\(XCUIDevice.shared.orientation.rawValue) window=\(frame) initial=\(initial) attempt=\(attempts)")
+                print("OROT_ROTATION_CONTROL requestedAtMs=\(requestedAt) sampledAtMs=\(Date().timeIntervalSince1970 * 1000) bundle=\(bundle) state=\(browser.state.rawValue) device=\(XCUIDevice.shared.orientation.rawValue) window=\(frame) initial=\(initial) attempt=\(attempts)")
+                if let markerID {
+                    let marker = browser.staticTexts[markerID]
+                    print("OROT_CALIBRATION_OBSERVATION \(marker.value as? String ?? "unavailable")")
+                }
             }
             return abs(frame.width - initial.width) > 0.5
         }, object: nil)
