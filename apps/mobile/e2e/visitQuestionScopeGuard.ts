@@ -1,6 +1,11 @@
 import type { VisitQuestionEvidenceCollection } from '../src/agent/visitQuestions/evidenceCollection';
 import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
 import type { LanguageModelRequest } from '@orot/model-runtime';
+import type { EvidenceBatch } from '@orot/agent-runtime';
+import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/taskContract';
+import type { VisitQuestionEvidenceMetadata } from '../src/agent/visitQuestions/evidence';
+import { parseHealthContextScope } from '../src/healthEvidence/healthContext/scope';
+import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
 
 // Identifiers are fixture constants and never included in diagnostic output.
 export const expectedEvent =
@@ -23,7 +28,8 @@ type RejectCode =
   | 'alias_unobserved'
   | 'payload_invalid'
   | 'evidence_mismatch'
-  | 'aggregate_unconfirmed';
+  | 'aggregate_unconfirmed'
+  | 'aggregate_generation_changed';
 
 /** This opt-in fixture records only closed reason codes, never IDs, values or errors. */
 export function rejectScope(token: number, code: RejectCode): never {
@@ -164,8 +170,40 @@ export function acceptScopeEvidence(
   );
 }
 
-/** Aggregated period results have indirect provenance and are rejected unless separately proven. */
-export function acceptEmptyHealthBatch(token: number, count: number) {
+/** Admit only typed aggregates tied to an unchanged, verified synthetic inventory. */
+export function acceptScopeAggregate(
+  token: number,
+  batch: EvidenceBatch,
+  metadata: ReadonlyMap<string, VisitQuestionEvidenceMetadata>,
+  unchanged: boolean,
+) {
   requireScopeContext(token);
-  if (count !== 0) rejectScope(token, 'aggregate_unconfirmed');
+  if (!unchanged) rejectScope(token, 'aggregate_generation_changed');
+  for (const reference of batch.items) {
+    const item = reference as VisitQuestionEvidenceItem;
+    const scope = parseHealthContextScope(item.locator);
+    const source = metadata.get(
+      visitQuestionCitationKey(item),
+    )?.healthContextSource;
+    const expected = scope ? `health-context-${fingerprint(scope)}` : '';
+    if (
+      !scope ||
+      item.sourceKind !== 'personal_record' ||
+      item.sourceId !== expected ||
+      item.evidenceId !== expected ||
+      item.sourceRevision !== item.evidenceRevision ||
+      !source ||
+      source.revision !== item.evidenceRevision ||
+      JSON.stringify(source.scope) !== JSON.stringify(scope)
+    )
+      rejectScope(token, 'aggregate_unconfirmed');
+    observed.add(visitQuestionCitationKey(item));
+  }
+  report(
+    JSON.stringify({
+      aggregateMatch: true,
+      aggregateCount: batch.items.length,
+      validatedEvidence: observed.size,
+    }),
+  );
 }

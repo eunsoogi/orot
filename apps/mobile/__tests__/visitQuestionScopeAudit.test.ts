@@ -2,7 +2,7 @@ import type { Appointment } from '@orot/domain';
 import { auditVisitQuestionScope } from '../e2e/visitQuestionScopeAudit';
 import type { ScopeSnapshot } from '../e2e/visitQuestionScopeAudit';
 import {
-  acceptEmptyHealthBatch,
+  acceptScopeAggregate,
   acceptScopeContext,
   acceptScopeEvidence,
   beginScopeObservation,
@@ -15,6 +15,7 @@ import {
   scopeRejection,
 } from '../e2e/visitQuestionScopeGuard';
 import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
+import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
 
 const appointment = {
   id: 'synthetic-appointment',
@@ -109,7 +110,9 @@ test('requires the instrumented context and audits actual tool evidence before r
       ]),
     } as never),
   ).toThrow();
-  expect(() => acceptEmptyHealthBatch(token, 1)).toThrow();
+  expect(() =>
+    acceptScopeAggregate(token, { items: [item] } as never, new Map(), true),
+  ).toThrow();
   expect(report).toHaveBeenCalledWith(
     '{"scopeRejected":"aggregate_unconfirmed"}',
   );
@@ -121,6 +124,48 @@ test('requires the instrumented context and audits actual tool evidence before r
   expect(() => requireScopeContext(token)).toThrow();
   expect(() => acceptScopeContext(token)).toThrow();
   log.mockRestore();
+});
+
+test('admits only typed aggregates from an unchanged synthetic inventory', () => {
+  const token = beginScopeObservation(jest.fn());
+  acceptScopeContext(token);
+  const scope = {
+    kind: 'health_context_period',
+    version: 1,
+    topic: 'symptoms',
+    window: {
+      fromInclusive: '2035-06-01T00:00:00.000Z',
+      toExclusive: '2035-06-02T00:00:00.000Z',
+      timeZone: 'UTC',
+    },
+  } as const;
+  const id = `health-context-${fingerprint(scope)}`;
+  const item = {
+    sourceKind: 'personal_record',
+    sourceId: id,
+    sourceRevision: 'r',
+    evidenceId: id,
+    evidenceRevision: 'r',
+    locator: scope,
+    effectiveTime: null,
+    reviewState: 'unknown',
+    content: 'synthetic',
+  } as const;
+  const metadata = new Map([
+    [
+      visitQuestionCitationKey(item),
+      { healthContextSource: { scope, revision: 'r', deletionGeneration: 0 } },
+    ],
+  ]) as never;
+  const batch = { items: [item] } as never;
+  acceptScopeAggregate(token, batch, metadata, true);
+  expect(observedEvidenceCount(token)).toBe(1);
+  expect(() => acceptScopeAggregate(token, batch, metadata, false)).toThrow();
+  expect(scopeRejection(token)).toBe('aggregate_generation_changed');
+  const wrong = { ...item, evidenceId: 'other' };
+  expect(() =>
+    acceptScopeAggregate(token, { items: [wrong] } as never, metadata, true),
+  ).toThrow();
 });
 
 test('does not dispatch to the real provider when scope is unavailable or rejected', async () => {

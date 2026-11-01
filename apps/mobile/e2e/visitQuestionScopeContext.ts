@@ -1,11 +1,17 @@
 import {
-  acceptEmptyHealthBatch,
+  acceptScopeAggregate,
   acceptScopeContext,
   acceptScopeEvidence,
   currentScopeGeneration,
   expectedEvent,
   rejectScope,
 } from './visitQuestionScopeGuard';
+import { audit } from './visitQuestionScopeInventory';
+import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
+import {
+  ensureHealthContextGeneration,
+  readHealthContextGeneration,
+} from '../src/healthEvidence/healthContext/generation';
 
 /** Test-only loader preserves the production context and audits real tool results before release. */
 export async function loadVisitQuestionsContext() {
@@ -26,6 +32,23 @@ export async function loadVisitQuestionsContext() {
         rejectScope(token, 'context_mismatch');
       acceptScopeContext(token);
       const periodTool = prepared.healthContextTool;
+      const snapshot = async (before: boolean) => {
+        try {
+          const database = await openLocalAgentMemoryDatabase();
+          await database.transaction(ensureHealthContextGeneration);
+          if (before) {
+            const generation = await readHealthContextGeneration(database);
+            return { generation, inventory: await audit(prepared.appointment) };
+          }
+          const inventory = await audit(prepared.appointment);
+          return {
+            inventory,
+            generation: await readHealthContextGeneration(database),
+          };
+        } catch {
+          return rejectScope(token, 'inventory_unavailable');
+        }
+      };
       return {
         ...prepared,
         async searchEvidence(
@@ -40,9 +63,23 @@ export async function loadVisitQuestionsContext() {
               healthContextTool: {
                 ...periodTool,
                 async search(request: Parameters<typeof periodTool.search>[0]) {
+                  const before = await snapshot(true);
+                  if (!before.inventory.ok)
+                    rejectScope(token, 'inventory_mismatch');
                   const result = await periodTool.search(request);
+                  const after = await snapshot(false);
+                  if (!after.inventory.ok)
+                    rejectScope(token, 'inventory_mismatch');
                   if (!('status' in result))
-                    acceptEmptyHealthBatch(token, result.items.length);
+                    acceptScopeAggregate(
+                      token,
+                      result,
+                      prepared.evidence.metadataByCitation,
+                      before.generation.mutationGeneration ===
+                        after.generation.mutationGeneration &&
+                        before.generation.deletionGeneration ===
+                          after.generation.deletionGeneration,
+                    );
                   return result;
                 },
               },
