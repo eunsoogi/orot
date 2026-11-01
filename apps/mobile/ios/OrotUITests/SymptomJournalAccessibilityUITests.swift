@@ -89,27 +89,33 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         let active = UITestConditions.element(app, "symptom-status-active")
         guard FormUITestConditions.reveal(active, in: app, scrollID: "symptoms-scroll") != nil else { return }
         XCTAssertTrue(active.exists && active.isHittable); active.tap()
-        let savedDescription = app.textViews["symptom-description"]
-        guard FormUITestConditions.reveal(savedDescription, in: app, scrollID: "symptoms-scroll") != nil else { return }
-        XCTAssertTrue(savedDescription.exists && savedDescription.isHittable); savedDescription.tap()
-        XCTAssertEqual(savedDescription.value as? String, "아픔")
+        guard focusBodySite(app) else { return }
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
         guard try tapKeyboardAction(app, id: "symptom-save", label: "증상 기록 저장") else { return }
         let saved = app.staticTexts["아픔"]
         XCTAssertTrue(saved.waitForAppearance(), app.debugDescription)
         try tapFinal(app, "symptom-add", stage: "large-keyboard-add-draft")
         guard fill(app, "symptom-description", "두통") else { return }
+        guard focusBodySite(app) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
         XCTAssertTrue(UITestConditions.exists(keep) && keep.isHittable); keep.tap()
         let description = app.textViews["symptom-description"]
         XCTAssertEqual(description.value as? String, "두통")
-        guard FormUITestConditions.reveal(description, in: app, scrollID: "symptoms-scroll") != nil else { return }
-        XCTAssertTrue(description.exists && description.isHittable); description.tap()
+        guard focusBodySite(app) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let discard = alert.buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable); discard.tap()
         XCTAssertFalse(app.staticTexts["두통"].exists); XCTAssertTrue(saved.exists)
+    }
+
+    /// Focus a second real input after description entry without changing its optional value.
+    @MainActor
+    private func focusBodySite(_ app: XCUIApplication) -> Bool {
+        let input = app.textFields["symptom-body-site"]
+        guard FormUITestConditions.reveal(input, in: app, scrollID: "symptoms-scroll") != nil else { return false }
+        guard input.exists, input.isHittable else { XCTFail("Body site must be tappable"); return false }
+        input.tap(); return true
     }
 
     /// Capture a real on-screen keyboard and an unobscured, tappable page action before activation.
