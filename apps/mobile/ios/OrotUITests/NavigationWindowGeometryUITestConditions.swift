@@ -9,9 +9,25 @@ extension NavigationWindowGeometryUITestConditions {
     }
 
     /// The opt-in probe emits only bounded stage names and uptime, never accessibility values.
-    static func logSettingsProbe(_ stage: String, attempt: Int) {
-        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1", attempt <= 3 else { return }
-        print("OROT_SETTINGS_GEOMETRY_PROBE attempt=\(attempt) stage=\(stage) uptime=\(ProcessInfo.processInfo.systemUptime)")
+    static func logSettingsProbe(_ stage: String, attempt: Int, app: XCUIApplication, requestedAt: Double?) {
+        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" else { return }
+        if attempt <= 3 {
+            print("OROT_SETTINGS_GEOMETRY_PROBE attempt=\(attempt) stage=\(stage) uptime=\(ProcessInfo.processInfo.systemUptime)")
+        }
+        guard attempt == 100, stage == "not-ready", let requestedAt else { return }
+        // A single later scalar snapshot distinguishes delayed notifications from the initial rotation sample.
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        guard marker.exists,
+              let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
+              let geometry = report["windowGeometry"] as? [String: Any],
+              let lifecycle = report["lifecycle"] as? [[String: Any]] else { return }
+        let nativeAt = lifecycle.last(where: { $0["event"] as? String == "window-geometry-context" })?["atMs"] as? Double
+        let sharedAt = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" })?["atMs"] as? Double
+        let selected = geometry.filter { ["sceneOrientation", "orientationPolicy", "windowBounds", "sampleStartedAtMs", "sampleEndedAtMs"].contains($0.key) }
+        let result: [String: Any] = ["requestedAtMs": requestedAt, "geometry": selected,
+                                     "nativeAtMs": nativeAt as Any? ?? NSNull(), "sharedAtMs": sharedAt as Any? ?? NSNull()]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: result), let json = String(data: bytes, encoding: .utf8) else { return }
+        print("OROT_SETTINGS_ROTATION_LATER \(json)")
     }
 
     static func settingsMarkerValue(_ app: XCUIApplication, log: (String) -> Void) -> String? {

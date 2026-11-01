@@ -18,7 +18,7 @@ enum NavigationGeometryUITestConditions {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             attempts += 1
             let log: (String) -> Void = { stage in
-                NavigationWindowGeometryUITestConditions.logSettingsProbe(stage, attempt: attempts)
+                NavigationWindowGeometryUITestConditions.logSettingsProbe(stage, attempt: attempts, app: app, requestedAt: requestedAt)
             }
             guard let value = read(app, after: requestedAt, log: log) else { log("not-ready"); return false }
             if let width {
