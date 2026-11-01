@@ -104,6 +104,7 @@ export const styles = StyleSheet.create({
     gap: 4,
     paddingTop: 16,
   },
+  compactComposerArea: { paddingTop: 0, gap: 0 },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

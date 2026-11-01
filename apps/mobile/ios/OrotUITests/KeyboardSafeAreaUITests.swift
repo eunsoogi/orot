@@ -135,7 +135,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
                 XCTAssertEqual(input.value as? String, "draft while the answer is in progress")
                 ConversationComposerDockUITestConditions.assertReachable(stop, in: app)
                 XCTAssertTrue(stop.isHittable, stop.debugDescription)
-                XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-stream")))
+                ConversationComposerDockUITestConditions.assertStreamVisible(in: app)
                 let expandedWidth = app.frame.width
                 XCUIDevice.shared.orientation = .portrait
                 let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in abs(app.frame.width - expandedWidth) > 0.5 }, object: nil)

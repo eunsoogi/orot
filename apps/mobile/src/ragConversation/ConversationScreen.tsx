@@ -1,14 +1,20 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { ReactNode } from 'react';
 import { AppSymbol } from '../layout/AppSymbol';
 import { ConversationComposer } from './ConversationComposer';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { styles } from './ConversationScreen.styles';
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEvidencePanel } from './ConversationEvidencePanel';
@@ -21,6 +27,8 @@ import type { RagConversationObserver } from './service';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
+import { conversationComposerLayout } from './conversationComposerLayout';
 
 interface ConversationScreenProps {
   readonly providerSelection?: ReactNode;
@@ -48,6 +56,14 @@ export function ConversationScreen({
   onOpenSource,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
+  const [contentHeight, setContentHeight] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const occlusion = useNavigationOcclusion();
+  const composerLayout = conversationComposerLayout(
+    contentHeight,
+    occlusion.scrollContentInsets.bottom,
+    fontScale,
+  );
   const store = useConversationSessions();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const session = snapshot.sessions.find(
@@ -159,7 +175,12 @@ export function ConversationScreen({
         routeKey={navigationRouteKey}
         testID="rag-conversation-columns"
         primary={
-          <View style={styles.content}>
+          <View
+            style={styles.content}
+            onLayout={event =>
+              setContentHeight(event.nativeEvent.layout.height)
+            }
+          >
             <ConversationHistory
               header={header}
               messages={messages}
@@ -169,16 +190,23 @@ export function ConversationScreen({
               onLinkError={onLinkError}
               citationsInPanelForMessageId={latestAssistantMessageId}
               footer={
-                <ConversationEvidencePanel
-                  messages={messages}
-                  onOpenSource={onOpenSource}
-                  onLinkError={onLinkError}
-                />
+                <>
+                  <ConversationEvidencePanel
+                    messages={messages}
+                    onOpenSource={onOpenSource}
+                    onLinkError={onLinkError}
+                  />
+                  {composerLayout.compact ? (
+                    <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+                  ) : null}
+                </>
               }
             />
             <ConversationComposer
               value={draft}
               busy={busy}
+              compact={composerLayout.compact}
+              maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
                 store.send(id, onSend);

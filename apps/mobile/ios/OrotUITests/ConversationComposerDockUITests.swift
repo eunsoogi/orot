@@ -51,6 +51,17 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 /// Verifies fixed controls against their dock and actual occluding system surfaces.
 @MainActor
 enum ConversationComposerDockUITestConditions {
+    /// The stream must retain a readable line inside the real scroll viewport.
+    static func assertStreamVisible(in app: XCUIApplication) {
+        let history = UITestConditions.element(app, "rag-conversation-history")
+        let stream = UITestConditions.element(app, "rag-conversation-stream")
+        XCTAssertTrue(UITestConditions.exists(history))
+        XCTAssertTrue(UITestConditions.exists(stream))
+        let visible = history.frame.intersection(stream.frame)
+        XCTAssertFalse(visible.isNull)
+        XCTAssertGreaterThanOrEqual(visible.height, min(24, stream.frame.height))
+    }
+
     static func assertReachable(_ control: XCUIElement, in app: XCUIApplication) {
         let dock = UITestConditions.element(app, "rag-conversation-composer")
         let history = UITestConditions.element(app, "rag-conversation-history")

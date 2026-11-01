@@ -20,6 +20,8 @@ export function ConversationComposer({
   onSend,
   onCancel,
   onLayout,
+  compact = false,
+  maximumInputHeight,
 }: {
   readonly value: string;
   readonly busy: boolean;
@@ -27,8 +29,10 @@ export function ConversationComposer({
   readonly onSend: () => void;
   readonly onCancel: () => void;
   readonly onLayout?: ViewProps['onLayout'];
+  readonly compact?: boolean;
+  readonly maximumInputHeight?: number;
 }) {
-  const navigationInset = useNavigationContentInset();
+  const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
   const copy = getRagConversationCopy();
   const { fontScale, height } = useWindowDimensions();
   const textScale = Math.max(1, fontScale);
@@ -37,13 +41,17 @@ export function ConversationComposer({
   // Reserve reading space while allowing at least one scaled line of input.
   const maximumHeight = Math.max(
     minimumHeight,
-    Math.min(height * 0.2, 160 * textScale),
+    Math.min(height * 0.2, 160 * textScale, maximumInputHeight ?? Infinity),
   );
   const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
   useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
   return (
     <View
-      style={[styles.composerArea, navigationInset]}
+      style={[
+        styles.composerArea,
+        compact && styles.compactComposerArea,
+        navigationInset,
+      ]}
       testID="rag-conversation-composer"
       onLayout={onLayout}
     >
@@ -105,9 +113,11 @@ export function ConversationComposer({
           testID="rag-conversation-action-slot"
         />
       </View>
-      <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
-        {copy.disclaimer}
-      </Text>
+      {!compact ? (
+        <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
+          {copy.disclaimer}
+        </Text>
+      ) : null}
     </View>
   );
 }
