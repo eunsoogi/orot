@@ -190,7 +190,7 @@ enum AppointmentTextSelectionUITestConditions {
             }
             XCTFail("Date selection diagnostic stops before editing"); return false
         }
-        if observe { let full = selection?.full == true; XCTAssertTrue(full, "Date selection must cover the entire field"); return full }
+        guard !observe else { let full = selection?.full == true; XCTAssertTrue(full, "Date selection must cover the entire field"); return full }
         guard available else {
             if input.identifier == "symptom-onset-date", ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1",
                ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil
@@ -206,9 +206,10 @@ enum AppointmentTextSelectionUITestConditions {
 
     /// Traverse one public snapshot only in the opted-in synthetic date fixture; the snapshot itself is not bounded.
     private static func observeEditMenu(_ app: XCUIApplication, inspectSelectAll: Bool = false) {
-        let started = Date().timeIntervalSince1970 * 1000
-        var result: [String: Any] = ["startedAtMs": started]
-        if inspectSelectAll { let item = app.menuItems["Select All"]; let exists = item.exists; result["selectAllExists"] = exists; result["selectAllHittable"] = exists && item.isHittable }
+        var result: [String: Any] = ["startedAtMs": Date().timeIntervalSince1970 * 1000]
+        if inspectSelectAll {
+            let item = app.menuItems["Select All"]; let exists = item.exists; result["selectAllExists"] = exists; result["selectAllHittable"] = exists && item.isHittable
+        }
         do {
             let root = try app.snapshot()
             var pending: [any XCUIElementSnapshot] = [root]
