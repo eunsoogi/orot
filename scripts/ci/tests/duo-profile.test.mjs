@@ -23,8 +23,8 @@ test('Duo selects its supported runtime without changing SDK or ordinary destina
     'provider-selection',
   ]) {
     const config = iosTestConfig(profile);
-    assert.equal(config.xcode, '27.1');
-    assert.equal(config.sdk, '27.1');
+    assert.equal(config.xcode, '27.2');
+    assert.equal(config.sdk, '27.2');
     if (profile === 'duo') continue;
     const speech = profile === 'speech';
     assert.equal(

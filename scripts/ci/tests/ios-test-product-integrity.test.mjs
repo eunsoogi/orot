@@ -3,15 +3,20 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { iosTestBuildSpec, iosTestConfig } from '../ios-test-config.mjs';
+import {
+  iosTestBuildSpec,
+  iosTestConfig,
+  iosXcodeDeveloperDirectory,
+} from '../ios-test-config.mjs';
 import { checkArchiveNames, productDigest } from '../ios-test-product-integrity.mjs';
 
 test('shares only identical generic Release inputs and preserves each execution destination', () => {
   assert.deepEqual(iosTestBuildSpec('core'), iosTestBuildSpec('speech'));
   assert.notDeepEqual(iosTestBuildSpec('core'), iosTestBuildSpec('provider-data'));
+  assert.equal(iosXcodeDeveloperDirectory, '/Applications/Xcode_27.2.app/Contents/Developer');
   for (const profile of ['core', 'speech', 'backup', 'fixtures', 'local-model', 'provider-data']) {
-    assert.equal(iosTestConfig(profile).xcode, '27.1');
-    assert.equal(iosTestConfig(profile).sdk, '27.1');
+    assert.equal(iosTestConfig(profile).xcode, '27.2');
+    assert.equal(iosTestConfig(profile).sdk, '27.2');
   }
   assert.equal(iosTestConfig('speech').runtimeBuild, '23C54');
   assert.equal(iosTestConfig('speech').runtime, 'com.apple.CoreSimulator.SimRuntime.iOS-26-2');
