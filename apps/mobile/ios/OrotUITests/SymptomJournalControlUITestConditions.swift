@@ -209,23 +209,34 @@ enum SymptomJournalControlUITestConditions {
         XCTAssertFalse(error.exists)
     }
 
-    /// Type only through a visible native key and require the actual controlled value to change.
-    static func typeVisibleLetter(_ app: XCUIApplication, previous: String) -> String? {
+    /// Insert one observed digit through the real keyboard without relying on word correction.
+    static func typeVisibleDigit(_ app: XCUIApplication, previous: String) -> String? {
         let description = app.textViews["symptom-description"]
         guard let before = description.value as? String, before == previous else {
             XCTFail("The focused draft must match the previously observed value"); return nil
         }
-        let keyboard = app.keyboards.firstMatch
-        guard keyboard.exists, let letter = ["Q", "W", "q", "w"].map({ keyboard.keys[$0] }).first(where: { $0.exists && $0.isHittable }), app.frame.intersects(keyboard.frame),
-              FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
-              keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
+        let keyboard = app.keyboards.firstMatch, digit = app.keyboards.firstMatch.keys["1"]
+        guard keyboard.exists, FormScrollGeometry.valid(keyboard.frame), app.frame.intersects(keyboard.frame) else {
+            XCTFail("A visible software keyboard is required"); return nil
+        }
+        if !digit.exists {
+            let numbers = keyboard.descendants(matching: .any).matching(identifier: "more").firstMatch
+            guard numbers.exists, numbers.isHittable, ["numbers", "숫자"].contains(numbers.label),
+                  FormScrollGeometry.valid(numbers.frame), keyboard.frame.contains(numbers.frame), app.frame.contains(numbers.frame)
+            else {
+                XCTFail("The observed numbers key must be visible and tappable"); return nil
+            }
+            numbers.tap()
+        }
+        guard digit.exists, digit.isHittable, FormScrollGeometry.valid(digit.frame),
+              keyboard.frame.contains(digit.frame), app.frame.contains(digit.frame)
         else {
-            XCTFail("A visible keyboard letter is required for the edit"); return nil
+            XCTFail("The observed digit key must be visible and tappable"); return nil
         }
-        letter.tap()
-        guard let changed = description.value as? String, changed != before else {
-            XCTFail("The real keyboard tap must change the draft"); return nil
-        }
+        digit.tap()
+        guard let changed = description.value as? String, (Array(before.indices) + [before.endIndex]).contains(where: { index in
+            var expected = before; expected.insert("1", at: index); return expected == changed
+        }) else { XCTFail("The keyboard tap must insert exactly one digit"); return nil }
         return changed
     }
 }
