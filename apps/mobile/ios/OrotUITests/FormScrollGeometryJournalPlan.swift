@@ -17,7 +17,7 @@ enum FormScrollGeometryJournalPlan {
         print("Side gutter segments: \(candidates.isEmpty ? "no clear candidate" : candidates.joined(separator: "; "))")
     }
 
-    static func make(snapshot: [String: Any]?, application: CGRect, usableViewport: CGRect, keyboard: CGRect?, controls: [CGRect], identifier: String, evaluationStartedAtMs: Double, readEndedAtMs: Double, maximumScrollFraction: CGFloat) -> Plan? {
+    static func make(snapshot: [String: Any]?, application: CGRect, usableViewport: CGRect, keyboard: CGRect?, earlierKeyboard: CGRect? = nil, controls: [CGRect], identifier: String, evaluationStartedAtMs: Double, readEndedAtMs: Double, maximumScrollFraction: CGFloat) -> Plan? {
         guard identifier == "symptom-status-active", FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
               controls.allSatisfy(FormScrollGeometry.valid), let snapshot, let markerAt = snapshot["atMs"] as? Double,
               let trace = snapshot["symptomScrollTrace"] as? [String: Any], let accessory = trace["descriptionAccessory"] as? [String: Any],
@@ -56,19 +56,16 @@ enum FormScrollGeometryJournalPlan {
               let target = unique(identifier, groups: groups, window: windowID, scroll: scrollID),
               target["clippingComplete"] as? Bool == true, let targetID = target["id"] as? String, !targetID.isEmpty, targetID != editorID, targetID != "unavailable", let targetFrame = frame(target["frame"])
         else { return nil }
+        guard let nativeControls = dockBlockers(declared: declared, window: windowID),
+              earlierKeyboard.map(FormScrollGeometry.valid) ?? true else { return nil }
         let nativeViewport = usableViewport.intersection(scrollFrame).intersection(application)
-        guard same(nativeViewport, usableViewport), !nativeKeyboard.intersects(nativeViewport), let layout = FormScrollGeometry(application: application, scroll: nativeViewport, keyboard: keyboard),
-              same(layout.viewport, nativeViewport), !layout.contains(targetFrame), let x = layout.horizontalPosition(outside: editorFrame),
+        guard let layout = FormScrollGeometry(application: application, scroll: nativeViewport, keyboard: keyboard, reservedKeyboard: nativeKeyboard),
+              !layout.contains(targetFrame), let x = layout.horizontalPosition(outside: editorFrame),
               let gesture = layout.gesture(target: targetFrame, towardTop: false, horizontalPosition: x, maximumScrollFraction: maximumScrollFraction)
         else { return nil }
-        let nativeControls = blockers(groups: groups, window: windowID)
-        guard let nativeControls, !nativeControls.isEmpty, nativeControls.count == controls.count,
-              !hasDuplicates(nativeControls), !hasDuplicates(controls),
-              controls.allSatisfy({ ax in nativeControls.contains { same($0, ax) } }),
-              nativeControls.allSatisfy({ native in controls.contains { same($0, native) } }) else { return nil }
-        let blockers = [editorFrame, targetFrame, nativeKeyboard] + controls + nativeControls + (keyboard.map { [$0] } ?? [])
-        guard let segment = FormScrollGeometry.journalSideSegments(application: application, viewport: nativeViewport, editor: editorFrame, blockers: blockers, start: gesture.start, end: gesture.end).last else { return nil }
-        return Plan(start: CGVector(dx: segment.from.x - application.minX, dy: segment.from.y - application.minY), end: CGVector(dx: segment.to.x - application.minX, dy: segment.to.y - application.minY), target: targetFrame, viewport: nativeViewport)
+        let blockers = [editorFrame, targetFrame, nativeKeyboard] + controls + nativeControls + [keyboard, earlierKeyboard].compactMap(\.self)
+        guard let segment = FormScrollGeometry.journalSideSegments(application: application, viewport: layout.viewport, editor: editorFrame, blockers: blockers, start: gesture.start, end: gesture.end).last else { return nil }
+        return Plan(start: CGVector(dx: segment.from.x - application.minX, dy: segment.from.y - application.minY), end: CGVector(dx: segment.to.x - application.minX, dy: segment.to.y - application.minY), target: targetFrame, viewport: layout.viewport)
     }
 
     private static func unique(_ role: String, groups: [[String: Any]], window: String, scroll: String) -> [String: Any]? {
@@ -81,19 +78,14 @@ enum FormScrollGeometryJournalPlan {
         return candidate
     }
 
-    private static func blockers(groups: [[String: Any]], window: String) -> [CGRect]? {
-        let roles = ["symptom-save", "symptom-form-cancel", "navigation-page-action-overflow", "navigation-back", "navigation-home"]
-        var result: [CGRect] = []
-        for role in roles {
-            guard let group = groups.filter({ $0["role"] as? String == role }).only, let count = group["count"] as? Int,
-                  count <= 1, group["truncated"] as? Bool == false, let candidates = group["candidates"] as? [[String: Any]], candidates.count == count
-            else { return nil }
-            if let candidate = candidates.first {
-                guard candidate["windowID"] as? String == window, candidate["hidden"] as? Bool == false,
-                      candidate["ancestorHidden"] as? Bool == false, candidate["clippingComplete"] as? Bool == true,
-                      let alpha = candidate["alpha"] as? Double, alpha.isFinite, alpha > 0, let value = frame(candidate["frame"]) else { return nil }
-                result.append(value)
-            }
+    private static func dockBlockers(declared: [String: Any], window: String) -> [CGRect]? {
+        guard let dock = declared["dock"] as? [String: Any], dock["complete"] as? Bool == true,
+              dock["windowID"] as? String == window, let controls = dock["controls"] as? [[String: Any]], !controls.isEmpty else { return nil }
+        var ids = Set<String>(), result: [CGRect] = []
+        for control in controls {
+            guard let id = control["id"] as? String, !id.isEmpty, id != "unavailable", ids.insert(id).inserted,
+                  let value = frame(control["frame"]) else { return nil }
+            result.append(value)
         }
         return result
     }
@@ -124,13 +116,6 @@ enum FormScrollGeometryJournalPlan {
 
     private static func same(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
         zip([lhs.minX, lhs.minY, lhs.width, lhs.height], [rhs.minX, rhs.minY, rhs.width, rhs.height]).allSatisfy { abs($0 - $1) <= 0.0001 }
-    }
-
-    private static func hasDuplicates(_ frames: [CGRect]) -> Bool {
-        for (index, frame) in frames.enumerated() where frames.dropFirst(index + 1).contains(where: { same(frame, $0) }) {
-            return true
-        }
-        return false
     }
 
     private static func sameValues(_ first: Any?, _ second: Any?, keys: [String]) -> Bool {

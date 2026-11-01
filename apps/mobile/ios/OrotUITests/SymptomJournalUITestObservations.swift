@@ -163,7 +163,7 @@ enum SymptomJournalUITestObservations {
     }
 
     /// A multiline editor can consume an overlapping form drag. Prefer the clear right gutter, then the left, without changing vertical travel.
-    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, keyboard: CGRect?, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], proposed: () -> (start: CGVector, end: CGVector)?, evaluationStartedAtMs: Double, maximumScrollFraction: CGFloat) -> FormScrollGeometryJournalPlan.Plan? {
+    static func gutterGesture(_ app: XCUIApplication, application: CGRect, viewport: CGRect, keyboard: CGRect?, target: CGRect?, targetIdentifier: () -> String, controls: [CGRect], latestControls: () -> [CGRect], proposed: () -> (start: CGVector, end: CGVector)?, evaluationStartedAtMs: Double, maximumScrollFraction: CGFloat) -> FormScrollGeometryJournalPlan.Plan? {
         let element = app.textViews["symptom-description"]
         // Without a text editor this overlap boundary is absent; other journal scrolling keeps its existing behavior.
         guard element.exists else {
@@ -195,9 +195,10 @@ enum SymptomJournalUITestObservations {
                 let measuredKeyboard = keyboardExists ? keyboardElement.frame : nil
                 let keyboardFrame = measuredKeyboard.map { String(describing: $0) } ?? "absent"
                 let keyboardReadEndedAtMs = Date().timeIntervalSince1970 * 1000
-                let plannerInvoked = identifier == "symptom-status-active" && keyboard == measuredKeyboard
+                let plannerInvoked = identifier == "symptom-status-active"
+                let laterControls = plannerInvoked ? latestControls() : []
                 if plannerInvoked {
-                    freshPlan = FormScrollGeometryJournalPlan.make(snapshot: snapshot, application: application, usableViewport: viewport, keyboard: measuredKeyboard, controls: controls, identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs, readEndedAtMs: markerReadEndedAtMs, maximumScrollFraction: maximumScrollFraction)
+                    freshPlan = FormScrollGeometryJournalPlan.make(snapshot: snapshot, application: application, usableViewport: viewport, keyboard: measuredKeyboard, earlierKeyboard: keyboard, controls: controls + laterControls, identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs, readEndedAtMs: markerReadEndedAtMs, maximumScrollFraction: maximumScrollFraction)
                 }
                 let observation: [String: Any] = [
                     "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
@@ -208,6 +209,7 @@ enum SymptomJournalUITestObservations {
                     "nativeEditorAccepted": nativeEditor != nil,
                     "resolvedEditorFrame": nativeEditor.map { String(describing: $0) } ?? "unavailable",
                     "navigationAXFrames": controls.map { String(describing: $0) },
+                    "laterNavigationAXFrames": laterControls.map { String(describing: $0) },
                     "preGutterGestureInScreenPoints": original.map { ["start": String(describing: CGPoint(x: application.minX + $0.start.dx, y: application.minY + $0.start.dy)), "end": String(describing: CGPoint(x: application.minX + $0.end.dx, y: application.minY + $0.end.dy))] } as Any? ?? NSNull(),
                     "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardFrame,
                     "keyboardReadStartedAtMs": keyboardReadStartedAtMs, "keyboardReadEndedAtMs": keyboardReadEndedAtMs,

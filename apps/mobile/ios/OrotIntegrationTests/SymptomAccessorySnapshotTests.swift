@@ -17,6 +17,45 @@ private final class SnapshotAccessoryProvider: UIView {
 
 final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
     @MainActor
+    private func assertDockCaptureRequiresCompleteHostsAndIncludesDisabledUnknownControls() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let priorKeyWindow = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 320, height: 640)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; priorKeyWindow?.makeKey() }
+        let page = UIView(frame: CGRect(x: 0, y: 400, width: 320, height: 60))
+        let navigation = UIView(frame: CGRect(x: 0, y: 500, width: 320, height: 60))
+        page.accessibilityIdentifier = "navigation-page-action-toolbar"
+        navigation.accessibilityIdentifier = "navigation-toolbar"
+        window.addSubview(page)
+        window.addSubview(navigation)
+        let unknown = UIButton(frame: CGRect(x: 10, y: 5, width: 80, height: 40))
+        unknown.isEnabled = false
+        let home = UIButton(frame: CGRect(x: 10, y: 5, width: 80, height: 40))
+        home.accessibilityIdentifier = "navigation-home"
+        page.addSubview(unknown)
+        navigation.addSubview(home)
+        let views: [UIView] = [page, navigation, unknown, home]
+        func capture(_ values: [UIView], truncated: Bool = false) -> [String: Any] {
+            SymptomDockControlObservation.capture(views: values, window: window, truncated: truncated) { String(describing: ObjectIdentifier($0)) }
+        }
+        let result = capture(views)
+        XCTAssertEqual(result["complete"] as? Bool, true)
+        XCTAssertEqual((result["controls"] as? [[String: Any]])?.count, 2)
+        XCTAssertEqual(capture(views, truncated: true)["complete"] as? Bool, false)
+        XCTAssertEqual(capture([page, unknown])["complete"] as? Bool, false)
+        let duplicate = UIView(frame: page.frame)
+        duplicate.accessibilityIdentifier = "navigation-page-action-toolbar"
+        window.addSubview(duplicate)
+        XCTAssertEqual(capture(views + [duplicate])["complete"] as? Bool, false)
+        let anotherHome = UIButton(frame: CGRect(x: 100, y: 5, width: 80, height: 40))
+        anotherHome.accessibilityIdentifier = "navigation-home"
+        navigation.addSubview(anotherHome)
+        XCTAssertEqual(capture(views + [anotherHome])["complete"] as? Bool, false)
+    }
+
+    @MainActor
     func testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs() throws {
         let root = UIView()
         let input = descriptionView()
@@ -38,6 +77,7 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
 
     @MainActor
     func testMissingAndDetachedTargetsRemainExplicit() throws {
+        try assertDockCaptureRequiresCompleteHostsAndIncludesDisabledUnknownControls()
         let root = UIView()
         let provider = SnapshotAccessoryProvider()
         root.addSubview(provider)

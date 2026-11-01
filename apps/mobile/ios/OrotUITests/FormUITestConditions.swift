@@ -63,7 +63,7 @@ enum FormUITestConditions {
             var gesture: (start: CGVector, end: CGVector)
             var gestureReference = (targetFrame, geometry.viewport)
             if journalScroll {
-                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, keyboard: keyboardFrame, target: targetFrame, targetIdentifier: { target.identifier }, controls: controls ?? [], proposed: proposed, evaluationStartedAtMs: geometryReadStartedAtMs, maximumScrollFraction: maximumScrollFraction) else { return nil }
+                guard let gutter = SymptomJournalUITestObservations.gutterGesture(app, application: applicationFrame, viewport: geometry.viewport, keyboard: keyboardFrame, target: targetFrame, targetIdentifier: { target.identifier }, controls: controls ?? [], latestControls: { navigationControlFrames(app) }, proposed: proposed, evaluationStartedAtMs: geometryReadStartedAtMs, maximumScrollFraction: maximumScrollFraction) else { return nil }
                 (gesture, gestureReference) = ((gutter.start, gutter.end), (gutter.target, gutter.viewport))
             } else {
                 guard let original = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }

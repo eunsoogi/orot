@@ -25,6 +25,7 @@
                 }])
             }
             result["controls"] = controls
+            result["dock"] = SymptomDockControlObservation.capture(views: views, window: window, truncated: truncated, identity: identity)
             if let selected {
                 let inset = selected.adjustedContentInset, contentInset = selected.contentInset
                 result["scroll"] = ["id": identity(selected), "bounds": rect(selected.bounds), "offset": point(selected.contentOffset), "size": ["width": finite(selected.contentSize.width), "height": finite(selected.contentSize.height)], "adjustedInset": insets(inset), "contentInset": insets(contentInset), "tracking": selected.isTracking, "dragging": selected.isDragging, "decelerating": selected.isDecelerating]

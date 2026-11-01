@@ -106,6 +106,7 @@ extension FormScrollGeometryRegression {
             + [["role": "navigation-home", "count": 1, "truncated": false, "candidates": [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(CGRect(x: 314, y: 792, width: 64, height: 48))]]]]
         let declared: [String: Any] = ["startedAtMs": 103.0, "endedAtMs": 103.5, "windowID": window, "truncated": false,
                                        "selectionComplete": true, "selectedScrollCount": 1,
+                                       "dock": ["complete": true, "windowID": window, "controls": [["id": "home", "frame": frame(CGRect(x: 314, y: 792, width: 64, height: 48))]]],
                                        "scroll": ["id": "scroll", "tracking": false, "dragging": false, "decelerating": false, "offset": ["x": 0.0, "y": 0.0], "size": ["width": 402.0, "height": 1200.0], "bounds": frame(CGRect(x: 0, y: 0, width: 402, height: 812))], "controls": groups]
         var statusGeometry = geometry
         statusGeometry["declaredControls"] = declared
@@ -113,8 +114,8 @@ extension FormScrollGeometryRegression {
         func statusSnapshot(_ value: [String: Any], event: [String: Any]) -> [String: Any] {
             ["atMs": 104.0, "symptomScrollTrace": ["traceID": "trace", "events": [event], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
         }
-        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45) -> FormScrollGeometryJournalPlan.Plan? {
-            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, controls: blocks, identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
+        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, earlierKeyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45) -> FormScrollGeometryJournalPlan.Plan? {
+            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, earlierKeyboard: earlierKeyboard, controls: blocks, identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
         }
         let upward = try XCTUnwrap(plan(statusGeometry))
         XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
@@ -125,6 +126,11 @@ extension FormScrollGeometryRegression {
         let axKeyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
         let nativeKeyboard = CGRect(x: 0, y: 546, width: 402, height: 328)
         let constrained = try XCTUnwrap(plan(statusGeometry, keyboard: axKeyboard, visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: partialKeyboard))
+        var laterDock = statusGeometry
+        let save = CGRect(x: 120, y: 450, width: 162, height: 48)
+        laterDock["declaredControls"] = declared.merging(["dock": ["complete": true, "windowID": window, "controls": [["id": "home", "frame": frame(CGRect(x: 314, y: 792, width: 64, height: 48))], ["id": "save", "frame": frame(save)]]]]) { _, new in new }
+        let mixed = try XCTUnwrap(plan(laterDock, keyboard: axKeyboard, earlierKeyboard: CGRect(x: 0, y: 918, width: 402, height: 226), visible: CGRect(x: 0, y: 62, width: 402, height: 436), event: partialKeyboard))
+        XCTAssertLessThanOrEqual(mixed.viewport.maxY, 498)
         let constrainedStart = CGPoint(x: constrained.start.dx, y: constrained.start.dy)
         let constrainedEnd = CGPoint(x: constrained.end.dx, y: constrained.end.dy)
         XCTAssertTrue(constrained.viewport.contains(constrainedStart) && constrained.viewport.contains(constrainedEnd))
@@ -135,7 +141,8 @@ extension FormScrollGeometryRegression {
         let matchingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 590, width: 402, height: 284))]) { _, new in new }
         XCTAssertNotNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 284), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: matchingKeyboard))
         let overlappingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 400, width: 402, height: 474))]) { _, new in new }
-        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 400, width: 402, height: 474), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: overlappingKeyboard))
+        let smaller = try XCTUnwrap(plan(statusGeometry, keyboard: CGRect(x: 0, y: 400, width: 402, height: 474), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: overlappingKeyboard))
+        XCTAssertLessThanOrEqual(smaller.viewport.maxY, 400)
         for altered: [String: Any] in [["traceID": "other"], ["scrollViewID": "other"], ["phase": "will-change-frame"], ["receivedAtMs": 104.0]] {
             XCTAssertNil(plan(statusGeometry, event: keyboardEvent.merging(altered) { _, new in new }))
         }
@@ -146,8 +153,16 @@ extension FormScrollGeometryRegression {
         blockedGroups[blockedGroups.count - 2]["candidates"] = [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(leftBlock)]]
         blockedGroups[blockedGroups.count - 1]["candidates"] = [["windowID": window, "hidden": false, "ancestorHidden": false, "clippingComplete": true, "alpha": 1.0, "frame": frame(rightBlock)]]
         var blockedGeometry = statusGeometry
-        blockedGeometry["declaredControls"] = declared.merging(["controls": blockedGroups]) { _, new in new }
+        blockedGeometry["declaredControls"] = declared.merging(["controls": blockedGroups, "dock": ["complete": true, "windowID": window, "controls": [["id": "left", "frame": frame(leftBlock)], ["id": "right", "frame": frame(rightBlock)]]]]) { _, new in new }
         XCTAssertNil(plan(blockedGeometry, blocks: [leftBlock, rightBlock]))
+        for dock: [String: Any] in [["complete": false, "windowID": window, "controls": []],
+                                    ["complete": true, "windowID": "other", "controls": [["id": "home", "frame": frame(rightBlock)]]],
+                                    ["complete": true, "windowID": window, "controls": [["id": "same", "frame": frame(leftBlock)], ["id": "same", "frame": frame(rightBlock)]]]]
+        {
+            var rejected = statusGeometry
+            rejected["declaredControls"] = declared.merging(["dock": dock]) { _, new in new }
+            XCTAssertNil(plan(rejected))
+        }
         var belowGroups = groups
         var below = try XCTUnwrap((belowGroups[1]["candidates"] as? [[String: Any]])?.first)
         below["frame"] = frame(CGRect(x: 207, y: 850, width: 160, height: 80))
