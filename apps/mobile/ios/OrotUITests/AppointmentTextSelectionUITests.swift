@@ -175,8 +175,58 @@ enum AppointmentTextSelectionUITestConditions {
     ) -> Bool {
         measure("select-existing") { input.press(forDuration: 1) }
         let selectAll = app.menuItems["Select All"]
-        guard selectAll.exists, selectAll.isHittable else { XCTFail("Select All missing"); return false }
+        guard selectAll.exists, selectAll.isHittable else {
+            if input.identifier == "symptom-onset-date", ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1",
+               ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil
+            {
+                observeEditMenu(app)
+            }
+            XCTFail("Select All missing")
+            return false
+        }
         measure("select-all") { selectAll.tap() }
         return true
+    }
+
+    /// Traverse one public snapshot only in the opted-in synthetic date fixture; the snapshot itself is not bounded.
+    private static func observeEditMenu(_ app: XCUIApplication) {
+        let started = Date().timeIntervalSince1970 * 1000
+        var result: [String: Any] = ["startedAtMs": started]
+        do {
+            let root = try app.snapshot()
+            var pending: [any XCUIElementSnapshot] = [root]
+            var visited = 0, menus: [any XCUIElementSnapshot] = []
+            while visited < 512, let node = pending.popLast() {
+                visited += 1
+                if node.elementType == .menu {
+                    menus.append(node)
+                }
+                pending.append(contentsOf: node.children)
+            }
+            result["visited"] = visited
+            result["truncated"] = !pending.isEmpty
+            result["menuCount"] = menus.count
+            if pending.isEmpty, menus.count == 1, let menu = menus.first {
+                result["status"] = "sampled"
+                result["menuFrame"] = String(describing: menu.frame)
+                // Only fixed command roles under one menu are considered; the menu container's text is never exported.
+                let commands = menu.children.filter { $0.elementType == .menuItem || $0.elementType == .button }
+                result["commands"] = commands.map { command in
+                    let label = command.label
+                    let safe = label.rangeOfCharacter(from: .decimalDigits) == nil && label.count <= 40
+                    return ["role": command.elementType.rawValue, "label": safe ? label : "redacted", "frame": String(describing: command.frame), "enabled": command.isEnabled] as [String: Any]
+                }
+            } else {
+                result["status"] = "unavailable-or-ambiguous"
+            }
+        } catch {
+            result["status"] = "unavailable"
+        }
+        result["endedAtMs"] = Date().timeIntervalSince1970 * 1000
+        let data = (try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])) ?? Data("{}".utf8)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "synthetic-date-edit-menu"
+        attachment.lifetime = .keepAlways
+        XCTContext.runActivity(named: "Synthetic date edit menu observation") { $0.add(attachment) }
     }
 }
