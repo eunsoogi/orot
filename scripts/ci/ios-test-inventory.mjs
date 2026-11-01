@@ -125,6 +125,7 @@ export const fixtureTests = [
   'OrotUITests/SymptomJournalRecoveryUITests/testKoreanDeviceLanguageKeepsJournalCopyAndAccessibilityNames',
   'OrotUITests/SymptomJournalRecoveryUITests/testVoiceOverReadsKoreanJournalNamesInBothDeviceLanguages',
   'OrotUITests/SymptomJournalAccessibilityUITests/testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances',
+  'OrotUITests/SymptomJournalAccessibilityUITests/testLargeTextKeyboardKeepsSaveAndCancelActionsUsable',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
   'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',
