@@ -102,7 +102,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         keep.tap()
         let kept = description.value as? String
         XCTAssertEqual(kept, changed)
-        guard kept == changed else { return }
+        guard kept == changed, focusDescription(app) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let discard = alert.buttons["내용 버리고 나가기"]
         guard UITestConditions.exists(discard), discard.isHittable else { XCTFail("Discard must be tappable"); return }
