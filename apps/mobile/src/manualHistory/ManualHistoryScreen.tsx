@@ -72,7 +72,7 @@ export default function ManualHistoryScreen({
     setFormOpen(true);
   }
   const addLabel = t('manualHistory.add');
-  const hasSharedNavigation = useNavigationRouteActions(
+  const hasDock = useNavigationRouteActions(
     formOpen
       ? []
       : [
@@ -198,14 +198,14 @@ export default function ManualHistoryScreen({
       testID="manual-history-scroll"
     >
       <ManualHistoryHeader
-        backButtonVisible={!hasSharedNavigation}
+        backButtonVisible={!hasDock}
         onBack={onBack}
         saving={saving}
         error={error}
         notice={notice}
       />
 
-      {!formOpen && !hasSharedNavigation ? (
+      {!formOpen && !hasDock ? (
         <Button
           variant="secondary"
           disabled={saving}
