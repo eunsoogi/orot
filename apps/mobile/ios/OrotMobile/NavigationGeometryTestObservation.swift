@@ -82,18 +82,18 @@
             } else {
                 NSNull()
             }
-            let orientationPolicy: [String: Any] = [
-                "device": UIDevice.current.orientation.rawValue,
-                "sceneActivation": window.windowScene?.activationState.rawValue as Any? ?? NSNull(),
-                "rootSupportedMask": rootController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
-                "activeSupportedMask": activeController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
-                "presentedStyles": presentationStyles,
-                "declaredOrientations": Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String] ?? [],
-                "sceneDelegateOverridesMask": window.windowScene?.delegate?.responds(to: NSSelectorFromString("supportedInterfaceOrientationsForWindowScene:")) ?? false,
-                "controllerPrefersLock": controllerPrefersLock,
-                "sceneLocked": sceneLocked,
-                "notificationProbe": UserDefaults.standard.string(forKey: "OROT_TEST_DEVICE_ORIENTATION_PROBE") == "YES" ? NavigationRotationProbe.shared.snapshot() : ["enabled": false],
-            ]
+            var orientationPolicy: [String: Any] = [:]
+            orientationPolicy["device"] = UIDevice.current.orientation.rawValue
+            orientationPolicy["sceneActivation"] = window.windowScene?.activationState.rawValue as Any? ?? NSNull()
+            orientationPolicy["rootSupportedMask"] = rootController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull()
+            orientationPolicy["activeSupportedMask"] = activeController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull()
+            orientationPolicy["presentedStyles"] = presentationStyles
+            orientationPolicy["declaredOrientations"] = Bundle.main.object(forInfoDictionaryKey: "UISupportedInterfaceOrientations") as? [String] ?? []
+            orientationPolicy["sceneDelegateOverridesMask"] = window.windowScene?.delegate?.responds(to: NSSelectorFromString("supportedInterfaceOrientationsForWindowScene:")) ?? false
+            orientationPolicy["controllerPrefersLock"] = controllerPrefersLock
+            orientationPolicy["sceneLocked"] = sceneLocked
+            // The caller's main-thread precondition also guards this UIKit-only observer.
+            orientationPolicy["notificationProbe"] = UserDefaults.standard.string(forKey: "OROT_TEST_DEVICE_ORIENTATION_PROBE") == "YES" ? MainActor.assumeIsolated { NavigationRotationProbe.shared.snapshot() } : ["enabled": false]
             let ended = Date().timeIntervalSince1970 * 1000
             return [
                 // Compare the actual window contract; a root or sensor may be smaller.
