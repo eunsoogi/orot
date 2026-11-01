@@ -105,6 +105,17 @@ final class ProductionRagConversationUITests: XCTestCase {
             ("이 질문에 답할 만한 저장된 근거를 찾지 못했어요.", "no_evidence"),
             ("근거가 부족하거나 서로 맞지 않아 답을 만들지 않았어요.", "insufficient_evidence"),
             ("답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.", "answer_unavailable"),
+            ("선택한 AI 서비스의 계정 연결을 확인한 뒤 다시 시도해 주세요.", "provider_authentication"),
+            ("AI 서비스가 요청을 잠시 제한했어요. 잠시 후 다시 시도해 주세요.", "provider_rate_limited"),
+            ("선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.", "provider_configuration"),
+            ("선택한 AI 서비스가 이 요청에 답하지 않았어요. 질문을 바꿔 다시 시도해 주세요.", "provider_refused"),
+            ("선택한 AI 서비스를 사용할 수 없어요. 계정이나 연결 상태를 확인한 뒤 다시 시도해 주세요.", "provider_unavailable"),
+            ("이 요청에 필요한 처리 동의를 확인한 뒤 다시 시도해 주세요.", "consent_required"),
+            ("답변 생성을 중지했어요. 초안을 다시 보내면 이어서 시도할 수 있어요.", "cancelled"),
+            ("저장된 기록을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.", "retrieval_failed"),
+            ("답변을 확인하지 못해 표시하지 않았어요. 질문을 바꾸거나 다시 시도해 주세요.", "validation_failed"),
+            ("기록이 변경되어 답변을 확인하지 못했어요. 다시 시도해 주세요.", "stale_evidence"),
+            ("질문을 한 번에 처리하지 못했어요. 질문을 나누어 다시 시도해 주세요.", "budget_exceeded"),
         ]
         let newSources = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             sourceLists.count > 0 || self.node(app, "inference-disclosure-sheet").exists ||
@@ -114,10 +125,55 @@ final class ProductionRagConversationUITests: XCTestCase {
         if node(app, "inference-disclosure-sheet").exists {
             throw failure("consent_required")
         }
-        for (text, status) in failures where app.staticTexts[text].exists {
-            throw failure(status)
+        let error = node(app, "rag-conversation-error")
+        if error.exists, UITestConditions.text(error) == failures.first(where: { $0.1 == "validation_failed" })?.0 {
+            stage("validation_failure_visible")
+            let partial = node(app, "rag-conversation-incomplete-activity")
+            if partial.exists {
+                guard UITestConditions.text(partial) == UITestConditions.text(error) else { throw failure("partial_failure_copy_mismatch") }
+                stage("incomplete_partial_validation_visible")
+            } else {
+                stage("no_incomplete_partial_visible")
+            }
+            guard (try? input.snapshot().value as? String) == question else { throw failure("retry_draft_mismatch") }
+            guard sourceLists.count == 0 else { throw failure("failed_turn_has_citations") }
+            stage("failed_draft_restored")
+            // Retry the same restored turn once; never submit a replacement question.
+            try tap(app, "rag-conversation-send")
+            stage("same_turn_retried_once")
+            let cleared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !error.exists }, object: nil)
+            guard UITestConditions.wait(for: [cleared]) == .completed else { throw failure("retry_not_started") }
+            let retryFinished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                sourceLists.count > 0 || error.exists || self.node(app, "inference-disclosure-sheet").exists ||
+                    failures.prefix(2).contains { app.staticTexts[$0.0].exists }
+            }, object: nil)
+            guard UITestConditions.wait(for: [retryFinished]) == .completed else { throw failure("retry_result_unavailable") }
+            if node(app, "inference-disclosure-sheet").exists {
+                throw failure("retry_consent_required")
+            }
+            if error.exists {
+                let retryError = UITestConditions.text(error)
+                let status = failures.first { $0.0 == retryError }?.1 ?? "unknown_failure"
+                throw failure("retry_\(status)")
+            }
+        } else {
+            for (text, status) in failures where app.staticTexts[text].exists {
+                throw failure(status)
+            }
         }
         guard sourceLists.count > 0 else { throw failure("validated_citations_unavailable") }
+        // Citations do not prove that the completed assistant body itself is displayed.
+        let answerBody = node(app, "rag-conversation-answer-body")
+        let history = node(app, "rag-conversation-history")
+        guard answerBody.exists, history.exists else { throw failure("assistant_answer_body_unavailable") }
+        let answerText = UITestConditions.text(answerBody).trimmingCharacters(in: .whitespacesAndNewlines)
+        let visibleAnswerFrame = answerBody.frame.intersection(history.frame)
+        guard !answerText.isEmpty,
+              !visibleAnswerFrame.isNull,
+              visibleAnswerFrame.width > 0,
+              visibleAnswerFrame.height > 0
+        else { throw failure("assistant_answer_body_not_visible") }
+        stage("assistant_answer_body_visible")
         let sources = sourceLists.firstMatch
         stage("validated_citations_visible")
         let source = sources.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "원문 근거 열기")).firstMatch

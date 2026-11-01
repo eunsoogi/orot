@@ -157,7 +157,7 @@ test('denied public-query permission stops its request without switching destina
     'Compare my record with public sources.',
     [],
   );
-  expect(result.status).toBe('unavailable');
+  expect(result).toEqual({ status: 'failure', kind: 'consent_required' });
   expect(run.search).not.toHaveBeenCalled();
   expect(run.literature.search).not.toHaveBeenCalled();
   expect(run.generate).toHaveBeenCalledTimes(2);
