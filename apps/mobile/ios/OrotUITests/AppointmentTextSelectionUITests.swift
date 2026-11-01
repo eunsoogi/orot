@@ -174,19 +174,17 @@ enum AppointmentTextSelectionUITestConditions {
         measure: (_ step: String, _ operation: () -> Void) -> Void,
     ) -> Bool {
         let observe = SymptomDateSelectionUITestObservation.enabled && input.identifier == "symptom-onset-date"
-        let doubleTapProbe = observe && ProcessInfo.processInfo.environment["OROT_SYMPTOM_DOUBLE_TAP_OBSERVATION"] == "1"
-        let before = observe ? SymptomDateSelectionUITestObservation.request("before") : 0
-        if observe {
-            _ = UITestConditions.text(UITestConditions.element(app, "navigation-test-observation"))
-        }
+        let tripleTapProbe = observe && ProcessInfo.processInfo.environment["OROT_SYMPTOM_TRIPLE_TAP_OBSERVATION"] == "1"
+        let doubleTapProbe = observe && !tripleTapProbe && ProcessInfo.processInfo.environment["OROT_SYMPTOM_DOUBLE_TAP_OBSERVATION"] == "1"
+        let before = observe ? SymptomDateSelectionUITestObservation.prepare(app) : 0
         let pressStart = Date().timeIntervalSince1970 * 1000
-        measure("select-existing", doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
+        measure("select-existing", tripleTapProbe ? { input.tap(withNumberOfTaps: 3, numberOfTouches: 1) } : doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
         let pressEnd = Date().timeIntervalSince1970 * 1000
         let selectAll = app.menuItems["Select All"]
-        // The retap probe observes the command only after the planned tap, before any edit.
-        let available = !doubleTapProbe && selectAll.exists && selectAll.isHittable
+        // Selection probes never activate a command or modify the date.
+        let available = !doubleTapProbe && !tripleTapProbe && selectAll.exists && selectAll.isHittable
         let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, planRetap: doubleTapProbe) : nil
-        if doubleTapProbe {
+        if doubleTapProbe || tripleTapProbe {
             if let point {
                 SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app, inspectSelectAll: true)
             }

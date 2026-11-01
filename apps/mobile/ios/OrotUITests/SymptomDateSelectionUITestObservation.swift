@@ -34,6 +34,11 @@ enum SymptomDateSelectionUITestObservation {
         ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1" && ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil
     }
 
+    /// Send the before signal and read its marker before the planned selection gesture.
+    static func prepare(_ app: XCUIApplication) -> Double {
+        let before = request("before"); _ = UITestConditions.text(UITestConditions.element(app, "navigation-test-observation")); return before
+    }
+
     static func request(_ phase: String) -> Double {
         let time = Date().timeIntervalSince1970 * 1000
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFNotificationName("com.orot.tests.date-selection.\(session).\(phase)" as CFString), nil, nil, true)
