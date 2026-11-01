@@ -13,9 +13,10 @@ import {
 function createService(
   readCandidates: jest.Mock,
   ragRunner: typeof runRagConversationTurn,
+  readHealthContext?: jest.Mock,
 ) {
   const source = localData([]);
-  Object.assign(source.data, { readCandidates });
+  Object.assign(source.data, { readCandidates, readHealthContext });
   const selection = selectionStore({
     providerId: apple.provider.id,
     modelId: apple.modelId,
@@ -29,6 +30,49 @@ function createService(
     ragRunner,
   });
 }
+
+test.each([
+  ['unavailable', 'retrieval_failed'],
+  ['provider_authentication', 'provider_authentication'],
+  ['cancelled', 'cancelled'],
+] as const)(
+  'preserves %s after a health context read failure',
+  async (kind, expected) => {
+    const read = jest.fn(async () => {
+      throw new Error('Private database failure');
+    });
+    const runner = jest.fn(
+      async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+        const tool = options.workflow.tools.find(
+          value => value.id === 'local-health-context',
+        )!;
+        try {
+          await tool.search({
+            operationRunId: 'synthetic',
+            operationKey: 'lookup',
+            input: {},
+            allowedScope: { sourceKinds: ['personal_record'] },
+            resultLimit: 8,
+            maxPayloadBytes: 20480,
+            signal: new AbortController().signal,
+          });
+        } catch {
+          // The workflow converts a thrown tool error to an unavailable outcome.
+          return { status: 'failure' as const, kind };
+        }
+        throw new Error('Expected the synthetic read to fail');
+      },
+    ) as unknown as typeof runRagConversationTurn;
+    const service = createService(jest.fn(), runner, read);
+    await expect(
+      service.sendRagMessage('혈압 기록을 알려 주세요.', []),
+    ).resolves.toEqual({
+      status: 'failure',
+      kind: expected,
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+  },
+);
 
 function runnerWithLocalSearch(beforeSearch?: () => void) {
   return jest.fn(

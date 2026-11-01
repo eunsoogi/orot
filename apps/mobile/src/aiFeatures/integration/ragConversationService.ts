@@ -36,7 +36,7 @@ type RagObserver = Pick<
 const LOCAL_SEARCH_FAILURE_GAP =
   '로컬 검색을 사용할 수 없어 근거를 찾지 못했어요.';
 
-/** Tracks only the fixed safe gap emitted when a local search suppresses its exception. */
+/** Tracks local read failures without retaining exceptions or treating cancellation as failure. */
 function observeLocalSearchFailures(
   tools: readonly EvidenceSearchTool[],
   onFailure: () => void,
@@ -46,7 +46,19 @@ function observeLocalSearchFailures(
     return {
       ...tool,
       async search(...args: Parameters<EvidenceSearchTool['search']>) {
-        const outcome = await tool.search(...args);
+        let outcome: Awaited<ReturnType<EvidenceSearchTool['search']>>;
+        try {
+          outcome = await tool.search(...args);
+        } catch (error) {
+          // Invalid requests and cancellations are not evidence that local storage failed.
+          if (
+            !args[0].signal.aborted &&
+            tool.parseInput(args[0].input) !== undefined &&
+            !(error instanceof Error && error.name === 'AbortError')
+          )
+            onFailure();
+          throw error;
+        }
         if (
           'coverage' in outcome &&
           outcome.coverage.some(coverage =>
@@ -181,7 +193,9 @@ export function createRagConversationService({
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
       if (
         localRetrievalFailed &&
-        (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
+        (outcome.status === 'no_evidence' ||
+          outcome.status === 'insufficient' ||
+          (outcome.status === 'failure' && outcome.kind === 'unavailable'))
       ) {
         return { status: 'failure', kind: 'retrieval_failed' };
       }
