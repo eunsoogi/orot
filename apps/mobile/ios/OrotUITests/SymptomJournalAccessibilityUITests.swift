@@ -87,8 +87,15 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         guard try openSeededEdit(app), focusDescription(app) else { return }
         XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
-        let saved = "기록1"
-        guard fill(app, "symptom-description", saved) else { return }
+        // Accept any caret position while proving one insertion preserved the entire original value.
+        let insert: (String, String) -> String? = { original, token in
+            app.typeText(token)
+            guard let value = app.textViews["symptom-description"].value as? String else { XCTFail("Description must have a value"); return nil }
+            let parts = value.components(separatedBy: token)
+            guard parts.count == 2, parts.joined() == original else { XCTFail("One token must be inserted without changing the original text"); return nil }
+            return value
+        }
+        guard let saved = insert("아픔", "12345") else { return }
         guard try tapKeyboardAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
         guard try openSeededEdit(app) else { return }
         let description = app.textViews["symptom-description"]
@@ -96,8 +103,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         XCTAssertEqual(persisted, saved)
         guard persisted == saved, focusDescription(app) else { return }
         XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
-        let changed = "기록2"
-        guard fill(app, "symptom-description", changed) else { return }
+        guard let changed = insert(saved, "67890") else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
         guard UITestConditions.exists(keep), keep.isHittable else { XCTFail("Continue editing must be tappable"); return }
