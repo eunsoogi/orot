@@ -113,13 +113,21 @@ extension FormScrollGeometryRegression {
         var statusGeometry = geometry
         statusGeometry["declaredControls"] = declared
         let keyboardEvent: [String: Any] = ["event": "symptom-native-keyboard-frame", "traceID": "trace", "scrollViewID": "scroll", "sequence": 1, "phase": "did-change-frame", "receivedAtMs": 102.0, "endFrameInScreen": frame(CGRect(x: 0, y: 874, width: 402, height: 270))]
-        func statusSnapshot(_ value: [String: Any], event: [String: Any], initialAbsence: Bool) -> [String: Any] {
-            let events: [[String: Any]] = initialAbsence ? [["event": "symptom-native-scroll-trace", "phase": "attached", "traceID": "trace", "scrollViewID": "scroll", "sequence": 1, "receivedAtMs": 100.5]] : [event]
-            return ["atMs": 104.0, "symptomScrollTrace": ["traceID": "trace", "events": events, "recordedCount": events.count, "droppedCount": 0, "selection": ["attached": true, "reason": "attached", "scrollViewID": "scroll"], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
+        func statusSnapshot(_ value: [String: Any], event: [String: Any], initialAbsence: Bool, dropped: Bool) -> [String: Any] {
+            let events: [[String: Any]] = initialAbsence ? [["event": "symptom-native-scroll-trace", "phase": "attached", "traceID": "trace", "scrollViewID": "scroll", "sequence": 1, "receivedAtMs": 100.5]] : (dropped ? [] : [event])
+            return ["atMs": 104.0, "symptomScrollTrace": ["traceID": "trace", "events": events, "latestKeyboard": initialAbsence ? NSNull() as Any : event, "recordedCount": dropped ? 100 : events.count, "droppedCount": dropped ? 100 : 0, "selection": ["attached": true, "reason": "attached", "scrollViewID": "scroll"], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
         }
-        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, earlierKeyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45, identifier: String = "symptom-status-active", initialAbsence: Bool = false) -> FormScrollGeometryJournalPlan.Plan? {
-            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent, initialAbsence: initialAbsence), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, earlierKeyboard: earlierKeyboard, controls: blocks, identifier: identifier, evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
+        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, earlierKeyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45, identifier: String = "symptom-status-active", initialAbsence: Bool = false, dropped: Bool = false) -> FormScrollGeometryJournalPlan.Plan? {
+            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent, initialAbsence: initialAbsence, dropped: dropped), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, earlierKeyboard: earlierKeyboard, controls: blocks, identifier: identifier, evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
         }
+        // A retained transition survives pan eviction, but an in-flight or foreign transition never authorizes a drag.
+        XCTAssertNotNil(plan(statusGeometry, dropped: true))
+        XCTAssertNil(plan(statusGeometry, event: keyboardEvent.merging(["phase": "will-change-frame"]) { _, new in new }, dropped: true))
+        XCTAssertNil(plan(statusGeometry, event: keyboardEvent.merging(["scrollViewID": "detached"]) { _, new in new }, dropped: true))
+        var detached = statusSnapshot(statusGeometry, event: keyboardEvent, initialAbsence: false, dropped: false)
+        var detachedTrace = try XCTUnwrap(detached["symptomScrollTrace"] as? [String: Any])
+        detachedTrace["latestKeyboard"] = NSNull(); detached["symptomScrollTrace"] = detachedTrace
+        XCTAssertNil(FormScrollGeometryJournalPlan.make(snapshot: detached, application: app, usableViewport: viewport, keyboard: nil, controls: [], identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: 0.45))
         let upward = try XCTUnwrap(plan(statusGeometry))
         XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
         XCTAssertLessThanOrEqual(abs(upward.end.dy - upward.start.dy), viewport.height * 0.45)

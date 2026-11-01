@@ -95,10 +95,12 @@ enum FormScrollGeometryJournalPlan {
         guard let traceID = trace["traceID"] as? String, !traceID.isEmpty, let events = trace["events"] as? [[String: Any]] else { return nil }
         let keyboardEvents = events.filter { $0["event"] as? String == "symptom-native-keyboard-frame" }
         // Initial absence is an observed state, not a claim about unobserved keyboard configurations.
-        if keyboardEvents.isEmpty {
+        let retained = trace["latestKeyboard"] as? [String: Any]
+        if keyboardEvents.isEmpty, retained == nil {
             guard allowInitialAbsence, keyboard == nil, earlier == nil, declared["focusCount"] as? Int == 0,
                   declared["otherWindowFocusCount"] as? Int == 0, declared["focusRole"] as? String == "none",
                   trace["droppedCount"] as? Int == 0, trace["recordedCount"] as? Int == events.count,
+                  events.filter({ $0["event"] as? String == "symptom-native-scroll-trace" }).count == 1,
                   let selection = trace["selection"] as? [String: Any], selection["attached"] as? Bool == true,
                   selection["reason"] as? String == "attached", selection["scrollViewID"] as? String == scrollID,
                   let first = events.first, first["event"] as? String == "symptom-native-scroll-trace",
@@ -111,7 +113,13 @@ enum FormScrollGeometryJournalPlan {
             guard let left = first["sequence"] as? Int, let right = second["sequence"] as? Int,
                   let earlier = first["receivedAtMs"] as? Double, let later = second["receivedAtMs"] as? Double else { return false }
             return left < right && earlier.isFinite && later.isFinite && earlier <= later
-        }), let latest = keyboardEvents.last,
+        }), let latest = trace.keys.contains("latestKeyboard") ? retained : keyboardEvents.last,
+        latest["event"] as? String == "symptom-native-keyboard-frame",
+        let selection = trace["selection"] as? [String: Any], selection["attached"] as? Bool == true,
+        selection["reason"] as? String == "attached", selection["scrollViewID"] as? String == scrollID,
+        let latestSequence = latest["sequence"] as? Int, let recorded = trace["recordedCount"] as? Int,
+        latestSequence > 0, latestSequence <= recorded,
+        keyboardEvents.allSatisfy({ ($0["sequence"] as? Int).map { $0 <= latestSequence } ?? false }),
         latest["traceID"] as? String == traceID, latest["scrollViewID"] as? String == scrollID,
         let sequence = latest["sequence"] as? Int, sequence > 0,
         latest["phase"] as? String == "did-change-frame", let at = latest["receivedAtMs"] as? Double, at.isFinite, at <= before,
