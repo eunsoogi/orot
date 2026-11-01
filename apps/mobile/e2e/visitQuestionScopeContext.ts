@@ -4,6 +4,7 @@ import {
   acceptScopeEvidence,
   currentScopeGeneration,
   expectedEvent,
+  rejectScope,
 } from './visitQuestionScopeGuard';
 
 /** Test-only loader preserves the production context and audits real tool results before release. */
@@ -22,7 +23,7 @@ export async function loadVisitQuestionsContext() {
         prepared.appointment.calendarEventIdentifier !== expectedEvent ||
         prepared.evidence.batch.items.length !== 0
       )
-        throw new Error('Synthetic appointment or initial evidence mismatch.');
+        rejectScope(token, 'context_mismatch');
       acceptScopeContext(token);
       const periodTool = prepared.healthContextTool;
       return {

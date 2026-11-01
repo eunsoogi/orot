@@ -17,6 +17,8 @@ import {
   observedEvidenceCount,
   providerEvidenceCount,
   requireScopeContext,
+  rejectScope,
+  scopeRejection,
 } from './visitQuestionScopeGuard';
 const otherKinds: readonly RecordKind[] = [
   'source_record',
@@ -87,7 +89,12 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
       const token = beginScopeObservation(report);
       const check = async (requireContext = false) => {
         if (requireContext) requireScopeContext(token);
-        const result = await audit(input.appointment);
+        let result: Awaited<ReturnType<typeof audit>>;
+        try {
+          result = await audit(input.appointment);
+        } catch {
+          rejectScope(token, 'inventory_unavailable');
+        }
         report(
           JSON.stringify({
             ...result,
@@ -95,8 +102,7 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
             validatedEvidence: observedEvidenceCount(token),
           }),
         );
-        if (!result.ok)
-          throw new Error('Synthetic evidence scope is not confirmed.');
+        if (!result.ok) rejectScope(token, 'inventory_mismatch');
       };
       await check();
       const original = input.selectedAi.option.provider;
@@ -104,9 +110,7 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
         original.id !== 'apple-foundation-models' ||
         input.selectedAi.remoteProcessing
       )
-        throw new Error(
-          'The selected provider is not the on-device fixture target.',
-        );
+        rejectScope(token, 'provider_mismatch');
       const provider: LanguageModelProvider = {
         ...original,
         async generate(...args) {
@@ -163,6 +167,7 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
           ...(await audit(input.appointment)),
           calls,
           validatedEvidence: observedEvidenceCount(token),
+          scopeRejected: scopeRejection(token),
           outcome: result.status,
         }),
       );

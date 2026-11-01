@@ -10,7 +10,9 @@ import {
   expectedSymptom,
   observedEvidenceCount,
   providerEvidenceCount,
+  rejectScope,
   requireScopeContext,
+  scopeRejection,
 } from '../e2e/visitQuestionScopeGuard';
 import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
 
@@ -48,7 +50,9 @@ test('rejects changed appointments, evidence, and unknown memory provenance', ()
 });
 
 test('requires the instrumented context and audits actual tool evidence before release', () => {
-  const token = beginScopeObservation(jest.fn());
+  const report = jest.fn();
+  const log = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+  const token = beginScopeObservation(report);
   expect(() => requireScopeContext(token)).toThrow();
   acceptScopeContext(token);
   expect(() => requireScopeContext(token)).not.toThrow();
@@ -106,9 +110,17 @@ test('requires the instrumented context and audits actual tool evidence before r
     } as never),
   ).toThrow();
   expect(() => acceptEmptyHealthBatch(token, 1)).toThrow();
+  expect(report).toHaveBeenCalledWith(
+    '{"scopeRejected":"aggregate_unconfirmed"}',
+  );
+  expect(log).toHaveBeenCalledWith(
+    'OROT_SYNTHETIC_SCOPE_REJECT aggregate_unconfirmed',
+  );
+  expect(scopeRejection(token)).toBe('aggregate_unconfirmed');
   beginScopeObservation(jest.fn());
   expect(() => requireScopeContext(token)).toThrow();
   expect(() => acceptScopeContext(token)).toThrow();
+  log.mockRestore();
 });
 
 test('does not dispatch to the real provider when scope is unavailable or rejected', async () => {
@@ -147,10 +159,16 @@ test('a newer generation prevents an older pending dispatch', async () => {
       }),
     send,
   );
-  beginScopeObservation(jest.fn());
+  const newerReport = jest.fn();
+  const newer = beginScopeObservation(newerReport);
   resume();
   await expect(pending).rejects.toThrow();
   expect(send).not.toHaveBeenCalled();
+  expect(newerReport).not.toHaveBeenCalled();
+  expect(scopeRejection(newer)).toBeNull();
+  expect(() => rejectScope(old, 'inventory_unavailable')).toThrow();
+  expect(newerReport).not.toHaveBeenCalled();
+  expect(scopeRejection(newer)).toBeNull();
 });
 
 test('diagnostic resolver substitutes only the visit route context loader', () => {

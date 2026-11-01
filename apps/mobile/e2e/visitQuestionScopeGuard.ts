@@ -11,20 +11,51 @@ let contextReady = false;
 let generation = 0;
 let observed = new Set<string>();
 let report: (value: string) => void = () => undefined;
+let lastRejection: RejectCode | null = null;
+type RejectCode =
+  | 'superseded'
+  | 'context_missing'
+  | 'context_mismatch'
+  | 'inventory_unavailable'
+  | 'inventory_mismatch'
+  | 'provider_mismatch'
+  | 'alias_invalid'
+  | 'alias_unobserved'
+  | 'payload_invalid'
+  | 'evidence_mismatch'
+  | 'aggregate_unconfirmed';
+
+/** This opt-in fixture records only closed reason codes, never IDs, values or errors. */
+export function rejectScope(token: number, code: RejectCode): never {
+  requireGeneration(token);
+  lastRejection = code;
+  console.info(`OROT_SYNTHETIC_SCOPE_REJECT ${code}`);
+  report(JSON.stringify({ scopeRejected: code }));
+  throw new Error('Synthetic scope check rejected the request.');
+}
 
 /** Reset per generation; absence of the instrumented context blocks every provider call. */
 export function beginScopeObservation(write: (value: string) => void) {
   generation += 1;
   contextReady = false;
   observed = new Set();
+  lastRejection = null;
   report = write;
   return generation;
 }
 export function currentScopeGeneration() {
   return generation;
 }
+export function scopeRejection(token: number) {
+  requireGeneration(token);
+  return lastRejection;
+}
 function requireGeneration(token: number) {
-  if (token !== generation) throw new Error('Synthetic scope was superseded.');
+  if (token !== generation) {
+    // A late request must not overwrite the current run's result.
+    console.info('OROT_SYNTHETIC_SCOPE_REJECT superseded');
+    throw new Error('Synthetic scope check rejected the request.');
+  }
 }
 export function acceptScopeContext(token: number) {
   requireGeneration(token);
@@ -32,7 +63,7 @@ export function acceptScopeContext(token: number) {
 }
 export function requireScopeContext(token: number) {
   requireGeneration(token);
-  if (!contextReady) throw new Error('Synthetic context was not observed.');
+  if (!contextReady) rejectScope(token, 'context_missing');
 }
 /** Do not invoke the real provider when the observed context or inventory fails. */
 export async function dispatchScoped<T>(
@@ -59,10 +90,9 @@ export function providerEvidenceCount(
   const aliases = new Set<string>();
   const accept = (value: unknown) => {
     if (typeof value !== 'string' || !/^evidence-[1-9][0-9]*$/u.test(value))
-      throw new Error('Unrecognized provider evidence alias.');
+      rejectScope(token, 'alias_invalid');
     const index = Number(value.slice('evidence-'.length));
-    if (index > observed.size)
-      throw new Error('Provider evidence was not audited.');
+    if (index > observed.size) rejectScope(token, 'alias_unobserved');
     aliases.add(value);
   };
   const inspect = (value: unknown): void => {
@@ -74,8 +104,7 @@ export function providerEvidenceCount(
     for (const [key, entry] of Object.entries(value)) {
       if (key === 'evidenceId') accept(entry);
       else if (key === 'evidenceIds') {
-        if (!Array.isArray(entry))
-          throw new Error('Provider evidence list is invalid.');
+        if (!Array.isArray(entry)) rejectScope(token, 'payload_invalid');
         entry.forEach(accept);
       } else inspect(entry);
     }
@@ -86,7 +115,15 @@ export function providerEvidenceCount(
       const line = message.content
         .split('\n')
         .find(value => value.startsWith('Available evidence: '));
-      if (line) inspect(JSON.parse(line.slice('Available evidence: '.length)));
+      if (line) {
+        let evidence: unknown;
+        try {
+          evidence = JSON.parse(line.slice('Available evidence: '.length));
+        } catch {
+          rejectScope(token, 'payload_invalid');
+        }
+        inspect(evidence);
+      }
     }
   }
   return aliases.size;
@@ -119,7 +156,7 @@ export function acceptScopeEvidence(
       !metadata.sourceRecordIds.length ||
       metadata.sourceRecordIds.some(id => id !== expectedSymptom)
     )
-      throw new Error('Synthetic evidence identity mismatch.');
+      rejectScope(token, 'evidence_mismatch');
     observed.add(visitQuestionCitationKey(item));
   }
   report(
@@ -130,5 +167,5 @@ export function acceptScopeEvidence(
 /** Aggregated period results have indirect provenance and are rejected unless separately proven. */
 export function acceptEmptyHealthBatch(token: number, count: number) {
   requireScopeContext(token);
-  if (count !== 0) throw new Error('Aggregate evidence scope is unconfirmed.');
+  if (count !== 0) rejectScope(token, 'aggregate_unconfirmed');
 }
