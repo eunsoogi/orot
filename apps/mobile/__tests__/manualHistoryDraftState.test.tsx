@@ -1,4 +1,5 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { NavigationPrimaryActionContext } from '../src/navigation/useNavigationPrimaryAction';
 import { NavigationLeaveStateRegistrationProvider } from '../src/navigation/useNavigationLeaveStateRegistration';
 import type { NavigationLeaveStateRegistration } from '../src/navigation/useNavigationLeaveStateRegistration';
 import ManualHistoryScreen from '../src/manualHistory/ManualHistoryScreen';
@@ -13,6 +14,7 @@ describe('ManualHistoryScreen draft state', () => {
       />,
     );
     await view.findByTestId('manual-history-empty');
+    expect(view.getByTestId('manual-history-back')).toBeTruthy();
     await fireEvent.press(view.getByTestId('manual-history-add'));
     await fireEvent.changeText(
       view.getByTestId('manual-history-title-input'),
@@ -33,22 +35,45 @@ describe('ManualHistoryScreen draft state', () => {
     );
   });
 
+  it('hides local Back when the shared route-action host is present', async () => {
+    const view = await render(
+      <NavigationPrimaryActionContext.Provider
+        value={{ routeKey: 'manual-history', register: () => () => undefined }}
+      >
+        <ManualHistoryScreen
+          onBack={jest.fn()}
+          repository={createManualHistoryTestRepository()}
+        />
+      </NavigationPrimaryActionContext.Provider>,
+    );
+    await view.findByTestId('manual-history-empty');
+    expect(view.queryByTestId('manual-history-back')).toBeNull();
+  });
+
   it('keeps retained drafts behind the navigation leave guard until saved', async () => {
     let source: Parameters<NavigationLeaveStateRegistration>[0] | undefined;
+    let finishSave: (() => void) | undefined;
     const registerLeaveState: NavigationLeaveStateRegistration = value => {
       source = value;
       return () => {
         source = undefined;
       };
     };
+    const repository = createManualHistoryTestRepository();
+    const createEntry = repository.create.bind(repository);
+    jest.spyOn(repository, 'create').mockImplementation(
+      input =>
+        new Promise((resolve, reject) => {
+          finishSave = () => {
+            createEntry(input).then(resolve, reject);
+          };
+        }),
+    );
     const view = await render(
       <NavigationLeaveStateRegistrationProvider
         registerLeaveState={registerLeaveState}
       >
-        <ManualHistoryScreen
-          onBack={jest.fn()}
-          repository={createManualHistoryTestRepository()}
-        />
+        <ManualHistoryScreen onBack={jest.fn()} repository={repository} />
       </NavigationLeaveStateRegistrationProvider>,
     );
     await view.findByTestId('manual-history-empty');
@@ -75,7 +100,18 @@ describe('ManualHistoryScreen draft state', () => {
       'Synthetic details for the guarded draft.',
     );
     await fireEvent.press(view.getByTestId('manual-history-date-unknown'));
-    await fireEvent.press(view.getByTestId('manual-history-save'));
+    const saveRequest = fireEvent.press(
+      view.getByTestId('manual-history-save'),
+    );
+    await waitFor(() =>
+      expect(source?.readState()).toMatchObject({
+        canLeave: false,
+        hasUnsavedChanges: true,
+        hasOngoingOperation: true,
+      }),
+    );
+    await act(async () => finishSave?.());
+    await saveRequest;
     await waitFor(() =>
       expect(source?.readState()).toMatchObject({
         canLeave: true,

@@ -198,6 +198,7 @@ export default function ManualHistoryScreen({
       testID="manual-history-scroll"
     >
       <ManualHistoryHeader
+        backButtonVisible={!hasDock}
         onBack={onBack}
         saving={saving}
         error={error}
