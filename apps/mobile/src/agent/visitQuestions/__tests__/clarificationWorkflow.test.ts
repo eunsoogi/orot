@@ -43,13 +43,43 @@ function expectInvalidClarificationFallback(
   unsafeText: string,
 ) {
   expect(result).toMatchObject({
-    status: 'unavailable',
+    status: 'rejected_output',
     message: t('visitQuestions.workflowResults.failure.invalidOutput'),
   });
   expect(JSON.stringify(result)).not.toContain(unsafeText);
 }
 
 describe('visit-question clarification workflow', () => {
+  it.each(['', 'No sufficient evidence.', 'a'.repeat(401)])(
+    'uses app-owned guidance when clarification text is unusable: %s',
+    async message => {
+      const result = await runClarification(message);
+      expect(result).toMatchObject({
+        status: 'needs_clarification',
+        message:
+          '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
+      });
+      if (message) expect(JSON.stringify(result)).not.toContain(message);
+    },
+  );
+
+  it('rejects an unknown citation before applying the clarification fallback', async () => {
+    const prepared = preparedContext();
+    const { provider } = makeProvider([
+      JSON.stringify({
+        type: 'result',
+        value: { status: 'needs_clarification', message: '' },
+        citations: ['unknown-evidence'],
+      }),
+    ]);
+    const { selection, option } = selectedOption(provider, 'on-device');
+    const result = await runVisitQuestionWorkflow({
+      prepared,
+      selection,
+      providerOptions: [option],
+    });
+    expect(result.status).toBe('rejected_output');
+  });
   it('preserves the responder clarification in the public result', async () => {
     // Complete coverage exercises the task-result path, including safe copy preservation.
     const message =

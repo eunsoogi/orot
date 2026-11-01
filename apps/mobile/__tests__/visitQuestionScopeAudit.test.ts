@@ -1,0 +1,250 @@
+import type { Appointment } from '@orot/domain';
+import { auditVisitQuestionScope } from '../e2e/visitQuestionScopeAudit';
+import type { ScopeSnapshot } from '../e2e/visitQuestionScopeAudit';
+import {
+  acceptScopeAggregate,
+  acceptScopeContext,
+  acceptScopeEvidence,
+  beginScopeObservation,
+  dispatchScoped,
+  expectedSymptoms,
+  observedEvidenceCount,
+  providerEvidenceCount,
+  rejectScope,
+  requireScopeContext,
+  scopeRejection,
+} from '../e2e/visitQuestionScopeGuard';
+import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
+import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
+
+const appointment = {
+  id: 'synthetic-appointment',
+  calendarEventIdentifier: 'synthetic-event',
+} as Appointment;
+const snapshot: ScopeSnapshot = {
+  appointments: [appointment],
+  symptomIds: [
+    'synthetic-symptom',
+    'synthetic-symptom-2',
+    'synthetic-symptom-3',
+  ],
+  otherCounts: { transcript: 0, health: 0 },
+  memorySourceIds: [] as string[][],
+};
+const audit = (value = snapshot, selected = appointment) =>
+  auditVisitQuestionScope(value, selected, 'synthetic-event', [
+    'synthetic-symptom',
+    'synthetic-symptom-2',
+    'synthetic-symptom-3',
+  ]);
+
+test('accepts only the confirmed fixture sources', () => {
+  expect(audit().ok).toBe(true);
+  expect(
+    audit({ ...snapshot, memorySourceIds: [['synthetic-symptom']] }).ok,
+  ).toBe(false);
+});
+
+test('rejects changed appointments, evidence, and unknown memory provenance', () => {
+  expect(audit(snapshot, { ...appointment, id: 'other' }).ok).toBe(false);
+  expect(audit({ ...snapshot, symptomIds: ['other'] }).ok).toBe(false);
+  expect(
+    audit({
+      ...snapshot,
+      symptomIds: [
+        snapshot.symptomIds[0]!,
+        snapshot.symptomIds[0]!,
+        snapshot.symptomIds[2]!,
+      ],
+    }).ok,
+  ).toBe(false);
+  expect(
+    audit({ ...snapshot, symptomIds: [...snapshot.symptomIds, 'other'] }).ok,
+  ).toBe(false);
+  expect(
+    audit({ ...snapshot, symptomIds: [...snapshot.symptomIds].reverse() }).ok,
+  ).toBe(true);
+  expect(audit({ ...snapshot, otherCounts: { transcript: 1 } }).ok).toBe(false);
+  expect(audit({ ...snapshot, memorySourceIds: [[]] }).ok).toBe(false);
+  expect(audit({ ...snapshot, memorySourceIds: [['other']] }).ok).toBe(false);
+});
+
+test('requires the instrumented context and audits actual tool evidence before release', () => {
+  const report = jest.fn();
+  const log = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+  const token = beginScopeObservation(report);
+  expect(() => requireScopeContext(token)).toThrow();
+  acceptScopeContext(token);
+  expect(() => requireScopeContext(token)).not.toThrow();
+  const item = {
+    sourceKind: 'personal_record',
+    sourceId: expectedSymptoms[0],
+    sourceRevision: 'r',
+    evidenceId: expectedSymptoms[0],
+    evidenceRevision: 'r',
+    locator: { kind: 'structured_record', recordId: expectedSymptoms[0] },
+    effectiveTime: null,
+    reviewState: 'unreviewed',
+    content: 'synthetic',
+  } as const;
+  const metadata = {
+    recordKind: 'symptom_entry',
+    evidenceRecordId: expectedSymptoms[0],
+    sourceRecordIds: [expectedSymptoms[0]],
+  };
+  const collection = {
+    batch: { items: [item] },
+    metadataByCitation: new Map([[visitQuestionCitationKey(item), metadata]]),
+  } as never;
+  acceptScopeEvidence(token, collection);
+  acceptScopeEvidence(token, collection);
+  expect(observedEvidenceCount(token)).toBe(1);
+  expect(
+    providerEvidenceCount(token, {
+      messages: [
+        {
+          role: 'user',
+          content: 'Available evidence: [{"evidenceId":"evidence-1"}]',
+        },
+      ],
+    }),
+  ).toBe(1);
+  expect(() =>
+    providerEvidenceCount(token, {
+      messages: [
+        {
+          role: 'tool',
+          toolCallId: 't',
+          result: { evidenceIds: ['evidence-2'] },
+        },
+      ],
+    }),
+  ).toThrow();
+  const unexpected = { ...item, evidenceId: 'other' };
+  expect(() =>
+    acceptScopeEvidence(token, {
+      batch: { items: [unexpected] },
+      metadataByCitation: new Map([
+        [visitQuestionCitationKey(unexpected), metadata],
+      ]),
+    } as never),
+  ).toThrow();
+  expect(() =>
+    acceptScopeAggregate(token, { items: [item] } as never, new Map(), true),
+  ).toThrow();
+  expect(report).toHaveBeenCalledWith(
+    '{"scopeRejected":"aggregate_unconfirmed"}',
+  );
+  expect(log).toHaveBeenCalledWith(
+    'OROT_SYNTHETIC_SCOPE_REJECT aggregate_unconfirmed',
+  );
+  expect(scopeRejection(token)).toBe('aggregate_unconfirmed');
+  beginScopeObservation(jest.fn());
+  expect(() => requireScopeContext(token)).toThrow();
+  expect(() => acceptScopeContext(token)).toThrow();
+  log.mockRestore();
+});
+
+test('admits only typed aggregates from an unchanged synthetic inventory', () => {
+  const token = beginScopeObservation(jest.fn());
+  acceptScopeContext(token);
+  const scope = {
+    kind: 'health_context_period',
+    version: 1,
+    topic: 'symptoms',
+    window: {
+      fromInclusive: '2035-06-01T00:00:00.000Z',
+      toExclusive: '2035-06-02T00:00:00.000Z',
+      timeZone: 'UTC',
+    },
+  } as const;
+  const id = `health-context-${fingerprint(scope)}`;
+  const item = {
+    sourceKind: 'personal_record',
+    sourceId: id,
+    sourceRevision: 'r',
+    evidenceId: id,
+    evidenceRevision: 'r',
+    locator: scope,
+    effectiveTime: null,
+    reviewState: 'unknown',
+    content: 'synthetic',
+  } as const;
+  const metadata = new Map([
+    [
+      visitQuestionCitationKey(item),
+      { healthContextSource: { scope, revision: 'r', deletionGeneration: 0 } },
+    ],
+  ]) as never;
+  const batch = { items: [item] } as never;
+  acceptScopeAggregate(token, batch, metadata, true);
+  expect(observedEvidenceCount(token)).toBe(1);
+  expect(() => acceptScopeAggregate(token, batch, metadata, false)).toThrow();
+  expect(scopeRejection(token)).toBe('aggregate_generation_changed');
+  const wrong = { ...item, evidenceId: 'other' };
+  expect(() =>
+    acceptScopeAggregate(token, { items: [wrong] } as never, metadata, true),
+  ).toThrow();
+});
+
+test('does not dispatch to the real provider when scope is unavailable or rejected', async () => {
+  const send = jest.fn(async () => 'sent');
+  const token = beginScopeObservation(jest.fn());
+  await expect(
+    dispatchScoped(token, async () => undefined, send),
+  ).rejects.toThrow();
+  acceptScopeContext(token);
+  await expect(
+    dispatchScoped(
+      token,
+      async () => {
+        throw new Error('mismatch');
+      },
+      send,
+    ),
+  ).rejects.toThrow();
+  expect(send).not.toHaveBeenCalled();
+  await expect(
+    dispatchScoped(token, async () => undefined, send),
+  ).resolves.toBe('sent');
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+test('a newer generation prevents an older pending dispatch', async () => {
+  const old = beginScopeObservation(jest.fn());
+  acceptScopeContext(old);
+  let resume!: () => void;
+  const send = jest.fn(async () => 'sent');
+  const pending = dispatchScoped(
+    old,
+    () =>
+      new Promise<void>(resolve => {
+        resume = resolve;
+      }),
+    send,
+  );
+  const newerReport = jest.fn();
+  const newer = beginScopeObservation(newerReport);
+  resume();
+  await expect(pending).rejects.toThrow();
+  expect(send).not.toHaveBeenCalled();
+  expect(newerReport).not.toHaveBeenCalled();
+  expect(scopeRejection(newer)).toBeNull();
+  expect(() => rejectScope(old, 'inventory_unavailable')).toThrow();
+  expect(newerReport).not.toHaveBeenCalled();
+  expect(scopeRejection(newer)).toBeNull();
+});
+
+test('diagnostic resolver substitutes only the visit route context loader', () => {
+  const config = require('../e2e/visit-question-scope.metro.config');
+  const result = config.resolver.resolveRequest(
+    {
+      originModulePath:
+        '/app/src/aiFeatures/integration/visitQuestionsRouteOperations.ts',
+    },
+    './visitQuestionsContextLoader',
+    'ios',
+  );
+  expect(result.type).toBe('sourceFile');
+  expect(result.filePath).toMatch(/visitQuestionScopeContext\.ts$/u);
+});

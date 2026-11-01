@@ -94,11 +94,11 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(2);
   });
 
-  it('does not exceed the model-call budget when research used the remaining call', async () => {
+  it('stops after a failed correction following a research call', async () => {
     const prepared = preparedContext();
     const outputs = successfulOutputs(
       prepared.initialEvidence,
@@ -110,6 +110,7 @@ describe('visit-question response correction', () => {
     finalResponse.value.questions[0]!.questionText =
       '수면 패턴의 변화를 더 구체적으로 확인해야 합니다.';
     outputs[1] = JSON.stringify(finalResponse);
+    outputs[2] = JSON.stringify(finalResponse);
     const { provider, requests } = makeProvider(outputs);
     const { selection, option } = selectedOption(provider, 'on-device');
 
@@ -119,7 +120,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(3);
   });
 
@@ -138,7 +139,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 
@@ -160,7 +161,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 
@@ -183,7 +184,7 @@ describe('visit-question response correction', () => {
       providerOptions: [option],
     });
 
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(1);
   });
 

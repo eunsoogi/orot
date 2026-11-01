@@ -9,6 +9,21 @@ const input: VisitQuestionResponderInput = {
 };
 
 describe('visit-question clarification validation', () => {
+  it('rejects malformed fields and unsafe advice even when the text is too long', () => {
+    for (const value of [
+      { status: 'needs_clarification', message: null },
+      { status: 'needs_clarification', message: ['invalid'] },
+      { status: 'needs_clarification', message: '', extra: true },
+      {
+        status: 'needs_clarification',
+        message: `약을 중단하세요. ${'가'.repeat(401)}`,
+      },
+    ]) {
+      expect(responder.validateResult(value as never, input).status).toBe(
+        'invalid',
+      );
+    }
+  });
   it('preserves a safe, specific medication-conflict clarification', () => {
     const message =
       '현재 복용 기록이 서로 달라요. 어떤 복용 정보를 의료진과 확인할까요?';

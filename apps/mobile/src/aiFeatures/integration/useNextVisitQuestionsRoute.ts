@@ -4,7 +4,6 @@ import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type {
   AppointmentViewState,
-  ProviderViewState,
   SavedQuestionsState,
   SaveReviewedQuestionsResult,
   EvidenceCaveat,
@@ -19,6 +18,7 @@ import {
 } from './nextVisitQuestionsRoutePresentation';
 import { useVisitQuestionSourceOpener } from './useVisitQuestionSourceOpener';
 import { boundedVisitGeneration } from './boundedVisitGeneration';
+import { useProviderSelection } from '../../nextVisitQuestions/loadProviderState';
 
 /** Owns the async appointment, provider, citation and save state behind the screen. */
 export function useNextVisitQuestionsRoute(
@@ -42,21 +42,28 @@ export function useNextVisitQuestionsRoute(
   const [appointment, setAppointment] = useState<AppointmentViewState>({
     status: 'loading',
   });
-  const [provider, setProvider] = useState<ProviderViewState>({
-    status: 'loading',
-    selection: null,
-  });
   const [savedQuestions, setSavedQuestions] = useState<
     SavedQuestionsState<VisitQuestionEvidenceItem>
   >({
     status: 'loading',
     questions: [],
   });
-  const [providerRetry, setProviderRetry] = useState(0);
   const [savedRetry, setSavedRetry] = useState(0);
   const [saveNotice, setSaveNotice] = useState('');
   const appointmentRequest = useRef(0);
   const generationRequest = useRef(0);
+  const {
+    provider,
+    setProvider,
+    openProviderSelection,
+    invalidateProviderLookup,
+  } = useProviderSelection(
+    resolveSelectedAi,
+    visitQuestionsProviderState,
+    selectedAiRevision,
+    generationRequest,
+    onOpenProviderSelection,
+  );
   const refreshAppointment = useCallback(async () => {
     const request = ++appointmentRequest.current;
     // Reentry refreshes the current appointment without erasing a draft for an unchanged visit.
@@ -81,25 +88,9 @@ export function useNextVisitQuestionsRoute(
     }
   }, [operations]);
 
-  const refreshProvider = useCallback(async () => {
-    setProvider({ status: 'loading', selection: null });
-    try {
-      setProvider(visitQuestionsProviderState(await resolveSelectedAi()));
-    } catch {
-      setProvider({
-        status: 'error',
-        selection: null,
-        message: copy.provider.error,
-      });
-    }
-  }, [resolveSelectedAi]);
-
   useEffect(() => {
     refreshAppointment().catch(() => undefined);
   }, [refreshAppointment]);
-  useEffect(() => {
-    refreshProvider().catch(() => undefined);
-  }, [providerRetry, selectedAiRevision, refreshProvider]);
 
   const appointmentId =
     appointment.status === 'ready' ? appointment.appointment.id : null;
@@ -138,6 +129,8 @@ export function useNextVisitQuestionsRoute(
       observer?: AiWorkflowObserver,
     ) => {
       const request = ++generationRequest.current;
+      // This lookup owns provider state unless a newer refresh supersedes it.
+      invalidateProviderLookup();
       return boundedVisitGeneration(signal, async activeSignal => {
         try {
           // Re-resolve before inference; a stale screen selection cannot authorize a changed provider.
@@ -181,7 +174,8 @@ export function useNextVisitQuestionsRoute(
             refreshAppointment().catch(() => undefined);
           return result;
         } catch {
-          if (activeSignal.aborted) return { status: 'cancelled' as const };
+          if (activeSignal.aborted || request !== generationRequest.current)
+            return { status: 'cancelled' as const };
           return {
             status: 'unavailable' as const,
             message: copy.generation.genericError,
@@ -195,6 +189,8 @@ export function useNextVisitQuestionsRoute(
       rememberValidator,
       resolveSelectedAi,
       refreshAppointment,
+      invalidateProviderLookup,
+      setProvider,
     ],
   );
 
@@ -228,11 +224,6 @@ export function useNextVisitQuestionsRoute(
     },
     [operations, rememberValidator, resolveSource],
   );
-
-  const openProviderSelection = useCallback(() => {
-    if (provider.status === 'error') setProviderRetry(value => value + 1);
-    else onOpenProviderSelection();
-  }, [provider.status, onOpenProviderSelection]);
 
   return {
     appointment,

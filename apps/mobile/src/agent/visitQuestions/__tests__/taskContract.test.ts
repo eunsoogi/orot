@@ -96,6 +96,9 @@ describe('visit question task responder', () => {
     expect(content).not.toContain('appointmentId');
     expect(messages).toHaveLength(1);
     expect(responder.systemPrompt).toContain('type=result');
+    expect(responder.systemPrompt).toContain(
+      'citations must be an array of strings',
+    );
     expect(responder.systemPrompt).not.toContain('type=request_evidence');
   });
 

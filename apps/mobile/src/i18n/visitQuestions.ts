@@ -54,4 +54,6 @@ export const visitQuestionsKo = {
     '질문을 뒷받침할 수 있는 기록을 찾지 못했어요. 어떤 내용을 진료에서 확인하고 싶은지 알려 주세요.',
   'visitQuestions.validation.unverifiedDateOrValue':
     '질문에 기록에서 확인되지 않는 날짜나 수치가 들어 있어 근거를 다시 확인해야 해요.',
+  'visitQuestions.validation.unusableClarification':
+    '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
 } as const;

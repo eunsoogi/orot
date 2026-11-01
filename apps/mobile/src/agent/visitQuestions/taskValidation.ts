@@ -79,8 +79,23 @@ export function validateVisitQuestionTaskResult(
         reason: 'The clarification response has extra fields.',
       };
     }
+    // Unsafe provider advice remains rejected even when its text is too long or otherwise unusable.
+    if (
+      typeof result.message === 'string' &&
+      hasUnsafeClinicalAdvice(result.message)
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification contains unsafe clinical advice.',
+      };
+    }
     const message = readNonEmptyKoreanText(result.message, 400);
     if (!message) {
+      // Never display unusable provider copy; a string clarification can use a safe app-owned next step.
+      if (typeof result.message === 'string')
+        return clarification(
+          t('visitQuestions.validation.unusableClarification'),
+        );
       return {
         status: 'invalid',
         reason: 'The clarification request is invalid.',
@@ -96,12 +111,6 @@ export function validateVisitQuestionTaskResult(
       return clarification(
         t('visitQuestions.validation.unverifiedDateOrValue'),
       );
-    }
-    if (hasUnsafeClinicalAdvice(message)) {
-      return {
-        status: 'invalid',
-        reason: 'The clarification contains unsafe clinical advice.',
-      };
     }
     return clarification(message);
   }

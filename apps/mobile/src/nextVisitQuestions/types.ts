@@ -151,6 +151,7 @@ export type GenerationOutcome<TReference extends NextVisitEvidenceReference> =
         | 'needs_clarification'
         | 'refresh_required'
         | 'provider_unavailable'
+        | 'rejected_output'
         | 'consent_required'
         | 'unavailable';
       readonly message: string;
