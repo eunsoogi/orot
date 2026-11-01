@@ -208,4 +208,21 @@ enum SymptomJournalControlUITestConditions {
         UITestConditions.value(UITestConditions.element(app, "symptom-" + id + "-status"), equals: "나아졌어요")
         XCTAssertFalse(error.exists)
     }
+
+    /// Type only through a visible native key and require the actual controlled value to change.
+    static func typeVisibleLetter(_ app: XCUIApplication, previous: String) -> String? {
+        let description = app.textViews["symptom-description"]
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists, let letter = ["Q", "W", "q", "w"].map({ keyboard.keys[$0] }).first(where: { $0.exists && $0.isHittable }), app.frame.intersects(keyboard.frame),
+              FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
+              keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
+        else {
+            XCTFail("A visible keyboard letter is required for the edit"); return nil
+        }
+        letter.tap()
+        guard let changed = description.value as? String, changed != previous else {
+            XCTFail("The real keyboard tap must change the draft"); return nil
+        }
+        return changed
+    }
 }
