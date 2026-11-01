@@ -56,9 +56,9 @@ extension RootNavigationUITests {
 
         let rotatedAt = Date().timeIntervalSince1970 * 1000
         XCUIDevice.shared.orientation = .landscapeLeft
+        NavigationWindowGeometryUITestConditions.captureRotationProbe(app, testCase: self)
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: rotatedAt, width: initialWindow.width, differs: true)
         try verifySettingsPanels(app)
-
         let returnedAt = Date().timeIntervalSince1970 * 1000
         XCUIDevice.shared.orientation = .portrait
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: returnedAt, width: initialWindow.width)

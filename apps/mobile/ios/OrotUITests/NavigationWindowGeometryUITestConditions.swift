@@ -1,6 +1,13 @@
 import XCTest
 
 extension NavigationWindowGeometryUITestConditions {
+    /// Preserve the native and shared geometry after a requested rotation only during an opt-in diagnostic run.
+    static func captureRotationProbe(_ app: XCUIApplication, testCase: XCTestCase) {
+        guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1" else { return }
+        print("OROT_SETTINGS_ROTATION_DEVICE orientation=\(XCUIDevice.shared.orientation.rawValue)")
+        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "settings-after-landscape-request")
+    }
+
     /// The opt-in probe emits only bounded stage names and uptime, never accessibility values.
     static func logSettingsProbe(_ stage: String, attempt: Int) {
         guard ProcessInfo.processInfo.environment["OROT_TEST_SETTINGS_GEOMETRY_PROBE"] == "1", attempt <= 3 else { return }
