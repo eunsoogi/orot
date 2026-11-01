@@ -22,7 +22,7 @@ function runCapabilityProbe({ ioHelpExit = '0' } = {}) {
   // Stub the host tools so the helper's argument order and fail-fast behavior run without Xcode.
   const xcodebuildPath = join(bin, 'xcodebuild');
   const xcrunPath = join(bin, 'xcrun');
-  writeFileSync(xcodebuildPath, '#!/bin/sh\nprintf "Xcode 27.1\\nBuild version 27B1\\n"\n');
+  writeFileSync(xcodebuildPath, '#!/bin/sh\nprintf "Xcode 27.2\\nBuild version 27B52\\n"\n');
   writeFileSync(
     xcrunPath,
     `#!/bin/sh
@@ -69,7 +69,7 @@ test('records Simulator help controls and discovers Device Hub beside Developer'
   const { result, calls } = runCapabilityProbe();
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Xcode 27\.1/);
+  assert.match(result.stdout, /Xcode 27\.2/);
   assert.match(result.stdout, /SIMULATOR_GUI_APP=.*DeviceHub\.app/);
   assert.deepEqual(calls, ['simctl help', 'simctl help io']);
 });

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { createIosTestProducts, verifyIosTestProducts } from '../ios-test-products.mjs';
 import { productContext } from '../ios-test-product-context.mjs';
+import { iosTestBuildSpec } from '../ios-test-config.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
 
 test('rejects legacy 27.0 products with an expected-versus-observed toolchain diagnosis', () => {
@@ -16,8 +17,10 @@ test('rejects legacy 27.0 products with an expected-versus-observed toolchain di
     assert.throws(
       () => productContext(fixture.source, 'core', fixture.env),
       (error) => {
-        assert.match(error.message, /expected Xcode 27\.1/);
-        assert.match(error.message, /iOS Simulator SDK 27\.1/);
+        // Keep the expected diagnosis tied to the shared product pin across toolchain upgrades.
+        const expectedSpec = iosTestBuildSpec('core');
+        assert.ok(error.message.includes('expected Xcode ' + expectedSpec.xcode));
+        assert.ok(error.message.includes('iOS Simulator SDK ' + expectedSpec.sdk));
         assert.match(error.message, /platform Darwin/);
         assert.match(error.message, /architecture arm64/);
         assert.match(error.message, /actual Xcode 27\.0/);
