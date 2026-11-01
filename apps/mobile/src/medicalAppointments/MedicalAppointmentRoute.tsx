@@ -16,6 +16,7 @@ import type { CalendarBridge } from '../calendar/types';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import type { NavigationLeaveState } from '../navigation';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
@@ -109,6 +110,21 @@ export default function MedicalAppointmentRoute({
     };
   }, [focused, manual, selectedAiResolverOptions]);
 
+  const retryLabel = t('appointments.retry');
+  const hasDock = useNavigationRouteActions(
+    repositoryLoadError
+      ? [
+          {
+            id: 'retry-medical-appointments',
+            label: retryLabel,
+            accessibilityLabel: retryLabel,
+            testID: 'medical-appointments-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: () => setRepositoryLoadAttempt(attempt => attempt + 1),
+          },
+        ]
+      : [],
+  );
   if (repositoryLoadError) {
     return (
       <MedicalAppointmentStatus manual={manual}>
@@ -117,11 +133,13 @@ export default function MedicalAppointmentRoute({
           {copy.title}
         </Text>
         <Text accessibilityRole="alert">{t('appointments.openError')}</Text>
-        <Button
-          onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
-          testID="medical-appointments-retry"
-          title={t('appointments.retry')}
-        />
+        {!hasDock ? (
+          <Button
+            onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
+            testID="medical-appointments-retry"
+            title={t('appointments.retry')}
+          />
+        ) : null}
       </MedicalAppointmentStatus>
     );
   }

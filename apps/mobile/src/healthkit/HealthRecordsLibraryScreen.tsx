@@ -23,6 +23,7 @@ import {
   observationCategories,
   useHealthRecordCategoryPages,
 } from './useHealthRecordCategoryPages';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface HealthRecordsLibraryScreenProps {
   readonly loadObservations: HealthObservationPageLoader;
@@ -83,6 +84,11 @@ export function HealthRecordsLibraryScreen({
   const remaining = active.filter(category => read(category).cursor !== null);
   const loadingMore = states.some(state => state.loadState === 'loading');
   const failed = states.some(state => state.loadState === 'failed');
+  const retryInDock =
+    states.some(
+      state => state.loadState === 'failed' && state.retryCursor == null,
+    ) ||
+    (includesMedication && medication.status === 'failed');
   const retry = () => {
     for (const category of active)
       if (read(category).loadState === 'failed')
@@ -103,6 +109,17 @@ export function HealthRecordsLibraryScreen({
     revision,
     inputRevision: 0,
   });
+  const importLabel = t('healthRecords.importHealthData');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'open-health-import',
+      label: importLabel,
+      accessibilityLabel: importLabel,
+      testID: 'health-records-open-health-import',
+      systemImageName: 'arrow.down',
+      onPress: onOpenHealthImport,
+    },
+  ]);
   const displayedCategories = filterHealthRecordCategories(
     healthRecordCategories(),
     selectedCategory,
@@ -119,11 +136,13 @@ export function HealthRecordsLibraryScreen({
           ListHeaderComponent={
             <HealthRecordsLibraryHeader
               beforeFilters={
-                <AppButton
-                  onPress={onOpenHealthImport}
-                  testID="health-records-open-health-import"
-                  title={t('healthRecords.importHealthData')}
-                />
+                !hasDock ? (
+                  <AppButton
+                    onPress={onOpenHealthImport}
+                    testID="health-records-open-health-import"
+                    title={t('healthRecords.importHealthData')}
+                  />
+                ) : null
               }
               hasSharedNavigation={hasSharedNavigation}
               loadState={loadState}
@@ -131,6 +150,7 @@ export function HealthRecordsLibraryScreen({
               hasMore={hasMore}
               onBack={onBack}
               onRetry={retry}
+              retryInDock={retryInDock}
               onSelectCategory={setSelectedCategory}
               selectedCategory={selectedCategory}
             />

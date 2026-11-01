@@ -12,7 +12,12 @@ import type { NavigationPrimaryAction } from './NavigationActionBar';
 interface ActionRegistration {
   readonly ownerKey: string;
   readonly token: symbol;
-  readonly action: NavigationPrimaryAction;
+  readonly actions: readonly NavigationRouteAction[];
+}
+export interface NavigationRouteAction extends NavigationPrimaryAction {
+  readonly id: string;
+  readonly systemImageName?: string;
+  readonly busy?: boolean;
 }
 export interface NavigationPrimaryActionHost {
   readonly routeKey: string;
@@ -25,15 +30,15 @@ export const NavigationPrimaryActionContext =
 /** Only the visible route may publish an action; retained overlay drafts keep their original owner. */
 export function useNavigationPrimaryActionHost(routeKey: string) {
   const [registrations, setRegistrations] = useState<
-    ReadonlyMap<string, ActionRegistration>
+    ReadonlyMap<symbol, ActionRegistration>
   >(new Map());
   const register = useCallback((next: ActionRegistration) => {
-    setRegistrations(current => new Map(current).set(next.ownerKey, next));
+    setRegistrations(current => new Map(current).set(next.token, next));
     return () =>
       setRegistrations(current => {
-        if (current.get(next.ownerKey)?.token !== next.token) return current;
+        if (!current.has(next.token)) return current;
         const remaining = new Map(current);
-        remaining.delete(next.ownerKey);
+        remaining.delete(next.token);
         return remaining;
       });
   }, []);
@@ -41,10 +46,10 @@ export function useNavigationPrimaryActionHost(routeKey: string) {
     () => ({ routeKey, register }),
     [routeKey, register],
   );
-  return {
-    host,
-    action: registrations.get(routeKey)?.action,
-  };
+  const actions = [...registrations.values()]
+    .filter(registration => registration.ownerKey === routeKey)
+    .flatMap(registration => registration.actions);
+  return { host, actions, action: actions.at(-1) };
 }
 
 /** Returns false outside the app shell so isolated screens retain their own usable action. */
@@ -53,6 +58,8 @@ export function useNavigationPrimaryAction(
 ): boolean {
   const host = useContext(NavigationPrimaryActionContext);
   const ownerKey = useRef(host?.routeKey);
+  // A retained scene can mount before it first receives the focused host.
+  ownerKey.current ??= host?.routeKey;
   const onPressRef = useRef(action?.onPress);
   onPressRef.current = action?.onPress;
   const { label, accessibilityLabel, testID, disabled } = action ?? {};
@@ -66,17 +73,25 @@ export function useNavigationPrimaryAction(
       !testID
     )
       return;
-    return register({
+    let active = true;
+    const unregister = register({
       ownerKey: ownerKey.current,
       token: Symbol('route-primary-action'),
-      action: {
-        label,
-        accessibilityLabel,
-        testID,
-        disabled,
-        onPress: () => onPressRef.current?.(),
-      },
+      actions: [
+        {
+          id: 'primary',
+          label,
+          accessibilityLabel,
+          testID,
+          disabled,
+          onPress: () => (active ? onPressRef.current?.() : undefined),
+        },
+      ],
     });
+    return () => {
+      active = false;
+      unregister();
+    };
   }, [register, label, accessibilityLabel, testID, disabled]);
   return host !== null;
 }

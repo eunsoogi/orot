@@ -4,7 +4,11 @@ import UIKit
 enum NavigationGlassButton {
     /// Keeps contextual controls at their shipping sizes except for the compact rail Home target.
     static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool) -> CGFloat? {
-        switch action.id {
+        // Page actions use icons and the same lane width as navigation on the rail.
+        if usesRightRail, action.id.hasPrefix("page:") {
+            return NavigationRootGlassBar.exteriorWidth
+        }
+        return switch action.id {
         case "back":
             NavigationRootGlassBar.exteriorWidth
         case "home":
@@ -25,10 +29,10 @@ enum NavigationGlassButton {
     }
 
     /// Tracks localized primary titles while keeping one width constraint per stable action.
-    static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, constraints: inout [String: NSLayoutConstraint]) {
+    static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
         let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
-        let minimumWidth = max(88, titleWidth + 24)
+        let minimumWidth = usesRightRail && action.id.hasPrefix("page:") ? 44 : max(88, titleWidth + 24)
         if let constraint = constraints[action.id] {
             constraint.constant = minimumWidth
         } else {
@@ -103,6 +107,8 @@ enum NavigationGlassButton {
 
     /// Reapplies descriptor-driven configuration without replacing the mounted UIButton.
     private static func configure(_ button: UIButton, for action: NavigationActionDescriptor) {
+        // UIKit has no busy trait; VoiceOver receives the operation state as its value.
+        button.accessibilityValue = action.busy ? "진행 중" : nil
         let selectedRootTab = action.rootTab && action.selected
         var configuration: UIButton.Configuration = if action.rootTab {
             .plain()
@@ -180,5 +186,46 @@ enum NavigationGlassButton {
             accessibilityTraits.insert(.notEnabled)
         }
         button.accessibilityTraits = accessibilityTraits
+    }
+}
+
+/// Decodes the React Native toolbar payload and supplies defaults for optional action flags.
+struct NavigationActionDescriptor: Equatable {
+    let id: String
+    let label: String
+    let accessibilityLabel: String
+    let testID: String
+    let systemImageName: String?
+    let disabled: Bool
+    let busy: Bool
+    let primary: Bool
+    let selected: Bool
+    let rootTab: Bool
+    let showsTitleWithSystemImage: Bool
+    let titleBelowImage: Bool
+
+    init?(_ value: Any) {
+        guard
+            let payload = value as? [String: Any],
+            let id = payload["id"] as? String,
+            let label = payload["label"] as? String,
+            let accessibilityLabel = payload["accessibilityLabel"] as? String,
+            let testID = payload["testID"] as? String
+        else {
+            return nil
+        }
+
+        self.id = id
+        self.label = label
+        self.accessibilityLabel = accessibilityLabel
+        self.testID = testID
+        systemImageName = payload["systemImageName"] as? String
+        disabled = payload["disabled"] as? Bool ?? false
+        busy = payload["busy"] as? Bool ?? false
+        primary = payload["primary"] as? Bool ?? false
+        selected = payload["selected"] as? Bool ?? false
+        rootTab = payload["rootTab"] as? Bool ?? false
+        showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
+        titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
     }
 }

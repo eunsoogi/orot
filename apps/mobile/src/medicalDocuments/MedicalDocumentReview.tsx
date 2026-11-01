@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface MedicalDocumentReviewProps {
   readonly document: StagedMedicalDocument;
@@ -25,6 +26,31 @@ export function MedicalDocumentReview({
   onSave,
   onCancel,
 }: MedicalDocumentReviewProps) {
+  const saveLabel = busy
+    ? t('medicalDocument.review.saving')
+    : t('medicalDocument.review.save');
+  const cancelLabel = t('medicalDocument.review.cancel');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'save-medical-document',
+      label: saveLabel,
+      accessibilityLabel: saveLabel,
+      testID: 'medical-document-save',
+      systemImageName: 'checkmark',
+      disabled: busy,
+      busy,
+      onPress: onSave,
+    },
+    {
+      id: 'cancel-medical-document',
+      label: cancelLabel,
+      accessibilityLabel: cancelLabel,
+      testID: 'medical-document-cancel',
+      systemImageName: 'xmark',
+      disabled: busy,
+      onPress: onCancel,
+    },
+  ]);
   return (
     <View style={styles.detailsPanel} testID="medical-document-review-details">
       <Text
@@ -53,30 +79,34 @@ export function MedicalDocumentReview({
         </Text>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        onPress={onSave}
-        style={[styles.saveButton, busy && styles.disabled]}
-        testID="medical-document-save"
-      >
-        <Text style={styles.saveText}>
-          {busy
-            ? t('medicalDocument.review.saving')
-            : t('medicalDocument.review.save')}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        onPress={onCancel}
-        style={[styles.cancelButton, busy && styles.disabled]}
-        testID="medical-document-cancel"
-      >
-        <Text style={styles.cancelText}>
-          {t('medicalDocument.review.cancel')}
-        </Text>
-      </Pressable>
+      {!hasDock ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={onSave}
+          style={[styles.saveButton, busy && styles.disabled]}
+          testID="medical-document-save"
+        >
+          <Text style={styles.saveText}>
+            {busy
+              ? t('medicalDocument.review.saving')
+              : t('medicalDocument.review.save')}
+          </Text>
+        </Pressable>
+      ) : null}
+      {!hasDock ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={onCancel}
+          style={[styles.cancelButton, busy && styles.disabled]}
+          testID="medical-document-cancel"
+        >
+          <Text style={styles.cancelText}>
+            {t('medicalDocument.review.cancel')}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

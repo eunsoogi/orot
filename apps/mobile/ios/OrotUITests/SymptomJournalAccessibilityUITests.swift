@@ -109,8 +109,9 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     /// The existing reveal helper excludes the keyboard and floating navigation controls; record the actual successful target, without a new size threshold.
     @MainActor
     private func tapFinal(_ app: XCUIApplication, _ identifier: String, stage: String) throws {
-        let target = UITestConditions.element(app, identifier)
-        let frame = try XCTUnwrap(FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll"))
+        let labels = ["symptom-add": "증상 기록 추가", "symptom-save": "증상 기록 저장", "symptom-form-cancel": "취소"]
+        let target = labels[identifier].map { SymptomJournalControlUITestConditions.pageAction(app, id: identifier, label: $0) } ?? UITestConditions.element(app, identifier)
+        let frame = labels[identifier] != nil ? target.frame : try XCTUnwrap(FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll"))
         let hittable = target.exists && target.isHittable
         XCTAssertTrue(hittable)
         let evidence: [String: Any] = [

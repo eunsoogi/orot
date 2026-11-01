@@ -62,10 +62,15 @@ test.each(['review', 'saved'] as const)(
       within(route.getByTestId('navigation-bar-native-surface'));
     expect(bar().queryByTestId(actionId)).toBeNull();
     expect(
-      within(route.getByTestId('next-visit-questions-scroll')).getByTestId(
+      within(route.getByTestId('navigation-page-action-surface')).getByTestId(
         actionId,
       ),
     ).toBeTruthy();
+    expect(
+      within(route.getByTestId('next-visit-questions-scroll')).queryByTestId(
+        actionId,
+      ),
+    ).toBeNull();
 
     await fireEvent.press(route.getByTestId('next-visit-source-0-0'));
     await waitFor(() =>
@@ -110,7 +115,7 @@ test.each(['review', 'saved'] as const)(
       expect(route.queryByTestId('provider-selection-screen')).toBeNull(),
     );
     expect(
-      within(route.getByTestId('next-visit-questions-scroll')).getByTestId(
+      within(route.getByTestId('navigation-page-action-surface')).getByTestId(
         phase === 'saved' ? 'next-visit-saved-edit' : 'next-visit-generate',
       ),
     ).toBeTruthy();

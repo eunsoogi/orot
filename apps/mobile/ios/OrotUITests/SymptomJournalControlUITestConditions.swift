@@ -3,6 +3,82 @@ import XCTest
 /// Exercises the new native controls while preserving the journal's existing real-keyboard journeys.
 @MainActor
 enum SymptomJournalControlUITestConditions {
+    /// Fixed actions may be direct or in the explicit overflow; both paths require real hittable controls.
+    static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
+        let direct = UITestConditions.element(app, id)
+        let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || overflow.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        if direct.exists {
+            return direct
+        }
+        XCTAssertTrue(overflow.exists && overflow.isHittable, app.debugDescription)
+        overflow.tap()
+        let item = app.buttons[label]
+        XCTAssertTrue(UITestConditions.exists(item), app.debugDescription)
+        return item
+    }
+
+    static func tapPageAction(_ app: XCUIApplication, id: String, label: String) -> Bool {
+        let target = pageAction(app, id: id, label: label)
+        let hittable = target.exists && target.isHittable
+        XCTAssertTrue(hittable, app.debugDescription)
+        guard hittable else { return false }
+        target.tap()
+        return true
+    }
+
+    /// Observe the dock anchor before opening overflow, and require actual form movement.
+    static func assertDockStaysFixedDuringFormScroll(_ app: XCUIApplication, testCase: XCTestCase) {
+        let direct = UITestConditions.element(app, "symptom-form-cancel")
+        let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
+        let anchor = direct.exists ? direct : overflow
+        let scroll = UITestConditions.element(app, "symptoms-scroll")
+        XCTAssertTrue(anchor.exists && anchor.isHittable && scroll.exists, app.debugDescription)
+        let beforeAnchor = anchor.frame
+        let before = scrollSample(app, testCase: testCase, name: "dock-before-scroll")
+        scroll.swipeUp()
+        let afterAnchor = anchor.frame
+        let after = scrollSample(app, testCase: testCase, name: "dock-after-scroll")
+        XCTAssertNotNil(before)
+        XCTAssertNotNil(after)
+        if let before, let after {
+            XCTAssertEqual(before.id, after.id, "Observe the same native scroll view")
+            XCTAssertGreaterThan(after.offset, before.offset, "The form must actually move")
+        }
+        XCTAssertEqual(afterAnchor.minX, beforeAnchor.minX, accuracy: 1)
+        XCTAssertEqual(afterAnchor.minY, beforeAnchor.minY, accuracy: 1)
+        XCTAssertEqual(afterAnchor.width, beforeAnchor.width, accuracy: 1)
+        XCTAssertEqual(afterAnchor.height, beforeAnchor.height, accuracy: 1)
+        XCTAssertTrue(app.frame.contains(afterAnchor) && anchor.isHittable, app.debugDescription)
+        let back = UITestConditions.element(app, "navigation-back")
+        if back.exists {
+            XCTAssertFalse(afterAnchor.intersects(back.frame), app.debugDescription)
+        }
+        scroll.swipeDown()
+    }
+
+    private static func scrollSample(_ app: XCUIApplication, testCase: XCTestCase, name: String) -> (id: String, offset: Double)? {
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: name)
+        guard let trace = snapshot?["symptomScrollTrace"] as? [String: Any],
+              let accessory = trace["descriptionAccessory"] as? [String: Any],
+              accessory["truncated"] as? Bool == false,
+              let inputs = accessory["inputs"] as? [[String: Any]], inputs.count == 1,
+              let geometry = inputs[0]["geometry"] as? [String: Any], geometry["status"] as? String == "sampled",
+              let interaction = geometry["interaction"] as? [String: Any],
+              let scroll = interaction["scroll"] as? [String: Any],
+              let view = scroll["view"] as? [String: Any], let id = view["identity"] as? String,
+              let offset = scroll["contentOffset"] as? [String: Any], let y = offset["y"] as? Double, y.isFinite
+        else { return nil }
+        return (id, y)
+    }
+
+    static func tapAccessory(_ app: XCUIApplication, id: String) {
+        let button = UITestConditions.element(app, id)
+        XCTAssertTrue(UITestConditions.exists(button) && button.isHittable)
+        button.tap()
+    }
+
     static func confirmedPickerPersists(_ app: XCUIApplication) {
         let description = app.textViews["symptom-description"]
         XCTAssertTrue(FormUITestConditions.replace(description, with: "Synthetic picker onset", in: app, scrollID: "symptoms-scroll"))
@@ -39,8 +115,7 @@ enum SymptomJournalControlUITestConditions {
             return
         }
         inputFormat.dateFormat = "yyyy년 M월 d일"
-        let save = UITestConditions.element(app, "symptom-save")
-        FormUITestConditions.reveal(save, in: app, scrollID: "symptoms-scroll")
+        let save = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(save.exists && save.isHittable && save.isEnabled)
         save.tap()
         let onset = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'symptom-' AND identifier ENDSWITH '-onset'")).firstMatch
@@ -54,15 +129,21 @@ enum SymptomJournalControlUITestConditions {
         FormUITestConditions.reveal(date, in: app, scrollID: "symptoms-scroll")
         XCTAssertTrue(date.exists && date.isHittable)
         date.tap()
-        let save = UITestConditions.element(app, "symptom-save")
-        FormUITestConditions.reveal(save, in: app, scrollID: "symptoms-scroll")
+        let save = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(save.exists)
         XCTAssertFalse(save.isEnabled, "Unconfirmed picker values must not be saved")
+        if app.buttons["동작 메뉴 닫기"].exists {
+            app.buttons["동작 메뉴 닫기"].tap()
+        }
         let cancel = UITestConditions.element(app, "symptom-onset-picker-cancel")
         FormUITestConditions.reveal(cancel, in: app, scrollID: "symptoms-scroll")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         cancel.tap()
-        XCTAssertTrue(save.isEnabled)
+        let enabledSave = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
+        XCTAssertTrue(enabledSave.isEnabled)
+        if app.buttons["동작 메뉴 닫기"].exists {
+            app.buttons["동작 메뉴 닫기"].tap()
+        }
     }
 
     static func directFormAndPickerCancellation(_ app: XCUIApplication) {

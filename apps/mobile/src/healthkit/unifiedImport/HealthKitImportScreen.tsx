@@ -9,6 +9,7 @@ import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
+import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { EventKitImportSection } from './EventKitImportSection';
 import { EventKitSourceCard } from './EventKitSourceCard';
@@ -70,6 +71,31 @@ export function HealthKitImportScreen({
   const { selected, eventKitSelected, progress, run, isRunning } = state;
   const phase = progress?.phase ?? 'queued';
   const hasSelection = selected.size > 0 || eventKitSelected;
+  const hasDock = useNavigationRouteActions([
+    ...(run && isRunning
+      ? [
+          {
+            id: 'cancel-import',
+            label: copy.cancelButton,
+            accessibilityLabel: copy.cancelButton,
+            testID: 'unified-import-cancel',
+            systemImageName: 'xmark',
+            disabled: phase === 'cancelling',
+            onPress: () => run.cancel(),
+          },
+        ]
+      : []),
+    {
+      id: 'start-import',
+      label: copy.importButton,
+      accessibilityLabel: copy.importButton,
+      testID: 'unified-import-start',
+      systemImageName: 'arrow.down',
+      disabled: !hasSelection || isRunning || candidateSaving,
+      busy: isRunning,
+      onPress: state.startImport,
+    },
+  ]);
   const reviewingCalendar =
     eventKitSelected &&
     Boolean(progress?.eventKit.candidates.length) &&
@@ -178,14 +204,16 @@ export function HealthKitImportScreen({
               selected={eventKitSelected}
               onSavingChange={setCandidateSaving}
             />
-            <AppButton
-              accessibilityState={{ busy: isRunning }}
-              disabled={!hasSelection || isRunning || candidateSaving}
-              onPress={state.startImport}
-              title={copy.importButton}
-              testID="unified-import-start"
-            />
-            {run && isRunning ? (
+            {!hasDock ? (
+              <AppButton
+                accessibilityState={{ busy: isRunning }}
+                disabled={!hasSelection || isRunning || candidateSaving}
+                onPress={state.startImport}
+                title={copy.importButton}
+                testID="unified-import-start"
+              />
+            ) : null}
+            {!hasDock && run && isRunning ? (
               <AppButton
                 disabled={phase === 'cancelling'}
                 onPress={() => run.cancel()}

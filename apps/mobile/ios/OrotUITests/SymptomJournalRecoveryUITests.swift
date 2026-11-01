@@ -46,7 +46,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             scrollID: "symptoms-scroll",
         ))
 
-        let keyboardSave = UITestConditions.element(app, "symptom-keyboard-save-onsetTime")
+        let keyboardSave = SymptomJournalControlUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(keyboardSave.exists && keyboardSave.isHittable)
         keyboardSave.tap()
         let error = UITestConditions.element(app, "symptom-form-error")
@@ -54,8 +54,7 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         XCTAssertEqual(error.label, "증상 기록을 저장하지 못했어요. 다시 시도해 주세요.")
         XCTAssertEqual(description.value as? String, "Synthetic symptom save retry")
 
-        let retry = UITestConditions.element(app, "symptom-save")
-        FormUITestConditions.reveal(retry, in: app, scrollID: "symptoms-scroll")
+        let retry = SymptomJournalControlUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(retry.exists && retry.isHittable)
         retry.tap()
         let saved = app.staticTexts["Synthetic symptom save retry"]

@@ -11,6 +11,7 @@ import AppointmentCard from './AppointmentCard';
 import AppointmentForm from './AppointmentForm';
 import styles from './appointmentsStyles';
 import { useAppointmentsScreenState } from './useAppointmentsScreenState';
+import { useAppointmentAddAction } from './useAppointmentAddAction';
 import {
   appointmentDisplayUntil,
   isEligibleNextVisit,
@@ -79,6 +80,11 @@ export default function AppointmentsScreen({
   );
   const historicalAppointments = state.appointments.filter(
     appointment => !isEligibleNextVisit(appointment, now),
+  );
+  const hasDock = useAppointmentAddAction(
+    !state.formOpen,
+    state.saving,
+    state.startNewAppointment,
   );
 
   // The selected ID belongs to this screen so measured panel changes do not reset selection.
@@ -180,11 +186,13 @@ export default function AppointmentsScreen({
           ) : null}
         </View>
       )}
-      <Button
-        onPress={state.startNewAppointment}
-        testID="appointment-add"
-        title={t('appointments.actions.add')}
-      />
+      {!hasDock ? (
+        <Button
+          onPress={state.startNewAppointment}
+          testID="appointment-add"
+          title={t('appointments.actions.add')}
+        />
+      ) : null}
     </View>
   );
 
@@ -209,7 +217,6 @@ export default function AppointmentsScreen({
       )}
     </View>
   );
-
   return (
     <ScrollView
       // Starting an edit replaces the list and resets its potentially distant scroll offset.

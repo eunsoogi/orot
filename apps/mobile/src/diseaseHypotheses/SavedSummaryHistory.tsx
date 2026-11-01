@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import type { DiseaseHypothesisAnalysis } from './types';
 import type {
   SavedSummaryListItem,
@@ -78,6 +79,47 @@ export function SavedSummaryHistory({
       if (mounted.current) setBusy(false);
     }
   }
+  async function retrySave() {
+    setBusy(true);
+    try {
+      const result = await history.retrySave?.();
+      if (result) onRestore(result);
+      else setError(true);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const hasDock = useNavigationRouteActions([
+    ...(current?.status === 'failed'
+      ? [
+          {
+            id: 'retry-summary-save',
+            label: '다시 저장',
+            accessibilityLabel: '다시 저장',
+            testID: 'symptom-summary-save-retry',
+            systemImageName: 'arrow.clockwise',
+            disabled: disabled || busy,
+            busy,
+            onPress: retrySave,
+          },
+        ]
+      : []),
+    ...(error
+      ? [
+          {
+            id: 'reload-summary-history',
+            label: '다시 불러오기',
+            accessibilityLabel: '다시 불러오기',
+            testID: 'symptom-summary-reload',
+            systemImageName: 'arrow.clockwise',
+            disabled: disabled || busy,
+            onPress: () => setReload(value => value + 1),
+          },
+        ]
+      : []),
+  ]);
   // A hidden history panel must not introduce another empty flex gap in the summary form.
   if (!current && !expanded && !error) return null;
   return (
@@ -115,23 +157,14 @@ export function SavedSummaryHistory({
           <AppText accessibilityRole="alert">
             요약을 기기에 저장하지 못했어요. 다시 저장해 주세요.
           </AppText>
-          <AppButton
-            title="다시 저장"
-            variant="secondary"
-            disabled={disabled || busy}
-            onPress={async () => {
-              setBusy(true);
-              try {
-                const result = await history.retrySave?.();
-                if (result) onRestore(result);
-                else setError(true);
-              } catch {
-                setError(true);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
+          {!hasDock ? (
+            <AppButton
+              title="다시 저장"
+              variant="secondary"
+              disabled={disabled || busy}
+              onPress={retrySave}
+            />
+          ) : null}
         </>
       ) : null}
       {error ? (
@@ -139,12 +172,14 @@ export function SavedSummaryHistory({
           <AppText accessibilityRole="alert">
             저장된 요약을 불러오지 못했어요.
           </AppText>
-          <AppButton
-            title="다시 불러오기"
-            variant="secondary"
-            disabled={disabled || busy}
-            onPress={() => setReload(value => value + 1)}
-          />
+          {!hasDock ? (
+            <AppButton
+              title="다시 불러오기"
+              variant="secondary"
+              disabled={disabled || busy}
+              onPress={() => setReload(value => value + 1)}
+            />
+          ) : null}
         </>
       ) : null}
       {expanded ? (

@@ -13,6 +13,7 @@ interface ProviderSelectionConfirmationProps {
   readonly saving: boolean;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
+  readonly hasActionDock?: boolean;
 }
 
 export default function ProviderSelectionConfirmation({
@@ -22,8 +23,14 @@ export default function ProviderSelectionConfirmation({
   saving,
   onConfirm,
   onCancel,
+  hasActionDock = false,
 }: ProviderSelectionConfirmationProps) {
   const local = option.privacyBoundary === 'on-device';
+  const summary = (
+    <Text style={styles.summaryText}>
+      선택한 AI · <Text style={styles.name}>{option.displayName}</Text>
+    </Text>
+  );
   return (
     <View style={styles.container} testID="provider-selection-confirmation">
       {blockedMessage ? (
@@ -42,24 +49,28 @@ export default function ProviderSelectionConfirmation({
             : providerSelectionText.remotePrivacy}
         </Text>
       </View>
-      <Pressable
-        style={styles.summary}
-        accessibilityRole="button"
-        accessibilityLabel={`${option.displayName}, ${providerSelectionText.cancel}`}
-        disabled={saving}
-        onPress={onCancel}
-        testID="provider-selection-cancel"
-      >
-        <Text style={styles.summaryText}>
-          선택한 AI · <Text style={styles.name}>{option.displayName}</Text>
-        </Text>
-      </Pressable>
-      <Button
-        disabled={saving || !canConfirm}
-        onPress={onConfirm}
-        testID="provider-selection-confirm"
-        title="이 AI 사용"
-      />
+      {hasActionDock ? (
+        <View style={styles.summary}>{summary}</View>
+      ) : (
+        <Pressable
+          style={styles.summary}
+          accessibilityRole="button"
+          accessibilityLabel={`${option.displayName}, ${providerSelectionText.cancel}`}
+          disabled={saving}
+          onPress={onCancel}
+          testID="provider-selection-cancel"
+        >
+          {summary}
+        </Pressable>
+      )}
+      {!hasActionDock ? (
+        <Button
+          disabled={saving || !canConfirm}
+          onPress={onConfirm}
+          testID="provider-selection-confirm"
+          title="이 AI 사용"
+        />
+      ) : null}
     </View>
   );
 }

@@ -15,6 +15,8 @@ import {
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import type { AiFeatureServiceDependencies } from '../featureServices';
 import { navigationText } from '../../../i18n/navigation';
+import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
+import { pressPageAction } from '../testSupport/pressPageAction';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -90,7 +92,10 @@ test('aborts disease analysis after confirmed leave and ignores its late result'
   );
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
-  await fireEvent.press(route.getByTestId('disease-hypotheses-generate'));
+  await pressPageAction(
+    route.getByTestId('navigation-page-action-overflow'),
+    getDiseaseHypothesisCopy().generate,
+  );
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
   await fireEvent.press(route.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));

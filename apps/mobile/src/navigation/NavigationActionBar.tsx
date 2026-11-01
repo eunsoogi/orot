@@ -16,6 +16,7 @@ import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
 import { RootTabActions } from './RootTabActions';
 import { NavigationActionBarPresentation } from './NavigationActionBarPresentation';
+import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 export type NavigationSurfaceProps = NavigationGlassSurfaceProps;
 export type NavigationSurface = ComponentType<NavigationSurfaceProps>;
@@ -34,6 +35,8 @@ export interface NavigationActionBarProps<Name extends string> {
   readonly showHome?: boolean;
   readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
+  readonly pageActions?: readonly NavigationRouteAction[];
+  readonly routeKey?: string;
   readonly safeAreaHandledByParent?: boolean;
   readonly keyboardVisible?: boolean;
   // Tests can inject a fallback surface to exercise the non-native controls.
@@ -48,6 +51,8 @@ export function NavigationActionBar<Name extends string>({
   showHome = false,
   homeAction,
   primaryAction,
+  pageActions = [],
+  routeKey = snapshotRouteFallback,
   safeAreaHandledByParent = false,
   keyboardVisible,
   surface: Surface = NavigationGlassSurface,
@@ -73,7 +78,13 @@ export function NavigationActionBar<Name extends string>({
 
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
   const canGoHome = showHome && snapshot.routes.length > 1;
-  if (!snapshot.canGoBack && !canGoHome && !primaryAction && !rootTabs) {
+  if (
+    !snapshot.canGoBack &&
+    !canGoHome &&
+    !primaryAction &&
+    !pageActions.length &&
+    !rootTabs
+  ) {
     return null;
   }
 
@@ -83,7 +94,6 @@ export function NavigationActionBar<Name extends string>({
     backDisabled,
     canGoHome,
     homeAction,
-    primaryAction,
     rootTabs,
   });
 
@@ -123,19 +133,6 @@ export function NavigationActionBar<Name extends string>({
           testID="navigation-home"
         />
       ) : null}
-      {primaryAction && !rootTabs ? (
-        <NavigationActionButton
-          accessibilityLabel={primaryAction.accessibilityLabel}
-          disabled={backDisabled || primaryAction.disabled === true}
-          isDarkAppearance={isDarkAppearance}
-          label={primaryAction.label}
-          onPress={() =>
-            settleNavigationRequest(Promise.resolve(primaryAction.onPress()))
-          }
-          primary
-          testID={primaryAction.testID}
-        />
-      ) : null}
     </View>
   );
 
@@ -150,12 +147,17 @@ export function NavigationActionBar<Name extends string>({
       keyboardVisible={isKeyboardVisible}
       onAction={nativeBindings.onAction}
       primaryAction={primaryAction}
+      pageActions={pageActions}
+      pageActionsDisabled={snapshot.isTransitioning}
+      routeKey={routeKey}
       reclaimRootTabInset={Boolean(reclaimRootTabInset)}
       safeAreaHandledByParent={safeAreaHandledByParent}
       surface={Surface}
     />
   );
 }
+
+const snapshotRouteFallback = 'navigation';
 
 const styles = StyleSheet.create({
   actions: {

@@ -36,6 +36,7 @@ describe('native bottom navigation toolbar', () => {
     const controller = createNavigationController<'home' | 'details'>('home');
     controller.push('details');
     const requestBack = jest.spyOn(controller, 'requestBack');
+    const onPrimary = jest.fn();
 
     await render(
       <NavigationActionBar
@@ -44,7 +45,7 @@ describe('native bottom navigation toolbar', () => {
         primaryAction={{
           label: '녹음',
           accessibilityLabel: '녹음 화면으로 이동',
-          onPress: jest.fn(),
+          onPress: onPrimary,
           testID: 'navigation-recording',
         }}
         safeAreaHandledByParent
@@ -67,8 +68,11 @@ describe('native bottom navigation toolbar', () => {
         testID: 'navigation-home',
         systemImageName: 'house',
       }),
+    ]);
+    const pageDock = screen.getByTestId('navigation-page-action-surface');
+    expect(pageDock.props.actions).toEqual([
       expect.objectContaining({
-        id: 'primary',
+        id: 'page:primary',
         label: '녹음',
         accessibilityLabel: '녹음 화면으로 이동',
         testID: 'navigation-recording',
@@ -83,8 +87,10 @@ describe('native bottom navigation toolbar', () => {
     ).toBe(true);
 
     await act(async () => {
+      pageDock.props.onAction({ nativeEvent: { id: 'page:primary' } });
       toolbar.props.onAction({ nativeEvent: { id: 'back' } });
     });
+    expect(onPrimary).toHaveBeenCalledTimes(1);
     expect(requestBack).toHaveBeenCalledTimes(1);
   });
 

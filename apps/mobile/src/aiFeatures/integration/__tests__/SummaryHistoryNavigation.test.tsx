@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
+import { pressPageAction } from '../testSupport/pressPageAction';
 import { createAiFeatureServices } from '../featureServices';
 import type { AiFeatureServices } from '../featureServices';
 import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types';
@@ -17,6 +18,16 @@ jest.mock(
 
 const originalWindow = Dimensions.get('window');
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+async function openHistory() {
+  const direct = screen.queryByTestId('symptom-summary-history-open');
+  if (direct) await fireEvent.press(direct);
+  else
+    await pressPageAction(
+      screen.getByTestId('navigation-page-action-overflow'),
+      '저장된 요약 보기',
+    );
+}
 
 function viewport(width: number, height: number, fontScale = 1) {
   return { ...originalWindow, width, height, fontScale };
@@ -129,7 +140,7 @@ test('keeps history in a measured region and restores saved content and provenan
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const duoGeometry = geometry(1400, 900, true);
   await fireEvent(sensor, 'geometryChange', { nativeEvent: duoGeometry });
-  await fireEvent.press(screen.getByTestId('symptom-summary-history-open'));
+  await openHistory();
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   await screen.findByRole('button', { name: /Synthetic/ });
@@ -156,7 +167,7 @@ test('keeps history in a measured region and restores saved content and provenan
   expect(screen.queryByTestId('summary-history-screen')).toBeNull();
   expect(history.read).toHaveBeenCalledWith('saved');
   expect(generate).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('symptom-summary-history-open'));
+  await openHistory();
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByText('저장된 활동 기록이에요.')).toBeTruthy();

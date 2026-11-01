@@ -1,14 +1,7 @@
 import { useContext } from 'react';
 import type { ReactNode } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationActionButton } from './NavigationActionButton';
 import {
   NavigationGlassSurface,
   type NavigationGlassAction,
@@ -18,11 +11,7 @@ import type {
   NavigationPrimaryAction,
   NavigationSurface,
 } from './NavigationActionBar';
-import { settleNavigationRequest } from './nativeNavigationActions';
-import {
-  NAVIGATION_ACTION_BOTTOM_PADDING,
-  NAVIGATION_ACTION_TOP_PADDING,
-} from './navigationLayout';
+import { navigationActionBarStyles as styles } from './navigationActionBarStyles';
 import {
   fitsNavigationRailSegment,
   fitsNavigationRootRail,
@@ -33,7 +22,9 @@ import {
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
-import { useNavigationPrimaryFrame } from './navigationContentFrame';
+import { NavigationPageActionDock } from './NavigationPageActionDock';
+import { pageActionRailLayout } from './navigationPageActionLayout';
+import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 interface NavigationActionBarPresentationProps {
   readonly actions: readonly NavigationGlassAction[];
@@ -43,6 +34,9 @@ interface NavigationActionBarPresentationProps {
   readonly keyboardVisible: boolean;
   readonly onAction: NavigationGlassActionEventHandler;
   readonly primaryAction?: NavigationPrimaryAction;
+  readonly pageActions?: readonly NavigationRouteAction[];
+  readonly pageActionsDisabled?: boolean;
+  readonly routeKey?: string;
   readonly reclaimRootTabInset: boolean;
   readonly safeAreaHandledByParent: boolean;
   readonly surface: NavigationSurface;
@@ -57,12 +51,26 @@ export function NavigationActionBarPresentation({
   keyboardVisible,
   onAction,
   primaryAction,
+  pageActions = [],
+  pageActionsDisabled = false,
+  routeKey = 'navigation',
   reclaimRootTabInset,
   safeAreaHandledByParent,
   surface: Surface = NavigationGlassSurface,
 }: NavigationActionBarPresentationProps) {
   const layout = useContext(NavigationRootLayoutContext);
-  const primaryFrame = useNavigationPrimaryFrame(layout);
+  const taskActions = primaryAction
+    ? [
+        ...pageActions,
+        {
+          ...primaryAction,
+          id: 'primary',
+          disabled:
+            primaryAction.disabled ||
+            actions.find(action => action.id === 'primary')?.disabled,
+        },
+      ]
+    : pageActions;
   const candidateRightLayout =
     layout.placement === 'right' ? layout : undefined;
   const candidateRailHeight = candidateRightLayout
@@ -80,7 +88,7 @@ export function NavigationActionBarPresentation({
   // one stack gap.
   // Keyboard resizing can remove room for either native stack. Move controls
   // to bottom flow rather than clipping them.
-  const railFits = candidateRightLayout
+  const navFits = candidateRightLayout
     ? hasRootTabs
       ? fitsNavigationRootRail(
           candidateRailHeight,
@@ -96,9 +104,20 @@ export function NavigationActionBarPresentation({
               NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING),
         )
     : false;
-  const rightLayout = railFits ? candidateRightLayout : undefined;
+  const pageLayout = candidateRightLayout
+    ? pageActionRailLayout({
+        height: candidateRailHeight,
+        top: candidateRightLayout.railTopInset,
+        bottom: candidateRailBottomInset ?? 0,
+        rootTabs: hasRootTabs,
+        navigationCount: contextualActionCount,
+        actionCount: taskActions.length,
+      })
+    : undefined;
+  const rightLayout =
+    navFits && pageLayout?.fits ? candidateRightLayout : undefined;
   const isRightRail = rightLayout !== undefined;
-  const laneActions = rightLayout
+  const laneActions = actions.some(action => action.id === 'primary')
     ? actions.filter(action => action.id !== 'primary')
     : actions;
   const railHeight = isRightRail ? candidateRailHeight : 0;
@@ -116,23 +135,6 @@ export function NavigationActionBarPresentation({
           rightLayout.railRightInset,
       }
     : undefined;
-  const primaryActions = primaryAction ? (
-    <View style={styles.actions} testID="navigation-primary-action-bar">
-      <NavigationActionButton
-        accessibilityLabel={primaryAction.accessibilityLabel}
-        disabled={
-          actions.find(action => action.id === 'primary')?.disabled === true
-        }
-        isDarkAppearance={isDarkAppearance}
-        label={primaryAction.label}
-        onPress={() =>
-          settleNavigationRequest(Promise.resolve(primaryAction.onPress()))
-        }
-        primary
-        testID={primaryAction.testID}
-      />
-    </View>
-  ) : null;
   const surfaceTestID =
     Surface === NavigationGlassSurface && Platform.OS === 'ios'
       ? 'navigation-bar-native-surface'
@@ -142,7 +144,8 @@ export function NavigationActionBarPresentation({
         layoutMode: rightLayout.railSide ?? ('right' as const),
         railBottomInset,
         railRightInset: rightLayout.railRightInset,
-        railTopInset: rightLayout.railTopInset,
+        railTopInset:
+          pageLayout?.navigationTopInset ?? rightLayout.railTopInset,
         railAvailableHeight: railHeight,
       }
     : { layoutMode: 'bottom' as const };
@@ -152,6 +155,30 @@ export function NavigationActionBarPresentation({
   const hostStyle: StyleProp<ViewStyle> = isRightRail
     ? [styles.railHost, railFrameStyle]
     : styles.safeArea;
+  const pageDock = taskActions.length ? (
+    <NavigationPageActionDock
+      actions={taskActions}
+      capacity={isRightRail ? (pageLayout?.capacity ?? 1) : 1}
+      disabled={pageActionsDisabled}
+      isDarkAppearance={isDarkAppearance}
+      isRail={isRightRail}
+      key={routeKey}
+      routeKey={routeKey}
+      surface={Surface}
+      surfaceProps={
+        rightLayout
+          ? {
+              layoutMode: rightLayout.railSide ?? 'right',
+              railTopInset: rightLayout.railTopInset,
+              railBottomInset: pageLayout?.pageBottomInset,
+              railRightInset: rightLayout.railRightInset,
+              railAvailableHeight: railHeight,
+              style: styles.railSurface,
+            }
+          : { layoutMode: 'bottom' }
+      }
+    />
+  ) : null;
   const surfacePosition = (
     <NavigationSurfacePosition
       reclaimRootTabInset={reclaimRootTabInset && !isRightRail}
@@ -174,6 +201,14 @@ export function NavigationActionBarPresentation({
       style={hostStyle}
       testID={isRightRail ? 'navigation-right-rail-host' : undefined}
     >
+      {pageDock ? (
+        <View
+          pointerEvents="box-none"
+          style={isRightRail ? styles.pageRail : undefined}
+        >
+          {pageDock}
+        </View>
+      ) : null}
       {surfacePosition}
     </View>
   ) : (
@@ -187,60 +222,20 @@ export function NavigationActionBarPresentation({
           : 'navigation-action-bar-safe-area'
       }
     >
+      {pageDock ? (
+        <View
+          pointerEvents="box-none"
+          style={isRightRail ? styles.pageRail : undefined}
+        >
+          {pageDock}
+        </View>
+      ) : null}
       {surfacePosition}
     </SafeAreaView>
   );
-  const primarySurface =
-    rightLayout && primaryAction ? (
-      <SafeAreaView
-        edges={safeAreaHandledByParent || keyboardVisible ? [] : ['bottom']}
-        pointerEvents="box-none"
-        style={[styles.safeArea, primaryFrame]}
-      >
-        <Surface
-          actions={actions.filter(action => action.id === 'primary')}
-          layoutMode="bottom"
-          onAction={onAction}
-          style={styles.primarySurface}
-          testID="navigation-primary-action-surface"
-        >
-          {primaryActions}
-        </Surface>
-      </SafeAreaView>
-    ) : null;
-
   return (
     <View pointerEvents="box-none" style={styles.host}>
       {bottomSurface}
-      {primarySurface}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  host: { position: 'relative' },
-  safeArea: {
-    flexShrink: 0,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 8,
-    paddingTop: NAVIGATION_ACTION_TOP_PADDING,
-    paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
-  },
-  railHost: {
-    overflow: 'visible',
-    padding: 0,
-  },
-  railSurface: {
-    height: '100%',
-    width: '100%',
-  },
-  primarySurface: {
-    width: '100%',
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    gap: 8,
-  },
-});

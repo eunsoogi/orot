@@ -19,26 +19,28 @@ import {
 
 /** Mirrors the production shell's action registration without mocking the screen hooks. */
 function Shell({ children }: { readonly children: ReactNode }) {
-  const { host, action } = useNavigationPrimaryActionHost('ai-request');
+  const { host, actions } = useNavigationPrimaryActionHost('ai-request');
   return (
     <NavigationPrimaryActionContext.Provider value={host}>
       <View testID="content">{children}</View>
       <View testID="bottom-navigation">
-        {action ? (
+        {actions.map(action => (
           <Button
+            key={action.id}
             title={action.label}
             testID={action.testID}
+            disabled={action.disabled}
             onPress={() => {
               action.onPress();
             }}
           />
-        ) : null}
+        ))}
       </View>
     </NavigationPrimaryActionContext.Provider>
   );
 }
 
-test('visit questions cancel from the page and abort the pending request', async () => {
+test('visit questions cancel from the dock and abort the pending request', async () => {
   let signal: AbortSignal | undefined;
   const props = makeProps({
     onGenerate: (_appointment, _selection, current) => {
@@ -56,9 +58,9 @@ test('visit questions cancel from the page and abort the pending request', async
     within(screen.getByTestId('bottom-navigation')).queryByTestId(
       'next-visit-generation-cancel',
     ),
-  ).toBeNull();
+  ).toBeTruthy();
   await fireEvent.press(
-    within(screen.getByTestId('next-visit-questions-scroll')).getByTestId(
+    within(screen.getByTestId('bottom-navigation')).getByTestId(
       'next-visit-generation-cancel',
     ),
   );
@@ -66,7 +68,7 @@ test('visit questions cancel from the page and abort the pending request', async
   expect(screen.getByTestId('next-visit-generate')).toBeTruthy();
 });
 
-test('symptom analysis cancels from the page without a duplicate navigation control', async () => {
+test('symptom analysis cancels from the dock without a duplicate page control', async () => {
   let signal: AbortSignal | undefined;
   let finish!: (outcome: DiseaseHypothesisRunOutcome) => void;
   await render(
@@ -89,10 +91,15 @@ test('symptom analysis cancels from the page without a duplicate navigation cont
     within(screen.getByTestId('bottom-navigation')).queryByTestId(
       'disease-hypotheses-cancel',
     ),
+  ).toBeTruthy();
+  expect(
+    within(screen.getByTestId('disease-hypotheses-screen')).queryByTestId(
+      'disease-hypotheses-cancel',
+    ),
   ).toBeNull();
-  const cancel = within(
-    screen.getByTestId('disease-hypotheses-screen'),
-  ).getByTestId('disease-hypotheses-cancel');
+  const cancel = within(screen.getByTestId('bottom-navigation')).getByTestId(
+    'disease-hypotheses-cancel',
+  );
   await fireEvent.press(cancel);
   expect(signal?.aborted).toBe(true);
   expect(screen.getByTestId('disease-hypotheses-cancelled')).toBeTruthy();

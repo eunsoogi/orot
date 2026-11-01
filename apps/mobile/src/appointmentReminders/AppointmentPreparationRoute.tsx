@@ -6,6 +6,7 @@ import type { AiFeatureServices } from '../aiFeatures/integration/featureService
 import type { SavedVisitQuestionsLoadState } from '../aiFeatures/integration/savedVisitQuestions';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { appColors } from '../layout/appColors';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -88,6 +89,20 @@ export function AppointmentPreparationRoute({
       subscription.remove();
     };
   }, [runtime, routeKey, loadSavedQuestions, focused, attempt, retry]);
+  const hasDock = useNavigationRouteActions(
+    error
+      ? [
+          {
+            id: 'retry-appointment-preparation',
+            label: '다시 확인',
+            accessibilityLabel: '다시 확인',
+            testID: 'appointment-preparation-retry',
+            systemImageName: 'arrow.clockwise',
+            onPress: retry,
+          },
+        ]
+      : [],
+  );
   return (
     <NavigationRouteScrollView>
       <View style={styles.container} testID="appointment-preparation">
@@ -100,7 +115,7 @@ export function AppointmentPreparationRoute({
               예약을 확인하지 못했거나 예약이 바뀌었어요. 일정에서 최신 내용을
               확인해 주세요.
             </AppText>
-            <AppButton title="다시 확인" onPress={retry} />
+            {!hasDock ? <AppButton title="다시 확인" onPress={retry} /> : null}
           </>
         ) : state ? (
           <>

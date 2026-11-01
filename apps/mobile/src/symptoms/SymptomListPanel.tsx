@@ -17,6 +17,7 @@ export default function SymptomListPanel({
   onFilterChange,
   onAdd,
   canAdd,
+  showAdd,
 }: {
   readonly backButtonVisible: boolean;
   readonly children: ReactNode;
@@ -25,6 +26,7 @@ export default function SymptomListPanel({
   readonly filter: SymptomFilter;
   readonly onAdd: () => void;
   readonly canAdd: boolean;
+  readonly showAdd: boolean;
   readonly onBack: () => void;
   readonly onFilterChange: (filter: SymptomFilter) => Promise<void> | void;
 }) {
@@ -38,12 +40,14 @@ export default function SymptomListPanel({
         >
           {t('symptoms.title')}
         </Text>
-        <AppButton
-          disabled={!canAdd}
-          onPress={onAdd}
-          testID="symptom-add"
-          title={t('symptoms.journal.add')}
-        />
+        {showAdd ? (
+          <AppButton
+            disabled={!canAdd}
+            onPress={onAdd}
+            testID="symptom-add"
+            title={t('symptoms.journal.add')}
+          />
+        ) : null}
         {backButtonVisible ? (
           <Button
             onPress={onBack}

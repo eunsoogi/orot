@@ -15,6 +15,7 @@ import type { StagedMedicalDocument } from '../../medicalDocuments/medicalDocume
 import { RecordsRoute } from '../RecordsRoute';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import { hubSpacing } from '../../layout/hubSpacing';
+import { pressPageAction } from '../../aiFeatures/integration/testSupport/pressPageAction';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('react-native-safe-area-context', () => {
@@ -113,6 +114,18 @@ function pageContent() {
   return within(screen.getByTestId('navigation-route-scroll'));
 }
 
+async function pressDocumentAction(id: string, label: string) {
+  const direct = screen.queryByTestId(id);
+  if (direct) {
+    expect(direct).toBeEnabled();
+    await fireEvent.press(direct);
+  } else {
+    const overflow = screen.getByTestId('navigation-page-action-overflow');
+    expect(overflow).toBeEnabled();
+    await pressPageAction(overflow, label);
+  }
+}
+
 test.each([1, 2])(
   'keeps every staged page and failed-save recovery in the Records scene at font scale %s',
   async fontScale => {
@@ -152,16 +165,14 @@ test.each([1, 2])(
           .selectable,
       ).toBe(true);
     }
-    expect(content.getByTestId('medical-document-save')).toBeEnabled();
-    expect(content.getByTestId('medical-document-cancel')).toBeEnabled();
-    await fireEvent.press(content.getByTestId('medical-document-save'));
+    await pressDocumentAction('medical-document-save', '기록으로 저장');
     expect(
       content.getByTestId('medical-document-import-status'),
     ).toHaveTextContent(/문서를 불러오지 못했어요\./);
     expect(
       content.getByTestId('medical-document-review-text-23'),
     ).toHaveTextContent(staged.sections[23]!.text);
-    await fireEvent.press(content.getByTestId('medical-document-save'));
+    await pressDocumentAction('medical-document-save', '기록으로 저장');
     expect(imports.saveDocument).toHaveBeenNthCalledWith(1, staged);
     expect(imports.saveDocument).toHaveBeenNthCalledWith(2, staged);
     expect(imports.selectDocument).toHaveBeenCalledTimes(1);
@@ -179,10 +190,10 @@ test('retains staged content when discard fails, then returns through the existi
   await renderRecords(imports, 2);
   await fireEvent.press(screen.getByTestId('records-import-medical-document'));
   const content = pageContent();
-  await fireEvent.press(content.getByTestId('medical-document-cancel'));
+  await pressDocumentAction('medical-document-cancel', '가져오지 않기');
   expect(content.getByTestId('medical-document-import-status')).toBeTruthy();
   expect(content.getByTestId('medical-document-review-text-23')).toBeTruthy();
-  await fireEvent.press(content.getByTestId('medical-document-cancel'));
+  await pressDocumentAction('medical-document-cancel', '가져오지 않기');
   expect(imports.discardDocument).toHaveBeenCalledTimes(2);
   expect(imports.saveDocument).not.toHaveBeenCalled();
   expect(screen.getByTestId('records-import-medical-document')).toBeTruthy();

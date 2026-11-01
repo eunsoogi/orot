@@ -3,6 +3,7 @@ import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import styles from './appointmentsStyles';
 
 interface AppointmentFormProps {
@@ -34,6 +35,31 @@ export default function AppointmentForm({
   onSave,
   onClose,
 }: AppointmentFormProps) {
+  const saveLabel = saving
+    ? t('appointments.actions.saving')
+    : t('appointments.actions.save');
+  const closeLabel = t('appointments.actions.close');
+  const hasDock = useNavigationRouteActions([
+    {
+      id: 'save-appointment',
+      label: saveLabel,
+      accessibilityLabel: saveLabel,
+      testID: 'appointment-save',
+      busy: saving,
+      systemImageName: 'checkmark',
+      disabled: saving,
+      onPress: onSave,
+    },
+    {
+      id: 'close-appointment',
+      label: closeLabel,
+      accessibilityLabel: closeLabel,
+      testID: 'appointment-form-cancel',
+      systemImageName: 'xmark',
+      disabled: saving,
+      onPress: onClose,
+    },
+  ]);
   return (
     // Apply the reading-width cap inside the screen's measured content region.
     <View style={styles.form} testID="appointment-form">
@@ -82,22 +108,26 @@ export default function AppointmentForm({
         testID="appointment-note-input"
         value={note}
       />
-      <Button
-        disabled={saving}
-        onPress={onSave}
-        testID="appointment-save"
-        title={
-          saving
-            ? t('appointments.actions.saving')
-            : t('appointments.actions.save')
-        }
-      />
-      <Button
-        disabled={saving}
-        onPress={onClose}
-        testID="appointment-form-cancel"
-        title={t('appointments.actions.close')}
-      />
+      {!hasDock ? (
+        <Button
+          disabled={saving}
+          onPress={onSave}
+          testID="appointment-save"
+          title={
+            saving
+              ? t('appointments.actions.saving')
+              : t('appointments.actions.save')
+          }
+        />
+      ) : null}
+      {!hasDock ? (
+        <Button
+          disabled={saving}
+          onPress={onClose}
+          testID="appointment-form-cancel"
+          title={t('appointments.actions.close')}
+        />
+      ) : null}
     </View>
   );
 }

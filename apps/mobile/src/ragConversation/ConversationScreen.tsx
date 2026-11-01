@@ -20,6 +20,7 @@ import type { RagConversationOutcome } from './service';
 import type { RagConversationObserver } from './service';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface ConversationScreenProps {
   readonly providerSelection?: ReactNode;
@@ -58,6 +59,27 @@ export function ConversationScreen({
     .reverse()
     .find(message => message.role === 'assistant')?.id;
   const cancel = () => store.cancel(id);
+  const hasActionDock = useNavigationRouteActions([
+    {
+      id: 'conversation-history',
+      label: copy.sessions,
+      accessibilityLabel: copy.sessions,
+      testID: 'rag-conversation-sessions-toggle',
+      systemImageName: 'clock.arrow.circlepath',
+      disabled: !onOpenHistory,
+      onPress: () => onOpenHistory?.(),
+    },
+    {
+      id: 'new-conversation',
+      label: copy.newConversation,
+      accessibilityLabel: copy.newConversation,
+      testID: 'rag-conversation-new-session',
+      systemImageName: 'plus',
+      onPress: () => {
+        store.create();
+      },
+    },
+  ]);
   const onLinkError = () =>
     store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
   // App-owned sessions keep drafts and requests alive when this route is removed.
@@ -85,34 +107,36 @@ export function ConversationScreen({
         <Text accessibilityRole="header" style={styles.heading}>
           {copy.title}
         </Text>
-        <View style={styles.sessionActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.sessions}
-            onPress={onOpenHistory}
-            style={styles.sessionAction}
-            testID="rag-conversation-sessions-toggle"
-          >
-            <ComposerGlassBackground testID="rag-conversation-history-glass" />
-            <AppSymbol
-              name="clock.arrow.circlepath"
-              size={20}
-              color={appColors.primaryText}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.newConversation}
-            onPress={() => {
-              store.create();
-            }}
-            style={styles.sessionAction}
-            testID="rag-conversation-new-session"
-          >
-            <ComposerGlassBackground testID="rag-conversation-new-glass" />
-            <AppSymbol name="plus" size={20} color={appColors.primaryText} />
-          </Pressable>
-        </View>
+        {!hasActionDock ? (
+          <View style={styles.sessionActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.sessions}
+              onPress={onOpenHistory}
+              style={styles.sessionAction}
+              testID="rag-conversation-sessions-toggle"
+            >
+              <ComposerGlassBackground testID="rag-conversation-history-glass" />
+              <AppSymbol
+                name="clock.arrow.circlepath"
+                size={20}
+                color={appColors.primaryText}
+              />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.newConversation}
+              onPress={() => {
+                store.create();
+              }}
+              style={styles.sessionAction}
+              testID="rag-conversation-new-session"
+            >
+              <ComposerGlassBackground testID="rag-conversation-new-glass" />
+              <AppSymbol name="plus" size={20} color={appColors.primaryText} />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       {providerSelection ? (
         <View style={styles.provider}>{providerSelection}</View>
