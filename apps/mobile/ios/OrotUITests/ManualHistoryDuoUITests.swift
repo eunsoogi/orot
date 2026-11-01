@@ -7,6 +7,37 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// Covers the open device without treating its fixed scene as a rotation result.
+    @MainActor
+    func testOpenDuoPageActionsPreserveDraftAndSave() throws {
+        let app = XCUIApplication()
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
+        launch(app)
+        defer {
+            if let originalAppearance {
+                try? AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
+            }
+            app.terminate()
+        }
+        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
+        try openManualHistory(app)
+        tap(app, "manual-history-add")
+        let formOpenedAt = Date().timeIntervalSince1970 * 1000
+        guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
+        let title = UITestConditions.element(app, "manual-history-title-input")
+        XCTAssertTrue(app.keyboards.firstMatch.exists && title.isHittable, app.debugDescription)
+        try NavigationPageActionUITestConditions.assertRailAboveNavigation(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
+        tap(app, "manual-history-form-close")
+        tap(app, "manual-history-add")
+        XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
+        guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
+        tap(app, "manual-history-date-unknown")
+        tap(app, "manual-history-save")
+        visible(app, "Synthetic Duo history")
+        visible(app, "기준일을 모름")
+        visible(app, "직접 입력 · 미확인")
+    }
+
     @MainActor
     func testSelectedHistorySurvivesMeasuredDuoReflow() throws {
         let originalOrientation = XCUIDevice.shared.orientation
