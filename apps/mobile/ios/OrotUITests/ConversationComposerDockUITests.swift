@@ -17,9 +17,16 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(composer))
         XCTAssertTrue(input.isHittable)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
+        let baselineHeight = UITestConditions.element(app, "rag-conversation-composer-field").frame.height
         input.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
-        input.typeText("complete synthetic\nsecond line\nthird line")
+        typeOnKeyboard("a\na\na", in: app)
+        let multiline = input.value as? String
+        XCTAssertEqual(multiline, "a\na\na")
+        typeOnKeyboard("a", in: app)
+        tapKey(app.keyboards.firstMatch.keys["delete"], in: app)
+        XCTAssertEqual(input.value as? String, multiline)
+        XCTAssertGreaterThan(UITestConditions.element(app, "rag-conversation-composer-field").frame.height, baselineHeight)
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
         send.tap()
@@ -29,7 +36,8 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(citation.isHittable)
         XCTAssertLessThanOrEqual(citation.frame.maxY, composer.frame.minY + 1)
         input.tap()
-        input.typeText("pending synthetic")
+        typeOnKeyboard("pending", in: app)
+        XCTAssertEqual(input.value as? String, "pending")
         XCTAssertTrue(send.isHittable)
         send.tap()
         let cancel = app.buttons.matching(identifier: "rag-conversation-cancel").firstMatch
@@ -39,13 +47,32 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         cancel.tap()
         input.tap()
-        input.typeText("failure synthetic")
+        typeOnKeyboard("failure", in: app)
+        XCTAssertTrue((input.value as? String)?.contains("failure") == true)
         XCTAssertTrue(send.isHittable)
         send.tap()
         let error = UITestConditions.element(app, "rag-conversation-error")
         XCTAssertTrue(UITestConditions.exists(error))
         XCTAssertTrue(input.isHittable)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
+    }
+
+    /// Exercise the visible software keyboard instead of injecting hardware-style text.
+    @MainActor
+    private func typeOnKeyboard(_ text: String, in app: XCUIApplication) {
+        let keyboard = app.keyboards.firstMatch
+        for character in text {
+            let key = character == "\n" ? keyboard.buttons["Return"] : keyboard.keys[String(character)]
+            tapKey(key, in: app)
+        }
+    }
+
+    @MainActor
+    private func tapKey(_ key: XCUIElement, in app: XCUIApplication) {
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.exists && key.exists && key.isHittable)
+        XCTAssertTrue(keyboard.frame.contains(key.frame))
+        key.tap()
     }
 }
 
