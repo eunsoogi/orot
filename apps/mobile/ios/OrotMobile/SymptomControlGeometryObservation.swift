@@ -4,7 +4,7 @@
     /// Samples fixed symptom controls without input contents or arbitrary accessibility identifiers.
     @MainActor
     enum SymptomControlGeometryObservation {
-        private static let roles = ["symptom-description", "symptom-onset-date", "symptom-onset-time", "symptom-status-active", "symptom-save", "symptom-form-cancel", "navigation-page-action-overflow", "navigation-back", "navigation-home"]
+        private static let roles = ["symptom-description", "symptom-onset-date", "symptom-onset-time", "symptom-status-active", "symptom-form-error", "symptom-save", "symptom-form-cancel", "navigation-page-action-overflow", "navigation-back", "navigation-home"]
 
         static func capture(input: UITextView, views: [UIView], window: UIWindow, truncated: Bool, identity: (NSObject) -> String) -> [String: Any] {
             let started = Date().timeIntervalSince1970 * 1000

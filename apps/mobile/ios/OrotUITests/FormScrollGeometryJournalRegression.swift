@@ -114,8 +114,8 @@ extension FormScrollGeometryRegression {
         func statusSnapshot(_ value: [String: Any], event: [String: Any]) -> [String: Any] {
             ["atMs": 104.0, "symptomScrollTrace": ["traceID": "trace", "events": [event], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
         }
-        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, earlierKeyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45) -> FormScrollGeometryJournalPlan.Plan? {
-            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, earlierKeyboard: earlierKeyboard, controls: blocks, identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
+        func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, earlierKeyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45, identifier: String = "symptom-status-active") -> FormScrollGeometryJournalPlan.Plan? {
+            FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, earlierKeyboard: earlierKeyboard, controls: blocks, identifier: identifier, evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
         }
         let upward = try XCTUnwrap(plan(statusGeometry))
         XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
@@ -171,6 +171,26 @@ extension FormScrollGeometryRegression {
         belowGeometry["declaredControls"] = declared.merging(["controls": belowGroups]) { _, new in new }
         let downward = try XCTUnwrap(plan(belowGeometry))
         XCTAssertLessThan(downward.end.dy, downward.start.dy)
+        // A validation message uses its own sampled view and never the earlier AX target or focused time field.
+        var errorGroups = belowGroups
+        errorGroups[1]["role"] = "symptom-form-error"
+        var errorGeometry = statusGeometry
+        errorGeometry["declaredControls"] = declared.merging(["controls": errorGroups]) { _, new in new }
+        let errorPlan = try XCTUnwrap(plan(errorGeometry, identifier: "symptom-form-error"))
+        XCTAssertLessThan(errorPlan.end.dy, errorPlan.start.dy)
+        XCTAssertNil(plan(errorGeometry, identifier: "symptom-status-active"))
+        for field in ["windowID", "nearestScrollID"] {
+            var badGroups = errorGroups
+            var badTarget = try XCTUnwrap((badGroups[1]["candidates"] as? [[String: Any]])?.first)
+            badTarget[field] = "other"
+            badGroups[1]["candidates"] = [badTarget]
+            var rejected = errorGeometry
+            rejected["declaredControls"] = declared.merging(["controls": badGroups]) { _, new in new }
+            XCTAssertNil(plan(rejected, identifier: "symptom-form-error"))
+        }
+        errorGroups[1]["count"] = 2
+        errorGeometry["declaredControls"] = declared.merging(["controls": errorGroups]) { _, new in new }
+        XCTAssertNil(plan(errorGeometry, identifier: "symptom-form-error"))
         for changed: [String: Any] in [["selectionComplete": false], ["truncated": true], ["windowID": "other"]] {
             var rejected = statusGeometry
             rejected["declaredControls"] = declared.merging(changed) { _, new in new }

@@ -18,7 +18,7 @@ enum FormScrollGeometryJournalPlan {
     }
 
     static func make(snapshot: [String: Any]?, application: CGRect, usableViewport: CGRect, keyboard: CGRect?, earlierKeyboard: CGRect? = nil, controls: [CGRect], identifier: String, evaluationStartedAtMs: Double, readEndedAtMs: Double, maximumScrollFraction: CGFloat) -> Plan? {
-        guard identifier == "symptom-status-active", FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
+        guard ["symptom-status-active", "symptom-form-error"].contains(identifier), FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
               controls.allSatisfy(FormScrollGeometry.valid), let snapshot, let markerAt = snapshot["atMs"] as? Double,
               let trace = snapshot["symptomScrollTrace"] as? [String: Any], let accessory = trace["descriptionAccessory"] as? [String: Any],
               accessory["truncated"] as? Bool == false, accessory["inputCount"] as? Int == 1,

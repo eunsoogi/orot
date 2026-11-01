@@ -141,10 +141,14 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         let status = UIButton(frame: CGRect(x: 20, y: 180, width: 120, height: 40))
         status.accessibilityIdentifier = "symptom-status-active"
         status.accessibilityLabel = "synthetic-private-status-label"
+        let error = UILabel(frame: CGRect(x: 20, y: 240, width: 200, height: 40))
+        error.accessibilityIdentifier = "symptom-form-error"
+        error.text = "synthetic-private-error"
         scroll.addSubview(date)
         scroll.addSubview(status)
+        scroll.addSubview(error)
         XCTAssertTrue(date.becomeFirstResponder())
-        let views: [UIView] = [window, controller.view, scroll, input, date, status]
+        let views: [UIView] = [window, controller.view, scroll, input, date, status, error]
         let identity: (NSObject) -> String = { object in object === window ? "window" : object === scroll ? "scroll" : "control" }
         let sample = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)
         XCTAssertEqual(sample["focusRole"] as? String, "symptom-onset-date")
@@ -153,9 +157,13 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         XCTAssertEqual(target["count"] as? Int, 1)
         let candidate = try XCTUnwrap((target["candidates"] as? [[String: Any]])?.first)
         XCTAssertEqual(candidate["sameSelectedScroll"] as? Bool, true)
+        let errorTarget = try XCTUnwrap(controls.first { $0["role"] as? String == "symptom-form-error" })
+        XCTAssertEqual(errorTarget["count"] as? Int, 1)
+        XCTAssertEqual(((errorTarget["candidates"] as? [[String: Any]])?.first)?["sameSelectedScroll"] as? Bool, true)
         let encoded = try String(decoding: JSONSerialization.data(withJSONObject: sample), as: UTF8.self)
         XCTAssertFalse(encoded.contains("synthetic-private-date"))
         XCTAssertFalse(encoded.contains("synthetic-private-status-label"))
+        XCTAssertFalse(encoded.contains("synthetic-private-error"))
         let duplicate = UIButton()
         duplicate.accessibilityIdentifier = "symptom-status-active"
         let other = try UIWindow(windowScene: XCTUnwrap(window.windowScene))

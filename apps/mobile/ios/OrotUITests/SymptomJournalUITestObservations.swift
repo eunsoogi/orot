@@ -176,8 +176,9 @@ enum SymptomJournalUITestObservations {
         if !FormScrollGeometry.valid(editor) {
             // Read once for both validation and diagnostics. Rejected samples never trigger another query or gesture.
             let identifier = targetIdentifier()
+            let nativeTarget = ["symptom-status-active", "symptom-form-error"].contains(identifier)
             var freshPlan: FormScrollGeometryJournalPlan.Plan?
-            let original = identifier == "symptom-status-active" ? nil : proposed()
+            let original = nativeTarget ? nil : proposed()
             XCTContext.runActivity(named: "Journal invalid editor gutter observation") { activity in
                 let marker = UITestConditions.element(app, "navigation-test-observation")
                 let markerReadStartedAtMs = Date().timeIntervalSince1970 * 1000
@@ -195,7 +196,7 @@ enum SymptomJournalUITestObservations {
                 let measuredKeyboard = keyboardExists ? keyboardElement.frame : nil
                 let keyboardFrame = measuredKeyboard.map { String(describing: $0) } ?? "absent"
                 let keyboardReadEndedAtMs = Date().timeIntervalSince1970 * 1000
-                let plannerInvoked = identifier == "symptom-status-active"
+                let plannerInvoked = nativeTarget
                 let laterControls = plannerInvoked ? latestControls() : []
                 if plannerInvoked {
                     freshPlan = FormScrollGeometryJournalPlan.make(snapshot: snapshot, application: application, usableViewport: viewport, keyboard: measuredKeyboard, earlierKeyboard: keyboard, controls: controls + laterControls, identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs, readEndedAtMs: markerReadEndedAtMs, maximumScrollFraction: maximumScrollFraction)
@@ -226,8 +227,8 @@ enum SymptomJournalUITestObservations {
                 activity.add(record)
                 editor = nativeEditor ?? editor
             }
-            if identifier == "symptom-status-active" {
-                guard let freshPlan else { XCTFail("The journal status requires a coherent native gesture plan"); return nil }
+            if nativeTarget {
+                guard let freshPlan else { XCTFail("The journal target requires a coherent native gesture plan"); return nil }
                 return freshPlan
             }
         }
