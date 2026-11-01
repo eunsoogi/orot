@@ -172,7 +172,7 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         scroll.clipsToBounds = true; scroll.frame.size.height = 30
         let clipped = SymptomDateSelectionObservation.snapshot { $0 === window ? "window" : "anonymous" }
         XCTAssertEqual(clipped["selectionGeometryRejection"] as? String, "ancestorClipping")
-        XCTAssertEqual((clipped["selectionClipFailure"] as? [String: Any])?["valid"] as? Bool, true)
+        XCTAssertEqual((clipped["selectionClipFailure"] as? [String: Any])?["valid"] as? Bool, true); XCTAssertEqual((clipped["selectionClipFailure"] as? [String: Any])?["insideField"] as? Bool, false)
         scroll.frame = controller.view.bounds; scroll.clipsToBounds = false
         let views: [UIView] = [window, controller.view, scroll, input, date, status, error]
         let identity: (NSObject) -> String = { object in object === window ? "window" : object === scroll ? "scroll" : "control" }

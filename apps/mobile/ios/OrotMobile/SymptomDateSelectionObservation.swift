@@ -153,6 +153,14 @@
                         // Preserve only public geometry from the first failed clip in this same sample.
                         var failure: [String: Any] = ["valid": finite(clip), "depth": depth, "ancestorID": identity(view), "isInput": view === input, "isField": view === field, "isScroll": view is UIScrollView, "clipsToBounds": view.clipsToBounds, "masksToBounds": view.layer.masksToBounds, "selection": NavigationGeometryTestObservation.finiteRect(rect), "field": NavigationGeometryTestObservation.finiteRect(fieldFrame)]
                         if finite(clip) { failure["clip"] = NavigationGeometryTestObservation.finiteRect(clip) }
+                        if let scroll = view as? UIScrollView {
+                            failure["insideField"] = scroll.isDescendant(of: field)
+                            failure["tracking"] = scroll.isTracking; failure["dragging"] = scroll.isDragging; failure["decelerating"] = scroll.isDecelerating
+                            let offset = scroll.contentOffset, size = scroll.contentSize, inset = scroll.contentInset
+                            if [offset.x, offset.y, size.width, size.height, inset.top, inset.left, inset.bottom, inset.right].allSatisfy(\.isFinite) {
+                                failure["scroll"] = ["offsetX": offset.x, "offsetY": offset.y, "width": size.width, "height": size.height, "insetTop": inset.top, "insetLeft": inset.left, "insetBottom": inset.bottom, "insetRight": inset.right]
+                            }
+                        }
                         clipFailure(failure)
                         return reject("ancestorClipping")
                     }
