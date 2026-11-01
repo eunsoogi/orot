@@ -16,6 +16,7 @@ export const capabilityScenarios = [
   'ai-feature-visit-questions',
   'evidence-visual',
   'conversation-visual',
+  'conversation-failure-visual',
   'summary-visual',
   'local-e5',
   'local-query',

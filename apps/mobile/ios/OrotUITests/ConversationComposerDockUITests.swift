@@ -2,11 +2,36 @@ import XCTest
 
 /// Exercises the fixed dock against the real keyboard using the synthetic conversation sender.
 final class ConversationComposerDockUITests: OrotFailFastTestCase {
+    /// Verifies the available Duo layout with the software keyboard and live Send and Stop actions.
+    @MainActor
+    func testDuoComposerAndActionsRemainReachable() {
+        let app = XCUIApplication()
+        let observationSession = UUID().uuidString
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        input.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
+        typeOnKeyboard("apending", in: app)
+        XCTAssertEqual((input.value as? String)?.lowercased(), "apending")
+        XCTAssertTrue(send.isHittable)
+        ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
+        send.tap()
+        let cancel = app.buttons.matching(identifier: "rag-conversation-cancel").firstMatch
+        XCTAssertTrue(UITestConditions.exists(cancel) && cancel.isHittable)
+        ConversationHitUITestObservation.assertDockGeometry(app, phase: "cancel-ready", session: observationSession, testCase: self)
+        cancel.tap()
+        XCTAssertTrue(UITestConditions.exists(send) && send.isHittable)
+    }
+
     /// Checks failure recovery from a fresh conversation without relying on a prior scroll position.
     @MainActor
     func testFailureKeepsComposerReachable() {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-failure-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         let input = UITestConditions.element(app, "rag-conversation-input")
@@ -15,8 +40,8 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
-        typeOnKeyboard("afailure", in: app)
-        XCTAssertEqual((input.value as? String)?.lowercased(), "afailure")
+        typeOnKeyboard("a", in: app)
+        XCTAssertEqual((input.value as? String)?.lowercased(), "a")
         XCTAssertTrue(send.isHittable)
         send.tap()
         let error = UITestConditions.element(app, "rag-conversation-error")

@@ -36,6 +36,9 @@ describe('iOS test entry routing', () => {
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'conversation-visual' })).toBe(
       'conversation-visual',
     );
+    expect(
+      selectTestRoute({ OROT_TEST_SCENARIO: 'conversation-failure-visual' }),
+    ).toBe('conversation-failure-visual');
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'evidence-visual' })).toBe(
       'evidence-visual',
     );
