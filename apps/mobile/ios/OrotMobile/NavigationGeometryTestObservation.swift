@@ -58,10 +58,17 @@
             }
 
             let controls = currentNavigationControls(in: window, windows: visibleKeys, identity: identity)
+            // Device orientation requests can differ from the window scene's effective interface orientation.
+            let sceneOrientation: Any = if #available(iOS 16.0, *), let scene = window.windowScene {
+                scene.effectiveGeometry.interfaceOrientation.rawValue
+            } else {
+                NSNull()
+            }
             let ended = Date().timeIntervalSince1970 * 1000
             return [
                 // Compare the actual window contract; a root or sensor may be smaller.
                 "windowBounds": rect(window.bounds),
+                "sceneOrientation": sceneOrientation,
                 "safeAreaInsets": insets(window.safeAreaInsets),
                 "reservedRegionsSupported": regionsSupported,
                 "reservedRegions": regions,
