@@ -56,11 +56,21 @@ GitHub Actions runs this canonical check as the direct `Source LOC policy` job i
 
 ## iOS 빌드
 
+Keychain entitlement를 사용하는 Simulator 검증은 저장소의 서명 기본값을 유지해야 합니다. `pnpm ios:build`와 [`scripts/ci/build-ios-simulator-app.sh`](../scripts/ci/build-ios-simulator-app.sh)는 `CODE_SIGNING_ALLOWED=NO`를 전달하므로 이 검증에는 사용하지 않습니다. CocoaPods를 준비하고, 기본값 검증을 마친 뒤 서명 설정을 따로 덮어쓰지 않고 빌드하세요.
+
 ```sh
-pnpm ios:build
+pnpm --filter @orot/mobile ios:pods
+node scripts/ci/verify-simulator-keychain-defaults.mjs
+xcodebuild \
+  -workspace apps/mobile/ios/OrotMobile.xcworkspace \
+  -scheme OrotMobile \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath apps/mobile/ios/build
 ```
 
-이 명령은 CocoaPods 의존성을 설치한 뒤 Simulator용 앱을 빌드합니다. Simulator 빌드에서는 코드 서명을 끕니다.
+[`Simulator Keychain 기본값 검증기`](../scripts/ci/verify-simulator-keychain-defaults.mjs)는 Debug와 Release에서 `CODE_SIGNING_ALLOWED=YES`, `OROTSIM000`, Simulator Keychain 그룹과 entitlements가 적용되는지 확인하고, iPhoneOS 서명팀 설정은 사용자가 제어하도록 남아 있는지 확인합니다. Simulator 제품은 ad-hoc 서명되며 Simulator 전용 entitlements를 사용합니다. 실기기 빌드에는 별도의 실제 개발자 팀과 프로비저닝 설정이 필요하며, Simulator 설정은 실기기나 배포에 사용하지 않습니다. 검증기는 빌드 설정과 entitlement 파일을 확인하지만 모든 Keychain 오류의 원인을 판별하지는 않습니다.
 
 ## iOS 통합 및 UI 검증
 
