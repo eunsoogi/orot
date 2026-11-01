@@ -109,9 +109,9 @@ extension FormScrollGeometryRegression {
                                        "scroll": ["id": "scroll", "tracking": false, "dragging": false, "decelerating": false, "offset": ["x": 0.0, "y": 0.0], "size": ["width": 402.0, "height": 1200.0], "bounds": frame(CGRect(x: 0, y: 0, width: 402, height: 812))], "controls": groups]
         var statusGeometry = geometry
         statusGeometry["declaredControls"] = declared
-        let keyboardEvent: [String: Any] = ["event": "symptom-native-keyboard-frame", "phase": "did-change-frame", "receivedAtMs": 102.0, "endFrameInScreen": frame(CGRect(x: 0, y: 874, width: 402, height: 270))]
+        let keyboardEvent: [String: Any] = ["event": "symptom-native-keyboard-frame", "traceID": "trace", "scrollViewID": "scroll", "sequence": 1, "phase": "did-change-frame", "receivedAtMs": 102.0, "endFrameInScreen": frame(CGRect(x: 0, y: 874, width: 402, height: 270))]
         func statusSnapshot(_ value: [String: Any], event: [String: Any]) -> [String: Any] {
-            ["atMs": 104.0, "symptomScrollTrace": ["events": [event], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
+            ["atMs": 104.0, "symptomScrollTrace": ["traceID": "trace", "events": [event], "descriptionAccessory": ["truncated": false, "inputCount": 1, "inputs": [["geometry": value]]]]]
         }
         func plan(_ value: [String: Any], blocks: [CGRect] = [CGRect(x: 314, y: 792, width: 64, height: 48)], keyboard: CGRect? = nil, visible: CGRect? = nil, event: [String: Any]? = nil, fraction: CGFloat = 0.45) -> FormScrollGeometryJournalPlan.Plan? {
             FormScrollGeometryJournalPlan.make(snapshot: statusSnapshot(value, event: event ?? keyboardEvent), application: app, usableViewport: visible ?? viewport, keyboard: keyboard, controls: blocks, identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: fraction)
@@ -122,11 +122,23 @@ extension FormScrollGeometryRegression {
         XCTAssertNil(plan(statusGeometry, blocks: [viewport]))
         XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 226)))
         let partialKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 546, width: 402, height: 328))]) { _, new in new }
-        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 226), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: partialKeyboard))
+        let axKeyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
+        let nativeKeyboard = CGRect(x: 0, y: 546, width: 402, height: 328)
+        let constrained = try XCTUnwrap(plan(statusGeometry, keyboard: axKeyboard, visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: partialKeyboard))
+        let constrainedStart = CGPoint(x: constrained.start.dx, y: constrained.start.dy)
+        let constrainedEnd = CGPoint(x: constrained.end.dx, y: constrained.end.dy)
+        XCTAssertTrue(constrained.viewport.contains(constrainedStart) && constrained.viewport.contains(constrainedEnd))
+        XCTAssertFalse(constrained.viewport.intersects(axKeyboard) || constrained.viewport.intersects(nativeKeyboard))
+        XCTAssertFalse(axKeyboard.contains(constrainedStart) || axKeyboard.contains(constrainedEnd))
+        XCTAssertFalse(nativeKeyboard.contains(constrainedStart) || nativeKeyboard.contains(constrainedEnd))
+        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 500, width: 402, height: 316), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: partialKeyboard))
         let matchingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 590, width: 402, height: 284))]) { _, new in new }
         XCTAssertNotNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 284), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: matchingKeyboard))
         let overlappingKeyboard = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 400, width: 402, height: 474))]) { _, new in new }
         XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 400, width: 402, height: 474), visible: CGRect(x: 0, y: 62, width: 402, height: 388), event: overlappingKeyboard))
+        for altered: [String: Any] in [["traceID": "other"], ["scrollViewID": "other"], ["phase": "will-change-frame"], ["receivedAtMs": 104.0]] {
+            XCTAssertNil(plan(statusGeometry, event: keyboardEvent.merging(altered) { _, new in new }))
+        }
         var blockedGroups = groups
         let leftBlock = CGRect(x: 10, y: 300, width: 15, height: 10)
         let rightBlock = CGRect(x: 380, y: 300, width: 15, height: 10)

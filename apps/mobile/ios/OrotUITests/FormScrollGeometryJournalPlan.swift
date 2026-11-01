@@ -30,10 +30,10 @@ enum FormScrollGeometryJournalPlan {
               let windowID = declared["windowID"] as? String, !windowID.isEmpty, geometry["windowIdentity"] as? String == windowID,
               context["windowIdentity"] as? String == windowID, let screen = frame(context["windowFrameInScreen"]), same(screen, application),
               let bounds = frame(context["windowBounds"]), same(bounds, screen),
-              let nativeKeyboard = keyboardFootprint(keyboard, trace: trace, application: application, before: startAt),
               let scroll = context["scroll"] as? [String: Any], scroll["clipsToBounds"] as? Bool == true,
               scroll["isDragging"] as? Bool == false, scroll["isDecelerating"] as? Bool == false, scroll["isTracking"] as? Bool == false,
               let scrollView = scroll["view"] as? [String: Any], let scrollID = scrollView["identity"] as? String,
+              let nativeKeyboard = keyboardFootprint(keyboard, trace: trace, scrollID: scrollID, application: application, before: startAt),
               let scrollFrame = frame(scrollView["windowFrame"]), scrollView["sameWindow"] as? Bool == true,
               let selected = declared["scroll"] as? [String: Any], selected["id"] as? String == scrollID,
               selected["tracking"] as? Bool == false, selected["dragging"] as? Bool == false, selected["decelerating"] as? Bool == false,
@@ -91,14 +91,21 @@ enum FormScrollGeometryJournalPlan {
         return result
     }
 
-    private static func keyboardFootprint(_ keyboard: CGRect?, trace: [String: Any], application: CGRect, before: Double) -> CGRect? {
-        guard let events = trace["events"] as? [[String: Any]],
-              let latest = events.filter({ $0["event"] as? String == "symptom-native-keyboard-frame" }).last,
-              latest["phase"] as? String == "did-change-frame", let at = latest["receivedAtMs"] as? Double, at.isFinite, at <= before,
-              let native = frame(latest["endFrameInScreen"])
+    private static func keyboardFootprint(_ keyboard: CGRect?, trace: [String: Any], scrollID: String, application: CGRect, before: Double) -> CGRect? {
+        guard let traceID = trace["traceID"] as? String, !traceID.isEmpty, let events = trace["events"] as? [[String: Any]] else { return nil }
+        let keyboardEvents = events.filter { $0["event"] as? String == "symptom-native-keyboard-frame" }
+        guard zip(keyboardEvents, keyboardEvents.dropFirst()).allSatisfy({ first, second in
+            guard let left = first["sequence"] as? Int, let right = second["sequence"] as? Int,
+                  let earlier = first["receivedAtMs"] as? Double, let later = second["receivedAtMs"] as? Double else { return false }
+            return left < right && earlier.isFinite && later.isFinite && earlier <= later
+        }), let latest = keyboardEvents.last,
+        latest["traceID"] as? String == traceID, latest["scrollViewID"] as? String == scrollID,
+        let sequence = latest["sequence"] as? Int, sequence > 0,
+        latest["phase"] as? String == "did-change-frame", let at = latest["receivedAtMs"] as? Double, at.isFinite, at <= before,
+        let native = frame(latest["endFrameInScreen"])
         else { return nil }
         guard let keyboard else { return native.intersects(application) ? nil : native }
-        guard FormScrollGeometry.valid(keyboard), native.intersects(application), native.insetBy(dx: -0.0001, dy: -0.0001).contains(keyboard), abs(native.maxY - keyboard.maxY) <= 0.0001 else { return nil }
+        guard FormScrollGeometry.valid(keyboard), native.intersects(application), native.insetBy(dx: -0.0001, dy: -0.0001).contains(keyboard) else { return nil }
         return native
     }
 
