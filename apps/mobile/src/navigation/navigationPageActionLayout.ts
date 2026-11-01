@@ -56,3 +56,32 @@ export function splitPageActions<T>(actions: readonly T[], capacity: number) {
     overflow: actions.slice(visibleCount),
   };
 }
+
+/** Reserve native toolbar insets and every stack gap before exposing a prefix. */
+export function splitMeasuredPageActions<T>(
+  actions: readonly T[],
+  widths: readonly number[],
+  surfaceWidth: number,
+) {
+  const available = surfaceWidth - 32;
+  const fits = (values: readonly number[]) =>
+    values.reduce((sum, width) => sum + width, 0) + values.length * 12 <=
+    available;
+  if (
+    widths.length !== actions.length + 1 ||
+    !widths.every(width => Number.isFinite(width) && width >= 0) ||
+    !Number.isFinite(surfaceWidth)
+  )
+    return { visible: [] as readonly T[], overflow: actions };
+  const actionWidths = widths.slice(0, -1);
+  if (fits(actionWidths))
+    return { visible: actions, overflow: [] as readonly T[] };
+  const more = widths[widths.length - 1]!;
+  let count = 0;
+  while (
+    count < actions.length &&
+    fits([...actionWidths.slice(0, count + 1), more])
+  )
+    count += 1;
+  return { visible: actions.slice(0, count), overflow: actions.slice(count) };
+}

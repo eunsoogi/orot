@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
+  Platform,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -8,12 +9,16 @@ import {
 import { navigationText } from '../i18n/navigation';
 import { NavigationActionButton } from './NavigationActionButton';
 import type { NavigationSurface } from './NavigationActionBar';
-import type {
-  NavigationGlassAction,
-  NavigationGlassSurfaceProps,
+import {
+  NavigationGlassSurface,
+  type NavigationGlassAction,
+  type NavigationGlassSurfaceProps,
 } from './NavigationGlassSurface';
 import { settleNavigationRequest } from './nativeNavigationActions';
-import { splitPageActions } from './navigationPageActionLayout';
+import {
+  splitMeasuredPageActions,
+  splitPageActions,
+} from './navigationPageActionLayout';
 import { useNavigationContentFrame } from './navigationContentFrame';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
@@ -49,16 +54,36 @@ export function NavigationPageActionDock({
     };
   }, []);
   const { width, fontScale } = useWindowDimensions();
+  const [metrics, setMetrics] = useState<{
+    revision: string;
+    width: number;
+    widths: number[];
+  }>();
+  const nativeBottom =
+    !isRail && Platform.OS === 'ios' && Surface === NavigationGlassSurface;
+  const revision = JSON.stringify([
+    routeKey,
+    width,
+    fontScale,
+    actions.map(action => [
+      action.id,
+      action.label,
+      action.disabled,
+      action.busy,
+    ]),
+  ]);
   const contentFrame = useNavigationContentFrame();
   const availableWidth = contentFrame?.availableContentFrame.width ?? width;
   const bottomCapacity = Math.max(
     1,
     Math.floor((availableWidth - 40) / (120 * Math.max(1, fontScale))),
   );
-  const { visible, overflow } = splitPageActions(
-    actions,
-    isRail ? capacity : bottomCapacity,
-  );
+  const split = nativeBottom
+    ? metrics?.revision === revision
+      ? splitMeasuredPageActions(actions, metrics.widths, metrics.width)
+      : { visible: [], overflow: actions }
+    : splitPageActions(actions, isRail ? capacity : bottomCapacity);
+  const { visible, overflow } = split;
   const invoke = (id: string) => {
     const now = current.current;
     const action = now.actions.find(item => item.id === id);
@@ -105,7 +130,7 @@ export function NavigationPageActionDock({
     onPress: showOverflow,
   };
   const shown = overflow.length ? [...visible, more] : visible;
-  const descriptors: NavigationGlassAction[] = shown.map(action => ({
+  const describe = (action: NavigationRouteAction): NavigationGlassAction => ({
     id: `page:${action.id}`,
     label: action.label,
     accessibilityLabel: action.accessibilityLabel,
@@ -113,10 +138,11 @@ export function NavigationPageActionDock({
     disabled: disabled || action.disabled,
     busy: action.busy,
     primary: true,
-    ...(isRail
+    ...(isRail || action.id === 'overflow'
       ? { systemImageName: action.systemImageName ?? 'ellipsis' }
       : {}),
-  }));
+  });
+  const descriptors = shown.map(describe);
   const dispatch = (id: string) =>
     id === 'overflow' ? showOverflow() : invoke(id);
   return (
@@ -124,6 +150,18 @@ export function NavigationPageActionDock({
       {...surfaceProps}
       actions={descriptors}
       isPageDock
+      pageMetricsRequest={
+        nativeBottom
+          ? { revision, actions: [...actions, more].map(describe) }
+          : undefined
+      }
+      onPageMetrics={
+        nativeBottom
+          ? ({ nativeEvent }) => {
+              if (nativeEvent.revision === revision) setMetrics(nativeEvent);
+            }
+          : undefined
+      }
       onAction={({ nativeEvent }) =>
         dispatch(nativeEvent.id.replace(/^page:/, ''))
       }

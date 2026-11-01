@@ -53,6 +53,17 @@ export interface NavigationGlassSurfaceProps {
   /** Explicit window extent after keyboard avoidance, independent of React host bounds. */
   readonly railAvailableHeight?: number;
   readonly isPageDock?: boolean;
+  readonly pageMetricsRequest?: {
+    readonly revision: string;
+    readonly actions: readonly NavigationGlassAction[];
+  };
+  readonly onPageMetrics?: (
+    event: NativeSyntheticEvent<{
+      revision: string;
+      width: number;
+      widths: number[];
+    }>,
+  ) => void;
 }
 
 interface NavigationGlassNativeProps extends ViewProps {
@@ -65,6 +76,8 @@ interface NavigationGlassNativeProps extends ViewProps {
   readonly railRightInset?: number;
   readonly railAvailableHeight?: number;
   readonly isPageDock?: boolean;
+  readonly pageMetricsRequest?: NavigationGlassSurfaceProps['pageMetricsRequest'];
+  readonly onPageMetrics?: NavigationGlassSurfaceProps['onPageMetrics'];
 }
 
 const NativeNavigationGlassSurface =
@@ -82,6 +95,8 @@ export function NavigationGlassSurface({
   railTopInset,
   railAvailableHeight,
   isPageDock,
+  pageMetricsRequest,
+  onPageMetrics,
   style,
   testID,
 }: NavigationGlassSurfaceProps) {
@@ -98,6 +113,8 @@ export function NavigationGlassSurface({
       <NativeNavigationGlassSurface
         geometryLayoutRevision={geometryLayoutRevision}
         isPageDock={isPageDock}
+        pageMetricsRequest={pageMetricsRequest}
+        onPageMetrics={onPageMetrics}
         actions={actions}
         layoutMode={layoutMode}
         onAction={onAction}

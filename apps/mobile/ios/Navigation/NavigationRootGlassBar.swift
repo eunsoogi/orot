@@ -1,5 +1,22 @@
 import UIKit
 
+/** Cross-fades native navigation action updates and honors Reduce Motion. */
+enum NavigationToolbarTransition {
+    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
+        guard animated, !UIAccessibility.isReduceMotionEnabled else {
+            changes()
+            return
+        }
+
+        UIView.transition(
+            with: view,
+            duration: 0.14,
+            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
+            animations: changes,
+        )
+    }
+}
+
 /// Preserves one joined Glass surface and moving selection while switching between bottom and side layouts.
 final class NavigationRootGlassBar: UIVisualEffectView {
     static let exteriorWidth: CGFloat = 48

@@ -45,6 +45,7 @@ enum SymptomJournalControlUITestConditions {
         if let before, let after {
             XCTAssertEqual(before.id, after.id, "Observe the same native scroll view")
             XCTAssertGreaterThan(after.offset, before.offset, "The form must actually move")
+            print("Dock scroll evidence: beforeOffset=\(before.offset), afterOffset=\(after.offset), beforeAnchor=\(beforeAnchor), afterAnchor=\(afterAnchor), window=\(app.frame), scroll=\(scroll.frame), hittable=\(anchor.isHittable)")
         }
         XCTAssertEqual(afterAnchor.minX, beforeAnchor.minX, accuracy: 1)
         XCTAssertEqual(afterAnchor.minY, beforeAnchor.minY, accuracy: 1)

@@ -32,11 +32,16 @@ enum NavigationGlassButton {
     static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
         let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
-        let minimumWidth = usesRightRail && action.id.hasPrefix("page:") ? 44 : max(88, titleWidth + 24)
+        let compactPageAction = action.id == "page:overflow" || (usesRightRail && action.id.hasPrefix("page:"))
+        let minimumWidth = compactPageAction ? 44 : max(88, titleWidth + 24)
         if let constraint = constraints[action.id] {
             constraint.constant = minimumWidth
         } else {
             let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
+            // Measurements can arrive after a resize; allow temporary compression instead of conflicting constraints.
+            if action.id.hasPrefix("page:") {
+                constraint.priority = .defaultHigh
+            }
             constraint.isActive = true
             constraints[action.id] = constraint
         }

@@ -12,6 +12,15 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var onAction: RCTBubblingEventBlock?
+    @objc var pageMetricsRequest: NSDictionary = [:] {
+        didSet { setNeedsLayout() }
+    }
+
+    @objc var onPageMetrics: RCTDirectEventBlock? {
+        didSet { setNeedsLayout() }
+    }
+
+    private var lastPageMetricsKey = ""
     @objc var isPageDock: Bool = false
     /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
     @objc var geometryLayoutRevision: String? {
@@ -103,6 +112,9 @@ final class NavigationGlassSurfaceView: UIView {
             updatePresentation()
         }
         super.layoutSubviews()
+        if let onPageMetrics, let metrics = NavigationPageMetrics.payload(pageMetricsRequest, width: bounds.width, lastKey: &lastPageMetricsKey) {
+            onPageMetrics(metrics)
+        }
         publishNavigationGeometry(from: self)
     }
 

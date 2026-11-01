@@ -59,6 +59,9 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         guard fill(app, "symptom-description", canceled) else { return }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         try tapFinal(app, "symptom-form-cancel", stage: "large-korean-cancel")
+        let discard = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
+        XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable)
+        discard.tap()
         XCTAssertFalse(app.staticTexts[canceled].exists)
         XCTAssertTrue(saved.exists)
         XCTAssertTrue(UITestConditions.element(app, "symptom-add").exists)

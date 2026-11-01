@@ -39,6 +39,8 @@ RCT_EXPORT_VIEW_PROPERTY(onComposerPress, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(actions, NSArray)
 // Page controls share the lane but never replace navigation's measured frame.
 RCT_EXPORT_VIEW_PROPERTY(isPageDock, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(pageMetricsRequest, NSDictionary)
+RCT_EXPORT_VIEW_PROPERTY(onPageMetrics, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onAction, RCTBubblingEventBlock)
 // A committed React overlay move requests fresh UIKit measurement without supplying a navigation
 // frame.

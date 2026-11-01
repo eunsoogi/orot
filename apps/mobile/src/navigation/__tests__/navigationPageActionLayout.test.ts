@@ -1,5 +1,6 @@
 import {
   pageActionRailLayout,
+  splitMeasuredPageActions,
   splitPageActions,
 } from '../navigationPageActionLayout';
 
@@ -16,6 +17,42 @@ test('places page actions above a centered root group without consuming the cont
   expect(layout.fits).toBe(true);
   expect(678 - layout.pageBottomInset).toBeLessThan(rootTop);
   expect(layout.capacity).toBe(2);
+});
+
+test('fits measured UIKit widths including the overflow button and every gap', () => {
+  const actions = ['one', 'two', 'three'];
+  expect(splitMeasuredPageActions(actions, [140, 130, 125, 48], 402)).toEqual({
+    visible: ['one', 'two'],
+    overflow: ['three'],
+  });
+  expect(splitMeasuredPageActions(['long'], [400, 48], 320)).toEqual({
+    visible: [],
+    overflow: ['long'],
+  });
+  expect(splitMeasuredPageActions(['a', 'b'], [100, 100, 48], 256)).toEqual({
+    visible: ['a', 'b'],
+    overflow: [],
+  });
+  expect(splitMeasuredPageActions(['a', 'b'], [100, 100, 48], 255)).toEqual({
+    visible: ['a'],
+    overflow: ['b'],
+  });
+  expect(splitMeasuredPageActions(actions, [], 402)).toEqual({
+    visible: [],
+    overflow: actions,
+  });
+  // These widths exercise the production labels' ordering; UIKit supplies the real measurements.
+  const koreanActions = [
+    '증상과 기록 요약하기',
+    '가능성 살펴보기',
+    '저장된 요약 보기',
+  ];
+  expect(
+    splitMeasuredPageActions(koreanActions, [146, 130, 118, 48], 402),
+  ).toEqual({
+    visible: koreanActions.slice(0, 2),
+    overflow: koreanActions.slice(2),
+  });
 });
 
 test('reserves room above contextual navigation and falls back when no page action fits', () => {

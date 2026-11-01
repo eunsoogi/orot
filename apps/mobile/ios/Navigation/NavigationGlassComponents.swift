@@ -103,20 +103,24 @@ enum NavigationRailConstraints {
     }
 }
 
-/** Cross-fades native navigation action updates from their current state and honors Reduce Motion. */
-enum NavigationToolbarTransition {
-    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            changes()
-            return
-        }
+/// Measures configured UIKit controls, including the native minimum and button insets.
+enum NavigationPageMetrics {
+    static func payload(_ request: NSDictionary, width: CGFloat, lastKey: inout String) -> [String: Any]? {
+        guard width > 0, let revision = request["revision"] as? String, let values = request["actions"] as? [Any] else { return nil }
+        let key = "\(revision):\(width)"
+        guard key != lastKey else { return nil }
+        lastKey = key
+        return ["revision": revision, "width": width, "widths": widths(values)]
+    }
 
-        UIView.transition(
-            with: view,
-            duration: 0.14,
-            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
-            animations: changes,
-        )
+    static func widths(_ values: [Any]) -> [CGFloat] {
+        values.compactMap { value in
+            guard let action = NavigationActionDescriptor(value) else { return nil }
+            let button = NavigationGlassButton.make(for: action, onAction: { _ in })
+            let title = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width + 24
+            let minimum: CGFloat = action.id == "page:overflow" ? 44 : max(88, title)
+            return ceil(max(minimum, button.sizeThatFits(CGSize(width: 10000, height: 48)).width))
+        }
     }
 }
 

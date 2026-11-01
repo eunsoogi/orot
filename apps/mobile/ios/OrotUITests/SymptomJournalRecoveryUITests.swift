@@ -84,10 +84,22 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
             in: app,
             scrollID: "symptoms-scroll",
         ))
-        let cancel = UITestConditions.element(app, "symptom-form-cancel")
-        FormUITestConditions.reveal(cancel, in: app, scrollID: "symptoms-scroll")
+        let cancel = SymptomJournalControlUITestConditions.pageAction(app, id: "symptom-form-cancel", label: "취소")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
+        print("Cancel touch evidence: frame=\(cancel.frame), window=\(app.frame), scroll=\(UITestConditions.element(app, "symptoms-scroll").frame), keyboard=\(app.keyboards.firstMatch.exists ? String(describing: app.keyboards.firstMatch.frame) : "absent"), hittable=\(cancel.isHittable)")
         cancel.tap()
+        let alert = app.alerts["저장하지 않은 내용이 있어요"]
+        XCTAssertTrue(UITestConditions.exists(alert), app.debugDescription)
+        let keep = alert.buttons["계속 편집"]
+        XCTAssertTrue(keep.exists && keep.isHittable)
+        keep.tap()
+        XCTAssertEqual(description.value as? String, "Synthetic canceled symptom")
+        let cancelAgain = SymptomJournalControlUITestConditions.pageAction(app, id: "symptom-form-cancel", label: "취소")
+        XCTAssertTrue(cancelAgain.exists && cancelAgain.isHittable)
+        cancelAgain.tap()
+        let discard = alert.buttons["내용 버리고 나가기"]
+        XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable)
+        discard.tap()
 
         let empty = UITestConditions.element(app, "symptoms-empty")
         XCTAssertTrue(empty.waitForAppearance())
