@@ -159,14 +159,7 @@ enum SymptomJournalUITestObservations {
             print("Onset reveal: no clear candidate; editor or target frame unavailable")
             return
         }
-        reportSideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end)
-    }
-
-    /// Candidate segments use captured screen points; reporting neither chooses nor executes a replacement gesture.
-    private static func reportSideSegments(application: CGRect, viewport: CGRect, editor: CGRect, blockers: [CGRect], start: CGVector, end: CGVector) {
-        let candidates = sideSegments(application: application, viewport: viewport, editor: editor, blockers: blockers, start: start, end: end)
-            .map { "\($0.side): \($0.from) -> \($0.to)" }
-        print("Side gutter segments: \(candidates.isEmpty ? "no clear candidate" : candidates.joined(separator: "; "))")
+        FormScrollGeometryJournalPlan.reportSideSegments(application: application, viewport: viewport, editor: editor, blockers: [editor, target] + controls, start: start, end: end)
     }
 
     /// A multiline editor can consume an overlapping form drag. Prefer the clear right gutter, then the left, without changing vertical travel.
@@ -202,7 +195,8 @@ enum SymptomJournalUITestObservations {
                 let measuredKeyboard = keyboardExists ? keyboardElement.frame : nil
                 let keyboardFrame = measuredKeyboard.map { String(describing: $0) } ?? "absent"
                 let keyboardReadEndedAtMs = Date().timeIntervalSince1970 * 1000
-                if identifier == "symptom-status-active", keyboard == measuredKeyboard {
+                let plannerInvoked = identifier == "symptom-status-active" && keyboard == measuredKeyboard
+                if plannerInvoked {
                     freshPlan = FormScrollGeometryJournalPlan.make(snapshot: snapshot, application: application, usableViewport: viewport, keyboard: measuredKeyboard, controls: controls, identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs, readEndedAtMs: markerReadEndedAtMs, maximumScrollFraction: maximumScrollFraction)
                 }
                 let observation: [String: Any] = [
@@ -217,6 +211,9 @@ enum SymptomJournalUITestObservations {
                     "preGutterGestureInScreenPoints": original.map { ["start": String(describing: CGPoint(x: application.minX + $0.start.dx, y: application.minY + $0.start.dy)), "end": String(describing: CGPoint(x: application.minX + $0.end.dx, y: application.minY + $0.end.dy))] } as Any? ?? NSNull(),
                     "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardFrame,
                     "keyboardReadStartedAtMs": keyboardReadStartedAtMs, "keyboardReadEndedAtMs": keyboardReadEndedAtMs,
+                    "evaluationKeyboardAXFrame": keyboard.map { String(describing: $0) } ?? "absent", "keyboardFramesEqual": keyboard == measuredKeyboard,
+                    "plannerInvoked": plannerInvoked, "plannerReturned": freshPlan != nil, "maximumScrollFraction": maximumScrollFraction,
+                    "freshGesture": freshPlan.map { ["start": String(describing: $0.start), "end": String(describing: $0.end)] } as Any? ?? NSNull(),
                     // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
                     "nativeMarker": snapshot as Any? ?? payload,
                 ]

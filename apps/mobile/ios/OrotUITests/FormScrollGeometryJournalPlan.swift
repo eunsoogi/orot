@@ -10,6 +10,13 @@ enum FormScrollGeometryJournalPlan {
         let viewport: CGRect
     }
 
+    /// Report captured candidates without choosing or executing a gesture.
+    static func reportSideSegments(application: CGRect, viewport: CGRect, editor: CGRect, blockers: [CGRect], start: CGVector, end: CGVector) {
+        let candidates = FormScrollGeometry.journalSideSegments(application: application, viewport: viewport, editor: editor, blockers: blockers, start: start, end: end)
+            .map { "\($0.side): \($0.from) -> \($0.to)" }
+        print("Side gutter segments: \(candidates.isEmpty ? "no clear candidate" : candidates.joined(separator: "; "))")
+    }
+
     static func make(snapshot: [String: Any]?, application: CGRect, usableViewport: CGRect, keyboard: CGRect?, controls: [CGRect], identifier: String, evaluationStartedAtMs: Double, readEndedAtMs: Double, maximumScrollFraction: CGFloat) -> Plan? {
         guard identifier == "symptom-status-active", FormScrollGeometry.valid(application), FormScrollGeometry.valid(usableViewport),
               controls.allSatisfy(FormScrollGeometry.valid), let snapshot, let markerAt = snapshot["atMs"] as? Double,
