@@ -16,7 +16,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         input.tap()
         input.typeText("pending")
         XCTAssertEqual(input.value as? String, "pending")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
         send.tap()
@@ -41,14 +41,14 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         input.tap()
         input.typeText("a")
         XCTAssertEqual(input.value as? String, "a")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
         XCTAssertTrue(send.isHittable)
         send.tap()
         let error = UITestConditions.element(app, "rag-conversation-error")
         XCTAssertTrue(UITestConditions.exists(error))
         FormUITestConditions.reveal(error, in: app, scroll: history, requireHittable: false)
         XCTAssertTrue(error.exists)
-        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
         ConversationComposerDockUITestConditions.assertReachable(input, in: app)
         ConversationComposerDockUITestConditions.assertReachable(send, in: app)
     }
@@ -161,6 +161,15 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 /// Verifies fixed controls against their dock and actual occluding system surfaces.
 @MainActor
 enum ConversationComposerDockUITestConditions {
+    /// Existence alone can describe a keyboard outside the current app window.
+    static func waitForVisibleKeyboard(in app: XCUIApplication) {
+        let keyboard = app.keyboards.firstMatch
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            keyboard.exists && !keyboard.frame.intersection(app.frame).isEmpty
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [visible]), .completed)
+    }
+
     /// The stream must retain a readable line inside the real scroll viewport.
     static func assertStreamVisible(in app: XCUIApplication) {
         let history = UITestConditions.element(app, "rag-conversation-history")
