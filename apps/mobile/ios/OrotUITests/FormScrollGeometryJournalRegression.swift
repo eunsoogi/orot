@@ -91,5 +91,24 @@ extension FormScrollGeometryRegression {
         var changed = geometry
         changed["interaction"] = mismatched
         XCTAssertNil(resolve(snapshot(changed)))
+        // A status control must satisfy the same temporal, identity, and clipping boundaries as the original field.
+        let candidate: [String: Any] = ["id": "target", "windowID": window, "frame": frame(target), "hidden": false,
+                                        "alpha": 1.0, "ancestorHidden": false, "nearestScrollID": "scroll",
+                                        "sameSelectedScroll": true, "clippingComplete": true]
+        let controls: [String: Any] = ["startedAtMs": 103.0, "endedAtMs": 103.5, "windowID": window,
+                                       "truncated": false, "selectionComplete": true,
+                                       "controls": [["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [candidate]]]]
+        var statusGeometry = geometry
+        statusGeometry["declaredControls"] = controls
+        XCTAssertEqual(resolve(snapshot(statusGeometry), identifier: "symptom-status-active"), editor)
+        for altered: [String: Any] in [["frame": frame(target.offsetBy(dx: 0, dy: 20))], ["windowID": "other"], ["clippingComplete": false], ["sameSelectedScroll": false]] {
+            let candidate = candidate.merging(altered) { _, new in new }
+            var rejected = statusGeometry
+            rejected["declaredControls"] = controls.merging(["controls": [["role": "symptom-status-active", "count": 1, "truncated": false, "candidates": [candidate]]]]) { _, new in new }
+            XCTAssertNil(resolve(snapshot(rejected), identifier: "symptom-status-active"))
+        }
+        var duplicate = statusGeometry
+        duplicate["declaredControls"] = controls.merging(["controls": [["role": "symptom-status-active", "count": 2, "truncated": false, "candidates": [candidate, candidate]]]]) { _, new in new }
+        XCTAssertNil(resolve(snapshot(duplicate), identifier: "symptom-status-active"))
     }
 }
