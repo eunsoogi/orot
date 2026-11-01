@@ -148,7 +148,9 @@ final class ProductionRagConversationUITests: XCTestCase {
                     failures.prefix(2).contains { app.staticTexts[$0.0].exists }
             }, object: nil)
             guard UITestConditions.wait(for: [retryFinished]) == .completed else { throw failure("retry_result_unavailable") }
-            if node(app, "inference-disclosure-sheet").exists { throw failure("retry_consent_required") }
+            if node(app, "inference-disclosure-sheet").exists {
+                throw failure("retry_consent_required")
+            }
             if error.exists {
                 let retryError = UITestConditions.text(error)
                 let status = failures.first { $0.0 == retryError }?.1 ?? "unknown_failure"
