@@ -2,8 +2,10 @@ import XCTest
 
 /// Runs the journal geometry contract independently of the system share-sheet journey.
 final class FormScrollGeometryJournalRegression: XCTestCase {
+    @MainActor
     func testFreshJournalGestureBoundaries() throws {
         try FormScrollGeometryRegression.verifyClippedJournalEditor()
+        SymptomDateSelectionUITestObservation.verifyCorrelation()
     }
 }
 

@@ -185,8 +185,12 @@ enum AppointmentTextSelectionUITestConditions {
         let after = observe ? SymptomDateSelectionUITestObservation.request("after") : 0
         let selectAll = app.menuItems["Select All"]
         let available = selectAll.exists && selectAll.isHittable
-        if observe {
-            SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, afterRequest: after)
+        let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, afterRequest: after, planRetap: doubleTapProbe) : nil
+        if doubleTapProbe {
+            if let point {
+                SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app)
+            }
+            XCTFail("Date selection diagnostic stops before editing"); return false
         }
         guard available else {
             if input.identifier == "symptom-onset-date", ProcessInfo.processInfo.environment["OROT_SYMPTOM_MENU_OBSERVATION"] == "1",
@@ -196,9 +200,6 @@ enum AppointmentTextSelectionUITestConditions {
             }
             XCTFail("Select All missing")
             return false
-        }
-        if doubleTapProbe {
-            XCTFail("Date selection diagnostic stops before editing"); return false
         }
         measure("select-all") { selectAll.tap() }
         return true
