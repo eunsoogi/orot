@@ -1,3 +1,4 @@
+import CoreFoundation
 @testable import Orot
 import UIKit
 import XCTest
@@ -77,6 +78,48 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
             XCTAssertFalse(json.contains("accessibilityValue"))
         }
         try assertDockObserverRejectsOtherWindowDuplicate()
+        try assertConversationObservationIsOneShot()
+    }
+
+    /// Polling cannot sample; a nonce and its owner bind exactly one notification to one cache.
+    @MainActor
+    private func assertConversationObservationIsOneShot() throws {
+        let trigger = ConversationHitObservationTrigger.shared
+        let first = UUID().uuidString, second = UUID().uuidString
+        let identity: (NSObject) -> String = { _ in "anonymous" }
+        XCTAssertTrue(trigger.cached(session: first, owner: "a", identity: identity).isEmpty)
+        XCTAssertTrue(trigger.cached(session: first, owner: "a", identity: identity).isEmpty)
+        let oldGeneration = try XCTUnwrap(trigger.generationForTesting)
+        trigger.receive(session: second, owner: "a", generation: oldGeneration)
+        XCTAssertTrue(trigger.cached(session: first, owner: "a", identity: identity).isEmpty)
+        let name = CFNotificationName("com.orot.tests.conversation-hit.\(first)" as CFString)
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+        let received = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            trigger.cached(session: first, owner: "a", identity: identity)["sampleCount"] as? Int == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [received], timeout: 3), .completed)
+        let original = trigger.cached(session: first, owner: "a", identity: identity)
+        let originalSample = try XCTUnwrap(original["sample"] as? [String: Any])
+        trigger.receive(session: first, owner: "a", generation: oldGeneration)
+        let duplicate = trigger.cached(session: first, owner: "a", identity: identity)
+        let duplicateSample = try XCTUnwrap(duplicate["sample"] as? [String: Any])
+        XCTAssertEqual(duplicate["receivedAtMs"] as? Double, original["receivedAtMs"] as? Double)
+        XCTAssertEqual(duplicateSample["startedAtMs"] as? Double, originalSample["startedAtMs"] as? Double)
+        XCTAssertEqual(duplicateSample["endedAtMs"] as? Double, originalSample["endedAtMs"] as? Double)
+        XCTAssertTrue(trigger.cached(session: first, owner: "b", identity: identity).isEmpty)
+        trigger.receive(session: first, owner: "a", generation: oldGeneration)
+        trigger.invalidate(owner: "a")
+        XCTAssertTrue(trigger.cached(session: first, owner: "b", identity: identity).isEmpty)
+        trigger.invalidate(owner: "b")
+        trigger.receive(session: first, owner: "b", generation: oldGeneration)
+        XCTAssertTrue(trigger.cached(session: second, owner: "c", identity: identity).isEmpty)
+        trigger.receive(session: first, owner: "c", generation: oldGeneration)
+        XCTAssertTrue(trigger.cached(session: second, owner: "c", identity: identity).isEmpty)
+        trigger.invalidate(owner: "c")
+        XCTAssertTrue(trigger.cached(session: first, owner: "a", identity: identity).isEmpty)
+        trigger.receive(session: first, owner: "a", generation: oldGeneration)
+        XCTAssertTrue(trigger.cached(session: first, owner: "a", identity: identity).isEmpty)
+        trigger.invalidate(owner: "a")
     }
 
     /// Exercise real UIKit windows without reading labels or changing the host's original key window permanently.
@@ -108,6 +151,14 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         other.addSubview(duplicate)
         other.isHidden = false
         let ambiguous = NavigationControlGeometryObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
+        let firstSend = UIButton(), duplicateSend = UIButton()
+        firstSend.accessibilityIdentifier = "rag-conversation-send"
+        duplicateSend.accessibilityIdentifier = "rag-conversation-send"
+        window.addSubview(firstSend)
+        other.addSubview(duplicateSend)
+        let hit = ConversationHitTestObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
+        XCTAssertEqual(hit["status"] as? String, "ambiguous")
+        XCTAssertEqual(hit["candidateCount"] as? Int, 2)
         XCTAssertEqual(ambiguous["status"] as? String, "ambiguous")
     }
 

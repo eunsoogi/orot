@@ -9,8 +9,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected() throws {
+        let observationSession = ConversationHitUITestObservation.validatedSession()
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
@@ -66,10 +67,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         FormUITestConditions.replace(input, with: "test", in: app, scrollID: "rag-conversation-history")
         input.typeText("\n")
         FormUITestConditions.reveal(send, in: app, scrollID: "rag-conversation-history")
-        XCTAssertTrue(send.isEnabled)
-        XCTAssertTrue(send.isHittable)
+        ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
         send.tap()
-        message(app, "답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
+        message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         // Conversation sessions persist independently of route exit, including a failed provider request.
