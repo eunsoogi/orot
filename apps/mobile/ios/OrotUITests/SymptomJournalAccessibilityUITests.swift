@@ -85,10 +85,14 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         try launchJournal(app, category: .accessibilityExtraExtraExtraLarge, recovery: false)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
         try tapFinal(app, "symptom-add", stage: "large-keyboard-add")
+        guard fill(app, "symptom-description", "아픔") else { return }
         let active = UITestConditions.element(app, "symptom-status-active")
         guard FormUITestConditions.reveal(active, in: app, scrollID: "symptoms-scroll") != nil else { return }
         XCTAssertTrue(active.exists && active.isHittable); active.tap()
-        guard fill(app, "symptom-description", "아픔") else { return }
+        let savedDescription = app.textViews["symptom-description"]
+        guard FormUITestConditions.reveal(savedDescription, in: app, scrollID: "symptoms-scroll") != nil else { return }
+        XCTAssertTrue(savedDescription.exists && savedDescription.isHittable); savedDescription.tap()
+        XCTAssertEqual(savedDescription.value as? String, "아픔")
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
         guard try tapKeyboardAction(app, id: "symptom-save", label: "증상 기록 저장") else { return }
         let saved = app.staticTexts["아픔"]
