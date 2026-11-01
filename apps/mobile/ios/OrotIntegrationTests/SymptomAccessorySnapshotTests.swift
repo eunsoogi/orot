@@ -86,6 +86,70 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         for forbidden in ["synthetic-private-input-content", "synthetic-private-AX-label", "subviews", "children"] {
             XCTAssertFalse(encoded.contains(forbidden))
         }
+        try assertDeclaredControlGeometry(window: window, controller: controller, input: input)
+    }
+
+    /// Missing, duplicated, or clipped targets remain distinct and never expose the fixture's private strings.
+    @MainActor
+    private func assertDeclaredControlGeometry(window: UIWindow, controller: UIViewController, input: UITextView) throws {
+        let scroll = UIScrollView(frame: controller.view.bounds)
+        controller.view.addSubview(scroll)
+        scroll.addSubview(input)
+        let date = UITextField(frame: CGRect(x: 20, y: 120, width: 120, height: 40))
+        date.accessibilityIdentifier = "symptom-onset-date"
+        date.text = "synthetic-private-date"
+        let status = UIButton(frame: CGRect(x: 20, y: 180, width: 120, height: 40))
+        status.accessibilityIdentifier = "symptom-status-active"
+        status.accessibilityLabel = "synthetic-private-status-label"
+        scroll.addSubview(date)
+        scroll.addSubview(status)
+        XCTAssertTrue(date.becomeFirstResponder())
+        let views: [UIView] = [window, controller.view, scroll, input, date, status]
+        let identity: (NSObject) -> String = { object in object === window ? "window" : object === scroll ? "scroll" : "control" }
+        let sample = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)
+        XCTAssertEqual(sample["focusRole"] as? String, "symptom-onset-date")
+        let controls = try XCTUnwrap(sample["controls"] as? [[String: Any]])
+        let target = try XCTUnwrap(controls.first { $0["role"] as? String == "symptom-status-active" })
+        XCTAssertEqual(target["count"] as? Int, 1)
+        let candidate = try XCTUnwrap((target["candidates"] as? [[String: Any]])?.first)
+        XCTAssertEqual(candidate["sameSelectedScroll"] as? Bool, true)
+        let encoded = try String(decoding: JSONSerialization.data(withJSONObject: sample), as: UTF8.self)
+        XCTAssertFalse(encoded.contains("synthetic-private-date"))
+        XCTAssertFalse(encoded.contains("synthetic-private-status-label"))
+        let duplicate = UIButton()
+        duplicate.accessibilityIdentifier = "symptom-status-active"
+        let other = try UIWindow(windowScene: XCTUnwrap(window.windowScene))
+        other.addSubview(duplicate)
+        defer { other.isHidden = true }
+        let ambiguous = SymptomControlGeometryObservation.capture(input: input, views: views + [duplicate], window: window, truncated: false, identity: identity)
+        let repeated = try XCTUnwrap((ambiguous["controls"] as? [[String: Any]])?.first { $0["role"] as? String == "symptom-status-active" })
+        XCTAssertEqual(repeated["count"] as? Int, 2)
+        let candidates = try XCTUnwrap(repeated["candidates"] as? [[String: Any]])
+        XCTAssertTrue(candidates[1]["frame"] is NSNull)
+        XCTAssertEqual((candidates[1]["centerHit"] as? [String: Any])?["status"] as? String, "unavailable")
+        let truncated = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: true, identity: identity)
+        XCTAssertEqual(truncated["focusRole"] as? String, "unknown")
+        XCTAssertEqual(truncated["selectionComplete"] as? Bool, false)
+        status.layer.mask = CALayer()
+        let masked = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)
+        let maskedTarget = try XCTUnwrap((masked["controls"] as? [[String: Any]])?.first { $0["role"] as? String == "symptom-status-active" })
+        XCTAssertEqual(((maskedTarget["candidates"] as? [[String: Any]])?.first)?["clippingComplete"] as? Bool, false)
+        status.layer.mask = nil
+        status.frame.origin.y = 2000
+        scroll.clipsToBounds = true
+        let offscreen = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)
+        let offscreenTarget = try XCTUnwrap((offscreen["controls"] as? [[String: Any]])?.first { $0["role"] as? String == "symptom-status-active" })
+        XCTAssertEqual(((offscreenTarget["candidates"] as? [[String: Any]])?.first)?["clippedFrameEmpty"] as? Bool, true)
+        var container: UIView = scroll
+        for _ in 0 ..< 65 {
+            let child = UIView()
+            container.addSubview(child)
+            container = child
+        }
+        container.addSubview(input)
+        let deep = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)
+        XCTAssertEqual(deep["selectionComplete"] as? Bool, false)
+        XCTAssertNil(deep["scroll"])
     }
 
     @MainActor

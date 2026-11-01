@@ -20,7 +20,7 @@
                 let actual = input.inputAccessoryView
                 return [
                     "input": viewReport(input, identity: identity),
-                    "geometry": geometry(input, views: visited, identity: identity),
+                    "geometry": geometry(input, views: visited, truncated: !pending.isEmpty || roots.count > 8, identity: identity),
                     "isFirstResponder": input.isFirstResponder,
                     "declaredAccessoryID": stringGetter(input, "inputAccessoryViewID") as Any? ?? NSNull(),
                     "actualAccessory": actual.map { viewReport($0, identity: identity) } as Any? ?? NSNull(),
@@ -55,7 +55,7 @@
 
         /// Compare the public RN accessibility getter with its component in one synchronous main-actor sample.
         /// Only selected structural rectangles are exported; unknown/ambiguous ancestors never become a guessed outer frame.
-        private static func geometry(_ input: UITextView, views: [UIView], identity: (NSObject) -> String) -> [String: Any] {
+        private static func geometry(_ input: UITextView, views: [UIView], truncated: Bool, identity: (NSObject) -> String) -> [String: Any] {
             guard let window = input.window else { return ["status": "input-window-unavailable"] }
             var ancestor = input.superview
             var components: [UIView] = []
@@ -79,6 +79,7 @@
                 "userInterfaceStyle": window.traitCollection.userInterfaceStyle.rawValue,
                 "fontPointSize": input.font.map { Double($0.pointSize) } as Any? ?? NSNull(),
                 "interaction": interaction(input, views: views, ancestors: ancestors, complete: ancestor == nil, window: window, identity: identity),
+                "declaredControls": SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: truncated, identity: identity),
             ]
             for identifier in ["symptoms-scroll", "symptoms-form-lane"] {
                 let matches = views.filter { $0.accessibilityIdentifier == identifier && $0.window === window }

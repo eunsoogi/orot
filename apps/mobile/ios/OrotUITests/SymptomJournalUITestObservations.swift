@@ -191,8 +191,11 @@ enum SymptomJournalUITestObservations {
                                                             identifier: identifier, evaluationStartedAtMs: evaluationStartedAtMs,
                                                             readEndedAtMs: markerReadEndedAtMs, start: start, end: end)
                 }
+                let keyboardReadStartedAtMs = Date().timeIntervalSince1970 * 1000
                 let keyboard = app.keyboards.firstMatch
                 let keyboardExists = keyboard.exists
+                let keyboardFrame = keyboardExists ? String(describing: keyboard.frame) : "absent"
+                let keyboardReadEndedAtMs = Date().timeIntervalSince1970 * 1000
                 let observation: [String: Any] = [
                     "editorReadStartedAtMs": editorReadStartedAtMs, "editorReadEndedAtMs": editorReadEndedAtMs,
                     "markerReadStartedAtMs": markerReadStartedAtMs, "markerReadEndedAtMs": markerReadEndedAtMs,
@@ -204,7 +207,8 @@ enum SymptomJournalUITestObservations {
                     "navigationAXFrames": controls.map { String(describing: $0) },
                     "preGutterGestureInScreenPoints": ["start": String(describing: CGPoint(x: application.minX + start.dx, y: application.minY + start.dy)),
                                                        "end": String(describing: CGPoint(x: application.minX + end.dx, y: application.minY + end.dy))],
-                    "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardExists ? String(describing: keyboard.frame) : "absent",
+                    "keyboardExists": keyboardExists, "keyboardAXFrame": keyboardFrame,
+                    "keyboardReadStartedAtMs": keyboardReadStartedAtMs, "keyboardReadEndedAtMs": keyboardReadEndedAtMs,
                     // The native main-actor sample has its own timestamps; this later AX read is not atomic with it.
                     "nativeMarker": snapshot as Any? ?? payload,
                 ]
