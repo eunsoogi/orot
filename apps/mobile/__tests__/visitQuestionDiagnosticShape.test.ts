@@ -1,8 +1,12 @@
 import {
   observeVisitQuestionResponse,
+  currentVisitQuestionResponseShapes,
   visitQuestionResponseShape,
 } from '../e2e/visitQuestionResponseShape';
-import { createVisitQuestionTaskResponder } from '../e2e/visitQuestionValidationDiagnostic';
+import {
+  createVisitQuestionTaskResponder,
+  currentVisitQuestionValidationCodes,
+} from '../e2e/visitQuestionValidationDiagnostic';
 import { beginScopeObservation } from '../e2e/visitQuestionScopeGuard';
 
 jest.mock('../src/agent/visitQuestions/taskContract', () => ({
@@ -53,8 +57,7 @@ test('reports fixed response shapes without values, identifiers or unexpected ke
 });
 
 test('reports closed local validation reasons and suppresses arbitrary text', () => {
-  const log = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-  beginScopeObservation(jest.fn());
+  const token = beginScopeObservation(jest.fn());
   const task = createVisitQuestionTaskResponder();
   const invalid = {
     status: 'invalid',
@@ -68,18 +71,16 @@ test('reports closed local validation reasons and suppresses arbitrary text', ()
     } as never,
     {} as never,
   );
-  expect(log.mock.calls).toEqual([
-    ['OROT_SYNTHETIC_VALIDATION unsupported_fact'],
-    ['OROT_SYNTHETIC_VALIDATION other'],
+  expect(currentVisitQuestionValidationCodes(token)).toEqual([
+    'unsupported_fact',
+    'other',
   ]);
-  beginScopeObservation(jest.fn());
+  const next = beginScopeObservation(jest.fn());
   expect(task.validateResult(invalid as never, {} as never)).toBe(invalid);
-  expect(log).toHaveBeenCalledTimes(2);
-  log.mockRestore();
+  expect(currentVisitQuestionValidationCodes(next)).toEqual([]);
 });
 
 test('suppresses stale response logs without changing the returned response', () => {
-  const log = jest.spyOn(console, 'info').mockImplementation(() => undefined);
   const token = beginScopeObservation(jest.fn());
   const response = {
     text: '{}',
@@ -87,10 +88,10 @@ test('suppresses stale response logs without changing the returned response', ()
     finishReason: 'complete',
   } as const;
   expect(observeVisitQuestionResponse(token, 1, response)).toBe(response);
-  beginScopeObservation(jest.fn());
+  expect(currentVisitQuestionResponseShapes(token)).toHaveLength(1);
+  const next = beginScopeObservation(jest.fn());
   expect(observeVisitQuestionResponse(token, 1, response)).toBe(response);
-  expect(log).toHaveBeenCalledTimes(1);
-  log.mockRestore();
+  expect(currentVisitQuestionResponseShapes(next)).toEqual([]);
 });
 
 test('redirects only the visit task validation observer', () => {

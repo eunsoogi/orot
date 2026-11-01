@@ -19,6 +19,15 @@ const reasons: Readonly<Record<string, string>> = {
     'unsupported_fact',
   'A visit question must end with a question mark.': 'question_form',
 };
+let observationToken = 0;
+let observations: string[] = [];
+
+/** Only closed reason codes for the current run can reach the test-only UI. */
+export function currentVisitQuestionValidationCodes(token: number) {
+  return token === currentScopeGeneration() && observationToken === token
+    ? observations
+    : [];
+}
 
 /** The production validator runs unchanged; late results must not be attributed to a newer run. */
 export function createVisitQuestionTaskResponder() {
@@ -33,7 +42,11 @@ export function createVisitQuestionTaskResponder() {
           result.reason && Object.hasOwn(reasons, result.reason)
             ? reasons[result.reason]
             : 'other';
-        console.info(`OROT_SYNTHETIC_VALIDATION ${code}`);
+        if (observationToken !== token) {
+          observationToken = token;
+          observations = [];
+        }
+        observations.push(code!);
       }
       return result;
     },

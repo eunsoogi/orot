@@ -3,6 +3,11 @@ import { currentScopeGeneration } from './visitQuestionScopeGuard';
 
 type Kind =
   'missing' | 'null' | 'string' | 'number' | 'boolean' | 'object' | 'array';
+let observationToken = 0;
+let observations: Array<{
+  call: number;
+  shape: ReturnType<typeof visitQuestionResponseShape>;
+}> = [];
 const kind = (value: unknown): Kind =>
   value === undefined
     ? 'missing'
@@ -80,11 +85,19 @@ export function observeVisitQuestionResponse(
   call: number,
   response: LanguageModelResponse,
 ) {
-  if (token === currentScopeGeneration())
-    console.info(
-      'OROT_SYNTHETIC_RESPONSE',
-      call,
-      JSON.stringify(visitQuestionResponseShape(response)),
-    );
+  if (token === currentScopeGeneration()) {
+    if (observationToken !== token) {
+      observationToken = token;
+      observations = [];
+    }
+    observations.push({ call, shape: visitQuestionResponseShape(response) });
+  }
   return response;
+}
+
+/** The UI exposes only the current run's already-sanitized observations. */
+export function currentVisitQuestionResponseShapes(token: number) {
+  return token === currentScopeGeneration() && observationToken === token
+    ? observations
+    : [];
 }

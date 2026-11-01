@@ -3,7 +3,11 @@ import { NextVisitQuestionsRoute } from '../src/aiFeatures/integration/NextVisit
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { audit } from './visitQuestionScopeInventory';
-import { observeVisitQuestionResponse } from './visitQuestionResponseShape';
+import {
+  currentVisitQuestionResponseShapes,
+  observeVisitQuestionResponse,
+} from './visitQuestionResponseShape';
+import { currentVisitQuestionValidationCodes } from './visitQuestionValidationDiagnostic';
 import {
   beginScopeObservation,
   dispatchScoped,
@@ -117,6 +121,8 @@ export function visitQuestionScopeDiagnostics(report: (value: string) => void) {
           validatedEvidence: observedEvidenceCount(token),
           scopeRejected: scopeRejection(token),
           outcome: result.status,
+          responseShapes: currentVisitQuestionResponseShapes(token),
+          validationCodes: currentVisitQuestionValidationCodes(token),
         }),
       );
       return result;
