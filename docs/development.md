@@ -13,7 +13,7 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 | pnpm                                                | 12.3.4                                             |
 | React Native / React                                | 0.87.1 / 19.2.3                                    |
 | Jest / React Native Testing Library / test-renderer | 29.7.0 / 14.0.1 / 1.2.0                            |
-| Xcode                                               | 27.1                                               |
+| Xcode                                               | 27.2                                               |
 | Ruby / CocoaPods                                    | 4.0.7 / 1.17.0 (Homebrew)                          |
 
 iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
@@ -21,7 +21,7 @@ iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런
 `xcode-select -p`가 Command Line Tools 경로를 가리키면 Xcode 개발자 디렉터리를 지정해 의존성을 설치하고 iOS 명령을 실행하세요.
 
 ```sh
-export DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode_27.2.app/Contents/Developer
 ```
 
 ## 설치 및 검사
@@ -88,7 +88,7 @@ node scripts/ci/run-ios-production-ui-tests.mjs <udid> <OrotUITests-Runner.app> 
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.1을 유지하며, 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Settings 측정 패널의 다크 모드·가로 회전·큰 글씨와 카테고리 이동 (`OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText`), 계정 상태와 선택·인증 복귀 후 탐색 유지 (`OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels`), provider 선택이 가로 회전과 측정 패널 재배치 및 확인 후 복귀 뒤에도 유지되는 동작 (`OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels`), 합성 계정 인증 콜백 복귀 중 창 크기 변경 후에도 선택 상태를 보존하는 동작 (`OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit`), in-flow 제공자 선택 화면의 측정 Duo 영역 재배치와 사용할 수 없는 제공자 상태 (`OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow`), 백업 상태와 iCloud 복구 안내의 측정 영역 배치·상태 표시·큰 글씨 접근성 (`OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable`), 개인정보 설정의 권한·전송 정보 표시와 추론 동의 영수증 삭제 확인 및 Duo 재배치 (`OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow`), 네 개 AI 진입점의 측정 콘텐츠 영역 배치와 동의 없는 근거 화면 진입, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, 예약 선택 상세 화면의 Duo 영역 재배치 (`OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry`), 진료 분류 화면에서 동의 승인과 실패 시 미저장 동작 (`OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification`), Records 허브의 적응형 열과 큰 글씨 접근성, 건강 기록 유형과 기간 선택을 회전 후에도 보존하는 동작 (`OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges`), 건강 기록 상세 행·기간과 복약 이력·기간의 Duo 재배치 (`OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges`, `OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow`), 건강 기록에서 통합 가져오기 진입, 건강 연동 설정의 선택과 권한 안내를 다크 모드·가로 회전 후에도 유지하는 동작 (`OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure`), sync status와 복구 상태의 Duo 재배치 (`OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow`), 증상 요약과 가능성 평가의 합성 근거·인용 보존 (`OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions`), 근거 출처 상세 화면의 Duo 재배치 후 원문·출처와 원래 답변 복귀 상태를 유지하는 동작 (`OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState`), 선택·진행 상태의 Duo 기하 변화 유지, 큰 글씨 단일 열, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 대화 작성기와 대기 중 삭제 취소가 Duo 재배치 후에도 유지되는 동작 (`OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances`), 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 녹음 검토 중 창 크기 변화에도 transcript 초안과 선택을 유지하는 동작 (`OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow`), Apple Speech 전사 중 Duo 재배치 후 같은 녹음 원본과 검토 전 초안을 유지하는 동작 (`OrotUITests/AutomaticTranscriptionUITests/testActiveTranscriptionSurvivesDuoReflow`), 선택한 수동 기록 이력이 측정 Duo 영역 재배치 후에도 유지되는 동작 (`OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow`), 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존, 수동 진료 입력 초안의 Duo 재배치와 저장·취소·수정 동작 (`OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow`)을 확인하는 사례로 구성됩니다.
+`duo`는 명시적으로 선택하는 별도 Release 프로필입니다. iPhone Duo는 iOS 27.1 이상 런타임이 필요하므로 `iOS-27-1`과 `iPhone-Duo` 식별자를 사용합니다. Xcode와 빌드 SDK는 모두 27.2를 사용하며, Duo는 iOS 27.1 런타임, core 등 일반 iPhone 프로필은 iOS 27.0 런타임을 유지합니다. 기존 프로필의 기기·런타임·제품 호환 목록과 hosted cohort는 바꾸지 않습니다. Duo 제품은 `ios-test-duo`로 구분하고, 기본 실행 목록은 네이티브 호스트 시작, root/right rail 접근성, Home 요약과 진료 준비 이동, Settings 측정 패널의 다크 모드·가로 회전·큰 글씨와 카테고리 이동 (`OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText`), 계정 상태와 선택·인증 복귀 후 탐색 유지 (`OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels`), provider 선택이 가로 회전과 측정 패널 재배치 및 확인 후 복귀 뒤에도 유지되는 동작 (`OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels`), 합성 계정 인증 콜백 복귀 중 창 크기 변경 후에도 선택 상태를 보존하는 동작 (`OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit`), in-flow 제공자 선택 화면의 측정 Duo 영역 재배치와 사용할 수 없는 제공자 상태 (`OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow`), 백업 상태와 iCloud 복구 안내의 측정 영역 배치·상태 표시·큰 글씨 접근성 (`OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable`), 개인정보 설정의 권한·전송 정보 표시와 추론 동의 영수증 삭제 확인 및 Duo 재배치 (`OrotUITests/SettingsPrivacyDuoUITests/testConsentConfirmationAndClearedStateSurviveDuoReflow`), 네 개 AI 진입점의 측정 콘텐츠 영역 배치와 동의 없는 근거 화면 진입, Duo 기하 브리지와 질문 초안 보존, landscape 전환 중 초안 보존, Schedule 회전 후 선택 확인과 큰 글씨 접근성, 예약 선택 상세 화면의 Duo 영역 재배치 (`OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry`), 진료 분류 화면에서 동의 승인과 실패 시 미저장 동작 (`OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification`), Records 허브의 적응형 열과 큰 글씨 접근성, 건강 기록 유형과 기간 선택을 회전 후에도 보존하는 동작 (`OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges`), 건강 기록 상세 행·기간과 복약 이력·기간의 Duo 재배치 (`OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges`, `OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow`), 건강 기록에서 통합 가져오기 진입, 건강 연동 설정의 선택과 권한 안내를 다크 모드·가로 회전 후에도 유지하는 동작 (`OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure`), sync status와 복구 상태의 Duo 재배치 (`OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow`), 증상 요약과 가능성 평가의 합성 근거·인용 보존 (`OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions`), 근거 출처 상세 화면의 Duo 재배치 후 원문·출처와 원래 답변 복귀 상태를 유지하는 동작 (`OrotUITests/EvidenceSourceDuoUITests/testEvidenceSourceDetailsReflowWithoutLosingReturnState`), 선택·진행 상태의 Duo 기하 변화 유지, 큰 글씨 단일 열, 사방 가림과 라이브러리 마지막 행 접근성, Back/Home 이탈 확인, 키보드가 열린 상태의 Save 배치, 대화 작성기와 대기 중 삭제 취소가 Duo 재배치 후에도 유지되는 동작 (`OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances`), 실제 오디오 공유 시트 닫기와 임시 파일 정리·원본 보존, 녹음 검토 중 창 크기 변화에도 transcript 초안과 선택을 유지하는 동작 (`OrotUITests/RecordingDuoUITests/testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow`), Apple Speech 전사 중 Duo 재배치 후 같은 녹음 원본과 검토 전 초안을 유지하는 동작 (`OrotUITests/AutomaticTranscriptionUITests/testActiveTranscriptionSurvivesDuoReflow`), 선택한 수동 기록 이력이 측정 Duo 영역 재배치 후에도 유지되는 동작 (`OrotUITests/ManualHistoryDuoUITests/testSelectedHistorySurvivesMeasuredDuoReflow`), 상담 녹음의 동의 유지와 창 크기 변화 중 라이브 세션 보존, 수동 진료 입력 초안의 Duo 재배치와 저장·취소·수정 동작 (`OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow`)을 확인하는 사례로 구성됩니다.
 
 `duo` 프로필의 기본 실행 인벤토리에는 `scripts/ci/duo-test-inventory.mjs`에 등록된 45개 사례가 포함됩니다. 기존 Settings 자식 화면 여정 (`OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes`)도 Core와 Duo에 각각 등록해 일반 글자에서 여섯 자식 화면의 실제 콘텐츠 경계와 레일 중심, Back 복귀, 마지막 항목 도달을 확인합니다. 기존 예약 분류·수동 목록·Back 복귀 여정 (`OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome`)은 기존 fixtures 등록을 유지하면서 Duo에도 등록해 독립적인 자식 콘텐츠 경계를 확인합니다. 합성 건강 기록 목록·상세·가져오기 진입 경계 사례는 별도의 Duo 등록으로 일반 글자와 접근성 큰 글자에서 확인하며, 실제 가져오기나 권한 요청은 시작하지 않습니다. 합성 근거 원문 사례는 일반 글자에서 가능성 평가와 저장된 원문 선택, Back 복귀의 경계를 별도로 확인하며, 모델 호출이나 회전·키보드 입력을 요구하지 않습니다. Settings와 예약의 경계 검사는 회전·큰 글자 사례와 독립적으로 실행합니다. VoiceOver 사례는 iOS 27의 공개 `XCUIVoiceOverService`로 실제 발화와 루트·Back/Home 탐색 및 활성화를 확인하고, 오류를 그대로 보존하며 원래 켜짐 상태를 복원합니다.
 
@@ -100,7 +100,7 @@ Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 �
 node scripts/ci/build-ios-tests.mjs duo build/integration-tests-duo
 node scripts/ci/ios-test-simulator.mjs prepare duo build/ios-duo-owner.json
 node scripts/ci/ios-test-simulator.mjs verify duo build/ios-duo-owner.json
-node scripts/ci/run-ios-tests.mjs duo build/integration-tests-duo/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-duo-owner.json build/ios-duo-launch.xcresult
+node scripts/ci/run-ios-tests.mjs duo build/integration-tests-duo/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-duo-owner.json build/ios-duo-launch.xcresult
 node scripts/ci/ios-test-results.mjs duo build/ios-duo-launch.xcresult build/ios-duo-launch-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup duo build/ios-duo-owner.json
 ```
@@ -118,12 +118,12 @@ GitHub가 제공하는 임시 macOS 러너에서는 checkout 직후, 도구 설�
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-release
 node scripts/ci/ios-test-simulator.mjs prepare core build/ios-core-owner.json
-node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
-node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
-node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
-OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
+node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
+node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
+node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
+OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
 OROT_IOS_TEST_SUITE=integration node scripts/ci/ios-test-results.mjs core build/ios-core-integration.xcresult build/ios-core-integration-results.json && \
-OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
+OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
 OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-ui.xcresult build/ios-core-ui-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
@@ -133,7 +133,7 @@ HealthReview의 일곱 화면 여정은 `health-review-ui` 전용 cohort에서 `
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-health-review
 node scripts/ci/ios-test-simulator.mjs prepare-cohort health-review-ui build/ios-health-review-owner.json
-PROFILE=core node scripts/ci/run-ios-test-cohort.mjs health-review-ui build/integration-tests-health-review/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-health-review-owner.json build/ios-health-review-results
+PROFILE=core node scripts/ci/run-ios-test-cohort.mjs health-review-ui build/integration-tests-health-review/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-health-review-owner.json build/ios-health-review-results
 node scripts/ci/ios-test-simulator.mjs cleanup health-review-ui build/ios-health-review-owner.json
 ```
 
@@ -144,7 +144,7 @@ node scripts/ci/ios-test-simulator.mjs cleanup health-review-ui build/ios-health
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-encounter-review
 node scripts/ci/ios-test-simulator.mjs prepare-cohort encounter-review-persistence build/ios-encounter-review-owner.json
-node scripts/ci/run-ios-encounter-review-persistence-tests.mjs build/integration-tests-encounter-review/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-encounter-review-owner.json build/ios-encounter-review-phases
+node scripts/ci/run-ios-encounter-review-persistence-tests.mjs build/integration-tests-encounter-review/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-encounter-review-owner.json build/ios-encounter-review-phases
 node scripts/ci/ios-test-simulator.mjs cleanup encounter-review-persistence build/ios-encounter-review-owner.json
 ```
 
@@ -155,7 +155,7 @@ driver는 한 번만 초기화한 뒤 production service/controller로 seed, res
 두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 `authentication` suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. 로컬에서 아래 명령을 실행할 때는 owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켠 뒤, prompted 사례에서 일치하는 얼굴을 입력하세요. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
 
 ```sh
-OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
+OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core build/ios-core-keychain-auth.xcresult build/ios-core-keychain-auth-results.json
 ```
 
