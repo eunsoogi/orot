@@ -1,3 +1,17 @@
+import CoreGraphics
+
+/// Keep the native hit-tested center only when the independently observed AX viewport contains its region.
+enum SymptomRetapViewport {
+    static func point(selection: CGRect, viewport: CGRect) -> CGPoint? {
+        guard !selection.isNull, !selection.isInfinite, selection.width > 0, selection.height > 0,
+              [selection.minX, selection.minY, selection.maxX, selection.maxY].allSatisfy(\.isFinite),
+              !viewport.isNull, !viewport.isInfinite, viewport.width > 0, viewport.height > 0,
+              [viewport.minX, viewport.minY, viewport.maxX, viewport.maxY].allSatisfy(\.isFinite), viewport.contains(selection) else { return nil }
+        return CGPoint(x: selection.midX, y: selection.midY)
+    }
+}
+
+#if canImport(UIKit)
 import CoreFoundation
 import XCTest
 
@@ -46,19 +60,24 @@ enum SymptomDateSelectionUITestObservation {
     /// A planned point is used only when current AX geometry agrees with the one-shot native selection sample.
     private static func retapPoint(_ app: XCUIApplication, after: [String: Any], trace: [String: Any]?) -> CGPoint? {
         guard let geometry = after["selectionGeometry"] as? [String: Any], geometry["hitOwned"] as? Bool == true,
-              let selected = frame(geometry["selection"]), let nativeField = frame(geometry["field"]), let nativeWindow = frame(geometry["window"]),
+              let original = frame(geometry["selection"]), let selected = frame(geometry["visibleSelection"]), original.contains(selected), let nativeField = frame(geometry["field"]), let nativeWindow = frame(geometry["window"]),
               let orientation = geometry["orientation"] as? Int, matchesOrientation(orientation),
               let start = after["selectionStart"] as? Int, let end = after["selectionEnd"] as? Int, start < end else { return nil }
         let input = app.textFields.matching(identifier: "symptom-onset-date")
         guard input.count == 1 else { return nil }
         let field = input.element(boundBy: 0), appFrame = app.frame
         guard field.exists, field.isHittable, same(field.frame, nativeField), same(appFrame, nativeWindow), nativeField.contains(selected), appFrame.contains(selected) else { return nil }
-        let point = CGPoint(x: selected.midX, y: selected.midY)
         let keyboard = app.keyboards.firstMatch
-        if keyboard.exists {
-            let value = keyboard.frame
-            guard valid(value), !value.intersects(selected) else { return nil }
+        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        if let keyboardFrame {
+            guard valid(keyboardFrame), !keyboardFrame.intersects(selected) else { return nil }
         }
+        // The AX viewport can be smaller than the native scroll clip; never move the hit-tested point to compensate.
+        let scroll = UITestConditions.element(app, "symptoms-scroll")
+        guard scroll.exists else { return nil }
+        let usable = FormUITestConditions.unobstructedScrollFrame(scroll.frame, target: nativeField, in: app)
+        guard let viewport = FormScrollGeometry.current(application: appFrame, scroll: usable, keyboard: keyboardFrame, input: nativeField, referenceSize: nil)?.viewport,
+              let point = SymptomRetapViewport.point(selection: selected, viewport: viewport) else { return nil }
         guard safeNativeEvidence(trace: trace, after: after, geometry: geometry, appFrame: appFrame, nativeField: nativeField, nativeWindow: nativeWindow, selected: selected) else { return nil }
         let overlay = UITestConditions.element(app, "navigation-action-bar-overlay")
         guard overlay.exists else { return nil }
@@ -87,7 +106,7 @@ enum SymptomDateSelectionUITestObservation {
               let traceView = traceScroll["view"] as? [String: Any], traceView["identity"] as? String == traceScrollID,
               let traceFrame = frame(traceView["windowFrame"]), let traceBounds = frame(traceView["bounds"]),
               let nativeScroll = geometry["scroll"] as? [String: Any], let scrollFrame = frame(nativeScroll["frame"]),
-              let scrollBounds = frame(nativeScroll["bounds"]), same(scrollFrame, traceFrame.offsetBy(dx: appFrame.minX, dy: appFrame.minY)), same(scrollBounds, traceBounds),
+              let scrollBounds = frame(nativeScroll["bounds"]), same(scrollFrame, traceFrame.offsetBy(dx: appFrame.minX, dy: appFrame.minY)), same(scrollBounds, traceBounds), scrollFrame.contains(selected),
               samePoint(nativeScroll["offset"], traceScroll["contentOffset"]),
               let declared = sample["declaredControls"] as? [String: Any], declared["selectionComplete"] as? Bool == true, declared["truncated"] as? Bool == false,
               let groups = declared["controls"] as? [[String: Any]], let date = groups.filter({ $0["role"] as? String == "symptom-onset-date" }).first,
@@ -212,3 +231,5 @@ enum SymptomDateSelectionUITestObservation {
         XCTAssertFalse(safeButtons([selected], selected: selected))
     }
 }
+
+#endif

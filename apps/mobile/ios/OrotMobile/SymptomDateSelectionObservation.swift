@@ -1,4 +1,21 @@
 #if OROT_TESTS
+    import CoreGraphics
+    import Foundation
+
+    /// Keep one candidate region inside each real clipping rectangle without expanding either boundary.
+    enum SymptomSelectionIntersection {
+        static func intersect(_ region: CGRect, _ clip: CGRect) -> CGRect? {
+            guard valid(region), valid(clip) else { return nil }
+            let value = region.intersection(clip)
+            return valid(value) ? value : nil
+        }
+
+        private static func valid(_ rect: CGRect) -> Bool {
+            !rect.isNull && !rect.isInfinite && rect.width > 0 && rect.height > 0 && [rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy(\.isFinite)
+        }
+    }
+
+    #if canImport(UIKit)
     import CoreFoundation
     import UIKit
 
@@ -127,9 +144,9 @@
             return result
         }
 
-        /// The public selection rect belongs to textInputView; reject incomplete clipping or an unrelated native hit.
+        /// Derive one visible selection region from complete public clipping and hit-test its exact center.
         static func selectionGeometry(field: UITextField, range: UITextRange, window: UIWindow, rejection: (String) -> Void = { _ in }, clipFailure: ([String: Any]) -> Void = { _ in }, identity: (NSObject) -> String) -> [String: Any]? {
-            // Record only the first failed public geometry boundary; never loosen a retap guard.
+            // Record only the first failed public geometry boundary without collecting input contents.
             func reject(_ reason: String) -> [String: Any]? { rejection(reason); return nil }
             guard #available(iOS 17.4, *) else { return reject("unsupportedOS") }
             let input = field.textInputView
@@ -144,12 +161,13 @@
             guard selected.transform.isIdentity else { return reject("selectionTransform") }
             let rect = input.convert(selected.rect, to: window), fieldFrame = field.convert(field.bounds, to: window)
             guard finite(rect), finite(fieldFrame), window.bounds.contains(rect), fieldFrame.contains(rect) else { return reject("selectionContainment") }
+            var visible = rect
             var current: UIView? = input, reachedWindow = false, reachedField = false, depth = 0, scrollers: [UIScrollView] = []
             while let view = current, depth < 64 {
                 guard view.layer.mask == nil, view.transform.isIdentity, CATransform3DIsIdentity(view.layer.transform), view === window || view.window === window else { return reject("ancestorOwnershipOrTransform") }
                 if view.clipsToBounds || view.layer.masksToBounds {
                     let clip = view.convert(view.bounds, to: window)
-                    guard finite(clip), clip.contains(rect) else {
+                    guard let intersection = SymptomSelectionIntersection.intersect(visible, clip) else {
                         // Preserve only public geometry from the first failed clip in this same sample.
                         var failure: [String: Any] = ["valid": finite(clip), "depth": depth, "ancestorID": identity(view), "isInput": view === input, "isField": view === field, "isScroll": view is UIScrollView, "clipsToBounds": view.clipsToBounds, "masksToBounds": view.layer.masksToBounds, "selection": NavigationGeometryTestObservation.finiteRect(rect), "field": NavigationGeometryTestObservation.finiteRect(fieldFrame)]
                         if finite(clip) { failure["clip"] = NavigationGeometryTestObservation.finiteRect(clip) }
@@ -164,6 +182,7 @@
                         clipFailure(failure)
                         return reject("ancestorClipping")
                     }
+                    visible = intersection
                 }
                 if view === field {
                     reachedField = true
@@ -182,17 +201,18 @@
             }
             guard reachedWindow, reachedField, scrollers.count == 1, let scroll = scrollers.first else { return reject("scrollAncestry") }
             guard !scroll.isTracking, !scroll.isDragging, !scroll.isDecelerating else { return reject("scrollMotion") }
-            guard let hit = window.hitTest(CGPoint(x: rect.midX, y: rect.midY), with: nil), hit === field || hit.isDescendant(of: field) else { return reject("hitOwnership") }
+            guard let hit = window.hitTest(CGPoint(x: visible.midX, y: visible.midY), with: nil), hit === field || hit.isDescendant(of: field) else { return reject("hitOwnership") }
             let screenRect = window.convert(rect, to: window.screen.coordinateSpace)
+            let screenVisible = window.convert(visible, to: window.screen.coordinateSpace)
             let screenField = window.convert(fieldFrame, to: window.screen.coordinateSpace)
             let screenWindow = window.convert(window.bounds, to: window.screen.coordinateSpace)
-            guard finite(screenRect), finite(screenField), finite(screenWindow) else { return reject("screenConversion") }
+            guard finite(screenRect), finite(screenVisible), finite(screenField), finite(screenWindow) else { return reject("screenConversion") }
             let orientation: Int = if #available(iOS 16.0, *) {
                 scene.effectiveGeometry.interfaceOrientation.rawValue
             } else {
                 0
             }
-            return ["selection": NavigationGeometryTestObservation.finiteRect(screenRect), "field": NavigationGeometryTestObservation.finiteRect(screenField), "window": NavigationGeometryTestObservation.finiteRect(screenWindow), "inputViewID": identity(input), "orientation": orientation, "hitOwned": true,
+            return ["selection": NavigationGeometryTestObservation.finiteRect(screenRect), "visibleSelection": NavigationGeometryTestObservation.finiteRect(screenVisible), "field": NavigationGeometryTestObservation.finiteRect(screenField), "window": NavigationGeometryTestObservation.finiteRect(screenWindow), "inputViewID": identity(input), "orientation": orientation, "hitOwned": true,
                     "scroll": ["id": identity(scroll), "frame": NavigationGeometryTestObservation.finiteRect(window.convert(scroll.convert(scroll.bounds, to: window), to: window.screen.coordinateSpace)), "offset": ["x": scroll.contentOffset.x, "y": scroll.contentOffset.y], "bounds": NavigationGeometryTestObservation.finiteRect(scroll.bounds)]]
         }
 
@@ -200,4 +220,5 @@
             !value.isNull && !value.isInfinite && value.width > 0 && value.height > 0 && [value.minX, value.minY, value.maxX, value.maxY].allSatisfy(\.isFinite)
         }
     }
+    #endif
 #endif
