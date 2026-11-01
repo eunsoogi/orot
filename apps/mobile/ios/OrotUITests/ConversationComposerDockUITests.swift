@@ -22,7 +22,6 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         input.typeText("complete synthetic\nsecond line\nthird line")
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
-        XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         send.tap()
         let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
         XCTAssertTrue(UITestConditions.exists(citation))

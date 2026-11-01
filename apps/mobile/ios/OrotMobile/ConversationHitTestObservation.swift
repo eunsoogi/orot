@@ -103,14 +103,13 @@
             let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0.01 }
             guard windows.count == 1, let window = windows.first, let scene = window.windowScene,
                   let root = window.rootViewController?.view, root.window === window
-            else { return ["status": "unavailable", "startedAtMs": start] }
-            let rootFrame = root.convert(root.bounds, to: window)
-            let keyboard = root.convert(root.keyboardLayoutGuide.layoutFrame, to: window)
+            else { return ["status": "unavailable", "reason": "window-or-root", "windowCount": windows.count, "startedAtMs": start] }
+            let rootFrame = root.convert(root.bounds, to: window); let keyboard = root.convert(root.keyboardLayoutGuide.layoutFrame, to: window)
             guard rootFrame.equalTo(window.bounds), !keyboard.isEmpty,
                   keyboard.height > root.safeAreaInsets.bottom, window.bounds.contains(keyboard)
-            else { return ["status": "unavailable", "startedAtMs": start] }
+            else { return ["status": "unavailable", "reason": "keyboard-or-root", "rootFrame": rect(rootFrame), "windowBounds": rect(window.bounds), "keyboard": rect(keyboard), "startedAtMs": start] }
             let actionRole = phase == "send-ready" ? "rag-conversation-send" : "rag-conversation-cancel"
-            let wanted = ["rag-conversation-composer-field", "rag-conversation-input", actionRole]
+            let wanted = ["rag-conversation-history", "rag-conversation-composer", "rag-conversation-composer-field", "rag-conversation-input", actionRole]
             var queue: [UIView] = [window], found: [String: [UIView]] = [:], navigation: [CGRect] = [], count = 0
             while !queue.isEmpty, count < 3000 {
                 let view = queue.removeFirst(); count += 1
@@ -122,7 +121,7 @@
                         found[role, default: []].append(view)
                     } else if role == actionRole, view is UIButton {
                         found[role, default: []].append(view)
-                    } else if role == "rag-conversation-composer-field" {
+                    } else if ["rag-conversation-history", "rag-conversation-composer", "rag-conversation-composer-field"].contains(role) {
                         found[role, default: []].append(view)
                     }
                 }
@@ -151,10 +150,16 @@
                     ancestor = node.superview
                 }
                 guard ancestor === window else { valid = false; continue }
-                if frame.isEmpty || !window.bounds.contains(frame) || !clipped.equalTo(frame) || frame.intersects(keyboard) || navigation.contains(where: { $0.intersects(frame) }) {
+                let interactive = role != "rag-conversation-history" && role != "rag-conversation-composer"
+                if frame.isEmpty || !window.bounds.contains(frame) || !clipped.equalTo(frame) || (interactive && (frame.intersects(keyboard) || navigation.contains(where: { $0.intersects(frame) }))) {
                     valid = false
                 }
                 controls.append(["role": role, "frame": rect(frame), "clippedFrame": rect(clipped)])
+            }
+            if let history = found["rag-conversation-history"]?.first, let composer = found["rag-conversation-composer"]?.first,
+               history.convert(history.bounds, to: window).maxY > composer.convert(composer.bounds, to: window).minY + 1
+            {
+                valid = false
             }
             let actionFrame = action.convert(action.bounds, to: window)
             var hit = window.hitTest(CGPoint(x: actionFrame.midX, y: actionFrame.midY), with: nil)

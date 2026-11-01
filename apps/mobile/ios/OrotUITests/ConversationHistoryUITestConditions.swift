@@ -149,7 +149,7 @@ enum ConversationHistoryUITestConditions {
 
     /// At maximum text size the section header can push a valid row below the viewport.
     /// Clear UIKit's pan threshold; pause before lifting to avoid inertial overshoot past the row.
-    static func reveal(_ row: XCUIElement, in list: XCUIElement) {
+    private static func reveal(_ row: XCUIElement, in list: XCUIElement) {
         for _ in 0 ..< 4 {
             let viewport = list.frame
             let frame = row.frame
