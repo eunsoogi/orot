@@ -70,7 +70,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "symptom-add").exists)
     }
 
-    /// Exercise the fixed actions with real large text and a keyboard, without changing the default onset date.
+    /// Edit a valid synthetic record through real controls before the first keyboard focus.
     @MainActor
     func testLargeTextKeyboardKeepsSaveAndCancelActionsUsable() throws {
         let app = XCUIApplication()
@@ -82,40 +82,59 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
             }
             app.terminate()
         }
-        try launchJournal(app, category: .accessibilityExtraExtraExtraLarge, recovery: false)
+        try launchJournal(app, category: .accessibilityExtraExtraExtraLarge, editFixture: true)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
-        try tapFinal(app, "symptom-add", stage: "large-keyboard-add")
-        guard fill(app, "symptom-description", "아픔") else { return }
-        let active = UITestConditions.element(app, "symptom-status-active")
-        guard FormUITestConditions.reveal(active, in: app, scrollID: "symptoms-scroll") != nil else { return }
-        XCTAssertTrue(active.exists && active.isHittable); active.tap()
-        guard focusBodySite(app) else { return }
+        guard try openSeededEdit(app), adjustSeverity(app, value: 0.6, expected: "6") else { return }
+        guard focusDescription(app) else { return }
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
-        guard try tapKeyboardAction(app, id: "symptom-save", label: "증상 기록 저장") else { return }
-        let saved = app.staticTexts["아픔"]
-        XCTAssertTrue(saved.waitForAppearance(), app.debugDescription)
-        try tapFinal(app, "symptom-add", stage: "large-keyboard-add-draft")
-        guard fill(app, "symptom-description", "두통") else { return }
-        guard focusBodySite(app) else { return }
+        guard try tapKeyboardAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
+        guard try openSeededEdit(app) else { return }
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "6")
+        guard adjustSeverity(app, value: 0.8, expected: "8"), focusDescription(app) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
         XCTAssertTrue(UITestConditions.exists(keep) && keep.isHittable); keep.tap()
-        let description = app.textViews["symptom-description"]
-        XCTAssertEqual(description.value as? String, "두통")
-        guard focusBodySite(app) else { return }
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "8")
+        guard focusDescription(app) else { return }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let discard = alert.buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable); discard.tap()
-        XCTAssertFalse(app.staticTexts["두통"].exists); XCTAssertTrue(saved.exists)
+        guard try openSeededEdit(app) else { return }
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "6")
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
     }
 
-    /// Focus a second real input after description entry without changing its optional value.
+    /// Operate the seeded card through the same selection and edit actions as a user.
     @MainActor
-    private func focusBodySite(_ app: XCUIApplication) -> Bool {
-        let input = app.textFields["symptom-body-site"]
+    private func openSeededEdit(_ app: XCUIApplication) throws -> Bool {
+        if !UITestConditions.element(app, "symptom-edit-keyboard-seed").exists {
+            try tapFinal(app, "symptom-select-keyboard-seed", stage: "large-keyboard-select")
+        }
+        try tapFinal(app, "symptom-edit-keyboard-seed", stage: "large-keyboard-edit")
+        let exists = UITestConditions.exists(app.textViews["symptom-description"])
+        XCTAssertTrue(exists)
+        return exists
+    }
+
+    /// Change the existing value without typing, then verify the same form reflects the slider action.
+    @MainActor
+    private func adjustSeverity(_ app: XCUIApplication, value: CGFloat, expected: String) -> Bool {
+        let slider = app.sliders["symptom-severity-slider"]
+        guard FormUITestConditions.reveal(slider, in: app, scrollID: "symptoms-scroll") != nil else { return false }
+        guard slider.exists, slider.isHittable else { XCTFail("Severity slider must be tappable"); return false }
+        slider.adjust(toNormalizedSliderPosition: value)
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, expected)
+        return true
+    }
+
+    /// Request the actual software keyboard by tapping the existing description without changing it.
+    @MainActor
+    private func focusDescription(_ app: XCUIApplication) -> Bool {
+        let input = app.textViews["symptom-description"]
         guard FormUITestConditions.reveal(input, in: app, scrollID: "symptoms-scroll") != nil else { return false }
-        guard input.exists, input.isHittable else { XCTFail("Body site must be tappable"); return false }
-        input.tap(); return true
+        guard input.exists, input.isHittable else { XCTFail("Description must be tappable"); return false }
+        input.tap(); XCTAssertEqual(input.value as? String, "아픔"); return true
     }
 
     /// Capture a real on-screen keyboard and an unobscured, tappable page action before activation.
@@ -136,13 +155,13 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
 
     /// Request the supported accessibility size; assertEnvironment separately checks its actual effective native trait.
     @MainActor
-    private func launchJournal(_ app: XCUIApplication, category: UIContentSizeCategory, recovery: Bool = true) throws {
+    private func launchJournal(_ app: XCUIApplication, category: UIContentSizeCategory, recovery: Bool = true, editFixture: Bool = false) throws {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-UIPreferredContentSizeCategoryName", category.rawValue,
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
-        ] + (recovery ? ["-OROT_E2E_PROBE", "symptom-journal-save-recovery"] : []) + AppearanceUITestConditions.observationArguments + (SymptomDateSelectionUITestObservation.enabled ? ["-OROT_TEST_DATE_SELECTION_OBSERVATION", SymptomDateSelectionUITestObservation.session] : [])
+        ] + (recovery ? ["-OROT_E2E_PROBE", "symptom-journal-save-recovery"] : []) + (editFixture ? ["-OROT_SYMPTOM_EDIT_FIXTURE", "YES"] : []) + AppearanceUITestConditions.observationArguments + (SymptomDateSelectionUITestObservation.enabled ? ["-OROT_TEST_DATE_SELECTION_OBSERVATION", SymptomDateSelectionUITestObservation.session] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
