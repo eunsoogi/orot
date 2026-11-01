@@ -2,6 +2,11 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 
 const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
+// These cases are manually selected diagnostics, never part of a default test inventory.
+export const rotationDiagnosticTests = [
+  'OrotUITests/TestHostConnectionTests/testSystemBrowserRotationControl',
+  'OrotUITests/TestHostConnectionTests/testUIKitCalibrationRotationControl',
+];
 
 /** Resolves the destination, fixture guard, and complete explicit Duo ownership. */
 export function resolveIosTestProfileSelection(
@@ -11,8 +16,7 @@ export function resolveIosTestProfileSelection(
   rotationControl,
   rotationCalibration,
 ) {
-  const control = 'OrotUITests/TestHostConnectionTests/testSystemBrowserRotationControl';
-  const calibration = 'OrotUITests/TestHostConnectionTests/testUIKitCalibrationRotationControl';
+  const [control, calibration] = rotationDiagnosticTests;
   if (
     preparationPhase === 'rotation-control' ||
     preparationPhase === 'rotation-calibration' ||

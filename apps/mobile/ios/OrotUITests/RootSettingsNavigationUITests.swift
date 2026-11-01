@@ -208,7 +208,7 @@ extension RootNavigationUITests {
 
     /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
-    private func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
+    func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
         let stacked = try verifyAdaptivePanels(app, prefix: "settings-layout", navigationID: "navigation-tab-settings")
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)

@@ -12,7 +12,19 @@ test('rotation control is admitted only as an explicit single Duo diagnostic', (
     OROT_IOS_TEST_PHASE: 'rotation-control',
     TEST_RUNNER_OROT_ROTATION_CONTROL: 'YES',
   };
-  assert.ok(!iosTestInventory('duo').includes(control));
+  for (const profile of [
+    'core',
+    'speech',
+    'provider-data',
+    'backup',
+    'fixtures',
+    'health-import',
+    'microphone',
+    'local-model',
+    'provider-selection',
+    'duo',
+  ])
+    assert.ok(!iosTestInventory(profile).includes(control));
   for (const [profile, selected, env, accepted] of [
     ['duo', [control], enabled, true],
     ['duo', [control], {}, false],
@@ -39,7 +51,19 @@ test('UIKit calibration is admitted only as an explicit single Duo diagnostic', 
     OROT_IOS_TEST_PHASE: 'rotation-calibration',
     TEST_RUNNER_OROT_ROTATION_CALIBRATION: 'YES',
   };
-  assert.ok(!iosTestInventory('duo').includes(calibration));
+  for (const profile of [
+    'core',
+    'speech',
+    'provider-data',
+    'backup',
+    'fixtures',
+    'health-import',
+    'microphone',
+    'local-model',
+    'provider-selection',
+    'duo',
+  ])
+    assert.ok(!iosTestInventory(profile).includes(calibration));
   for (const [profile, selected, env, accepted] of [
     ['duo', [calibration], enabled, true],
     ['duo', [calibration], {}, false],

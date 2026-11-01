@@ -17,6 +17,13 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: true)
     }
 
+    /// Exercises the complete source-return and rail assertions without claiming a rotation result.
+    @MainActor
+    func testDuoPortraitGeometryRetainsQuestionDraftAcrossSourceNavigation() throws {
+        XCUIDevice.shared.orientation = .portrait
+        try runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation()
+    }
+
     /// Separate profile identifiers keep iPhone and Duo results distinct while sharing one route journey.
     @MainActor
     private func runGeometryBridgeAndRetainQuestionDraftAcrossSourceNavigation(verifyAdaptiveReflow: Bool = false) throws {

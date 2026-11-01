@@ -3,6 +3,7 @@ export const swiftSuiteExtensions = new Map([
   ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
   ['OrotUITests/SettingsBackupDuoUITests.swift', 'RootNavigationUITests'],
   ['OrotUITests/RootSettingsNavigationUITests.swift', 'RootNavigationUITests'], // Multiple files may extend one suite.
+  ['OrotUITests/SettingsPortraitNavigationUITests.swift', 'RootNavigationUITests'],
   ['OrotUITests/NavigationVoiceOverUITests.swift', 'RootNavigationUITests'],
   ['OrotUITests/ProviderSelectionDuoUITests.swift', 'RootNavigationUITests'],
   ['OrotUITests/AppointmentNextVisitUITests.swift', 'AppointmentsUITests'],

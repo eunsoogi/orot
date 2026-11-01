@@ -3,6 +3,7 @@ import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { productionTestInventory } from '../production-ui-contract.mjs';
+import { rotationDiagnosticTests } from '../ios-test-profile-selection.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 
 function assertTestMethodDeclared(identifier) {
@@ -110,15 +111,13 @@ test('each profile declares unique existing cases and every test method is sched
       assertTestMethodDeclared(identifier);
     }
   }
-  for (const identifier of iosTestInventory('speech', 'preparation')) {
-    seen.add(identifier);
-    assertTestMethodDeclared(identifier);
-  }
-  for (const identifier of iosTestInventory('core', 'authentication')) {
-    seen.add(identifier);
-    assertTestMethodDeclared(identifier);
-  }
-  for (const identifier of productionTestInventory) {
+  // Gated diagnostics are checked for declaration but never included in default suites.
+  for (const identifier of [
+    ...iosTestInventory('speech', 'preparation'),
+    ...iosTestInventory('core', 'authentication'),
+    ...productionTestInventory,
+    ...rotationDiagnosticTests,
+  ]) {
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }
