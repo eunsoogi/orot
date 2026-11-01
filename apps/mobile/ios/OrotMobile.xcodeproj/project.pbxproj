@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */; };
+		29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
 		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */; };
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
@@ -90,6 +91,7 @@
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
 		BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
+		758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
@@ -291,6 +293,7 @@
 
 /* Begin PBXFileReference section */
 		B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalControlUITestConditions.swift; sourceTree = "<group>"; };
+		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalRegression.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
@@ -400,6 +403,7 @@
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
 		DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGeometryView.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
+		058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationControlGeometryObservation.swift; path = OrotMobile/NavigationControlGeometryObservation.swift; sourceTree = "<group>"; };
 		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationWindowGeometryUITestConditions.swift; sourceTree = "<group>"; };
@@ -701,6 +705,7 @@
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
+				058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */,
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
 				B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */,
 				DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */,
@@ -903,6 +908,7 @@
 				1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */,
 				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
 				B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */,
+				22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */,
 				6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */,
 				A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */,
 				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
@@ -1210,6 +1216,7 @@
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
 				BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
+				758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */,
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
@@ -1380,6 +1387,7 @@
 				D6165760823C41C2B78A1A55 /* AppointmentTextSelectionUITests.swift in Sources */,
 				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
 				B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */,
+				29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */,
 				081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */,
 				F9DD5D73A89A4091A7E3B176 /* SymptomJournalAccessibilityUITests.swift in Sources */,
 				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,

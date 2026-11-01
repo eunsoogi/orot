@@ -3,24 +3,8 @@ import XCTest
 /// Exercises the new native controls while preserving the journal's existing real-keyboard journeys.
 @MainActor
 enum SymptomJournalControlUITestConditions {
-    /// Fixed actions may be direct or in the explicit overflow; both paths require real hittable controls.
-    static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
-        let direct = UITestConditions.element(app, id)
-        let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || overflow.exists }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-        if direct.exists {
-            return direct
-        }
-        XCTAssertTrue(overflow.exists && overflow.isHittable, app.debugDescription)
-        overflow.tap()
-        let item = app.buttons[label]
-        XCTAssertTrue(UITestConditions.exists(item), app.debugDescription)
-        return item
-    }
-
     static func tapPageAction(_ app: XCUIApplication, id: String, label: String) -> Bool {
-        let target = pageAction(app, id: id, label: label)
+        let target = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
         let hittable = target.exists && target.isHittable
         XCTAssertTrue(hittable, app.debugDescription)
         guard hittable else { return false }
@@ -116,7 +100,7 @@ enum SymptomJournalControlUITestConditions {
             return
         }
         inputFormat.dateFormat = "yyyy년 M월 d일"
-        let save = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
+        let save = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(save.exists && save.isHittable && save.isEnabled)
         save.tap()
         let onset = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'symptom-' AND identifier ENDSWITH '-onset'")).firstMatch
@@ -130,7 +114,7 @@ enum SymptomJournalControlUITestConditions {
         FormUITestConditions.reveal(date, in: app, scrollID: "symptoms-scroll")
         XCTAssertTrue(date.exists && date.isHittable)
         date.tap()
-        let save = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
+        let save = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(save.exists)
         XCTAssertFalse(save.isEnabled, "Unconfirmed picker values must not be saved")
         if app.buttons["동작 메뉴 닫기"].exists {
@@ -140,7 +124,7 @@ enum SymptomJournalControlUITestConditions {
         FormUITestConditions.reveal(cancel, in: app, scrollID: "symptoms-scroll")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         cancel.tap()
-        let enabledSave = pageAction(app, id: "symptom-save", label: "증상 기록 저장")
+        let enabledSave = NavigationPageActionUITestConditions.pageAction(app, id: "symptom-save", label: "증상 기록 저장")
         XCTAssertTrue(enabledSave.isEnabled)
         if app.buttons["동작 메뉴 닫기"].exists {
             app.buttons["동작 메뉴 닫기"].tap()

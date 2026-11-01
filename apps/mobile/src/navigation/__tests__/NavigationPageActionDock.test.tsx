@@ -6,6 +6,12 @@ import { NavigationPageActionDock } from '../NavigationPageActionDock';
 import type { NavigationRouteAction } from '../useNavigationPrimaryAction';
 
 let dispatch: NavigationSurfaceProps['onAction'];
+const metricsControl = globalThis as typeof globalThis & {
+  __OROT_TEST_PAGE_METRICS__?: null;
+};
+afterEach(() => {
+  delete metricsControl.__OROT_TEST_PAGE_METRICS__;
+});
 function Surface({ onAction, testID }: NavigationSurfaceProps) {
   dispatch = onAction;
   return <View testID={testID} />;
@@ -74,6 +80,7 @@ test('overflow invokes only a currently enabled action and ignores selections af
 });
 
 test('uses current native width measurements and ignores stale results', async () => {
+  metricsControl.__OROT_TEST_PAGE_METRICS__ = null;
   const actions: NavigationRouteAction[] = ['first', 'second', 'third'].map(
     id => ({
       id,

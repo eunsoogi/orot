@@ -20,6 +20,15 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
 
     @MainActor
     func testMissingDuplicateDetachedAndTruncatedCandidatesCannotSelectHome() throws {
+        // The separate dock sample must reject the same ambiguity and collection losses.
+        let valid = ["navigation-home": 1, "navigation-back": 1, "manual-history-save": 1]
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: false, allValid: true), "available")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 0, counts: valid, truncated: false, allValid: true), "unavailable")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 2, counts: valid, truncated: false, allValid: true), "ambiguous")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: ["navigation-home": 1, "navigation-back": 1], truncated: false, allValid: true), "unavailable")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid.merging(["manual-history-save": 2], uniquingKeysWith: { _, new in new }), truncated: false, allValid: true), "ambiguous")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: true, allValid: true), "unavailable")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: false, allValid: false), "unavailable")
         let window = try makeWindow(), other = try makeWindow(), home = UIButton(), duplicate = UIButton()
         window.addSubview(home)
         window.addSubview(duplicate)
@@ -67,6 +76,39 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
             XCTAssertFalse(json.contains("accessibilityLabel"))
             XCTAssertFalse(json.contains("accessibilityValue"))
         }
+        try assertDockObserverRejectsOtherWindowDuplicate()
+    }
+
+    /// Exercise real UIKit windows without reading labels or changing the host's original key window permanently.
+    @MainActor
+    private func assertDockObserverRejectsOtherWindowDuplicate() throws {
+        let window = try makeWindow(), other = try makeWindow()
+        let previous = window.windowScene?.windows.first(where: \.isKeyWindow)
+        defer { other.isHidden = true; window.isHidden = true; previous?.makeKey() }
+        let page = UIView(frame: CGRect(x: 0, y: 0, width: 466, height: 678))
+        let navigation = UIView(frame: page.frame)
+        page.accessibilityIdentifier = "navigation-page-action-toolbar"
+        navigation.accessibilityIdentifier = "navigation-toolbar"
+        window.addSubview(page)
+        window.addSubview(navigation)
+        for (id, host) in [("manual-history-save", page), ("navigation-back", navigation), ("navigation-home", navigation)] {
+            let button = PrivateDockControl(frame: CGRect(x: 20, y: 20, width: 48, height: 48))
+            button.accessibilityIdentifier = id
+            host.addSubview(button)
+        }
+        window.makeKeyAndVisible()
+        let sample = NavigationControlGeometryObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
+        XCTAssertEqual(sample["status"] as? String, "available")
+        let records = try XCTUnwrap(sample["controls"] as? [[String: Any]])
+        XCTAssertEqual(records.count, 3)
+        XCTAssertTrue(records.allSatisfy { $0["windowID"] as? String == "key-window" && $0["sameWindow"] as? Bool == true })
+        XCTAssertFalse(try String(decoding: JSONSerialization.data(withJSONObject: sample), as: UTF8.self).contains("private-health-content"))
+        let duplicate = PrivateDockControl(frame: CGRect(x: 20, y: 20, width: 48, height: 48))
+        duplicate.accessibilityIdentifier = "manual-history-save"
+        other.addSubview(duplicate)
+        other.isHidden = false
+        let ambiguous = NavigationControlGeometryObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
+        XCTAssertEqual(ambiguous["status"] as? String, "ambiguous")
     }
 
     @MainActor
@@ -75,6 +117,18 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 466, height: 678)
         return window
+    }
+}
+
+private final class PrivateDockControl: UIButton {
+    override var accessibilityLabel: String? {
+        get { XCTFail("Dock label must not be read"); return "private-health-content" }
+        set {}
+    }
+
+    override var accessibilityValue: String? {
+        get { XCTFail("Dock value must not be read"); return "private-health-content" }
+        set {}
     }
 }
 

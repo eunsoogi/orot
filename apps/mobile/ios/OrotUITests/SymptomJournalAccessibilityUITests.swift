@@ -113,7 +113,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     private func tapFinal(_ app: XCUIApplication, _ identifier: String, stage: String) throws {
         let labels = ["symptom-add": "증상 기록 추가", "symptom-save": "증상 기록 저장", "symptom-form-cancel": "취소"]
-        let target = labels[identifier].map { SymptomJournalControlUITestConditions.pageAction(app, id: identifier, label: $0) } ?? UITestConditions.element(app, identifier)
+        let target = labels[identifier].map { NavigationPageActionUITestConditions.pageAction(app, id: identifier, label: $0) } ?? UITestConditions.element(app, identifier)
         let frame = labels[identifier] != nil ? target.frame : try XCTUnwrap(FormUITestConditions.reveal(target, in: app, scrollID: "symptoms-scroll"))
         let hittable = target.exists && target.isHittable
         XCTAssertTrue(hittable)

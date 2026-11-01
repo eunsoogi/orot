@@ -1,11 +1,18 @@
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import { ActionSheetIOS } from 'react-native';
 
-/** Exercises the same native action-sheet choice used when a page action overflows. */
+/** Exercises the direct control or its native action-sheet choice when it overflows. */
 export async function pressPageAction(
   overflow: Parameters<typeof fireEvent.press>[0],
   label: string,
 ) {
+  const direct = screen.queryByRole('button', { name: label });
+  if (direct) {
+    if (direct.props.accessibilityState?.disabled || direct.props.disabled)
+      throw new Error(`Disabled page action: ${label}`);
+    await fireEvent.press(direct);
+    return;
+  }
   const sheet = jest
     .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
     .mockImplementation((options, select) => {

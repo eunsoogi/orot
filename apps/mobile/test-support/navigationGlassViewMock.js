@@ -14,7 +14,39 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
       }
 
       return function NavigationGlassViewTestAdapter(props) {
-        const { actions = [], children, onAction, ...viewProps } = props;
+        const {
+          actions = [],
+          children,
+          onAction,
+          pageMetricsRequest,
+          onPageMetrics,
+          ...viewProps
+        } = props;
+        const { width, fontScale } =
+          require('react-native').useWindowDimensions();
+        const lastMetrics = React.useRef('');
+        // Synthetic inputs exercise the bridge contract; UIKit measurements remain native evidence.
+        React.useLayoutEffect(() => {
+          if (
+            !pageMetricsRequest ||
+            !onPageMetrics ||
+            global.__OROT_TEST_PAGE_METRICS__ === null
+          )
+            return;
+          const key = `${pageMetricsRequest.revision}:${width}:${fontScale}`;
+          if (lastMetrics.current === key) return;
+          lastMetrics.current = key;
+          const widths = pageMetricsRequest.actions.map(action =>
+            action.id === 'page:overflow' ? 48 : 120 * Math.max(1, fontScale),
+          );
+          onPageMetrics({
+            nativeEvent: {
+              revision: pageMetricsRequest.revision,
+              width,
+              widths,
+            },
+          });
+        }, [pageMetricsRequest, width, fontScale, onPageMetrics]);
         // Production passes action data to UIKit; this adapter models only its JS contract.
         if (children !== undefined) {
           throw new Error(
@@ -24,7 +56,13 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
 
         return React.createElement(
           name,
-          { ...viewProps, actions, onAction },
+          {
+            ...viewProps,
+            actions,
+            onAction,
+            pageMetricsRequest,
+            onPageMetrics,
+          },
           ...actions.map(action =>
             React.createElement(
               'View',
