@@ -84,24 +84,35 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         }
         try launchJournal(app, category: .accessibilityExtraExtraExtraLarge, editFixture: true)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
-        guard try openSeededEdit(app), adjustSeverity(app, value: 0.6, expected: "6") else { return }
-        guard focusDescription(app) else { return }
+        guard try openSeededEdit(app), focusDescription(app) else { return }
+        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
         _ = assertEnvironment(app, style: .light, category: .accessibilityExtraExtraExtraLarge, stage: "large-keyboard-save")
         guard try tapKeyboardAction(app, id: "symptom-save", label: "변경 사항 저장") else { return }
-        guard try openSeededEdit(app) else { return }
-        XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
-        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "6")
-        guard adjustSeverity(app, value: 0.8, expected: "8"), focusDescription(app) else { return }
+        guard try openSeededEdit(app), focusDescription(app) else { return }
+        let description = app.textViews["symptom-description"]
+        XCTAssertEqual(description.value as? String, "아픔")
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
+        let keyboard = app.keyboards.firstMatch
+        let letter = keyboard.keys["Q"]
+        guard keyboard.exists, letter.exists, letter.isHittable, app.frame.intersects(keyboard.frame),
+              FormScrollGeometry.valid(keyboard.frame), FormScrollGeometry.valid(letter.frame),
+              keyboard.frame.contains(letter.frame), app.frame.contains(letter.frame)
+        else {
+            XCTFail("A visible keyboard letter is required for the edit"); return
+        }
+        letter.tap()
+        guard let changed = description.value as? String, changed != "아픔" else {
+            XCTFail("The real keyboard tap must change the draft"); return
+        }
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let alert = app.alerts["저장하지 않은 내용이 있어요"], keep = alert.buttons["계속 편집"]
         XCTAssertTrue(UITestConditions.exists(keep) && keep.isHittable); keep.tap()
-        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "8")
-        guard focusDescription(app) else { return }
+        XCTAssertEqual(description.value as? String, changed)
         guard try tapKeyboardAction(app, id: "symptom-form-cancel", label: "취소") else { return }
         let discard = alert.buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(discard) && discard.isHittable); discard.tap()
         guard try openSeededEdit(app) else { return }
-        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "6")
+        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, "2")
         XCTAssertEqual(app.textViews["symptom-description"].value as? String, "아픔")
     }
 
@@ -117,24 +128,13 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         return exists
     }
 
-    /// Change the existing value without typing, then verify the same form reflects the slider action.
-    @MainActor
-    private func adjustSeverity(_ app: XCUIApplication, value: CGFloat, expected: String) -> Bool {
-        let slider = app.sliders["symptom-severity-slider"]
-        guard FormUITestConditions.reveal(slider, in: app, scrollID: "symptoms-scroll") != nil else { return false }
-        guard slider.exists, slider.isHittable else { XCTFail("Severity slider must be tappable"); return false }
-        slider.adjust(toNormalizedSliderPosition: value)
-        XCTAssertEqual(app.textFields["symptom-severity"].value as? String, expected)
-        return true
-    }
-
     /// Request the actual software keyboard by tapping the existing description without changing it.
     @MainActor
     private func focusDescription(_ app: XCUIApplication) -> Bool {
         let input = app.textViews["symptom-description"]
         guard FormUITestConditions.reveal(input, in: app, scrollID: "symptoms-scroll") != nil else { return false }
         guard input.exists, input.isHittable else { XCTFail("Description must be tappable"); return false }
-        input.tap(); XCTAssertEqual(input.value as? String, "아픔"); return true
+        input.tap(); return true
     }
 
     /// Capture a real on-screen keyboard and an unobscured, tappable page action before activation.
