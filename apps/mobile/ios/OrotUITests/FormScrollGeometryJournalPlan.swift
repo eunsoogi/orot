@@ -123,11 +123,23 @@ enum FormScrollGeometryJournalPlan {
         latest["traceID"] as? String == traceID, latest["scrollViewID"] as? String == scrollID,
         let sequence = latest["sequence"] as? Int, sequence > 0,
         latest["phase"] as? String == "did-change-frame", let at = latest["receivedAtMs"] as? Double, at.isFinite, at <= before,
-        let native = frame(latest["endFrameInScreen"])
+        let native = keyboardFrame(latest["endFrameInScreen"])
         else { return nil }
-        guard let keyboard else { return native.intersects(application) ? nil : [native] }
+        // A completed hidden keyboard may have zero height; neither AX sample may cover the app in that state.
+        if !native.intersects(application) {
+            guard [keyboard, earlier].compactMap(\.self).allSatisfy({ !$0.intersects(application) }) else { return nil }
+            return []
+        }
+        guard let keyboard else { return nil }
         guard FormScrollGeometry.valid(keyboard), native.intersects(application), native.insetBy(dx: -0.0001, dy: -0.0001).contains(keyboard) else { return nil }
         return [native]
+    }
+
+    private static func keyboardFrame(_ value: Any?) -> CGRect? {
+        guard let value = value as? [String: Double], let x = value["x"], let y = value["y"],
+              let width = value["width"], let height = value["height"],
+              [x, y, width, height].allSatisfy(\.isFinite), width > 0, height >= 0 else { return nil }
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     private static func frame(_ value: Any?) -> CGRect? {

@@ -128,6 +128,10 @@ extension FormScrollGeometryRegression {
         var detachedTrace = try XCTUnwrap(detached["symptomScrollTrace"] as? [String: Any])
         detachedTrace["latestKeyboard"] = NSNull(); detached["symptomScrollTrace"] = detachedTrace
         XCTAssertNil(FormScrollGeometryJournalPlan.make(snapshot: detached, application: app, usableViewport: viewport, keyboard: nil, controls: [], identifier: "symptom-status-active", evaluationStartedAtMs: 100, readEndedAtMs: 105, maximumScrollFraction: 0.45))
+        let hidden = keyboardEvent.merging(["endFrameInScreen": frame(CGRect(x: 0, y: 874, width: 402, height: 0))]) { _, new in new }
+        XCTAssertNotNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 918, width: 402, height: 226), event: hidden, dropped: true))
+        XCTAssertNil(plan(statusGeometry, keyboard: CGRect(x: 0, y: 590, width: 402, height: 226), event: hidden, dropped: true))
+        XCTAssertNil(plan(statusGeometry, event: hidden.merging(["phase": "will-change-frame"]) { _, new in new }, dropped: true))
         let upward = try XCTUnwrap(plan(statusGeometry))
         XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
         XCTAssertLessThanOrEqual(abs(upward.end.dy - upward.start.dy), viewport.height * 0.45)
