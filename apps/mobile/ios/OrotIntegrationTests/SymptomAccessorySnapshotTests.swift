@@ -148,6 +148,32 @@ final class SymptomAccessorySnapshotTests: OrotFailFastTestCase {
         scroll.addSubview(status)
         scroll.addSubview(error)
         XCTAssertTrue(date.becomeFirstResponder())
+        let start = date.beginningOfDocument
+        date.selectedTextRange = date.textRange(from: start, to: date.endOfDocument)
+        let selection = SymptomDateSelectionObservation.snapshot { $0 === window ? "window" : "anonymous" }
+        XCTAssertEqual(selection["status"] as? String, "available")
+        XCTAssertEqual(selection["selectionStart"] as? Int, 0)
+        XCTAssertEqual(selection["selectionEnd"] as? Int, date.offset(from: start, to: date.endOfDocument))
+        XCTAssertFalse(try String(decoding: JSONSerialization.data(withJSONObject: selection), as: UTF8.self).contains("synthetic-private-date"))
+        date.selectedTextRange = date.textRange(from: start, to: start)
+        let caret = SymptomDateSelectionObservation.snapshot { $0 === window ? "window" : "anonymous" }
+        XCTAssertEqual(caret["selectionStart"] as? Int, caret["selectionEnd"] as? Int)
+        date.text = "12"
+        date.selectedTextRange = date.textRange(from: date.beginningOfDocument, to: date.endOfDocument)
+        date.layoutIfNeeded()
+        let range = try XCTUnwrap(date.selectedTextRange)
+        let geometry = SymptomDateSelectionObservation.selectionGeometry(field: date, range: range, window: window) { _ in "anonymous" }
+        XCTAssertEqual(geometry?["hitOwned"] as? Bool, true)
+        date.layer.mask = CALayer()
+        var rejection: String?
+        XCTAssertNil(SymptomDateSelectionObservation.selectionGeometry(field: date, range: range, window: window, rejection: { rejection = $0 }) { _ in "anonymous" })
+        XCTAssertEqual(rejection, "ancestorOwnershipOrTransform")
+        date.layer.mask = nil
+        scroll.clipsToBounds = true; scroll.frame.size.height = 30
+        let clipped = SymptomDateSelectionObservation.snapshot { $0 === window ? "window" : "anonymous" }
+        XCTAssertEqual(clipped["selectionGeometryRejection"] as? String, "ancestorClipping")
+        XCTAssertEqual((clipped["selectionClipFailure"] as? [String: Any])?["valid"] as? Bool, true); XCTAssertEqual((clipped["selectionClipFailure"] as? [String: Any])?["insideField"] as? Bool, false)
+        scroll.frame = controller.view.bounds; scroll.clipsToBounds = false
         let views: [UIView] = [window, controller.view, scroll, input, date, status, error]
         let identity: (NSObject) -> String = { object in object === window ? "window" : object === scroll ? "scroll" : "control" }
         let sample = SymptomControlGeometryObservation.capture(input: input, views: views, window: window, truncated: false, identity: identity)

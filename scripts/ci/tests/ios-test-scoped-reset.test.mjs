@@ -124,6 +124,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/SymptomJournalRecoveryUITests/testKoreanDeviceLanguageKeepsJournalCopyAndAccessibilityNames',
     'OrotUITests/SymptomJournalRecoveryUITests/testVoiceOverReadsKoreanJournalNamesInBothDeviceLanguages',
     'OrotUITests/SymptomJournalAccessibilityUITests/testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances',
+    'OrotUITests/SymptomJournalAccessibilityUITests/testLargeTextKeyboardKeepsSaveAndCancelActionsUsable',
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory',
