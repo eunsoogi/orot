@@ -183,11 +183,12 @@ enum AppointmentTextSelectionUITestConditions {
         measure("select-existing", doubleTapProbe ? { input.doubleTap() } : { input.press(forDuration: 1) })
         let pressEnd = Date().timeIntervalSince1970 * 1000
         let selectAll = app.menuItems["Select All"]
-        let available = selectAll.exists && selectAll.isHittable
+        // The retap probe observes the command only after the planned tap, before any edit.
+        let available = !doubleTapProbe && selectAll.exists && selectAll.isHittable
         let point = observe ? SymptomDateSelectionUITestObservation.record(app, beforeRequest: before, pressStart: pressStart, pressEnd: pressEnd, planRetap: doubleTapProbe) : nil
         if doubleTapProbe {
             if let point {
-                SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app)
+                SymptomDateSelectionUITestObservation.retap(app, point: point); observeEditMenu(app, inspectSelectAll: true)
             }
             XCTFail("Date selection diagnostic stops before editing"); return false
         }
@@ -205,9 +206,10 @@ enum AppointmentTextSelectionUITestConditions {
     }
 
     /// Traverse one public snapshot only in the opted-in synthetic date fixture; the snapshot itself is not bounded.
-    private static func observeEditMenu(_ app: XCUIApplication) {
+    private static func observeEditMenu(_ app: XCUIApplication, inspectSelectAll: Bool = false) {
         let started = Date().timeIntervalSince1970 * 1000
         var result: [String: Any] = ["startedAtMs": started]
+        if inspectSelectAll { let item = app.menuItems["Select All"]; let exists = item.exists; result["selectAllExists"] = exists; result["selectAllHittable"] = exists && item.isHittable }
         do {
             let root = try app.snapshot()
             var pending: [any XCUIElementSnapshot] = [root]
