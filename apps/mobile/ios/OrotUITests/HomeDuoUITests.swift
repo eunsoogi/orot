@@ -31,7 +31,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         preparation.tap()
         NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        verifyHomeRoute(app)
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control.isSelected)
 
         let portraitWidth = app.frame.width
@@ -60,7 +60,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         largeTextPreparation.tap()
         NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        verifyHomeRoute(app)
         let recording = UITestConditions.element(app, "home-new-recording")
         UITestConditions.scrollTo(recording, in: app)
         XCTAssertTrue(recording.exists && recording.isHittable)
@@ -68,19 +68,28 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        verifyHomeRoute(app)
         let symptoms = UITestConditions.element(app, "home-open-symptoms")
         UITestConditions.scrollTo(symptoms, in: app)
         symptoms.tap()
         NavigationUITestConditions.route(app, markers: ["symptoms-layout"])
         XCTAssertTrue(UITestConditions.element(app, "symptom-synthetic-home-active-description").exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        verifyHomeRoute(app)
         let recent = UITestConditions.element(app, "home-recent-recording")
         UITestConditions.scrollTo(recent, in: app)
         recent.tap()
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
+        verifyHomeRoute(app)
+    }
+
+    /// The restored Home scroll position can leave its route marker outside accessibility's viewport.
+    @MainActor
+    private func verifyHomeRoute(_ app: XCUIApplication) {
+        let scroll = UITestConditions.element(app, "navigation-route-scroll")
+        XCTAssertTrue(scroll.waitForAppearance())
+        UITestConditions.scrollTo(UITestConditions.element(app, "welcome-title"), in: scroll, searchTowardTop: true)
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
