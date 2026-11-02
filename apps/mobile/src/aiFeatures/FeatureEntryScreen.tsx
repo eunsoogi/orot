@@ -147,12 +147,21 @@ export function FeatureEntryScreen({
         style={[styles.row, styles.conversationRow]}
         testID={`ai-feature-${conversation.feature.id}`}
       >
-        <AppSymbol name={conversation.symbol} color={conversation.iconColor} />
-        <View style={styles.copy}>
-          <Text style={styles.title}>{conversation.feature.title}</Text>
-          <Text style={styles.description}>
-            {conversation.feature.description}
-          </Text>
+        {/* Keep the action outside this row so scaled copy can use the full card width. */}
+        <View
+          style={styles.conversationContent}
+          testID="ai-feature-rag-conversation-content"
+        >
+          <AppSymbol
+            name={conversation.symbol}
+            color={conversation.iconColor}
+          />
+          <View style={styles.copy}>
+            <Text style={styles.title}>{conversation.feature.title}</Text>
+            <Text style={styles.description}>
+              {conversation.feature.description}
+            </Text>
+          </View>
         </View>
         <View style={styles.conversationAction}>
           <Text style={styles.conversationActionText}>

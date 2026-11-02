@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import { hubSpacing } from '../layout/hubSpacing';
 import { appColors } from '../layout/appColors';
 
-/** Keeps cards restrained while preserving semantic feature colors and the primary inline action cue. */
+/** Defines restrained cards, semantic body colors, and the scalable conversation layout. */
 export const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -46,17 +46,26 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  conversationRow: { minHeight: 104 },
+  conversationRow: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 8,
+    minHeight: 104,
+  },
+  conversationContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 0,
+  },
   copy: { flex: 1, gap: 4, minWidth: 0 },
   title: { color: appColors.text, fontSize: 16, fontWeight: '600' },
   description: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   conversationAction: {
+    alignSelf: 'flex-end',
     alignItems: 'center',
-    borderLeftColor: appColors.border,
-    borderLeftWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 8,
-    paddingLeft: 12,
   },
   conversationActionText: {
     color: appColors.primaryText,

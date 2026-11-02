@@ -69,3 +69,29 @@ test('keeps unavailable visit questions disabled with an accessible explanation'
   expect(conversation).not.toHaveBeenCalled();
   expect(symptoms).not.toHaveBeenCalled();
 });
+
+test('keeps conversation copy in a full row above its scalable action cue', async () => {
+  await render(
+    <FeatureEntryScreen
+      onOpenRagConversation={jest.fn()}
+      onOpenVisitQuestions={jest.fn()}
+      onOpenDiseaseHypotheses={jest.fn()}
+      onOpenHealthReview={jest.fn()}
+      onOpenExternalEvidence={jest.fn()}
+    />,
+  );
+
+  const card = screen.getByTestId('ai-feature-rag-conversation');
+  const content = screen.getByTestId('ai-feature-rag-conversation-content');
+  expect(StyleSheet.flatten(card.props.style)).toMatchObject({
+    alignItems: 'stretch',
+    flexDirection: 'column',
+  });
+  expect(StyleSheet.flatten(content.props.style)).toMatchObject({
+    flexDirection: 'row',
+    minWidth: 0,
+  });
+  expect(screen.getByText('기록과 대화')).toBeTruthy();
+  expect(screen.getByText('내 기록에서 궁금한 점을 물어보세요.')).toBeTruthy();
+  expect(screen.getByText('대화 시작')).toBeTruthy();
+});
