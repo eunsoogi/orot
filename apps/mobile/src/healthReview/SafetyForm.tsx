@@ -132,7 +132,11 @@ export function SafetyForm({
                 accessibilityLabel={title}
                 accessibilityState={{ checked, disabled }}
                 disabled={disabled}
-                style={styles.symptomRow}
+                style={[
+                  styles.symptomRow,
+                  checked && styles.symptomSelected,
+                  disabled && styles.symptomDisabled,
+                ]}
                 onPress={() =>
                   set(
                     'signs',
@@ -152,7 +156,11 @@ export function SafetyForm({
             accessibilityLabel="기타"
             accessibilityState={{ checked: !!draft.otherSelected, disabled }}
             disabled={disabled}
-            style={styles.symptomRow}
+            style={[
+              styles.symptomRow,
+              draft.otherSelected && styles.symptomSelected,
+              disabled && styles.symptomDisabled,
+            ]}
             onPress={() => set('otherSelected', !draft.otherSelected)}
           >
             <CheckboxIndicator

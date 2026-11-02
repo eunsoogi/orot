@@ -148,6 +148,7 @@ export function HealthReviewScreen({
             {state.result?.status === 'needs_clarification' ? (
               <AppButton
                 title={copy.continue}
+                variant="primary"
                 disabled={state.busy}
                 testID="health-review-continue"
                 onPress={() => {
@@ -157,6 +158,11 @@ export function HealthReviewScreen({
             ) : null}
             <AppButton
               title={copy.fresh}
+              variant={
+                state.result?.status === 'needs_clarification'
+                  ? 'secondary'
+                  : 'primary'
+              }
               disabled={state.busy}
               testID="health-review-start"
               onPress={() => {
@@ -166,6 +172,7 @@ export function HealthReviewScreen({
             {state.busy ? (
               <AppButton
                 title={copy.cancel}
+                variant="cancel"
                 testID="health-review-cancel"
                 onPress={controller.cancel}
               />
@@ -176,14 +183,17 @@ export function HealthReviewScreen({
           <Text accessibilityRole="header">{copy.requests}</Text>
           {state.requests.map(({ source, pending }) => (
             <View key={source.id} style={styles.request}>
+              {/* The action owns its source surface; the row adds spacing, not another card. */}
               <AppButton
                 title={`${source.title}: ${pending ? copy.pending : copy.terminal}`}
+                variant="secondary"
                 disabled={state.busy}
                 testID={`health-review-request-${source.id}`}
                 onPress={() => controller.select(source.id)}
               />
               <AppButton
                 title={copy.remove}
+                variant="destructive"
                 disabled={state.busy}
                 accessibilityLabel={`${source.title}: ${copy.remove}`}
                 testID={`health-review-delete-${source.id}`}
