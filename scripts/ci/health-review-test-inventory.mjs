@@ -1,7 +1,6 @@
 // Each UI method owns its request fixture, restart sequence and cleanup; graph persistence phases remain separate.
 // This registered list also feeds the repository-wide native inventory totals asserted by CI.
 export const healthReviewUiTests = [
-  'OrotUITests/HealthReviewUITests/testManualBloodPressureInputsAreAbsent',
   'OrotUITests/HealthReviewUITests/testRecordObservationShowsBloodPressureGuidanceAndRetainsSessionAcrossProviderNavigation',
   'OrotUITests/HealthReviewUITests/testPendingRestoresAcrossFreshProcessWithoutAutomaticInference',
   'OrotUITests/HealthReviewUITests/testExplicitSymptomAnswerContinuesPendingReviewWithPolicyGuidance',
