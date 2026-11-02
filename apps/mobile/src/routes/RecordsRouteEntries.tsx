@@ -1,11 +1,12 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import { useCaptureActionHeights } from './useCaptureActionHeights';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
 import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
-import { hubSpacing } from '../layout/hubSpacing';
+import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
   readonly onOpenSymptoms: () => void;
@@ -29,6 +30,13 @@ export function RecordsRouteEntries({
   medicalDocumentDisabled,
   onImportMedicalDocument,
 }: RecordsRouteEntriesProps) {
+  const { fontScale, width } = useWindowDimensions();
+  // At larger text sizes, full-width peers leave room for labels without limiting Dynamic Type.
+  const stackCaptureActions = fontScale > 1;
+  const { commonHeight, recordHeight } = useCaptureActionHeights(
+    width,
+    fontScale,
+  );
   return (
     <View style={styles.container}>
       <Text
@@ -39,43 +47,59 @@ export function RecordsRouteEntries({
         {t('records.title')}
       </Text>
       <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
-      <View style={styles.captureActions} testID="records-capture-actions">
+      <View
+        style={[
+          styles.captureActions,
+          stackCaptureActions && styles.stackedActions,
+        ]}
+        testID="records-capture-actions"
+      >
         <Pressable
           accessibilityRole="button"
           onPress={onOpenRecording}
-          style={styles.captureAction}
+          style={[
+            styles.captureAction,
+            stackCaptureActions &&
+              commonHeight > 24 && { minHeight: commonHeight },
+          ]}
           testID="records-new-recording"
         >
-          <View style={styles.captureIcon}>
-            <AppSymbol name="mic.fill" color={appColors.primaryAction} />
+          <View
+            onLayout={event => recordHeight(0, event.nativeEvent.layout.height)}
+            style={styles.captureContent}
+            testID="recording-capture-content"
+          >
+            <View style={styles.captureIcon}>
+              <AppSymbol name="mic.fill" color={appColors.primaryAction} />
+            </View>
+            <Text style={styles.captureActionTitle}>
+              {t('records.newRecording')}
+            </Text>
           </View>
-          <Text style={styles.captureActionTitle}>
-            {t('records.newRecording')}
-          </Text>
-          <AppSymbol
-            name="chevron.right"
-            size={16}
-            color={appColors.secondary}
-          />
         </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={onOpenSymptoms}
-          style={styles.captureAction}
+          style={[
+            styles.captureAction,
+            stackCaptureActions &&
+              commonHeight > 24 && { minHeight: commonHeight },
+          ]}
           testID="symptoms-open"
         >
-          <View style={styles.captureIcon}>
-            <AppSymbol
-              name="square.and.pencil"
-              color={appColors.primaryAction}
-            />
+          <View
+            onLayout={event => recordHeight(1, event.nativeEvent.layout.height)}
+            style={styles.captureContent}
+            testID="symptom-capture-content"
+          >
+            <View style={styles.captureIcon}>
+              <AppSymbol
+                name="square.and.pencil"
+                color={appColors.primaryAction}
+              />
+            </View>
+            <Text style={styles.captureActionTitle}>{t('symptoms.title')}</Text>
           </View>
-          <Text style={styles.captureActionTitle}>{t('symptoms.title')}</Text>
-          <AppSymbol
-            name="chevron.right"
-            size={16}
-            color={appColors.secondary}
-          />
         </Pressable>
       </View>
 
@@ -146,89 +170,3 @@ function RecordsLibraryAction({
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: hubSpacing.item,
-    minWidth: 0,
-  },
-  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
-  subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
-  captureActions: {
-    alignItems: 'stretch',
-    flexDirection: 'row',
-    gap: hubSpacing.item,
-    marginTop: 4,
-  },
-  captureAction: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 76,
-    minWidth: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  captureIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  captureActionTitle: {
-    color: appColors.text,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 21,
-    minWidth: 0,
-  },
-  materials: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    minWidth: 0,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  materialsTitle: {
-    borderBottomColor: appColors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    color: appColors.text,
-    fontSize: 21,
-    fontWeight: '700',
-    paddingBottom: 10,
-  },
-  materialRows: { minWidth: 0 },
-  materialRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 70,
-    minWidth: 0,
-    paddingVertical: 9,
-  },
-  rowDivider: {
-    borderBottomColor: appColors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  materialIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  cardCopy: { flex: 1, gap: 3, minWidth: 0 },
-  cardTitle: { color: appColors.text, fontSize: 16, fontWeight: '700' },
-  cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 19 },
-});
