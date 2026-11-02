@@ -4,7 +4,35 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iosTestCohortTasks } from './ios-test-cohorts.mjs';
 import { iosTestImpactForPath } from './ios-test-impact.mjs';
+import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 import { focusedIosTestCohorts, selectFocusedIosTests } from './ios-focused-selection.mjs';
+
+// These are Jest entry points, not Metro fixtures or helpers. Keep this list explicit:
+// test directories also contain files that the native application can bundle.
+const jestOnlyPaths = new Set([
+  'apps/mobile/src/externalMedicalEvidence/__tests__/ExternalMedicalEvidenceReadingFlow.test.tsx',
+  'apps/mobile/src/externalMedicalEvidence/__tests__/LiteratureRouteLifecycle.test.tsx',
+]);
+
+function maintainedNativeImpact(path) {
+  const match = /^apps\/mobile\/ios\/(OrotUITests|OrotIntegrationTests)\/([^/]+)\.swift$/.exec(
+    path,
+  );
+  if (!match) return null;
+  const prefix = `${match[1]}/${match[2]}/`;
+  const matches = IOS_TEST_COHORT_NAMES.flatMap((cohort) =>
+    iosTestCohortTasks(cohort).flatMap((task) => {
+      const identifiers = task.identifiers.filter((id) => id.startsWith(prefix));
+      if (!identifiers.length) return [];
+      // Stateful drivers must run together; independent fixture methods need only their own cases.
+      const grouped = !['plain', 'fixture'].includes(task.mode);
+      return [
+        { cohort, profile: task.profile, identifiers: grouped ? task.identifiers : identifiers },
+      ];
+    }),
+  );
+  return matches.length ? matches : null;
+}
 
 /** A focused run may claim coverage only when its exact selection contains every maintained dependent task. */
 export function verifyFocusedCandidateImpact(paths, selection) {
@@ -16,7 +44,28 @@ export function verifyFocusedCandidateImpact(paths, selection) {
     if (path.startsWith('docs/') || path === 'README.md') continue;
     if (!path.startsWith('apps/mobile/') && !path.startsWith('packages/'))
       throw new Error(`Candidate shared impact is unknown: ${path}`);
+    if (jestOnlyPaths.has(path)) {
+      impacts.push({ path, reason: 'jest-only', cohorts: [] });
+      continue;
+    }
     const impact = iosTestImpactForPath(path);
+    const maintained =
+      impact.reason === 'unknown-native-ui-test' ? maintainedNativeImpact(path) : null;
+    if (maintained) {
+      if (
+        maintained.some(
+          (task) =>
+            task.profile !== selection.profile || task.identifiers.some((id) => !selected.has(id)),
+        )
+      )
+        throw new Error(`Candidate selection does not cover ${path}: maintained-native-test`);
+      impacts.push({
+        path,
+        reason: 'maintained-native-test',
+        cohorts: [...new Set(maintained.map((task) => task.cohort))],
+      });
+      continue;
+    }
     const tasks = impact.cohorts.flatMap(iosTestCohortTasks);
     if (
       impact.oauth ||
