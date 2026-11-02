@@ -3,9 +3,8 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
-    /// Exercise the actual root button, including its accessibility activation point.
+    /// Exercise actual root buttons, starting with Schedule from Home, at their accessibility activation points.
     static func verifyDirectRecordsTap(_ app: XCUIApplication) throws {
-        // Exercise the actual accessibility elements, including Schedule from the initial Home route.
         for (tab, markers) in [("schedule", ["calendar-title", "schedule-retry"]), ("records", ["records-title"])] {
             let identifier = "navigation-tab-\(tab)"
             let control = try NavigationUITestConditions.navigationAction(app, identifier).control
@@ -14,7 +13,9 @@ enum NavigationPageActionUITestConditions {
             control.tap()
             NavigationUITestConditions.route(app, markers: markers)
             XCTAssertTrue(control.isSelected, "Direct tap must select \(tab)")
-            if tab == "schedule" { try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"]) }
+            if tab == "schedule" {
+                try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+            }
         }
     }
 
