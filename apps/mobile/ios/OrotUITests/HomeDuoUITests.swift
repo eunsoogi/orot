@@ -110,7 +110,16 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         var previousY: CGFloat = -1
         for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
             let action = UITestConditions.element(app, identifier)
-            UITestConditions.scrollTo(action, in: app)
+            if identifier == "home-metrics-edit" {
+                XCTAssertTrue(action.waitForAppearance())
+                let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in action.isEnabled }, object: nil)
+                XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+                // XCTest attempts to reveal an offscreen target before activating it.
+                action.tap()
+                XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
+            } else {
+                UITestConditions.scrollTo(action, in: app)
+            }
             XCTAssertTrue(action.exists && action.isHittable, identifier)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
             let relativeY = action.frame.minY - page.frame.minY
@@ -118,6 +127,9 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             previousY = relativeY
             XCTAssertGreaterThanOrEqual(action.frame.minX, page.frame.minX - 1)
             XCTAssertLessThanOrEqual(action.frame.maxX, page.frame.maxX + 1)
+            if identifier == "home-metrics-edit" {
+                app.buttons["취소"].tap()
+            }
         }
         if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
             XCTAssertLessThanOrEqual(page.frame.maxX, navigation.toolbar.frame.minX + 1,
