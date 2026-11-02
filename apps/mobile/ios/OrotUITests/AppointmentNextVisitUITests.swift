@@ -92,8 +92,8 @@ extension AppointmentsUITests {
         XCTAssertTrue(restartedRowLabel.contains("취소됨"), app.debugDescription)
         XCTAssertFalse(restartedRowLabel.contains("다음 진료"), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
-        // Empty Home shows capture guidance in place of the next-visit panel.
-        NavigationUITestConditions.route(app, markers: ["home-capture-guidance"])
+        // Empty Home retains an appointment action without claiming an eligible visit.
+        NavigationUITestConditions.route(app, markers: ["home-open-schedule"])
         // A cancelled appointment must not remain Home's next visit.
         let remainingHomeClinicMatches = app.staticTexts.matching(
             identifier: "home-next-appointment-clinic",

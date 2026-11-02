@@ -2,6 +2,8 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { AppRegistry, NativeModules } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/domain';
 import {
@@ -20,6 +22,7 @@ import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
 import {
   homeOverviewJournal,
   homeOverviewRecordings,
+  seedHomeOverviewHealth,
 } from './homeOverviewFixture';
 
 const settingsManager = NativeModules?.SettingsManager;
@@ -133,6 +136,27 @@ const calendarBridge: CalendarBridge = {
 
 /** Keeps App navigation deterministic; the test does not request Calendar access or run inference. */
 function MedicalAppointmentNavigationProbeEntry() {
+  const [seedState, setSeedState] = useState<'loading' | 'ready' | 'failed'>(
+    homeAppointments.length ? 'loading' : 'ready',
+  );
+  useEffect(() => {
+    if (!homeAppointments.length) return;
+    let active = true;
+    import('../src/storage/secureDatabase')
+      .then(storage => storage.openLocalStorage())
+      .then(records => seedHomeOverviewHealth(records, new Date()))
+      .then(() => {
+        if (active) setSeedState('ready');
+      })
+      .catch(() => {
+        if (active) setSeedState('failed');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  if (seedState !== 'ready')
+    return <Text testID="home-fixture-seed-state">{seedState}</Text>;
   return (
     <App
       aiFeatureServiceDependencies={aiFeatureServiceDependencies}

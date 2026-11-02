@@ -21,11 +21,11 @@ const { DatabaseSync } = require('node:sqlite') as {
 };
 
 /** Uses real SQLite so lifecycle tests exercise the same public database contract as the app. */
-export function createHealthEvidenceTestDatabase(): {
+export function createHealthEvidenceTestDatabase(path = ':memory:'): {
   readonly database: SqlDatabase;
   close(): void;
 } {
-  const connection = new DatabaseSync(':memory:');
+  const connection = new DatabaseSync(path);
   const executeSync = (
     query: string,
     parameters: SqlValue[] = [],

@@ -32,12 +32,12 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
-        let recordingAction = UITestConditions.element(app, "home-new-recording")
+        let recordingAction = UITestConditions.element(app, "home-metrics-edit")
         let bar = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").toolbar
         let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
         XCTAssertTrue(recordingAction.exists && recordingAction.isHittable && !recordingAction.frame.isEmpty)
         XCTAssertTrue(root.exists && !root.frame.isEmpty)
-        // A fresh Core launch can omit recent records, so use its always-present recording action for clearance.
+        // The Home metrics editor remains present even when no health data is available.
         XCTAssertLessThanOrEqual(recordingAction.frame.maxY, bar.frame.minY)
         let bottomClearance = root.frame.maxY - bar.frame.maxY
         XCTAssertGreaterThanOrEqual(bottomClearance, 22)
@@ -91,7 +91,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // Observe the actual rendered enlargement, rather than treating the launch argument as proof of large text.
         XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        try NavigationUITestConditions.openTab(app, "home", markers: ["home-empty-recordings", "home-recordings-retry"])
+        try NavigationUITestConditions.openTab(app, "home", markers: ["home-metrics-edit"])
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         capture(app, "home-xxxl-glass-tabs")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])

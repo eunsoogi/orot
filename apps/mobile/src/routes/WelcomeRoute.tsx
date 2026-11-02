@@ -2,12 +2,12 @@ import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
-import { t } from '../i18n';
+import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import { AppButton } from '../layout/AppButton';
 import { hubSpacing } from '../layout/hubSpacing';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { NextVisitPanel, RecentRecordsPanel } from './HomeSummaryPanels';
+import { NextVisitPanel } from './HomeSummaryPanels';
+import { HomeMetrics } from './home/HomeMetrics';
 import {
   HomeOngoingSymptoms,
   HomePreparationQuestions,
@@ -35,15 +35,10 @@ export interface WelcomeRouteProps extends HomePreparationLoaders {
 export default function WelcomeRoute({
   appointment,
   appointmentState,
-  recentRecording,
-  recordingState,
   onRetryAppointments,
-  onRetryRecordings,
   onPrepareVisit,
   onOpenSchedule,
-  onOpenRecords,
   onOpenSymptoms,
-  onOpenRecording,
   loadSymptoms,
   loadSavedVisitQuestions,
 }: WelcomeRouteProps) {
@@ -51,13 +46,6 @@ export default function WelcomeRoute({
     loadSymptoms,
     loadSavedVisitQuestions,
   });
-  const showCaptureGuidance =
-    appointmentState === 'ready' &&
-    !appointment &&
-    recordingState === 'ready' &&
-    !recentRecording &&
-    preparation.symptomState === 'ready' &&
-    preparation.symptoms.length === 0;
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -78,61 +66,44 @@ export default function WelcomeRoute({
           {t('app.welcome.title')}
         </Text>
         <Text style={styles.message}>{t('home.greeting')}</Text>
+        <Text style={styles.message}>
+          {formatDate(new Date())} ·{' '}
+          {t('home.localTimeZone', {
+            zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          })}
+        </Text>
       </View>
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="home-overview-sections">
-        {showCaptureGuidance ? (
-          <Text testID="home-capture-guidance" style={styles.message}>
-            {t('home.captureGuidance')}
-          </Text>
-        ) : (
-          <>
-            <NextVisitPanel
-              appointment={appointment}
-              appointmentState={appointmentState}
-              onOpenSchedule={onOpenSchedule}
-              onPrepareVisit={onPrepareVisit}
-              onRetryAppointments={onRetryAppointments}
-            >
-              {appointment ? (
-                <HomePreparationQuestions
-                  questions={
-                    preparation.questions?.appointmentId === appointment.id
-                      ? preparation.questions
-                      : null
-                  }
-                  state={preparation.questionState}
-                  onRetry={preparation.retry}
-                />
-              ) : null}
-            </NextVisitPanel>
-            <HomeOngoingSymptoms
-              symptoms={preparation.symptoms}
-              state={preparation.symptomState}
+        <NextVisitPanel
+          appointment={appointment}
+          appointmentState={appointmentState}
+          onOpenSchedule={onOpenSchedule}
+          onPrepareVisit={onPrepareVisit}
+          onRetryAppointments={onRetryAppointments}
+        >
+          {appointment ? (
+            <HomePreparationQuestions
+              questions={
+                preparation.questions?.appointmentId === appointment.id
+                  ? preparation.questions
+                  : null
+              }
+              state={preparation.questionState}
               onRetry={preparation.retry}
-              onOpen={onOpenSymptoms}
             />
-            <RecentRecordsPanel
-              recentRecording={recentRecording}
-              recordingState={recordingState}
-              onOpenRecords={onOpenRecords}
-              onRetryRecordings={onRetryRecordings}
-            />
-          </>
-        )}
-        <AppButton
-          title={t('home.newRecording')}
-          onPress={onOpenRecording}
-          testID="home-new-recording"
-        />
-        {showCaptureGuidance ? (
-          <AppButton
-            title={t('symptoms.title')}
-            onPress={onOpenSymptoms}
-            testID="home-capture-symptom"
+          ) : null}
+        </NextVisitPanel>
+        <HomeMetrics>
+          <HomeOngoingSymptoms
+            symptoms={preparation.symptoms}
+            updates={preparation.symptomUpdates}
+            state={preparation.symptomState}
+            onRetry={preparation.retry}
+            onOpen={onOpenSymptoms}
           />
-        ) : null}
+        </HomeMetrics>
       </View>
     </View>
   );

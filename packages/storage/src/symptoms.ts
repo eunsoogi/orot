@@ -7,6 +7,7 @@ import {
   updateStoredRecord,
 } from './recordPersistence';
 import type { SqlDatabase, SqlExecutor } from './sql';
+import { putSymptomUpdate } from './symptomMetadata';
 
 export type SymptomQuery = SymptomEntryFilter;
 
@@ -16,6 +17,7 @@ export interface SymptomRepository {
   update(entry: SymptomEntry): Promise<SymptomEntry | null>;
   resolve(id: string, resolvedAt: string): Promise<SymptomEntry | null>;
   list(query?: SymptomQuery): Promise<SymptomEntry[]>;
+  getLastUpdatedAt?(id: string): Promise<string | null>;
 }
 
 function validateQuery(query: SymptomQuery): SymptomQuery {
@@ -54,15 +56,19 @@ async function readAll(executor: SqlExecutor): Promise<SymptomEntry[]> {
 }
 
 /** Uses the existing symptom record shape and table; resolution is a one-way historical transition. */
-export function createSymptomRepository(database: SqlDatabase): SymptomRepository {
+export function createSymptomRepository(
+  database: SqlDatabase,
+  now: () => string = () => new Date().toISOString(),
+): SymptomRepository {
   return {
     async create(input) {
       if (!Object.hasOwn(input, 'status')) throw new Error('A symptom status is required.');
       const entry = SymptomEntrySchema.parse(input);
       validateUserEntered(entry);
-      await database.transaction((transaction) =>
-        insertStoredRecord(transaction, 'symptom_entry', entry),
-      );
+      await database.transaction(async (transaction) => {
+        await insertStoredRecord(transaction, 'symptom_entry', entry);
+        await putSymptomUpdate(transaction, entry.id, now());
+      });
       return entry;
     },
     get: (id) => readStoredRecord(database, 'symptom_entry', id),
@@ -78,6 +84,7 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
         if (!(await updateStoredRecord(transaction, 'symptom_entry', entry))) {
           throw new Error('The symptom entry could not be updated.');
         }
+        await putSymptomUpdate(transaction, entry.id, now());
         updated = entry;
       });
       return updated;
@@ -96,9 +103,21 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
         if (!(await updateStoredRecord(transaction, 'symptom_entry', entry))) {
           throw new Error('The symptom entry could not be resolved.');
         }
+        await putSymptomUpdate(transaction, entry.id, now());
         resolved = entry;
       });
       return resolved;
+    },
+    async getLastUpdatedAt(id) {
+      const table = await database.execute(
+        "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'symptom_local_updates'",
+      );
+      if (!table.rows.length) return null;
+      const row = await database.execute(
+        'SELECT updated_at FROM symptom_local_updates WHERE symptom_id = ?',
+        [id],
+      );
+      return typeof row.rows[0]?.updated_at === 'string' ? row.rows[0].updated_at : null;
     },
     async list(input = {}) {
       const query = validateQuery(input);

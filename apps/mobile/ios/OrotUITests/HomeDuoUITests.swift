@@ -61,14 +61,6 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        let recording = UITestConditions.element(app, "home-new-recording")
-        UITestConditions.scrollTo(recording, in: app)
-        XCTAssertTrue(recording.exists && recording.isHittable)
-        recording.tap()
-        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
         let symptoms = UITestConditions.element(app, "home-open-symptoms")
         UITestConditions.scrollTo(symptoms, in: app)
         symptoms.tap()
@@ -76,9 +68,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "symptom-synthetic-home-active-description").exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        let recent = UITestConditions.element(app, "home-recent-recording")
-        UITestConditions.scrollTo(recent, in: app)
-        recent.tap()
+        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-records")
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
@@ -93,14 +83,25 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(page.waitForAppearance())
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         XCTAssertTrue(navigation.control.isSelected)
+        for identifier in ["home-metric-sleep", "home-metric-heartRate"] {
+            let card = UITestConditions.element(app, identifier)
+            UITestConditions.scrollTo(card, in: app)
+            XCTAssertTrue(card.exists && card.isHittable, identifier)
+            XCTAssertTrue(card.label.contains("Synthetic Watch"), card.debugDescription)
+            XCTAssertTrue(card.label.contains(identifier.hasSuffix("sleep") ? "min" : "count/min"), card.debugDescription)
+            XCTAssertTrue(card.label.contains("기록이 없어요"), card.debugDescription)
+            if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
+                XCTAssertLessThanOrEqual(card.frame.maxX, navigation.toolbar.frame.minX + 1, identifier)
+            }
+        }
         var previousY: CGFloat = -1
-        for identifier in ["home-prepare-visit", "home-open-symptoms", "home-recent-recording", "home-new-recording"] {
+        for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
             let action = UITestConditions.element(app, identifier)
             UITestConditions.scrollTo(action, in: app)
             XCTAssertTrue(action.exists && action.isHittable, identifier)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
             let relativeY = action.frame.minY - page.frame.minY
-            XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, symptoms, recent audio, capture")
+            XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, metrics, symptoms")
             previousY = relativeY
             XCTAssertGreaterThanOrEqual(action.frame.minX, page.frame.minX - 1)
             XCTAssertLessThanOrEqual(action.frame.maxX, page.frame.maxX + 1)
@@ -112,7 +113,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.contentAboveBar(
                 app,
                 scrollID: "navigation-route-scroll",
-                contentID: "home-new-recording",
+                contentID: "home-recent-changes",
                 navigationID: "navigation-tab-home",
             )
         }
