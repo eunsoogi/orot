@@ -83,10 +83,10 @@ test('full integration execution preserves profile observations and every regist
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // The three picker journeys repeat across Debug health-import and Release fixtures.
-  assert.equal(scheduled.length, 209);
+  // The three picker journeys repeat; the rail group case adds one unique observation.
+  assert.equal(scheduled.length, 210);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 206);
+  assert.equal(identifiers.size, 207);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

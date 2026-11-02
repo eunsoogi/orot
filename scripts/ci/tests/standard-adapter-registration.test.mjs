@@ -40,8 +40,8 @@ test('integrated native inventory retains manual history, standard adapters, geo
   const full = ['release', 'debug', 'speech'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(full.length, 209);
-  assert.equal(new Set(full).size, 206);
+  assert.equal(full.length, 210);
+  assert.equal(new Set(full).size, 207);
   for (const identifier of [
     ...manual,
     'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
