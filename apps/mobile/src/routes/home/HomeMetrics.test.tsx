@@ -14,19 +14,19 @@ jest.mock('./useHomeMetrics');
 const mocked = jest.mocked(useHomeMetrics);
 
 test.each([
-  ['sleep', '해당 날짜 기록 합계'],
-  ['heartRate', '해당 날짜 측정 평균'],
-  ['bodyMass', '해당 날짜 마지막 측정'],
-  ['steps', '해당 날짜 기록 합계'],
+  ['sleep', '해당 날짜 기록 합계', 'min'],
+  ['heartRate', '해당 날짜 측정 평균', 'count/min'],
+  ['bodyMass', '해당 날짜 마지막 측정', 'kg'],
+  ['steps', '해당 날짜 기록 합계', 'count'],
 ] as const)(
-  'announces the %s statistic in its accessible summary',
-  async (metric: HomeMetric, statistic) => {
+  'announces the %s statistic, unit and source in its accessible summary',
+  async (metric: HomeMetric, statistic, unit) => {
     mocked.mockReturnValue({
       selection: [metric, metric === 'sleep' ? 'heartRate' : 'sleep'],
       metrics: {
         [metric]: {
           metric,
-          unit: 'count',
+          unit,
           source: 'Watch',
           measuredAt: '2026-10-14T10:00:00Z',
           timeZone: 'UTC',
@@ -45,9 +45,10 @@ test.each([
         <Text>증상</Text>
       </HomeMetrics>,
     );
-    expect(
-      screen.getAllByLabelText(new RegExp(statistic)).length,
-    ).toBeGreaterThan(0);
+    const summary = screen.getByTestId(`home-metric-${metric}`);
+    expect(summary.props.accessibilityLabel).toContain(statistic);
+    expect(summary.props.accessibilityLabel).toContain(`70 ${unit}.`);
+    expect(summary.props.accessibilityLabel).toContain('Watch');
   },
 );
 
