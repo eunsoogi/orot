@@ -227,5 +227,9 @@ async function runHermesToolMessageGraphProbe() {
     messageRoundTrip,
     summary: result.value.summary,
     citationSourceIds: result.citations.map(reference => reference.sourceId),
+    citationEvidenceIds: result.citations.map(
+      reference => reference.evidenceId,
+    ),
+    citationLocators: result.citations.map(reference => reference.locator),
   };
 }
