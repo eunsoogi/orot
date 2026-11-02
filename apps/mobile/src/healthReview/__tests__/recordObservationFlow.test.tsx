@@ -50,7 +50,7 @@ async function seedHealthKitBloodPressure(
     await repository.put('health_observation', observation);
 }
 
-// Keep only provider output synthetic; the form, evidence collection and graph stay real.
+// Keep provider output synthetic and its discriminant exact; the form, evidence and graph stay real.
 function healthReviewResponse(request: LanguageModelRequest) {
   const user = request.messages.find(message => message.role === 'user');
   if (!user || user.role !== 'user' || typeof user.content !== 'string')
@@ -73,7 +73,7 @@ function healthReviewResponse(request: LanguageModelRequest) {
       },
     }),
     toolCalls: [],
-    finishReason: 'complete',
+    finishReason: 'complete' as const,
   });
 }
 
