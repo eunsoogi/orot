@@ -19,6 +19,15 @@ extension AppointmentsUITests {
         dateFormatter.timeZone = calendar.timeZone
         dateFormatter.dateFormat = "yyyy-MM-dd"
         defer { app.terminate() }
+        let rowsForClinic = { (clinic: String) in
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                    "appointment-select-",
+                    clinic,
+                ),
+            )
+        }
 
         try launch(app)
         tap(app, "appointment-add")
@@ -31,8 +40,34 @@ extension AppointmentsUITests {
             note: "",
         )
         visible(app, "Cancelled visit")
-        tap(app, "appointment-cancel-manual-1")
-        visible(app, "취소됨")
+        let cancelledRows = rowsForClinic("Cancelled visit")
+        XCTAssertEqual(cancelledRows.count, 1, app.debugDescription)
+        let cancelledSelection = cancelledRows.element(boundBy: 0)
+        XCTAssertTrue(cancelledSelection.waitForAppearance(), app.debugDescription)
+        let selectionPrefix = "appointment-select-"
+        let selectionIdentifier = cancelledSelection.identifier
+        XCTAssertTrue(selectionIdentifier.hasPrefix(selectionPrefix), app.debugDescription)
+        XCTAssertTrue(cancelledSelection.label.contains("Cancelled visit"), app.debugDescription)
+        XCTAssertTrue(cancelledSelection.isSelected, app.debugDescription)
+        XCTAssertTrue(cancelledSelection.label.contains("다음 진료"), app.debugDescription)
+
+        // Native appointment IDs are opaque; pair this exact clinic row with its cancel action.
+        let appointmentID = String(selectionIdentifier.dropFirst(selectionPrefix.count))
+        let cancellationButtons = app.buttons.matching(
+            identifier: "appointment-cancel-\(appointmentID)",
+        )
+        XCTAssertEqual(cancellationButtons.count, 1, app.debugDescription)
+        let cancellationButton = cancellationButtons.element(boundBy: 0)
+        FormUITestConditions.reveal(
+            cancellationButton,
+            in: app,
+            scrollID: "appointments-scroll",
+        )
+        XCTAssertTrue(cancellationButton.exists && cancellationButton.isHittable, app.debugDescription)
+        cancellationButton.tap()
+        XCTAssertFalse(cancelledSelection.isSelected, app.debugDescription)
+        XCTAssertTrue(cancelledSelection.label.contains("취소됨"), app.debugDescription)
+        XCTAssertFalse(cancelledSelection.label.contains("다음 진료"), app.debugDescription)
 
         tap(app, "appointment-add")
         fill(
@@ -66,19 +101,18 @@ extension AppointmentsUITests {
         app.terminate()
         try launch(app)
 
-        let rowForClinic = { (clinic: String) in
-            app.buttons.matching(
-                NSPredicate(
-                    format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
-                    "appointment-select-",
-                    clinic,
-                ),
-            ).firstMatch
-        }
-        let cancelled = rowForClinic("Cancelled visit")
-        let past = rowForClinic("Past visit")
-        let next = rowForClinic("Next visit")
-        let later = rowForClinic("Later visit")
+        let cancelledMatches = rowsForClinic("Cancelled visit")
+        let pastMatches = rowsForClinic("Past visit")
+        let nextMatches = rowsForClinic("Next visit")
+        let laterMatches = rowsForClinic("Later visit")
+        XCTAssertEqual(cancelledMatches.count, 1, app.debugDescription)
+        XCTAssertEqual(pastMatches.count, 1, app.debugDescription)
+        XCTAssertEqual(nextMatches.count, 1, app.debugDescription)
+        XCTAssertEqual(laterMatches.count, 1, app.debugDescription)
+        let cancelled = cancelledMatches.element(boundBy: 0)
+        let past = pastMatches.element(boundBy: 0)
+        let next = nextMatches.element(boundBy: 0)
+        let later = laterMatches.element(boundBy: 0)
         XCTAssertTrue(cancelled.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(past.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(next.waitForAppearance(), app.debugDescription)
