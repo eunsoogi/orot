@@ -45,6 +45,17 @@ final class HealthReviewJourney {
         control.tap()
     }
 
+    func tapNavigationAction(_ id: String) {
+        // Route actions live in the navigation dock, outside the form ScrollView.
+        // Finish the single-line name edit before checking and tapping that dock.
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.exists {
+            app.typeText(XCUIKeyboardKey.return.rawValue)
+            XCTAssertFalse(app.keyboards.firstMatch.exists, "The name keyboard must close before a navigation action is tapped")
+        }
+        tap(id, inForm: false)
+    }
+
     func choose(_ label: String) {
         // React Native exposes radio controls without the iOS button trait.
         let control = element(label)
@@ -64,27 +75,9 @@ final class HealthReviewJourney {
         enter("health-review-name", fixture)
     }
 
-    func sufficientSafety() {
+    func explicitSymptomAnswer() {
         choose("대상 정보: 임신 중이 아닌 성인")
-        choose("혈압 측정 상황: 현재 측정")
         choose("현재 증상 확인: 새롭거나 걱정되는 증상이 없음")
-        reading(systolic: "120", diastolic: "80")
-    }
-
-    func reading(systolic: String, diastolic: String) {
-        enter("health-review-systolic-0", systolic)
-        enter("health-review-diastolic-0", diastolic)
-        tap("health-review-measuredAt-0")
-        pickerAction("health-review-time-done")
-        enter("health-review-source-0", "사용자가 확인한 합성 혈압계")
-    }
-
-    func pickerAction(_ id: String) {
-        let control = element(id)
-        XCTAssertTrue(UITestConditions.exists(control))
-        FormUITestConditions.reveal(control, in: app, scrollID: "health-review-time-page")
-        XCTAssertTrue(control.isHittable)
-        control.tap()
     }
 
     func status(_ id: String) {

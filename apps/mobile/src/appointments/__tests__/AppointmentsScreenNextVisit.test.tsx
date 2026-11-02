@@ -41,6 +41,8 @@ test('marks the actual next visit independently of a selected history record', a
 
   const cancelled = await screen.findByTestId('appointment-select-cancelled');
   const next = screen.getByTestId('appointment-select-next');
+  expect(cancelled.props.accessibilityState).toEqual({ selected: false });
+  expect(next.props.accessibilityState).toEqual({ selected: true });
   expect(screen.getByTestId('appointment-next-visit-next')).toHaveTextContent(
     '다음 진료',
   );
@@ -79,7 +81,7 @@ test('moves the next-visit marker after cancellation and keeps details selected'
   );
 });
 
-test('moves the next-visit marker when the selected visit is rescheduled later', async () => {
+test('moves the automatic selection when the selected visit is rescheduled later', async () => {
   const store = createAppointmentStore([
     appointment('current', now + 60_000),
     appointment('following', now + 2 * 60_000),
@@ -105,10 +107,10 @@ test('moves the next-visit marker when the selected visit is rescheduled later',
   expect(screen.queryByTestId('appointment-next-visit-current')).toBeNull();
   expect(
     screen.getByTestId('appointment-select-current').props.accessibilityState,
+  ).toEqual({ selected: false });
+  expect(
+    screen.getByTestId('appointment-select-following').props.accessibilityState,
   ).toEqual({ selected: true });
-  expect(screen.getByTestId('appointment-status-current')).toHaveTextContent(
-    '일정 변경',
-  );
 });
 
 test('refreshes its records when the retained route regains focus', async () => {

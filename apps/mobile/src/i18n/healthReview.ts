@@ -19,20 +19,9 @@ export const healthReviewText = {
   terminal: '완료 또는 복원할 대기 상태 없음',
   unknown: '알 수 없음',
   population: '대상 정보',
-  context: '혈압 측정 상황',
   symptoms: '현재 증상 확인',
   visit: '예정된 진료',
-  reading: '혈압 입력 (선택)',
-  systolic: '수축기 혈압 (mmHg)',
-  diastolic: '이완기 혈압 (mmHg)',
-  measuredAt: '측정 시각',
-  chooseTime: '날짜와 시간 선택',
-  done: '완료',
-  cancelPicker: '취소',
-  source: '측정 출처 (사용한 기기 등)',
-  repeat: '반복 측정 추가',
-  inputError:
-    '검토 이름과 입력 내용을 확인해 주세요. 혈압은 수치·시각·출처를 모두 입력해야 해요.',
+  inputError: '검토 이름과 증상 입력을 확인해 주세요.',
   storageError:
     '검토 요청을 불러오거나 처리하지 못했어요. 저장된 요청을 다시 확인해 주세요.',
   provider: '사용할 AI 확인',
@@ -45,6 +34,8 @@ export const healthReviewText = {
   unresolved: '아직 확인할 항목',
   questions: '확인할 질문',
   citation: '근거 살펴보기',
+  evidenceInsufficient:
+    '검토에 필요한 건강 기록이 충분하지 않아요. 안전 안내와 확인할 항목은 그대로 유지했어요.',
   missingInputs: {
     explicit_symptom_assessment: '현재 증상 여부',
     scheduled_visit: '예정된 진료 여부',
@@ -56,8 +47,7 @@ export const healthReviewText = {
     health_trends_and_personal_records: '건강 추이와 건강 기록의 충분한 근거',
   },
   outcomes: {
-    needs_clarification:
-      '추가 정보가 필요해요. 아래 내용을 확인하고 직접 입력해 주세요.',
+    needs_clarification: '추가 정보가 필요해요. 아래 내용을 확인해 주세요.',
     safety_action: 'AI 검토보다 먼저 아래 안전 안내를 확인해 주세요.',
     unavailable:
       '이 요청은 지금 검토를 이어갈 수 없어요. 새 검토를 시작해 주세요.',

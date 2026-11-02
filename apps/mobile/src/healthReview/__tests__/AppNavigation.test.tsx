@@ -122,7 +122,7 @@ it('keeps the four AI actions and reaches a separate App review route with a ret
 
   const direction = () =>
     StyleSheet.flatten(
-      screen.getByTestId('health-review-population-choices').props.style,
+      screen.getByTestId('health-review-symptom-choices').props.style,
     ).flexDirection;
   await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 852, height: 700 } },

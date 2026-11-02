@@ -15,7 +15,10 @@ describe('Strict pending restoration from real graph checkpoints', () => {
   });
   afterEach(() => f.close());
 
-  async function pending(safetyInput: unknown = {}) {
+  async function pending(
+    safetyInput: unknown = {},
+    mode?: 'strict' | 'record_observation',
+  ) {
     const source = await f.requests.create('복원할 검토');
     const synthetic = syntheticHealthReview(f.repository, source.id, false);
     const port = createHealthReviewPort({
@@ -29,6 +32,7 @@ describe('Strict pending restoration from real graph checkpoints', () => {
       sourceId: source.id,
       threadId: source.id,
       safetyInput,
+      mode,
       port,
       checkpointer: f.saver(source.id),
     });
@@ -41,12 +45,15 @@ describe('Strict pending restoration from real graph checkpoints', () => {
   }
 
   it.each([
-    ['safety_context', {}],
-    ['evidence', safety],
+    ['safety_context', {}, undefined],
+    ['evidence', safety, 'record_observation'],
   ])(
     'preserves the genuine %s snapshot exactly without discovery inference',
-    async (reason, input) => {
-      const value = await pending(input);
+    async (reason, input, mode) => {
+      const value = await pending(
+        input,
+        mode as 'strict' | 'record_observation' | undefined,
+      );
       expect(value.expected.reason).toBe(reason);
       expect(
         encounterCanonical(await f.requests.pending(value.source.id)),

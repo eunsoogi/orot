@@ -13,16 +13,7 @@ export const instant = '2026-10-27T12:00:00.000Z';
 export const safety = {
   requestType: 'health_review',
   population: 'adult_not_pregnant',
-  readingContext: 'current_measurement',
-  readings: [
-    {
-      systolicMmHg: 120,
-      diastolicMmHg: 80,
-      unit: 'mmHg',
-      measuredAt: instant,
-      source: 'user-entered cuff reading',
-    },
-  ],
+  readingContext: 'unknown',
   symptomAssessment: { status: 'no_new_or_concerning_symptoms' },
 } as const;
 

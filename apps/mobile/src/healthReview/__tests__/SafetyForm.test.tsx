@@ -11,7 +11,7 @@ function Form() {
   return <SafetyForm draft={draft} onChange={setDraft} disabled={false} />;
 }
 
-it('uses the measured form width for wide rows and stacks them for large text', async () => {
+it('uses the measured form width for choice rows and stacks them for large text', async () => {
   const original = Dimensions.get('window');
   Dimensions.set({ window: { ...original, fontScale: 1 } });
   await render(<Form />);
@@ -25,7 +25,7 @@ it('uses the measured form width for wide rows and stacks them for large text', 
   ).toBe('row');
   expect(
     StyleSheet.flatten(
-      screen.getByTestId('health-review-measurement-row-0').props.style,
+      screen.getByTestId('health-review-visit-choices').props.style,
     ).flexDirection,
   ).toBe('row');
   await act(() => Dimensions.set({ window: { ...original, fontScale: 2 } }));
@@ -36,20 +36,41 @@ it('uses the measured form width for wide rows and stacks them for large text', 
   ).not.toBe('row');
   expect(
     StyleSheet.flatten(
-      screen.getByTestId('health-review-measurement-row-0').props.style,
+      screen.getByTestId('health-review-visit-choices').props.style,
     ).flexDirection,
   ).not.toBe('row');
   await act(() => Dimensions.set({ window: original }));
 });
 
-it('keeps unknown explicit, reveals all seven signs, and caps readings at two', async () => {
+it('keeps unknown symptoms explicit and retains general safety inputs without manual blood-pressure fields', async () => {
   await render(<Form />);
+  expect(
+    screen.getByRole('radio', {
+      name: '대상 정보: 알 수 없음',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
   expect(
     screen.getByRole('radio', {
       name: '현재 증상 확인: 알 수 없음',
       checked: true,
     }),
   ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('radio', {
+      name: '예정된 진료: 알 수 없음',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
+  for (const id of [
+    'health-review-systolic-0',
+    'health-review-diastolic-0',
+    'health-review-measuredAt-0',
+    'health-review-source-0',
+  ])
+    expect(screen.queryByTestId(id)).toBeNull();
+  for (const label of ['혈압 측정 상황', '혈압 입력 (선택)', '반복 측정 추가'])
+    expect(screen.queryByText(label)).toBeNull();
   await fireEvent.press(
     screen.getByRole('radio', { name: '현재 증상 확인: 아래 증상이 있음' }),
   );
@@ -64,7 +85,13 @@ it('keeps unknown explicit, reveals all seven signs, and caps readings at two', 
   ]) {
     expect(screen.getByRole('button', { name: sign })).toBeOnTheScreen();
   }
-  await fireEvent.press(screen.getByRole('button', { name: '반복 측정 추가' }));
-  expect(screen.getByTestId('health-review-systolic-1')).toBeOnTheScreen();
-  expect(screen.queryByRole('button', { name: '반복 측정 추가' })).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '예정된 진료: 예정된 진료가 있음' }),
+  );
+  expect(
+    screen.getByRole('radio', {
+      name: '예정된 진료: 예정된 진료가 있음',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
 });

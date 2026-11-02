@@ -10,6 +10,36 @@ export interface HealthReviewSafety {
   missingInputs: string[];
 }
 
+export type HealthReviewMode = 'strict' | 'record_observation';
+
+/**
+ * Record observations only when the explicit symptom answer is clear and the
+ * policy's sole unresolved requirement is the HealthKit blood-pressure input.
+ */
+export function isHealthReviewObservationEligible(
+  mode: unknown,
+  safetyInput: unknown,
+  safety: Pick<HealthReviewSafety, 'category' | 'missingInputs' | 'requiredActions'>,
+): boolean {
+  if (
+    mode !== 'record_observation' ||
+    !safetyInput ||
+    typeof safetyInput !== 'object' ||
+    Array.isArray(safetyInput)
+  )
+    return false;
+  const symptomAssessment = (safetyInput as { symptomAssessment?: { status?: unknown } })
+    .symptomAssessment;
+  return (
+    symptomAssessment?.status === 'no_new_or_concerning_symptoms' &&
+    safety.category === 'insufficient_information' &&
+    safety.missingInputs.length === 1 &&
+    safety.missingInputs[0] === 'blood_pressure_reading' &&
+    safety.requiredActions.length === 1 &&
+    safety.requiredActions[0] === 'provide_required_information'
+  );
+}
+
 export interface HealthReviewText {
   observedChanges: { text: string; evidenceIds: string[] }[];
   unresolvedItems: string[];
@@ -22,6 +52,8 @@ export interface HealthReviewPending {
   safety: HealthReviewSafety;
   references: EvidenceReference[];
   reason: 'safety_context' | 'evidence';
+  /** Missing means strict for checkpoints created before modes were persisted. */
+  mode?: HealthReviewMode;
 }
 
 export interface HealthReviewPort {
@@ -45,6 +77,8 @@ export interface HealthReviewOptions {
   checkpointer: BaseCheckpointSaver;
   store?: BaseStore;
   signal?: AbortSignal;
+  /** Host-selected mode; omission preserves the historical strict route. */
+  mode?: HealthReviewMode;
   /** Only the host supplies new safety context; model output cannot resume this interrupt. */
   clarification?: { pending: HealthReviewPending; safetyInput: unknown };
 }

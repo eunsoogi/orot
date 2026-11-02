@@ -6,7 +6,7 @@ import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import { formKeyboardFields } from './symptomFormKeyboard';
 import styles from './SymptomForm.styles';
 
-/** Page and real keyboard actions share the same save and cancellation boundary. */
+/** Page and keyboard controls share save progress and cancellation semantics. */
 export default function SymptomFormActions({
   mode,
   saving,
@@ -52,6 +52,7 @@ export default function SymptomFormActions({
     <View style={styles.form}>
       {!hasDock ? (
         <AppButton
+          busy={saving}
           disabled={disabled}
           onPress={() => {
             onSave();
@@ -62,11 +63,12 @@ export default function SymptomFormActions({
       ) : null}
       {!hasDock ? (
         <AppButton
+          size="compact"
           disabled={saving}
           onPress={onCancel}
           testID="symptom-form-cancel"
           title={t('symptoms.journal.form.close')}
-          variant="secondary"
+          variant="cancel"
         />
       ) : null}
       {Platform.OS === 'ios' && !hasDock ? (

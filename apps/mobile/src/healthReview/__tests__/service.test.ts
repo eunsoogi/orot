@@ -100,7 +100,12 @@ describe('Production health review service and consent boundaries', () => {
       const consent = { authorize: async () => 'renewal_required' as const };
       const started = await native.service.start(
         'authored request',
-        {},
+        {
+          requestType: 'health_review',
+          population: 'unknown',
+          readingContext: 'unknown',
+          symptomAssessment: { status: 'unknown' },
+        },
         consent,
         signal,
       );
