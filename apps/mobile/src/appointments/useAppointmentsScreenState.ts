@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
+import { selectNextAppointment } from '../routes/nextAppointment';
 import {
   toAppointmentTimestamp,
   toAppointmentTimestampForEdit,
@@ -11,20 +12,25 @@ import {
 
 interface UseAppointmentsScreenStateOptions {
   active: boolean;
+  now: number;
   repository: AppointmentRepository;
   onAppointmentsChanged?: () => void;
 }
 
-/** Keeps detail selection local and reloads its snapshot when a retained route regains focus. */
+/** Keeps explicit detail selection local and reloads its snapshot when a retained route regains focus. */
 export function useAppointmentsScreenState({
   active,
+  now,
   repository,
   onAppointmentsChanged,
 }: UseAppointmentsScreenStateOptions) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<
-    string | null
-  >(null);
+  const [manualSelectionId, setManualSelectionId] = useState<string | null>(
+    null,
+  );
+  const setSelectedAppointmentId = useCallback((id: string) => {
+    setManualSelectionId(id);
+  }, []);
   const [clinicLabel, setClinicLabel] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -54,13 +60,23 @@ export function useAppointmentsScreenState({
       try {
         const nextAppointments = await repository.list();
         setAppointments(nextAppointments);
-        // Keep the selected record if it remains; after removal choose a valid record or none.
-        setSelectedAppointmentId(current => {
-          const preferredId = preferredSelectionId ?? current;
-          return preferredId &&
-            nextAppointments.some(appointment => appointment.id === preferredId)
-            ? preferredId
-            : (nextAppointments[0]?.id ?? null);
+        // Keep an explicit choice while present; only an empty choice may adopt the newly saved row.
+        setManualSelectionId(current => {
+          if (
+            current &&
+            nextAppointments.some(appointment => appointment.id === current)
+          ) {
+            return current;
+          }
+          if (
+            preferredSelectionId &&
+            nextAppointments.some(
+              appointment => appointment.id === preferredSelectionId,
+            )
+          ) {
+            return preferredSelectionId;
+          }
+          return null;
         });
       } catch {
         setError(t('appointments.loadError'));
@@ -70,6 +86,20 @@ export function useAppointmentsScreenState({
     },
     [repository],
   );
+
+  const nextAppointment = useMemo(
+    () => selectNextAppointment(appointments, now),
+    [appointments, now],
+  );
+  // The default detail uses the same selector as the list's next-visit marker.
+  const selectedAppointment = useMemo(
+    () =>
+      (manualSelectionId
+        ? appointments.find(appointment => appointment.id === manualSelectionId)
+        : null) ?? nextAppointment,
+    [appointments, manualSelectionId, nextAppointment],
+  );
+  const selectedAppointmentId = selectedAppointment?.id ?? null;
 
   useEffect(() => {
     if (active) reload().catch(() => undefined);
@@ -90,7 +120,7 @@ export function useAppointmentsScreenState({
 
   function startEditing(appointment: Appointment) {
     const localTime = toLocalAppointmentDateTime(appointment.effectiveAt);
-    setSelectedAppointmentId(appointment.id);
+    // Editing an automatic choice must not pin it if the saved time changes the next visit.
     setEditing(appointment);
     setClinicLabel(appointment.clinicLabel ?? '');
     setDate(localTime.date);
@@ -132,7 +162,7 @@ export function useAppointmentsScreenState({
             clinicLabel: clinicLabel.trim(),
             ...(trimmedNote ? { note: trimmedNote } : {}),
           });
-      await reload(saved.id);
+      await reload(wasEditing ? undefined : saved.id);
       // Home reads the same repository and refreshes only after the save succeeds.
       onAppointmentsChanged?.();
       setFormOpen(false);
@@ -174,6 +204,8 @@ export function useAppointmentsScreenState({
     notice,
     saving,
     saveAppointment,
+    nextAppointment,
+    selectedAppointment,
     selectedAppointmentId,
     setClinicLabel,
     setDate,
