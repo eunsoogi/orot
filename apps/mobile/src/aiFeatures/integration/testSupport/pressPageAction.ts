@@ -3,7 +3,7 @@ import { ActionSheetIOS } from 'react-native';
 
 /** Exercises the direct control or its native action-sheet choice when it overflows. */
 export async function pressPageAction(
-  overflow: Parameters<typeof fireEvent.press>[0],
+  overflow: Parameters<typeof fireEvent.press>[0] | null,
   label: string,
 ) {
   const direct = screen.queryByRole('button', { name: label });
@@ -13,6 +13,7 @@ export async function pressPageAction(
     await fireEvent.press(direct);
     return;
   }
+  if (!overflow) throw new Error(`Missing page action: ${label}`);
   const sheet = jest
     .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
     .mockImplementation((options, select) => {

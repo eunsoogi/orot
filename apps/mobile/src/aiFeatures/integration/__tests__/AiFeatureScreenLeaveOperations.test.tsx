@@ -93,7 +93,7 @@ test('aborts disease analysis after confirmed leave and ignores its late result'
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
   await pressPageAction(
-    route.getByTestId('navigation-page-action-overflow'),
+    route.queryByTestId('navigation-page-action-overflow'),
     getDiseaseHypothesisCopy().generate,
   );
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
