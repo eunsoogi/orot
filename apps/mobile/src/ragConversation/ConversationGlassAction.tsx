@@ -70,10 +70,9 @@ export function ConversationGlassAction({
         ]}
         testID={testID}
       >
-        {/* Composer actions keep their existing size outside shared body and navigation sizing. */}
+        {/* The fallback uses the shared compact glyph size while its press target stays 44pt. */}
         <AppSymbol
           name={busy ? 'stop.fill' : 'arrow.up'}
-          size={22}
           color={appColors.text}
         />
       </Pressable>

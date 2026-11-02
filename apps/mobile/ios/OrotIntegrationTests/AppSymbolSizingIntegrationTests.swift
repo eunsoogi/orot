@@ -7,11 +7,11 @@ private enum CompactSymbolAcceptance {
     static let pointSize: CGFloat = 18
 }
 
-/// Captures shared glyphs in UIKit body and navigation controls for direct size comparison.
+/// Captures actual glyph bounds in UIKit body, navigation and composer controls; touch targets stay larger.
 final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testCompactSymbolsMatchAcrossBodyAndNavigationInBothAppearances() throws {
-        let symbols = ["plus", "sparkles", "pencil", "gearshape", "doc.text"]
+    func testCompactSymbolsMatchAcrossBodyNavigationAndComposerInBothAppearances() throws {
+        let symbols = ["plus", "sparkles", "pencil", "gearshape", "doc.text", "arrow.up", "stop.fill"]
         var sizesByAppearance: [String: [String: CGSize]] = [:]
 
         for appearance in [UIUserInterfaceStyle.light, .dark] {
@@ -142,6 +142,21 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
                 XCTAssertLessThanOrEqual(bodyBounds.height, CompactSymbolAcceptance.pointSize + 0.5)
                 XCTAssertEqual(bodyBounds.width, rootBounds.width, accuracy: 0.5, "Body and root \(name) glyph widths should match")
                 XCTAssertEqual(bodyBounds.height, rootBounds.height, accuracy: 0.5, "Body and root \(name) glyph heights should match")
+                if name == "arrow.up" || name == "stop.fill" {
+                    let composer = ComposerGlassActionView(frame: CGRect(x: -100, y: -100, width: 120, height: 44))
+                    composer.busy = name == "stop.fill"
+                    controller.view.addSubview(composer)
+                    composer.layoutIfNeeded()
+                    let button = try XCTUnwrap((composer.subviews.first as? UIVisualEffectView)?.contentView.subviews.compactMap { $0 as? UIButton }.first)
+                    let icon = try XCTUnwrap(firstImageView(in: button))
+                    let composerBounds = try XCTUnwrap(visibleGlyphBounds(in: icon))
+                    XCTAssertTrue(button.isEnabled && button.bounds.size == CGSize(width: 44, height: 44), "\(name) remains enabled with its native hit target")
+                    XCTAssertLessThanOrEqual(max(abs(composerBounds.width - bodyBounds.width), abs(composerBounds.height - bodyBounds.height)), 0.5, "\(name): composer \(composerBounds) differs from body \(bodyBounds)")
+                    if name == "arrow.up" {
+                        composer.disabled = true
+                        XCTAssertTrue(!button.isEnabled && button.bounds.size == CGSize(width: 44, height: 44), "Disabled send stays unavailable without shrinking its hit target")
+                    }
+                }
                 appearanceSizes[name] = CGSize(width: bodyBounds.width, height: bodyBounds.height)
                 measurements[name] = ["bodyWidth": Double(bodyBounds.width), "bodyHeight": Double(bodyBounds.height),
                                       "rootWidth": Double(rootBounds.width), "rootHeight": Double(rootBounds.height)]

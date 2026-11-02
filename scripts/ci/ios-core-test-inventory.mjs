@@ -50,8 +50,8 @@ export const coreTests = [
   'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
   'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandWaitsForCancellation',
   'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
-  // UIKit glyph bounds and accessibility stay aligned across body and navigation appearances.
-  'OrotIntegrationTests/AppSymbolSizingIntegrationTests/testCompactSymbolsMatchAcrossBodyAndNavigationInBothAppearances',
+  // Compare actual body, navigation and composer glyph bounds in both appearances.
+  'OrotIntegrationTests/AppSymbolSizingIntegrationTests/testCompactSymbolsMatchAcrossBodyNavigationAndComposerInBothAppearances',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
