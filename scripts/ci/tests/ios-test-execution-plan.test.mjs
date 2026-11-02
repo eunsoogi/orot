@@ -44,7 +44,7 @@ test('independent feature suites have distinct jobs and preserve all registered 
   const original = ['release', 'debug', 'speech'].flatMap((name) =>
     iosTestCohortTasks(name).flatMap((task) => task.identifiers),
   );
-  // Debug shares the three import journeys with Release, while the full Release graph schedules each case once.
+  // Debug shares the three import journeys with Release, while the full graph schedules each case once.
   const uniqueOriginal = [...new Set(original)];
   assert.equal(original.length, 209);
   assert.equal(uniqueOriginal.length, 206);
