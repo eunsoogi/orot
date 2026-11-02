@@ -2,12 +2,19 @@ import Foundation
 import XCTest
 #if canImport(Orot)
     @testable import Orot
+#elseif OROT_HOST_SWIFT_TESTS
+    @testable import NativeSwiftRegressions
+#endif
+
+#if OROT_HOST_SWIFT_TESTS
+    /// The host has no XCTest invocation-based iOS fail-fast infrastructure.
+    typealias AppleNativeToolLifecycleTestCase = XCTestCase
 #else
-    @testable import NativeToolLifecycle
+    typealias AppleNativeToolLifecycleTestCase = OrotFailFastTestCase
 #endif
 
 /// Exercises callback ownership with injected producers, not the Foundation Models SDK.
-final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
+final class AppleNativeToolLifecycleTests: AppleNativeToolLifecycleTestCase {
     func testCallbackResultDrainsBeforeFreshGeneration() async throws {
         let registry = AppleNativeToolRegistry()
         let first = try await registry.run([:], requestId: "first") { generation in
