@@ -226,6 +226,7 @@ export default function CalendarLinkingScreen({
                     navigationText.recording.accessibilityLabel,
                   onPress: onOpenRecording,
                   testID: 'navigation-recording',
+                  systemImageName: 'mic',
                 }
               : undefined
           }

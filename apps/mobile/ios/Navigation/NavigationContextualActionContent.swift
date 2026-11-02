@@ -65,7 +65,8 @@ enum NavigationContextualActionContent {
         if action.systemImageName == nil || action.showsTitleWithSystemImage {
             let title = UILabel()
             title.text = action.label
-            title.font = .systemFont(ofSize: action.titleBelowImage ? 10 : 14, weight: .medium)
+            title.font = NavigationTextMetrics.font(for: action, traits: button.traitCollection)
+            title.adjustsFontForContentSizeCategory = true
             title.textAlignment = .center
             title.textColor = foregroundColor
             title.numberOfLines = 1

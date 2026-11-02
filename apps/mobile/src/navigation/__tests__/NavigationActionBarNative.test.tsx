@@ -47,6 +47,7 @@ describe('native bottom navigation toolbar', () => {
           accessibilityLabel: '녹음 화면으로 이동',
           onPress: onPrimary,
           testID: 'navigation-recording',
+          systemImageName: 'mic',
         }}
         safeAreaHandledByParent
       />,
@@ -150,6 +151,7 @@ describe('native bottom navigation toolbar', () => {
           accessibilityLabel: '녹음 화면으로 이동',
           onPress: onPrimary,
           testID: 'navigation-recording',
+          systemImageName: 'mic',
         }}
       />,
     );
@@ -169,6 +171,8 @@ describe('native bottom navigation toolbar', () => {
       expect.objectContaining({
         id: 'primary',
         testID: 'navigation-recording',
+        systemImageName: 'mic',
+        titleBelowImage: true,
       }),
     ]);
 

@@ -102,6 +102,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
                     }
                     if let label = child as? UILabel {
                         label.text = action.label
+                        label.font = NavigationTextMetrics.font(for: action, traits: button.traitCollection)
                         label.textColor = color
                         label.isHidden = usesVerticalLayout
                     }
@@ -113,6 +114,13 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         moveIndicator(animated: animated && !compositionChanged)
         // React Native may deliver actions before Auto Layout resolves the new button frames.
         setNeedsLayout()
+    }
+
+    /// Keeps measured bottom targets tall enough for uncapped Dynamic Type labels.
+    func setBottomHeight(_ height: CGFloat) {
+        for (button, action) in zip(buttons, descriptors) {
+            NavigationGlassButton.setHeight(height, for: action, button: button, usesRightRail: usesVerticalLayout)
+        }
     }
 
     /// Hides only visible tab titles in the narrow lane; button accessibility names remain unchanged.

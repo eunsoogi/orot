@@ -6,6 +6,38 @@ import XCTest
 /// Deterministic UIKit geometry is a regression fixture, not actual keyboard acceptance.
 final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
     @MainActor
+    func testBottomActionMetricsGrowWithAccessibilityText() throws {
+        let action = try XCTUnwrap(NavigationActionDescriptor([
+            "id": "page:save", "label": "Save", "testID": "save", "accessibilityLabel": "Save",
+            "systemImageName": "checkmark", "showsTitleWithSystemImage": true, "titleBelowImage": true,
+        ]))
+        let standard = UITraitCollection(preferredContentSizeCategory: .large)
+        let accessible = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        XCTAssertGreaterThan(NavigationTextMetrics.width(for: action, traits: accessible), NavigationTextMetrics.width(for: action, traits: standard))
+        XCTAssertGreaterThan(NavigationTextMetrics.height(for: action, traits: accessible), NavigationTextMetrics.height(for: action, traits: standard))
+    }
+
+    @MainActor
+    func testBackTitleIsVisibleBelowIconOnBottomAndHiddenOnRail() throws {
+        let action = try XCTUnwrap(NavigationActionDescriptor([
+            "id": "back", "label": "Back", "testID": "navigation-back", "accessibilityLabel": "Back",
+        ]))
+        let button = NavigationGlassButton.make(for: action, onAction: { _ in })
+        let content = try XCTUnwrap(button.subviews.compactMap { $0 as? UIStackView }.first)
+        let icon = try XCTUnwrap(content.arrangedSubviews.first as? UIImageView)
+        let label = try XCTUnwrap(content.arrangedSubviews.last as? UILabel)
+        XCTAssertEqual(content.axis, .vertical)
+        XCTAssertNotNil(icon.image)
+        XCTAssertEqual(label.text, "Back")
+        XCTAssertFalse(label.isHidden)
+        NavigationGlassButton.setUsesRightRail(true, for: action, button: button)
+        XCTAssertTrue(label.isHidden)
+        XCTAssertEqual(button.accessibilityLabel, "Back")
+        NavigationGlassButton.setUsesRightRail(false, for: action, button: button)
+        XCTAssertFalse(label.isHidden)
+    }
+
+    @MainActor
     func testContractedViewportRefreshesBottomAnchoredNavigationWindowFrame() throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive })

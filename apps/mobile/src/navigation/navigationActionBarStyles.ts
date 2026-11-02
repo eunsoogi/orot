@@ -7,6 +7,8 @@ import {
 /** The page and navigation groups share one overlay, with rail controls portal-mounted by UIKit. */
 export const navigationActionBarStyles = StyleSheet.create({
   fill: { flex: 1 },
+  bottomRow: { alignItems: 'center', flexDirection: 'row-reverse', gap: 8 },
+  centeredPage: { position: 'absolute', top: 0, zIndex: 1 },
   host: { position: 'relative' },
   safeArea: {
     flexShrink: 0,

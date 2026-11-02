@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import type { ReactNode } from 'react';
-import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 import {
   NavigationGlassSurface,
   type NavigationGlassAction,
@@ -23,6 +22,8 @@ import {
 } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
 import { NavigationPageActionDock } from './NavigationPageActionDock';
+import { useBottomNavigationRow } from './useBottomNavigationRow';
+import { NavigationBarHost } from './NavigationBarHost';
 import { pageActionRailLayout } from './navigationPageActionLayout';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
@@ -120,6 +121,20 @@ export function NavigationActionBarPresentation({
   const laneActions = actions.some(action => action.id === 'primary')
     ? actions.filter(action => action.id !== 'primary')
     : actions;
+  const {
+    navWidth,
+    pageWidth,
+    pageLeft,
+    bottomHeight,
+    singleRow,
+    onRowMetrics,
+  } = useBottomNavigationRow({
+    routeKey,
+    actions: laneActions,
+    taskActions,
+    isRightRail,
+    hasRootTabs,
+  });
   const railHeight = isRightRail ? candidateRailHeight : 0;
   const railBottomInset = isRightRail ? candidateRailBottomInset : undefined;
   const railFrameStyle = rightLayout
@@ -159,9 +174,12 @@ export function NavigationActionBarPresentation({
     <NavigationPageActionDock
       actions={taskActions}
       capacity={isRightRail ? (pageLayout?.capacity ?? 1) : 1}
+      compactBottom={singleRow}
       disabled={pageActionsDisabled}
       isDarkAppearance={isDarkAppearance}
       isRail={isRightRail}
+      navigationActions={isRightRail ? [] : laneActions}
+      onRowMetrics={onRowMetrics}
       key={routeKey}
       routeKey={routeKey}
       surface={Surface}
@@ -175,67 +193,41 @@ export function NavigationActionBarPresentation({
               railAvailableHeight: railHeight,
               style: styles.railSurface,
             }
-          : { layoutMode: 'bottom' }
+          : { layoutMode: 'bottom', bottomHeight }
       }
     />
   ) : null;
   const surfacePosition = (
     <NavigationSurfacePosition
-      reclaimRootTabInset={reclaimRootTabInset && !isRightRail}
-      style={isRightRail ? styles.fill : undefined}
+      reclaimRootTabInset={reclaimRootTabInset && !isRightRail && !singleRow}
+      style={
+        isRightRail ? styles.fill : singleRow ? { width: navWidth } : undefined
+      }
     >
       <Surface
         actions={laneActions}
         onAction={onAction}
         testID={isRightRail ? 'navigation-right-rail' : surfaceTestID}
         style={nativeSurfaceStyle}
+        bottomHeight={isRightRail ? undefined : bottomHeight}
         {...railProps}
       >
         {isRightRail ? null : bottomActions}
       </Surface>
     </NavigationSurfacePosition>
   );
-  const bottomSurface = safeAreaHandledByParent ? (
-    <View
-      pointerEvents="box-none"
-      style={hostStyle}
-      testID={isRightRail ? 'navigation-right-rail-host' : undefined}
-    >
-      {pageDock ? (
-        <View
-          pointerEvents="box-none"
-          style={isRightRail ? styles.pageRail : undefined}
-        >
-          {pageDock}
-        </View>
-      ) : null}
-      {surfacePosition}
-    </View>
-  ) : (
-    <SafeAreaView
-      edges={isRightRail || keyboardVisible ? [] : ['bottom']}
-      pointerEvents="box-none"
-      style={hostStyle}
-      testID={
-        isRightRail
-          ? 'navigation-right-rail-host'
-          : 'navigation-action-bar-safe-area'
-      }
-    >
-      {pageDock ? (
-        <View
-          pointerEvents="box-none"
-          style={isRightRail ? styles.pageRail : undefined}
-        >
-          {pageDock}
-        </View>
-      ) : null}
-      {surfacePosition}
-    </SafeAreaView>
-  );
   return (
-    <View pointerEvents="box-none" style={styles.host}>
-      {bottomSurface}
-    </View>
+    <NavigationBarHost
+      hasRootTabs={hasRootTabs}
+      pageLeft={pageLeft}
+      hostStyle={hostStyle}
+      isRightRail={isRightRail}
+      keyboardVisible={keyboardVisible}
+      pageDock={pageDock}
+      pageWidth={pageWidth}
+      safeAreaHandledByParent={safeAreaHandledByParent}
+      singleRow={singleRow}
+      surfacePosition={surfacePosition}
+    />
   );
 }

@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface MedicalDocumentReviewProps {
@@ -34,6 +35,7 @@ export function MedicalDocumentReview({
     {
       id: 'save-medical-document',
       label: saveLabel,
+      navigationLabel: busy ? navigationText.saving : navigationText.save,
       accessibilityLabel: saveLabel,
       testID: 'medical-document-save',
       systemImageName: 'checkmark',

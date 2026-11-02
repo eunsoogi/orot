@@ -1,6 +1,7 @@
 import { Keyboard, Platform, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import SymptomKeyboardAccessoryGroup from './SymptomKeyboardAccessoryGroup';
 import { formKeyboardFields } from './symptomFormKeyboard';
@@ -31,6 +32,7 @@ export default function SymptomFormActions({
     {
       id: 'save-symptom',
       label: saveLabel,
+      navigationLabel: saving ? navigationText.saving : navigationText.save,
       accessibilityLabel: saveLabel,
       testID: 'symptom-save',
       busy: saving,

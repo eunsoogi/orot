@@ -26,6 +26,9 @@ export interface NavigationPrimaryAction {
   readonly accessibilityLabel: string;
   readonly onPress: () => void | Promise<unknown>;
   readonly testID: string;
+  readonly systemImageName?: string;
+  /** Compact visible title; the accessibility label retains the full action name. */
+  readonly navigationLabel?: string;
   readonly disabled?: boolean;
 }
 

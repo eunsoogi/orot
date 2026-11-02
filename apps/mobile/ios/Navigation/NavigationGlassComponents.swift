@@ -65,10 +65,16 @@ final class NavigationWindowRailHost: UIView {
 
 /// The same fixed controls can bind to a local bottom surface or the window rail host.
 enum NavigationRailConstraints {
+    /// Separate page controls avoid duplicating the bottom bar's outer insets.
+    static func configureBottomInsets(_ constraints: [NSLayoutConstraint], isPageDock: Bool) {
+        constraints[4].constant = isPageDock ? 2 : 16
+        constraints[5].constant = isPageDock ? -2 : -16
+    }
+
     /// Keeps the compact rail width in sync without replacing mounted controls.
     static func updateFixedWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         NavigationGlassButton.setUsesRightRail(usesRightRail, for: action, button: button)
-        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: usesRightRail) else {
+        guard let width = NavigationGlassButton.fixedWidth(for: action, usesRightRail: usesRightRail, traits: button.traitCollection) else {
             constraints.removeValue(forKey: action.id)?.isActive = false
             return
         }
@@ -83,6 +89,8 @@ enum NavigationRailConstraints {
 
     /// One flexible gap separates Back from retained trailing actions in either axis.
     static func configureFlexibleSpace(_ spacer: UIView, in stack: UIStackView) {
+        // The contextual toolbar remains identifiable before its first action arrives.
+        stack.accessibilityIdentifier = "navigation-toolbar"
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
@@ -105,22 +113,20 @@ enum NavigationRailConstraints {
 
 /// Measures configured UIKit controls, including the native minimum and button insets.
 enum NavigationPageMetrics {
-    static func payload(_ request: NSDictionary, width: CGFloat, lastKey: inout String) -> [String: Any]? {
-        guard width > 0, let revision = request["revision"] as? String, let values = request["actions"] as? [Any] else { return nil }
-        let key = "\(revision):\(width)"
-        guard key != lastKey else { return nil }
-        lastKey = key
-        return ["revision": revision, "width": width, "widths": widths(values)]
+    static func publish(_ request: NSDictionary, width: CGFloat, traits: UITraitCollection, lastKey: inout String, emit: RCTDirectEventBlock?) {
+        guard let emit, let metrics = payload(request, width: width, traits: traits, lastKey: &lastKey) else { return }
+        emit(metrics)
     }
 
-    static func widths(_ values: [Any]) -> [CGFloat] {
-        values.compactMap { value in
-            guard let action = NavigationActionDescriptor(value) else { return nil }
-            let button = NavigationGlassButton.make(for: action, onAction: { _ in })
-            let title = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width + 24
-            let minimum: CGFloat = action.id == "page:overflow" ? 44 : max(88, title)
-            return ceil(max(minimum, button.sizeThatFits(CGSize(width: 10000, height: 48)).width))
-        }
+    static func payload(_ request: NSDictionary, width: CGFloat, traits: UITraitCollection, lastKey: inout String) -> [String: Any]? {
+        guard width > 0, let revision = request["revision"] as? String, let values = request["actions"] as? [Any] else { return nil }
+        let key = "\(revision):\(width):\(traits.preferredContentSizeCategory.rawValue)"
+        guard key != lastKey else { return nil }
+        lastKey = key
+        let actions = values.compactMap(NavigationActionDescriptor.init)
+        return ["revision": revision, "width": width,
+                "widths": actions.map { NavigationTextMetrics.width(for: $0, traits: traits) },
+                "heights": actions.map { NavigationTextMetrics.height(for: $0, traits: traits) }]
     }
 }
 
@@ -156,7 +162,8 @@ enum NavigationRootTabContent {
         let title = UILabel()
         title.translatesAutoresizingMaskIntoConstraints = false
         title.text = label
-        title.font = .systemFont(ofSize: titleSize, weight: .medium)
+        title.font = NavigationTextMetrics.font(size: titleSize, traits: UITraitCollection.current)
+        title.adjustsFontForContentSizeCategory = true
         title.textAlignment = .center
         title.textColor = foregroundColor
         title.numberOfLines = 1
@@ -170,29 +177,6 @@ enum NavigationRootTabContent {
             icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
         ])
         return stack
-    }
-}
-
-/// Bounds the 18pt chevron independently from its 48pt Glass target.
-enum NavigationBackContent {
-    static func attach(to button: UIButton, testID: String) {
-        let icon = UIImageView(image: UIImage(
-            systemName: "chevron.left",
-            withConfiguration: AppSymbolSizing.configuration(),
-        ))
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        icon.contentMode = .scaleAspectFit
-        icon.tintColor = .label
-        icon.isUserInteractionEnabled = false
-        icon.isAccessibilityElement = false
-        icon.accessibilityIdentifier = "\(testID)-UIImageView"
-        button.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
-            icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
-            icon.centerXAnchor.constraint(equalTo: button.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-        ])
     }
 }
 

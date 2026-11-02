@@ -44,6 +44,9 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
               revision: pageMetricsRequest.revision,
               width,
               widths,
+              heights: pageMetricsRequest.actions.map(action =>
+                action.rootTab ? 60 : 48,
+              ),
             },
           });
         }, [pageMetricsRequest, width, fontScale, onPageMetrics]);

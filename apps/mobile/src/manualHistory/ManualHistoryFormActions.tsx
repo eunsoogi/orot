@@ -1,5 +1,6 @@
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 /** Save progress and close emphasis stay inside the editor's existing draft boundary. */
@@ -24,6 +25,7 @@ export function ManualHistoryFormActions({
     {
       id: 'save-history',
       label: save,
+      navigationLabel: saving ? navigationText.saving : navigationText.save,
       accessibilityLabel: save,
       testID: 'manual-history-save',
       busy: saving,

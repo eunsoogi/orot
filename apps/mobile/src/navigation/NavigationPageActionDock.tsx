@@ -26,18 +26,28 @@ import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 export function NavigationPageActionDock({
   actions,
   capacity,
+  compactBottom = false,
   disabled,
   isDarkAppearance,
   isRail,
+  navigationActions = [],
+  onRowMetrics,
   routeKey,
   surface: Surface,
   surfaceProps,
 }: {
   actions: readonly NavigationRouteAction[];
   capacity: number;
+  compactBottom?: boolean;
   disabled: boolean;
   isDarkAppearance: boolean;
   isRail: boolean;
+  navigationActions?: readonly NavigationGlassAction[];
+  onRowMetrics?: (metrics: {
+    navigationWidths: number[];
+    actionWidths: number[];
+    height: number;
+  }) => void;
   routeKey: string;
   surface: NavigationSurface;
   surfaceProps: Partial<NavigationGlassSurfaceProps>;
@@ -58,6 +68,7 @@ export function NavigationPageActionDock({
     revision: string;
     width: number;
     widths: number[];
+    heights: number[];
   }>();
   const nativeBottom =
     !isRail && Platform.OS === 'ios' && Surface === NavigationGlassSurface;
@@ -65,11 +76,14 @@ export function NavigationPageActionDock({
     routeKey,
     width,
     fontScale,
+    navigationActions,
     actions.map(action => [
       action.id,
       action.label,
+      action.navigationLabel,
       action.disabled,
       action.busy,
+      action.systemImageName,
     ]),
   ]);
   const contentFrame = useNavigationContentFrame();
@@ -80,7 +94,13 @@ export function NavigationPageActionDock({
   );
   const split = nativeBottom
     ? metrics?.revision === revision
-      ? splitMeasuredPageActions(actions, metrics.widths, metrics.width)
+      ? splitMeasuredPageActions(
+          actions,
+          metrics.widths.slice(navigationActions.length),
+          metrics.width,
+          [],
+          compactBottom ? 16 : 44,
+        )
       : { visible: [], overflow: actions }
     : splitPageActions(actions, isRail ? capacity : bottomCapacity);
   const { visible, overflow } = split;
@@ -132,17 +152,49 @@ export function NavigationPageActionDock({
   const shown = overflow.length ? [...visible, more] : visible;
   const describe = (action: NavigationRouteAction): NavigationGlassAction => ({
     id: `page:${action.id}`,
-    label: action.label,
+    label: action.navigationLabel ?? action.label,
     accessibilityLabel: action.accessibilityLabel,
     testID: action.testID,
     disabled: disabled || action.disabled,
     busy: action.busy,
     primary: true,
-    ...(isRail || action.id === 'overflow'
+    // Bottom actions retain their supplied symbol and place the title below it;
+    // the narrow rail keeps its existing icon-only presentation.
+    ...(isRail
       ? { systemImageName: action.systemImageName ?? 'ellipsis' }
-      : {}),
+      : action.systemImageName
+        ? {
+            systemImageName: action.systemImageName,
+            showsTitleWithSystemImage: true,
+            titleBelowImage: true,
+          }
+        : {}),
   });
   const descriptors = shown.map(describe);
+  useLayoutEffect(() => {
+    if (!nativeBottom || !metrics || metrics.revision !== revision) return;
+    const navigationWidths = metrics.widths.slice(0, navigationActions.length);
+    const actionWidths = metrics.widths.slice(navigationActions.length, -1);
+    if (
+      navigationWidths.length === navigationActions.length &&
+      actionWidths.length === actions.length &&
+      metrics.heights?.length ===
+        navigationActions.length + actions.length + 1 &&
+      metrics.heights.every(value => Number.isFinite(value) && value >= 0)
+    )
+      onRowMetrics?.({
+        navigationWidths,
+        actionWidths,
+        height: Math.max(0, ...metrics.heights.slice(0, -1)),
+      });
+  }, [
+    nativeBottom,
+    metrics,
+    revision,
+    navigationActions.length,
+    actions.length,
+    onRowMetrics,
+  ]);
   const dispatch = (id: string) =>
     id === 'overflow' ? showOverflow() : invoke(id);
   return (
@@ -152,7 +204,13 @@ export function NavigationPageActionDock({
       isPageDock
       pageMetricsRequest={
         nativeBottom
-          ? { revision, actions: [...actions, more].map(describe) }
+          ? {
+              revision,
+              actions: [
+                ...navigationActions,
+                ...[...actions, more].map(describe),
+              ],
+            }
           : undefined
       }
       onPageMetrics={
@@ -175,7 +233,7 @@ export function NavigationPageActionDock({
             disabled={disabled || action.disabled === true}
             isDarkAppearance={isDarkAppearance}
             key={action.id}
-            label={action.label}
+            label={action.navigationLabel ?? action.label}
             onPress={() => dispatch(action.id)}
             primary
             testID={action.testID}

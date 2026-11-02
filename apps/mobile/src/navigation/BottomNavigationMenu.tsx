@@ -66,6 +66,9 @@ export function BottomNavigationMenu({
       label: primaryAction.label,
       accessibilityLabel: primaryAction.accessibilityLabel,
       testID: primaryAction.testID,
+      systemImageName: primaryAction.systemImageName,
+      showsTitleWithSystemImage: true,
+      titleBelowImage: true,
       disabled: disabled || primaryAction.disabled === true,
       primary: true,
     });

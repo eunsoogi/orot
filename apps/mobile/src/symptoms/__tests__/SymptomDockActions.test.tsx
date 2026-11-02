@@ -3,6 +3,7 @@ import { Button, View } from 'react-native';
 import {
   NavigationPrimaryActionContext,
   useNavigationPrimaryActionHost,
+  type NavigationRouteAction,
 } from '../../navigation/useNavigationPrimaryAction';
 import SymptomsScreen from '../SymptomsScreen';
 
@@ -11,8 +12,13 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-function Fixture() {
+function Fixture({
+  observe,
+}: {
+  observe?: (actions: readonly NavigationRouteAction[]) => void;
+}) {
   const { host, actions } = useNavigationPrimaryActionHost('symptoms');
+  observe?.(actions);
   return (
     <NavigationPrimaryActionContext.Provider value={host}>
       <SymptomsScreen
@@ -42,12 +48,25 @@ function Fixture() {
 }
 
 test('moves Add into the dock and replaces it with editor actions without duplicating owners', async () => {
-  await render(<Fixture />);
+  let actions: readonly NavigationRouteAction[] = [];
+  await render(
+    <Fixture
+      observe={next => {
+        actions = next;
+      }}
+    />,
+  );
   expect(screen.queryByTestId('symptom-add')).toBeNull();
   await fireEvent.press(screen.getByTestId('dock-add-symptom'));
   expect(screen.queryByTestId('dock-add-symptom')).toBeNull();
   expect(screen.queryByTestId('symptom-save')).toBeNull();
   expect(screen.getByTestId('dock-save-symptom')).toBeDisabled();
+  expect(actions.find(action => action.id === 'save-symptom')).toEqual(
+    expect.objectContaining({
+      navigationLabel: '저장',
+      accessibilityLabel: '증상 기록 저장',
+    }),
+  );
   await fireEvent.press(screen.getByTestId('dock-cancel-symptom'));
   expect(screen.getByTestId('dock-add-symptom')).toBeTruthy();
 });

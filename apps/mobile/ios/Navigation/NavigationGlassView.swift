@@ -20,8 +20,11 @@ final class NavigationGlassSurfaceView: UIView {
         didSet { setNeedsLayout() }
     }
 
-    private var lastPageMetricsKey = ""
-    @objc var isPageDock: Bool = false
+    var lastPageMetricsKey = ""
+    @objc var isPageDock: Bool = false {
+        didSet { updatePresentation() }
+    }
+
     /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
     @objc var geometryLayoutRevision: String? {
         didSet { (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout() }
@@ -47,15 +50,19 @@ final class NavigationGlassSurfaceView: UIView {
         didSet { updatePresentation() }
     }
 
-    private let rootBar = NavigationRootGlassBar()
+    @objc var bottomHeight: CGFloat = 0 {
+        didSet { updatePresentation() }
+    }
+
+    let rootBar = NavigationRootGlassBar()
     private let windowRailHost = NavigationWindowRailHost()
     override var isHidden: Bool {
         didSet { windowRailHost.isHidden = isHidden }
     }
 
-    private let innerActions = UIStackView()
+    let innerActions = UIStackView()
     private let innerActionsSpacer = UIView()
-    private var renderedActions: [NavigationActionDescriptor] = []
+    var renderedActions: [NavigationActionDescriptor] = []
     private var contextualButtons: [String: UIButton] = [:]
     private var contextualButtonWidthConstraints: [String: NSLayoutConstraint] = [:]
     private var contextualButtonFixedWidthConstraints: [String: NSLayoutConstraint] = [:]
@@ -81,8 +88,6 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.alignment = .center
         innerActions.spacing = 12
         NavigationRailConstraints.configureFlexibleSpace(innerActionsSpacer, in: innerActions)
-        // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
-        innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -98,8 +103,11 @@ final class NavigationGlassSurfaceView: UIView {
             innerActions.heightAnchor.constraint(equalToConstant: 48),
         ]
         railPlacementConstraints = NavigationRailConstraints.make(rootBar: rootBar, innerActions: innerActions, host: self)
+        observeNavigationTextSize()
         updatePresentation()
     }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
@@ -112,20 +120,11 @@ final class NavigationGlassSurfaceView: UIView {
             updatePresentation()
         }
         super.layoutSubviews()
-        if let onPageMetrics, let metrics = NavigationPageMetrics.payload(pageMetricsRequest, width: bounds.width, lastKey: &lastPageMetricsKey) {
-            onPageMetrics(metrics)
-        }
+        NavigationPageMetrics.publish(pageMetricsRequest, width: bounds.width, traits: traitCollection, lastKey: &lastPageMetricsKey, emit: onPageMetrics)
         publishNavigationGeometry(from: self)
     }
 
-    /// The mounted host owns measurement, including layout changes outside the React surface.
-    func publishNavigationGeometry(from parent: UIView) {
-        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
-        guard !isPageDock, controls.superview === parent else { return }
-        NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions)
-    }
-
-    private func render(_ descriptors: [NavigationActionDescriptor]) {
+    func render(_ descriptors: [NavigationActionDescriptor]) {
         innerActions.accessibilityIdentifier = descriptors.allSatisfy { $0.id.hasPrefix("page:") } ? "navigation-page-action-toolbar" : "navigation-toolbar"
         let wasRoot = renderedActions.contains(where: \.rootTab)
         let isRoot = descriptors.contains(where: \.rootTab)
@@ -150,18 +149,13 @@ final class NavigationGlassSurfaceView: UIView {
         }
     }
 
-    /// Finish on the actual parent so portal-mounted controls publish their newly rendered frame.
-    private func finishRendering() {
-        let controls: UIView = rootBar.isHidden ? innerActions : rootBar
-        guard let parent = controls.superview else { return }
-        parent.setNeedsLayout()
-        parent.layoutIfNeeded()
-    }
-
     /// Reparents existing controls into a window-coordinate host without changing action identity.
     private func updatePresentation() {
         let usesRightRail = layoutMode != "bottom"
         NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
+        NavigationRailConstraints.configureBottomInsets(bottomPlacementConstraints, isPageDock: isPageDock)
+        bottomPlacementConstraints[3].constant = max(60, bottomHeight)
+        bottomPlacementConstraints[7].constant = max(48, bottomHeight)
         let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) ?? self : self
         if rootBar.superview !== host {
             for view in [rootBar, innerActions] {
@@ -182,10 +176,12 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints[6].constant = railTopInset
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
+        rootBar.setBottomHeight(max(60, bottomHeight))
         innerActions.axis = usesRightRail ? .vertical : .horizontal
         innerActions.alignment = usesRightRail ? .fill : .center
         for (id, button) in contextualButtons {
             guard let action = renderedActions.first(where: { $0.id == id }) else { continue }
+            NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: usesRightRail)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }
         rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
@@ -219,6 +215,7 @@ final class NavigationGlassSurfaceView: UIView {
             }
             NavigationGlassButton.updateMinimumWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonWidthConstraints)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonFixedWidthConstraints)
+            NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: layoutMode != "bottom")
         }
 
         var orderedViews: [UIView] = []
