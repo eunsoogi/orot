@@ -245,6 +245,7 @@
 		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
 		7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */; };
 		E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */; };
+		F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */; };
 		A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */; };
 		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
 		E8CD30C28EBA26EB15F6597C /* AutomaticTranscriptionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */; };
@@ -410,6 +411,7 @@
 		E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EncounterReviewPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatePersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTests.swift; sourceTree = "<group>"; };
+		F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTestSupport.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
@@ -818,6 +820,7 @@
 				81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */,
 				A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */,
 				F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */,
+				F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
 				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
 				79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */,
@@ -1495,6 +1498,7 @@
 				E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */,
 				7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */,
 				E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */,
+				F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
 				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
 				FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */,
