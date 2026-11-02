@@ -206,8 +206,14 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
 
     @MainActor
     private func recordsPage(_ app: XCUIApplication) -> XCUIElement {
-        // Both document states consume Records' scene viewport; child scroll owners must not return.
-        let page = app.scrollViews.matching(identifier: "navigation-route-scroll").firstMatch
+        // Resolve the tagged route container to the native scroll view that owns the viewport.
+        let route = app.descendants(matching: .any).matching(identifier: "navigation-route-scroll")
+        XCTAssertEqual(route.count, 1, app.debugDescription)
+        let routeContainer = route.firstMatch
+        XCTAssertTrue(routeContainer.exists && !routeContainer.frame.isEmpty, app.debugDescription)
+        let scrollViews = routeContainer.scrollViews
+        XCTAssertEqual(scrollViews.count, 1, app.debugDescription)
+        let page = scrollViews.firstMatch
         XCTAssertTrue(page.exists && !page.frame.isEmpty, app.debugDescription)
         XCTAssertEqual(page.scrollViews.count, 0, app.debugDescription)
         return page
