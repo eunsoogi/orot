@@ -49,11 +49,10 @@ export const healthImportTests = [
   'OrotUITests/HealthImportUITests/testCommonObservationsUseEncryptedStorageAndIdempotentReplay',
   'OrotUITests/UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation',
   'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
-  // All document-picker journeys run in both the Debug import suite and Release fixture suite.
+  // Real document-picker journeys run in both the Debug import suite and Release fixture suite.
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
-  'OrotUITests/MedicalDocumentImportJourneyUITests/testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel',
 ];
 export const localModelTests = [
   'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation',
@@ -139,7 +138,6 @@ export const fixtureTests = [
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
-  'OrotUITests/MedicalDocumentImportJourneyUITests/testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */

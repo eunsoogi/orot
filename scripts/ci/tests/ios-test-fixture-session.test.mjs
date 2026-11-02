@@ -53,13 +53,13 @@ for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-sele
               id.includes('/ScheduleCalendarUITests/'),
           )
         : iosTestInventory(profile).slice(0, profile === 'backup' ? 3 : undefined);
-    // All four picker journeys overlap with `fixtures`; the complete selection must keep its requested profile.
+    // All three picker journeys overlap with `fixtures`; the complete selection must keep its requested profile.
     if (profile === 'health-import')
       assert.equal(
         identifiers.filter((identifier) =>
           identifier.includes('/MedicalDocumentImportJourneyUITests/'),
         ).length,
-        4,
+        3,
       );
     const value = fixture({ profile, selectedIdentifiers: identifiers, failFirst: false });
     try {

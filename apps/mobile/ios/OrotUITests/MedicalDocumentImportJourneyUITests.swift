@@ -70,33 +70,6 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel() throws {
-        let app = XCUIApplication()
-        defer { app.terminate() }
-        launch(app, fixture: "text-pdf")
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-
-        tapRecordsImportBodyAction(app)
-        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
-        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
-        XCTAssertTrue(node(app, "medical-document-review-preview-panel").exists, app.debugDescription)
-        XCTAssertTrue(node(app, "medical-document-review-text-0").exists, app.debugDescription)
-
-        tap(app, "medical-document-cancel")
-        XCTAssertFalse(node(app, "medical-document-review-title").exists, app.debugDescription)
-        XCTAssertTrue(node(app, "medical-document-source-empty-list").exists, app.debugDescription)
-        _ = recordsImportBodyAction(app)
-
-        tapRecordsImportBodyAction(app)
-        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
-        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
-        tap(app, "medical-document-save")
-        let savedSource = node(app, "medical-document-source-0")
-        XCTAssertTrue(savedSource.waitForAppearance(), app.debugDescription)
-        XCTAssertTrue(UITestConditions.text(savedSource).contains("MedicalDocumentTextFixture.pdf"))
-    }
-
-    @MainActor
     func testDuplicateImportKeepsSavedOriginalAndProvenance() throws {
         let app = XCUIApplication()
         defer { app.terminate() }

@@ -83,10 +83,10 @@ test('full integration execution preserves profile observations and every regist
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // The four picker journeys repeat across Debug health-import and Release fixtures.
-  assert.equal(scheduled.length, 211);
+  // The three picker journeys repeat across Debug health-import and Release fixtures.
+  assert.equal(scheduled.length, 209);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 207);
+  assert.equal(identifiers.size, 206);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
@@ -96,10 +96,6 @@ test('full integration execution preserves profile observations and every regist
   assert.deepEqual(repeated, [
     [
       'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
-      2,
-    ],
-    [
-      'OrotUITests/MedicalDocumentImportJourneyUITests/testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel',
       2,
     ],
     [

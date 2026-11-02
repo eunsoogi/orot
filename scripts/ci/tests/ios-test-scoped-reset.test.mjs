@@ -97,8 +97,7 @@ test('fresh creation, migration, document import, backup and native permission c
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
-  // Stateful journeys require a fresh local store, including symptom recovery,
-  // appointment input replacement and the medical-document import save journey.
+  // Stateful journeys, including symptom recovery and appointment input replacement, require a fresh local store.
   assert.deepEqual(full, [
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
@@ -132,7 +131,6 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
     'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
     'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
-    'OrotUITests/MedicalDocumentImportJourneyUITests/testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel',
   ]);
   assert.equal(
     iosFixtureResetMode('fixtures', 'OrotUITests/NewTests/testUnknown'),
