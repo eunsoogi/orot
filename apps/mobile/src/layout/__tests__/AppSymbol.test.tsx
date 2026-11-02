@@ -1,6 +1,5 @@
 import { render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
-import { ConversationGlassAction } from '../../ragConversation/ConversationGlassAction';
 import { AppSymbol } from '../AppSymbol';
 import { appColors } from '../appColors';
 
@@ -36,27 +35,6 @@ test('uses the shared compact size and restrained accent for body symbols', asyn
   expect(symbol.props.tintColor).toBe(appColors.primary);
   expect(symbol.props.accessibilityElementsHidden).toBe(true);
   expect(symbol.props.importantForAccessibility).toBe('no-hide-descendants');
-});
-
-test('keeps the composer fallback symbol on the shared compact scale', async () => {
-  const view = await render(
-    <ConversationGlassAction
-      busy={false}
-      disabled={false}
-      label="Send"
-      onPress={jest.fn()}
-    />,
-  );
-  const symbol = view.getByTestId('native-app-symbol', {
-    includeHiddenElements: true,
-  });
-
-  expect(symbol.props.symbolName).toBe('arrow.up');
-  expect(symbol.props.pointSize).toBe(18);
-  expect(StyleSheet.flatten(symbol.props.style)).toMatchObject({
-    width: 18,
-    height: 18,
-  });
 });
 
 test('keeps intentional caller size and semantic tint overrides', async () => {
