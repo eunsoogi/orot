@@ -3,7 +3,6 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { VerticalPageSections } from '../layout/VerticalPageSections';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
-import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
 import {
   MedicalDocumentSourceLibrary,
   MedicalDocumentSourceView,
@@ -98,14 +97,12 @@ export function RecordsRoute({
             onOpenRecording={onOpenRecording}
             onOpenHealthLibrary={onOpenHealthLibrary}
             onOpenManualHistory={onOpenManualHistory}
+            medicalDocumentOpening={activity === 'selecting'}
+            medicalDocumentDisabled={activity !== null}
+            onImportMedicalDocument={selectMedicalDocument}
           />
           {/* Imported clinical sources stay in their explicit review workflow. */}
           <View style={styles.medicalDocuments}>
-            <MedicalDocumentImportAction
-              opening={activity === 'selecting'}
-              disabled={activity !== null}
-              onPress={selectMedicalDocument}
-            />
             <MedicalDocumentSourceLibrary
               documents={savedDocuments}
               loading={savedDocumentsLoading}

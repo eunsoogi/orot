@@ -3,6 +3,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
+import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
 import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 import { hubSpacing } from '../layout/hubSpacing';
 
@@ -12,15 +13,21 @@ interface RecordsRouteEntriesProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly onOpenManualHistory: () => void;
+  readonly medicalDocumentOpening: boolean;
+  readonly medicalDocumentDisabled: boolean;
+  readonly onImportMedicalDocument: () => void;
 }
 
-/** Keeps every current Records destination, with recording as the sole primary action. */
+/** Groups capture actions and existing record destinations without adding a new scroll owner. */
 export function RecordsRouteEntries({
   onOpenSymptoms,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
   onOpenManualHistory,
+  medicalDocumentOpening,
+  medicalDocumentDisabled,
+  onImportMedicalDocument,
 }: RecordsRouteEntriesProps) {
   return (
     <View style={styles.container}>
@@ -32,79 +39,111 @@ export function RecordsRouteEntries({
         {t('records.title')}
       </Text>
       <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenRecording}
-        style={styles.recordingAction}
-        testID="records-new-recording"
-      >
-        <View style={styles.recordingIcon}>
-          <AppSymbol name="mic.fill" color={appColors.primaryAction} />
-        </View>
-        <Text style={styles.recordingActionTitle}>
-          {t('records.newRecording')}
-        </Text>
-      </Pressable>
-
-      {/* Self-reported symptoms stay separate from imported clinical records. */}
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenSymptoms}
-        style={styles.healthCard}
-        testID="symptoms-open"
-      >
-        <View style={styles.healthIcon}>
-          <AppSymbol name="square.and.pencil" color={appColors.primaryText} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('symptoms.title')}</Text>
-          <Text style={styles.cardSummary}>{t('symptoms.description')}</Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenSavedRecordings}
-        style={styles.healthCard}
-        testID="records-open-saved-recordings"
-      >
-        <View style={styles.healthIcon}>
-          <AppSymbol name="doc.text" color={appColors.primaryText} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('recording.library.title')}</Text>
-          <Text style={styles.cardSummary}>
-            {t('records.savedRecordingsSummary')}
-          </Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
-
-      <ManualHistoryAction onPress={onOpenManualHistory} />
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenHealthLibrary}
-        style={styles.healthCard}
-        testID="records-open-health-library"
-      >
-        <View
-          style={[styles.healthIcon, { backgroundColor: appColors.greenSoft }]}
+      <View style={styles.captureActions} testID="records-capture-actions">
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenRecording}
+          style={styles.captureAction}
+          testID="records-new-recording"
         >
-          <AppSymbol name="folder" color={appColors.green} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('records.healthRecords')}</Text>
-          <Text style={styles.cardSummary}>
-            {t('healthRecords.description')}
+          <View style={styles.captureIcon}>
+            <AppSymbol name="mic.fill" color={appColors.primaryAction} />
+          </View>
+          <Text style={styles.captureActionTitle}>
+            {t('records.newRecording')}
           </Text>
-        </View>
-        <Text style={styles.chevron} accessibilityElementsHidden>
-          ›
+          <AppSymbol
+            name="chevron.right"
+            size={16}
+            color={appColors.secondary}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenSymptoms}
+          style={styles.captureAction}
+          testID="symptoms-open"
+        >
+          <View style={styles.captureIcon}>
+            <AppSymbol
+              name="square.and.pencil"
+              color={appColors.primaryAction}
+            />
+          </View>
+          <Text style={styles.captureActionTitle}>{t('symptoms.title')}</Text>
+          <AppSymbol
+            name="chevron.right"
+            size={16}
+            color={appColors.secondary}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.materials} testID="records-materials">
+        <Text accessibilityRole="header" style={styles.materialsTitle}>
+          {t('records.myMaterials')}
         </Text>
-      </Pressable>
+        <View style={styles.materialRows}>
+          <MedicalDocumentImportAction
+            opening={medicalDocumentOpening}
+            disabled={medicalDocumentDisabled}
+            onPress={onImportMedicalDocument}
+            showDivider
+          />
+          <RecordsLibraryAction
+            icon="doc.text"
+            title={t('recording.library.title')}
+            summary={t('records.savedRecordingsSummary')}
+            onPress={onOpenSavedRecordings}
+            testID="records-open-saved-recordings"
+            showDivider
+          />
+          <ManualHistoryAction onPress={onOpenManualHistory} showDivider />
+          <RecordsLibraryAction
+            icon="folder"
+            title={t('records.healthRecords')}
+            summary={t('healthRecords.description')}
+            onPress={onOpenHealthLibrary}
+            testID="records-open-health-library"
+          />
+        </View>
+      </View>
     </View>
+  );
+}
+
+/** Keeps the imported and saved library links visually consistent within My Data. */
+function RecordsLibraryAction({
+  icon,
+  title,
+  summary,
+  onPress,
+  testID,
+  showDivider = false,
+}: {
+  readonly icon: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly onPress: () => void;
+  readonly testID: string;
+  readonly showDivider?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.materialRow, showDivider && styles.rowDivider]}
+      testID={testID}
+    >
+      <View style={styles.materialIcon}>
+        <AppSymbol name={icon} color={appColors.primaryAction} />
+      </View>
+      <View style={styles.cardCopy}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardSummary}>{summary}</Text>
+      </View>
+      <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+    </Pressable>
   );
 }
 
@@ -115,49 +154,81 @@ const styles = StyleSheet.create({
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
-  recordingAction: {
-    alignItems: 'center',
-    backgroundColor: appColors.primaryAction,
-    borderRadius: 22,
-    justifyContent: 'center',
-    gap: 12,
-    minHeight: 108,
+  captureActions: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+    gap: hubSpacing.item,
     marginTop: 4,
   },
-  recordingIcon: {
+  captureAction: {
     alignItems: 'center',
     backgroundColor: appColors.surface,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
+    borderColor: appColors.border,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 76,
+    minWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
-  recordingActionTitle: {
-    color: appColors.onPrimary,
-    fontSize: 21,
-    fontWeight: '700',
-  },
-  healthCard: {
+  captureIcon: {
     alignItems: 'center',
+    backgroundColor: appColors.primarySoft,
+    borderRadius: 12,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  captureActionTitle: {
+    color: appColors.text,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 21,
+    minWidth: 0,
+  },
+  materials: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 16,
-    minHeight: 88,
-    paddingHorizontal: 18,
+    minWidth: 0,
+    paddingHorizontal: 16,
+    paddingTop: 14,
   },
-  healthIcon: {
+  materialsTitle: {
+    borderBottomColor: appColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    color: appColors.text,
+    fontSize: 21,
+    fontWeight: '700',
+    paddingBottom: 10,
+  },
+  materialRows: { minWidth: 0 },
+  materialRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 70,
+    minWidth: 0,
+    paddingVertical: 9,
+  },
+  rowDivider: {
+    borderBottomColor: appColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  materialIcon: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
-    borderRadius: 14,
-    height: 48,
+    borderRadius: 12,
+    height: 40,
     justifyContent: 'center',
-    width: 48,
+    width: 40,
   },
-  cardCopy: { flex: 1, gap: 4 },
-  cardTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  chevron: { color: appColors.secondary, fontSize: 24 },
+  cardCopy: { flex: 1, gap: 3, minWidth: 0 },
+  cardTitle: { color: appColors.text, fontSize: 16, fontWeight: '700' },
+  cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 19 },
 });

@@ -132,6 +132,48 @@ test('shows the newest loaded sources and opens their existing saved-recordings 
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
 });
 
+test('groups actual recent recordings by local day and opens the full library', async () => {
+  jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 12));
+  try {
+    const recordings = [
+      source(
+        '123e4567-e89b-12d3-a456-426614174101',
+        '오늘 상담',
+        new Date(2026, 10, 2, 9, 42).toISOString(),
+      ),
+      source(
+        '123e4567-e89b-12d3-a456-426614174102',
+        '오늘 두 번째 상담',
+        new Date(2026, 10, 2, 8, 15).toISOString(),
+      ),
+      source(
+        '123e4567-e89b-12d3-a456-426614174103',
+        '어제 상담',
+        new Date(2026, 10, 1, 20, 27).toISOString(),
+      ),
+      source(
+        '123e4567-e89b-12d3-a456-426614174104',
+        '더 오래된 상담',
+        new Date(2026, 9, 31, 20, 27).toISOString(),
+      ),
+    ];
+    const routeProps = props({ recordings });
+    await render(<RecordsRoute {...routeProps} />);
+
+    expect(screen.getByText('11월 2일 (오늘)')).toBeTruthy();
+    expect(screen.getByText('11월 1일 (어제)')).toBeTruthy();
+    expect(screen.getByText('오늘 상담', { exact: true })).toBeTruthy();
+    expect(screen.getByText('오늘 두 번째 상담', { exact: true })).toBeTruthy();
+    expect(screen.getByText('어제 상담', { exact: true })).toBeTruthy();
+    expect(screen.queryByText('더 오래된 상담')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+    expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test('shows loading feedback while the existing recording summary request is pending', async () => {
   await render(<RecordsRoute {...props({ recordingState: 'loading' })} />);
 

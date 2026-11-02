@@ -8,6 +8,7 @@ interface MedicalDocumentImportActionProps {
   readonly opening: boolean;
   readonly disabled: boolean;
   readonly onPress: () => void;
+  readonly showDivider?: boolean;
 }
 
 /** Keeps document import in the Records body instead of duplicating it in navigation actions. */
@@ -15,6 +16,7 @@ export function MedicalDocumentImportAction({
   opening,
   disabled,
   onPress,
+  showDivider = false,
 }: MedicalDocumentImportActionProps) {
   const label = t('medicalDocument.import.title');
   const content = (
@@ -38,7 +40,11 @@ export function MedicalDocumentImportAction({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={[styles.card, disabled && styles.disabled]}
+      style={[
+        styles.row,
+        showDivider && styles.divider,
+        disabled && styles.disabled,
+      ]}
       testID="records-import-medical-document"
     >
       {content}
@@ -47,27 +53,28 @@ export function MedicalDocumentImportAction({
 }
 
 const styles = StyleSheet.create({
-  card: {
+  row: {
     alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: 16,
-    minHeight: 88,
-    paddingHorizontal: 18,
+    gap: 12,
+    minHeight: 70,
+    minWidth: 0,
+    paddingVertical: 9,
+  },
+  divider: {
+    borderBottomColor: appColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   icon: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
-    borderRadius: 14,
-    height: 48,
+    borderRadius: 12,
+    height: 40,
     justifyContent: 'center',
-    width: 48,
+    width: 40,
   },
-  copy: { flex: 1, gap: 4 },
-  title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  summary: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+  copy: { flex: 1, gap: 3, minWidth: 0 },
+  title: { color: appColors.text, fontSize: 16, fontWeight: '700' },
+  summary: { color: appColors.secondary, fontSize: 14, lineHeight: 19 },
   disabled: { opacity: 0.55 },
 });
