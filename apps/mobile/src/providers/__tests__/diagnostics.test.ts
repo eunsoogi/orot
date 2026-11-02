@@ -103,6 +103,20 @@ test('reports only a fixed validation category and never a raw validation reason
   ]);
 });
 
+test('reports malformed provider output as a closed format category', () => {
+  reportWorkflowOutcome(
+    'visit',
+    'invalid_output',
+    undefined,
+    'The task responder returned malformed structured output.',
+  );
+
+  expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+    ['visit', 'validation', 'task_json'],
+    ['visit', 'workflow', 'invalid_output'],
+  ]);
+});
+
 test.each(['unavailable', 'budget_exceeded', 'stale_evidence'])(
   'keeps the actual workflow failure category %s',
   status => {

@@ -24,6 +24,10 @@ const MEDICATION_INSTRUCTION =
 const DIAGNOSTIC_CLAIM =
   /(?:고혈압|당뇨(?:병)?|고지혈증|심부전|[가-힣]{1,10}(?:병|증|염|암|질환)|진단).{0,16}(?:이므로|이라서|라서|때문에|로 보입니다|로 판단|이라고 할 수|입니다|이에요|일 수 있)/u;
 
+// Shared by validation reporting and the bounded correction prompt.
+export const UNSUPPORTED_QUESTION_FACTS_REASON =
+  'A visit question contains an unsupported date or numeric value.';
+
 function clarification(
   message: string,
 ): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
@@ -231,7 +235,7 @@ export function validateVisitQuestionTaskResult(
   if (unsupportedFacts) {
     return {
       status: 'invalid',
-      reason: 'A visit question contains an unsupported date or numeric value.',
+      reason: UNSUPPORTED_QUESTION_FACTS_REASON,
     };
   }
   if (missingQuestionMark) {
