@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { RecordsRouteProps } from '../RecordsRoute';
 import { RecordsRoute } from '../RecordsRoute';
 import type { MedicalDocumentImportService } from '../../medicalDocuments/medicalDocumentImportService';
@@ -59,9 +64,9 @@ test('shows and retries a failed imported-document list read', async () => {
     />,
   );
 
-  expect(await screen.findByTestId('records-recent-sources-error')).toHaveTextContent(
-    '저장된 문서를 불러오지 못했어요.',
-  );
+  expect(
+    await screen.findByTestId('records-recent-sources-error'),
+  ).toHaveTextContent('저장된 문서를 불러오지 못했어요.');
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   await waitFor(() => {
     expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();
@@ -78,9 +83,9 @@ test('shows and retries a failed local symptom read', async () => {
     .mockResolvedValue({ list: jest.fn().mockResolvedValue([]) });
   await render(<RecordsRoute {...routeProps({ loadSymptoms })} />);
 
-  expect(await screen.findByTestId('records-recent-sources-error')).toHaveTextContent(
-    '최근 기록을 불러오지 못했어요.',
-  );
+  expect(
+    await screen.findByTestId('records-recent-sources-error'),
+  ).toHaveTextContent('최근 기록을 불러오지 못했어요.');
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   await waitFor(() => {
     expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();

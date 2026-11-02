@@ -52,7 +52,9 @@ export function RecordsRecentSourceState({
   return (
     <View
       testID={
-        showDocumentLibraryEmpty ? 'medical-document-source-empty-list' : undefined
+        showDocumentLibraryEmpty
+          ? 'medical-document-source-empty-list'
+          : undefined
       }
     >
       <Text style={styles.empty} testID="records-recent-sources-empty">

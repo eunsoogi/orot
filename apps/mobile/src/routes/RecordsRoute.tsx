@@ -121,9 +121,7 @@ export function RecordsRoute({
           documentsError={savedDocumentsError}
           documentsOpening={sourceLoading}
           onRetryRecordings={onRetryRecordings}
-          onRetryDocuments={() => {
-            void reloadSavedDocuments();
-          }}
+          onRetryDocuments={reloadSavedDocuments}
           onOpenMedicalDocument={openSavedDocument}
           onOpenSavedRecordings={onOpenSavedRecordings}
           onOpenSymptoms={onOpenSymptoms}

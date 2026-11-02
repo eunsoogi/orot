@@ -77,11 +77,7 @@ export function RecordsRecentSources({
   }, [loadSymptoms, symptomLoadAttempt]);
 
   const records = buildRecentRecordEntries(recordings, documents, symptoms);
-  const groups = groupRecentRecords(
-    records,
-    new Date(),
-    expanded ? null : 3,
-  );
+  const groups = groupRecentRecords(records, new Date(), expanded ? null : 3);
   const isLoading =
     recordingState === 'loading' ||
     documentsState === 'loading' ||
@@ -114,8 +110,9 @@ export function RecordsRecentSources({
             size="compact"
             testID="records-recent-view-all"
             title={
-              t(expanded ? 'records.recent.collapse' : 'records.recent.viewAll') +
-              (expanded ? '  ⌃' : '  ›')
+              t(
+                expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
+              ) + (expanded ? '  ⌃' : '  ›')
             }
             variant="text"
           />
@@ -154,7 +151,9 @@ export function RecordsRecentSources({
                 {group.records.map(record => {
                   const documentIndex =
                     record.kind === 'medical_document'
-                      ? documents.findIndex(document => document.id === record.id)
+                      ? documents.findIndex(
+                          document => document.id === record.id,
+                        )
                       : undefined;
 
                   return (

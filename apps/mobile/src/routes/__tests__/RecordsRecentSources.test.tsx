@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { SymptomEntry } from '@orot/storage';
 import { RecordsRoute } from '../RecordsRoute';
 import type { MedicalDocumentSourceRecord } from '../../medicalDocuments/medicalDocumentImportService';
@@ -72,10 +77,12 @@ test('keeps other recent records visible when a document detail cannot be opened
   await fireEvent.press(await screen.findByTestId('medical-document-source-0'));
 
   await waitFor(() => {
-    expect(screen.getByTestId('medical-document-source-status')).toHaveTextContent(
-      '문서를 찾을 수 없어요.',
-    );
-    expect(screen.getByTestId('records-recent-source-recording-recent-1')).toBeTruthy();
+    expect(
+      screen.getByTestId('medical-document-source-status'),
+    ).toHaveTextContent('문서를 찾을 수 없어요.');
+    expect(
+      screen.getByTestId('records-recent-source-recording-recent-1'),
+    ).toBeTruthy();
   });
   expect(service.getDocument).toHaveBeenCalledWith(document.id);
 });
@@ -143,13 +150,23 @@ test('groups real recordings, imported documents and symptoms and preserves thei
     expect(screen.getByText('11월 1일 (어제)')).toBeTruthy();
     expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
     expect(screen.getByText('Cough and mild fever')).toBeTruthy();
-    expect(screen.getByTestId('records-recent-source-recording-recent-1')).toBeTruthy();
-    expect(screen.queryByTestId('records-recent-source-recording-recent-older')).toBeNull();
+    expect(
+      screen.getByTestId('records-recent-source-recording-recent-1'),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId('records-recent-source-recording-recent-older'),
+    ).toBeNull();
 
     await fireEvent.press(screen.getByTestId('records-recent-view-all'));
-    expect(screen.getByTestId('records-recent-source-recording-recent-older')).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('records-recent-source-recording-recent-1'));
-    await fireEvent.press(screen.getByTestId('records-recent-symptom-symptom-recent-1'));
+    expect(
+      screen.getByTestId('records-recent-source-recording-recent-older'),
+    ).toBeTruthy();
+    await fireEvent.press(
+      screen.getByTestId('records-recent-source-recording-recent-1'),
+    );
+    await fireEvent.press(
+      screen.getByTestId('records-recent-symptom-symptom-recent-1'),
+    );
     expect(onOpenSavedRecordings).toHaveBeenCalledTimes(1);
     expect(onOpenSymptoms).toHaveBeenCalledTimes(1);
 
