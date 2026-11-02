@@ -46,8 +46,8 @@ test('independent feature suites have distinct jobs and preserve all registered 
   );
   // Debug shares the three import journeys with Release, while the full graph schedules each case once.
   const uniqueOriginal = [...new Set(original)];
-  assert.equal(original.length, 212);
-  assert.equal(uniqueOriginal.length, 209);
+  assert.equal(original.length, 213);
+  assert.equal(uniqueOriginal.length, 210);
   assert.equal(actual.length, uniqueOriginal.length);
   assert.equal(new Set(actual).size, actual.length);
   assert.deepEqual(actual.slice().sort(), uniqueOriginal.slice().sort());

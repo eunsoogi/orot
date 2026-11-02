@@ -45,6 +45,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const homeSummary =
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
   const homeLargeText = 'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth';
+  const homeBottom = 'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation';
   const aiFeatureEntry =
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =
@@ -118,7 +119,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 52);
+  assert.equal(duoInventory.length, 53);
   assert.deepEqual(duoInventory, [
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
@@ -128,6 +129,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
     'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
     homeSummary,
     homeLargeText,
+    homeBottom,
     settingsHome,
     'OrotUITests/RootNavigationUITests/testSettingsPortraitLayoutAndLargeText',
     settingsAccounts,
@@ -177,11 +179,13 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   // manual-history, records, and Duo-only health-import regressions use the dedicated destination.
   assert.ok(iPhoneFixtures.includes(homeSummary));
   assert.ok(iPhoneFixtures.includes(homeLargeText));
+  assert.ok(iPhoneFixtures.includes(homeBottom));
   assert.ok(!iPhoneFixtures.includes(aiFeatureEntry));
   assert.ok(!iPhoneFixtures.includes(settingsHome));
   assert.ok(!iPhoneFixtures.includes(settingsBackup));
   assert.ok(!coreTests.includes(homeSummary));
   assert.ok(!coreTests.includes(homeLargeText));
+  assert.ok(!coreTests.includes(homeBottom));
   assert.ok(!coreTests.includes(aiFeatureEntry));
   assert.ok(!coreTests.includes(settingsHome));
   assert.ok(!coreTests.includes(settingsBackup));

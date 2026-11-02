@@ -80,6 +80,7 @@ export const fixtureTests = [
   // Home reflow runs on the ordinary iPhone fixture and the opt-in Duo destination.
   'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
   'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
+  'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation',
   'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',

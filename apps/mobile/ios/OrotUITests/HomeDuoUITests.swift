@@ -50,6 +50,60 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         }
     }
 
+    /// End-of-content clearance is a native scroll boundary, independent of Home action activation.
+    @MainActor
+    func testHomeContentClearsBottomNavigation() throws {
+        let app = XCUIApplication()
+        defer {
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+        XCUIDevice.shared.orientation = .portrait
+        for category in ["UICTContentSizeCategoryLarge", "UICTContentSizeCategoryAccessibilityXXXL"] {
+            app.launchArguments = [
+                "-OROT_E2E_PROBE", "medical-appointment-app-navigation",
+                "-OROT_HOME_APPOINTMENT_TIMING", "YES",
+                "-UIPreferredContentSizeCategoryName", category,
+                "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+            ]
+            app.launch()
+            XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
+            try verifyBottomClearance(app)
+            if category == "UICTContentSizeCategoryLarge" {
+                let portraitWidth = app.frame.width
+                XCUIDevice.shared.orientation = .landscapeLeft
+                let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let frame = app.frame
+                    return frame.width > frame.height && abs(frame.width - portraitWidth) > 0.5
+                }, object: nil)
+                XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
+                try verifyBottomClearance(app)
+                app.terminate()
+                XCUIDevice.shared.orientation = .portrait
+            }
+        }
+    }
+
+    @MainActor
+    private func verifyBottomClearance(_ app: XCUIApplication) throws {
+        // The endpoint must represent populated content, not an earlier loading layout.
+        for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
+            XCTAssertTrue(UITestConditions.element(app, identifier).waitForAppearance(), identifier)
+        }
+        let edit = UITestConditions.element(app, "home-metrics-edit")
+        let metricsReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in edit.isEnabled }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [metricsReady]), .completed)
+        let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        if navigation.toolbar.frame.height <= navigation.toolbar.frame.width {
+            try NavigationUITestConditions.contentAboveBar(
+                app,
+                scrollID: "navigation-route-scroll",
+                contentID: "home-recent-changes",
+                navigationID: "navigation-tab-home",
+            )
+        }
+    }
+
     @MainActor
     func testHomeSummariesReflowAndVisitPreparationRemainsReachable() throws {
         let app = XCUIApplication()
@@ -113,37 +167,39 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         var previousY: CGFloat = -1
         for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
             let action = UITestConditions.element(app, identifier)
+            XCTAssertTrue(action.waitForAppearance())
             if identifier == "home-metrics-edit" {
-                XCTAssertTrue(action.waitForAppearance())
                 let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in action.isEnabled }, object: nil)
                 XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-                // XCTest attempts to reveal an offscreen target before activating it.
-                action.tap()
-                XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
-            } else {
-                UITestConditions.scrollTo(action, in: app)
             }
-            XCTAssertTrue(action.exists && action.isHittable, identifier)
-            XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
-            let relativeY = action.frame.minY - page.frame.minY
+            // Frames preserve geometry checks independently of automatic target reveal.
+            let frame = action.frame
+            let pageFrame = page.frame
+            XCTAssertFalse(frame.isEmpty, identifier)
+            XCTAssertFalse(pageFrame.isEmpty, identifier)
+            XCTAssertGreaterThanOrEqual(frame.height, 44, identifier)
+            let relativeY = frame.minY - pageFrame.minY
             XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, metrics, symptoms")
             previousY = relativeY
-            XCTAssertGreaterThanOrEqual(action.frame.minX, page.frame.minX - 1)
-            XCTAssertLessThanOrEqual(action.frame.maxX, page.frame.maxX + 1)
+            XCTAssertGreaterThanOrEqual(frame.minX, pageFrame.minX - 1)
+            XCTAssertLessThanOrEqual(frame.maxX, pageFrame.maxX + 1)
+            // XCTest attempts to reveal an offscreen target before the real activation.
+            action.tap()
             if identifier == "home-metrics-edit" {
+                XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
+                XCTAssertTrue(action.exists && action.isHittable, identifier)
                 app.buttons["취소"].tap()
+            } else {
+                let destination = identifier == "home-prepare-visit" ? "appointment-preparation" : "symptoms-layout"
+                NavigationUITestConditions.route(app, markers: [destination])
+                try NavigationUITestConditions.navigationAction(app, "navigation-back").control.tap()
+                XCTAssertTrue(page.waitForAppearance())
+                XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control.isSelected)
             }
         }
         if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
             XCTAssertLessThanOrEqual(page.frame.maxX, navigation.toolbar.frame.minX + 1,
                                      "Home content must stay outside the measured right navigation lane")
-        } else {
-            try NavigationUITestConditions.contentAboveBar(
-                app,
-                scrollID: "navigation-route-scroll",
-                contentID: "home-recent-changes",
-                navigationID: "navigation-tab-home",
-            )
         }
     }
 }

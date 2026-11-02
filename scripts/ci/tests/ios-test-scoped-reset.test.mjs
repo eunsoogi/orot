@@ -103,6 +103,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
     'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
     'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
+    'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation',
     'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     'OrotUITests/RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',
