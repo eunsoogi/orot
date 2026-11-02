@@ -142,7 +142,7 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
-HealthReview의 아홉 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
+HealthReview의 여덟 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
 
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-health-review
