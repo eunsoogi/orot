@@ -8,7 +8,7 @@ import type { AppointmentRepository } from '@orot/storage';
 import type { ComponentProps } from 'react';
 import App from '../App';
 import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
-import { correlation } from '../src/healthkit/bloodPressure/testSupport';
+import { correlationAt } from '../src/healthkit/bloodPressure/testSupport';
 import type { CalendarBridge } from '../src/calendar/types';
 import {
   configureLocalHealthKitAutoSync,
@@ -210,9 +210,10 @@ test('keeps health sync setup in Settings and removes manual imports from Record
 });
 
 test('opens the chart overview and navigates to its period-filtered pressure rows', async () => {
+  const timestamp = new Date().toISOString();
   const observations = mapBloodPressureCorrelation(
-    correlation('app-health-records'),
-    '2026-10-05T10:00:00.000Z',
+    correlationAt('app-health-records', timestamp),
+    timestamp,
   ).observations;
   await renderApp({ loadHealthObservations: async () => observations });
 
