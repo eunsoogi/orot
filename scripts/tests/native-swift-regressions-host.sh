@@ -33,7 +33,7 @@ for source in MedicationDoseCursor AppleNativeToolRegistry AppleNativeToolGenera
   cp "$repository_root/apps/mobile/ios/OrotMobile/$source.swift" "$orot_host_root/Sources/NativeSwiftRegressions/"
 done
 for suite in MedicationDoseCursorTests AppleNativeToolLifecycleTests; do
-  cp "$repository_root/apps/mobile/ios/OrotIntegrationTests/$suite.swift" "$orot_host_root/Tests/NativeSwiftRegressionsTests/"
+  cp "$repository_root/scripts/tests/$suite.swift" "$orot_host_root/Tests/NativeSwiftRegressionsTests/"
 done
 cat >"$orot_host_root/Package.swift" <<'SWIFT'
 // swift-tools-version: 5.9

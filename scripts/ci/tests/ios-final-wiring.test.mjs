@@ -83,10 +83,10 @@ test('full integration execution preserves profile observations and every regist
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // The compact-symbol case adds one unique test; the three picker journeys still repeat across cohorts.
-  assert.equal(scheduled.length, 211);
+  // Nine host regressions run outside iOS; three picker journeys still repeat across cohorts.
+  assert.equal(scheduled.length, 202);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 208);
+  assert.equal(identifiers.size, 199);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
@@ -109,13 +109,6 @@ test('full integration execution preserves profile observations and every regist
   ]);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
-    'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
-    'AppleNativeToolLifecycleTests/testCancellationReleasesWaitingCallback',
-    'AppleNativeToolLifecycleTests/testDrainFailureDoesNotStartFreshGeneration',
-    'AppleNativeToolLifecycleTests/testSecondCallbackDuringDrainIsRejected',
-    'AppleNativeToolLifecycleTests/testCancellationDuringDrainReleasesTheNextRequest',
-    'AppleNativeToolLifecycleTests/testWatchdogReleasesAnOrphanedCallback',
-    'AppleNativeToolLifecycleTests/testParallelCallbackFailsWithoutPublishingAnotherTool',
     'RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
     'AppleModelIntegrationTests/testStreamingFailurePreservesKnownNativeDecisions',
     'AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
@@ -124,12 +117,10 @@ test('full integration execution preserves profile observations and every regist
     'ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
     'ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
     'StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
-    'MedicationDoseCursorTests/testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
-    'MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
     'HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
     'HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
   ].map((name) => `OrotIntegrationTests/${name}`);
-  // Exact identities preserve old cases plus streaming/dose regressions; a count can hide replacements.
+  // Exact identities preserve native bridge and SDK boundaries; a count can hide replacements.
   assert.deepEqual([...provider].sort(), expectedProvider.sort());
   for (const identifier of provider) assert.ok(identifiers.has(identifier));
   const workflowSource = readFileSync('.github/workflows/e2e-test.yml', 'utf8');

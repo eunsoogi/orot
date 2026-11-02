@@ -40,6 +40,14 @@ pnpm test:unit
 
 `pnpm format:write`는 검사 대상 파일을 정리합니다. 코드 표면과 제외 근거는 [코드 품질 검사 안내](code-quality.md)에 있습니다.
 
+macOS에서 배송 Swift 소스의 복약 용량 커서와 주입된 native tool lifecycle 회귀를 실행합니다.
+
+```sh
+scripts/tests/native-swift-regressions-host.sh
+```
+
+이 검사는 실제 Foundation Models SDK, HealthKit 또는 iOS 브리지 동작을 대신 검증하지 않습니다. 해당 경계는 iOS 테스트에 유지합니다.
+
 ## Source line policy
 
 Check the changes from this branch's merge base with the latest `main`. The same command with `--all` audits every tracked file and every non-ignored untracked file.
