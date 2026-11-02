@@ -1,11 +1,13 @@
 /** Korean catalog entries for the AI root and its owned feature routes. */
 export const aiFeaturesKo = {
   'aiFeatures.heading': 'AI 도우미',
-  'aiFeatures.subtitle': '기록을 바탕으로 함께 준비해요.',
+  'aiFeatures.subtitle': '내 기록에서 시작하는 대화.',
   'aiFeatures.disclaimer': 'AI 응답은 의료진의 진단을 대신하지 않아요.',
   'aiFeatures.open': 'AI 건강 기능 살펴보기',
+  'aiFeatures.preparation.title': '진료를 준비해요',
+  'aiFeatures.review.title': '기록을 더 살펴봐요',
   'aiFeatures.visitQuestions.title': '다음 진료 질문',
-  'aiFeatures.visitQuestions.description': '궁금한 점을 정리해요.',
+  'aiFeatures.visitQuestions.description': '궁금한 점을 미리 정리해요.',
   'aiFeatures.visitQuestions.action': '진료 질문 준비하기',
   'aiFeatures.visitQuestions.unavailable': '현재 진료 질문을 준비할 수 없어요.',
   'aiFeatures.visitQuestions.saveInProgressTitle': '질문을 저장하고 있어요',
@@ -13,11 +15,14 @@ export const aiFeaturesKo = {
     '저장이 끝날 때까지 기다려 주세요. 저장 결과를 확인한 뒤 나갈 수 있어요.',
   'aiFeatures.visitQuestions.saveInProgressConfirm': '확인',
   'aiFeatures.diseaseHypotheses.title': '증상 정리',
-  'aiFeatures.diseaseHypotheses.description': '지금 느끼는 증상을 정리해요.',
+  'aiFeatures.diseaseHypotheses.description': '증상과 경과를 차분히 정리해요.',
   'aiFeatures.diseaseHypotheses.action': '증상 정리하기',
   'aiFeatures.ragConversation.title': '기록과 대화',
-  'aiFeatures.ragConversation.description': '내 기록을 바탕으로 질문해요.',
-  'aiFeatures.ragConversation.action': '기록에 질문하기',
+  'aiFeatures.ragConversation.description':
+    '내 기록에서 궁금한 점을 물어보세요.',
+  'aiFeatures.ragConversation.action': '대화 시작',
+  'aiFeatures.healthReview.description':
+    '측정·증상 추이와 최근 기록을 함께 확인해요.',
   'aiFeatures.externalEvidence.title': '의학 자료 찾기',
   'aiFeatures.externalEvidence.description': '의학 자료를 찾아보세요.',
   'aiFeatures.externalEvidence.action': '외부 자료 검색하기',
