@@ -5,7 +5,7 @@ import type {
 } from '@orot/storage';
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
-import { correlation } from '../bloodPressure/testSupport';
+import { correlationAt } from '../bloodPressure/testSupport';
 import {
   mapCommonObservationSample,
   toCommonObservationRecord,
@@ -41,7 +41,7 @@ test('shows the first page before requesting more current-period records', async
   });
   const pressureAt = new Date(now - 51 * 60_000).toISOString();
   const pressure = mapBloodPressureCorrelation(
-    correlation('summary-pressure'),
+    correlationAt('summary-pressure', pressureAt),
     pressureAt,
   ).observations;
   const olderAt = new Date(now - 120 * 60_000).toISOString();
