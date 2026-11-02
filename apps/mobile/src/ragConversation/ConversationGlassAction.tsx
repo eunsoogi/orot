@@ -70,6 +70,7 @@ export function ConversationGlassAction({
         ]}
         testID={testID}
       >
+        {/* Composer actions keep their existing size outside shared body and navigation sizing. */}
         <AppSymbol
           name={busy ? 'stop.fill' : 'arrow.up'}
           size={22}
