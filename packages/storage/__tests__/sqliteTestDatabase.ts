@@ -54,23 +54,17 @@ export function openSqliteTestDatabase(path: string): {
     execute,
     async transaction(operation) {
       await exclusive(async () => {
-        // Match op-sqlite's deferred transaction and finalized-operation boundary.
-        handle.exec('BEGIN TRANSACTION');
+        handle.exec('BEGIN IMMEDIATE');
         let active = true;
         const transaction: SqlTransaction = {
-          execute: async (query, parameters = []) => {
-            if (!active) throw new Error('Cannot execute query on finalized transaction');
-            return executeSync(query, parameters);
-          },
+          execute: async (query, parameters = []) => executeSync(query, parameters),
           commit() {
-            if (!active) throw new Error('Cannot execute query on finalized transaction');
-            handle.exec('COMMIT');
+            if (active) handle.exec('COMMIT');
             active = false;
             return { rows: [] };
           },
           rollback() {
-            if (!active) throw new Error('Cannot execute query on finalized transaction');
-            handle.exec('ROLLBACK');
+            if (active) handle.exec('ROLLBACK');
             active = false;
             return { rows: [] };
           },

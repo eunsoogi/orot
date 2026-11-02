@@ -30,6 +30,28 @@ async function seed(database: ReturnType<typeof openMigrationDatabase>['database
 }
 
 describe('historical file database migration', () => {
+  it('honors explicit transaction completion and rejects further transaction operations', async () => {
+    const connection = openMigrationDatabase(':memory:');
+    try {
+      await connection.database.execute('CREATE TABLE test_values (value TEXT)');
+      await connection.database.transaction(async (transaction) => {
+        await transaction.execute("INSERT INTO test_values VALUES ('committed')");
+        transaction.commit();
+        await expect(transaction.execute('SELECT * FROM test_values')).rejects.toThrow('finalized');
+        expect(() => transaction.rollback()).toThrow('finalized');
+      });
+      await connection.database.transaction(async (transaction) => {
+        await transaction.execute("INSERT INTO test_values VALUES ('rolled back')");
+        transaction.rollback();
+      });
+      expect((await connection.database.execute('SELECT value FROM test_values')).rows).toEqual([
+        { value: 'committed' },
+      ]);
+    } finally {
+      connection.close();
+    }
+  });
+
   it('preserves records and constraints after migration and reopen', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'orot-history-'));
     const path = join(directory, 'database.sqlite');

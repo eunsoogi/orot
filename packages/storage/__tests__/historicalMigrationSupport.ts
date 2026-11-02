@@ -1,5 +1,5 @@
 import type { SqlDatabase, SqlTransaction } from '../src';
-import { openSqliteTestDatabase } from './sqliteTestDatabase';
+import { openMigrationSqlite } from './migrationSqliteDatabase';
 
 // Schema v2: 5176df825 created these tables; d410e9610 added integrity.
 // Historical DDL must remain independent of the current migration code.
@@ -35,7 +35,7 @@ export async function createVersionTwo(database: SqlDatabase): Promise<void> {
 }
 
 export function openMigrationDatabase(path: string, failOn?: string) {
-  const connection = openSqliteTestDatabase(path);
+  const connection = openMigrationSqlite(path);
   const database: SqlDatabase = {
     execute: connection.database.execute,
     transaction(operation) {
