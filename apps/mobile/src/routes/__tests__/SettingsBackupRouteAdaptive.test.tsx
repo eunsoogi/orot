@@ -225,4 +225,14 @@ test('production backup route reflows by usable region and retains recovery acti
   expect(direction()).toBe('column');
   expect(screen.getByTestId('backup-open-system-settings')).toBeTruthy();
   openSettings.mockRestore();
+  // Back must return to Settings after a recovery error and responsive reflow.
+  await waitFor(() =>
+    expect(screen.getByTestId('navigation-back')).toBeEnabled(),
+  );
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await waitFor(() =>
+    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+  );
+  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
 });

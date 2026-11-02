@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
@@ -213,4 +219,14 @@ test('adapts the production Settings sync route to native usable regions and tex
   });
   expect(direction()).toBe('column');
   expect(screen.getByTestId('settings-sync-status-message')).toBeTruthy();
+  // Back must return to the original Settings root after the sync route reflows.
+  await waitFor(() =>
+    expect(screen.getByTestId('navigation-back')).toBeEnabled(),
+  );
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await waitFor(() =>
+    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+  );
+  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(screen.getByTestId('settings-open-sync-status')).toBeTruthy();
 });
