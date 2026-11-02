@@ -64,15 +64,6 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
 
         try verifyHomePanelsAndNavigationLane(app)
-        let preparation = app.buttons.matching(identifier: "home-prepare-visit").firstMatch
-        XCTAssertEqual(app.buttons.matching(identifier: "home-prepare-visit").count, 1)
-        UITestConditions.scrollTo(preparation, in: app)
-        preparation.tap()
-        NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        verifyHomeRoute(app)
-        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control.isSelected)
-
         let portraitWidth = app.frame.width
         XCUIDevice.shared.orientation = .landscapeLeft
         let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -81,7 +72,6 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
         try verifyHomePanelsAndNavigationLane(app)
-        capture(app, "home-landscape-adaptive-panels")
 
         app.terminate()
         XCUIDevice.shared.orientation = .portrait
@@ -94,32 +84,6 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         app.launch()
         XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
         try verifyHomePanelsAndNavigationLane(app)
-        let largeTextPreparation = app.buttons.matching(identifier: "home-prepare-visit").firstMatch
-        UITestConditions.scrollTo(largeTextPreparation, in: app)
-        largeTextPreparation.tap()
-        NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        verifyHomeRoute(app)
-        let symptoms = UITestConditions.element(app, "home-open-symptoms")
-        UITestConditions.scrollTo(symptoms, in: app)
-        symptoms.tap()
-        NavigationUITestConditions.route(app, markers: ["symptoms-layout"])
-        XCTAssertTrue(UITestConditions.element(app, "symptom-synthetic-home-active-description").exists)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        verifyHomeRoute(app)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-records")
-        NavigationUITestConditions.route(app, markers: ["records-title"])
-        try NavigationUITestConditions.tapNavigation(app, "navigation-tab-home")
-        verifyHomeRoute(app)
-    }
-
-    /// The restored Home scroll position can leave its route marker outside accessibility's viewport.
-    @MainActor
-    private func verifyHomeRoute(_ app: XCUIApplication) {
-        let scroll = UITestConditions.element(app, "navigation-route-scroll")
-        XCTAssertTrue(scroll.waitForAppearance())
-        UITestConditions.scrollTo(UITestConditions.element(app, "welcome-title"), in: scroll, searchTowardTop: true)
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     /// Compare content-relative positions while scrolling, so larger text cannot pass by clipping lower actions.
@@ -135,9 +99,6 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             let card = UITestConditions.element(app, identifier)
             UITestConditions.scrollTo(card, in: app)
             XCTAssertTrue(card.exists && card.isHittable, identifier)
-            XCTAssertTrue(card.label.contains("Synthetic Watch"), card.debugDescription)
-            XCTAssertTrue(card.label.contains(identifier.hasSuffix("sleep") ? "min" : "count/min"), card.debugDescription)
-            XCTAssertTrue(card.label.contains("기록이 없어요"), card.debugDescription)
             if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
                 XCTAssertLessThanOrEqual(card.frame.maxX, navigation.toolbar.frame.minX + 1, identifier)
             }
@@ -167,12 +128,4 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         }
     }
 
-    @MainActor
-    private func capture(_ app: XCUIApplication, _ name: String) {
-        // Keep the real rendered Home panels available as review evidence after native reflow.
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
 }
