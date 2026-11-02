@@ -67,6 +67,7 @@ final class BackupPersistenceUITests: OrotFailFastTestCase {
 
     @MainActor
     func testSeedAppContainerSnapshot() throws {
+        // The host carries this seed into the separate restore phase after reinstalling the app.
         let app = XCUIApplication()
         defer { app.terminate() }
         let result = try probe(app, mode: "snapshot-seed")
