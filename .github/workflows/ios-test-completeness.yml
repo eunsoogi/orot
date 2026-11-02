@@ -6,7 +6,8 @@ on:
       selected_cohorts: { required: true, type: string }
       oauth_required: { required: true, type: boolean }
       validation_tier: { required: true, type: string }
-permissions: { contents: read }
+# The diagnostic summary reads this workflow attempt's job timestamps.
+permissions: { actions: read, contents: read }
 jobs:
   completeness:
     name: Complete
@@ -27,15 +28,37 @@ jobs:
           OROT_IOS_VALIDATION_TIER: ${{ inputs.validation_tier }}
         run: node scripts/ci/ios-test-execution-completeness.mjs
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: always()
+        continue-on-error: true
         with:
           pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-reports
       - name: Download this attempt's Keychain authentication evidence
-        if: ${{ inputs.validation_tier == 'full' || inputs.validation_tier == 'candidate' }}
+        if: ${{ always() && (inputs.validation_tier == 'full' || inputs.validation_tier == 'candidate') }}
+        continue-on-error: true
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-authentication
+      - name: Publish the non-gating coverage and timing report
+        if: always()
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OROT_IOS_TEST_COHORTS: ${{ inputs.selected_cohorts }}
+          OROT_IOS_EXECUTION_RESULTS: ${{ inputs.execution_results }}
+          OROT_IOS_OAUTH_REQUIRED: ${{ inputs.oauth_required }}
+          OROT_IOS_VALIDATION_TIER: ${{ inputs.validation_tier }}
+        run: node scripts/ci/ios-test-run-summary-cli.mjs artifacts/ios-reports artifacts/ios-authentication artifacts/ios-test-run-summary.json
+      - name: Preserve the diagnostic summary separately from strict completeness
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-test-run-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-test-run-summary.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify every planned first attempt and authentic Speech and Keychain evidence
         env:
           OROT_IOS_TEST_COHORTS: ${{ inputs.selected_cohorts }}

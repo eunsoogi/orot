@@ -75,6 +75,40 @@ test(
         },
       ],
     };
+    const [, fixtureClass] = task.identifiers[0].split('/');
+    const fixtureFailureReport = {
+      testNodes: [
+        {
+          nodeType: 'UI test bundle',
+          name: 'OrotUITests',
+          children: [
+            {
+              nodeType: 'Test Case',
+              nodeIdentifier: task.identifiers[0] + '()',
+              result: 'Failed',
+              durationInSeconds: 0.5,
+              children: [
+                {
+                  nodeType: 'Test Case Run',
+                  result: 'Failed',
+                  durationInSeconds: 0.5,
+                  children: [
+                    {
+                      nodeType: 'Failure Message',
+                      name: 'Synthetic first-attempt fixture failure',
+                      sourceLocation: {
+                        filePath: `apps/mobile/ios/OrotUITests/${fixtureClass}.swift`,
+                        lineNumber: 41,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
     // Only external Apple/resource commands are synthetic. The real three-level driver chain and collector execute unchanged.
     const program = `#!${process.execPath}
 const fs=require('node:fs'), path=require('node:path'), args=process.argv.slice(2), name=path.basename(process.argv[1]);
@@ -95,6 +129,7 @@ if(name==='xcodebuild') {
 } else if(name==='open') process.exit(0);
 else if(name!=='xcrun') console.log('synthetic resource sample');
 else if(args[0]==='xcresulttool'&&args.some(argument=>argument.includes('ui-preparation'))) console.log(${JSON.stringify(JSON.stringify(hostReport))});
+else if(args[0]==='xcresulttool'&&args.includes('tests')) console.log(${JSON.stringify(JSON.stringify(fixtureFailureReport))});
 else if(args.at(-1)?.includes('OROT_AUTH_DIAGNOSTIC')) {
  process.stdout.write(${JSON.stringify('OROT_AUTH_DIAGNOSTIC ' + JSON.stringify(record) + '\n')});setInterval(()=>{},1000);
 } else if(args.includes('stream')) {
@@ -151,6 +186,14 @@ else console.log('synthetic owned fixture operation');
       assert.equal(result.passed, false);
       assert.equal(result.failures[0].identifier, task.identifiers[0]);
       assert.deepEqual(result.notRun, task.identifiers.slice(1));
+      const cohortResult = JSON.parse(readFileSync(join(output, 'results.json'), 'utf8'));
+      assert.equal(cohortResult.passed, false);
+      assert.equal(cohortResult.tasks[0].firstFailure.identifier, task.identifiers[0]);
+      assert.equal(cohortResult.tasks[0].firstFailure.result, 'Failed');
+      assert.equal(
+        cohortResult.tasks[0].firstFailure.failure.sourceLocation.filePath,
+        `apps/mobile/ios/OrotUITests/${fixtureClass}.swift`,
+      );
       const calls = readFileSync(callsPath, 'utf8').trim().split('\n').map(JSON.parse);
       assert.equal(calls.filter((call) => call.name === 'xcodebuild').length, 2);
       assert.equal(authStreamCalls(calls).length, 1);

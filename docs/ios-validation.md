@@ -2,6 +2,19 @@
 
 This document preserves the original 55 requirement mappings and revision-scoped coverage evidence. Historical counts and run records identify their source revision when it is recorded; missing provenance remains unknown. Historical values do not describe the current plan. Durable policy is in [TEST.md](../TEST.md); current exact identifiers and cohort assignments are defined by [ios-test-inventory.mjs](../scripts/ci/ios-test-inventory.mjs), [ios-test-cohorts.mjs](../scripts/ci/ios-test-cohorts.mjs), and [ios-test-execution-plan.mjs](../scripts/ci/ios-test-execution-plan.mjs). Current development commands are in [development.md](development.md), and release acceptance is in [releasing.md](releasing.md).
 
+## Current requirement-to-layer map
+
+The detailed table below maps each original N001-N055 journey to its receiving test boundary. Current selection and result status come from the maintained inventory and exact run artifacts.
+
+| Requirement boundary | Receiving test layer | Current source of truth |
+| --- | --- | --- |
+| Domain, bridge, persistence, encryption, and process-boundary behavior | XCTest integration cases and native phase drivers | `ios-test-inventory.mjs` and `ios-test-cohorts.mjs` |
+| Visible actions, accessibility, keyboard, navigation, and system interactions | XCTest UI cases on the selected iPhone destination | `ios-test-inventory.mjs` and `ios-test-execution-plan.mjs` |
+| Protected Keychain, Speech, OAuth, Production, and opt-in Duo boundaries | Separate authentication or product jobs and their receipts; Duo remains outside ordinary iPhone totals | `ios-focused.yml`, `ios-oauth-execution.yml`, `ios-production-validation.yml`, and `duo-test-inventory.mjs` |
+| Selection, observed coverage, first failures, and run timing | Node regression tests and the reusable completeness workflow | `ios-test-run-summary.mjs`, `ios-test-run-timing.mjs`, and `ios-test-completeness.yml` |
+
+The diagnostic run summary is published alongside the strict completeness job and does not change its acceptance result or the release gate. It records the validation tier and whether the selected cohorts cover the full maintained inventory. Candidate-focused receipts use the separate candidate workflow and are not Full inventory evidence.
+
 Source revision `08a3c63950f2db7ecddcb37cba719b58a3443076` records the original 55 requirement mappings. The source revision for the separately preserved historical inventory is not recorded. That inventory lists 112 planned observations exactly once: Debug 27, Release 76, and Speech 9, including asset preparation, real new-process persistence, and the #201 stale-recorder callback regression. The two protected Keychain query cases ran in a separate authentication suite and were recorded apart from those cohort observations. The historical plan divided them into 27 execution cohorts. Debug, Release, Production, and OAuth each had a separate build job, and OAuth also had a separate executor. The historical graph had 34 Mac jobs and a theoretical concurrency ceiling of 29; the account limit was five active macOS jobs, with queue time requiring hosted observation. Historical release acceptance required a successful scheduled Full E2E result for the exact target main SHA, including both Keychain observations. Focused diagnostics and historical repeated Speech samples did not satisfy that gate. Every first failure in the preserved records remains recorded.
 
 ## Questions Summary hosted cancellation

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { join } from 'node:path';
 import test from 'node:test';
-import { verifyIosTestResults } from '../ios-test-results.mjs';
+import { readIosTestObservations, verifyIosTestResults } from '../ios-test-results.mjs';
 
 const identifier = 'OrotIntegrationTests/SpeechIntegrationTests/testMedicationFixture';
 const report = (result) => ({
@@ -22,6 +23,47 @@ const report = (result) => ({
 test('accepts an observed first-attempt pass for the exact selected inventory', () => {
   assert.equal(verifyIosTestResults(report('Passed'), [identifier]).length, 1);
 });
+
+test('preserves a failed individual run even when the test summary reports a later pass', () => {
+  const failureReport = report('Passed');
+  failureReport.testNodes[0].children[0].children = [
+    {
+      nodeType: 'Test Case Run',
+      result: 'Failed',
+      durationInSeconds: 0.5,
+      children: [
+        {
+          nodeType: 'Failure Message',
+          name: 'XCTAssertEqual failed: expected value',
+          sourceLocation: {
+            filePath: join(
+              process.cwd(),
+              'apps/mobile/ios/OrotIntegrationTests/SpeechIntegrationTests.swift',
+            ),
+            lineNumber: 41,
+          },
+        },
+      ],
+    },
+  ];
+
+  assert.deepEqual(readIosTestObservations(failureReport), [
+    {
+      identifier,
+      result: 'Failed',
+      duration: 0.5,
+      failure: {
+        message: 'XCTAssertEqual failed: expected value',
+        sourceLocation: {
+          filePath: 'apps/mobile/ios/OrotIntegrationTests/SpeechIntegrationTests.swift',
+          lineNumber: 41,
+        },
+      },
+    },
+  ]);
+  assert.throws(() => verifyIosTestResults(failureReport, [identifier]));
+});
+
 test('rejects missing, skipped and failed tests', () => {
   for (const result of ['Skipped', 'Failed', 'Expected Failure', undefined])
     assert.throws(() => verifyIosTestResults(report(result), [identifier]));

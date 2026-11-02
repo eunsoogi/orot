@@ -37,6 +37,7 @@ jobs:
     name: Reuse / Ready evidence
     needs: selection
     if: ${{ needs.selection.outputs.metadata_only_edit == 'true' && needs.selection.outputs.complete == 'true' && needs.selection.outputs.non_protected_contexts != 'true' }}
+    # Reuse downloads the exact selection and result artifacts from a prior Actions run.
     permissions: { actions: read, contents: read }
     env:
       OROT_METADATA_ONLY_EDIT: ${{ needs.selection.outputs.metadata_only_edit }}
@@ -201,6 +202,8 @@ jobs:
         authentication,
       ]
     if: ${{ always() && needs.plan.result != 'skipped' }}
+    # The called diagnostic summary reads this attempt's Actions job timestamps.
+    permissions: { actions: read, contents: read }
     uses: ./.github/workflows/ios-test-completeness.yml
     with:
       execution_results: ${{ toJSON(needs) }}
