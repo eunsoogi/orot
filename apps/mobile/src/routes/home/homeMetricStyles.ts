@@ -8,14 +8,23 @@ export const homeMetricStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    // Large system text must wrap before it can push the edit action offscreen.
+    flexWrap: 'wrap',
   },
   edit: {
     minWidth: 44,
     minHeight: 44,
+    maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
+  title: {
+    color: appColors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    flexShrink: 1,
+    maxWidth: '100%',
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   card: {
     backgroundColor: appColors.surface,
