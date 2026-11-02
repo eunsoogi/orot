@@ -16,14 +16,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
-        let tabs = [
-            ("home", ["welcome-title"], "홈 탭"),
-            ("records", ["records-title"], "기록 탭"),
-            ("schedule", ["calendar-title", "schedule-retry"], "일정 탭"),
-            ("ai", ["ai-features-screen"], "AI 탭"),
-            ("settings", ["settings-title"], "설정 탭"),
-        ]
-        for (tab, markers, label) in tabs {
+        try NavigationPageActionUITestConditions.verifyDirectRecordsTap(app)
+        for (tab, markers, label) in NavigationUITestConditions.rootTabCases {
             try NavigationUITestConditions.openTab(app, tab, markers: markers)
             let action = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)")
             XCTAssertEqual(action.control.label, label)

@@ -3,6 +3,16 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
+    /// Exercise the actual root button, including its accessibility activation point.
+    static func verifyDirectRecordsTap(_ app: XCUIApplication) throws {
+        let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control
+        XCTAssertEqual(app.buttons.matching(identifier: "navigation-tab-records").count, 1, app.debugDescription)
+        guard records.isEnabled, records.isHittable else { XCTFail("Records tab must be enabled and directly hittable: \(app.debugDescription)"); throw NSError(domain: "NavigationUITests", code: 6) }
+        records.tap()
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        XCTAssertTrue(records.isSelected, "Direct tap must select the Records tab")
+    }
+
     /// Select a hidden root destination through the actual More menu, preserving direct-tab checks.
     static func openOverflowTab(_ app: XCUIApplication, tab: String) throws -> Bool {
         let direct = app.buttons["navigation-tab-\(tab)"]
