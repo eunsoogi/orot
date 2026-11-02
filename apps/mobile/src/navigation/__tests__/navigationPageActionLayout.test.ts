@@ -3,21 +3,41 @@ import {
   splitMeasuredPageActions,
   splitPageActions,
 } from '../navigationPageActionLayout';
+import {
+  NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
+  NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
+  NAVIGATION_ROOT_RAIL_HEIGHT,
+} from '../navigationRootLayout';
 
-test('places page actions above a centered root group without consuming the content lane', () => {
-  const layout = pageActionRailLayout({
-    height: 678,
-    top: 30,
-    bottom: 30,
-    rootTabs: true,
-    navigationCount: 5,
-    actionCount: 2,
-  });
-  const rootTop = 30 + (618 - 276) / 2;
-  expect(layout.fits).toBe(true);
-  expect(678 - layout.pageBottomInset).toBeLessThan(rootTop);
-  expect(layout.capacity).toBe(2);
-});
+test.each([
+  ['the observed one-action rail', 768, 148, 157, 1],
+  ['a two-action rail', 678, 30, 30, 2],
+])(
+  'centers the complete page-action and root-tab group for %s',
+  (_scenario, height, top, bottom, actionCount) => {
+    const layout = pageActionRailLayout({
+      height,
+      top,
+      bottom,
+      rootTabs: true,
+      navigationCount: 5,
+      actionCount,
+    });
+    const actionStackHeight =
+      actionCount * NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
+      (actionCount - 1) * NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
+    const pageActionBottom = height - layout.pageBottomInset;
+    const pageActionTop = pageActionBottom - actionStackHeight;
+    const rootCenter = height / 2 + (layout.navigationTopInset - bottom) / 2;
+    const rootBottom = rootCenter + NAVIGATION_ROOT_RAIL_HEIGHT / 2;
+    const completeGroupCenter = (pageActionTop + rootBottom) / 2;
+    const usableSegmentCenter = (top + height - bottom) / 2;
+
+    expect(layout.fits).toBe(true);
+    expect(layout.capacity).toBeGreaterThanOrEqual(actionCount);
+    expect(completeGroupCenter).toBeCloseTo(usableSegmentCenter, 5);
+  },
+);
 
 test('fits measured UIKit widths including the overflow button and every gap', () => {
   const actions = ['one', 'two', 'three'];

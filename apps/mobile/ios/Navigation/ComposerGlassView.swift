@@ -62,6 +62,7 @@ final class ComposerGlassActionView: UIView {
     // React Native shares event types across managers; topPress is already a bubbling event.
     @objc var onComposerPress: RCTDirectEventBlock?
     private let button = UIButton(type: .system)
+    private let icon = UIImageView()
     private let inputMaterial = ComposerGlassSurfaceView()
     private let group: UIVisualEffectView
 
@@ -82,12 +83,27 @@ final class ComposerGlassActionView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         group.contentView.addSubview(inputMaterial)
         group.contentView.addSubview(button)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.contentMode = .scaleAspectFit
+        icon.tintColor = .label
+        icon.isUserInteractionEnabled = false
+        icon.isAccessibilityElement = false
+        button.addSubview(icon)
+        button.tintColor = .label
+        // The display canvas is outside UIButton.Configuration's image view, so mirror its state tint.
+        button.configurationUpdateHandler = { [weak self] button in
+            self?.updateIconTint(for: button)
+        }
         // These 44pt action / 8pt gap dimensions match React's reserved action slot.
         NSLayoutConstraint.activate([
             button.trailingAnchor.constraint(equalTo: group.contentView.trailingAnchor),
             button.bottomAnchor.constraint(equalTo: group.contentView.bottomAnchor),
             button.widthAnchor.constraint(equalToConstant: 44),
             button.heightAnchor.constraint(equalToConstant: 44),
+            icon.widthAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
+            icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
+            icon.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: button.centerYAnchor),
             inputMaterial.leadingAnchor.constraint(equalTo: group.contentView.leadingAnchor),
             inputMaterial.topAnchor.constraint(equalTo: group.contentView.topAnchor),
             inputMaterial.bottomAnchor.constraint(equalTo: group.contentView.bottomAnchor),
@@ -116,13 +132,24 @@ final class ComposerGlassActionView: UIView {
         }
         configuration.cornerStyle = .capsule
         configuration.contentInsets = .zero
-        configuration.image = UIImage(systemName: busy ? "stop.fill" : "arrow.up", withConfiguration:
-            UIImage.SymbolConfiguration(pointSize: busy ? 18 : 22, weight: .semibold))
-        configuration.baseForegroundColor = .label
+        configuration.image = nil
+        // Keep the rendered glyph in the shared 18pt aspect-fit canvas, independent of the button target.
+        icon.image = UIImage(
+            systemName: busy ? "stop.fill" : "arrow.up",
+            withConfiguration: AppSymbolSizing.configuration(),
+        )
         button.configuration = configuration
         button.isEnabled = !disabled
         button.accessibilityLabel = actionLabel
         button.accessibilityIdentifier = actionTestID
+        updateIconTint(for: button)
+    }
+
+    /// Uses UIKit's state-updated foreground color for the custom constrained symbol view.
+    private func updateIconTint(for button: UIButton) {
+        let stateConfiguration = button.configuration?.updated(for: button)
+        let baseTint = stateConfiguration?.baseForegroundColor ?? button.tintColor ?? .label
+        icon.tintColor = stateConfiguration?.imageColorTransformer?(baseTint) ?? baseTint
     }
 }
 
