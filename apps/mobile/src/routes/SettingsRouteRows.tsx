@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { ColorValue } from 'react-native';
+import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
@@ -26,21 +27,18 @@ export function SettingsRouteRow({
   tone = 'blue',
 }: SettingsRouteRowProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <AppButton
+      leadingContent={<SettingsRouteIcon symbol={symbol} tone={tone} />}
       onPress={onPress}
-      style={styles.row}
+      size="compact"
+      summary={summary}
       testID={testID}
-    >
-      <View style={[styles.icon, { backgroundColor: tones[tone].background }]}>
-        <AppSymbol name={symbol} color={tones[tone].foreground} />
-      </View>
-      <View style={styles.rowCopy}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        {summary ? <Text style={styles.summary}>{summary}</Text> : null}
-      </View>
-      <AppSymbol name="chevron.right" size={14} color={appColors.secondary} />
-    </Pressable>
+      title={title}
+      trailingContent={
+        <AppSymbol name="chevron.right" size={14} color={appColors.secondary} />
+      }
+      variant="list"
+    />
   );
 }
 
@@ -52,11 +50,35 @@ export function SettingsRouteAppInfo({
 }) {
   return (
     <View style={styles.row} testID="settings-app-info">
-      <AppSymbol name="info.circle" color={appColors.text} />
+      <SettingsRouteIcon
+        symbol="info.circle"
+        testID="settings-app-info-icon"
+        tone="blue"
+      />
       <Text style={styles.rowTitle}>
         {t('app.welcome.title')}
         {version ? ` ${version}` : ''}
       </Text>
+    </View>
+  );
+}
+
+/** Gives action and information rows the same restrained, appearance-aware icon tile. */
+function SettingsRouteIcon({
+  symbol,
+  testID,
+  tone,
+}: {
+  readonly symbol: string;
+  readonly testID?: string;
+  readonly tone: SettingsRowTone;
+}) {
+  return (
+    <View
+      style={[styles.icon, { backgroundColor: tones[tone].background }]}
+      testID={testID}
+    >
+      <AppSymbol name={symbol} color={tones[tone].foreground} />
     </View>
   );
 }
@@ -95,7 +117,5 @@ const styles = StyleSheet.create({
     minHeight: 60,
     paddingHorizontal: 16,
   },
-  rowCopy: { flex: 1, gap: 4, paddingVertical: 10 },
   rowTitle: { color: appColors.text, fontSize: 16, fontWeight: '500' },
-  summary: { color: appColors.secondary, fontSize: 13 },
 });

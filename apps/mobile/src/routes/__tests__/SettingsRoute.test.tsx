@@ -1,35 +1,20 @@
-import { Dimensions, NativeModules, StyleSheet } from 'react-native';
+import { NativeModules, StyleSheet } from 'react-native';
 import {
   fireEvent,
   render,
   screen,
   within,
 } from '@testing-library/react-native';
+import { appColors } from '../../layout/appColors';
+import { t } from '../../i18n';
 import { SettingsRoute } from '../SettingsRoute';
+import { settingsRouteResolverOptions } from '../settingsRouteTestSupport';
 
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
-
-const originalDimensions = {
-  window: Dimensions.get('window'),
-  screen: Dimensions.get('screen'),
-};
-
-afterEach(() => {
-  Dimensions.set(originalDimensions);
-});
-
-function setWindowSize(width: number, fontScale: number) {
-  // AdaptiveColumns reads both the live viewport width and the native text scale.
-  const window = Dimensions.get('window');
-  const screenBounds = Dimensions.get('screen');
-  Dimensions.set({
-    window: { ...window, width, fontScale },
-    screen: { ...screenBounds, width, fontScale },
-  });
-}
 
 test('shows the installed application version supplied by native metadata', async () => {
   const previousMetadata = NativeModules.OrotAppMetadata;
@@ -37,7 +22,8 @@ test('shows the installed application version supplied by native metadata', asyn
   try {
     await render(
       <SettingsRoute
-        selectedProvider="Apple Intelligence"
+        selectedProvider="Cached provider label"
+        selectedAiResolverOptions={settingsRouteResolverOptions()}
         onOpenProviderSettings={jest.fn()}
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
@@ -55,7 +41,7 @@ test('shows the installed application version supplied by native metadata', asyn
   }
 });
 
-test('keeps automatic health integrations in their own Settings group', async () => {
+test('groups destinations and preserves every Settings action', async () => {
   const onOpenHealthData = jest.fn();
   const onOpenSyncStatus = jest.fn();
   const onOpenProviderSettings = jest.fn();
@@ -64,7 +50,8 @@ test('keeps automatic health integrations in their own Settings group', async ()
   const onOpenBackup = jest.fn();
   await render(
     <SettingsRoute
-      selectedProvider="Apple Intelligence"
+      selectedProvider="Cached provider label"
+      selectedAiResolverOptions={settingsRouteResolverOptions()}
       onOpenProviderSettings={onOpenProviderSettings}
       onOpenAccounts={onOpenAccounts}
       onOpenPrivacy={onOpenPrivacy}
@@ -74,17 +61,41 @@ test('keeps automatic health integrations in their own Settings group', async ()
     />,
   );
 
+  const sections = screen
+    .getAllByTestId(/^settings-section-/)
+    .map(section => section.props.testID);
+  expect(sections).toEqual([
+    'settings-section-ai-accounts',
+    'settings-section-health-data',
+    'settings-section-privacy-backup',
+    'settings-section-app-info',
+  ]);
+  expect(screen.getByText(t('settings.summary'))).toBeTruthy();
   expect(
-    within(screen.getByTestId('settings-section-integrations')).getByText(
-      '연동',
+    within(screen.getByTestId('settings-section-ai-accounts')).getByText(
+      'AI와 계정',
     ),
   ).toBeTruthy();
-  expect(screen.getByTestId('settings-open-health-data')).toHaveTextContent(
-    '건강 데이터앱을 열 때 자동으로 동기화해요.',
-  );
-  expect(screen.getByTestId('settings-open-sync-status')).toHaveTextContent(
-    '권한 및 동기화 상태문제가 있으면 상태를 확인하고 다시 시도해요.',
-  );
+  expect(
+    within(screen.getByTestId('settings-section-health-data')).getByRole(
+      'header',
+      { name: '건강 데이터' },
+    ),
+  ).toBeTruthy();
+  expect(
+    within(screen.getByTestId('settings-section-privacy-backup')).getByText(
+      '개인정보와 보관',
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText('AI 제공자와 모델')).toBeTruthy();
+  expect(screen.getByText('연결된 계정')).toBeTruthy();
+  expect(screen.getByText('개인정보 및 권한')).toBeTruthy();
+  expect(screen.getByText('백업과 복구')).toBeTruthy();
+  expect(
+    StyleSheet.flatten(screen.getByTestId('settings-app-info-icon').props.style)
+      ?.backgroundColor,
+  ).toEqual(appColors.primarySoft);
+
   const actionIDs = [
     'settings-open-health-data',
     'settings-open-sync-status',
@@ -105,65 +116,3 @@ test('keeps automatic health integrations in their own Settings group', async ()
   expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
   expect(onOpenBackup).toHaveBeenCalledTimes(1);
 });
-
-test.each([
-  { layout: 'compact', width: 390, fontScale: 1, direction: 'column' },
-  { layout: 'expanded', width: 1000, fontScale: 1, direction: 'column' },
-  {
-    layout: 'narrow large text',
-    width: 760,
-    fontScale: 1.5,
-    direction: 'column',
-  },
-])(
-  'keeps every Settings category in a readable $layout layout',
-  async ({ width, fontScale, direction }) => {
-    setWindowSize(width, fontScale);
-    await render(
-      <SettingsRoute
-        selectedProvider="Apple Intelligence"
-        onOpenProviderSettings={jest.fn()}
-        onOpenAccounts={jest.fn()}
-        onOpenPrivacy={jest.fn()}
-        onOpenBackup={jest.fn()}
-        onOpenHealthData={jest.fn()}
-        onOpenSyncStatus={jest.fn()}
-      />,
-    );
-
-    expect(
-      StyleSheet.flatten(screen.getByTestId('settings-layout').props.style)
-        ?.flexDirection,
-    ).toBe(direction);
-    expect(
-      within(screen.getByTestId('settings-section-integrations')).getByText(
-        '연동',
-      ),
-    ).toBeTruthy();
-    expect(
-      within(screen.getByTestId('settings-section-other')).getByText(
-        '기타 설정',
-      ),
-    ).toBeTruthy();
-    expect(
-      within(screen.getByTestId('settings-section-data-management')).getByText(
-        '데이터 관리',
-      ),
-    ).toBeTruthy();
-    expect(
-      within(screen.getByTestId('settings-section-app-info')).getByText(
-        '앱 정보',
-      ),
-    ).toBeTruthy();
-    for (const id of [
-      'settings-open-health-data',
-      'settings-open-sync-status',
-      'settings-open-provider',
-      'settings-open-accounts',
-      'settings-open-privacy',
-      'settings-open-backup',
-    ]) {
-      expect(screen.getByTestId(id).props.accessibilityRole).toBe('button');
-    }
-  },
-);

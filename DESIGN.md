@@ -100,7 +100,7 @@ The known oversized caller is the 108pt recording action in [`RecordsRouteEntrie
 
 - `primary` is the filled action for the clearest next step.
 - `secondary` is a bordered surface action with primary text; `neutral` uses the same surface with neutral text.
-- `list` fills the caller's row with a transparent, left-aligned action. The caller still owns row layout.
+- `list` fills the caller's row with a transparent, left-aligned action. It accepts non-interactive `leadingContent` and `trailingContent` plus a `summary`; unless the caller supplies an explicit accessible label, the button announces its title and summary together. Keep accessory content decorative, and leave group layout, dividers, icon meaning and the action callback with the caller.
 - `text` is an unfilled, centered action for inline or low-emphasis use.
 - `destructive` uses the danger surface and text. Keep deletion and other confirmation flows with the caller.
 - `cancel` is an unfilled neutral text action. It does not change what the caller's cancel callback does.

@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { appColors } from '../appColors';
 import { AppButton } from '../AppButton';
 
@@ -168,7 +168,62 @@ it('keeps list actions in their row and presents destructive progress accessibly
     StyleSheet.flatten(screen.getByText('Open record').props.style),
   ).toMatchObject({
     textAlign: 'left',
+    fontWeight: '600',
   });
+});
+
+it('renders a rich list row with one accessible name and an intact callback', async () => {
+  const onPress = jest.fn();
+  const screen = await render(
+    <AppButton
+      leadingContent={<View testID="settings-provider-leading" />}
+      onPress={onPress}
+      size="compact"
+      summary="Apple Intelligence"
+      testID="settings-provider-row"
+      title="AI provider and model"
+      trailingContent={<View testID="settings-provider-trailing" />}
+      variant="list"
+    />,
+  );
+  const button = screen.getByRole('button', {
+    name: 'AI provider and model, Apple Intelligence',
+  });
+
+  expect(button.props.testID).toBe('settings-provider-row');
+  expect(button.props.accessibilityState).toMatchObject({
+    busy: false,
+    disabled: false,
+  });
+  expect(StyleSheet.flatten(button.props.style)).toMatchObject({
+    alignSelf: 'stretch',
+    backgroundColor: 'transparent',
+    minHeight: 44,
+    minWidth: 44,
+  });
+  expect(
+    screen.getByTestId('settings-provider-leading', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('settings-provider-trailing', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  expect(screen.getByText('AI provider and model').props.allowFontScaling).toBe(
+    true,
+  );
+  expect(
+    StyleSheet.flatten(screen.getByText('AI provider and model').props.style)
+      ?.fontWeight,
+  ).toBe('500');
+  expect(screen.getByText('Apple Intelligence').props.allowFontScaling).toBe(
+    true,
+  );
+
+  await fireEvent.press(button);
+  expect(onPress).toHaveBeenCalledTimes(1);
 });
 
 it('keeps disabled actions exposed as disabled to assistive technology', async () => {
