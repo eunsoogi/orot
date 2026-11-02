@@ -3,6 +3,12 @@ import XCTest
 /// Exercises the new native controls while preserving the journal's existing real-keyboard journeys.
 @MainActor
 enum SymptomJournalControlUITestConditions {
+    static func verifyDateObservationIfEnabled() {
+        if SymptomDateSelectionUITestObservation.enabled {
+            SymptomDateSelectionUITestObservation.verifyCorrelation()
+        }
+    }
+
     static func tapPageAction(_ app: XCUIApplication, id: String, label: String) -> Bool {
         let target = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
         let hittable = target.exists && target.isHittable

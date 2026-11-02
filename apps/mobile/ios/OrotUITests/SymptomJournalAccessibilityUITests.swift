@@ -5,9 +5,7 @@ import XCTest
 final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     func testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances() throws {
-        if SymptomDateSelectionUITestObservation.enabled {
-            SymptomDateSelectionUITestObservation.verifyCorrelation()
-        }
+        SymptomJournalControlUITestConditions.verifyDateObservationIfEnabled()
         let app = XCUIApplication()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -20,6 +18,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         try launchJournal(app, category: .large)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
         try openForm(app)
+        NavigationPageActionUITestConditions.assertSingleBottomRow(app, ids: ["navigation-back", "symptom-save", "symptom-form-cancel", "navigation-home"], minimumWidths: [48, 88, 88, 64], disabledIDs: ["symptom-save"])
         let baselineFont = assertEnvironment(app, style: .light, category: .large, stage: "default-korean-font")
         app.terminate()
         try launchJournal(app, category: .accessibilityExtraExtraExtraLarge)

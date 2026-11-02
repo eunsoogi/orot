@@ -3,6 +3,31 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
+    /// Check real target frames in an already-open, standard-text detail route.
+    static func assertSingleBottomRow(_ app: XCUIApplication, ids: [String], minimumWidths: [CGFloat], disabledIDs: Set<String>) {
+        XCTAssertEqual(ids.count, minimumWidths.count)
+        let buttons = ids.map { UITestConditions.element(app, $0) }
+        for (button, minimumWidth) in zip(buttons, minimumWidths) {
+            XCTAssertTrue(UITestConditions.exists(button), app.debugDescription)
+            XCTAssertGreaterThanOrEqual(button.frame.width, minimumWidth)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 48)
+            XCTAssertTrue(app.frame.contains(button.frame), app.debugDescription)
+        }
+        guard let first = buttons.first else { return }
+        for (index, button) in buttons.enumerated() {
+            XCTAssertEqual(button.frame.midY, first.frame.midY, accuracy: 1)
+            for other in buttons.dropFirst(index + 1) {
+                XCTAssertFalse(button.frame.intersects(other.frame), app.debugDescription)
+            }
+        }
+        for button in buttons where !disabledIDs.contains(button.identifier) {
+            XCTAssertTrue(button.isHittable, app.debugDescription)
+        }
+        for button in buttons where disabledIDs.contains(button.identifier) {
+            XCTAssertFalse(button.isEnabled, app.debugDescription)
+        }
+    }
+
     static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
         let direct = UITestConditions.element(app, id)
         let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
