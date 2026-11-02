@@ -149,7 +149,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     private func tapKeyboardAction(_ app: XCUIApplication, id: String, label: String) throws -> Bool {
         let action = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
         let keyboard = app.keyboards.firstMatch, window = app.frame
-        guard action.exists, action.isHittable, keyboard.exists else { XCTFail("Action and keyboard must be present and hittable"); return false }
+        guard NavigationPageActionUITestConditions.keyboardActionReady(action, keyboard: keyboard) else { XCTFail("Action and keyboard must be present and hittable"); return false }
         let actionFrame = action.frame, keyboardFrame = keyboard.frame
         guard FormScrollGeometry.valid(window), FormScrollGeometry.valid(actionFrame), FormScrollGeometry.valid(keyboardFrame),
               window.intersects(keyboardFrame), window.contains(actionFrame), !actionFrame.intersects(keyboardFrame)

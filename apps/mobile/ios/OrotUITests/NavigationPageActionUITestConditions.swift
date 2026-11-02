@@ -8,6 +8,21 @@ enum NavigationPageActionUITestConditions {
         XCTAssertTrue(primary.exists && primary.isHittable, "Primary action must be directly reachable before opening More")
     }
 
+    /// Preserve each observed predicate so a keyboard or hit-test failure is distinguishable.
+    static func keyboardActionReady(_ action: XCUIElement, keyboard: XCUIElement) -> Bool {
+        let exists = action.exists
+        let hittable = exists && action.isHittable
+        let keyboardExists = keyboard.exists
+        XCTContext.runActivity(named: "Keyboard action state") { activity in
+            let state = "actionExists=\(exists), actionHittable=\(hittable), actionEnabled=\(exists && action.isEnabled), actionFrame=\(exists ? String(describing: action.frame) : "missing"), keyboardExists=\(keyboardExists), keyboardFrame=\(keyboardExists ? String(describing: keyboard.frame) : "missing")"
+            let attachment = XCTAttachment(string: state)
+            attachment.name = "keyboard-action-state"
+            attachment.lifetime = .keepAlways
+            activity.add(attachment)
+        }
+        return exists && hittable && keyboardExists
+    }
+
     /// Check real target frames in an already-open, standard-text detail route.
     static func assertSingleBottomRow(_ app: XCUIApplication, ids: [String], minimumWidths: [CGFloat], disabledIDs: Set<String>) {
         XCTAssertEqual(ids.count, minimumWidths.count)
