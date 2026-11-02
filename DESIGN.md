@@ -96,6 +96,8 @@ Keep actual touch targets at least 44pt. The visible glyph size does not establi
 
 `AppButton` keeps `primary` as its default so existing primary actions retain their emphasis. New and migrated callers should set an explicit `variant` when the action is not the screen's main action:
 
+The known oversized caller is the 108pt recording action in [`RecordsRouteEntries`](apps/mobile/src/routes/RecordsRouteEntries.tsx). Its Records layout belongs to the screen redesign lane, which should consume these shared styles while keeping recording as the clear primary action.
+
 - `primary` is the filled action for the clearest next step.
 - `secondary` is a bordered surface action with primary text; `neutral` uses the same surface with neutral text.
 - `list` fills the caller's row with a transparent, left-aligned action. The caller still owns row layout.
