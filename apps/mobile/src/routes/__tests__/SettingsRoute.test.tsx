@@ -36,6 +36,9 @@ test('shows the installed application version supplied by native metadata', asyn
     expect(screen.getByTestId('settings-app-info')).toHaveTextContent(
       '오롯 0.1.0',
     );
+    const infoText = screen.getAllByTestId('settings-app-info-text');
+    expect(infoText).toHaveLength(1);
+    expect(infoText[0]).toHaveTextContent('오롯 0.1.0');
   } finally {
     NativeModules.OrotAppMetadata = previousMetadata;
   }

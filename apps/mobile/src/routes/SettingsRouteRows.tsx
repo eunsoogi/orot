@@ -55,7 +55,8 @@ export function SettingsRouteAppInfo({
         testID="settings-app-info-icon"
         tone="blue"
       />
-      <Text style={styles.rowTitle}>
+      {/* Give native tests the version text itself, independent of matching labels elsewhere. */}
+      <Text style={styles.rowTitle} testID="settings-app-info-text">
         {t('app.welcome.title')}
         {version ? ` ${version}` : ''}
       </Text>

@@ -39,9 +39,12 @@ extension RootNavigationUITests {
         let infoFrame = info.frame
         XCTAssertTrue(infoFrame.intersects(viewport.frame))
         XCTAssertLessThanOrEqual(infoFrame.maxX, rail.frame.minX)
-        let infoText = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "오롯"))
-        XCTAssertEqual(infoText.count, 1)
-        let textFrame = infoText.firstMatch.frame
+        let infoText = app.staticTexts.matching(identifier: "settings-app-info-text")
+        guard infoText.count == 1 else {
+            XCTFail("Expected exactly one app information text, found \(infoText.count)")
+            return
+        }
+        let textFrame = infoText.element(boundBy: 0).frame
         XCTAssertTrue(infoFrame.intersects(textFrame))
         XCTAssertTrue(viewport.frame.contains(textFrame), "The app information text must fit in the visible viewport")
         // The attachment still needs visual review; accessibility frames alone cannot establish rendered text.
