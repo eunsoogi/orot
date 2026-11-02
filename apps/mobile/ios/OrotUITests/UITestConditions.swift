@@ -69,13 +69,20 @@ enum UITestConditions {
         return snapshot.label
     }
 
-    /// Drag the caller's actual scroll owner; app callers retain their full-window gesture.
+    /// Scroll the caller-owned viewport, preserving app-wide versus nested scroll behavior.
     static func scrollTo(_ element: XCUIElement, in container: XCUIElement) {
         for _ in 0 ..< 8 {
-            if element.exists, element.isHittable {
+            let targetExists = element.exists
+            if targetExists, element.isHittable {
                 return
             }
-            container.swipeUp()
+
+            // A target above needs a downward finger swipe; unresolved targets keep the original upward search.
+            if targetExists, element.frame.midY < container.frame.midY {
+                container.swipeDown()
+            } else {
+                container.swipeUp()
+            }
         }
         XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
     }
