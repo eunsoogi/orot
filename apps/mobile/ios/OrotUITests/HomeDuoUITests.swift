@@ -122,13 +122,33 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
 
         try verifyHomePanelsAndNavigationLane(app)
-        let portraitWidth = app.frame.width
+        let portraitFrame = app.frame
+        let portraitWidth = portraitFrame.width
+        logHomeRotationGeometry(app, phase: "before")
         XCUIDevice.shared.orientation = .landscapeLeft
+        let observationStarted = ProcessInfo.processInfo.systemUptime
+        var samples = 0
+        var lastFrame = portraitFrame
         let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            samples += 1
             let frame = app.frame
+            lastFrame = frame
+            if samples == 1 || samples == 100 {
+                // Keep the device request and both public frame observations distinct from the reflow oracle.
+                let window = app.windows.firstMatch
+                let windowFrame = window.exists ? String(describing: window.frame) : "unavailable"
+                print("OROT_HOME_ROTATION sample=\(samples) device=\(XCUIDevice.shared.orientation.rawValue) initialApp=\(portraitFrame) app=\(frame) window=\(windowFrame)")
+                self.logHomeRotationGeometry(app, phase: "sample-\(samples)")
+            }
             return frame.width > frame.height && abs(frame.width - portraitWidth) > 0.5
         }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed)
+        // This provisional diagnostic budget is not a rotation timing guarantee; synchronous AX reads may exceed it.
+        let rotationResult = XCTWaiter.wait(for: [landscape], timeout: 10)
+        let elapsed = ProcessInfo.processInfo.systemUptime - observationStarted
+        print("OROT_HOME_ROTATION_END result=\(rotationResult.rawValue) elapsedSeconds=\(elapsed) samples=\(samples) device=\(XCUIDevice.shared.orientation.rawValue) lastApp=\(lastFrame)")
+        logHomeRotationGeometry(app, phase: "end")
+        XCTAssertEqual(rotationResult, .completed, "The requested landscape frame was not observed within the diagnostic window")
+        guard rotationResult == .completed else { return }
         try verifyHomePanelsAndNavigationLane(app)
 
         app.terminate()
@@ -142,6 +162,17 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         app.launch()
         XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
         try verifyHomePanelsAndNavigationLane(app)
+    }
+
+    /// The test marker keeps UIKit scene geometry separate from XCTest application and window frames.
+    @MainActor
+    private func logHomeRotationGeometry(_ app: XCUIApplication, phase: String) {
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "home-rotation-\(phase)")
+        let geometry = snapshot?["windowGeometry"] as? [String: Any] ?? [:]
+        let fields = geometry.filter { ["sceneOrientation", "orientationPolicy", "windowBounds", "sampleStartedAtMs", "sampleEndedAtMs"].contains($0.key) }
+        if let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]), let json = String(data: data, encoding: .utf8) {
+            print("OROT_HOME_ROTATION_GEOMETRY phase=\(phase) observedAtMs=\(Date().timeIntervalSince1970 * 1000) geometry=\(json)")
+        }
     }
 
     /// Compare content-relative positions while scrolling, so larger text cannot pass by clipping lower actions.
