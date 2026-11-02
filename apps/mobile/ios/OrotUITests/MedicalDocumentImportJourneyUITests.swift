@@ -13,7 +13,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         launch(app, fixture: "text-pdf", largeText: true)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "records-import-medical-document")
+        tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
 
         XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
@@ -70,19 +70,46 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testRecordsImportActionStaysInBodyAndSupportsSaveAndCancel() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        launch(app, fixture: "text-pdf")
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+
+        tapRecordsImportBodyAction(app)
+        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
+        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "medical-document-review-preview-panel").exists, app.debugDescription)
+        XCTAssertTrue(node(app, "medical-document-review-text-0").exists, app.debugDescription)
+
+        tap(app, "medical-document-cancel")
+        XCTAssertFalse(node(app, "medical-document-review-title").exists, app.debugDescription)
+        XCTAssertTrue(node(app, "medical-document-source-empty-list").exists, app.debugDescription)
+        _ = recordsImportBodyAction(app)
+
+        tapRecordsImportBodyAction(app)
+        selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
+        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        tap(app, "medical-document-save")
+        let savedSource = node(app, "medical-document-source-0")
+        XCTAssertTrue(savedSource.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(savedSource).contains("MedicalDocumentTextFixture.pdf"))
+    }
+
+    @MainActor
     func testDuplicateImportKeepsSavedOriginalAndProvenance() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
         launch(app, fixture: "text-pdf")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
 
-        tap(app, "records-import-medical-document")
+        tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
         XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
         tap(app, "medical-document-save")
         XCTAssertTrue(node(app, "medical-document-source-0").waitForAppearance(), app.debugDescription)
 
-        tap(app, "records-import-medical-document")
+        tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
         XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
         tap(app, "medical-document-save")
@@ -102,7 +129,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         launch(app, fixture: "scanned-pdf")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "records-import-medical-document")
+        tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentScannedFixture.pdf")
 
         let error = node(app, "medical-document-import-status")
@@ -137,6 +164,24 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(file.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(file.isHittable, app.debugDescription)
         file.tap()
+    }
+
+    /// Verifies the import control belongs to Records' scroll area rather than the navigation rail.
+    @MainActor
+    private func recordsImportBodyAction(_ app: XCUIApplication) -> XCUIElement {
+        let matches = app.buttons.matching(identifier: "records-import-medical-document")
+        let action = matches.firstMatch
+        XCTAssertTrue(action.waitForAppearance(), app.debugDescription)
+        XCTAssertEqual(matches.count, 1, app.debugDescription)
+        let page = recordsPage(app)
+        FormUITestConditions.reveal(action, in: app, scroll: page)
+        XCTAssertTrue(action.isHittable && page.frame.contains(action.frame), app.debugDescription)
+        return action
+    }
+
+    @MainActor
+    private func tapRecordsImportBodyAction(_ app: XCUIApplication) {
+        recordsImportBodyAction(app).tap()
     }
 
     @MainActor
