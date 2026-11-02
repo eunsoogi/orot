@@ -142,7 +142,7 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision: dock.props.pageMetricsRequest.revision,
             width: 750,
-            widths: [44, 44, 44, 44, 44, 80, 44],
+            widths: [44, 44, 44, 44, 44, 88, 44],
             heights: [60, 60, 60, 60, 60, 48, 48],
           },
         }),
