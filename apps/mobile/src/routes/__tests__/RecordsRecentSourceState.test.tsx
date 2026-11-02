@@ -85,7 +85,7 @@ test('shows and retries a failed local symptom read', async () => {
 
   expect(
     await screen.findByTestId('records-recent-sources-error'),
-  ).toHaveTextContent('최근 기록을 불러오지 못했어요.');
+  ).toHaveTextContent('증상 기록을 불러오지 못했어요.');
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   await waitFor(() => {
     expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();

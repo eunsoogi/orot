@@ -194,7 +194,7 @@ test('offers the existing retry action when recording summaries fail to load', a
   await render(<RecordsRoute {...routeProps} />);
 
   expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
-    '최근 기록을 불러오지 못했어요.',
+    '녹음 목록을 불러오지 못했어요.',
   );
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   expect(routeProps.onRetryRecordings).toHaveBeenCalledTimes(1);

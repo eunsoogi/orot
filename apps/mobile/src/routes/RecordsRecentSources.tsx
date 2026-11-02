@@ -82,12 +82,14 @@ export function RecordsRecentSources({
     recordingState === 'loading' ||
     documentsState === 'loading' ||
     symptomState === 'loading';
-  const hasFailed =
-    recordingState === 'failed' ||
-    documentsState === 'failed' ||
-    symptomState === 'failed';
-
-  const feedState = isLoading ? 'loading' : hasFailed ? 'failed' : 'ready';
+  // Independent source statuses must not replace records that loaded successfully.
+  const loadErrors = [
+    recordingState === 'failed' ? t('recording.library.loadError') : null,
+    documentsState === 'failed'
+      ? (documentsError ?? t('medicalDocument.source.loadError'))
+      : null,
+    symptomState === 'failed' ? t('records.recent.symptomLoadError') : null,
+  ].filter((message): message is string => message !== null);
 
   function retrySources() {
     onRetryRecordings();
@@ -101,7 +103,7 @@ export function RecordsRecentSources({
         <Text accessibilityRole="header" style={styles.heading}>
           {t('home.recentRecord')}
         </Text>
-        {!isLoading && !hasFailed && records.length > 0 ? (
+        {records.length > 0 ? (
           <AppButton
             accessibilityLabel={t(
               expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
@@ -118,21 +120,24 @@ export function RecordsRecentSources({
           />
         ) : null}
       </View>
-      {feedState === 'loading' || feedState === 'failed' ? (
+      {isLoading ? (
+        <RecordsRecentSourceState state="loading" onRetry={retrySources} />
+      ) : null}
+      {loadErrors.length > 0 ? (
         <RecordsRecentSourceState
-          state={feedState}
-          errorMessage={
-            documentsState === 'failed' ? documentsError : undefined
-          }
+          state="failed"
+          errorMessage={loadErrors.join('\n')}
           onRetry={retrySources}
         />
-      ) : records.length === 0 ? (
+      ) : null}
+      {!isLoading && loadErrors.length === 0 && records.length === 0 ? (
         <RecordsRecentSourceState
           state="empty"
           showDocumentLibraryEmpty={documents.length === 0}
           onRetry={retrySources}
         />
-      ) : (
+      ) : null}
+      {records.length > 0 ? (
         <View style={styles.groups}>
           {groups.map(group => (
             <View
@@ -173,7 +178,7 @@ export function RecordsRecentSources({
             </View>
           ))}
         </View>
-      )}
+      ) : null}
       {documentsOpening ? (
         <Text accessibilityLiveRegion="polite">
           {t('medicalDocument.source.opening')}

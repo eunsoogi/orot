@@ -47,6 +47,7 @@ export const ko = {
   'records.recent.collapse': '접기',
   'records.recent.loading': '최근 기록을 불러오는 중…',
   'records.recent.loadError': '최근 기록을 불러오지 못했어요.',
+  'records.recent.symptomLoadError': '증상 기록을 불러오지 못했어요.',
   'records.recent.empty': '아직 최근 기록이 없어요.',
   'records.recent.medicalDocument': '의료 문서',
   'records.recent.symptom': '증상 기록',
