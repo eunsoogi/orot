@@ -7,6 +7,8 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import type { ReactNode } from 'react';
+import { AppButtonListContent } from './AppButtonListContent';
 import { appColors } from './appColors';
 
 export type AppButtonVariant =
@@ -27,6 +29,12 @@ interface AppButtonProps extends ButtonProps {
   readonly size?: AppButtonSize;
   /** Shows progress and prevents repeated activation while the caller is busy. */
   readonly busy?: boolean;
+  /** Optional visual icon or other non-interactive content for a list row. */
+  readonly leadingContent?: ReactNode;
+  /** Supporting row text, also included in the default accessible name. */
+  readonly summary?: string;
+  /** Optional visual chevron or other non-interactive content for a list row. */
+  readonly trailingContent?: ReactNode;
 }
 
 /**
@@ -46,17 +54,24 @@ export function AppButton({
   variant = 'primary',
   size = 'regular',
   busy,
+  leadingContent,
+  summary,
+  trailingContent,
 }: AppButtonProps) {
   const isBusy = Boolean(busy ?? accessibilityState?.busy);
   const isDisabled = Boolean(disabled || isBusy);
   const labelColor = labelColors[variant];
   const progressColor =
     variant === 'primary' ? appColors.onPrimary : labelColor;
+  const hasListContent =
+    leadingContent != null || summary != null || trailingContent != null;
+  const accessibleName =
+    accessibilityLabel ?? [title, summary].filter(Boolean).join(', ');
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityLabel={accessibleName}
       accessibilityHint={accessibilityHint}
       accessibilityState={{
         ...accessibilityState,
@@ -83,9 +98,23 @@ export function AppButton({
           testID={testID ? `${testID}-progress` : undefined}
         />
       ) : null}
-      <Text allowFontScaling style={[styles.label, labelStyles[variant]]}>
-        {title}
-      </Text>
+      {hasListContent ? (
+        <AppButtonListContent
+          leadingContent={leadingContent}
+          summary={summary}
+          title={title}
+          titleStyle={[
+            styles.label,
+            labelStyles[variant],
+            styles.listContentTitle,
+          ]}
+          trailingContent={trailingContent}
+        />
+      ) : (
+        <Text allowFontScaling style={[styles.label, labelStyles[variant]]}>
+          {title}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -150,6 +179,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   listLabel: { color: appColors.text, textAlign: 'left' },
+  // Keep medium titles local to rich Settings rows so existing list actions retain their typography.
+  listContentTitle: { fontWeight: '500' },
   text: {
     backgroundColor: 'transparent',
     borderWidth: 0,

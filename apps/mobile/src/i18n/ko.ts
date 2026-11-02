@@ -96,7 +96,8 @@ export const ko = {
   'schedule.classifyAppointments': 'AI로 일정 분류',
   'schedule.classifyAppointmentsHint': '필요할 때만 실행',
   'settings.title': '설정',
-  'settings.aiAccounts': 'AI 및 계정',
+  'settings.summary': '내 기록과 연결을 관리해요.',
+  'settings.aiAccounts': 'AI와 계정',
   'settings.provider': 'AI 제공자와 모델',
   'settings.providerSummary': '선택한 AI 관리',
   'settings.accounts': '연결된 계정',
@@ -121,6 +122,7 @@ export const ko = {
   'settings.openSystemSettingsError':
     'iOS 설정을 열지 못했어요. 설정 앱에서 오롯의 권한을 확인해 주세요.',
   'settings.appInfo': '앱 정보',
+  'settings.privacyBackup': '개인정보와 보관',
   'app.welcome.started': '이제 시작할 수 있어요.',
   'app.actions.getStarted': '시작하기',
   'app.actions.appointments': '예약',

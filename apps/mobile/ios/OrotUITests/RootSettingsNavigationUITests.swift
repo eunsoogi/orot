@@ -234,7 +234,7 @@ extension RootNavigationUITests {
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
     @MainActor
     private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
-        let ids = prefix == "settings-layout" ? ["settings-section-integrations", "settings-section-data-management"] :
+        let ids = prefix == "settings-layout" ? ["settings-section-ai-accounts", "settings-section-app-info"] :
             prefix == "settings-provider-panels" ? ["settings-provider-local-panel", "settings-provider-connected-panel"] : ["settings-accounts-list", "settings-accounts-actions"]
         let first = UITestConditions.element(app, ids[0]), second = UITestConditions.element(app, ids[1])
         XCTAssertTrue(first.exists && second.exists, app.debugDescription)

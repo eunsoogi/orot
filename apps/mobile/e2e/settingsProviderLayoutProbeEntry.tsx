@@ -120,6 +120,7 @@ function renderRoute(
   return (
     <SettingsRoute
       selectedProvider={selectedProvider}
+      selectedAiResolverOptions={serviceDependencies.selectedAi}
       onOpenProviderSettings={() => actions.push('settings-provider')}
       onOpenAccounts={() => undefined}
       onOpenPrivacy={() => undefined}

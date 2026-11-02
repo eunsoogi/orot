@@ -58,6 +58,23 @@ describe('shared app color palettes', () => {
       ).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  it('keeps Settings icon accents distinct from their tinted tiles in both appearances', () => {
+    const iconPairs = [
+      ['primaryText', 'primarySoft'],
+      ['green', 'greenSoft'],
+      ['pink', 'pinkSoft'],
+      ['purple', 'purpleSoft'],
+    ] as const;
+
+    for (const palette of [appColorPalettes?.light, appColorPalettes?.dark]) {
+      for (const [foreground, background] of iconPairs) {
+        expect(
+          contrastRatio(palette![foreground], palette![background]),
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
 });
 
 export {};

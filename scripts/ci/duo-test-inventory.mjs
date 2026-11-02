@@ -11,6 +11,7 @@ export const duoTests = [
   'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
   'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
   'OrotUITests/RootNavigationUITests/testSettingsPortraitLayoutAndLargeText',
+  'OrotUITests/RootNavigationUITests/testSettingsLargeTextTargetsRemainReachableBesideDuoRail',
   'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels',
   'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels',
   'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
