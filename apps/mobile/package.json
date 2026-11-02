@@ -9,7 +9,7 @@
     "lint": "eslint . --ext .js,.jsx,.mjs,.cjs,.ts,.tsx",
     "start": "react-native start",
     "test": "pnpm run test:unit",
-    "test:unit": "jest --config jest.config.js --runInBand --testPathIgnorePatterns=/e2e/",
+    "test:unit": "jest --config jest.config.js --runInBand",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

@@ -19,7 +19,8 @@ const checkCohorts = Object.fromEntries(
 
 test('five nightly domain statuses retain their names and map the complete cohort inventory', () => {
   assert.equal(caller.uses, './.github/workflows/ios-required-statuses.yml');
-  assert.equal(caller.if, 'always()');
+  // Full failures and cancellations still reach the status guard; candidate-only runs skip it.
+  assert.equal(caller.if, "${{ always() && needs.selection.result != 'skipped' }}");
   assert.deepEqual(caller.needs, ['selection', 'completeness', 'reuse_ready_evidence']);
   assert.equal(caller.name, 'Validate');
   assert.equal(

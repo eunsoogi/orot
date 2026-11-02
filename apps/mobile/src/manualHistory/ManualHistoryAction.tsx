@@ -7,14 +7,16 @@ import { AppText } from '../layout/AppText';
 /** Keeps manually entered history distinct while exposing it beside imported records. */
 export function ManualHistoryAction({
   onPress,
+  showDivider = false,
 }: {
   readonly onPress: () => void;
+  readonly showDivider?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={styles.action}
+      style={[styles.action, showDivider && styles.divider]}
       testID="records-open-manual-history"
     >
       <View style={styles.icon}>
@@ -32,24 +34,25 @@ export function ManualHistoryAction({
 const styles = StyleSheet.create({
   action: {
     alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: 16,
-    minHeight: 88,
-    paddingHorizontal: 18,
+    gap: 12,
+    minHeight: 70,
+    minWidth: 0,
+    paddingVertical: 9,
+  },
+  divider: {
+    borderBottomColor: appColors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   icon: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
-    borderRadius: 14,
-    height: 48,
+    borderRadius: 12,
+    height: 40,
     justifyContent: 'center',
-    width: 48,
+    width: 40,
   },
-  copy: { flex: 1, gap: 4 },
-  title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  subtitle: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+  copy: { flex: 1, gap: 3, minWidth: 0 },
+  title: { color: appColors.text, fontSize: 16, fontWeight: '700' },
+  subtitle: { color: appColors.secondary, fontSize: 14, lineHeight: 19 },
 });

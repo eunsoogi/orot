@@ -113,9 +113,11 @@ test('the E2E workflow supports daily and manual Full selection and threads tier
   assert.deepEqual(Object.keys(workflow.on), ['schedule', 'workflow_dispatch']);
   assert.equal(workflow.on.schedule.length, 1);
   assert.equal(workflow.on.schedule[0].cron, '0 18 * * *');
-  assert.equal(workflow.on.workflow_dispatch, null);
+  assert.equal(workflow.on.workflow_dispatch.inputs.mode.default, 'full');
+  assert.equal(workflow.jobs.selection.uses, './.github/workflows/ios-full-selection.yml');
+  const selection = yaml.load(readFileSync('.github/workflows/ios-full-selection.yml', 'utf8'));
   assert.equal(
-    workflow.jobs.selection.outputs.validation_tier,
+    selection.jobs.selection.outputs.validation_tier,
     '${{ steps.select.outputs.validation_tier }}',
   );
   assert.equal(
