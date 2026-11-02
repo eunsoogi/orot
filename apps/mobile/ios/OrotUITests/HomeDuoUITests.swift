@@ -28,6 +28,10 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         for identifier in identifiers {
             XCTAssertTrue(UITestConditions.element(app, identifier).waitForAppearance(), identifier)
         }
+        // The edit action is disabled until the metric read completes and its cards are rendered.
+        let edit = UITestConditions.element(app, "home-metrics-edit")
+        let metricsReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in edit.isEnabled }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [metricsReady]), .completed)
         let pageFrame = page.frame
         XCTAssertGreaterThan(pageFrame.width, 0)
         var previousY = -CGFloat.infinity
