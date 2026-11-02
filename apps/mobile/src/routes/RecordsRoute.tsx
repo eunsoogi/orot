@@ -1,13 +1,10 @@
 import { StyleSheet, View } from 'react-native';
+import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { VerticalPageSections } from '../layout/VerticalPageSections';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
-import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
-import {
-  MedicalDocumentSourceLibrary,
-  MedicalDocumentSourceView,
-} from '../medicalDocuments/MedicalDocumentSourceView';
+import { MedicalDocumentSourceView } from '../medicalDocuments/MedicalDocumentSourceView';
 import {
   MedicalDocumentReview,
   MedicalDocumentReviewPreview,
@@ -27,6 +24,7 @@ export interface RecordsRouteProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly documentImportService?: MedicalDocumentImportService;
+  readonly loadSymptoms?: () => Promise<Pick<SymptomJournalRepository, 'list'>>;
   readonly onOpenManualHistory: () => void;
 }
 
@@ -40,6 +38,7 @@ export function RecordsRoute({
   onOpenRecording,
   onOpenHealthLibrary,
   documentImportService,
+  loadSymptoms,
   onOpenManualHistory,
 }: RecordsRouteProps) {
   const {
@@ -48,10 +47,12 @@ export function RecordsRoute({
     discardMedicalDocument,
     message,
     openSavedDocument,
+    reloadSavedDocuments,
     saveMedicalDocument,
     selectMedicalDocument,
     savedDocuments,
-    savedDocumentsLoading,
+    savedDocumentsState,
+    savedDocumentsError,
     sourceDetail,
     sourceLoading,
     sourceMessage,
@@ -98,38 +99,44 @@ export function RecordsRoute({
             onOpenRecording={onOpenRecording}
             onOpenHealthLibrary={onOpenHealthLibrary}
             onOpenManualHistory={onOpenManualHistory}
+            medicalDocumentOpening={activity === 'selecting'}
+            medicalDocumentDisabled={activity !== null}
+            onImportMedicalDocument={selectMedicalDocument}
           />
-          {/* Imported clinical sources stay in their explicit review workflow. */}
-          <View style={styles.medicalDocuments}>
-            <MedicalDocumentImportAction
-              opening={activity === 'selecting'}
-              disabled={activity !== null}
-              onPress={selectMedicalDocument}
-            />
-            <MedicalDocumentSourceLibrary
-              documents={savedDocuments}
-              loading={savedDocumentsLoading}
-              openingSource={sourceLoading}
-              message={sourceMessage}
-              onOpenDocument={openSavedDocument}
-            />
-            {message ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={styles.status}
-                testID="medical-document-import-status"
-              >
-                {message}
-              </Text>
-            ) : null}
-          </View>
+          {message ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={styles.status}
+              testID="medical-document-import-status"
+            >
+              {message}
+            </Text>
+          ) : null}
         </View>
         <RecordsRecentSources
           recordings={recordings}
           recordingState={recordingState}
-          onRetry={onRetryRecordings}
+          documents={savedDocuments}
+          documentsState={savedDocumentsState}
+          documentsError={savedDocumentsError}
+          documentsOpening={sourceLoading}
+          onRetryRecordings={onRetryRecordings}
+          onRetryDocuments={reloadSavedDocuments}
+          onOpenMedicalDocument={openSavedDocument}
           onOpenSavedRecordings={onOpenSavedRecordings}
+          onOpenSymptoms={onOpenSymptoms}
+          loadSymptoms={loadSymptoms}
         />
+        {sourceMessage ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            accessibilityRole="alert"
+            style={styles.status}
+            testID="medical-document-source-status"
+          >
+            {sourceMessage}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -149,8 +156,5 @@ const styles = StyleSheet.create({
     paddingBottom: hubSpacing.bottom,
   },
   primaryPanel: { minWidth: 0, gap: hubSpacing.item },
-  medicalDocuments: {
-    gap: hubSpacing.item,
-  },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
 });

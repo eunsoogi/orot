@@ -68,6 +68,7 @@ function routeProps(
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
+    loadSymptoms: async () => ({ list: async () => [] }),
     ...overrides,
   };
 }

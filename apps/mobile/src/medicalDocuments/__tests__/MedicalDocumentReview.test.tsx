@@ -99,6 +99,7 @@ function routeProps(
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
     documentImportService,
+    loadSymptoms: async () => ({ list: async () => [] }),
   };
 }
 

@@ -63,6 +63,7 @@ test('disables the Records body import action while the picker is opening', asyn
       onOpenHealthLibrary={jest.fn()}
       onOpenManualHistory={jest.fn()}
       documentImportService={service}
+      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
 
