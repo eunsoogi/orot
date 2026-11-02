@@ -16,7 +16,7 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 | Xcode                                               | 27.2                                               |
 | Ruby / CocoaPods                                    | 4.0.7 / 1.17.0 (Homebrew)                          |
 
-iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
+Simulator에서 앱이나 native 테스트를 실제로 실행할 때 필요한 iOS Simulator 런타임을 Xcode에서 설치하세요. compile-only build는 Simulator 부팅을 요구하지 않습니다. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
 
 `xcode-select -p`가 Command Line Tools 경로를 가리키면 Xcode 개발자 디렉터리를 지정해 의존성을 설치하고 iOS 명령을 실행하세요.
 
@@ -53,6 +53,22 @@ node scripts/ci/check-loc.mjs --all
 The repository policy is in [`scripts/ci/loc-policy.json`](../scripts/ci/loc-policy.json). It counts physical lines, including comments and blank lines: 250 passes and 251 fails. It includes maintained application and package source, tests, scripts, and executable configuration. Documentation, lockfiles, generated/vendor/build output, binary assets, and serialized Xcode project metadata have explicit exclusion reasons. Unknown changed file types and missing Git history fail the check.
 
 GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Repository protection requires 16 direct job checks across Code Quality, Unit Test, and Policy Check. The nightly E2E workflow's `Validate / <target>` checks are not required PR checks. Repository protection reads each job check directly rather than a workflow summary; check-name changes require an authenticated comparison with the configured protection rules.
+
+## 로컬 Simulator 사용 기준
+
+이슈 단위 검증은 동작을 충실히 확인할 수 있는 단위·컴포넌트·통합 검사를 기본으로 합니다. 로컬 Simulator를 만들거나 부팅하거나 native 테스트 제품을 빌드하거나 runtime test를 실행하기 전에는 충족되지 않은 정확한 acceptance criterion 또는 관찰된 결함을 정하고, 단위·컴포넌트 검사, 정적·타입 검사, 빌드만으로 하는 검사 및 현재도 유효한 기존 런타임 근거가 왜 충분하지 않은지 설명한 뒤, 이를 판별할 최소 native 관찰이나 테스트를 고릅니다. 필수 컴파일만으로는 Simulator 부팅이 필요하지 않습니다.
+
+선택 기준은 다음과 같습니다.
+
+- 예약 선택 알고리즘처럼 결정적인 JavaScript 또는 TypeScript 로직은 해당 선택 규칙을 확인하는 단위 검사로 증명합니다. 이 로직만을 위해 새 Simulator 실행을 추가하지 않습니다.
+- Records의 가져오기 버튼, 경로 및 JavaScript callback 연결은 컴포넌트·통합 검사로 확인할 수 있습니다. 이런 검사는 실제 HealthKit 권한 화면이나 OS 동작을 증명하지 않으므로, 해당 경계가 acceptance criterion이면 별도의 최소 native 검사가 필요합니다.
+- iPhone Duo에서 실제로 렌더링된 화면의 패널 위치·프레임이나 기호 크기 결함은 UIKit과 OS 렌더링 결과를 관찰해야 합니다. 이 경우 정확한 화면과 결함을 확인하는 기존 native 사례 또는 가장 작은 native 관찰을 선택합니다. 파일 이름이 UI를 포함하거나 새 native 테스트가 추가됐다는 사실만으로 실행을 요구하지 않습니다.
+- 실제 UIKit 기하·hit target, OS 키보드·focus·접근성, native 권한·동의 화면, platform adapter·entitlement의 런타임 결과처럼 하위 계층 검사로는 증명할 수 없는 경계는 필요한 native 실행으로 확인합니다.
+- 보호된 Keychain이나 OS 저장소처럼 실제 앱 재시작·복원 중 OS 또는 native lifecycle 동작 자체가 acceptance criterion인 persistence 경계는 기존 native 근거로 확인합니다. SQLite 저장 로직이나 close/reopen 동작이 필요한 결과를 직접 검증할 수 있으면 실제 데이터베이스를 쓰는 단위·통합 검사로 충분합니다. mock은 실제 저장 경계를 검증해야 할 때 그 결과를 대체하지 않습니다.
+
+기존 실행 결과는 관련 소스, 의존성, fixture, 설정 및 환경이 현재도 같을 때만 재사용합니다. 원래 결과와 현재 적용 가능성은 구분해 기록합니다. 유효한 전체 검사나 native 제품을 중복 실행하거나, 같은 근거를 반복하는 native 여정을 추가하지 않습니다. 실행 실패와 적용 가능한 테스트 실패를 생략하거나 mock 결과로 대체하지 않으며, 이슈 단위 근거를 통합 또는 release 검증 통과로 표시하지 않습니다. 필수 PR CI와 release 검증은 로컬 Simulator 실행 여부와 별개로 유지합니다.
+
+오케스트레이션된 로컬 작업에서는 부모가 활성 소유자와 host 부하를 확인해 Simulator 기기와 무거운 native 작업을 중앙 배정합니다. 작업자는 배정 없이 Simulator를 만들거나 부팅하고 native 작업을 시작하지 않습니다. 대화형 개발 Mac은 기본적으로 부팅된 Simulator 한 대와 무거운 native 작업 한 건만 동시에 사용하며, 부모가 확인한 실제 처리 능력에 따라 조정할 수 있습니다. 소유권 확인, 근거 보존, 정확한 UDID 종료·삭제와 인벤토리 재확인은 아래의 기존 절차와 소유 규칙을 따릅니다.
 
 ## iOS 빌드
 
