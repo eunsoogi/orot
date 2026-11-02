@@ -16,13 +16,13 @@ const unavailableSourceRepresentation = {
   reason: 'healthkit_does_not_expose_original_display_unit' as const,
 };
 
-/** Produces only synthetic HealthKit snapshots for importer contract tests. */
+/** Keeps importer snapshots fixed while letting time-window screen fixtures choose a measurement time. */
 export function correlation(
   id = 'correlation-1',
   systolicValue = 120,
   diastolicValue = 80,
+  timestamp = '2026-10-02T12:34:56.123456789Z',
 ): HealthKitSampleSnapshot {
-  const timestamp = '2026-10-02T12:34:56.123456789Z';
   return {
     id,
     typeIdentifier: typeIds.correlation,
@@ -31,26 +31,41 @@ export function correlation(
     sourceIdentifier: 'com.example.device',
     sourceName: 'Blood pressure monitor',
     components: [
-      makeComponentSnapshot(id + '-systolic', typeIds.systolic, systolicValue),
+      makeComponentSnapshot(
+        id + '-systolic',
+        typeIds.systolic,
+        systolicValue,
+        timestamp,
+      ),
       makeComponentSnapshot(
         id + '-diastolic',
         typeIds.diastolic,
         diastolicValue,
+        timestamp,
       ),
     ],
   };
+}
+
+/** Gives current-period screen tests a measurement inside the visible date window. */
+export function correlationAt(
+  id: string,
+  timestamp: string,
+): HealthKitSampleSnapshot {
+  return correlation(id, 120, 80, timestamp);
 }
 
 function makeComponentSnapshot(
   id: string,
   typeIdentifier: string,
   value: number,
+  timestamp: string,
 ): HealthKitSampleSnapshot {
   return {
     id,
     typeIdentifier,
-    startDate: '2026-10-02T12:34:56.123456789Z',
-    endDate: '2026-10-02T12:34:56.123456789Z',
+    startDate: timestamp,
+    endDate: timestamp,
     sourceIdentifier: 'com.example.device',
     sourceName: 'Blood pressure monitor',
     value,

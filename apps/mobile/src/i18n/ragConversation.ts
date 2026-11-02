@@ -1,15 +1,12 @@
 /** Korean catalog entries for the grounded local-record conversation screen. */
 export const ragConversationKo = {
   'ragConversation.title': '기록과 대화',
-  'ragConversation.description': '내 기록을 바탕으로 궁금한 점을 물어보세요.',
-  'ragConversation.evidenceTitle': '이 답변의 근거',
-  'ragConversation.evidenceDescription':
-    '대화에서 사용한 원문 근거를 선택해 확인할 수 있어요.',
-  'ragConversation.evidenceEmpty': '답변에 사용한 근거가 여기에 표시돼요.',
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
   'ragConversation.sessions': '대화 목록',
   'ragConversation.newConversation': '새 대화',
+  'ragConversation.transmissionNotice':
+    '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
   'ragConversation.disclaimer': 'AI 답변은 진료를 대신하지 않아요.',
   'ragConversation.loading': '저장된 근거를 확인하고 있어요.',
   'ragConversation.progressAnswer': '답변을 작성하고 있어요.',
