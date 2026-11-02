@@ -38,13 +38,18 @@ enum NavigationGlassButton {
     static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
         let compactPageAction = action.id == "page:overflow" || (usesRightRail && action.id.hasPrefix("page:"))
-        let minimumWidth = usesRightRail && compactPageAction ? 44 : NavigationTextMetrics.width(for: action, traits: button.traitCollection)
+        let minimumWidth = usesRightRail && compactPageAction ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
+        let relation: NSLayoutConstraint.Relation = action.layoutWidth != nil && !usesRightRail ? .equal : .greaterThanOrEqual
+        if let existing = constraints[action.id], existing.relation != relation {
+            existing.isActive = false
+            constraints.removeValue(forKey: action.id)
+        }
         if let constraint = constraints[action.id] {
             constraint.constant = minimumWidth
         } else {
-            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
+            let constraint = relation == .equal ? button.widthAnchor.constraint(equalToConstant: minimumWidth) : button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
             // Measurements can arrive after a resize; allow temporary compression instead of conflicting constraints.
-            if action.id.hasPrefix("page:") {
+            if action.id.hasPrefix("page:"), relation != .equal {
                 constraint.priority = .defaultHigh
             }
             constraint.isActive = true
@@ -191,6 +196,7 @@ struct NavigationActionDescriptor: Equatable {
     let rootTab: Bool
     let showsTitleWithSystemImage: Bool
     let titleBelowImage: Bool
+    let layoutWidth: CGFloat?
 
     init?(_ value: Any) {
         guard
@@ -215,5 +221,6 @@ struct NavigationActionDescriptor: Equatable {
         rootTab = payload["rootTab"] as? Bool ?? false
         showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
         titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
+        layoutWidth = (payload["layoutWidth"] as? NSNumber).map { CGFloat(truncating: $0) }
     }
 }

@@ -162,6 +162,8 @@ export function NavigationActionBarPresentation({
         includeMore={!hasRootTabs && row.overflow}
         isDarkAppearance={isDarkAppearance}
         onMore={showMore}
+        pageWidths={row.pageWidths}
+        moreWidth={row.moreWidth}
         surface={Surface}
       />
     ) : null

@@ -9,7 +9,7 @@ import {
   navigationMoreDescriptor,
   pageActionDescriptor,
 } from './navigationActionDescriptor';
-import { navigationBottomPlan } from './navigationBottomPlan';
+import { navigationWrappedPlan } from './navigationWrappedPlan';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 /** One native measurement covers navigation, page actions, and the More target. */
@@ -54,44 +54,96 @@ export function useBottomNavigationRow({
   const [metrics, setMetrics] = useState<{
     revision: string;
     widths: number[];
+    baselineWidths?: number[];
     heights: number[];
+    category?: string;
   }>();
-  const onMetrics: NonNullable<NavigationGlassSurfaceProps['onPageMetrics']> =
-    useCallback(
-      ({ nativeEvent }) => {
-        if (
-          nativeEvent.revision !== revision ||
-          nativeEvent.widths.length !== measuredActions.length ||
-          nativeEvent.heights.length !== measuredActions.length ||
-          ![...nativeEvent.widths, ...nativeEvent.heights].every(
-            value => Number.isFinite(value) && value > 0,
-          )
-        )
-          return;
-        setMetrics(current =>
-          JSON.stringify(current) === JSON.stringify(nativeEvent)
-            ? current
-            : nativeEvent,
-        );
-      },
-      [revision, measuredActions.length],
-    );
-  const ready = enabled && availableWidth > 0 && metrics?.revision === revision;
+  const [constrained, setConstrained] = useState<typeof metrics>();
+  const naturalReady =
+    enabled && availableWidth > 0 && metrics?.revision === revision;
   const primaryIndices = taskActions.flatMap((action, index) =>
     action.navigationPriority === 'primary' || action.id === 'primary'
       ? [index]
       : [],
   );
-  const plan = ready
-    ? navigationBottomPlan({
-        width: availableWidth,
-        navigation: actions,
-        navigationWidths: metrics.widths.slice(0, actions.length),
-        pageWidths: metrics.widths.slice(actions.length, -1),
-        moreWidth: metrics.widths.at(-1)!,
-        primaryPageIndices: primaryIndices,
-      })
+  const allocation = naturalReady
+    ? navigationWrappedPlan(
+        {
+          width: availableWidth,
+          navigation: actions,
+          navigationWidths: metrics.widths.slice(0, actions.length),
+          pageWidths: metrics.widths.slice(actions.length, -1),
+          moreWidth: metrics.widths.at(-1)!,
+          primaryPageIndices: primaryIndices,
+        },
+        taskActions.map(action => Boolean(action.systemImageName)),
+        metrics.baselineWidths?.slice(actions.length, -1),
+        metrics.baselineWidths?.at(-1),
+      )
     : undefined;
+  const measuredConstrained = allocation?.wrapped
+    ? measuredActions.map((action, index) => {
+        if (
+          index < actions.length ||
+          (index === measuredActions.length - 1 && hasRootTabs)
+        )
+          return action;
+        const assigned =
+          index === measuredActions.length - 1
+            ? allocation.moreWidth
+            : allocation.pageWidths[index - actions.length]!;
+        return assigned < metrics!.widths[index]!
+          ? { ...action, layoutWidth: assigned }
+          : action;
+      })
+    : measuredActions;
+  const constrainedRevision = JSON.stringify([
+    revision,
+    'wrapped',
+    measuredConstrained.map(action => action.layoutWidth ?? null),
+  ]);
+  const requestRevision = allocation?.wrapped ? constrainedRevision : revision;
+  const onMetrics: NonNullable<NavigationGlassSurfaceProps['onPageMetrics']> =
+    useCallback(
+      ({ nativeEvent }) => {
+        if (
+          nativeEvent.revision !== requestRevision ||
+          nativeEvent.widths.length !== measuredActions.length ||
+          nativeEvent.heights.length !== measuredActions.length ||
+          (nativeEvent.baselineWidths !== undefined &&
+            (nativeEvent.baselineWidths.length !== measuredActions.length ||
+              !nativeEvent.baselineWidths.every(
+                value => Number.isFinite(value) && value >= 44,
+              ))) ||
+          ![...nativeEvent.widths, ...nativeEvent.heights].every(
+            value => Number.isFinite(value) && value > 0,
+          )
+        )
+          return;
+        if (allocation?.wrapped && metrics?.category !== nativeEvent.category) {
+          setConstrained(undefined);
+          setMetrics(undefined);
+          return;
+        }
+        const update = allocation?.wrapped ? setConstrained : setMetrics;
+        update(current =>
+          JSON.stringify(current) === JSON.stringify(nativeEvent)
+            ? current
+            : nativeEvent,
+        );
+      },
+      [
+        requestRevision,
+        measuredActions.length,
+        allocation?.wrapped,
+        metrics?.category,
+      ],
+    );
+  const activeMetrics = allocation?.wrapped ? constrained : metrics;
+  const ready =
+    naturalReady &&
+    (!allocation?.wrapped || constrained?.revision === constrainedRevision);
+  const plan = ready ? allocation?.plan : undefined;
   const overflow =
     plan &&
     (plan.overflowNavigation.length > 0 || plan.overflowPages.length > 0);
@@ -105,11 +157,11 @@ export function useBottomNavigationRow({
     : [];
   const visibleHeights = plan
     ? [
-        ...plan.navigationIndices.map(index => metrics!.heights[index]!),
+        ...plan.navigationIndices.map(index => activeMetrics!.heights[index]!),
         ...plan.pageIndices.map(
-          index => metrics!.heights[actions.length + index]!,
+          index => activeMetrics!.heights[actions.length + index]!,
         ),
-        ...(overflow ? [metrics!.heights.at(-1)!] : []),
+        ...(overflow ? [activeMetrics!.heights.at(-1)!] : []),
       ]
     : [];
   return {
@@ -132,7 +184,13 @@ export function useBottomNavigationRow({
       ? plan.overflowPages.map(index => taskActions[index]!)
       : [],
     bottomHeight: Math.max(0, ...visibleHeights),
-    measurement: enabled ? { revision, actions: measuredActions } : undefined,
+    pageWidths: plan?.pageIndices.map(
+      index => measuredConstrained[actions.length + index]?.layoutWidth,
+    ),
+    moreWidth: measuredConstrained.at(-1)?.layoutWidth,
+    measurement: enabled
+      ? { revision: requestRevision, actions: measuredConstrained }
+      : undefined,
     onMetrics,
   };
 }

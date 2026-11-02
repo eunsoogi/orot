@@ -3,6 +3,11 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
+    static func assertDirectPrimary(_ app: XCUIApplication, id: String) {
+        let primary = UITestConditions.element(app, id)
+        XCTAssertTrue(primary.exists && primary.isHittable, "Primary action must be directly reachable before opening More")
+    }
+
     /// Check real target frames in an already-open, standard-text detail route.
     static func assertSingleBottomRow(_ app: XCUIApplication, ids: [String], minimumWidths: [CGFloat], disabledIDs: Set<String>) {
         XCTAssertEqual(ids.count, minimumWidths.count)

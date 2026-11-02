@@ -124,8 +124,10 @@ enum NavigationPageMetrics {
         guard key != lastKey else { return nil }
         lastKey = key
         let actions = values.compactMap(NavigationActionDescriptor.init)
-        return ["revision": revision, "width": width,
-                "widths": actions.map { NavigationTextMetrics.width(for: $0, traits: traits) },
+        let standard = UITraitCollection(traitsFrom: [traits, UITraitCollection(preferredContentSizeCategory: .large)])
+        return ["revision": revision, "width": width, "category": traits.preferredContentSizeCategory.rawValue,
+                "widths": actions.map { $0.layoutWidth ?? NavigationTextMetrics.width(for: $0, traits: traits) },
+                "baselineWidths": actions.map { NavigationTextMetrics.width(for: $0, traits: standard) },
                 "heights": actions.map { NavigationTextMetrics.height(for: $0, traits: traits) }]
     }
 }

@@ -31,6 +31,7 @@ export interface NavigationGlassAction {
   readonly rootTab?: boolean;
   readonly showsTitleWithSystemImage?: boolean;
   readonly titleBelowImage?: boolean;
+  readonly layoutWidth?: number;
 }
 
 export interface NavigationGlassActionEvent {
@@ -64,7 +65,9 @@ export interface NavigationGlassSurfaceProps {
       revision: string;
       width: number;
       widths: number[];
+      baselineWidths?: number[];
       heights: number[];
+      category?: string;
     }>,
   ) => void;
 }

@@ -17,6 +17,27 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertGreaterThan(NavigationTextMetrics.height(for: action, traits: accessible), NavigationTextMetrics.height(for: action, traits: standard))
     }
 
+    /// A constrained page target grows vertically without shortening its Korean label.
+    @MainActor
+    func testConstrainedAccessibilityActionKeepsFullLabelAndIncreasesHeight() throws {
+        let payload: [String: Any] = [
+            "id": "page:add", "label": "증상 기록 추가", "testID": "add", "accessibilityLabel": "증상 기록 추가",
+            "systemImageName": "plus", "showsTitleWithSystemImage": true, "titleBelowImage": true,
+        ]
+        let natural = try XCTUnwrap(NavigationActionDescriptor(payload))
+        var constrainedPayload = payload
+        constrainedPayload["layoutWidth"] = 120
+        let constrained = try XCTUnwrap(NavigationActionDescriptor(constrainedPayload))
+        let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        XCTAssertGreaterThan(NavigationTextMetrics.width(for: natural, traits: traits), 120)
+        XCTAssertGreaterThan(NavigationTextMetrics.height(for: constrained, traits: traits), NavigationTextMetrics.height(for: natural, traits: traits))
+        let button = NavigationGlassButton.make(for: constrained, onAction: { _ in })
+        let label = try XCTUnwrap(button.subviews.compactMap { $0 as? UIStackView }.first?.arrangedSubviews.compactMap { $0 as? UILabel }.first)
+        XCTAssertEqual(label.text, "증상 기록 추가")
+        XCTAssertEqual(label.numberOfLines, 0)
+        XCTAssertEqual(button.accessibilityLabel, "증상 기록 추가")
+    }
+
     @MainActor
     func testBackTitleIsVisibleBelowIconOnBottomAndHiddenOnRail() throws {
         let action = try XCTUnwrap(NavigationActionDescriptor([

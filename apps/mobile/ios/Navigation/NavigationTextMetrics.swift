@@ -35,6 +35,15 @@ enum NavigationTextMetrics {
         if action.id == "back" || action.id == "home" {
             return ceil(max(48, 18 + 4 + line + 8))
         }
+        if let width = action.layoutWidth, action.showsTitleWithSystemImage {
+            let title = UILabel()
+            title.text = action.label
+            title.font = font(for: action, traits: traits)
+            title.numberOfLines = 0
+            title.lineBreakMode = .byWordWrapping
+            let textHeight = title.sizeThatFits(CGSize(width: max(1, width - 10), height: .greatestFiniteMagnitude)).height
+            return ceil(max(48, 18 + 2 + textHeight + 10))
+        }
         return ceil(max(48, action.systemImageName == nil ? line + 24 : 18 + 2 + line + 10))
     }
 }

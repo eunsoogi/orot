@@ -16,6 +16,8 @@ export function NavigationBottomPageActions({
   includeMore,
   isDarkAppearance,
   onMore,
+  pageWidths,
+  moreWidth,
   surface: Surface,
 }: {
   actions: readonly NavigationRouteAction[];
@@ -24,13 +26,20 @@ export function NavigationBottomPageActions({
   includeMore: boolean;
   isDarkAppearance: boolean;
   onMore: () => void;
+  pageWidths?: readonly (number | undefined)[];
+  moreWidth?: number;
   surface: NavigationSurface;
 }) {
-  const descriptors = actions.map(action =>
-    pageActionDescriptor(action, disabled, false),
-  );
+  const descriptors = actions.map((action, index) => ({
+    ...pageActionDescriptor(action, disabled, false),
+    layoutWidth: pageWidths?.[index],
+  }));
   if (includeMore)
-    descriptors.push({ ...navigationMoreDescriptor(false), disabled });
+    descriptors.push({
+      ...navigationMoreDescriptor(false),
+      disabled,
+      layoutWidth: moreWidth,
+    });
   const dispatch = (id: string) => {
     if (disabled) return;
     if (id === 'page:overflow') return onMore();
