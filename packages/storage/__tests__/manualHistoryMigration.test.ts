@@ -1,11 +1,9 @@
 import { openEncryptedStorage } from '../src';
 import { runMigrations } from '../src/migrations';
-import {
-  createDatabase,
-  createOptions,
-  recordedAt,
-  sampleRecord,
-} from './manualHistoryTestSupport';
+import { createOptions, recordedAt, sampleRecord } from './manualHistoryTestSupport';
+import { openMigrationSqlite } from './migrationSqliteDatabase';
+
+const createDatabase = () => openMigrationSqlite(':memory:').database;
 
 describe('manual history schema migration', () => {
   it('repairs a missing manual-history table at v2 and stores unknown dates explicitly', async () => {

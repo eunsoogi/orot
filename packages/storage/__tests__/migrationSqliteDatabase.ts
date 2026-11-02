@@ -63,5 +63,8 @@ export function openMigrationSqlite(path: string) {
       }
     },
   };
-  return { database, close: () => handle.close() };
+  return {
+    database: { ...database, closeAsync: async () => handle.close() },
+    close: () => handle.close(),
+  };
 }
