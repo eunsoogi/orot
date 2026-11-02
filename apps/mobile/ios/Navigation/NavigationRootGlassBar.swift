@@ -96,10 +96,8 @@ final class NavigationRootGlassBar: UIVisualEffectView {
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {
                 for child in content.arrangedSubviews {
                     if let icon = child as? UIImageView, let symbolName = action.systemImageName {
-                        // Filled and outline symbols change with selection even though button identity stays stable.
-                        icon.image = UIImage(systemName: symbolName, withConfiguration: UIImage.SymbolConfiguration(
-                            pointSize: 22, weight: .medium,
-                        ))
+                        // Filled and outline symbols share the compact scale while selection keeps its existing tint.
+                        icon.image = UIImage(systemName: symbolName, withConfiguration: AppSymbolSizing.configuration())
                         icon.tintColor = color
                     }
                     if let label = child as? UILabel {

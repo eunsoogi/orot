@@ -20,7 +20,7 @@ export function MedicalDocumentImportAction({
   const content = (
     <>
       <View style={styles.icon}>
-        <AppSymbol name="doc.text" size={28} color={appColors.primaryText} />
+        <AppSymbol name="doc.text" color={appColors.primaryText} />
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{label}</Text>

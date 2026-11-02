@@ -201,7 +201,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         content.secondaryText = row["time"] as? String
         content.secondaryTextProperties.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: .systemFont(ofSize: 13))
         content.secondaryTextProperties.color = .secondaryLabel
-        content.image = UIImage(systemName: "bubble.left", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
+        content.image = UIImage(systemName: "bubble.left", withConfiguration: AppSymbolSizing.configuration())
         content.imageProperties.tintColor = .secondaryLabel
         content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20)
         cell.contentConfiguration = content

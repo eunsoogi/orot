@@ -66,11 +66,7 @@ export function RecordsRecentSources({
                 style={styles.row}
                 testID={'records-recent-source-' + source.id}
               >
-                <AppSymbol
-                  name="doc.text"
-                  size={22}
-                  color={appColors.primaryAction}
-                />
+                <AppSymbol name="doc.text" color={appColors.primaryAction} />
                 <View style={styles.copy}>
                   <Text style={styles.title}>{source.title}</Text>
                   <Text style={styles.date}>{recordedAt}</Text>

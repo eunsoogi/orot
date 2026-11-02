@@ -123,11 +123,13 @@ export function SafetyForm({
       />
       {draft.symptoms === 'warning_signs'
         ? signs.map(([sign, title]) => (
+            // The selected state remains semantic while variants control its surface treatment.
             <AppButton
               key={sign}
               title={title}
               disabled={disabled}
               accessibilityState={{ selected: draft.signs.includes(sign) }}
+              variant={draft.signs.includes(sign) ? 'secondary' : 'list'}
               onPress={() =>
                 set(
                   'signs',

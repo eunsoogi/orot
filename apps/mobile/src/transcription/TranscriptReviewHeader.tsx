@@ -11,7 +11,7 @@ export default function TranscriptReviewHeader() {
         {t('recording.transcript.title')}
       </Text>
       <View style={styles.localNotice} testID="transcript-local-notice">
-        <AppSymbol name="checkmark.shield" size={24} />
+        <AppSymbol name="checkmark.shield" />
         <Text style={[styles.copy, styles.noticeCopy]}>
           {t('recording.transcript.localOnly')}
         </Text>

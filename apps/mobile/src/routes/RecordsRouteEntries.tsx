@@ -39,11 +39,7 @@ export function RecordsRouteEntries({
         testID="records-new-recording"
       >
         <View style={styles.recordingIcon}>
-          <AppSymbol
-            name="mic.fill"
-            size={30}
-            color={appColors.primaryAction}
-          />
+          <AppSymbol name="mic.fill" color={appColors.primaryAction} />
         </View>
         <Text style={styles.recordingActionTitle}>
           {t('records.newRecording')}
@@ -58,11 +54,7 @@ export function RecordsRouteEntries({
         testID="symptoms-open"
       >
         <View style={styles.healthIcon}>
-          <AppSymbol
-            name="square.and.pencil"
-            size={28}
-            color={appColors.primaryText}
-          />
+          <AppSymbol name="square.and.pencil" color={appColors.primaryText} />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardTitle}>{t('symptoms.title')}</Text>
@@ -78,7 +70,7 @@ export function RecordsRouteEntries({
         testID="records-open-saved-recordings"
       >
         <View style={styles.healthIcon}>
-          <AppSymbol name="doc.text" size={28} color={appColors.primaryText} />
+          <AppSymbol name="doc.text" color={appColors.primaryText} />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardTitle}>{t('recording.library.title')}</Text>
@@ -100,7 +92,7 @@ export function RecordsRouteEntries({
         <View
           style={[styles.healthIcon, { backgroundColor: appColors.greenSoft }]}
         >
-          <AppSymbol name="folder" size={28} color={appColors.green} />
+          <AppSymbol name="folder" color={appColors.green} />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardTitle}>{t('records.healthRecords')}</Text>

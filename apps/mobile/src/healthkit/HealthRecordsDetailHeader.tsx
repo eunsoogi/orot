@@ -108,11 +108,7 @@ export function HealthRecordsDetailHeader({
             { backgroundColor: appearance.background },
           ]}
         >
-          <AppSymbol
-            name={appearance.symbol}
-            color={appearance.color}
-            size={26}
-          />
+          <AppSymbol name={appearance.symbol} color={appearance.color} />
         </View>
         <View style={styles.summaryCopy}>
           <Text style={styles.summaryTitle}>

@@ -97,6 +97,7 @@ export function MedicalAppointmentCandidateCard({
         <AppSymbol
           name={expanded ? 'chevron.down' : 'chevron.right'}
           size={16}
+          color={appColors.secondary}
         />
       </Pressable>
       {expanded ? (

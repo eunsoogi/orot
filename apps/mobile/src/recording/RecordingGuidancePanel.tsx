@@ -47,7 +47,7 @@ export default function RecordingGuidancePanel({
         {t(guidanceKey(status))}
       </Text>
       <View style={styles.localNotice}>
-        <AppSymbol name="lock.fill" size={20} color={appColors.secondary} />
+        <AppSymbol name="lock.fill" color={appColors.secondary} />
         <Text style={styles.localNoticeText}>{t('recording.localOnly')}</Text>
       </View>
     </View>

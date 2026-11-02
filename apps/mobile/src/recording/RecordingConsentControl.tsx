@@ -34,7 +34,6 @@ export function RecordingConsentControl({
       >
         <AppSymbol
           name={checked ? 'checkmark.circle.fill' : 'circle'}
-          size={32}
           color={checked ? appColors.primaryText : appColors.secondary}
         />
       </View>

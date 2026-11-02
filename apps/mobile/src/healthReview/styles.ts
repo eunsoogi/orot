@@ -11,10 +11,21 @@ export const healthReviewStyles = StyleSheet.create({
   requests: { gap: 12 },
   request: { gap: 8 },
   section: { gap: 12 },
+  feedbackSurface: {
+    // Policy and generated feedback share one surface; child source actions stay flat.
+    minWidth: 0,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    backgroundColor: appColors.surface,
+  },
   form: { gap: 16 },
   choice: {
     minHeight: 48,
     padding: 12,
+    // Match the shared action radius while keeping the whole radio row tappable.
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

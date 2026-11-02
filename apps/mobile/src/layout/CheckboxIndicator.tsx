@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import type { ColorValue } from 'react-native';
 import { AppSymbol } from './AppSymbol';
 import { appColors } from './appColors';
+import { COMPACT_APP_SYMBOL_POINT_SIZE } from './iconSizing';
 
 export type CheckboxValue = boolean | 'mixed';
 
@@ -28,7 +29,7 @@ export function CheckboxIndicator({
         style={styles.glyph}
         testID={testID ? `${testID}-glyph` : undefined}
       >
-        <AppSymbol name={checkboxSymbolName(checked)} size={26} color={color} />
+        <AppSymbol name={checkboxSymbolName(checked)} color={color} />
       </View>
     </View>
   );
@@ -41,6 +42,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glyph: { width: 26, height: 26 },
+  // The 44pt target centers this compact frame without shrinking the control.
+  glyph: {
+    width: COMPACT_APP_SYMBOL_POINT_SIZE,
+    height: COMPACT_APP_SYMBOL_POINT_SIZE,
+  },
   disabled: { opacity: 0.45 },
 });

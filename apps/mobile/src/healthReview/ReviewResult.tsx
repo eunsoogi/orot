@@ -6,7 +6,10 @@ import { healthReviewText as copy } from '../i18n/healthReview';
 import type { HealthReviewState } from './controller';
 import { healthReviewStyles as styles } from './styles';
 
-/** Keep the local policy result visible beside generated observations and during clarification. */
+/**
+ * Keeps local policy guidance visible beside observations, clarification
+ * results, and provider failures.
+ */
 export function ReviewResult({
   state,
   onSource,
@@ -15,8 +18,15 @@ export function ReviewResult({
   onSource: (reference: EvidenceReference) => void;
 }) {
   const result = state.result;
+  // Keep the initial empty state unbacked so the feedback card appears only when useful.
+  const hasContent = Boolean(
+    state.safety || state.providerStatus || state.consentDenied || result,
+  );
   return (
-    <View style={styles.section}>
+    <View
+      testID="health-review-feedback-surface"
+      style={[styles.section, hasContent && styles.feedbackSurface]}
+    >
       {state.safety ? (
         <View testID="health-review-safety">
           <Text accessibilityRole="header">{copy.safety}</Text>
@@ -82,6 +92,7 @@ export function ReviewResult({
                     key={id}
                     title={copy.citation}
                     testID={`health-review-citation-${id}`}
+                    variant="list"
                     onPress={() => onSource(reference)}
                   />
                 ) : null;

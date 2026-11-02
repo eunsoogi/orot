@@ -27,7 +27,6 @@ export function SelectedModelControl({
     <>
       <AppSymbol
         name={local ? 'apple.logo' : 'sparkles'}
-        size={20}
         color={appColors.primaryText}
       />
       <AppText style={styles.name}>{name}</AppText>

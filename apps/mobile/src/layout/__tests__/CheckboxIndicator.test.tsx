@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { CheckboxIndicator, checkboxSymbolName } from '../CheckboxIndicator';
 
 jest.mock('../AppSymbol', () => ({
-  AppSymbol: ({ name, size }: { name: string; size: number }) =>
+  AppSymbol: ({ name, size = 18 }: { name: string; size?: number }) =>
     require('react').createElement(require('react-native').View, {
       accessibilityLabel: name,
       style: { width: size, height: size },
@@ -11,18 +11,26 @@ jest.mock('../AppSymbol', () => ({
     }),
 }));
 
-test('uses a large icon inside the minimum checkbox target', async () => {
+test('centers the compact icon inside the minimum checkbox target', async () => {
   const view = await render(
     <CheckboxIndicator checked="mixed" testID="checkbox-indicator" />,
   );
   expect(
     StyleSheet.flatten(view.getByTestId('checkbox-indicator').props.style),
-  ).toMatchObject({ width: 44, height: 44 });
+  ).toMatchObject({
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  });
   expect(
     StyleSheet.flatten(
       view.getByTestId('checkbox-indicator-glyph').props.style,
     ),
-  ).toMatchObject({ width: 26, height: 26 });
+  ).toMatchObject({ width: 18, height: 18 });
+  expect(
+    StyleSheet.flatten(view.getByTestId('checkbox-native-symbol').props.style),
+  ).toMatchObject({ width: 18, height: 18 });
   expect(
     view.getByTestId('checkbox-native-symbol').props.accessibilityLabel,
   ).toBe('minus.square.fill');

@@ -64,7 +64,7 @@ export function CalendarQuickActions({
             style={styles.calendarQuickActionCell}
             testID={action.testID}
           >
-            <AppSymbol color={appColors.text} name={action.symbol} size={24} />
+            <AppSymbol color={appColors.text} name={action.symbol} />
             <View style={styles.calendarQuickActionCopy}>
               <Text style={styles.calendarQuickActionTitle}>
                 {action.title}

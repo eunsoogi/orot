@@ -77,7 +77,7 @@ export function EvidenceSourceSections({
       testID="ai-feature-source-content"
     >
       <View style={styles.category}>
-        <AppSymbol name="doc.text" size={20} color={appColors.secondary} />
+        <AppSymbol name="doc.text" color={appColors.secondary} />
         <Text style={styles.categoryText}>{section.title}</Text>
       </View>
       {hero?.heading ? (
