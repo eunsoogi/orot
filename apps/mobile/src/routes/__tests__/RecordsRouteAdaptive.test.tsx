@@ -52,6 +52,7 @@ function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
+    loadSymptoms: async () => ({ list: async () => [] }),
     documentImportService: {
       listDocuments: jest.fn().mockResolvedValue([]),
       getDocument: jest.fn().mockResolvedValue(null),
@@ -69,7 +70,7 @@ test('keeps one primary recording action and every existing Records destination'
 
   expect(screen.getAllByTestId('records-new-recording')).toHaveLength(1);
   expect(screen.getByTestId('records-recent-sources-empty')).toHaveTextContent(
-    '저장된 녹음이 없어요.',
+    '아직 최근 기록이 없어요.',
   );
   expect(screen.getByTestId('records-import-medical-document')).toBeTruthy();
   for (const id of [
@@ -132,7 +133,7 @@ test('shows the newest loaded sources and opens their existing saved-recordings 
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
 });
 
-test('groups actual recent recordings by local day and opens the full library', async () => {
+test('groups actual recent recordings by local day and expands the complete timeline', async () => {
   jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 12));
   try {
     const recordings = [
@@ -168,7 +169,12 @@ test('groups actual recent recordings by local day and opens the full library', 
     expect(screen.queryByText('더 오래된 상담')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('records-recent-view-all'));
-    expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByTestId(
+        'records-recent-source-123e4567-e89b-12d3-a456-426614174104',
+      ),
+    ).toBeTruthy();
+    expect(routeProps.onOpenSavedRecordings).not.toHaveBeenCalled();
   } finally {
     jest.useRealTimers();
   }
@@ -179,7 +185,7 @@ test('shows loading feedback while the existing recording summary request is pen
 
   expect(
     screen.getByTestId('records-recent-sources-loading'),
-  ).toHaveTextContent('녹음 목록을 불러오는 중…');
+  ).toHaveTextContent('최근 기록을 불러오는 중…');
   expect(screen.queryByTestId('records-recent-sources-empty')).toBeNull();
 });
 
@@ -188,7 +194,7 @@ test('offers the existing retry action when recording summaries fail to load', a
   await render(<RecordsRoute {...routeProps} />);
 
   expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
-    '녹음 목록을 불러오지 못했어요.',
+    '최근 기록을 불러오지 못했어요.',
   );
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   expect(routeProps.onRetryRecordings).toHaveBeenCalledTimes(1);

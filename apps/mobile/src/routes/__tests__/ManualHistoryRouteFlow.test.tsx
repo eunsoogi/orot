@@ -52,6 +52,7 @@ function RecordsAndManualHistoryRoutes() {
       onOpenRecording={() => undefined}
       onOpenHealthLibrary={() => undefined}
       onOpenManualHistory={() => setShowManualHistory(true)}
+      loadSymptoms={async () => ({ list: async () => [] })}
     />
   );
 }

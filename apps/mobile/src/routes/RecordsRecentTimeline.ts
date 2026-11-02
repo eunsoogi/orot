@@ -1,30 +1,73 @@
+import type { SymptomEntry } from '@orot/storage';
+import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import { t } from '../i18n';
-import { formatRecordedAt } from '../recording/formatRecordedAt';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 
-export interface RecentRecordingGroup {
-  readonly key: string;
-  readonly label: string;
-  readonly recordings: readonly RecordingSourceRecord[];
+export type RecentRecordKind = 'recording' | 'medical_document' | 'symptom';
+
+export interface RecentRecordEntry {
+  readonly id: string;
+  readonly kind: RecentRecordKind;
+  readonly timestamp: string;
+  readonly title: string;
+  readonly summary?: string;
 }
 
-/** Groups the newest loaded recordings by the same device-local calendar date as their displayed times. */
-export function groupRecentRecordings(
+export interface RecentRecordGroup {
+  readonly key: string;
+  readonly label: string;
+  readonly records: readonly RecentRecordEntry[];
+}
+
+/** Projects existing local records into one feed; dates follow when each record was captured or imported. */
+export function buildRecentRecordEntries(
   recordings: readonly RecordingSourceRecord[],
+  documents: readonly MedicalDocumentSourceRecord[],
+  symptoms: readonly SymptomEntry[],
+): RecentRecordEntry[] {
+  return [
+    ...recordings.map(recording => ({
+      id: recording.id,
+      kind: 'recording' as const,
+      timestamp: recording.recordedAt,
+      title: recording.title ?? t('recording.library.untitled'),
+    })),
+    ...documents.map(document => ({
+      id: document.id,
+      kind: 'medical_document' as const,
+      timestamp: document.ingestedAt,
+      title: t('records.recent.medicalDocument'),
+      summary: document.title ?? t('medicalDocument.source.untitled'),
+    })),
+    ...symptoms.map(symptom => ({
+      id: symptom.id,
+      kind: 'symptom' as const,
+      // Timeline order reflects when the user recorded the journal entry, not symptom onset.
+      timestamp: symptom.recordedAt,
+      title: t('records.recent.symptom'),
+      summary: symptom.description,
+    })),
+  ].sort(compareRecency);
+}
+
+/** Groups by device-local day and optionally limits the collapsed feed to its newest entries. */
+export function groupRecentRecords(
+  records: readonly RecentRecordEntry[],
   now: Date,
-): RecentRecordingGroup[] {
+  limit: number | null = 3,
+): RecentRecordGroup[] {
+  const visible = limit === null ? records : records.slice(0, limit);
   const groups = new Map<
     string,
-    { date: Date | null; recordings: RecordingSourceRecord[] }
+    { date: Date | null; records: RecentRecordEntry[] }
   >();
-  const newest = [...recordings].sort(compareRecordingRecency).slice(0, 3);
 
-  for (const recording of newest) {
-    const date = new Date(recording.recordedAt);
+  for (const record of visible) {
+    const date = new Date(record.timestamp);
     const validDate = Number.isNaN(date.getTime()) ? null : date;
     const key = validDate ? localDayKey(validDate) : 'unknown';
-    const group = groups.get(key) ?? { date: validDate, recordings: [] };
-    group.recordings.push(recording);
+    const group = groups.get(key) ?? { date: validDate, records: [] };
+    group.records.push(record);
     groups.set(key, group);
   }
 
@@ -38,26 +81,26 @@ export function groupRecentRecordings(
     label: group.date
       ? formatGroupLabel(group.date, todayKey, yesterdayKey, now.getFullYear())
       : t('records.recent.unknownDate'),
-    recordings: group.recordings,
+    records: group.records,
   }));
 }
 
-export function formatRecentTime(recordedAt: string): string {
-  const date = new Date(recordedAt);
+export function formatRecentTime(timestamp: string): string {
+  const date = new Date(timestamp);
   return Number.isNaN(date.getTime())
-    ? formatRecordedAt(recordedAt)
+    ? timestamp
     : date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
 }
 
-function compareRecordingRecency(
-  left: RecordingSourceRecord,
-  right: RecordingSourceRecord,
+function compareRecency(
+  left: RecentRecordEntry,
+  right: RecentRecordEntry,
 ): number {
-  const leftTime = Date.parse(left.recordedAt);
-  const rightTime = Date.parse(right.recordedAt);
+  const leftTime = Date.parse(left.timestamp);
+  const rightTime = Date.parse(right.timestamp);
   if (!Number.isFinite(leftTime)) return Number.isFinite(rightTime) ? 1 : 0;
   if (!Number.isFinite(rightTime)) return -1;
-  return rightTime - leftTime;
+  return rightTime - leftTime || left.id.localeCompare(right.id);
 }
 
 function localDayKey(date: Date): string {
