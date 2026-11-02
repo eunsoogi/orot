@@ -89,6 +89,10 @@ does not prove that a specific case ran. Confirm the selected identifiers,
 execution result, and applicable artifacts at the surface that performed the
 work.
 
+The opt-in candidate focused route is described in [development](docs/development.md).
+It fails before native allocation when its selection cannot cover the maintained
+changed-path impact. Its selected results do not replace Full or release evidence.
+
 ## Record evidence and reuse it carefully
 
 For each result used as evidence, record its source revision, environment,
