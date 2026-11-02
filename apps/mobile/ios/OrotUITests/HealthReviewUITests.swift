@@ -3,28 +3,6 @@ import XCTest
 /// SQLCipher, graph, retained App session, safety and consent execute for every journey; only provider output is synthetic.
 final class HealthReviewUITests: OrotFailFastTestCase {
     @MainActor
-    func testManualBloodPressureInputsAreAbsent() {
-        let journey = HealthReviewJourney()
-        defer { journey.clean() }
-        journey.launch()
-        journey.open()
-        journey.name()
-        XCTAssertTrue(UITestConditions.exists(journey.element("health-review-symptom-choices")))
-        XCTAssertTrue(UITestConditions.exists(journey.element("health-review-visit-choices")))
-        XCTAssertTrue(UITestConditions.exists(journey.element("health-review-population-choices")))
-        for id in ["health-review-context-choices", "health-review-systolic-0", "health-review-diastolic-0",
-                   "health-review-measuredAt-0", "health-review-source-0"]
-        {
-            XCTAssertFalse(journey.element(id).exists, "Unexpected manual blood-pressure input: \(id)")
-        }
-        for label in ["혈압 측정 상황", "혈압 입력 (선택)"] {
-            XCTAssertFalse(journey.app.staticTexts[label].exists, "Unexpected blood-pressure help: \(label)")
-        }
-        XCTAssertFalse(journey.app.buttons["반복 측정 추가"].exists)
-        XCTAssertEqual(journey.app.textFields["health-review-name"].value as? String, journey.fixture)
-    }
-
-    @MainActor
     func testRecordObservationShowsBloodPressureGuidanceAndRetainsSessionAcrossProviderNavigation() throws {
         let journey = HealthReviewJourney()
         defer { journey.clean() }

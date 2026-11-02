@@ -78,6 +78,15 @@ runs:
           ${{ inputs.product_directory }}/manifest.json
         if-no-files-found: warn
         retention-days: 7
+    - name: Preserve the owned runtime with the compact report
+      if: always()
+      shell: bash
+      run: |
+        if [[ -f artifacts/ios-cohort/results/results.json && -f artifacts/ios-cohort/simulator-owner.json && -f artifacts/ios-cohort/simulator-owner.json.preparation.jsonl && -f artifacts/ios-cohort/simulator-owner.json.cleanup.json ]]; then
+          cp artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results/simulator-owner.json
+          cp artifacts/ios-cohort/simulator-owner.json.preparation.jsonl artifacts/ios-cohort/results/simulator-owner.json.preparation.jsonl
+          cp artifacts/ios-cohort/simulator-owner.json.cleanup.json artifacts/ios-cohort/results/simulator-owner.json.cleanup.json
+        fi
     - name: Publish compact reports for Linux aggregation
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -85,6 +94,9 @@ runs:
         name: ios-cohort-report-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
           artifacts/ios-cohort/results/results.json
+          artifacts/ios-cohort/results/simulator-owner.json
+          artifacts/ios-cohort/results/simulator-owner.json.preparation.jsonl
+          artifacts/ios-cohort/results/simulator-owner.json.cleanup.json
           artifacts/ios-cohort/results/speech-integration/attachments/*.json
         if-no-files-found: warn
         retention-days: 7

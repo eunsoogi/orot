@@ -1,124 +1,222 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import type { SymptomEntry } from '@orot/storage';
+import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
+import { openLocalSymptomJournal } from '../symptoms/localRepository';
+import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
+import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import { formatRecordedAt } from '../recording/formatRecordedAt';
+import {
+  buildRecentRecordEntries,
+  groupRecentRecords,
+} from './RecordsRecentTimeline';
+import { RecordsRecentSourceEntry } from './RecordsRecentSourceEntry';
+import { RecordsRecentSourceState } from './RecordsRecentSourceState';
 import { hubSpacing } from '../layout/hubSpacing';
 
 interface RecordsRecentSourcesProps {
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
-  readonly onRetry: () => void;
+  readonly documents: readonly MedicalDocumentSourceRecord[];
+  readonly documentsState: 'loading' | 'ready' | 'failed';
+  readonly documentsError: string | null;
+  readonly documentsOpening: boolean;
+  readonly onRetryRecordings: () => void;
+  readonly onRetryDocuments: () => void;
+  readonly onOpenMedicalDocument: (sourceId: string) => void;
   readonly onOpenSavedRecordings: () => void;
+  readonly onOpenSymptoms: () => void;
+  readonly loadSymptoms?: () => Promise<Pick<SymptomJournalRepository, 'list'>>;
 }
 
-/** Shows recent locally loaded audio sources; each row opens the existing library. */
+/** Renders actual local activity in one grouped timeline while preserving each existing destination. */
 export function RecordsRecentSources({
   recordings,
   recordingState,
-  onRetry,
+  documents,
+  documentsState,
+  documentsError,
+  documentsOpening,
+  onRetryRecordings,
+  onRetryDocuments,
+  onOpenMedicalDocument,
   onOpenSavedRecordings,
+  onOpenSymptoms,
+  loadSymptoms = openLocalSymptomJournal,
 }: RecordsRecentSourcesProps) {
+  const [symptoms, setSymptoms] = useState<readonly SymptomEntry[]>([]);
+  const [symptomState, setSymptomState] = useState<
+    'loading' | 'ready' | 'failed'
+  >('loading');
+  const [symptomLoadAttempt, setSymptomLoadAttempt] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setSymptoms([]);
+    setSymptomState('loading');
+    // The Records feed reads the existing encrypted journal and never writes or revises its entries.
+    loadSymptoms()
+      .then(repository => repository.list())
+      .then(entries => {
+        if (!active) return;
+        setSymptoms(entries);
+        setSymptomState('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setSymptoms([]);
+        setSymptomState('failed');
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadSymptoms, symptomLoadAttempt]);
+
+  const records = buildRecentRecordEntries(recordings, documents, symptoms);
+  const groups = groupRecentRecords(records, new Date(), expanded ? null : 3);
+  const isLoading =
+    recordingState === 'loading' ||
+    documentsState === 'loading' ||
+    symptomState === 'loading';
+  // Independent source statuses must not replace records that loaded successfully.
+  const loadErrors = [
+    recordingState === 'failed' ? t('recording.library.loadError') : null,
+    documentsState === 'failed'
+      ? (documentsError ?? t('medicalDocument.source.loadError'))
+      : null,
+    symptomState === 'failed' ? t('records.recent.symptomLoadError') : null,
+  ].filter((message): message is string => message !== null);
+
+  function retrySources() {
+    onRetryRecordings();
+    onRetryDocuments();
+    setSymptomLoadAttempt(attempt => attempt + 1);
+  }
+
   return (
     <View style={styles.container} testID="records-recent-sources">
-      <Text accessibilityRole="header" style={styles.heading}>
-        {t('home.recentRecord')}
-      </Text>
-      {recordingState === 'loading' ? (
-        <View style={styles.state} testID="records-recent-sources-loading">
-          <ActivityIndicator
-            accessibilityLabel={t('recording.library.loading')}
-            color={appColors.secondary}
-            size="small"
-          />
-          <Text>{t('recording.library.loading')}</Text>
-        </View>
-      ) : recordingState === 'failed' ? (
-        <View style={styles.state}>
-          <Text accessibilityRole="alert" testID="records-recent-sources-error">
-            {t('recording.library.loadError')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onRetry}
-            style={styles.retry}
-            testID="records-recent-sources-retry"
-          >
-            <Text style={styles.retryTitle}>{t('appointments.retry')}</Text>
-          </Pressable>
-        </View>
-      ) : recordings.length === 0 ? (
-        <Text style={styles.empty} testID="records-recent-sources-empty">
-          {t('recording.library.empty')}
+      <View style={styles.headingRow}>
+        <Text accessibilityRole="header" style={styles.heading}>
+          {t('home.recentRecord')}
         </Text>
-      ) : (
-        <View style={styles.rows}>
-          {recordings.slice(0, 3).map(source => {
-            const recordedAt = formatRecordedAt(source.recordedAt);
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={source.title + ', ' + recordedAt}
-                key={source.id}
-                onPress={onOpenSavedRecordings}
-                style={styles.row}
-                testID={'records-recent-source-' + source.id}
-              >
-                <AppSymbol name="doc.text" color={appColors.primaryAction} />
-                <View style={styles.copy}>
-                  <Text style={styles.title}>{source.title}</Text>
-                  <Text style={styles.date}>{recordedAt}</Text>
-                </View>
-                <AppSymbol
-                  name="chevron.right"
-                  size={16}
-                  color={appColors.secondary}
-                />
-              </Pressable>
-            );
-          })}
+        {records.length > 0 ? (
+          <AppButton
+            accessibilityLabel={t(
+              expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
+            )}
+            onPress={() => setExpanded(value => !value)}
+            size="compact"
+            testID="records-recent-view-all"
+            title={
+              t(
+                expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
+              ) + (expanded ? '  ⌃' : '  ›')
+            }
+            variant="text"
+          />
+        ) : null}
+      </View>
+      {isLoading ? (
+        <RecordsRecentSourceState state="loading" onRetry={retrySources} />
+      ) : null}
+      {loadErrors.length > 0 ? (
+        <RecordsRecentSourceState
+          state="failed"
+          errorMessage={loadErrors.join('\n')}
+          onRetry={retrySources}
+        />
+      ) : null}
+      {!isLoading && loadErrors.length === 0 && records.length === 0 ? (
+        <RecordsRecentSourceState
+          state="empty"
+          showDocumentLibraryEmpty={documents.length === 0}
+          onRetry={retrySources}
+        />
+      ) : null}
+      {records.length > 0 ? (
+        <View style={styles.groups}>
+          {groups.map(group => (
+            <View
+              key={group.key}
+              style={styles.group}
+              testID={`records-recent-group-${group.key}`}
+            >
+              <View style={styles.groupHeadingRow}>
+                <Text accessibilityRole="header" style={styles.groupHeading}>
+                  {group.label}
+                </Text>
+                <View style={styles.groupDivider} />
+              </View>
+              <View style={styles.rows}>
+                <View pointerEvents="none" style={styles.timelineLine} />
+                {group.records.map(record => {
+                  const documentIndex =
+                    record.kind === 'medical_document'
+                      ? documents.findIndex(
+                          document => document.id === record.id,
+                        )
+                      : undefined;
+
+                  return (
+                    <RecordsRecentSourceEntry
+                      key={`${record.kind}:${record.id}`}
+                      documentIndex={documentIndex}
+                      documentsOpening={documentsOpening}
+                      groupLabel={group.label}
+                      onOpenMedicalDocument={onOpenMedicalDocument}
+                      onOpenSavedRecordings={onOpenSavedRecordings}
+                      onOpenSymptoms={onOpenSymptoms}
+                      record={record}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
-      )}
+      ) : null}
+      {documentsOpening ? (
+        <Text accessibilityLiveRegion="polite">
+          {t('medicalDocument.source.opening')}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: hubSpacing.item,
+  container: { gap: hubSpacing.item, minWidth: 0 },
+  headingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     minWidth: 0,
   },
   heading: { color: appColors.text, fontSize: 21, fontWeight: '700' },
-  rows: { gap: hubSpacing.item },
-  row: {
+  groups: { gap: hubSpacing.item },
+  group: { gap: 4, minWidth: 0 },
+  groupHeadingRow: {
     alignItems: 'center',
-    borderColor: appColors.border,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 72,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    gap: 10,
   },
-  copy: { flex: 1, gap: 3, minWidth: 0 },
-  title: { color: appColors.text, fontSize: 16, fontWeight: '600' },
-  date: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  state: { alignItems: 'flex-start', gap: 12 },
-  empty: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
-  retry: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 16,
+  groupHeading: { color: appColors.secondary, fontSize: 14, fontWeight: '600' },
+  groupDivider: {
+    backgroundColor: appColors.border,
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
   },
-  retryTitle: {
-    color: appColors.primaryAction,
-    fontSize: 15,
-    fontWeight: '600',
+  rows: { gap: hubSpacing.item, minWidth: 0, position: 'relative' },
+  timelineLine: {
+    backgroundColor: appColors.border,
+    bottom: 10,
+    left: 5,
+    position: 'absolute',
+    top: 10,
+    width: StyleSheet.hairlineWidth,
   },
 });

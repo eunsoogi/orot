@@ -77,7 +77,15 @@ export async function validateIosCandidateDispatch(context, fetchImpl = globalTh
     pullRequest.head.sha.toLowerCase() !== context.sha.toLowerCase()
   )
     reject('Candidate PR head commit does not match the workflow SHA');
-  return { pullRequestNumber: number, headRef, headSha: context.sha.toLowerCase() };
+  if (!FULL_SHA.test(pullRequest.base?.sha ?? '')) reject('Candidate PR base SHA is missing');
+  if (context.expectedSha?.toLowerCase() !== context.sha.toLowerCase())
+    reject('Candidate expected SHA does not match the workflow SHA');
+  return {
+    pullRequestNumber: number,
+    headRef,
+    headSha: context.sha.toLowerCase(),
+    baseSha: pullRequest.base.sha.toLowerCase(),
+  };
 }
 
 function writeCandidateOutputs(candidate, outputPath) {
@@ -88,6 +96,7 @@ function writeCandidateOutputs(candidate, outputPath) {
       `candidate_pr_number=${candidate.pullRequestNumber}`,
       `candidate_head_ref=${candidate.headRef}`,
       `candidate_head_sha=${candidate.headSha}`,
+      `candidate_base_sha=${candidate.baseSha}`,
     ].join('\n') + '\n',
   );
 }
@@ -99,6 +108,7 @@ async function main(env = process.env) {
     eventName: env.GITHUB_EVENT_NAME,
     ref: env.GITHUB_REF,
     sha: env.GITHUB_SHA,
+    expectedSha: env.OROT_CANDIDATE_EXPECTED_SHA,
     apiUrl: env.GITHUB_API_URL,
     token: env.GITHUB_TOKEN,
   });

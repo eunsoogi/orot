@@ -1,0 +1,52 @@
+name: Candidate focused integration
+on:
+  workflow_call:
+    inputs:
+      candidate_pr: { required: true, type: string }
+      expected_sha: { required: true, type: string }
+      profile: { required: true, type: string }
+      scenario_file: { required: true, type: string }
+      scenario_name: { required: true, type: string }
+permissions: { contents: read, pull-requests: read }
+jobs:
+  selection:
+    name: Plan / Candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Bind the open draft PR to the dispatched head and expected SHA
+        id: candidate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OROT_CANDIDATE_PR_NUMBER: ${{ inputs.candidate_pr }}
+          OROT_CANDIDATE_EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: node scripts/ci/ios-candidate-dispatch.mjs
+      - name: Require every native declaration to remain registered
+        run: node --test scripts/ci/tests/ios-test-inventory.test.mjs
+      - name: Verify the exact selection and its complete maintained impact
+        env:
+          PROFILE: ${{ inputs.profile }}
+          SOURCE_FILE: ${{ inputs.scenario_file }}
+          TEST_ID: ${{ inputs.scenario_name }}
+          OROT_CANDIDATE_BASE_SHA: ${{ steps.candidate.outputs.candidate_base_sha }}
+        run: |
+          node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID"
+          node scripts/ci/ios-focused-candidate-impact.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-candidate-selection.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-candidate-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-candidate-selection.json
+          if-no-files-found: error
+  execution:
+    name: Test / Candidate focused
+    needs: selection
+    uses: ./.github/workflows/ios-focused.yml
+    with:
+      profile: ${{ inputs.profile }}
+      scenario_file: ${{ inputs.scenario_file }}
+      scenario_name: ${{ inputs.scenario_name }}
+      candidate: true

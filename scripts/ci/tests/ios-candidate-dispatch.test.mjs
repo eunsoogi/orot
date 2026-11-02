@@ -8,6 +8,7 @@ const context = {
   eventName: 'workflow_dispatch',
   ref: 'refs/heads/eunsoogi/issue-216-validation-policy',
   sha: 'a'.repeat(40),
+  expectedSha: 'a'.repeat(40),
   apiUrl: 'https://api.github.com',
   token: 'test-token',
 };
@@ -16,7 +17,7 @@ const pullRequest = {
   state: 'open',
   draft: true,
   merged_at: null,
-  base: { repo: { full_name: 'eunsoogi/orot' } },
+  base: { sha: 'b'.repeat(40), repo: { full_name: 'eunsoogi/orot' } },
   head: {
     repo: { full_name: 'eunsoogi/orot' },
     ref: 'eunsoogi/issue-216-validation-policy',
@@ -37,6 +38,7 @@ test('accepts only the exact open same-repository Draft PR head selected for dis
     pullRequestNumber: 217,
     headRef: 'eunsoogi/issue-216-validation-policy',
     headSha: 'a'.repeat(40),
+    baseSha: 'b'.repeat(40),
   });
 });
 
@@ -54,10 +56,11 @@ test('rejects runs that are not dispatched from the candidate PR head branch and
     { ref: 'refs/heads/main' },
     { ref: 'refs/pull/217/merge' },
     { sha: 'b'.repeat(40) },
+    { expectedSha: 'b'.repeat(40) },
   ])
     await assert.rejects(
       validateIosCandidateDispatch({ ...context, ...changed }, fetchPullRequest()),
-      /workflow_dispatch|PR head branch|PR head commit/,
+      /workflow_dispatch|PR head branch|PR head commit|expected SHA/,
     );
 });
 
