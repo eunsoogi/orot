@@ -12,19 +12,16 @@ import type {
 } from './NavigationActionBar';
 import { navigationActionBarStyles as styles } from './navigationActionBarStyles';
 import {
-  fitsNavigationRailSegment,
-  fitsNavigationRootRail,
-  NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
-  NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
-  NAVIGATION_ROOT_RAIL_GUTTER,
   NAVIGATION_ROOT_RAIL_WIDTH,
   NavigationRootLayoutContext,
 } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
 import { NavigationPageActionDock } from './NavigationPageActionDock';
+import { NavigationBottomPageActions } from './NavigationBottomPageActions';
 import { useBottomNavigationRow } from './useBottomNavigationRow';
+import { useBottomActionMenu } from './useBottomActionMenu';
 import { NavigationBarHost } from './NavigationBarHost';
-import { pageActionRailLayout } from './navigationPageActionLayout';
+import { navigationRailPresentation } from './navigationRailPresentation';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 interface NavigationActionBarPresentationProps {
@@ -41,6 +38,7 @@ interface NavigationActionBarPresentationProps {
   readonly reclaimRootTabInset: boolean;
   readonly safeAreaHandledByParent: boolean;
   readonly surface: NavigationSurface;
+  readonly availableWidthOverride?: number;
 }
 
 /** Keeps one native host mounted while the content lane, rail, and bottom action change size. */
@@ -58,6 +56,7 @@ export function NavigationActionBarPresentation({
   reclaimRootTabInset,
   safeAreaHandledByParent,
   surface: Surface = NavigationGlassSurface,
+  availableWidthOverride,
 }: NavigationActionBarPresentationProps) {
   const layout = useContext(NavigationRootLayoutContext);
   const taskActions = primaryAction
@@ -72,71 +71,54 @@ export function NavigationActionBarPresentation({
         },
       ]
     : pageActions;
-  const candidateRightLayout =
-    layout.placement === 'right' ? layout : undefined;
-  const candidateRailHeight = candidateRightLayout
-    ? Math.max(0, candidateRightLayout.windowHeight - keyboardHeight)
-    : 0;
-  const candidateRailBottomInset =
-    candidateRightLayout && keyboardHeight > 0
-      ? NAVIGATION_ROOT_RAIL_GUTTER
-      : candidateRightLayout?.railBottomInset;
   const hasRootTabs = actions.some(action => action.rootTab);
   const contextualActionCount = actions.filter(
     action => action.id !== 'primary',
   ).length;
-  // Native inner actions keep one flexible spacer, so each control also needs
-  // one stack gap.
-  // Keyboard resizing can remove room for either native stack. Move controls
-  // to bottom flow rather than clipping them.
-  const navFits = candidateRightLayout
-    ? hasRootTabs
-      ? fitsNavigationRootRail(
-          candidateRailHeight,
-          candidateRightLayout.railTopInset,
-          candidateRailBottomInset ?? 0,
-        )
-      : fitsNavigationRailSegment(
-          candidateRailHeight,
-          candidateRightLayout.railTopInset,
-          candidateRailBottomInset ?? 0,
-          contextualActionCount *
-            (NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
-              NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING),
-        )
-    : false;
-  const pageLayout = candidateRightLayout
-    ? pageActionRailLayout({
-        height: candidateRailHeight,
-        top: candidateRightLayout.railTopInset,
-        bottom: candidateRailBottomInset ?? 0,
-        rootTabs: hasRootTabs,
-        navigationCount: contextualActionCount,
-        actionCount: taskActions.length,
-      })
-    : undefined;
-  const rightLayout =
-    navFits && pageLayout?.fits ? candidateRightLayout : undefined;
+  const {
+    rightLayout,
+    pageLayout,
+    height: railHeight,
+    bottomInset: railBottomInset,
+  } = navigationRailPresentation(
+    layout,
+    keyboardHeight,
+    hasRootTabs,
+    contextualActionCount,
+    taskActions.length,
+  );
   const isRightRail = rightLayout !== undefined;
   const laneActions = actions.some(action => action.id === 'primary')
     ? actions.filter(action => action.id !== 'primary')
     : actions;
-  const {
-    navWidth,
-    pageWidth,
-    pageLeft,
-    bottomHeight,
-    singleRow,
-    onRowMetrics,
-  } = useBottomNavigationRow({
-    routeKey,
+  const managedBottom =
+    !isRightRail && Platform.OS === 'ios' && Surface === NavigationGlassSurface;
+  const row = useBottomNavigationRow({
     actions: laneActions,
     taskActions,
-    isRightRail,
+    enabled: managedBottom,
     hasRootTabs,
+    availableWidthOverride,
   });
-  const railHeight = isRightRail ? candidateRailHeight : 0;
-  const railBottomInset = isRightRail ? candidateRailBottomInset : undefined;
+  const showMore = useBottomActionMenu({
+    routeKey,
+    navigation: row.overflowNavigation,
+    pages: row.overflowPages,
+    disabled: pageActionsDisabled,
+    onNavigation: onAction,
+  });
+  const singleRow = managedBottom && row.status === 'ready';
+  const navWidth = row.plan?.navWidth ?? 0;
+  const pageWidth = row.plan?.pageWidth ?? 0;
+  const pageLeft = row.plan?.pageLeft ?? 0;
+  const displayedNavigation = singleRow
+    ? [
+        ...row.directNavigation,
+        ...(hasRootTabs && row.overflow
+          ? [{ ...row.more, disabled: pageActionsDisabled }]
+          : []),
+      ]
+    : laneActions;
   const railFrameStyle = rightLayout
     ? {
         bottom: 0,
@@ -170,16 +152,26 @@ export function NavigationActionBarPresentation({
   const hostStyle: StyleProp<ViewStyle> = isRightRail
     ? [styles.railHost, railFrameStyle]
     : styles.safeArea;
-  const pageDock = taskActions.length ? (
+  const pageDock = managedBottom ? (
+    singleRow &&
+    (row.directPage.length > 0 || (!hasRootTabs && row.overflow)) ? (
+      <NavigationBottomPageActions
+        actions={row.directPage}
+        disabled={pageActionsDisabled}
+        height={row.bottomHeight}
+        includeMore={!hasRootTabs && row.overflow}
+        isDarkAppearance={isDarkAppearance}
+        onMore={showMore}
+        surface={Surface}
+      />
+    ) : null
+  ) : taskActions.length ? (
     <NavigationPageActionDock
       actions={taskActions}
       capacity={isRightRail ? (pageLayout?.capacity ?? 1) : 1}
-      compactBottom={singleRow}
       disabled={pageActionsDisabled}
       isDarkAppearance={isDarkAppearance}
       isRail={isRightRail}
-      navigationActions={isRightRail ? [] : laneActions}
-      onRowMetrics={onRowMetrics}
       key={routeKey}
       routeKey={routeKey}
       surface={Surface}
@@ -193,23 +185,29 @@ export function NavigationActionBarPresentation({
               railAvailableHeight: railHeight,
               style: styles.railSurface,
             }
-          : { layoutMode: 'bottom', bottomHeight }
+          : { layoutMode: 'bottom' }
       }
     />
   ) : null;
   const surfacePosition = (
     <NavigationSurfacePosition
-      reclaimRootTabInset={reclaimRootTabInset && !isRightRail && !singleRow}
+      reclaimRootTabInset={reclaimRootTabInset && !isRightRail && !pageDock}
       style={
         isRightRail ? styles.fill : singleRow ? { width: navWidth } : undefined
       }
     >
       <Surface
-        actions={laneActions}
-        onAction={onAction}
+        actions={displayedNavigation}
+        onAction={event =>
+          event.nativeEvent.id === 'navigation-overflow'
+            ? showMore()
+            : onAction(event)
+        }
         testID={isRightRail ? 'navigation-right-rail' : surfaceTestID}
         style={nativeSurfaceStyle}
-        bottomHeight={isRightRail ? undefined : bottomHeight}
+        bottomHeight={managedBottom ? row.bottomHeight : undefined}
+        pageMetricsRequest={row.measurement}
+        onPageMetrics={managedBottom ? row.onMetrics : undefined}
         {...railProps}
       >
         {isRightRail ? null : bottomActions}
@@ -228,6 +226,11 @@ export function NavigationActionBarPresentation({
       safeAreaHandledByParent={safeAreaHandledByParent}
       singleRow={singleRow}
       surfacePosition={surfacePosition}
+      status={
+        managedBottom && (row.status === 'pending' || row.status === 'unfit')
+          ? row.status
+          : undefined
+      }
     />
   );
 }

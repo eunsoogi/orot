@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Text,
+  View,
+  useColorScheme,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { navigationActionBarStyles as styles } from './navigationActionBarStyles';
 
@@ -15,6 +21,7 @@ export function NavigationBarHost({
   safeAreaHandledByParent,
   singleRow,
   surfacePosition,
+  status,
 }: {
   hostStyle: StyleProp<ViewStyle>;
   isRightRail: boolean;
@@ -26,17 +33,21 @@ export function NavigationBarHost({
   safeAreaHandledByParent: boolean;
   singleRow: boolean;
   surfacePosition: ReactNode;
+  status?: 'pending' | 'unfit';
 }) {
+  const isDark = useColorScheme() === 'dark';
   const content = (
     <View
       pointerEvents="box-none"
       testID={singleRow ? 'navigation-bottom-single-row' : undefined}
       style={
-        isRightRail
-          ? styles.fill
-          : singleRow && hasRootTabs
-            ? styles.bottomRow
-            : undefined
+        status
+          ? styles.statusHost
+          : isRightRail
+            ? styles.fill
+            : singleRow && hasRootTabs
+              ? styles.bottomRow
+              : undefined
       }
     >
       {pageDock ? (
@@ -55,7 +66,30 @@ export function NavigationBarHost({
           {pageDock}
         </View>
       ) : null}
-      {surfacePosition}
+      <View
+        pointerEvents={status ? 'none' : 'box-none'}
+        accessibilityElementsHidden={Boolean(status)}
+        importantForAccessibility={status ? 'no-hide-descendants' : 'auto'}
+        style={
+          status
+            ? styles.measurementHost
+            : isRightRail
+              ? styles.fill
+              : undefined
+        }
+      >
+        {surfacePosition}
+      </View>
+      {status ? (
+        <Text
+          accessibilityRole={status === 'unfit' ? 'alert' : 'progressbar'}
+          style={[styles.statusText, isDark && styles.statusTextDark]}
+        >
+          {status === 'unfit'
+            ? '이 화면에 필요한 탐색 동작을 표시할 공간이 부족해요.'
+            : '탐색 동작을 준비하고 있어요.'}
+        </Text>
+      ) : null}
     </View>
   );
   return (

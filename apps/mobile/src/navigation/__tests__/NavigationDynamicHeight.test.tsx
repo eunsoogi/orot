@@ -44,14 +44,16 @@ describe('measured bottom navigation', () => {
           rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
         />,
       );
-      const surface = screen.getByTestId('navigation-bar-native-surface');
+      const surface = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       await act(async () =>
         surface.props.onPageMetrics({
           nativeEvent: {
             revision: surface.props.pageMetricsRequest.revision,
             width: 390,
-            widths: [60, 60, 60, 60, 60],
-            heights: [110, 110, 110, 110, 110],
+            widths: [60, 60, 60, 60, 60, 44],
+            heights: [110, 110, 110, 110, 110, 60],
           },
         }),
       );
@@ -87,7 +89,9 @@ describe('measured bottom navigation', () => {
           ]}
         />,
       );
-      const dock = screen.getByTestId('navigation-page-action-surface');
+      const dock = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       await act(async () =>
         dock.props.onPageMetrics({
           nativeEvent: {

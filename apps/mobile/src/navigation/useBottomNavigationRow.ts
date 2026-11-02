@@ -1,103 +1,136 @@
 import { useCallback, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useNavigationContentFrame } from './navigationContentFrame';
-import type { NavigationGlassAction } from './NavigationGlassSurface';
+import type {
+  NavigationGlassAction,
+  NavigationGlassSurfaceProps,
+} from './NavigationGlassSurface';
+import {
+  navigationMoreDescriptor,
+  pageActionDescriptor,
+} from './navigationActionDescriptor';
+import { navigationBottomPlan } from './navigationBottomPlan';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
-/** Uses only measurements belonging to the current route and window configuration. */
+/** One native measurement covers navigation, page actions, and the More target. */
 export function useBottomNavigationRow({
-  routeKey,
   actions,
   taskActions,
-  isRightRail,
+  enabled,
   hasRootTabs,
+  availableWidthOverride,
 }: {
-  routeKey: string;
   actions: readonly NavigationGlassAction[];
   taskActions: readonly NavigationRouteAction[];
-  isRightRail: boolean;
+  enabled: boolean;
   hasRootTabs: boolean;
+  availableWidthOverride?: number;
 }) {
   const { width, fontScale } = useWindowDimensions();
   const frame = useNavigationContentFrame();
-  const availableWidth = frame?.availableContentFrame.width ?? width;
-  const key = JSON.stringify([
-    routeKey,
+  const availableWidth =
+    availableWidthOverride ?? frame?.availableContentFrame.width ?? width;
+  const more = navigationMoreDescriptor(hasRootTabs);
+  const measuredActions = [
+    ...actions,
+    ...taskActions.map(action => pageActionDescriptor(action, false, false)),
+    more,
+  ];
+  // Selection and availability do not affect UIKit's measured label geometry.
+  // Reuse those measurements across tab changes to preserve the native host.
+  const revision = JSON.stringify([
     availableWidth,
     fontScale,
-    actions,
-    taskActions.map(({ id, label, navigationLabel, systemImageName }) => [
-      id,
-      label,
-      navigationLabel,
-      systemImageName,
-    ]),
+    measuredActions.map(action => {
+      const geometry = { ...action };
+      delete geometry.selected;
+      delete geometry.disabled;
+      delete geometry.busy;
+      // UIKit measures the presence of an icon, not which SF Symbol is used.
+      if (geometry.systemImageName) geometry.systemImageName = 'icon';
+      return geometry;
+    }),
   ]);
   const [metrics, setMetrics] = useState<{
-    key: string;
-    navigationWidths: number[];
-    actionWidths: number[];
-    height: number;
+    revision: string;
+    widths: number[];
+    heights: number[];
   }>();
-  const onRowMetrics = useCallback(
-    (next: {
-      navigationWidths: number[];
-      actionWidths: number[];
-      height: number;
-    }) => {
-      if (
-        ![...next.navigationWidths, ...next.actionWidths, next.height].every(
-          value => Number.isFinite(value) && value >= 0,
+  const onMetrics: NonNullable<NavigationGlassSurfaceProps['onPageMetrics']> =
+    useCallback(
+      ({ nativeEvent }) => {
+        if (
+          nativeEvent.revision !== revision ||
+          nativeEvent.widths.length !== measuredActions.length ||
+          nativeEvent.heights.length !== measuredActions.length ||
+          ![...nativeEvent.widths, ...nativeEvent.heights].every(
+            value => Number.isFinite(value) && value > 0,
+          )
         )
-      )
-        return;
-      const value = { ...next, key };
-      setMetrics(current =>
-        JSON.stringify(current) === JSON.stringify(value) ? current : value,
-      );
-    },
-    [key],
+          return;
+        setMetrics(current =>
+          JSON.stringify(current) === JSON.stringify(nativeEvent)
+            ? current
+            : nativeEvent,
+        );
+      },
+      [revision, measuredActions.length],
+    );
+  const ready = enabled && availableWidth > 0 && metrics?.revision === revision;
+  const primaryIndices = taskActions.flatMap((action, index) =>
+    action.navigationPriority === 'primary' || action.id === 'primary'
+      ? [index]
+      : [],
   );
-  const navWidth = metrics
-    ? 32 +
-      (hasRootTabs
-        ? Math.max(0, ...metrics.navigationWidths) * actions.length
-        : metrics.navigationWidths.reduce((a, b) => a + b, 0)) +
-      (hasRootTabs ? Math.max(0, actions.length - 1) * 4 : actions.length * 12)
-    : 0;
-  const pageWidth = metrics
-    ? 16 +
-      metrics.actionWidths.reduce((a, b) => a + b, 0) +
-      Math.max(0, taskActions.length - 1) * 12
-    : 0;
-  // Detail navigation keeps Back and Home at the outer edges; the page group
-  // occupies only the clear center between those independently mounted controls.
-  const backIndex = actions.findIndex(action => action.id === 'back');
-  const homeIndex = actions.findIndex(action => action.id === 'home');
-  const leftEdge =
-    16 + (backIndex >= 0 ? (metrics?.navigationWidths[backIndex] ?? 0) : 0);
-  const rightEdge =
-    16 + (homeIndex >= 0 ? (metrics?.navigationWidths[homeIndex] ?? 0) : 0);
-  const rowWidth = availableWidth - 16;
-  const pageLeft =
-    leftEdge +
-    4 +
-    Math.max(0, rowWidth - leftEdge - rightEdge - 8 - pageWidth) / 2;
-  const singleRow =
-    !isRightRail &&
-    taskActions.length > 0 &&
-    metrics?.key === key &&
-    metrics.navigationWidths.length === actions.length &&
-    metrics.actionWidths.length === taskActions.length &&
-    (hasRootTabs
-      ? navWidth + pageWidth + 8
-      : pageWidth + leftEdge + rightEdge + 8) <= rowWidth;
+  const plan = ready
+    ? navigationBottomPlan({
+        width: availableWidth,
+        navigation: actions,
+        navigationWidths: metrics.widths.slice(0, actions.length),
+        pageWidths: metrics.widths.slice(actions.length, -1),
+        moreWidth: metrics.widths.at(-1)!,
+        primaryPageIndices: primaryIndices,
+      })
+    : undefined;
+  const overflow =
+    plan &&
+    (plan.overflowNavigation.length > 0 || plan.overflowPages.length > 0);
+  const directNavigation = plan
+    ? plan.navigationIndices.map(index => actions[index]!)
+    : [];
+  const directPage = plan
+    ? plan.pageIndices.map(index => taskActions[index]!)
+    : [];
+  const visibleHeights = plan
+    ? [
+        ...plan.navigationIndices.map(index => metrics!.heights[index]!),
+        ...plan.pageIndices.map(
+          index => metrics!.heights[actions.length + index]!,
+        ),
+        ...(overflow ? [metrics!.heights.at(-1)!] : []),
+      ]
+    : [];
   return {
-    navWidth: hasRootTabs ? navWidth : rowWidth,
-    pageWidth,
-    pageLeft,
-    bottomHeight: metrics?.key === key ? metrics.height : 0,
-    singleRow,
-    onRowMetrics,
+    status: !enabled
+      ? ('disabled' as const)
+      : !ready
+        ? ('pending' as const)
+        : plan
+          ? ('ready' as const)
+          : ('unfit' as const),
+    plan,
+    more,
+    overflow: Boolean(overflow),
+    directNavigation,
+    directPage,
+    overflowNavigation: plan
+      ? plan.overflowNavigation.map(index => actions[index]!)
+      : [],
+    overflowPages: plan
+      ? plan.overflowPages.map(index => taskActions[index]!)
+      : [],
+    bottomHeight: Math.max(0, ...visibleHeights),
+    measurement: enabled ? { revision, actions: measuredActions } : undefined,
+    onMetrics,
   };
 }

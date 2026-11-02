@@ -61,7 +61,9 @@ describe('measured bottom navigation', () => {
           pageActions={actions}
         />,
       );
-      const dock = screen.getByTestId('navigation-page-action-surface');
+      const dock = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       await act(async () =>
         dock.props.onPageMetrics({
           nativeEvent: {
@@ -73,12 +75,14 @@ describe('measured bottom navigation', () => {
         }),
       );
       expect(screen.getByTestId('navigation-bottom-single-row')).toBeTruthy();
-      const resizedDock = screen.getByTestId('navigation-page-action-surface');
+      const resizedDock = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       await act(async () =>
         resizedDock.props.onPageMetrics({
           nativeEvent: {
             revision: resizedDock.props.pageMetricsRequest.revision,
-            width: 204,
+            width: 374,
             widths: [48, 64, 88, 88, 44],
             heights: [48, 48, 48, 48, 48],
           },
@@ -96,8 +100,7 @@ describe('measured bottom navigation', () => {
         });
       });
       expect(screen.queryByTestId('navigation-bottom-single-row')).toBeNull();
-      expect(screen.getByTestId('navigation-back')).toBeTruthy();
-      expect(screen.getByTestId('navigation-home')).toBeTruthy();
+      expect(screen.getByRole('progressbar')).toBeTruthy();
     } finally {
       await act(async () => {
         Dimensions.set({ window: originalWindow, screen: originalScreen });
@@ -131,7 +134,9 @@ describe('measured bottom navigation', () => {
           ]}
         />,
       );
-      const dock = screen.getByTestId('navigation-page-action-surface');
+      const dock = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       await act(async () =>
         dock.props.onPageMetrics({
           nativeEvent: {
@@ -144,7 +149,9 @@ describe('measured bottom navigation', () => {
       );
       expect(screen.getByTestId('navigation-bottom-single-row')).toBeTruthy();
       expect(screen.getByTestId('navigation-tab-home')).toBeTruthy();
-      expect(screen.getByTestId('navigation-tab-settings')).toBeTruthy();
+      expect(
+        screen.getByTestId('navigation-page-action-overflow'),
+      ).toBeTruthy();
       await act(async () =>
         screen
           .getByTestId('navigation-page-action-surface')
@@ -199,7 +206,9 @@ describe('measured bottom navigation', () => {
           ]}
         />,
       );
-      const dock = screen.getByTestId('navigation-page-action-surface');
+      const dock = screen.getByTestId('navigation-bar-native-surface', {
+        includeHiddenElements: true,
+      });
       const revision = dock.props.pageMetricsRequest.revision;
       await act(async () =>
         dock.props.onPageMetrics({

@@ -9,6 +9,16 @@ export const navigationActionBarStyles = StyleSheet.create({
   fill: { flex: 1 },
   bottomRow: { alignItems: 'center', flexDirection: 'row-reverse', gap: 8 },
   centeredPage: { position: 'absolute', top: 0, zIndex: 1 },
+  statusHost: { justifyContent: 'center', minHeight: 60 },
+  measurementHost: {
+    left: 0,
+    opacity: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  statusText: { color: '#191f28', textAlign: 'center' },
+  statusTextDark: { color: '#f7f8fa' },
   host: { position: 'relative' },
   safeArea: {
     flexShrink: 0,

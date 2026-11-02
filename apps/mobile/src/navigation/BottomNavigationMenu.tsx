@@ -1,17 +1,6 @@
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { useState } from 'react';
+import { Platform, Pressable, Text, useColorScheme, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
-import { appColors } from '../layout/appColors';
-import {
-  NAVIGATION_ACTION_TOP_PADDING,
-  NAVIGATION_ACTION_BOTTOM_PADDING,
-} from './navigationLayout';
 import {
   NavigationGlassSurface,
   type NavigationGlassAction,
@@ -21,6 +10,12 @@ import type {
   NavigationPrimaryAction,
   NavigationSurface,
 } from './NavigationActionBar';
+import { bottomNavigationMenuStyles as styles } from './bottomNavigationMenuStyles';
+import { NavigationActionBarPresentation } from './NavigationActionBarPresentation';
+import {
+  BOTTOM_NAVIGATION_ROOT_LAYOUT,
+  NavigationRootLayoutContext,
+} from './navigationRootLayout';
 
 /** Callback routes keep their own stack while sharing the app's bottom actions. */
 export function BottomNavigationMenu({
@@ -39,6 +34,7 @@ export function BottomNavigationMenu({
   readonly disabled?: boolean;
 }) {
   const isDarkAppearance = useColorScheme() === 'dark';
+  const [contentWidth, setContentWidth] = useState(0);
 
   const nativeActions: NavigationGlassAction[] = [
     {
@@ -128,21 +124,59 @@ export function BottomNavigationMenu({
       ) : null}
     </View>
   );
-  const surface = (
-    <Surface
-      actions={nativeActions}
-      onAction={handleNativeAction}
-      testID={
-        Surface === NavigationGlassSurface && Platform.OS === 'ios'
-          ? 'navigation-bar-native-surface'
-          : 'navigation-bar-fallback'
+  const surface =
+    Platform.OS === 'ios' && Surface === NavigationGlassSurface ? (
+      <NavigationRootLayoutContext.Provider
+        value={BOTTOM_NAVIGATION_ROOT_LAYOUT}
+      >
+        <NavigationActionBarPresentation
+          actions={nativeActions}
+          availableWidthOverride={contentWidth}
+          bottomActions={actions}
+          isDarkAppearance={isDarkAppearance}
+          keyboardHeight={0}
+          keyboardVisible={false}
+          onAction={handleNativeAction}
+          primaryAction={
+            primaryAction
+              ? {
+                  ...primaryAction,
+                  disabled: disabled || primaryAction.disabled,
+                  onPress: () => settleBottomAction(primaryAction.onPress),
+                }
+              : undefined
+          }
+          pageActionsDisabled={disabled}
+          reclaimRootTabInset={false}
+          safeAreaHandledByParent
+          surface={Surface}
+        />
+      </NavigationRootLayoutContext.Provider>
+    ) : (
+      <Surface
+        actions={nativeActions}
+        onAction={handleNativeAction}
+        testID={
+          Surface === NavigationGlassSurface && Platform.OS === 'ios'
+            ? 'navigation-bar-native-surface'
+            : 'navigation-bar-fallback'
+        }
+      >
+        {actions}
+      </Surface>
+    );
+
+  return (
+    <View
+      testID="bottom-navigation-menu-host"
+      style={styles.container}
+      onLayout={event =>
+        setContentWidth(Math.max(0, event.nativeEvent.layout.width - 40))
       }
     >
-      {actions}
-    </Surface>
+      {surface}
+    </View>
   );
-
-  return <View style={styles.container}>{surface}</View>;
 }
 
 function BottomAction({
@@ -199,33 +233,3 @@ function settleBottomAction(action: () => void | Promise<unknown>): void {
       () => undefined,
     );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexShrink: 0,
-    paddingHorizontal: 20,
-    paddingTop: NAVIGATION_ACTION_TOP_PADDING,
-    paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
-  },
-  actions: { flexDirection: 'row', gap: 8 },
-  action: {
-    flex: 1,
-    alignItems: 'center',
-    borderColor: appColors.border,
-    justifyContent: 'center',
-    borderWidth: 1,
-    minHeight: 50,
-    minWidth: 72,
-    borderRadius: 24,
-    paddingHorizontal: 8,
-  },
-  darkAction: { borderColor: '#ffffff' },
-  primaryAction: {
-    backgroundColor: appColors.primaryAction,
-    borderColor: appColors.primaryAction,
-  },
-  label: { color: appColors.primaryText, fontSize: 15, fontWeight: '600' },
-  darkLabel: { color: '#ffffff' },
-  primaryLabel: { color: appColors.onPrimary },
-  disabled: { opacity: 0.5 },
-});

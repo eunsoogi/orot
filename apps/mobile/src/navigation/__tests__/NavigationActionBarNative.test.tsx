@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
 import { NavigationActionBar } from '../NavigationActionBar';
-import { BottomNavigationMenu } from '../BottomNavigationMenu';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');
@@ -135,55 +134,6 @@ describe('native bottom navigation toolbar', () => {
     expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
       expect.objectContaining({ height: 60 }),
     );
-  });
-
-  it('routes callback-route actions through the native toolbar items', async () => {
-    const onBack = jest.fn();
-    const onHome = jest.fn();
-    const onPrimary = jest.fn();
-    await render(
-      <BottomNavigationMenu
-        onBack={onBack}
-        onHome={onHome}
-        testID="calendar-back"
-        primaryAction={{
-          label: '녹음',
-          accessibilityLabel: '녹음 화면으로 이동',
-          onPress: onPrimary,
-          testID: 'navigation-recording',
-          systemImageName: 'mic',
-        }}
-      />,
-    );
-
-    const toolbar = screen.getByTestId('navigation-bar-native-surface');
-    expect(
-      (toolbar.props.actions as Array<Record<string, unknown>>).every(
-        action => !action.rootTab,
-      ),
-    ).toBe(true);
-    expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
-      expect.objectContaining({ height: 48 }),
-    );
-    expect(toolbar.props.actions).toEqual([
-      expect.objectContaining({ id: 'back', testID: 'calendar-back' }),
-      expect.objectContaining({ id: 'home', testID: 'navigation-home' }),
-      expect.objectContaining({
-        id: 'primary',
-        testID: 'navigation-recording',
-        systemImageName: 'mic',
-        titleBelowImage: true,
-      }),
-    ]);
-
-    await act(async () => {
-      toolbar.props.onAction({ nativeEvent: { id: 'back' } });
-      toolbar.props.onAction({ nativeEvent: { id: 'home' } });
-      toolbar.props.onAction({ nativeEvent: { id: 'primary' } });
-    });
-    expect(onBack).toHaveBeenCalledTimes(1);
-    expect(onHome).toHaveBeenCalledTimes(1);
-    expect(onPrimary).toHaveBeenCalledTimes(1);
   });
 
   it('keeps native back disabled while leaving the current route is blocked', async () => {

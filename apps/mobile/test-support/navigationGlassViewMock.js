@@ -37,7 +37,15 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
           if (lastMetrics.current === key) return;
           lastMetrics.current = key;
           const widths = pageMetricsRequest.actions.map(action =>
-            action.id === 'page:overflow' ? 48 : 120 * Math.max(1, fontScale),
+            action.rootTab
+              ? 44 * Math.max(1, fontScale)
+              : action.id === 'back'
+                ? 48
+                : action.id === 'home'
+                  ? 64
+                  : action.id === 'page:overflow'
+                    ? 48
+                    : 120 * Math.max(1, fontScale),
           );
           onPageMetrics({
             nativeEvent: {
