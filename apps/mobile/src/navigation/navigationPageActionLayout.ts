@@ -9,7 +9,7 @@ const step =
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
 const groupGap = 8;
 
-/** Allocates one shared keyboard-adjusted segment to both rail groups. */
+/** Allocates one measured segment to the page-action dock and navigation rail. */
 export function pageActionRailLayout({
   height,
   top,
@@ -35,15 +35,24 @@ export function pageActionRailLayout({
   const capacity = Math.max(0, Math.floor((pageSpace - groupGap) / step));
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
+  const displayedActionHeight =
+    displayed * NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
+    Math.max(0, displayed - 1) * NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
+  // Center the complete action-and-tab group around the measured usable segment.
+  const actionGroupHeight = displayed > 0 ? displayedActionHeight + groupGap : 0;
   const pageBottom = rootTabs
-    ? top + (available - navHeight) / 2 - groupGap
+    ? top + (available - navHeight) / 2 - groupGap + actionGroupHeight / 2
     : top + displayed * step;
   return {
     fits,
     capacity,
     pageBottomInset: Math.max(0, height - pageBottom),
     navigationTopInset:
-      rootTabs || !displayed ? top : top + displayed * step + groupGap,
+      rootTabs
+        ? top + actionGroupHeight
+        : !displayed
+          ? top
+          : top + displayed * step + groupGap,
   };
 }
 
