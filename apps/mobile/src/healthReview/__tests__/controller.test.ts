@@ -1,6 +1,6 @@
 import { HealthReviewController } from '../controller';
 import type { HealthReviewService } from '../service';
-import { healthReviewSqlite, instant } from '../testing/sqlite';
+import { healthReviewSqlite } from '../testing/sqlite';
 
 describe('Retained operation ownership and deterministic guidance', () => {
   let f: Awaited<ReturnType<typeof healthReviewSqlite>>;
@@ -9,7 +9,7 @@ describe('Retained operation ownership and deterministic guidance', () => {
   });
   afterEach(() => f.close());
   const consent = { authorize: async () => 'renewal_required' as const };
-  it('publishes all local actions while clarification is pending before provider/service completion', async () => {
+  it('keeps blood-pressure policy inputs unknown while clarification is pending before provider/service completion', async () => {
     let release!: () => void;
     const gate = new Promise<void>(resolve => {
       release = resolve;
@@ -27,28 +27,28 @@ describe('Retained operation ownership and deterministic guidance', () => {
     const controller = new HealthReviewController(service);
     controller.setName('내 검토');
     controller.setDraft({
-      population: 'adult_not_pregnant',
-      readingContext: 'current_measurement',
+      population: 'unknown',
       symptoms: 'unknown',
       signs: [],
       upcomingVisit: 'unknown',
-      readings: [
-        {
-          systolic: '190',
-          diastolic: '125',
-          measuredAt: instant,
-          source: '내 혈압계',
-        },
-      ],
     });
     const run = controller.run(consent);
     expect(controller.snapshot().safety).toMatchObject({
       category: 'insufficient_information',
-      requiredActions: [
-        'confirm_warning_symptoms',
-        'seek_immediate_emergency_help_if_warning_signs_are_present',
-      ],
+      requiredActions: ['provide_required_information'],
+      missingInputs: ['explicit_symptom_assessment'],
     });
+    expect(service.start).toHaveBeenCalledWith(
+      '내 검토',
+      {
+        requestType: 'health_review',
+        population: 'unknown',
+        readingContext: 'unknown',
+        symptomAssessment: { status: 'unknown' },
+      },
+      consent,
+      expect.any(AbortSignal),
+    );
     expect(controller.snapshot().busy).toBe(true);
     controller.cancel();
     release();

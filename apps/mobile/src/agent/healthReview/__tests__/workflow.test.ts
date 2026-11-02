@@ -134,7 +134,7 @@ describe('Health review app adapter with actual policy, tools, model runtime and
     expect(urgent.synthetic.toolCalls()).toBe(0);
   });
 
-  it('retains insufficient information when either structured trends or personal evidence is missing', async () => {
+  it('preserves the policy decision when structured trends or personal evidence is missing', async () => {
     const pending = run({
       safetyInput: syntheticReviewSafety,
       setup: synthetic => {
@@ -158,7 +158,11 @@ describe('Health review app adapter with actual policy, tools, model runtime and
       status: 'needs_clarification',
       pending: {
         reason: 'evidence',
-        safety: { category: 'insufficient_information' },
+        safety: {
+          category: 'no_triggered_action',
+          requiredActions: [],
+          missingInputs: [],
+        },
       },
     });
     expect(pending.synthetic.modelCalls()).toBe(0);
@@ -174,7 +178,7 @@ describe('Health review app adapter with actual policy, tools, model runtime and
         safetyInput: syntheticReviewSafety,
       },
     });
-    expect(await forged.result).toEqual({ status: 'stale_evidence' });
+    expect(await forged.result).toEqual({ status: 'unavailable' });
     expect(forged.synthetic.modelCalls()).toBe(0);
     const stillMissing = await run({
       clarification: { pending: first.pending, safetyInput: {} },

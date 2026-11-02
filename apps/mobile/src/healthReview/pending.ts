@@ -19,7 +19,10 @@ export function readHealthReviewPending(
     return null;
   const pending = values.pending;
   const safety = SafetyPolicyDecisionSchema.safeParse(pending.safety);
-  // Both graph interrupt paths use insufficient information and exactly these five fields.
+  const hasMode = Object.prototype.hasOwnProperty.call(pending, 'mode');
+  const pendingMode = hasMode ? pending.mode : 'strict';
+  const checkpointMode = values.mode === undefined ? 'strict' : values.mode;
+  // Resume mode is persisted beside the interrupt; legacy omission means strict.
   // Reject unknown content instead of stripping it: continuation must submit the unchanged snapshot.
   const pendingKeys = [
     'threadId',
@@ -27,15 +30,27 @@ export function readHealthReviewPending(
     'safety',
     'references',
     'reason',
+    ...(hasMode ? ['mode'] : []),
   ];
+  const validPendingCategory =
+    pending.reason === 'safety_context'
+      ? safety.success && safety.data.category === 'insufficient_information'
+      : safety.success &&
+        ['insufficient_information', 'no_triggered_action'].includes(
+          safety.data.category,
+        );
   if (
     Object.keys(pending).length !== pendingKeys.length ||
     Object.keys(pending).some(key => !pendingKeys.includes(key)) ||
+    (hasMode &&
+      !['strict', 'record_observation'].includes(String(pendingMode))) ||
+    !['strict', 'record_observation'].includes(String(checkpointMode)) ||
+    pendingMode !== checkpointMode ||
     pending.threadId !== sourceId ||
     pending.sourceId !== sourceId ||
     !['safety_context', 'evidence'].includes(String(pending.reason)) ||
     !safety.success ||
-    safety.data.category !== 'insufficient_information' ||
+    !validPendingCategory ||
     !Array.isArray(pending.references) ||
     !Array.isArray(values.references) ||
     encounterCanonical(pending.safety) !== encounterCanonical(values.safety) ||
