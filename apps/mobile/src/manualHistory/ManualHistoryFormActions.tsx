@@ -2,7 +2,7 @@ import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
-/** Save and close preserve the editor's own validation and draft boundary. */
+/** Save progress and close emphasis stay inside the editor's existing draft boundary. */
 export function ManualHistoryFormActions({
   saving,
   isCorrection,
@@ -45,13 +45,15 @@ export function ManualHistoryFormActions({
   return (
     <>
       <AppButton
+        busy={saving}
         disabled={saving}
         onPress={onSave}
         testID="manual-history-save"
         title={save}
       />
       <AppButton
-        variant="secondary"
+        size="compact"
+        variant="cancel"
         disabled={saving}
         onPress={onClose}
         testID="manual-history-form-close"

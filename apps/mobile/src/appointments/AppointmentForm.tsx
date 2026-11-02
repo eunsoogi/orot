@@ -21,6 +21,7 @@ interface AppointmentFormProps {
   onClose: () => void;
 }
 
+/** The action variants clarify save versus close without changing form ownership. */
 export default function AppointmentForm({
   editing,
   clinicLabel,
@@ -110,6 +111,7 @@ export default function AppointmentForm({
       />
       {!hasDock ? (
         <Button
+          busy={saving}
           disabled={saving}
           onPress={onSave}
           testID="appointment-save"
@@ -122,10 +124,12 @@ export default function AppointmentForm({
       ) : null}
       {!hasDock ? (
         <Button
+          size="compact"
           disabled={saving}
           onPress={onClose}
           testID="appointment-form-cancel"
           title={t('appointments.actions.close')}
+          variant="cancel"
         />
       ) : null}
     </View>

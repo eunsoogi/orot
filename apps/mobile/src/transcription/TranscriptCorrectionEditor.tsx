@@ -13,7 +13,7 @@ interface Props {
   readonly onCancel: () => void;
 }
 
-/** One editor follows the evidence cards, keeping the selected audio and saved text visible. */
+/** Keeps transcript edits with their source while exposing save progress and cancel intent. */
 export default function TranscriptCorrectionEditor({
   ordinal,
   busy,
@@ -40,7 +40,8 @@ export default function TranscriptCorrectionEditor({
       <View style={styles.editorActions}>
         <View style={styles.editorAction}>
           <AppButton
-            variant="secondary"
+            size="compact"
+            variant="cancel"
             disabled={busy}
             onPress={onCancel}
             testID={`transcript-cancel-${ordinal}`}
@@ -49,6 +50,7 @@ export default function TranscriptCorrectionEditor({
         </View>
         <View style={styles.editorAction}>
           <AppButton
+            busy={busy}
             disabled={busy}
             onPress={onSave}
             testID={`transcript-save-${ordinal}`}
