@@ -6,8 +6,15 @@ import XCTest
 final class WindowPresentationAnchorIntegrationTests: XCTestCase {
     @MainActor
     func testBridgeFallbackUsesTheSingleForegroundKeyWindow() throws {
-        let window = try foregroundKeyWindow()
-        let source = try XCTUnwrap(window.rootViewController?.viewIfLoaded)
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
+        let root = try XCTUnwrap(window.rootViewController)
+        root.loadViewIfNeeded()
+        // A test-owned root-only window keeps bridge selection independent of the app's navigation hierarchy.
+        XCTAssertTrue(root.children.isEmpty)
+        XCTAssertNil(root.presentedViewController)
+        let source = try XCTUnwrap(root.viewIfLoaded)
         let originalSubviewCount = source.subviews.count
         let item = try autoreleasepool { () throws -> UIView in
             var anchor = WindowPresentationAnchor.resolve(foregroundKeyWindows: [window])
@@ -34,15 +41,14 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
         }
         XCTAssertNil(item.superview)
         XCTAssertEqual(source.subviews.count, originalSubviewCount)
+        try assertBridgeFallbackSelectsRootPresenter(in: window, root: root)
     }
 
     @MainActor
     func testAttachedCallerViewKeepsSystemFilePickerInItsOwningWindow() throws {
-        let (window, originalWindow) = try isolatedKeyWindow()
-        defer {
-            window.isHidden = true
-            originalWindow.makeKeyAndVisible()
-        }
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let root = try XCTUnwrap(window.rootViewController)
         let screenBounds = try XCTUnwrap(window.windowScene).screen.coordinateSpace.bounds
         let halfWidth = screenBounds.width / 2
@@ -55,7 +61,7 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
         root.view.addSubview(source)
         defer { source.removeFromSuperview() }
 
-        // A test-owned window in each screen half exercises both Split View coordinate origins without a private multitasking gesture.
+        // Test-owned windows exercise both Split View coordinate origins without a private gesture.
         for sideFrame in splitSideFrames {
             window.frame = sideFrame
             root.view.setNeedsLayout()
@@ -66,7 +72,8 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.modalPresentationStyle = .popover
             let configured = anchor.apply(to: picker)
-            // UIKit keeps this picker as a form sheet even when a popover is requested; nil means no popover was configured.
+            // UIKit keeps this picker as a form sheet even when a popover is requested; nil means
+            // no popover was configured.
             XCTAssertEqual(picker.modalPresentationStyle, .formSheet)
             XCTAssertNil(picker.popoverPresentationController)
             XCTAssertNil(configured)
@@ -106,17 +113,22 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testBridgeFallbackRejectsMultipleKeyWindowCandidates() throws {
-        let window = try foregroundKeyWindow()
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let scene = try XCTUnwrap(window.windowScene)
-        // The injected bridge candidate list must fail closed before it can choose either window.
+        // Both candidates are test-owned windows in the same foreground scene; ambiguity must fail closed.
         let otherCandidate = UIWindow(windowScene: scene)
         otherCandidate.frame = window.bounds
+        otherCandidate.rootViewController = UIViewController()
         XCTAssertNil(WindowPresentationAnchor.resolve(foregroundKeyWindows: [window, otherCandidate]))
     }
 
     @MainActor
     func testPopoverAnchorRejectsARegionOutsideItsWindow() throws {
-        let window = try foregroundKeyWindow()
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let root = try XCTUnwrap(window.rootViewController)
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 10, height: 10))
         root.view.addSubview(source)
@@ -128,7 +140,9 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testMovingTheSourceRegionOutOfWindowInvalidatesTheAnchor() throws {
-        let window = try foregroundKeyWindow()
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let root = try XCTUnwrap(window.rootViewController)
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 10, height: 10))
         root.view.addSubview(source)
@@ -148,10 +162,13 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testDetachedSourceViewInvalidatesTheResolvedAnchorBeforePresentation() throws {
-        let window = try foregroundKeyWindow()
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let root = try XCTUnwrap(window.rootViewController)
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 1, height: 1))
         root.view.addSubview(source)
+        defer { source.removeFromSuperview() }
         let anchor = try XCTUnwrap(WindowPresentationAnchor.resolve(from: source))
 
         source.removeFromSuperview()
@@ -167,7 +184,9 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testChangingTheKeyWindowInvalidatesTheResolvedAnchor() throws {
-        let window = try foregroundKeyWindow()
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let scene = try XCTUnwrap(window.windowScene)
         let root = try XCTUnwrap(window.rootViewController)
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 1, height: 1))
@@ -194,11 +213,9 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
 
     @MainActor
     func testChangingThePresentationStackInvalidatesTheResolvedPresenter() throws {
-        let (window, originalWindow) = try isolatedKeyWindow()
-        defer {
-            window.isHidden = true
-            originalWindow.makeKeyAndVisible()
-        }
+        let fixture = try WindowPresentationAnchorTestWindow()
+        let window = fixture.window
+        defer { fixture.restore() }
         let root = try XCTUnwrap(window.rootViewController)
         let source = UIView(frame: CGRect(x: 8, y: 8, width: 10, height: 10))
         root.view.addSubview(source)
@@ -223,27 +240,7 @@ final class WindowPresentationAnchorIntegrationTests: XCTestCase {
         anchor.present(controller, animated: false) { presented = $0 }
         XCTAssertEqual(presented, false)
         XCTAssertNil(controller.presentingViewController)
-    }
 
-    @MainActor
-    private func foregroundKeyWindow() throws -> UIWindow {
-        let windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .filter { $0.activationState == .foregroundActive }
-            .flatMap(\.windows)
-            .filter { $0.isKeyWindow && !$0.isHidden && $0.alpha > 0 }
-        XCTAssertEqual(windows.count, 1)
-        return try XCTUnwrap(windows.first)
-    }
-
-    @MainActor
-    private func isolatedKeyWindow() throws -> (window: UIWindow, originalWindow: UIWindow) {
-        let originalWindow = try foregroundKeyWindow()
-        let scene = try XCTUnwrap(originalWindow.windowScene)
-        let window = UIWindow(windowScene: scene)
-        window.frame = originalWindow.frame
-        window.rootViewController = UIViewController()
-        window.makeKeyAndVisible()
-        return (window, originalWindow)
+        try assertBridgeFallbackSelectsVisibleModalPresenter(in: window, root: root)
     }
 }
