@@ -101,12 +101,15 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(navigation.control.isSelected)
         for identifier in ["home-metric-sleep", "home-metric-heartRate"] {
             let card = UITestConditions.element(app, identifier)
-            UITestConditions.scrollTo(card, in: app)
+            XCTAssertTrue(card.waitForAppearance())
+            // Metric cards have no activation handler; XCTest attempts to reveal the selected element.
+            card.tap()
             XCTAssertTrue(card.exists && card.isHittable, identifier)
             if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
                 XCTAssertLessThanOrEqual(card.frame.maxX, navigation.toolbar.frame.minX + 1, identifier)
             }
         }
+        XCTAssertTrue(navigation.control.isSelected)
         var previousY: CGFloat = -1
         for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
             let action = UITestConditions.element(app, identifier)
