@@ -155,9 +155,15 @@ test('Linux focus aggregation reads every evidence layout and always marks selec
     const result = fixture(input);
     assert.equal(result.status, 0, result.stderr);
     const report = JSON.parse(result.stdout);
+    const selection = selectFocusedIosTests(...input);
     assert.equal(report.fullValidation, false);
     assert.equal(report.sourceSha, sha);
-    assert.equal(report.selectedCases, selectFocusedIosTests(...input).expectedCount);
+    assert.equal(report.runId, '1234');
+    assert.equal(report.attempt, '1');
+    assert.equal(report.profile, selection.profile);
+    assert.equal(report.configuration, selection.configuration);
+    assert.deepEqual(report.identifiers, selection.identifiers);
+    assert.equal(report.selectedCases, selection.expectedCount);
   }
 });
 

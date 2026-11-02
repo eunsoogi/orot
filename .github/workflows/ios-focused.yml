@@ -6,6 +6,7 @@ on:
       profile: { required: true, type: string }
       scenario_file: { required: true, type: string }
       scenario_name: { required: true, type: string }
+      candidate: { required: false, type: boolean, default: false }
 
 permissions:
   contents: read
@@ -25,31 +26,11 @@ env:
 jobs:
   selection:
     name: Plan / Select
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      profile: ${{ steps.selection.outputs.profile }}
-      configuration: ${{ steps.selection.outputs.configuration }}
-      mode: ${{ steps.selection.outputs.mode }}
-      suite: ${{ steps.selection.outputs.suite }}
-      identifier: ${{ steps.selection.outputs.identifier }}
-      prepare_ui: ${{ steps.selection.outputs.prepareUi }}
-      fixture_suite: ${{ steps.selection.outputs.fixtureSuite }}
-      cohorts: ${{ steps.selection.outputs.cohorts }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-      - name: Bind the actual head and exact selection before Mac allocation
-        id: selection
-        env:
-          PROFILE: ${{ inputs.profile }}
-          SOURCE_FILE: ${{ inputs.scenario_file }}
-          TEST_ID: ${{ inputs.scenario_name }}
-        run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID"
+    uses: ./.github/workflows/ios-focused-selection.yml
+    with:
+      profile: ${{ inputs.profile }}
+      scenario_file: ${{ inputs.scenario_file }}
+      scenario_name: ${{ inputs.scenario_name }}
   products:
     name: Build / ${{ needs.selection.outputs.configuration }}
     needs: selection
@@ -132,12 +113,28 @@ jobs:
         with:
           pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-focus-results/cohorts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: inputs.candidate
+        with:
+          name: ios-candidate-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus-results/selection
       - name: Apply the exact selection oracle to exported evidence
         env:
           PROFILE: ${{ inputs.profile }}
           SOURCE_FILE: ${{ inputs.scenario_file }}
           TEST_ID: ${{ inputs.scenario_name }}
-        run: node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results
+          OROT_FOCUSED_CANDIDATE: ${{ inputs.candidate }}
+          OROT_FOCUSED_MANIFEST_DIGEST: ${{ needs.products.outputs.manifest_digest }}
+        run: |
+          node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results > artifacts/ios-focused-result.json
+          cat artifacts/ios-focused-result.json
+      - name: Preserve the verified focused result
+        if: inputs.candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-focused-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focused-result.json
+          if-no-files-found: error
 
   fixture_execution:
     name: Test

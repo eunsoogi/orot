@@ -237,7 +237,8 @@ test('full and focused execution retain one repository allocation window and sep
     'cancel-in-progress': false,
   });
   const focus = read('ios-focused.yml');
-  assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
+  assert.equal(focus.jobs.selection.uses, './.github/workflows/ios-focused-selection.yml');
+  assert.equal(read('ios-focused-selection.yml').jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.products.needs, 'selection');
   assert.equal(focus.jobs.execution.needs, 'products');

@@ -172,3 +172,30 @@ test('focused selection uses its separate workflow and never repeats cases insid
   assert.equal(completeness['runs-on'], 'ubuntu-24.04');
   assert.ok(completeness.steps.every((step) => !step.run?.includes('ios-focused-results.mjs')));
 });
+
+test('candidate result validation preserves a verifier failure before artifact publication', () => {
+  const steps = readYaml('.github/workflows/ios-focused.yml').jobs.completeness.steps;
+  const verify = steps.find((step) => step.run?.includes('ios-focused-results.mjs'));
+  const publish = steps.find((step) => step.name === 'Preserve the verified focused result');
+  assert.ok(steps.indexOf(verify) < steps.indexOf(publish));
+  assert.equal(publish.if, 'inputs.candidate');
+  const root = mkdtempSync(join(tmpdir(), 'orot-focused-failure-'));
+  try {
+    const result = spawnSync(
+      'bash',
+      [
+        '-e',
+        '-c',
+        verify.run.replaceAll('artifacts/ios-focused-result.json', join(root, 'result.json')),
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, PROFILE: 'bad', SOURCE_FILE: 'missing', TEST_ID: 'missing' },
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, '');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

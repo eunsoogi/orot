@@ -225,7 +225,7 @@ Release의 현재 169개 관측은 23개 기능 cohort에 배정됩니다. Debug
 
 Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. Questions의 Conversation은 composer·화면 모드 전환 메서드를, Accessibility는 키보드·큰 글자 및 제목·스와이프 메서드를 완전한 단위로 나누어 실행합니다. 모든 29개 cohort를 실행하고 auth suite를 별도 job으로 마친 뒤 전체 receipt를 검증합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 시간이며, 취소나 미실행은 통과로 집계하지 않습니다.
 
-`E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 dispatch도 `main`에서만 Full 검증을 시작합니다. PR, main push, 다른 브랜치의 수동 dispatch는 Mac E2E 작업을 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
+`E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 Full dispatch도 `main`에서만 실행합니다. 다른 브랜치는 명시적으로 candidate 모드를 선택한 경우에만 제한된 Mac 검증을 시작합니다. PR이나 main push는 E2E를 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
 
 Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 29개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
 
@@ -247,6 +247,20 @@ Full E2E 내부의 Validate 결과는 전체 workflow의 성공을 구성하지�
 
 `Code Quality`·`Policy Check`·`Unit Test`는 PR과 main push에서 실행합니다. `E2E Test`는 `main`의 매일 03:00 KST schedule과 수동 `workflow_dispatch`만 사용하며 PR이나 push에서는 시작하지 않습니다. PR에서 E2E 필수 상태를 기다리지 않고, release workflow는 exact target SHA의 성공한 nightly E2E receipt를 요구합니다.
 
-개발 중 특정 사례는 앞의 로컬 Core 검증 명령을 사용합니다. 공개 선택 실행 workflow는 없으며, `ios-focused.yml`은 Full E2E가 Keychain authentication suite를 실행할 때 재사용합니다.
+검토한 같은 저장소의 열린 Draft PR은 `E2E Test`의 candidate 모드를 수동으로 실행할 수 있습니다. 예를 들어 Backup 전체 상태 그룹은 다음과 같이 후보 브랜치와 그 시점의 전체 head SHA를 지정합니다.
+
+```sh
+gh workflow run e2e-test.yml --ref <candidate-branch> \
+  -f mode=candidate -f candidate_pr=<pr-number> -f expected_sha=<full-head-sha> \
+  -f profile=ios/backup \
+  -f scenario_file=apps/mobile/ios/OrotUITests/BackupPersistenceUITests.swift \
+  -f scenario_name=all
+```
+
+실행 전 PR의 base와 head를 확인하고, 선택된 프로필과 상태 그룹이 변경 영향을 모두 포함하는지 확인합니다. 선택기는 PR의 merge base부터 head까지 변경된 경로를 기존 cohort 영향 목록과 비교합니다. 선택 범위가 부족하거나 공유 영향이 불명확하면 Mac 작업 전에 실패하며, 더 넓은 검증을 별도로 실행해야 합니다. 기본 브랜치에 이미 등록된 `e2e-test.yml`을 사용하므로 후보 브랜치의 workflow 변경을 검증할 때도 새 workflow 등록을 기다릴 필요는 없습니다. 후보 코드가 실행되므로 신뢰하고 검토한 같은 저장소의 PR만 수동으로 실행합니다.
+
+workflow나 `scripts/ci`가 비교 범위에 포함된 PR은 공유 영향이 불명확하므로 이 선택 검사에서 실패합니다. 이 경로 자체의 통과 실행을 merge 전에 검증하려면 구현 브랜치의 정확한 head를 base로 삼고, 그 위에 선택 가능한 테스트 변경만 둔 별도 Draft PR을 사용합니다. 그 PR의 head로 dispatch하며 구현 PR 자체의 변경을 테스트 전용 변경으로 취급하지 않습니다.
+
+완료 후 정확한 run과 attempt의 `ios-candidate-selection-*` 및 `ios-focused-result-*` artifact와 실행 로그, Simulator 정리 결과를 확인합니다. 결과에는 선택한 식별자, 제품 manifest digest와 실제 runtime 관측이 포함됩니다. 선택 실행은 기록된 사례만 증명하며 Full 또는 release 증거가 아닙니다. `ios-focused.yml`은 Full E2E의 Keychain authentication에도 재사용됩니다.
 
 PR 상태 변경과 제목·본문 수정, main push는 E2E를 시작하지 않습니다. `main`의 수동 Full 실행은 동일한 검증 graph를 실행하지만 release 증거가 되지는 않습니다. 실패·누락·취소·오래된 결과가 있으면 nightly Full receipt와 release 검증은 실패하며, 다음 일일 schedule의 exact main SHA 결과를 기다려야 합니다.
