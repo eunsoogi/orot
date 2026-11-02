@@ -94,6 +94,8 @@ export function AppRouteContent({
           <RecordsRoute
             recordings={recordings}
             recordingState={recordingState}
+            // Keep the recent symptom feed on the same injected journal source as Home and Symptoms.
+            loadSymptoms={loadSymptoms}
             onRetryRecordings={() => refreshRecordings()}
             onOpenSymptoms={() => actions.push('symptoms')}
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
