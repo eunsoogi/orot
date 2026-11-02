@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   selection:
-    name: Plan / Select
+    name: Plan
     if: ${{ github.event_name == 'schedule' || inputs.mode == 'full' }}
     uses: ./.github/workflows/ios-full-selection.yml
   candidate:
