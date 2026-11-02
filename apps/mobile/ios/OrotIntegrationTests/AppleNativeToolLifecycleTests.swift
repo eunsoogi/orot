@@ -7,7 +7,7 @@ import XCTest
 #endif
 
 #if OROT_HOST_SWIFT_TESTS
-    // The host has no XCTest invocation-based iOS fail-fast infrastructure.
+    /// The host has no XCTest invocation-based iOS fail-fast infrastructure.
     typealias AppleNativeToolLifecycleTestCase = XCTestCase
 #else
     typealias AppleNativeToolLifecycleTestCase = OrotFailFastTestCase
