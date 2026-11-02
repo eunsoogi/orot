@@ -4,7 +4,7 @@
     /// Opt-in scalar-only samples correlate known dock controls to their owning window and coordinate spaces.
     enum NavigationControlGeometryObservation {
         private static let identifiers: Set<String> = [
-            "manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "navigation-back", "navigation-home",
+            "manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "navigation-back", "navigation-home", "symptom-form-cancel",
         ]
 
         @MainActor static func snapshot(identity: (NSObject) -> String) -> [String: Any] {
@@ -57,14 +57,26 @@
                     depth += 1
                 }
                 allHosted = allHosted && host != nil && ancestor === window
-                return ["identifier": id, "controlID": identity(control), "windowID": control.window.map(identity) as Any? ?? NSNull(),
-                        "hostID": host.map(identity) as Any? ?? NSNull(), "hostRole": hostRole,
-                        "sameWindow": control.window === window, "hidden": hidden, "ancestorComplete": ancestor === window,
-                        "enabled": control.isEnabled, "isAccessibilityElement": control.isAccessibilityElement,
-                        "nativeFrameInWindow": NavigationGeometryTestObservation.finiteRect(native),
-                        "accessibilityFrameInScreen": NavigationGeometryTestObservation.finiteRect(axScreen),
-                        "accessibilityFrameInWindow": NavigationGeometryTestObservation.finiteRect(axWindow),
-                        "frameInScene": NavigationGeometryTestObservation.finiteRect(sceneFrame)]
+                var record: [String: Any] = ["identifier": id, "controlID": identity(control), "windowID": control.window.map(identity) as Any? ?? NSNull(),
+                                             "hostID": host.map(identity) as Any? ?? NSNull(), "hostRole": hostRole,
+                                             "sameWindow": control.window === window, "hidden": hidden, "ancestorComplete": ancestor === window,
+                                             "enabled": control.isEnabled, "isAccessibilityElement": control.isAccessibilityElement,
+                                             "nativeFrameInWindow": NavigationGeometryTestObservation.finiteRect(native),
+                                             "accessibilityFrameInScreen": NavigationGeometryTestObservation.finiteRect(axScreen),
+                                             "accessibilityFrameInWindow": NavigationGeometryTestObservation.finiteRect(axWindow),
+                                             "frameInScene": NavigationGeometryTestObservation.finiteRect(sceneFrame)]
+                if id == "symptom-form-cancel", control.window === window {
+                    // Observe the same public activation point without sending a touch or reading patient content.
+                    let point = window.convert(control.accessibilityActivationPoint, from: nil as UIWindow?)
+                    if point.x.isFinite, point.y.isFinite {
+                        let hit = window.hitTest(point, with: nil)
+                        record["activationInWindow"] = ["x": point.x, "y": point.y]
+                        record["hitRole"] = hit === control ? "control" : hit?.isDescendant(of: control) == true ? "descendant" : hit == nil ? "none" : "other"
+                    } else {
+                        record["hitRole"] = "unavailable"
+                    }
+                }
+                return record
             }
             let counts = Dictionary(grouping: candidates, by: { $0.accessibilityIdentifier ?? "" }).mapValues(\.count)
             let status = correlationStatus(windowCount: windows.count, counts: counts, truncated: truncated, allValid: allFinite && allHosted && candidates.allSatisfy { $0.window === window })
