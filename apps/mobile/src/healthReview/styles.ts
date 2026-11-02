@@ -39,10 +39,6 @@ export const healthReviewStyles = StyleSheet.create({
     borderColor: appColors.primary,
     backgroundColor: appColors.primary,
   },
-  reading: { gap: 8 },
-  measurementRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  measurementValue: { flex: 1, minWidth: 0 },
-  measurementTime: { flex: 1.5, minWidth: 0 },
   input: {
     minHeight: 48,
     width: '100%',
@@ -53,7 +49,5 @@ export const healthReviewStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
     color: appColors.text,
   },
-  pickerScreen: { flex: 1, backgroundColor: appColors.background },
-  pickerPage: { padding: 24, gap: 12 },
   probe: { flex: 1 },
 });

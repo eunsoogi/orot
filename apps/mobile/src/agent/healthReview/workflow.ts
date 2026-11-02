@@ -20,6 +20,7 @@ export async function runLocalHealthReview(input: {
   threadId: string;
   sourceId: string;
   safetyInput: unknown;
+  mode?: HealthReviewOptions['mode'];
   model: HealthReviewModel;
   signal?: AbortSignal;
   clarification?: HealthReviewOptions['clarification'];

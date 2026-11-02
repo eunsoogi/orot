@@ -86,7 +86,7 @@ describe('Default health review tools and durable original evidence identity', (
   });
   afterEach(() => connection.close());
 
-  it('retains insufficient information for real empty-period aggregate receipts and survives registry reconstruction unchanged', async () => {
+  it('preserves the policy result for real empty-period receipts and survives registry reconstruction unchanged', async () => {
     const saver = checkpointer();
     const first = setup(saver);
     const pending = await first.run();
@@ -94,7 +94,11 @@ describe('Default health review tools and durable original evidence identity', (
       status: 'needs_clarification',
       pending: {
         reason: 'evidence',
-        safety: { category: 'insufficient_information' },
+        safety: {
+          category: 'no_triggered_action',
+          requiredActions: [],
+          missingInputs: [],
+        },
       },
     });
     if (pending.status !== 'needs_clarification')
