@@ -42,6 +42,25 @@ test('reads active symptoms and reviewed questions without writing or generating
   expect(repository.resolve).not.toHaveBeenCalled();
 });
 
+test('uses the atomic symptom snapshot when it is available', async () => {
+  const repository = {
+    ...homeJournal(),
+    listActiveWithUpdates: jest.fn(async () => [
+      { entry: activeHomeSymptom, updatedAt: '2026-10-22T09:00:00Z' },
+    ]),
+  };
+  const loadSymptoms = async () => repository;
+  const { result } = await renderHook(() =>
+    useHomePreparationData(undefined, { loadSymptoms }),
+  );
+  await act(async () => {});
+  expect(result.current.symptoms).toEqual([activeHomeSymptom]);
+  expect(result.current.symptomUpdates[activeHomeSymptom.id]).toBe(
+    '2026-10-22T09:00:00Z',
+  );
+  expect(repository.list).not.toHaveBeenCalled();
+});
+
 test('does not mistake a failed read for an empty first-user result and recovers on retry', async () => {
   const loadSymptoms = jest
     .fn()

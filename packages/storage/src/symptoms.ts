@@ -18,6 +18,7 @@ export interface SymptomRepository {
   resolve(id: string, resolvedAt: string): Promise<SymptomEntry | null>;
   list(query?: SymptomQuery): Promise<SymptomEntry[]>;
   getLastUpdatedAt?(id: string): Promise<string | null>;
+  listActiveWithUpdates?(): Promise<Array<{ entry: SymptomEntry; updatedAt: string | null }>>;
 }
 
 function validateQuery(query: SymptomQuery): SymptomQuery {
@@ -118,6 +119,37 @@ export function createSymptomRepository(
         [id],
       );
       return typeof row.rows[0]?.updated_at === 'string' ? row.rows[0].updated_at : null;
+    },
+    async listActiveWithUpdates() {
+      let snapshots: Array<{ entry: SymptomEntry; updatedAt: string | null }> = [];
+      await database.transaction(async (transaction) => {
+        const table = await transaction.execute(
+          "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'symptom_local_updates'",
+        );
+        // The schema check and joined read share a snapshot, even during the first metadata write.
+        const rows = await transaction.execute(
+          table.rows.length
+            ? 'SELECT s.payload_json, u.updated_at FROM symptom_entries s LEFT JOIN symptom_local_updates u ON u.symptom_id = s.id'
+            : 'SELECT payload_json, NULL AS updated_at FROM symptom_entries',
+        );
+        snapshots = rows.rows
+          .map((row) => ({
+            entry: decodeStoredRecord('symptom_entry', row.payload_json),
+            updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,
+          }))
+          .filter(
+            ({ entry }) =>
+              entry.status === 'active' &&
+              entry.provenance.origin === 'user_reported' &&
+              entry.reviewState.status === 'unreviewed',
+          )
+          .sort(
+            (left, right) =>
+              compareTimestamps(right.entry.effectiveAt, left.entry.effectiveAt) ||
+              left.entry.id.localeCompare(right.entry.id),
+          );
+      });
+      return snapshots;
     },
     async list(input = {}) {
       const query = validateQuery(input);

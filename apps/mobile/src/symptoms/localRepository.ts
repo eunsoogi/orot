@@ -15,6 +15,9 @@ declare const require: (path: string) => {
 export interface SymptomJournalRepository {
   list(filter?: SymptomFilter): Promise<SymptomEntry[]>;
   getLastUpdatedAt?(id: string): Promise<string | null>;
+  listActiveWithUpdates?(): Promise<
+    Array<{ entry: SymptomEntry; updatedAt: string | null }>
+  >;
   create(draft: NewSymptomDraft): Promise<SymptomEntry>;
   update(id: string, changes: SymptomEdit): Promise<SymptomEntry | null>;
   resolve(id: string): Promise<SymptomEntry | null>;
@@ -51,6 +54,9 @@ export function createSymptomJournalRepository(
   return {
     getLastUpdatedAt: id =>
       storage.getLastUpdatedAt?.(id) ?? Promise.resolve(null),
+    listActiveWithUpdates: storage.listActiveWithUpdates
+      ? () => storage.listActiveWithUpdates!()
+      : undefined,
     async list(filter = {}) {
       const { localFrom, localThrough, fromOnsetAt, throughOnsetAt, status } =
         filter;

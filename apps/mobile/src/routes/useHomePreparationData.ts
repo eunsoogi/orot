@@ -43,17 +43,18 @@ export function useHomePreparationData(
     setSymptoms([]);
     loadSymptoms()
       .then(async repository => {
+        if (repository.listActiveWithUpdates) {
+          const snapshots = await repository.listActiveWithUpdates();
+          return {
+            entries: snapshots.map(item => item.entry),
+            updates: Object.fromEntries(
+              snapshots.map(item => [item.entry.id, item.updatedAt]),
+            ),
+          };
+        }
         const entries = await repository.list({ status: 'active' });
-        const updates = await Promise.all(
-          entries.map(
-            async entry =>
-              [
-                entry.id,
-                (await repository.getLastUpdatedAt?.(entry.id)) ?? null,
-              ] as const,
-          ),
-        );
-        return { entries, updates: Object.fromEntries(updates) };
+        // A repository without snapshot support cannot safely pair separately-read edit times.
+        return { entries, updates: {} };
       })
       .then(({ entries, updates }) => {
         if (!active) return;

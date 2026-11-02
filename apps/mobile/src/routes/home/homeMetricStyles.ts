@@ -22,10 +22,8 @@ export const homeMetricStyles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     gap: 6,
-    flexGrow: 1,
-    flexBasis: '45%',
-    minWidth: 140,
   },
+  gridCard: { flexGrow: 0, flexBasis: '48%', minWidth: 140 },
   cardTitle: { color: appColors.text, fontWeight: '700' },
   metricHeading: {
     flexDirection: 'row',

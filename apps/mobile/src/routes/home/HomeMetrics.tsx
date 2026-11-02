@@ -36,6 +36,12 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
     steps: 'figure.walk',
   }[metric.metric];
   const maximum = Math.max(1, ...metric.days.map(day => day.value ?? 0));
+  const statistic =
+    metric.metric === 'heartRate'
+      ? t('home.dailyMean')
+      : metric.metric === 'bodyMass'
+        ? t('home.dailyLatest')
+        : t('home.dailySum');
   const summary = metric.days
     .map(
       day =>
@@ -44,9 +50,9 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
     .join('; ');
   return (
     <View
-      style={styles.card}
+      style={[styles.card, styles.gridCard]}
       testID={`home-metric-${metric.metric}`}
-      accessibilityLabel={`${title(metric.metric)}. ${metric.latest.date}: ${value(metric.latest.value, metric.unit)}. ${metric.measuredAt ? formatDateTime(new Date(metric.measuredAt)) : t('home.measurementUnknown')}. ${metric.source}. ${metric.timeZone}. ${summary}`}
+      accessibilityLabel={`${title(metric.metric)}. ${metric.latest.date} ${statistic}: ${value(metric.latest.value, metric.unit)}. ${metric.measuredAt ? formatDateTime(new Date(metric.measuredAt)) : t('home.measurementUnknown')}. ${metric.source}. ${metric.timeZone}. ${summary}`}
       accessible
     >
       <View style={styles.metricHeading}>
@@ -59,12 +65,7 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
         {value(metric.latest.value, metric.unit)}
       </Text>
       <Text style={styles.detail}>
-        {metric.latest.date} ·{' '}
-        {metric.metric === 'heartRate'
-          ? t('home.dailyMean')
-          : metric.metric === 'bodyMass'
-            ? t('home.dailyLatest')
-            : t('home.dailySum')}
+        {metric.latest.date} · {statistic}
       </Text>
       <Text style={styles.detail}>
         {metric.measuredAt
@@ -166,7 +167,7 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
             data.metrics[metric] ? (
               <MetricCard key={metric} metric={data.metrics[metric]!} />
             ) : (
-              <View key={metric} style={styles.card}>
+              <View key={metric} style={[styles.card, styles.gridCard]}>
                 <Text style={styles.cardTitle}>{title(metric)}</Text>
                 <Text>
                   {metric !== 'sleep' && data.quantityTruncated

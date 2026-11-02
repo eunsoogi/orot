@@ -128,3 +128,53 @@ test('rolls back the symptom when its update metadata cannot be saved', async ()
     close();
   }
 });
+
+test.each(['edit', 'resolve'] as const)(
+  'keeps symptom and update time in one snapshot when %s commits during the read',
+  async action => {
+    const { database, close } = createHealthEvidenceTestDatabase();
+    try {
+      await runMigrations(database);
+      let now = '2026-10-01T12:00:00Z';
+      const writer = createSymptomRepository(database, () => now);
+      const entry = {
+        id: 'snapshot',
+        effectiveAt: '2026-09-01T12:00:00Z',
+        recordedAt: '2026-09-02T12:00:00Z',
+        ingestedAt: '2026-09-02T12:00:00Z',
+        provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' as const },
+        description: 'Before',
+        status: 'active' as const,
+      };
+      await writer.create(entry);
+      let changed = false;
+      const interleaved = {
+        ...database,
+        transaction: async (
+          operation: Parameters<typeof database.transaction>[0],
+        ) => {
+          await database.transaction(operation);
+          if (!changed) {
+            changed = true;
+            now = '2026-10-02T12:00:00Z';
+            if (action === 'edit')
+              await writer.update({ ...entry, description: 'After' });
+            else await writer.resolve(entry.id, now);
+          }
+        },
+      };
+      const snapshots =
+        await createSymptomRepository(interleaved).listActiveWithUpdates!();
+      expect(snapshots).toEqual([{ entry, updatedAt: '2026-10-01T12:00:00Z' }]);
+      const current = await writer.listActiveWithUpdates!();
+      if (action === 'edit')
+        expect(current).toMatchObject([
+          { entry: { description: 'After' }, updatedAt: now },
+        ]);
+      else expect(current).toEqual([]);
+    } finally {
+      close();
+    }
+  },
+);
