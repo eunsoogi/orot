@@ -94,9 +94,13 @@ final class NavigationRailGroupCenterIntegrationTests: OrotFailFastTestCase {
 
     @MainActor
     private func firstImageView(in view: UIView) -> UIImageView? {
-        if let imageView = view as? UIImageView { return imageView }
+        if let imageView = view as? UIImageView {
+            return imageView
+        }
         for child in view.subviews {
-            if let imageView = firstImageView(in: child) { return imageView }
+            if let imageView = firstImageView(in: child) {
+                return imageView
+            }
         }
         return nil
     }

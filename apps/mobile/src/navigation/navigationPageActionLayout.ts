@@ -39,7 +39,8 @@ export function pageActionRailLayout({
     displayed * NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
     Math.max(0, displayed - 1) * NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
   // Center the complete action-and-tab group around the measured usable segment.
-  const actionGroupHeight = displayed > 0 ? displayedActionHeight + groupGap : 0;
+  const actionGroupHeight =
+    displayed > 0 ? displayedActionHeight + groupGap : 0;
   const pageBottom = rootTabs
     ? top + (available - navHeight) / 2 - groupGap + actionGroupHeight / 2
     : top + displayed * step;
@@ -47,12 +48,11 @@ export function pageActionRailLayout({
     fits,
     capacity,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset:
-      rootTabs
-        ? top + actionGroupHeight
-        : !displayed
-          ? top
-          : top + displayed * step + groupGap,
+    navigationTopInset: rootTabs
+      ? top + actionGroupHeight
+      : !displayed
+        ? top
+        : top + displayed * step + groupGap,
   };
 }
 
