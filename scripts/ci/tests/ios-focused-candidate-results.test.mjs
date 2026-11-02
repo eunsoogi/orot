@@ -49,6 +49,10 @@ test('candidate result rejects a different selection, manifest or observed runti
     };
     writeFileSync(join(root, 'simulator-owner.json'), JSON.stringify(owner));
     writeFileSync(
+      join(root, 'simulator-owner.json.cleanup.json'),
+      JSON.stringify({ udid, absent: true }),
+    );
+    writeFileSync(
       join(root, 'simulator-owner.json.preparation.jsonl'),
       JSON.stringify({
         event: 'pre-boot-inventory',
@@ -82,6 +86,15 @@ test('candidate result rejects a different selection, manifest or observed runti
     );
     assert.throws(() => verify(), /selection receipt/);
     writeFileSync(join(root, 'selection/ios-candidate-selection.json'), JSON.stringify(receipt));
+    writeFileSync(
+      join(root, 'simulator-owner.json.cleanup.json'),
+      JSON.stringify({ udid, absent: false }),
+    );
+    assert.throws(() => verify(), /cleanup/);
+    writeFileSync(
+      join(root, 'simulator-owner.json.cleanup.json'),
+      JSON.stringify({ udid, absent: true }),
+    );
     rmSync(join(root, 'simulator-owner.json.preparation.jsonl'));
     assert.throws(() => verify());
   } finally {

@@ -82,9 +82,10 @@ runs:
       if: always()
       shell: bash
       run: |
-        if [[ -f artifacts/ios-cohort/results/results.json && -f artifacts/ios-cohort/simulator-owner.json && -f artifacts/ios-cohort/simulator-owner.json.preparation.jsonl ]]; then
+        if [[ -f artifacts/ios-cohort/results/results.json && -f artifacts/ios-cohort/simulator-owner.json && -f artifacts/ios-cohort/simulator-owner.json.preparation.jsonl && -f artifacts/ios-cohort/simulator-owner.json.cleanup.json ]]; then
           cp artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results/simulator-owner.json
           cp artifacts/ios-cohort/simulator-owner.json.preparation.jsonl artifacts/ios-cohort/results/simulator-owner.json.preparation.jsonl
+          cp artifacts/ios-cohort/simulator-owner.json.cleanup.json artifacts/ios-cohort/results/simulator-owner.json.cleanup.json
         fi
     - name: Publish compact reports for Linux aggregation
       if: always()
@@ -95,6 +96,7 @@ runs:
           artifacts/ios-cohort/results/results.json
           artifacts/ios-cohort/results/simulator-owner.json
           artifacts/ios-cohort/results/simulator-owner.json.preparation.jsonl
+          artifacts/ios-cohort/results/simulator-owner.json.cleanup.json
           artifacts/ios-cohort/results/speech-integration/attachments/*.json
         if-no-files-found: warn
         retention-days: 7

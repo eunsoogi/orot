@@ -76,11 +76,19 @@ export function verifyFocusedIosResults(profile, file, name, directory, context)
   const cohorts = focusedIosTestCohorts(selection);
   const runtimeEvidence = (path, runtimeProfile, cohort) => {
     const owner = JSON.parse(readFileSync(join(path, 'simulator-owner.json'), 'utf8'));
+    const cleanup = JSON.parse(
+      readFileSync(join(path, 'simulator-owner.json.cleanup.json'), 'utf8'),
+    );
+    if (cleanup.udid !== owner.udid || cleanup.absent !== true)
+      throw new Error('Focused candidate cleanup does not match the owned destination');
     const records = readFileSync(join(path, 'simulator-owner.json.preparation.jsonl'), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line));
-    return verifyFocusedRuntimeEvidence(owner, records, runtimeProfile, { runId, attempt }, cohort);
+    return {
+      ...verifyFocusedRuntimeEvidence(owner, records, runtimeProfile, { runId, attempt }, cohort),
+      cleanupAbsent: true,
+    };
   };
   const runtimes = [];
   let actual;
