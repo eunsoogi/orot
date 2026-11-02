@@ -1,5 +1,6 @@
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { reportVisitQuestionCoverage } from './coverageDiagnostics';
+import { UNSUPPORTED_QUESTION_FACTS_REASON } from './taskValidation';
 import type { VisitQuestionEvidenceBatch } from './taskContract';
 
 const knownReasons = {
@@ -26,7 +27,14 @@ export function reportVisitQuestionValidation(
   evidence?: VisitQuestionEvidenceBatch,
 ) {
   if (evidence) reportVisitQuestionCoverage(evidence);
-  if (result.status !== 'invalid') return;
+  if (
+    result.status !== 'invalid' ||
+    result.reason === UNSUPPORTED_QUESTION_FACTS_REASON
+  ) {
+    // The fact validator already emitted a specific closed code for this reason.
+    // Avoid following it with a duplicate generic schema code.
+    return;
+  }
   const code =
     result.reason && Object.hasOwn(knownReasons, result.reason)
       ? knownReasons[result.reason as keyof typeof knownReasons]

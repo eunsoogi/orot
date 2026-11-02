@@ -5,6 +5,7 @@ import { reportVisitQuestionValidation } from './validationDiagnostics';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
+  UNSUPPORTED_QUESTION_FACTS_REASON,
   validateVisitQuestionTaskResult,
 } from './taskValidation';
 import {
@@ -146,17 +147,16 @@ export function createVisitQuestionTaskResponder() {
     },
     correctionInstructionForInvalidResult(reason: string): string | undefined {
       // All corrections share one retry and the original budget, consent and freshness checks.
+      // Keep each measurement and unit from the same cited item; validation never converts units.
       // Missing evidence, conflicts, unsafe copy and invalid citation bindings remain terminal.
-      if (
-        reason ===
-        'A visit question contains an unsupported date or numeric value.'
-      )
+      if (reason === UNSUPPORTED_QUESTION_FACTS_REASON)
         return [
           'The previous questions failed exact date, value or unit validation against their cited evidence.',
           'Rewrite the entire structured response using only the same current evidence and task constraints.',
-          'Copy a date or measured value only when that exact value and unit occur in the evidenceIds for that question.',
+          'Copy a date only when that exact date is present in the appointment context or cited evidence.',
+          'For each question, copy any measured number and its complete unit verbatim from a cited evidence item for that question; preserve the unit spelling and symbol.',
           'Do not round, convert units, calculate new quantities or invent normal ranges or thresholds.',
-          'If a number is not necessary, describe the specific observed item or supported change without adding a number; retain the clinical discussion purpose and actual evidence limits.',
+          'If an amount or unit cannot be copied exactly, or the number is not needed, describe the specific supported item or change without a number or unit; retain the clinical discussion purpose and actual evidence limits.',
           'Keep each questionText a concise Korean interrogative, preserve uncertainty and all citation and safety constraints, and return only the requested JSON.',
         ].join('\n');
       if (reason !== 'A visit question must end with a question mark.')
