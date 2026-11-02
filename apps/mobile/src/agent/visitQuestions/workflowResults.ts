@@ -1,4 +1,5 @@
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
+import { providerDiagnostic } from '../../providers/diagnostics';
 import {
   visitQuestionEvidenceIdentityKey,
   type VisitQuestionEvidenceAliases,
@@ -106,6 +107,8 @@ export async function mapVisitQuestionWorkflowResult(input: {
     questionCitationKeys.size !== resultCitationKeys.size ||
     [...questionCitationKeys].some(key => !resultCitationKeys.has(key))
   ) {
+    // Keep an envelope union mismatch distinct from a valid reference the alias map cannot restore.
+    providerDiagnostic('visit', 'validation', 'task_envelope_citations');
     return {
       status: 'rejected_output',
       message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
@@ -119,6 +122,8 @@ export async function mapVisitQuestionWorkflowResult(input: {
     for (const reference of question.citations) {
       const original = aliases.originalOf(reference);
       if (!original) {
+        // Distinguish post-validation alias restoration from a rejected citation at validation time.
+        providerDiagnostic('visit', 'workflow', 'task_citations');
         return {
           status: 'rejected_output',
           message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
@@ -134,6 +139,10 @@ export async function mapVisitQuestionWorkflowResult(input: {
     prepared.revalidateEvidence,
   );
   if (presentation.status !== 'ready') {
+    if (presentation.status === 'refresh_required') {
+      // Recheck freshness after runtime completion before exposing a reviewable draft.
+      providerDiagnostic('visit', 'workflow', 'stale_evidence');
+    }
     return {
       status: presentation.status,
       message: presentation.message,

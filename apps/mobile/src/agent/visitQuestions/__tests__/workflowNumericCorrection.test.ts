@@ -5,12 +5,15 @@ import {
   preparedContext,
   selectedOption,
 } from '../testing/workflowFixtures';
-import { hasUnsupportedDateOrValue } from '../questionFacts';
+import {
+  hasUnsupportedDateOrValue,
+  unsupportedDateOrValueKind,
+} from '../questionFacts';
 
 const supported =
   '기간 평균 심박수 72회/분을 바탕으로 다음 진료 전 어떤 변화를 기록하면 좋을까요?';
 const unsupported =
-  '기간 평균 심박수 77회/분을 바탕으로 다음 진료 전 어떤 변화를 기록하면 좋을까요?';
+  '기간 평균 심박수 72회/초를 바탕으로 다음 진료 전 어떤 변화를 기록하면 좋을까요?';
 
 function output(
   first: string,
@@ -77,9 +80,12 @@ async function fixture() {
   };
 }
 
-test('corrects one unsupported computed value with the same sources and validates the new answer before publication', async () => {
+test('corrects one unsupported unit with the cited unit before publication', async () => {
   const f = await fixture();
   try {
+    expect(unsupportedDateOrValueKind(unsupported, [f.item])).toBe(
+      'quantity_unit',
+    );
     const { provider, requests } = makeProvider([
       output(unsupported),
       output(supported),
@@ -97,18 +103,19 @@ test('corrects one unsupported computed value with the same sources and validate
     if (result.status === 'ready')
       expect(result.questions[0]?.questionText).toBe(supported);
     expect(requests).toHaveLength(2);
-    expect(JSON.stringify(requests[1]?.messages.at(-1))).toContain(
-      'Do not round',
-    );
+    const correction = JSON.stringify(requests[1]?.messages.at(-1));
+    expect(correction).toContain('complete unit verbatim');
+    expect(correction).toContain('preserve the unit spelling and symbol');
+    expect(correction).toContain('Do not round');
     expect(confirmConsent).toHaveBeenCalledTimes(2);
-    expect(JSON.stringify(result)).not.toContain('77회/분');
+    expect(JSON.stringify(result)).not.toContain('72회/초');
     expect(await f.records.list('visit_question')).toEqual([]);
   } finally {
     f.close();
   }
 });
 
-test('stops after one rejected numeric correction without accepting or storing the invented value', async () => {
+test('stops after one rejected unit correction without accepting or storing the unsupported unit', async () => {
   const f = await fixture();
   try {
     const { provider, requests } = makeProvider([
@@ -124,7 +131,7 @@ test('stops after one rejected numeric correction without accepting or storing t
     });
     expect(result.status).toBe('rejected_output');
     expect(requests).toHaveLength(2);
-    expect(JSON.stringify(result)).not.toContain('77회/분');
+    expect(JSON.stringify(result)).not.toContain('72회/초');
     expect(await f.records.list('visit_question')).toEqual([]);
   } finally {
     f.close();
@@ -201,7 +208,7 @@ test('requires fresh consent before the correction payload and stops when it is 
   }
 });
 
-test('keeps numeric correction bounded after two model-selected searches', async () => {
+test('keeps unit correction bounded after two model-selected searches', async () => {
   const prepared = preparedContext();
   const lookup = (id: string) =>
     JSON.stringify({

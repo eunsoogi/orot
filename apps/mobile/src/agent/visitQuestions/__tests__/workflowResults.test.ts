@@ -1,9 +1,16 @@
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
+import { providerDiagnostic } from '../../../providers/diagnostics';
 import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
 import { preparedContext } from '../testing/workflowFixtures';
 import type { VisitQuestionTaskResult } from '../taskContract';
 import { mapVisitQuestionWorkflowResult } from '../workflowResults';
 import { t } from '../../../i18n';
+
+jest.mock('../../../providers/diagnostics', () => ({
+  providerDiagnostic: jest.fn(),
+}));
+
+beforeEach(() => jest.clearAllMocks());
 
 function incompleteCoverageResult(
   message?: string,
@@ -47,6 +54,15 @@ describe('visit-question workflow result mapping', () => {
         },
       });
       expect(result.status).toBe(extra ? 'rejected_output' : 'ready');
+      if (extra) {
+        expect(providerDiagnostic).toHaveBeenCalledWith(
+          'visit',
+          'validation',
+          'task_envelope_citations',
+        );
+      } else {
+        expect(providerDiagnostic).not.toHaveBeenCalled();
+      }
     },
   );
 
@@ -62,6 +78,81 @@ describe('visit-question workflow result mapping', () => {
       prepared,
     });
     expect(result.status).toBe('rejected_output');
+  });
+
+  it('reports a closed citation-alias code when a provider reference cannot be restored', async () => {
+    const prepared = preparedContext();
+    const aliases = createVisitQuestionEvidenceAliases(prepared.evidence.batch);
+    const current = aliases.batch.items[0]!;
+    const unknownAlias = {
+      ...current,
+      evidenceId: 'synthetic-unknown-alias',
+      evidenceRevision: 'synthetic-unknown-alias-revision',
+    };
+    const result = await mapVisitQuestionWorkflowResult({
+      aliases,
+      prepared,
+      result: {
+        status: 'result',
+        value: {
+          status: 'suggestions',
+          questions: [0, 1, 2].map(() => ({
+            questionText: '다음 진료까지 어떤 변화를 기록할까요?',
+            rationale: '기록한 변화의 의미를 확인해요.',
+            priority: 'routine' as const,
+            citations: [unknownAlias],
+          })),
+        },
+        citations: [unknownAlias],
+        coverage: aliases.batch.coverage,
+        checkpoint: {} as never,
+      },
+    });
+
+    expect(result.status).toBe('rejected_output');
+    expect(providerDiagnostic).toHaveBeenCalledWith(
+      'visit',
+      'workflow',
+      'task_citations',
+    );
+    expect(
+      JSON.stringify(jest.mocked(providerDiagnostic).mock.calls),
+    ).not.toContain('synthetic-unknown-alias');
+  });
+
+  it('reports stale evidence when the final presentation check rejects a changed source', async () => {
+    const prepared = {
+      ...preparedContext(),
+      revalidateEvidence: jest.fn(async () => false),
+    };
+    const aliases = createVisitQuestionEvidenceAliases(prepared.evidence.batch);
+    const current = aliases.batch.items[0]!;
+    const result = await mapVisitQuestionWorkflowResult({
+      aliases,
+      prepared,
+      result: {
+        status: 'result',
+        value: {
+          status: 'suggestions',
+          questions: [0, 1, 2].map(() => ({
+            questionText: '다음 진료까지 어떤 변화를 기록할까요?',
+            rationale: '기록한 변화의 의미를 확인해요.',
+            priority: 'routine' as const,
+            citations: [current],
+          })),
+        },
+        citations: [current],
+        coverage: aliases.batch.coverage,
+        checkpoint: {} as never,
+      },
+    });
+
+    expect(result.status).toBe('refresh_required');
+    expect(providerDiagnostic).toHaveBeenCalledWith(
+      'visit',
+      'workflow',
+      'stale_evidence',
+    );
   });
 
   it('preserves the runtime-validated clarification message for incomplete coverage', async () => {
