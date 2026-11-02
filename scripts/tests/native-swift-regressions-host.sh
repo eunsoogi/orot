@@ -27,4 +27,5 @@ let package = Package(
     ]
 )
 SWIFT
-xcrun swift test --package-path "$orot_host_root"
+# Limit compiler processes, not the concurrency exercised inside each test.
+xcrun swift test --jobs 1 --package-path "$orot_host_root"
