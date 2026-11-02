@@ -66,6 +66,11 @@ export const providerAccountsKo = {
     'ChatGPT 계정과 사용 가능한 모델을 확인해야 선택할 수 있어요.',
   'provider.selection.chatGPTAccountReadError':
     'ChatGPT 로그인 상태를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  'provider.selection.chatGPTNoLinkedAccounts': '연결된 ChatGPT 계정이 없어요.',
+  'provider.selection.chatGPTAccountsConnected':
+    'ChatGPT 계정 {count}개 연결됨',
+  'provider.selection.chatGPTAccountsOverview':
+    'ChatGPT 계정 {connected}개 연결, 로그인 필요 {signInRequired}개, 권한 확인 {missingScope}개',
   'provider.selection.chatGPTNoAccounts':
     'ChatGPT 계정을 연결하면 모델 목록을 확인할 수 있어요.',
   'provider.selection.chatGPTAccountSignedIn': '저장된 ChatGPT 계정이에요.',

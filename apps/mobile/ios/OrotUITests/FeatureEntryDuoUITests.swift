@@ -1,6 +1,6 @@
 import XCTest
 
-/// Confirms the AI entry actions stay usable inside the measured content lane through a native size change.
+/// Confirms all five AI entries stay reachable in the Duo lane at large text and in both appearances.
 final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -10,14 +10,37 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     @MainActor
     func testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + AppearanceUITestConditions.observationArguments
         app.launch()
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
             XCUIDevice.shared.orientation = .portrait
+            if let originalAppearance {
+                do {
+                    try AppearanceUITestConditions.restore(
+                        originalAppearance,
+                        returningTo: app,
+                        testCase: self,
+                    )
+                } catch {
+                    XCTFail("Could not restore the owned device appearance: \(error)")
+                }
+            }
             UITestConditions.terminateStandaloneApp(app)
         }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        _ = try AppearanceUITestConditions.select(
+            false,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: { originalAppearance = $0 },
+        )
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        FeatureEntryUITestConditions.assertAccessibleLabels(in: app)
 
         let visitQuestions = node(app, "ai-feature-visit-questions")
         FormUITestConditions.reveal(visitQuestions, in: app, scrollID: "ai-features-screen")
@@ -53,6 +76,19 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
         try assertActionsFitContentLane(app)
+
+        _ = try AppearanceUITestConditions.select(
+            true,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: {
+                if originalAppearance == nil {
+                    originalAppearance = $0
+                }
+            },
+        )
+        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        try assertActionsFitContentLane(app)
     }
 
     @MainActor
@@ -80,22 +116,41 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         // A scene-owned single region is roughly half the Duo lane and fails this ratio check.
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
 
-        // Normalize against the page while scrolling to measure equal real gaps at variable text heights.
-        var previousBottom: CGFloat?
-        for id in ["visit-questions", "disease-hypotheses", "rag-conversation", "external-evidence"] {
-            let action = node(app, "ai-feature-\(id)")
-            XCTAssertTrue(UITestConditions.exists(action), app.debugDescription)
-            FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen")
-            XCTAssertTrue(action.isHittable, action.debugDescription)
-            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
-            let relativeTop = action.frame.minY - columns.frame.minY
-            if let previousBottom {
-                XCTAssertEqual(relativeTop - previousBottom, 16, accuracy: 1, "Every neighboring entry uses the same point gap")
+        XCTAssertEqual(app.scrollViews.matching(identifier: "ai-features-screen").count, 1)
+        for id in ["preparation", "review"] {
+            let heading = node(app, "ai-feature-group-\(id)-heading")
+            XCTAssertTrue(UITestConditions.exists(heading), app.debugDescription)
+            XCTAssertFalse(heading.frame.isEmpty, heading.debugDescription)
+        }
+
+        // Card order is meaningful; equal card spacing applies only within each named group.
+        let groups = [
+            ["rag-conversation"],
+            ["visit-questions", "disease-hypotheses"],
+            ["health-review", "external-evidence"],
+        ]
+        var previousGroupLastTop: CGFloat?
+        for group in groups {
+            var previousBottom: CGFloat?
+            for id in group {
+                let action = node(app, "ai-feature-\(id)")
+                XCTAssertTrue(UITestConditions.exists(action), app.debugDescription)
+                FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen")
+                XCTAssertTrue(action.isHittable, action.debugDescription)
+                XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+                let relativeTop = action.frame.minY - columns.frame.minY
+                if let previousGroupLastTop {
+                    XCTAssertGreaterThan(relativeTop, previousGroupLastTop)
+                }
+                if let previousBottom {
+                    XCTAssertEqual(relativeTop - previousBottom, 16, accuracy: 1, "Entries within a group share the same point gap")
+                }
+                previousBottom = action.frame.maxY - columns.frame.minY
+                previousGroupLastTop = relativeTop
+                XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.minX - 0.5)
+                XCTAssertLessThanOrEqual(action.frame.maxX, viewport.frame.maxX + 0.5)
+                XCTAssertFalse(action.frame.intersects(rail.frame), action.debugDescription)
             }
-            previousBottom = action.frame.maxY - columns.frame.minY
-            XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.minX - 0.5)
-            XCTAssertLessThanOrEqual(action.frame.maxX, viewport.frame.maxX + 0.5)
-            XCTAssertFalse(action.frame.intersects(rail.frame), action.debugDescription)
         }
     }
 
@@ -135,5 +190,25 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
+    }
+}
+
+/// Native accessibility combines each title and description into one card label.
+enum FeatureEntryUITestConditions {
+    private static let entries = [
+        ("rag-conversation", "기록과 대화"),
+        ("visit-questions", "다음 진료 질문"),
+        ("disease-hypotheses", "증상 정리"),
+        ("health-review", "최근 건강 변화 검토"),
+        ("external-evidence", "의학 자료 찾기"),
+    ]
+
+    @MainActor
+    static func assertAccessibleLabels(in app: XCUIApplication) {
+        for (identifier, title) in entries {
+            let card = app.buttons.matching(identifier: "ai-feature-\(identifier)").firstMatch
+            XCTAssertTrue(card.exists, app.debugDescription)
+            XCTAssertTrue(card.label.hasPrefix(title), card.debugDescription)
+        }
     }
 }

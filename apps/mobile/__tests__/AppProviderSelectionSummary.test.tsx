@@ -8,9 +8,13 @@ import {
   apple,
   localData,
   memoryRecord,
-  selectionStore,
 } from '../src/aiFeatures/integration/featureServiceFixtures';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
+import { nativeChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
+import type {
+  ProviderSelection,
+  ProviderSelectionStore,
+} from '../src/providers/selection/types';
 import App from '../App';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
@@ -40,10 +44,14 @@ jest.mock('../src/providers/selection/options', () => {
 });
 
 test('updates the Settings provider summary after a committed selection', async () => {
-  const store = selectionStore(null);
+  const store = persistedSelectionStore(null);
   const dependencies: AiFeatureServiceDependencies = {
     selectedAi: {
       selectionStore: store,
+      chatGPTServices: {
+        ...nativeChatGPTSelectionServices,
+        listAccounts: async () => [],
+      },
       loadAppleOption: async () => apple,
     },
     loadLocalData: async () => localData([memoryRecord(1)]).data,
@@ -70,3 +78,18 @@ test('updates the Settings provider summary after a committed selection', async 
   );
   expect(screen.getByText(apple.provider.displayName)).toBeTruthy();
 });
+
+function persistedSelectionStore(
+  initial: ProviderSelection | null,
+): ProviderSelectionStore {
+  let current = initial;
+  return {
+    load: async () => current,
+    save: async selection => {
+      current = selection;
+    },
+    clear: async () => {
+      current = null;
+    },
+  };
+}

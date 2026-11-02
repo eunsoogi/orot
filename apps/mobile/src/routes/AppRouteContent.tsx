@@ -126,9 +126,11 @@ export function AppRouteContent({
           />
         );
       case 'settings':
+        // Share the persisted selection and account services used by provider settings.
         return (
           <SettingsRoute
             selectedProvider={selectedProvider}
+            selectedAiResolverOptions={serviceDependencies?.selectedAi}
             onOpenProviderSettings={openProviderSettings}
             onOpenAccounts={() => actions.push('settings-accounts')}
             onOpenPrivacy={() => actions.push('settings-privacy')}

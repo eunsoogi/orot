@@ -93,6 +93,7 @@ function renderRoute(actions: NavigationRouteActions<AppNavigationRoute>) {
   return (
     <SettingsRoute
       selectedProvider="Synthetic current provider"
+      selectedAiResolverOptions={serviceDependencies.selectedAi}
       onOpenProviderSettings={() => undefined}
       onOpenAccounts={() => actions.push('settings-accounts')}
       onOpenPrivacy={() => undefined}

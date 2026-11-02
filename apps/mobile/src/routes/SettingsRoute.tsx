@@ -4,10 +4,14 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
+import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 
 interface SettingsRouteProps {
+  /** Tracks the latest committed choice after persisted resolution confirms it is valid. */
   readonly selectedProvider: string;
+  readonly selectedAiResolverOptions?: SelectedAiResolverOptions;
   readonly onOpenProviderSettings: () => void;
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
@@ -16,9 +20,10 @@ interface SettingsRouteProps {
   readonly onOpenSyncStatus: () => void;
 }
 
-/** Keeps Settings actions in place while its content follows measured usable space. */
+/** Re-reads persisted AI and account state while grouping Settings root destinations. */
 export function SettingsRoute({
   selectedProvider,
+  selectedAiResolverOptions,
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
@@ -34,6 +39,10 @@ export function SettingsRoute({
     revision: 0,
     inputRevision: 0,
   });
+  const { selectedAiSummary, accountsSummary } = useSettingsRouteSummaries(
+    selectedAiResolverOptions,
+    selectedProvider,
+  );
   const version = (
     NativeModules.OrotAppMetadata as { version?: string } | undefined
   )?.version;
@@ -50,10 +59,36 @@ export function SettingsRoute({
             >
               {t('settings.title')}
             </Text>
+            <Text style={styles.subtitle}>{t('settings.summary')}</Text>
 
-            <View style={styles.section} testID="settings-section-integrations">
-              <Text style={styles.sectionTitle}>
-                {t('settings.integrations')}
+            <View style={styles.section} testID="settings-section-ai-accounts">
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                {t('settings.aiAccounts')}
+              </Text>
+              <View style={styles.group}>
+                <SettingsRouteRow
+                  symbol="sparkles"
+                  tone="purple"
+                  onPress={onOpenProviderSettings}
+                  summary={selectedAiSummary}
+                  testID="settings-open-provider"
+                  title={t('settings.provider')}
+                />
+                <View style={styles.divider} />
+                <SettingsRouteRow
+                  symbol="person"
+                  tone="purple"
+                  onPress={onOpenAccounts}
+                  summary={accountsSummary}
+                  testID="settings-open-accounts"
+                  title={t('settings.accounts')}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section} testID="settings-section-health-data">
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                {t('settings.healthData')}
               </Text>
               <View style={styles.group}>
                 <SettingsRouteRow
@@ -75,28 +110,14 @@ export function SettingsRoute({
               </View>
             </View>
 
-            <View style={styles.section} testID="settings-section-other">
-              <Text style={styles.sectionTitle}>
-                {t('settings.otherSettings')}
+            <View
+              style={styles.section}
+              testID="settings-section-privacy-backup"
+            >
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                {t('settings.privacyBackup')}
               </Text>
               <View style={styles.group}>
-                <SettingsRouteRow
-                  symbol="sparkles"
-                  tone="purple"
-                  onPress={onOpenProviderSettings}
-                  summary={selectedProvider || t('settings.providerSummary')}
-                  testID="settings-open-provider"
-                  title={t('settings.provider')}
-                />
-                <View style={styles.divider} />
-                <SettingsRouteRow
-                  symbol="person"
-                  tone="neutral"
-                  onPress={onOpenAccounts}
-                  testID="settings-open-accounts"
-                  title={t('settings.accounts')}
-                />
-                <View style={styles.divider} />
                 <SettingsRouteRow
                   symbol="checkmark.shield"
                   tone="green"
@@ -104,16 +125,7 @@ export function SettingsRoute({
                   testID="settings-open-privacy"
                   title={t('settings.permissions')}
                 />
-              </View>
-            </View>
-            <View
-              style={styles.section}
-              testID="settings-section-data-management"
-            >
-              <Text style={styles.sectionTitle}>
-                {t('settings.dataManagement')}
-              </Text>
-              <View style={styles.group}>
+                <View style={styles.divider} />
                 <SettingsRouteRow
                   symbol="externaldrive"
                   onPress={onOpenBackup}
@@ -124,7 +136,9 @@ export function SettingsRoute({
             </View>
 
             <View style={styles.section} testID="settings-section-app-info">
-              <Text style={styles.sectionTitle}>{t('settings.appInfo')}</Text>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                {t('settings.appInfo')}
+              </Text>
               <View style={styles.group}>
                 <SettingsRouteAppInfo version={version} />
               </View>
@@ -153,6 +167,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
+  subtitle: { color: appColors.secondary, fontSize: 18 },
   section: { gap: 8 },
   divider: {
     height: StyleSheet.hairlineWidth,

@@ -9,6 +9,11 @@ import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import type { ComponentProps } from 'react';
 import type { ChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
+import { nativeChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
+import type {
+  ProviderSelection,
+  ProviderSelectionStore,
+} from '../src/providers/selection/types';
 import { navigationText } from '../src/i18n/navigation';
 import {
   apple,
@@ -92,7 +97,7 @@ test('routes Settings provider controls through shared Back', async () => {
 });
 
 test('updates the Settings provider summary after a committed selection', async () => {
-  const store = selectionStore(null);
+  const store = persistedSelectionStore(null);
   await renderApp({
     aiFeatureServiceDependencies: providerDependencies(store),
   });
@@ -147,10 +152,28 @@ function providerDependencies(
   return {
     selectedAi: {
       selectionStore: store,
-      chatGPTServices,
+      chatGPTServices: chatGPTServices ?? {
+        ...nativeChatGPTSelectionServices,
+        listAccounts: async () => [],
+      },
       loadAppleOption: async () => apple,
     },
     loadLocalData: async () => localData([memoryRecord(1)]).data,
+  };
+}
+
+function persistedSelectionStore(
+  initial: ProviderSelection | null,
+): ProviderSelectionStore {
+  let current = initial;
+  return {
+    load: async () => current,
+    save: async selection => {
+      current = selection;
+    },
+    clear: async () => {
+      current = null;
+    },
   };
 }
 
