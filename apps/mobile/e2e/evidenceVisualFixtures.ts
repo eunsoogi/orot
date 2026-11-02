@@ -1,5 +1,7 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { LocalHealthEvidenceRecord } from '../src/healthEvidence/localEvidenceRepository';
+import type { EvidenceSourceReadResult } from '../src/aiFeatures/integration/evidenceRegistry';
+import { evidenceVisualPeriod } from './evidenceVisualPeriod';
 
 // Declared synthetic source events only; no patient storage, HealthKit or provider is opened.
 const metadata = {
@@ -85,3 +87,48 @@ export const evidenceVisualReference: EvidenceReference = {
   effectiveTime: metadata.effectiveAt,
   reviewState: 'unreviewed',
 };
+
+export type EvidenceVisualMode =
+  | 'medication'
+  | 'measurement'
+  | 'activity'
+  | 'sleep'
+  | 'period'
+  | 'loading'
+  | 'missing'
+  | 'changed'
+  | 'unavailable';
+
+/** The native probe and receiving tests share this synthetic state selection; it never reads HealthKit. */
+export function createEvidenceVisualReader(mode: EvidenceVisualMode) {
+  let attempts = 0;
+  return async (
+    _reference: EvidenceReference,
+    signal: AbortSignal,
+  ): Promise<EvidenceSourceReadResult> => {
+    attempts += 1;
+    if (mode === 'loading')
+      return new Promise(resolve =>
+        signal.addEventListener(
+          'abort',
+          () => resolve({ status: 'unavailable' }),
+          { once: true },
+        ),
+      );
+    if (mode === 'missing' || mode === 'changed') return { status: mode };
+    if (mode === 'period')
+      return { status: 'available', document: evidenceVisualPeriod };
+    if (mode === 'unavailable' && attempts === 1)
+      return { status: 'unavailable' };
+    return {
+      status: 'available',
+      document: {
+        sourceKind: 'personal_record',
+        records: [
+          evidenceVisualRecords[mode === 'unavailable' ? 'measurement' : mode],
+          ...(mode === 'medication' ? [evidenceVisualMedication] : []),
+        ],
+      },
+    };
+  };
+}

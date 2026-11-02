@@ -159,7 +159,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
     }
 
-    /// The production source renderer reads declared event types and recovery states without patient data or inference.
+    /// Numeric records are covered below native; period tabs preserve numeric layout and horizontal interaction in both themes.
     @MainActor
     func testEvidenceKindsAndRecoveryAcrossAppearances() throws {
         let app = XCUIApplication()
@@ -180,7 +180,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 }
             })
             let suffix = dark ? "dark" : "light"
-            for (mode, value) in [("medication", "1 정"), ("measurement", "70.5 kg"), ("activity", "2400 걸음"), ("sleep", "코어 수면"), ("period", "집계 기간"), ("loading", ""), ("missing", ""), ("changed", ""), ("unavailable", "")] {
+            for (mode, value) in [("medication", "1 정"), ("sleep", "코어 수면"), ("period", "집계 기간"), ("loading", ""), ("missing", ""), ("changed", ""), ("unavailable", "")] {
                 node(app, "evidence-visual-\(mode)").tap()
                 XCTAssertTrue(UITestConditions.exists(node(app, "ai-feature-source-detail")))
                 if value.isEmpty {
