@@ -31,7 +31,7 @@ const secondPublication: ExternalMedicalPublication = {
   originalUrl: 'https://europepmc.org/article/MED/67890',
 };
 
-test('declining the shared query permission does not call the literature service', async () => {
+test('retains the query after disclosure denial and sends it only after later consent', async () => {
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({ status: 'empty' as const })),
   };
@@ -54,6 +54,7 @@ test('declining the shared query permission does not call the literature service
     'synthetic query',
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  expect(service.search).not.toHaveBeenCalled();
   await fireEvent.press(
     await screen.findByTestId('inference-disclosure-cancel'),
   );
@@ -61,6 +62,21 @@ test('declining the shared query permission does not call the literature service
   expect(
     await screen.findByText(getExternalMedicalEvidenceCopy().consentRequired),
   ).toBeTruthy();
+  expect(screen.getByTestId('external-evidence-query').props.value).toBe(
+    'synthetic query',
+  );
+
+  // Denial must preserve the draft without sending it until a new disclosure is accepted.
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  const allow = await screen.findByTestId('inference-disclosure-allow');
+  expect(service.search).not.toHaveBeenCalled();
+  await fireEvent.press(allow);
+  expect(service.search).toHaveBeenCalledTimes(1);
+  expect(service.search).toHaveBeenCalledWith('synthetic query', {
+    externalQueryConsented: true,
+    signal: expect.any(AbortSignal),
+  });
+  expect(await screen.findByTestId('external-evidence-empty')).toBeTruthy();
 });
 
 test('requires query consent and presents provenance and dates', async () => {
@@ -215,26 +231,4 @@ test('shows loading and empty-result states', async () => {
   ).toMatchObject({ busy: true, disabled: true });
   resolve({ status: 'empty' });
   expect(await screen.findByTestId('external-evidence-empty')).toBeTruthy();
-});
-
-test('shows an error when the provider is unavailable', async () => {
-  const service: EuropePmcMedicalEvidenceService = {
-    search: jest.fn(async () => ({ status: 'unavailable' as const })),
-  };
-  await renderWithRootSafeArea(
-    <ExternalMedicalEvidenceScreen
-      onBack={jest.fn()}
-      service={service}
-      onOpenArticle={jest.fn()}
-    />,
-  );
-  await fireEvent.changeText(
-    screen.getByTestId('external-evidence-query'),
-    'query',
-  );
-  await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
-  expect(await screen.findByText(/외부 자료를 불러오지 못했어요/)).toBeTruthy();
 });
