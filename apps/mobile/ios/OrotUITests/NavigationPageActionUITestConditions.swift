@@ -5,12 +5,17 @@ import XCTest
 enum NavigationPageActionUITestConditions {
     /// Exercise the actual root button, including its accessibility activation point.
     static func verifyDirectRecordsTap(_ app: XCUIApplication) throws {
-        let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control
-        XCTAssertEqual(app.buttons.matching(identifier: "navigation-tab-records").count, 1, app.debugDescription)
-        guard records.isEnabled, records.isHittable else { XCTFail("Records tab must be enabled and directly hittable: \(app.debugDescription)"); throw NSError(domain: "NavigationUITests", code: 6) }
-        records.tap()
-        NavigationUITestConditions.route(app, markers: ["records-title"])
-        XCTAssertTrue(records.isSelected, "Direct tap must select the Records tab")
+        // Exercise the actual accessibility elements, including Schedule from the initial Home route.
+        for (tab, markers) in [("schedule", ["calendar-title", "schedule-retry"]), ("records", ["records-title"])] {
+            let identifier = "navigation-tab-\(tab)"
+            let control = try NavigationUITestConditions.navigationAction(app, identifier).control
+            XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1, app.debugDescription)
+            guard control.isEnabled, control.isHittable else { XCTFail("\(tab) must be enabled and directly hittable: \(app.debugDescription)"); throw NSError(domain: "NavigationUITests", code: 6) }
+            control.tap()
+            NavigationUITestConditions.route(app, markers: markers)
+            XCTAssertTrue(control.isSelected, "Direct tap must select \(tab)")
+            if tab == "schedule" { try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"]) }
+        }
     }
 
     /// Select a hidden root destination through the actual More menu, preserving direct-tab checks.
