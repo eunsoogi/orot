@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
-import { ConversationEvidencePanel } from './ConversationEvidencePanel';
 import { navigationText } from '../i18n/navigation';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
@@ -26,7 +25,6 @@ import type { RagConversationOutcome } from './service';
 import type { RagConversationObserver } from './service';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { conversationComposerLayout } from './conversationComposerLayout';
 
@@ -45,7 +43,7 @@ interface ConversationScreenProps {
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
 
-/** Subscribes to app-owned conversations; evidence is freshly loaded for each turn. */
+/** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   navigationRouteKey,
   providerSelection,
@@ -70,32 +68,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const latestAssistantMessageId = messages
-    .slice()
-    .reverse()
-    .find(message => message.role === 'assistant')?.id;
   const cancel = () => store.cancel(id);
-  const hasActionDock = useNavigationRouteActions([
-    {
-      id: 'conversation-history',
-      label: copy.sessions,
-      accessibilityLabel: copy.sessions,
-      testID: 'rag-conversation-sessions-toggle',
-      systemImageName: 'clock.arrow.circlepath',
-      disabled: !onOpenHistory,
-      onPress: () => onOpenHistory?.(),
-    },
-    {
-      id: 'new-conversation',
-      label: copy.newConversation,
-      accessibilityLabel: copy.newConversation,
-      testID: 'rag-conversation-new-session',
-      systemImageName: 'plus',
-      onPress: () => {
-        store.create();
-      },
-    },
-  ]);
   const onLinkError = () =>
     store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
   // App-owned sessions keep drafts and requests alive when this route is removed.
@@ -123,42 +96,40 @@ export function ConversationScreen({
         <Text accessibilityRole="header" style={styles.heading}>
           {copy.title}
         </Text>
-        {!hasActionDock ? (
-          <View style={styles.sessionActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.sessions}
-              onPress={onOpenHistory}
-              style={styles.sessionAction}
-              testID="rag-conversation-sessions-toggle"
-            >
-              <ComposerGlassBackground testID="rag-conversation-history-glass" />
-              <AppSymbol
-                name="clock.arrow.circlepath"
-                color={appColors.primaryText}
-              />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.newConversation}
-              onPress={() => {
-                store.create();
-              }}
-              style={styles.sessionAction}
-              testID="rag-conversation-new-session"
-            >
-              <ComposerGlassBackground testID="rag-conversation-new-glass" />
-              <AppSymbol name="plus" color={appColors.primaryText} />
-            </Pressable>
-          </View>
-        ) : null}
+        {/* Keep session actions beside the title so the shell never adds a dock row. */}
+        <View style={styles.sessionActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.sessions}
+            disabled={!onOpenHistory}
+            onPress={onOpenHistory}
+            style={[styles.sessionAction, !onOpenHistory && styles.disabled]}
+            testID="rag-conversation-sessions-toggle"
+          >
+            <ComposerGlassBackground testID="rag-conversation-history-glass" />
+            <AppSymbol
+              name="clock.arrow.circlepath"
+              color={appColors.primaryText}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.newConversation}
+            onPress={() => {
+              store.create();
+            }}
+            style={styles.sessionAction}
+            testID="rag-conversation-new-session"
+          >
+            <ComposerGlassBackground testID="rag-conversation-new-glass" />
+            <AppSymbol name="plus" color={appColors.primaryText} />
+          </Pressable>
+        </View>
       </View>
       {providerSelection ? (
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
-      {messages.length === 0 && !pendingMessage ? (
-        <Text style={styles.description}>{copy.description}</Text>
-      ) : null}
+      <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
     </View>
   );
 
@@ -188,18 +159,10 @@ export function ConversationScreen({
               error={error}
               onOpenSource={onOpenSource}
               onLinkError={onLinkError}
-              citationsInPanelForMessageId={latestAssistantMessageId}
               footer={
-                <>
-                  <ConversationEvidencePanel
-                    messages={messages}
-                    onOpenSource={onOpenSource}
-                    onLinkError={onLinkError}
-                  />
-                  {composerLayout.compact ? (
-                    <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-                  ) : null}
-                </>
+                composerLayout.compact ? (
+                  <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+                ) : null
               }
             />
             <ConversationComposer
