@@ -4,13 +4,12 @@ import { AppRegistry, StyleSheet, View } from 'react-native';
 import { name as appName } from '../app.json';
 import { AppButton } from '../src/layout/AppButton';
 import { EvidenceSourceDetailScreen } from '../src/aiFeatures/integration/EvidenceSourceDetailScreen';
-import type { EvidenceSourceReadResult } from '../src/aiFeatures/integration/evidenceRegistry';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
 import {
-  evidenceVisualRecords,
+  createEvidenceVisualReader,
   evidenceVisualReference,
-  evidenceVisualMedication,
+  type EvidenceVisualMode,
 } from './evidenceVisualFixtures';
 import { evidenceVisualPeriod } from './evidenceVisualPeriod';
 
@@ -29,7 +28,7 @@ const modes = [
   'changed',
   'unavailable',
 ] as const;
-type Mode = (typeof modes)[number];
+type Mode = EvidenceVisualMode;
 type Route = 'picker' | Mode;
 const leaveState = {
   readState: () => ({
@@ -88,42 +87,7 @@ function Detail({
   routeKey: string;
   onBack: () => void;
 }) {
-  const readSource = useMemo(() => {
-    let attempts = 0;
-    return async (
-      _reference: typeof evidenceVisualReference,
-      signal: AbortSignal,
-    ): Promise<EvidenceSourceReadResult> => {
-      attempts += 1;
-      if (mode === 'loading') {
-        // A pending local read remains cancellable without any arbitrary timed delay.
-        return new Promise(resolve =>
-          signal.addEventListener(
-            'abort',
-            () => resolve({ status: 'unavailable' }),
-            { once: true },
-          ),
-        );
-      }
-      if (mode === 'missing' || mode === 'changed') return { status: mode };
-      if (mode === 'period')
-        return { status: 'available', document: evidenceVisualPeriod };
-      if (mode === 'unavailable' && attempts === 1)
-        return { status: 'unavailable' };
-      return {
-        status: 'available',
-        document: {
-          sourceKind: 'personal_record',
-          records: [
-            evidenceVisualRecords[
-              mode === 'unavailable' ? 'measurement' : mode
-            ],
-            ...(mode === 'medication' ? [evidenceVisualMedication] : []),
-          ],
-        },
-      };
-    };
-  }, [mode]);
+  const readSource = useMemo(() => createEvidenceVisualReader(mode), [mode]);
   return (
     <EvidenceSourceDetailScreen
       navigationRouteKey={routeKey}

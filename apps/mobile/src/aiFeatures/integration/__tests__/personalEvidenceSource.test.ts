@@ -12,6 +12,62 @@ import {
 
 // Source-detail behavior is grouped separately from stale evidence checks.
 describe('personal evidence source detail', () => {
+  it.each(['unit', 'time', 'provenance'] as const)(
+    'rejects a source whose %s changed after citation',
+    async field => {
+      const source = sourceRecord('source-current');
+      const observation = healthObservation(
+        'observation-current',
+        ['source-current'],
+        70.5,
+      );
+      if (observation.kind !== 'health_observation')
+        throw new Error('Expected an observation fixture.');
+      let currentRecords = [source, observation];
+      const currentRepository = repository(currentRecords);
+      jest
+        .mocked(currentRepository.readRecord)
+        .mockImplementation(
+          async (kind, id) =>
+            currentRecords.find(
+              record => record.kind === kind && record.record.id === id,
+            )?.record ?? null,
+        );
+      const chunk = chunkStructuredRecord(
+        'health_observation',
+        observation.record as never,
+      );
+      const registry = new LocalEvidenceReferenceRegistry();
+      const result = buildPersonalEvidence({
+        records: inventory(currentRecords).records,
+        persistedChunks: [chunk],
+        repository: currentRepository,
+        registry,
+        loadCurrentPersistedChunks: async () => [chunk],
+        ...noStaleEvidence,
+      });
+      const item = result.items[0];
+      if (!item) throw new Error('Expected the current observation fixture.');
+      const changes =
+        field === 'unit'
+          ? { value: { kind: 'quantity' as const, amount: 70.5, unit: 'lb' } }
+          : field === 'time'
+            ? { effectiveAt: '2026-01-03T08:00:00.000Z' }
+            : {
+                provenance: {
+                  ...observation.record.provenance,
+                  sourceRecordIds: ['different-source'],
+                },
+              };
+      currentRecords = [
+        source,
+        { ...observation, record: { ...observation.record, ...changes } },
+      ];
+      await expect(
+        registry.readSource(referenceOnly(item), new AbortController().signal),
+      ).resolves.not.toMatchObject({ status: 'available' });
+    },
+  );
   it('opens the exact saved observation and its linked source record', async () => {
     const source = sourceRecord('source-current');
     const observation = healthObservation(
