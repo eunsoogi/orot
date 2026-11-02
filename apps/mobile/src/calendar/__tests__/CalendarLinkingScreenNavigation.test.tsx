@@ -40,6 +40,9 @@ test('places shared Back, Home, and recording actions in the bottom menu', async
     />,
   );
 
+  await fireEvent(screen.getByTestId('bottom-navigation-menu-host'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 430, height: 60 } },
+  });
   expect(screen.getByTestId('navigation-bar-native-surface')).toBeVisible();
   await fireEvent.press(
     screen.getByRole('button', {

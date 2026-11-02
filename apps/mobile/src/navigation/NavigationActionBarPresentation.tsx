@@ -112,12 +112,12 @@ export function NavigationActionBarPresentation({
   const pageWidth = row.plan?.pageWidth ?? 0;
   const pageLeft = row.plan?.pageLeft ?? 0;
   const displayedNavigation = singleRow
-    ? [
-        ...row.directNavigation,
-        ...(hasRootTabs && row.overflow
-          ? [{ ...row.more, disabled: pageActionsDisabled }]
-          : []),
-      ]
+    ? hasRootTabs && row.overflow
+      ? [
+          ...row.directNavigation,
+          { ...row.more, disabled: pageActionsDisabled },
+        ]
+      : row.directNavigation
     : laneActions;
   const railFrameStyle = rightLayout
     ? {

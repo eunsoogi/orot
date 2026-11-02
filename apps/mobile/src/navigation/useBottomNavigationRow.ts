@@ -96,7 +96,9 @@ export function useBottomNavigationRow({
     plan &&
     (plan.overflowNavigation.length > 0 || plan.overflowPages.length > 0);
   const directNavigation = plan
-    ? plan.navigationIndices.map(index => actions[index]!)
+    ? plan.navigationIndices.length === actions.length
+      ? actions
+      : plan.navigationIndices.map(index => actions[index]!)
     : [];
   const directPage = plan
     ? plan.pageIndices.map(index => taskActions[index]!)
