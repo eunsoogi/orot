@@ -102,7 +102,6 @@ const labelColors = {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: appColors.primaryAction,
     borderRadius: 14,
     minHeight: 48,
     // Short labels still need a usable hit area in both dimensions.
@@ -132,18 +131,13 @@ const styles = StyleSheet.create({
   },
   primaryLabel: { color: appColors.onPrimary },
   disabled: { opacity: 0.45 },
-  // Surface actions keep a visible boundary without taking primary emphasis.
-  secondary: {
+  // Surface variants share a quiet border; their labels retain distinct emphasis.
+  surface: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderWidth: 1,
   },
   secondaryLabel: { color: appColors.primaryText },
-  neutral: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
-  },
   neutralLabel: { color: appColors.text },
   // List actions occupy their caller's row while leaving its layout ownership intact.
   list: {
@@ -175,8 +169,8 @@ const styles = StyleSheet.create({
 
 const variantStyles: Record<AppButtonVariant, ViewStyle> = {
   primary: styles.primary,
-  secondary: styles.secondary,
-  neutral: styles.neutral,
+  secondary: styles.surface,
+  neutral: styles.surface,
   list: styles.list,
   text: styles.text,
   destructive: styles.destructive,

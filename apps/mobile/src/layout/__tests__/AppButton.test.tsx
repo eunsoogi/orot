@@ -48,6 +48,21 @@ it('keeps compact neutral and text actions at or above the 44pt target', async (
   ).toMatchObject({ color: appColors.text });
 
   await screen.rerender(
+    <AppButton size="compact" title="Previous" variant="secondary" />,
+  );
+  const secondaryButton = screen.getByRole('button', { name: 'Previous' });
+  expect(StyleSheet.flatten(secondaryButton.props.style)).toMatchObject({
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderWidth: 1,
+    minHeight: 44,
+    minWidth: 44,
+  });
+  expect(
+    StyleSheet.flatten(screen.getByText('Previous').props.style),
+  ).toMatchObject({ color: appColors.primaryText });
+
+  await screen.rerender(
     <AppButton size="compact" title="Cancel" variant="text" />,
   );
   const textButton = screen.getByRole('button', { name: 'Cancel' });
@@ -109,6 +124,31 @@ it('keeps list actions in their row and presents destructive progress accessibly
     StyleSheet.flatten(screen.getByText('Delete recording').props.style),
   ).toMatchObject({ color: appColors.danger });
   await fireEvent.press(button);
+  expect(onPress).not.toHaveBeenCalled();
+
+  await screen.rerender(
+    <AppButton
+      accessibilityState={{ busy: true, expanded: true }}
+      onPress={onPress}
+      testID="delete-recording"
+      title="Deleting recording"
+      variant="destructive"
+    />,
+  );
+  const accessibilityBusyButton = screen.getByRole('button', {
+    name: 'Deleting recording',
+  });
+  expect(accessibilityBusyButton.props.accessibilityState).toMatchObject({
+    busy: true,
+    disabled: true,
+    expanded: true,
+  });
+  expect(
+    screen.getByTestId('delete-recording-progress', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  await fireEvent.press(accessibilityBusyButton);
   expect(onPress).not.toHaveBeenCalled();
 
   await screen.rerender(
