@@ -18,7 +18,7 @@ interface RecordingLibraryDetailProps {
   readonly onDelete: () => void;
 }
 
-/** Groups full-audio playback with the selected source's date and secondary actions. */
+/** Keeps source actions distinct, with deletion visually destructive and caller-owned. */
 export default function RecordingLibraryDetail({
   summary,
   disabled,
@@ -48,18 +48,20 @@ export default function RecordingLibraryDetail({
       />
       <View style={styles.actions}>
         <AppButton
+          size="compact"
           disabled={disabled}
           onPress={onClose}
           testID="recording-detail-close"
           title={t('recording.library.closeDetails')}
-          variant="secondary"
+          variant="cancel"
         />
         <AppButton
+          size="compact"
           disabled={disabled}
           onPress={onDelete}
           testID="recording-detail-delete"
           title={t('recording.library.delete')}
-          variant="secondary"
+          variant="destructive"
         />
       </View>
     </View>

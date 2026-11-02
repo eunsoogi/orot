@@ -27,7 +27,13 @@ describe('shared app color palettes', () => {
         contrastRatio(palette!.text, palette!.surface),
       ).toBeGreaterThanOrEqual(4.5);
       expect(
+        contrastRatio(palette!.primaryText, palette!.surface),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
         contrastRatio(palette!.secondary, palette!.background),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(palette!.secondary, palette!.surface),
       ).toBeGreaterThanOrEqual(4.5);
       expect(
         contrastRatio(palette!.primaryText, palette!.primarySoft),
@@ -40,6 +46,9 @@ describe('shared app color palettes', () => {
       ).toBeGreaterThanOrEqual(4.5);
       expect(
         contrastRatio(palette!.danger, palette!.surface),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(palette!.danger, palette!.dangerSurface),
       ).toBeGreaterThanOrEqual(4.5);
       expect(
         contrastRatio(palette!.warning, palette!.warningSurface),
