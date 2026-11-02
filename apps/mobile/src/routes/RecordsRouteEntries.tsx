@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import { useCaptureActionHeights } from './useCaptureActionHeights';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
+import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
 import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
-import { hubSpacing } from '../layout/hubSpacing';
+import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
   readonly onOpenSymptoms: () => void;
@@ -12,16 +14,29 @@ interface RecordsRouteEntriesProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly onOpenManualHistory: () => void;
+  readonly medicalDocumentOpening: boolean;
+  readonly medicalDocumentDisabled: boolean;
+  readonly onImportMedicalDocument: () => void;
 }
 
-/** Keeps every current Records destination, with recording as the sole primary action. */
+/** Groups capture actions and existing record destinations without adding a new scroll owner. */
 export function RecordsRouteEntries({
   onOpenSymptoms,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
   onOpenManualHistory,
+  medicalDocumentOpening,
+  medicalDocumentDisabled,
+  onImportMedicalDocument,
 }: RecordsRouteEntriesProps) {
+  const { fontScale, width } = useWindowDimensions();
+  // At larger text sizes, full-width peers leave room for labels without limiting Dynamic Type.
+  const stackCaptureActions = fontScale > 1;
+  const { commonHeight, recordHeight } = useCaptureActionHeights(
+    width,
+    fontScale,
+  );
   return (
     <View style={styles.container}>
       <Text
@@ -32,132 +47,126 @@ export function RecordsRouteEntries({
         {t('records.title')}
       </Text>
       <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenRecording}
-        style={styles.recordingAction}
-        testID="records-new-recording"
+      <View
+        style={[
+          styles.captureActions,
+          stackCaptureActions && styles.stackedActions,
+        ]}
+        testID="records-capture-actions"
       >
-        <View style={styles.recordingIcon}>
-          <AppSymbol name="mic.fill" color={appColors.primaryAction} />
-        </View>
-        <Text style={styles.recordingActionTitle}>
-          {t('records.newRecording')}
-        </Text>
-      </Pressable>
-
-      {/* Self-reported symptoms stay separate from imported clinical records. */}
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenSymptoms}
-        style={styles.healthCard}
-        testID="symptoms-open"
-      >
-        <View style={styles.healthIcon}>
-          <AppSymbol name="square.and.pencil" color={appColors.primaryText} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('symptoms.title')}</Text>
-          <Text style={styles.cardSummary}>{t('symptoms.description')}</Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenSavedRecordings}
-        style={styles.healthCard}
-        testID="records-open-saved-recordings"
-      >
-        <View style={styles.healthIcon}>
-          <AppSymbol name="doc.text" color={appColors.primaryText} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('recording.library.title')}</Text>
-          <Text style={styles.cardSummary}>
-            {t('records.savedRecordingsSummary')}
-          </Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
-
-      <ManualHistoryAction onPress={onOpenManualHistory} />
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={onOpenHealthLibrary}
-        style={styles.healthCard}
-        testID="records-open-health-library"
-      >
-        <View
-          style={[styles.healthIcon, { backgroundColor: appColors.greenSoft }]}
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenRecording}
+          style={[
+            styles.captureAction,
+            stackCaptureActions &&
+              commonHeight > 24 && { minHeight: commonHeight },
+          ]}
+          testID="records-new-recording"
         >
-          <AppSymbol name="folder" color={appColors.green} />
-        </View>
-        <View style={styles.cardCopy}>
-          <Text style={styles.cardTitle}>{t('records.healthRecords')}</Text>
-          <Text style={styles.cardSummary}>
-            {t('healthRecords.description')}
-          </Text>
-        </View>
-        <Text style={styles.chevron} accessibilityElementsHidden>
-          ›
+          <View
+            onLayout={event => recordHeight(0, event.nativeEvent.layout.height)}
+            style={styles.captureContent}
+            testID="recording-capture-content"
+          >
+            <View style={styles.captureIcon}>
+              <AppSymbol name="mic.fill" color={appColors.primaryAction} />
+            </View>
+            <Text style={styles.captureActionTitle}>
+              {t('records.newRecording')}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenSymptoms}
+          style={[
+            styles.captureAction,
+            stackCaptureActions &&
+              commonHeight > 24 && { minHeight: commonHeight },
+          ]}
+          testID="symptoms-open"
+        >
+          <View
+            onLayout={event => recordHeight(1, event.nativeEvent.layout.height)}
+            style={styles.captureContent}
+            testID="symptom-capture-content"
+          >
+            <View style={styles.captureIcon}>
+              <AppSymbol
+                name="square.and.pencil"
+                color={appColors.primaryAction}
+              />
+            </View>
+            <Text style={styles.captureActionTitle}>{t('symptoms.title')}</Text>
+          </View>
+        </Pressable>
+      </View>
+
+      <View style={styles.materials} testID="records-materials">
+        <Text accessibilityRole="header" style={styles.materialsTitle}>
+          {t('records.myMaterials')}
         </Text>
-      </Pressable>
+        <View style={styles.materialRows}>
+          <MedicalDocumentImportAction
+            opening={medicalDocumentOpening}
+            disabled={medicalDocumentDisabled}
+            onPress={onImportMedicalDocument}
+            showDivider
+          />
+          <RecordsLibraryAction
+            icon="doc.text"
+            title={t('recording.library.title')}
+            summary={t('records.savedRecordingsSummary')}
+            onPress={onOpenSavedRecordings}
+            testID="records-open-saved-recordings"
+            showDivider
+          />
+          <ManualHistoryAction onPress={onOpenManualHistory} showDivider />
+          <RecordsLibraryAction
+            icon="folder"
+            title={t('records.healthRecords')}
+            summary={t('healthRecords.description')}
+            onPress={onOpenHealthLibrary}
+            testID="records-open-health-library"
+          />
+        </View>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: hubSpacing.item,
-    minWidth: 0,
-  },
-  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
-  subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
-  recordingAction: {
-    alignItems: 'center',
-    backgroundColor: appColors.primaryAction,
-    borderRadius: 22,
-    justifyContent: 'center',
-    gap: 12,
-    minHeight: 108,
-    marginTop: 4,
-  },
-  recordingIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
-  },
-  recordingActionTitle: {
-    color: appColors.onPrimary,
-    fontSize: 21,
-    fontWeight: '700',
-  },
-  healthCard: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 16,
-    minHeight: 88,
-    paddingHorizontal: 18,
-  },
-  healthIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 14,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  cardCopy: { flex: 1, gap: 4 },
-  cardTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  chevron: { color: appColors.secondary, fontSize: 24 },
-});
+/** Keeps the imported and saved library links visually consistent within My Data. */
+function RecordsLibraryAction({
+  icon,
+  title,
+  summary,
+  onPress,
+  testID,
+  showDivider = false,
+}: {
+  readonly icon: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly onPress: () => void;
+  readonly testID: string;
+  readonly showDivider?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.materialRow, showDivider && styles.rowDivider]}
+      testID={testID}
+    >
+      <View style={styles.materialIcon}>
+        <AppSymbol name={icon} color={appColors.primaryAction} />
+      </View>
+      <View style={styles.cardCopy}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardSummary}>{summary}</Text>
+      </View>
+      <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+    </Pressable>
+  );
+}

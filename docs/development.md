@@ -40,6 +40,14 @@ pnpm test:unit
 
 `pnpm format:write`는 검사 대상 파일을 정리합니다. 코드 표면과 제외 근거는 [코드 품질 검사 안내](code-quality.md)에 있습니다.
 
+macOS에서 배송 Swift 소스의 복약 용량 커서와 주입된 native tool lifecycle 회귀를 실행합니다.
+
+```sh
+scripts/tests/native-swift-regressions-host.sh
+```
+
+이 검사는 실제 Foundation Models SDK, HealthKit 또는 iOS 브리지 동작을 대신 검증하지 않습니다. 해당 경계는 iOS 테스트에 유지합니다.
+
 ## Source line policy
 
 Check the changes from this branch's merge base with the latest `main`. The same command with `--all` audits every tracked file and every non-ignored untracked file.
@@ -142,7 +150,7 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
-HealthReview의 아홉 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
+HealthReview의 여덟 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
 
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-health-review
@@ -207,7 +215,7 @@ Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQ
 
 CI의 공개 E2E 실행은 `main`에서 매일 03:00 KST에 시작하는 nightly Full workflow와 `main`에서 수동으로 시작하는 Full workflow입니다. PR, push, 다른 브랜치의 수동 dispatch는 Mac E2E 실행을 시작하지 않습니다. 단일 사례의 개발 확인은 로컬 명령으로 수행하며, 수동 Full과 집중 결과는 release 증거로 사용할 수 없습니다.
 
-Full E2E의 현재 계획은 29개 cohort에 208개의 고유 XCTest 사례를 각각 한 번씩 배정합니다. 두 Keychain authentication 사례는 별도 suite와 receipt로 기록합니다. 세 문서 가져오기 여정은 여러 profile에서 사용되더라도 전체 계획에서는 한 번만 배정합니다. 정확한 현재 identifier와 cohort 분배는 [iOS 실행 계획](../scripts/ci/ios-test-execution-plan.mjs)과 [inventory](../scripts/ci/ios-test-inventory.mjs)에 있습니다. PR과 main push는 Mac E2E runner를 시작하지 않으며, release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
+Full E2E의 현재 계획은 29개 cohort에 207개의 고유 XCTest 사례를 각각 한 번씩 배정합니다. 두 Keychain authentication 사례는 별도 suite와 receipt로 기록합니다. 세 문서 가져오기 여정은 여러 profile에서 사용되더라도 전체 계획에서는 한 번만 배정합니다. 정확한 현재 identifier와 cohort 분배는 [iOS 실행 계획](../scripts/ci/ios-test-execution-plan.mjs)과 [inventory](../scripts/ci/ios-test-inventory.mjs)에 있습니다. PR과 main push는 Mac E2E runner를 시작하지 않으며, release 증거는 exact main SHA의 성공한 nightly 실행만 인정합니다.
 
 실제 실행·초기화 driver는 Apple 도구를 호출하기 전에 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. Simulator를 변경하지 않는 cohort 조정기는 소유권 계약만 확인하며 같은 상태 조회를 중복 실행하지 않습니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 
@@ -217,7 +225,7 @@ Full E2E의 현재 계획은 29개 cohort에 208개의 고유 XCTest 사례를 �
 
 Full E2E graph는 Debug·Release·Production·OAuth 빌드 작업 4개, 기능별 iOS 실행 cohort 29개, OAuth 실행 1개, 마지막에 직렬 실행하는 Keychain authentication 작업으로 구성됩니다. 모든 실행은 호환되는 빌드 산출물만 사용하며 workflow의 macOS concurrency 설정을 공유합니다.
 
-Release의 현재 169개 관측은 23개 기능 cohort에 배정됩니다. Debug의 30개와 Speech의 9개 관측은 각각 다섯 개 Debug cohort와 하나의 Speech cohort에서 실행합니다. Core UI cohort에는 루트 네비게이션, test-host 및 journal gesture 사례 5개가 포함됩니다. 녹음 내보내기, 전사 근거 및 후보 검토의 6개 사례는 별도의 `recording-evidence` cohort에 배정합니다. Navigation은 Features·Routes·Accessibility·Imports, Calendar는 Consent·Appointments·수동 병력 및 문서 가져오기, Questions는 Review·Conversation·Accessibility·Summary·Literature, Recordings는 Controls·Review·Playback으로 나누며 각 XCTest 메서드 안의 모드 변경·재시작·복원·동의 검증은 분리하지 않습니다. 각 작업은 전용 Simulator 하나를 사용합니다. UI fixture 62개는 Navigation·Recordings·Questions·Calendar와 독립된 사례별 초기화를 유지합니다. `run-ios-fixture-tests.mjs`를 사용하는 네 프로필의 독립 UI 사례와 Backup의 독립된 첫 세 사례는 선택한 묶음마다 XCTest 실행기를 한 번 시작합니다. 실행기의 공통 XCTest 준비·종료 경계는 호스트가 먼저 연 loopback 소켓에 사례마다 연결해 기존 초기화·정리를 기다립니다. 세션·요청 UUID가 일치하는 응답만 인정하며, 호스트 종료로 연결이 끊기거나 응답이 잘못되면 실패합니다. 파일 반복 조회나 별도 생존 확인, 고정 대기 제한은 추가하지 않습니다. 앱 재시작이나 assertion은 변경하지 않으며, 첫 실패 뒤의 기존 fail-fast 표식은 후속 준비를 막습니다. 요청·준비·정리 실패와 원본 xcresult의 실패·skip·미실행은 성공으로 처리하지 않습니다. Backup 복원과 local-model 재실행은 실제 데이터 의존이 있어 원래 순서를 유지합니다. Persistence는 저장 상태 3단계와 녹음 자료 2단계를 3개의 새 프로세스로 묶습니다. 첫 설치·키 생성은 첫 프로세스에서 단독 검증하고, 다음 두 프로세스는 서로 다른 UUID를 쓰는 저장 상태와 녹음 자료 검증을 함께 실행합니다. 단계 사이에는 초기화하지 않으며 두 영역의 실제 PID와 원래 판정 결과를 모두 확인합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 62개 전체를 14개 독립 작업으로 선택합니다. 독립 선택 실행의 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
+Release의 현재 168개 관측은 23개 기능 cohort에 배정됩니다. Debug의 30개와 Speech의 9개 관측은 각각 다섯 개 Debug cohort와 하나의 Speech cohort에서 실행합니다. Core UI cohort에는 루트 네비게이션, test-host 및 journal gesture 사례 5개가 포함됩니다. 녹음 내보내기, 전사 근거 및 후보 검토의 6개 사례는 별도의 `recording-evidence` cohort에 배정합니다. Navigation은 Features·Routes·Accessibility·Imports, Calendar는 Consent·Appointments·수동 병력 및 문서 가져오기, Questions는 Review·Conversation·Accessibility·Summary·Literature, Recordings는 Controls·Review·Playback으로 나누며 각 XCTest 메서드 안의 모드 변경·재시작·복원·동의 검증은 분리하지 않습니다. 각 작업은 전용 Simulator 하나를 사용합니다. UI fixture 62개는 Navigation·Recordings·Questions·Calendar와 독립된 사례별 초기화를 유지합니다. `run-ios-fixture-tests.mjs`를 사용하는 네 프로필의 독립 UI 사례와 Backup의 독립된 첫 세 사례는 선택한 묶음마다 XCTest 실행기를 한 번 시작합니다. 실행기의 공통 XCTest 준비·종료 경계는 호스트가 먼저 연 loopback 소켓에 사례마다 연결해 기존 초기화·정리를 기다립니다. 세션·요청 UUID가 일치하는 응답만 인정하며, 호스트 종료로 연결이 끊기거나 응답이 잘못되면 실패합니다. 파일 반복 조회나 별도 생존 확인, 고정 대기 제한은 추가하지 않습니다. 앱 재시작이나 assertion은 변경하지 않으며, 첫 실패 뒤의 기존 fail-fast 표식은 후속 준비를 막습니다. 요청·준비·정리 실패와 원본 xcresult의 실패·skip·미실행은 성공으로 처리하지 않습니다. Backup 복원과 local-model 재실행은 실제 데이터 의존이 있어 원래 순서를 유지합니다. Persistence는 저장 상태 3단계와 녹음 자료 2단계를 3개의 새 프로세스로 묶습니다. 첫 설치·키 생성은 첫 프로세스에서 단독 검증하고, 다음 두 프로세스는 서로 다른 UUID를 쓰는 저장 상태와 녹음 자료 검증을 함께 실행합니다. 단계 사이에는 초기화하지 않으며 두 영역의 실제 PID와 원래 판정 결과를 모두 확인합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 62개 전체를 14개 독립 작업으로 선택합니다. 독립 선택 실행의 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
 
 각 cohort runner는 계획된 task의 실행 모드, suite와 XCTest target을 바탕으로 UI host 준비가 필요한지 판단합니다. UI 작업이 있으면 준비 helper를 한 번 실행하고, 같은 runner process의 이후 UI task에서는 완료 상태만 재사용합니다. 시작 시 기존 `artifacts/ios-cohort/ui-preparation` 디렉터리가 있으면 그 결과를 재사용하지 않고 실패합니다. 이번 실행에서 helper가 만든 host XCTest JSON과 원본 `.xcresult`의 정확한 host 사례가 모두 통과해야 계획된 테스트를 시작합니다. host XCTest 결과와 DeviceHub·Simulator screenshot 자료는 계획된 결과와 분리해 보존합니다.
 
@@ -225,7 +233,7 @@ Release의 현재 169개 관측은 23개 기능 cohort에 배정됩니다. Debug
 
 Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. Questions의 Conversation은 composer·화면 모드 전환 메서드를, Accessibility는 키보드·큰 글자 및 제목·스와이프 메서드를 완전한 단위로 나누어 실행합니다. 모든 29개 cohort를 실행하고 auth suite를 별도 job으로 마친 뒤 전체 receipt를 검증합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 시간이며, 취소나 미실행은 통과로 집계하지 않습니다.
 
-`E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 dispatch도 `main`에서만 Full 검증을 시작합니다. PR, main push, 다른 브랜치의 수동 dispatch는 Mac E2E 작업을 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
+`E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 Full dispatch도 `main`에서만 실행합니다. 다른 브랜치는 명시적으로 candidate 모드를 선택한 경우에만 제한된 Mac 검증을 시작합니다. PR이나 main push는 E2E를 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.
 
 Full E2E의 cohort 및 build job들은 기존 concurrency 그룹 안에서 실행합니다. Keychain authentication job은 네 제품 producer와 29개 cohort executor가 끝난 뒤 실행해 다섯 개 macOS 슬롯 안에서 이어집니다. 이 job이 만든 run·attempt별 focused artifact는 Full receipt에 검증되어 두 Keychain 관측과 실제 Face ID 입력 근거를 기록합니다.
 
@@ -247,6 +255,20 @@ Full E2E 내부의 Validate 결과는 전체 workflow의 성공을 구성하지�
 
 `Code Quality`·`Policy Check`·`Unit Test`는 PR과 main push에서 실행합니다. `E2E Test`는 `main`의 매일 03:00 KST schedule과 수동 `workflow_dispatch`만 사용하며 PR이나 push에서는 시작하지 않습니다. PR에서 E2E 필수 상태를 기다리지 않고, release workflow는 exact target SHA의 성공한 nightly E2E receipt를 요구합니다.
 
-개발 중 특정 사례는 앞의 로컬 Core 검증 명령을 사용합니다. 공개 선택 실행 workflow는 없으며, `ios-focused.yml`은 Full E2E가 Keychain authentication suite를 실행할 때 재사용합니다.
+검토한 같은 저장소의 열린 Draft PR은 `E2E Test`의 candidate 모드를 수동으로 실행할 수 있습니다. 예를 들어 Backup 전체 상태 그룹은 다음과 같이 후보 브랜치와 그 시점의 전체 head SHA를 지정합니다.
+
+```sh
+gh workflow run e2e-test.yml --ref <candidate-branch> \
+  -f mode=candidate -f candidate_pr=<pr-number> -f expected_sha=<full-head-sha> \
+  -f profile=ios/backup \
+  -f scenario_file=apps/mobile/ios/OrotUITests/BackupPersistenceUITests.swift \
+  -f scenario_name=all
+```
+
+실행 전 PR의 base와 head를 확인하고, 선택된 프로필과 상태 그룹이 변경 영향을 모두 포함하는지 확인합니다. 선택기는 PR의 merge base부터 head까지 변경된 경로를 기존 cohort 영향 목록과 비교합니다. 선택 범위가 부족하거나 공유 영향이 불명확하면 Mac 작업 전에 실패하며, 더 넓은 검증을 별도로 실행해야 합니다. 기본 브랜치에 이미 등록된 `e2e-test.yml`을 사용하므로 후보 브랜치의 workflow 변경을 검증할 때도 새 workflow 등록을 기다릴 필요는 없습니다. 후보 코드가 실행되므로 신뢰하고 검토한 같은 저장소의 PR만 수동으로 실행합니다.
+
+workflow나 `scripts/ci`가 비교 범위에 포함된 PR은 공유 영향이 불명확하므로 이 선택 검사에서 실패합니다. 이 경로 자체의 통과 실행을 merge 전에 검증하려면 구현 브랜치의 정확한 head를 base로 삼고, 그 위에 선택 가능한 테스트 변경만 둔 별도 Draft PR을 사용합니다. 그 PR의 head로 dispatch하며 구현 PR 자체의 변경을 테스트 전용 변경으로 취급하지 않습니다.
+
+완료 후 정확한 run과 attempt의 `ios-candidate-selection-*` 및 `ios-focused-result-*` artifact와 실행 로그, Simulator 정리 결과를 확인합니다. 결과에는 선택한 식별자, 제품 manifest digest와 실제 runtime 관측이 포함됩니다. 선택 실행은 기록된 사례만 증명하며 Full 또는 release 증거가 아닙니다. `ios-focused.yml`은 Full E2E의 Keychain authentication에도 재사용됩니다.
 
 PR 상태 변경과 제목·본문 수정, main push는 E2E를 시작하지 않습니다. `main`의 수동 Full 실행은 동일한 검증 graph를 실행하지만 release 증거가 되지는 않습니다. 실패·누락·취소·오래된 결과가 있으면 nightly Full receipt와 release 검증은 실패하며, 다음 일일 schedule의 exact main SHA 결과를 기다려야 합니다.

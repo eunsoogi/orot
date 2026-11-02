@@ -144,7 +144,6 @@
 		A62F00000000000000000011 /* AppleNativeToolGeneration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000011 /* AppleNativeToolGeneration.swift */; };
 		A62F00000000000000000012 /* AppleNativeToolSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000012 /* AppleNativeToolSession.swift */; };
 		A62F00000000000000000013 /* AppleNativeToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000013 /* AppleNativeToolRegistry.swift */; };
-		A62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */; };
 		A62F00000000000000000015 /* AppleNativeToolTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000015 /* AppleNativeToolTrace.swift */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
@@ -226,7 +225,6 @@
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 		E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000013 /* MedicationDoseCursor.swift */; };
-		E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000014 /* MedicationDoseCursorTests.swift */; };
 		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */; };
@@ -469,7 +467,6 @@
 		B62F00000000000000000011 /* AppleNativeToolGeneration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolGeneration.swift; path = OrotMobile/AppleNativeToolGeneration.swift; sourceTree = "<group>"; };
 		B62F00000000000000000012 /* AppleNativeToolSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolSession.swift; path = OrotMobile/AppleNativeToolSession.swift; sourceTree = "<group>"; };
 		B62F00000000000000000013 /* AppleNativeToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolRegistry.swift; path = OrotMobile/AppleNativeToolRegistry.swift; sourceTree = "<group>"; };
-		B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleNativeToolLifecycleTests.swift; sourceTree = "<group>"; };
 		B62F00000000000000000015 /* AppleNativeToolTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolTrace.swift; path = OrotMobile/AppleNativeToolTrace.swift; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
@@ -540,7 +537,6 @@
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
 		E17A00000000000000000013 /* MedicationDoseCursor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicationDoseCursor.swift; path = OrotMobile/MedicationDoseCursor.swift; sourceTree = "<group>"; };
-		E17A00000000000000000014 /* MedicationDoseCursorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationDoseCursorTests.swift; sourceTree = "<group>"; };
 		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
 		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
 		E19810000000000000000011 /* LocalE5Preparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5Preparation.swift; path = OrotMobile/LocalE5Preparation.swift; sourceTree = "<group>"; };
@@ -806,7 +802,6 @@
 				71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */,
 				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
-				E17A00000000000000000014 /* MedicationDoseCursorTests.swift */,
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
@@ -824,7 +819,6 @@
 				A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */,
 				F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
-				B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */,
 				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
 				79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */,
 				435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */,
@@ -1485,7 +1479,6 @@
 				C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */,
 				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
-				E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */,
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
@@ -1503,7 +1496,6 @@
 				7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */,
 				E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
-				A62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift in Sources */,
 				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
 				FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */,
 				A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */,

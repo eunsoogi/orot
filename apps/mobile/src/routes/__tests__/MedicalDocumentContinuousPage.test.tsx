@@ -98,6 +98,7 @@ async function renderRecords(
           onOpenHealthLibrary={jest.fn()}
           onOpenManualHistory={jest.fn()}
           documentImportService={documentImportService}
+          loadSymptoms={async () => ({ list: async () => [] })}
         />
       )}
     </NavigationRouteAdapter>,

@@ -1,14 +1,12 @@
 import { openEncryptedStorage } from '../src';
 import { runMigrations } from '../src/migrations';
-import {
-  createDatabase,
-  createOptions,
-  recordedAt,
-  sampleRecord,
-} from './manualHistoryTestSupport';
+import { createOptions, recordedAt, sampleRecord } from './manualHistoryTestSupport';
+import { openMigrationSqlite } from './migrationSqliteDatabase';
+
+const createDatabase = () => openMigrationSqlite(':memory:').database;
 
 describe('manual history schema migration', () => {
-  it('upgrades v2 without changing records and stores unknown dates explicitly', async () => {
+  it('repairs a missing manual-history table at v2 and stores unknown dates explicitly', async () => {
     const database = createDatabase();
     const repository = await openEncryptedStorage(createOptions(database));
     await repository.put('source_record', sampleRecord);
@@ -50,7 +48,7 @@ describe('manual history schema migration', () => {
     await database.closeAsync?.();
   });
 
-  it('adds manual-history storage when upgrading schema v10 without changing existing records', async () => {
+  it('repairs a missing manual-history table at v10 without changing existing records', async () => {
     const database = createDatabase();
     const repository = await openEncryptedStorage(createOptions(database));
     await repository.put('source_record', sampleRecord);

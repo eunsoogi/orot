@@ -39,6 +39,7 @@ test('draft mode does not weaken conservative changed-path selection', () => {
 
 test('nightly and manual E2E require a complete Full selection before allocating macOS', () => {
   const source = read('.github/workflows/e2e-test.yml');
+  const fullSelection = read('.github/workflows/ios-full-selection.yml');
   const e2e = yaml.load(source);
   assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
@@ -46,12 +47,16 @@ test('nightly and manual E2E require a complete Full selection before allocating
     existsSync(fileURLToPath(new URL('.github/workflows/e2e-selected.yml', root))),
     false,
   );
-  assert.match(source, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(source, /github\.event_name == 'schedule'/);
-  assert.match(source, /github\.event_name == 'workflow_dispatch'/);
-  assert.match(source, /github\.ref == 'refs\/heads\/main'/);
-  assert.match(source, /steps\.select\.outputs\.validation_tier == 'full'/);
-  assert.match(source, /steps\.select\.outputs\.selection_complete == 'true'/);
+  assert.equal(e2e.jobs.selection.uses, './.github/workflows/ios-full-selection.yml');
+  assert.match(
+    fullSelection,
+    /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/,
+  );
+  assert.match(fullSelection, /github\.event_name == 'schedule'/);
+  assert.match(fullSelection, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(fullSelection, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(fullSelection, /steps\.select\.outputs\.validation_tier == 'full'/);
+  assert.match(fullSelection, /steps\.select\.outputs\.selection_complete == 'true'/);
   assert.match(source, /needs\.completeness\.result/);
   const receipt = read('.github/actions/ios-e2e-validation-receipt/action.yml');
   assert.match(receipt, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
@@ -79,7 +84,11 @@ test('focused authentication workflow has no active public entry point', () => {
   assert.match(focus, /^on:\n[ ]{2}workflow_call:/m);
   assert.match(focus, /group: focused-ios-\$\{\{ github\.run_id \}\}-scenario/);
   assert.match(focus, /cancel-in-progress: true/);
-  assert.match(focus, /ios-focused-selection-cli\.mjs/);
+  assert.match(focus, /ios-focused-selection\.yml/);
+  assert.match(
+    read('.github/workflows/ios-focused-selection.yml'),
+    /ios-focused-selection-cli\.mjs/,
+  );
   assert.match(focus, /ios-focused-results\.mjs/);
   assert.doesNotMatch(focus, /ios-profile-status/);
   const full = yaml.load(read('.github/workflows/e2e-test.yml'));

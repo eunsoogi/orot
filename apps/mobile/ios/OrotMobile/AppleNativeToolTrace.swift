@@ -1,5 +1,5 @@
 import Foundation
-#if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
+#if canImport(FoundationModels) && !OROT_HOST_SWIFT_TESTS && !(OROT_TESTS && targetEnvironment(simulator))
     import FoundationModels
 #endif
 
@@ -7,7 +7,8 @@ import Foundation
 /// Never log prompts, arguments, results, credentials, or source content;
 /// lifecycle correlation IDs belong to the bridge, not the SDK.
 enum AppleNativeToolTrace {
-    #if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
+    // Host lifecycle tests exercise injected producers, not SDK token measurement.
+    #if canImport(FoundationModels) && !OROT_HOST_SWIFT_TESTS && !(OROT_TESTS && targetEnvironment(simulator))
         /// Opt-in numeric measurements distinguish input pressure from model execution.
         /// No request, evidence, schema text or native error is written to the console.
         @available(iOS 26.4, macOS 26.4, *)

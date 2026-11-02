@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestCohort, verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
+import { verifyIosCleanupInventory } from './ios-test-cleanup-evidence.mjs';
 import {
   iosPreparationFailure,
   iosPreparationInventory,
@@ -221,6 +222,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       // Cleanup is confined to the recorded device, including on test failure. Other lanes are preserved.
       if (device.state === 'Booted') simctl('shutdown', owner.udid);
       simctl('delete', owner.udid);
+      // A successful delete command alone does not establish that the owned device is gone.
+      const evidence = verifyIosCleanupInventory(
+        owner,
+        JSON.parse(simctl('list', 'devices', '-j')),
+      );
+      writeFileSync(ownerPath + '.cleanup.json', JSON.stringify(evidence) + '\n');
     } else throw new Error('Unknown integration simulator command');
   }
 }

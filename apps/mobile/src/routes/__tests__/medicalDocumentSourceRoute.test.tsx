@@ -56,6 +56,7 @@ test('opens saved medical document text and provenance in measured detail panels
       onOpenHealthLibrary={jest.fn()}
       onOpenManualHistory={jest.fn()}
       documentImportService={service}
+      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
 

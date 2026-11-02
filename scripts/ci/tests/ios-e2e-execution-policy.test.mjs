@@ -20,21 +20,23 @@ function evaluate(expression, context) {
 
 test('only successful Full selection on main schedule or manual dispatch can allocate Mac work', () => {
   const e2e = read('e2e-test.yml');
+  const selection = read('ios-full-selection.yml').jobs.selection;
 
   assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
-  assert.equal(e2e.on.workflow_dispatch, null);
-  const selectionCheckout = e2e.jobs.selection.steps.find((step) =>
+  assert.equal(e2e.on.workflow_dispatch.inputs.mode.default, 'full');
+  assert.equal(e2e.jobs.selection.uses, './.github/workflows/ios-full-selection.yml');
+  const selectionCheckout = selection.steps.find((step) =>
     step.uses?.startsWith('actions/checkout@'),
   );
   // Schedule and manual dispatch select the complete inventory without a path comparison.
   assert.equal(selectionCheckout?.with?.['fetch-depth'], 1);
-  assert.equal(e2e.jobs.selection.outputs.diagnostic, false);
-  assert.equal(e2e.jobs.selection.outputs.non_protected_contexts, false);
+  assert.equal(selection.outputs.diagnostic, false);
+  assert.equal(selection.outputs.non_protected_contexts, false);
   assert.equal(e2e.jobs.ios_simulator_build.name, 'Validate / Build');
   assert.equal(e2e.jobs.required_statuses.name, 'Validate');
 
-  const runMac = e2e.jobs.selection.outputs.run_ios;
+  const runMac = selection.outputs.run_ios;
   const scenarios = [
     {
       label: 'successful Full schedule on main',

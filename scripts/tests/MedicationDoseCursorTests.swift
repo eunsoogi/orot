@@ -1,6 +1,8 @@
 import Foundation
 #if canImport(Orot)
     @testable import Orot
+#elseif OROT_HOST_SWIFT_TESTS
+    @testable import NativeSwiftRegressions
 #endif
 import XCTest
 

@@ -1,29 +1,8 @@
 import { openEncryptedStorage } from '../src';
-import type {
-  RecordMap,
-  SqlDatabase,
-  SqlExecutor,
-  SqlResult,
-  SqlTransaction,
-  SqlValue,
-} from '../src';
+import type { RecordMap, SqlDatabase } from '../src';
+import { openMigrationSqlite } from './migrationSqliteDatabase';
 
 declare const require: (specifier: string) => unknown;
-
-interface TestStatement {
-  all(...parameters: SqlValue[]): Array<Record<string, SqlValue>>;
-  run(...parameters: SqlValue[]): { changes: number };
-}
-
-interface TestConnection {
-  prepare(query: string): TestStatement;
-  exec(query: string): void;
-  close(): void;
-}
-
-interface DatabaseSyncConstructor {
-  new (path: string): TestConnection;
-}
 
 interface TestFileSystem {
   mkdtempSync(prefix: string): string;
@@ -38,37 +17,12 @@ interface TestPath {
   join(...parts: string[]): string;
 }
 
-const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: DatabaseSyncConstructor };
 const { mkdtempSync, rmSync } = require('node:fs') as TestFileSystem;
 const { tmpdir } = require('node:os') as TestOs;
 const { join } = require('node:path') as TestPath;
 
 function createDatabase(path = ':memory:'): SqlDatabase {
-  const connection = new DatabaseSync(path);
-  const execute = async (query: string, parameters: SqlValue[] = []): Promise<SqlResult> => {
-    const normalized = query.trim().toUpperCase();
-    const statement = connection.prepare(query);
-    if (normalized.startsWith('SELECT') || normalized.startsWith('PRAGMA')) {
-      return { rows: statement.all(...parameters) };
-    }
-    const result = statement.run(...parameters);
-    return { rows: [], rowsAffected: result.changes };
-  };
-  const executor: SqlExecutor = { execute };
-  return {
-    ...executor,
-    async transaction(operation: (transaction: SqlTransaction) => Promise<void>) {
-      connection.exec('BEGIN IMMEDIATE');
-      try {
-        await operation({ execute, commit: () => ({ rows: [] }), rollback: () => ({ rows: [] }) });
-        connection.exec('COMMIT');
-      } catch (error) {
-        connection.exec('ROLLBACK');
-        throw error;
-      }
-    },
-    closeAsync: async () => connection.close(),
-  };
+  return openMigrationSqlite(path).database;
 }
 
 function createOptions(database: SqlDatabase) {

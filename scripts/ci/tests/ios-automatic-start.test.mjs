@@ -66,7 +66,7 @@ test('full E2E retains all validation dependencies and skips only unselected con
   assert.equal(full.on.workflow_call, undefined);
 });
 
-test('focused E2E runs only as the nightly authentication suite', () => {
+test('focused E2E has nightly authentication and explicit candidate callers', () => {
   assert.equal(existsSync('.github/workflows/e2e-selected.yml'), false);
   const callers = readdirSync('.github/workflows')
     .filter((name) => name.endsWith('.yml'))
@@ -75,12 +75,16 @@ test('focused E2E runs only as the nightly authentication suite', () => {
         .filter(([, job]) => job.uses === './.github/workflows/ios-focused.yml')
         .map(([job]) => [name, job]),
     );
-  assert.deepEqual(callers, [['e2e-test.yml', 'authentication']]);
+  assert.deepEqual(callers, [
+    ['e2e-test.yml', 'authentication'],
+    ['ios-candidate.yml', 'execution'],
+  ]);
 
   const focus = read('ios-focused.yml');
   assert.deepEqual(Object.keys(focus.on), ['workflow_call']);
   assertAutomaticGraph('ios-focused.yml');
-  assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
+  assert.equal(focus.jobs.selection.uses, './.github/workflows/ios-focused-selection.yml');
+  assert.equal(read('ios-focused-selection.yml').jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.selection['continue-on-error'], undefined);
   assert.equal(focus.jobs.products.needs, 'selection');
 });

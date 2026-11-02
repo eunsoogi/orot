@@ -46,7 +46,13 @@ export function useMedicalDocumentImport(
   const [savedDocuments, setSavedDocuments] = useState<
     MedicalDocumentSourceRecord[]
   >([]);
-  const [savedDocumentsLoading, setSavedDocumentsLoading] = useState(true);
+  const [savedDocumentsState, setSavedDocumentsState] = useState<
+    'loading' | 'ready' | 'failed'
+  >('loading');
+  // Keep list-read failures separate from opening one source, so a detail error cannot hide the feed.
+  const [savedDocumentsError, setSavedDocumentsError] = useState<string | null>(
+    null,
+  );
   const [sourceDetail, setSourceDetail] = useState<SavedMedicalDocument | null>(
     null,
   );
@@ -54,14 +60,14 @@ export function useMedicalDocumentImport(
   const [sourceMessage, setSourceMessage] = useState<string | null>(null);
 
   const loadSavedDocuments = useCallback(async () => {
-    setSavedDocumentsLoading(true);
-    setSourceMessage(null);
+    setSavedDocumentsState('loading');
+    setSavedDocumentsError(null);
     try {
       setSavedDocuments(await service.listDocuments());
+      setSavedDocumentsState('ready');
     } catch {
-      setSourceMessage(t('medicalDocument.source.loadError'));
-    } finally {
-      setSavedDocumentsLoading(false);
+      setSavedDocumentsState('failed');
+      setSavedDocumentsError(t('medicalDocument.source.loadError'));
     }
   }, [service]);
 
@@ -154,10 +160,12 @@ export function useMedicalDocumentImport(
     discardMedicalDocument,
     message,
     openSavedDocument,
+    reloadSavedDocuments: loadSavedDocuments,
     saveMedicalDocument,
     selectMedicalDocument,
     savedDocuments,
-    savedDocumentsLoading,
+    savedDocumentsState,
+    savedDocumentsError,
     sourceDetail,
     sourceLoading,
     sourceMessage,
