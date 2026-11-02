@@ -10,7 +10,10 @@ import { t } from '../../i18n';
 import { HealthReviewSessionProvider } from '../HealthReviewSession';
 import { HealthReviewScreen } from '../HealthReviewScreen';
 import { ReviewResult } from '../ReviewResult';
-import { SafetyPolicyActionSchema } from '@orot/domain';
+import {
+  SafetyPolicyActionSchema,
+  SafetyPolicyDecisionSchema,
+} from '@orot/domain';
 import { healthReviewText as copy } from '../../i18n/healthReview';
 import type { HealthReviewService } from '../service';
 import * as provider from '../../aiFeatures/integration/provider';
@@ -103,6 +106,14 @@ it('retains authored name and genuine safety answers while the view leaves and r
   await fireEvent.press(
     screen.getByRole('radio', { name: '대상 정보: 임신 중이 아닌 성인' }),
   );
+  await fireEvent.press(
+    screen.getByRole('radio', {
+      name: '현재 증상 확인: 새롭거나 걱정되는 증상이 없음',
+    }),
+  );
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '예정된 진료: 예정된 진료가 있음' }),
+  );
   await view.rerender(wrapper(false));
   await view.rerender(wrapper(true));
   expect(screen.getByTestId('health-review-name')).toHaveDisplayValue(
@@ -111,6 +122,18 @@ it('retains authored name and genuine safety answers while the view leaves and r
   expect(
     screen.getByRole('radio', {
       name: '대상 정보: 임신 중이 아닌 성인',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('radio', {
+      name: '현재 증상 확인: 새롭거나 걱정되는 증상이 없음',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('radio', {
+      name: '예정된 진료: 예정된 진료가 있음',
       checked: true,
     }),
   ).toBeOnTheScreen();
@@ -144,19 +167,65 @@ it('renders every policy action during insufficient-information guidance and pro
   expect(screen.getByText(/현재 증상 여부/)).toBeOnTheScreen();
 });
 
-it('retains unknown facts and rejects a partial measurement without substituting a normal reading', () => {
-  expect(healthReviewSafetyInput(emptyHealthReviewSafety())).toEqual({
+it('shows evidence insufficiency separately while retaining the unchanged policy guidance', async () => {
+  const safety = SafetyPolicyDecisionSchema.parse({
+    policyVersion: '1.0.0',
+    category: 'insufficient_information',
+    requiredActions: ['provide_required_information'],
+    matchedRuleIds: [],
+    missingInputs: ['blood_pressure_reading'],
+  });
+  await render(
+    <ReviewResult
+      state={{
+        name: '',
+        draft: emptyHealthReviewSafety(),
+        requests: [],
+        busy: false,
+        safety,
+        result: {
+          status: 'needs_clarification',
+          pending: {
+            threadId: 'thread',
+            sourceId: 'source',
+            safety,
+            references: [],
+            reason: 'evidence',
+            mode: 'record_observation',
+          },
+        },
+      }}
+      onSource={jest.fn()}
+    />,
+  );
+  expect(screen.getByText(copy.evidenceInsufficient)).toBeOnTheScreen();
+  expect(
+    screen.getByText(copy.actions.provide_required_information),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/혈압 측정 기록/)).toBeOnTheScreen();
+});
+
+it('keeps blood-pressure policy context unknown while serializing the remaining explicit answers', () => {
+  const empty = emptyHealthReviewSafety();
+  expect(healthReviewSafetyInput(empty)).toEqual({
     requestType: 'health_review',
     population: 'unknown',
     readingContext: 'unknown',
     symptomAssessment: { status: 'unknown' },
   });
-  expect(() =>
+  expect(
     healthReviewSafetyInput({
-      ...emptyHealthReviewSafety(),
-      readings: [
-        { systolic: '120', diastolic: '', measuredAt: '', source: '' },
-      ],
+      ...empty,
+      population: 'adult_not_pregnant',
+      symptoms: 'warning_signs',
+      signs: ['chest_pain'],
+      upcomingVisit: 'yes',
     }),
-  ).toThrow();
+  ).toEqual({
+    requestType: 'health_review',
+    population: 'adult_not_pregnant',
+    readingContext: 'unknown',
+    symptomAssessment: { status: 'warning_signs', signs: ['chest_pain'] },
+    hasUpcomingVisit: true,
+  });
 });

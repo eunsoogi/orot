@@ -62,6 +62,7 @@ describe('HealthKit-only graph and original alias readers', () => {
         sourceId: source.id,
         threadId: source.id,
         safetyInput: safety,
+        mode: 'record_observation',
         port,
         checkpointer: f.saver(source.id),
       });

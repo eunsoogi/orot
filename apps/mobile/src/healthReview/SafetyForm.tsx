@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
-import { MeasurementFields } from './MeasurementFields';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { healthReviewText as copy } from '../i18n/healthReview';
 import type { HealthReviewSafetyDraft } from './safetyInput';
-import { emptySafetyReading } from './safetyInput';
 import { healthReviewStyles as styles } from './styles';
 
 function Choices<T extends string>({
@@ -70,7 +68,7 @@ const signs = [
   ['difficulty_speaking', '말하기 어려움'],
 ] as const;
 
-/** Every fact is supplied by a person; unknown is retained until an explicit answer changes it. */
+/** Keep applicability, symptom and visit answers explicit; manual pressure context stays absent. */
 export function SafetyForm({
   draft,
   onChange,
@@ -110,46 +108,6 @@ export function SafetyForm({
           ['child', '아동'],
         ]}
       />
-      <Choices
-        label={copy.context}
-        testID="health-review-context-choices"
-        wide={wide}
-        disabled={disabled}
-        selected={draft.readingContext}
-        onSelect={value => set('readingContext', value)}
-        values={[
-          ['unknown', copy.unknown],
-          ['current_measurement', '현재 측정'],
-          ['historical', '과거 측정'],
-        ]}
-      />
-      <Text accessibilityRole="header">{copy.reading}</Text>
-      {draft.readings.map((row, index) => (
-        <MeasurementFields
-          key={index}
-          row={row}
-          index={index}
-          disabled={disabled}
-          wide={wide}
-          onChange={value =>
-            set(
-              'readings',
-              draft.readings.map((entry, position) =>
-                position === index ? value : entry,
-              ),
-            )
-          }
-        />
-      ))}
-      {draft.readings.length < 2 ? (
-        <AppButton
-          title={copy.repeat}
-          disabled={disabled}
-          onPress={() =>
-            set('readings', [...draft.readings, emptySafetyReading()])
-          }
-        />
-      ) : null}
       <Choices
         label={copy.symptoms}
         testID="health-review-symptom-choices"

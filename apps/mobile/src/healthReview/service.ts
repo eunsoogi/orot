@@ -2,9 +2,11 @@ import { SafetyPolicyEngine, SafetyPolicyInputSchema } from '@orot/domain';
 import { encounterCanonical } from '@orot/agent-runtime';
 import type {
   ExecutionConsentPort,
+  HealthReviewMode,
   HealthReviewPending,
   HealthReviewResult,
 } from '@orot/agent-runtime';
+import { isHealthReviewObservationEligible } from '@orot/agent-runtime';
 import type { SourceRecord } from '@orot/domain';
 import { createHealthReviewInvocation } from './evidenceInvocation';
 import { composeHealthReviewModel, healthReviewReadOnlyModel } from './model';
@@ -71,10 +73,16 @@ export function createHealthReviewService(
       return { result: { status: 'unavailable' } };
     if (signal.aborted) return { result: { status: 'cancelled' } };
     const local = new SafetyPolicyEngine().evaluate(safety);
+    // New app reviews explicitly opt into the narrow observation gate. Restored
+    // snapshots carry their original mode; legacy snapshots remain strict.
+    const mode: HealthReviewMode = pending
+      ? (pending.mode ?? 'strict')
+      : 'record_observation';
     let model = healthReviewReadOnlyModel();
     if (
-      local.category !== 'insufficient_information' &&
-      !local.requiredActions.length
+      (local.category !== 'insufficient_information' &&
+        !local.requiredActions.length) ||
+      isHealthReviewObservationEligible(mode, safety, local)
     ) {
       const resolve =
         dependencies.resolveSelected ??
@@ -113,6 +121,7 @@ export function createHealthReviewService(
       sourceId,
       threadId: sourceId,
       safetyInput: safety,
+      mode,
       model,
       signal,
       evidence: invocation.evidence,

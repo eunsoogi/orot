@@ -125,21 +125,22 @@ it('keeps the selected pending review and form values as measured panels reflow'
   });
   const direction = (id: string) =>
     StyleSheet.flatten(screen.getByTestId(id).props.style).flexDirection;
-  expect(direction('health-review-population-choices')).toBe('row');
-  expect(direction('health-review-measurement-row-0')).toBe('row');
+  expect(direction('health-review-symptom-choices')).toBe('row');
+  expect(direction('health-review-visit-choices')).toBe('row');
   await fireEvent.changeText(
     screen.getByTestId('health-review-name'),
     '유지할 초안',
-  );
-  await fireEvent.changeText(
-    screen.getByTestId('health-review-systolic-0'),
-    '125',
   );
   await fireEvent.press(
     screen.getByTestId('health-review-request-pending-review'),
   );
   await fireEvent.press(
-    screen.getByRole('radio', { name: '대상 정보: 임신 중' }),
+    screen.getByRole('radio', {
+      name: '현재 증상 확인: 새롭거나 걱정되는 증상이 없음',
+    }),
+  );
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '예정된 진료: 예정된 진료가 있음' }),
   );
   expect(
     screen.getByTestId('health-review-needs_clarification'),
@@ -165,18 +166,21 @@ it('keeps the selected pending review and form values as measured panels reflow'
   await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 500, height: 700 } },
   });
-  expect(direction('health-review-population-choices')).toBe('column');
-  expect(direction('health-review-measurement-row-0')).toBe('column');
+  expect(direction('health-review-symptom-choices')).toBe('column');
+  expect(direction('health-review-visit-choices')).toBe('column');
   expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(screen.getByTestId('health-review-name')).toHaveDisplayValue(
     '유지할 초안',
   );
-  expect(screen.getByTestId('health-review-systolic-0')).toHaveDisplayValue(
-    '125',
-  );
   expect(
     screen.getByRole('radio', {
-      name: '대상 정보: 임신 중',
+      name: '현재 증상 확인: 새롭거나 걱정되는 증상이 없음',
+      checked: true,
+    }),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('radio', {
+      name: '예정된 진료: 예정된 진료가 있음',
       checked: true,
     }),
   ).toBeOnTheScreen();
@@ -196,8 +200,8 @@ it('keeps the selected pending review and form values as measured panels reflow'
   await fireEvent(screen.getByTestId('health-review-form'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 900, height: 700 } },
   });
-  expect(direction('health-review-population-choices')).toBe('column');
-  expect(direction('health-review-measurement-row-0')).toBe('column');
+  expect(direction('health-review-symptom-choices')).toBe('column');
+  expect(direction('health-review-visit-choices')).toBe('column');
   expect(screen.getByTestId('health-review-layout')).toBeOnTheScreen();
   expect(
     screen.getByTestId('health-review-needs_clarification'),

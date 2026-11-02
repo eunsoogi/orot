@@ -59,7 +59,7 @@ There is no app-wide shared spacing or corner-radius module yet. Existing screen
 
 Current shared component dimensions:
 
-- `AppButton`: minimum height 52pt, radius 16pt, horizontal padding 18pt.
+- `AppButton`: regular minimum height 48pt and minimum width 44pt; compact minimum height 44pt and minimum width 44pt; radius 14pt (12pt compact), horizontal padding 16pt (12pt compact).
 - `NavigationActionButton`: minimum height 50pt, minimum width 72pt, radius 24pt.
 - `NavigationGlassSurface`: default navigation surface 48pt; non-native fallback radius 28pt.
 - `CheckboxIndicator`: 18pt symbol within a 44pt touch target.
@@ -70,14 +70,14 @@ Keep actual touch targets at least 44pt. The visible glyph size does not establi
 
 ## Shared APIs and screen examples
 
-| API                                                                         | Role and boundary                                                                                                            |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| [`AppText`](apps/mobile/src/layout/AppText.tsx)                             | Applies the default text color. Screen styles own size and heading hierarchy.                                                |
-| [`AppButton`](apps/mobile/src/layout/AppButton.tsx)                         | Provides primary/secondary buttons, disabled state, and accessible names. There is no shared loading or destructive variant. |
-| [`AppSymbol`](apps/mobile/src/layout/AppSymbol.tsx)                         | Displays a decorative SF Symbol. The enclosing control owns its accessible name.                                             |
-| [`CheckboxIndicator`](apps/mobile/src/layout/CheckboxIndicator.tsx)         | Draws a check indicator. The enclosing control owns selection and touch handling.                                            |
-| [`NavigationActionBar`](apps/mobile/src/navigation/NavigationActionBar.tsx) | Connects root tabs or contextual back, home, and primary actions to navigation.                                              |
-| [`SafeAreaLayout`](apps/mobile/src/layout/SafeAreaLayout.tsx)               | Handles safe areas and scrolling for standalone screens outside the shared navigation shell.                                 |
+| API                                                                         | Role and boundary                                                                                                                          |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`AppText`](apps/mobile/src/layout/AppText.tsx)                             | Applies the default text color. Screen styles own size and heading hierarchy.                                                              |
+| [`AppButton`](apps/mobile/src/layout/AppButton.tsx)                         | Provides primary, surface, list, text, destructive and cancel actions with compact sizing, accessible names, disabled and progress states. |
+| [`AppSymbol`](apps/mobile/src/layout/AppSymbol.tsx)                         | Displays a decorative SF Symbol. The enclosing control owns its accessible name.                                                           |
+| [`CheckboxIndicator`](apps/mobile/src/layout/CheckboxIndicator.tsx)         | Draws a check indicator. The enclosing control owns selection and touch handling.                                                          |
+| [`NavigationActionBar`](apps/mobile/src/navigation/NavigationActionBar.tsx) | Connects root tabs or contextual back, home, and primary actions to navigation.                                                            |
+| [`SafeAreaLayout`](apps/mobile/src/layout/SafeAreaLayout.tsx)               | Handles safe areas and scrolling for standalone screens outside the shared navigation shell.                                               |
 
 [`WelcomeRoute`](apps/mobile/src/routes/WelcomeRoute.tsx) separates actual appointment and recording states into cards, empty states, errors, and retry actions. [`RecordsRoute`](apps/mobile/src/routes/RecordsRoute.tsx) groups records and import actions. [`RouteLoadError`](apps/mobile/src/routes/RouteLoadError.tsx) presents recoverable errors with a heading, alert, and retry. Use [`AppointmentForm`](apps/mobile/src/appointments/AppointmentForm.tsx) as a reference for input labels and states. There is no shared input component yet.
 
@@ -92,7 +92,22 @@ Keep actual touch targets at least 44pt. The visible glyph size does not establi
 | Selected    | Combine a non-color cue such as a shape or symbol with the accessible selection state.                                                 |
 | Destructive | Explain the consequence of deletion or cancellation and use native confirmation where needed. Do not use `danger` as a general accent. |
 
-`AppButton` currently provides only `primary` and `secondary` variants. Screens handle loading and destructive operations through their state and native confirmation flows. Introduce a new shared variant only through a scoped change that accounts for affected consumers and contrast.
+### AppButton migration contract
+
+`AppButton` keeps `primary` as its default so existing primary actions retain their emphasis. New and migrated callers should set an explicit `variant` when the action is not the screen's main action:
+
+The known oversized caller is the 108pt recording action in [`RecordsRouteEntries`](apps/mobile/src/routes/RecordsRouteEntries.tsx). Its Records layout belongs to the screen redesign lane, which should consume these shared styles while keeping recording as the clear primary action.
+
+- `primary` is the filled action for the clearest next step.
+- `secondary` is a bordered surface action with primary text; `neutral` uses the same surface with neutral text.
+- `list` fills the caller's row with a transparent, left-aligned action. The caller still owns row layout.
+- `text` is an unfilled, centered action for inline or low-emphasis use.
+- `destructive` uses the danger surface and text. Keep deletion and other confirmation flows with the caller.
+- `cancel` is an unfilled neutral text action. It does not change what the caller's cancel callback does.
+- `size="compact"` reduces padding while preserving 44pt minimum height and width. Do not set a fixed height; labels must remain free to wrap and scale.
+- `busy` shows progress, exposes the button's busy accessibility state, and disables repeated activation while preserving the action label. The caller owns the operation and when to start or stop progress.
+
+Keep actual touch targets at least 44pt in every appearance and size. Text should use Dynamic Type scaling, and surface, text, and danger colors should use the dynamic shared tokens. Variants change presentation only; callers retain ownership of callbacks, data, routing, consent and save semantics.
 
 ## Navigation, safe areas, and keyboards
 
@@ -104,12 +119,12 @@ iOS navigation uses native UIKit controls in [`NavigationGlassView.swift`](apps/
 
 The five root tabs and their accessible names are defined in [`rootTabs.ts`](apps/mobile/src/navigation/rootTabs.ts). Native tab composition lives in [`NavigationGlassComponents.swift`](apps/mobile/ios/Navigation/NavigationGlassComponents.swift) and [`NavigationGlassView.swift`](apps/mobile/ios/Navigation/NavigationGlassView.swift); the JavaScript fallback is [`RootTabActions.tsx`](apps/mobile/src/navigation/RootTabActions.tsx); height constants are in [`navigationLayout.ts`](apps/mobile/src/navigation/navigationLayout.ts). Root tabs and contextual actions have distinct sizing and selection behavior. Use the following root-tab dimensions and platform treatments:
 
-| Property              | Native iOS                                                                                                                                                             | JavaScript fallback                                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Root-tab surface      | 60pt surface with 52pt root controls                                                                                                                                                               | Minimum item height 52pt plus 4pt vertical surface padding on each side; may grow with large text |
-| Icon and label        | SF Symbol 18pt regular, `UILabel` 12pt medium, gap 4pt                                                                                                                 | Icon 18pt/line 20pt, label 12pt/line 16pt, gap 2pt                                                |
-| Selected state        | Capsule around icon and label; `secondarySystemFill` with appearance-aware foreground, brighter in dark high contrast                                                  | Radius 26pt capsule with `primaryAction` background and `onPrimary` foreground                    |
-| Touch target          | Button height 52pt, minimum width 44pt                                                                                                                                 | Minimum item height 52pt and width 44pt                                                           |
+| Property | Native iOS | JavaScript fallback |
+| --- | --- | --- |
+| Root-tab surface | 60pt surface with 52pt root controls | Minimum item height 52pt plus 4pt vertical surface padding on each side; may grow with large text |
+| Icon and label | SF Symbol 18pt regular, `UILabel` 12pt medium, 4pt gap | 18pt icon on a 20pt line, 12pt label on a 16pt line, 2pt gap |
+| Selected state | Capsule around icon and label; `secondarySystemFill` with appearance-aware foreground, brighter in dark high contrast | Radius 26pt capsule with `primaryAction` background and `onPrimary` foreground |
+| Touch target | Button height 52pt, minimum width 44pt | Minimum item height 52pt and width 44pt |
 | Material and emphasis | Root tabs share `UIGlassEffect` on iOS 26+ and system material on earlier iOS; primary task actions use `.prominentGlass()` or `.filled()`. Back and Home each use regular `.glass()` on iOS 26+ | React Native `View`; no native Liquid Glass material                                              |
 
 The default detail surface is `NAVIGATION_SURFACE_HEIGHT` 48pt; the root-tab surface is 60pt. Do not interchange them. When the keyboard is hidden and the bar handles its own safe area, move the root-tab surface 10pt into the bottom inset to reduce excess screen-edge space. Keep the full available inset while the keyboard is visible. Native selected tabs use system fill colors while JavaScript uses the app's primary action color. Preserve the same recognizable selection hierarchy on both platforms.

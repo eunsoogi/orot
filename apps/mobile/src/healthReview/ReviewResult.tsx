@@ -6,7 +6,7 @@ import { healthReviewText as copy } from '../i18n/healthReview';
 import type { HealthReviewState } from './controller';
 import { healthReviewStyles as styles } from './styles';
 
-/** Policy guidance is a separate local section and remains visible during clarification/provider failure. */
+/** Keep the local policy result visible beside generated observations and during clarification. */
 export function ReviewResult({
   state,
   onSource,
@@ -20,6 +20,16 @@ export function ReviewResult({
       {state.safety ? (
         <View testID="health-review-safety">
           <Text accessibilityRole="header">{copy.safety}</Text>
+          {/* Generated observations do not turn an insufficient policy result into clearance. */}
+          {result?.status === 'review' &&
+          state.safety.category === 'insufficient_information' ? (
+            <Text
+              accessibilityRole="alert"
+              testID="health-review-safety-insufficient-information"
+            >
+              {copy.outcomes.needs_clarification}
+            </Text>
+          ) : null}
           {state.safety.requiredActions.map(action => (
             <Text accessibilityRole="alert" key={action}>
               {copy.actions[action]}
@@ -53,7 +63,10 @@ export function ReviewResult({
           accessibilityRole="alert"
           testID={`health-review-${result.status}`}
         >
-          {copy.outcomes[result.status]}
+          {result.status === 'needs_clarification' &&
+          result.pending.reason === 'evidence'
+            ? copy.evidenceInsufficient
+            : copy.outcomes[result.status]}
         </Text>
       ) : null}
       {result?.status === 'review' ? (

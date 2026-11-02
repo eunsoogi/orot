@@ -3,7 +3,6 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface MedicalDocumentImportActionProps {
   readonly opening: boolean;
@@ -11,46 +10,30 @@ interface MedicalDocumentImportActionProps {
   readonly onPress: () => void;
 }
 
-/** Exposes local document import as a separate Records action with clear picker progress. */
+/** Keeps document import in the Records body instead of duplicating it in navigation actions. */
 export function MedicalDocumentImportAction({
   opening,
   disabled,
   onPress,
 }: MedicalDocumentImportActionProps) {
   const label = t('medicalDocument.import.title');
-  const hasDock = useNavigationRouteActions([
-    {
-      id: 'add-medical-document',
-      label,
-      accessibilityLabel: label,
-      testID: 'records-import-medical-document',
-      systemImageName: 'doc.badge.plus',
-      disabled,
-      busy: opening,
-      onPress,
-    },
-  ]);
   const content = (
     <>
       <View style={styles.icon}>
         <AppSymbol name="doc.text" color={appColors.primaryText} />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.title}>{t('medicalDocument.import.title')}</Text>
+        <Text style={styles.title}>{label}</Text>
         <Text style={styles.summary}>
           {opening
             ? t('medicalDocument.import.opening')
             : t('medicalDocument.import.summary')}
         </Text>
       </View>
-      {!hasDock ? (
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      ) : null}
+      <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
     </>
   );
-  return hasDock ? (
-    <View style={[styles.card, disabled && styles.disabled]}>{content}</View>
-  ) : (
+  return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
