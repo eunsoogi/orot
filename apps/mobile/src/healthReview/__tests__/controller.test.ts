@@ -48,6 +48,12 @@ describe('Retained operation ownership and deterministic guidance', () => {
       },
       consent,
       expect.any(AbortSignal),
+      {
+        population: 'unknown',
+        symptoms: 'unknown',
+        signs: [],
+        upcomingVisit: 'unknown',
+      },
     );
     expect(controller.snapshot().busy).toBe(true);
     controller.cancel();
@@ -96,5 +102,32 @@ describe('Retained operation ownership and deterministic guidance', () => {
     await run;
     expect(controller.snapshot().result?.status).not.toBe('safety_action');
     expect(controller.snapshot().invocation).toBeUndefined();
+  });
+
+  it('keeps known warning guidance when Other text is invalid and does not submit', async () => {
+    const service: HealthReviewService = {
+      list: async () => [],
+      delete: jest.fn(),
+      start: jest.fn(),
+      continue: jest.fn(),
+    };
+    const controller = new HealthReviewController(service);
+    controller.setName('검토');
+    for (const otherText of ['', 'a'.repeat(1001)]) {
+      controller.setDraft({
+        population: 'adult_not_pregnant',
+        symptoms: 'warning_signs',
+        signs: ['chest_pain'],
+        otherSelected: true,
+        otherText,
+        upcomingVisit: 'unknown',
+      });
+      await controller.run(consent);
+      expect(controller.snapshot().error).toBe('input');
+      expect(
+        controller.snapshot().safety?.requiredActions.length,
+      ).toBeGreaterThan(0);
+      expect(service.start).not.toHaveBeenCalled();
+    }
   });
 });

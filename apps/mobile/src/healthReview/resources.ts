@@ -1,4 +1,5 @@
 import { createHealthReviewRequests } from './requests';
+import { createHealthReviewDraftStorage } from './draftStorage';
 
 /** Native resources load only when the user opens this feature. No list operation runs the graph. */
 export async function openHealthReviewResources() {
@@ -8,10 +9,15 @@ export async function openHealthReviewResources() {
       import('../agent/localCheckpointSaver'),
     ]);
   const repository = await openLocalStorage();
+  const { openLocalAgentMemoryDatabase } =
+    await import('../storage/secureDatabase');
+  const drafts = createHealthReviewDraftStorage(
+    await openLocalAgentMemoryDatabase(),
+  );
   const saver = await openLocalWorkflowCheckpointSaver();
   return {
     repository,
-    requests: createHealthReviewRequests(repository, saver),
+    requests: createHealthReviewRequests(repository, saver, { drafts }),
   };
 }
 

@@ -8,6 +8,7 @@ import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests_
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 import { createLocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
 import { createHealthReviewRequests } from '../requests';
+import { createHealthReviewDraftStorage } from '../draftStorage';
 
 export const instant = '2026-10-27T12:00:00.000Z';
 export const safety = {
@@ -30,6 +31,7 @@ export async function healthReviewSqlite(path = ':memory:') {
     );
   let next = 0;
   const requests = createHealthReviewRequests(repository, saver(), {
+    drafts: createHealthReviewDraftStorage(connection.database),
     createId: () => 'request/' + ++next,
     now: () => instant,
   });

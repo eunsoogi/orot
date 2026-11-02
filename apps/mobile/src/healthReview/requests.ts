@@ -4,6 +4,8 @@ import { requireLiveCheckpointSource } from '@orot/storage';
 import type { RecordRepository } from '@orot/storage';
 import type { SqliteCheckpointSaver } from '@orot/agent-runtime';
 import { readHealthReviewPending } from './pending';
+import type { createHealthReviewDraftStorage } from './draftStorage';
+import type { HealthReviewSafetyDraft } from './safetyInput';
 
 export const healthReviewRequestSystem = 'orot.health-review-request';
 export const healthReviewCheckpointKey = (sourceId: string) => ({
@@ -43,7 +45,11 @@ function secureRequestId(): string {
 export function createHealthReviewRequests(
   repository: RecordRepository,
   saver: Pick<SqliteCheckpointSaver, 'getTuple'>,
-  options: { createId?: () => string; now?: () => string } = {},
+  options: {
+    createId?: () => string;
+    now?: () => string;
+    drafts?: ReturnType<typeof createHealthReviewDraftStorage>;
+  } = {},
 ) {
   const live = (sourceId: string) =>
     repository.transaction(async (writer, sql) => {
@@ -56,6 +62,11 @@ export function createHealthReviewRequests(
     });
   return {
     live,
+    async saveDraft(sourceId: string, draft: HealthReviewSafetyDraft) {
+      await live(sourceId);
+      if (!options.drafts) throw new Error('Review draft storage unavailable.');
+      await options.drafts.save(sourceId, draft);
+    },
     async create(name: string) {
       const title = name.trim();
       if (!title) throw new Error('A review request name is required.');
@@ -91,7 +102,11 @@ export function createHealthReviewRequests(
       const sources = (await repository.list('source_record')).filter(
         isHealthReviewRequest,
       );
-      const result = [];
+      const result: Array<{
+        source: SourceRecord;
+        pending: ReturnType<typeof readHealthReviewPending>;
+        draft?: HealthReviewSafetyDraft;
+      }> = [];
       for (const source of sources) {
         try {
           await live(source.id);
@@ -99,12 +114,21 @@ export function createHealthReviewRequests(
             healthReviewCheckpointKey(source.id),
           );
           await live(source.id);
+          const draft = await options.drafts?.read(source.id);
+          await live(source.id);
           result.push({
             source,
             pending: readHealthReviewPending(tuple, source.id),
+            draft,
           });
-        } catch {
-          /* A concurrent deletion removes only this request from discovery. */
+        } catch (error) {
+          // Only concurrent deletion is benign; corrupted drafts must surface as storage errors.
+          try {
+            await live(source.id);
+          } catch {
+            continue;
+          }
+          throw error;
         }
       }
       return result;

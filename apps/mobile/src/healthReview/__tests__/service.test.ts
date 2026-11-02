@@ -10,6 +10,10 @@ import { healthReviewSqlite, instant, safety } from '../testing/sqlite';
 import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { nativeHealthReviewService } from '../testing/nativeService';
+import {
+  emptyHealthReviewSafety,
+  healthReviewSafetyInput,
+} from '../safetyInput';
 
 jest.mock('../../agent/polyfills', () => ({}));
 jest.mock('../../storage/secureDatabase', () => ({
@@ -148,6 +152,29 @@ describe('Production health review service and consent boundaries', () => {
         ? result.result.pending
         : null,
     );
+  });
+
+  it('saves Other separately while the unknown policy stops provider and consent', async () => {
+    const { service, resolveSelected, synthetic } = setup();
+    const draft = {
+      ...emptyHealthReviewSafety(),
+      symptoms: 'warning_signs' as const,
+      otherSelected: true,
+      otherText: '어지러움',
+    };
+    const authorize = jest.fn();
+    const started = await service.start(
+      '검토',
+      healthReviewSafetyInput(draft),
+      { authorize },
+      new AbortController().signal,
+      draft,
+    );
+    expect(started.result.status).toBe('needs_clarification');
+    expect((await service.list())[0].draft).toEqual(draft);
+    expect(resolveSelected).not.toHaveBeenCalled();
+    expect(authorize).not.toHaveBeenCalled();
+    expect(synthetic.modelCalls()).toBe(0);
   });
 
   it('denial exposes exact health_review recipient/model/scope and sends zero model requests', async () =>

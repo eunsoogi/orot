@@ -8,6 +8,7 @@ import type { HealthReviewService, HealthReviewExecution } from './service';
 import {
   emptyHealthReviewSafety,
   healthReviewSafetyInput,
+  validHealthReviewOther,
 } from './safetyInput';
 import type { HealthReviewSafetyDraft } from './safetyInput';
 
@@ -66,6 +67,8 @@ export class HealthReviewController {
     // Selection restores only private pending state. It never runs evidence or inference.
     this.publish({
       sourceId,
+      name: request.source.title ?? '',
+      draft: request.draft ?? emptyHealthReviewSafety(),
       invocation: undefined,
       result: request.pending
         ? { status: 'needs_clarification', pending: request.pending }
@@ -94,6 +97,10 @@ export class HealthReviewController {
     let safety;
     try {
       safety = healthReviewSafetyInput(this.state.draft);
+      // A malformed custom note must never suppress a separately known warning.
+      this.publish({ safety: new SafetyPolicyEngine().evaluate(safety) });
+      if (!validHealthReviewOther(this.state.draft))
+        throw new Error('Invalid other symptom.');
       if (!continuing && !this.state.name.trim())
         throw new Error('Name required.');
     } catch {
@@ -129,12 +136,14 @@ export class HealthReviewController {
               safety,
               consent,
               operation.signal,
+              this.state.draft,
             )
           : await this.service.start(
               this.state.name,
               safety,
               consent,
               operation.signal,
+              this.state.draft,
             );
       if (epoch !== this.epoch || operation.signal.aborted) return;
       const graphSafety =

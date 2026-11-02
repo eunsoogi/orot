@@ -9,6 +9,12 @@ import type {
 import { isHealthReviewObservationEligible } from '@orot/agent-runtime';
 import type { SourceRecord } from '@orot/domain';
 import { createHealthReviewInvocation } from './evidenceInvocation';
+import type { HealthReviewSafetyDraft } from './safetyInput';
+import {
+  emptyHealthReviewSafety,
+  healthReviewSafetyInput,
+  validHealthReviewOther,
+} from './safetyInput';
 import { composeHealthReviewModel, healthReviewReadOnlyModel } from './model';
 import {
   deleteHealthReviewSource,
@@ -31,6 +37,7 @@ export interface HealthReviewService {
     safety: unknown,
     consent: ExecutionConsentPort,
     signal: AbortSignal,
+    draft?: HealthReviewSafetyDraft,
   ): Promise<HealthReviewExecution & { source: SourceRecord }>;
   continue(
     sourceId: string,
@@ -38,6 +45,7 @@ export interface HealthReviewService {
     safety: unknown,
     consent: ExecutionConsentPort,
     signal: AbortSignal,
+    draft?: HealthReviewSafetyDraft,
   ): Promise<HealthReviewExecution>;
   delete(sourceId: string): Promise<void>;
 }
@@ -52,6 +60,20 @@ export function createHealthReviewService(
   } = {},
 ): HealthReviewService {
   const resources = dependencies.resources ?? openHealthReviewResources;
+  const validateDraft = (
+    draft: HealthReviewSafetyDraft | undefined,
+    safety: unknown,
+  ) => {
+    if (!draft) return undefined;
+    const normalized = { ...emptyHealthReviewSafety(), ...draft };
+    if (
+      !validHealthReviewOther(normalized) ||
+      encounterCanonical(healthReviewSafetyInput(normalized)) !==
+        encounterCanonical(SafetyPolicyInputSchema.parse(safety))
+    )
+      throw new Error('Review draft does not match safety input.');
+    return normalized;
+  };
   const execute = async (
     sourceId: string,
     input: unknown,
@@ -136,12 +158,26 @@ export function createHealthReviewService(
   };
   return {
     list: async () => (await resources()).requests.list(),
-    async start(name, safety, consent, signal) {
+    async start(name, safety, consent, signal, draft) {
+      const validated = validateDraft(draft, safety);
       const source = await (await resources()).requests.create(name);
+      if (validated && !signal.aborted)
+        await (await resources()).requests.saveDraft(source.id, validated);
       return { source, ...(await execute(source.id, safety, consent, signal)) };
     },
-    continue: (sourceId, pending, safety, consent, signal) =>
-      execute(sourceId, safety, consent, signal, pending),
+    continue: async (sourceId, pending, safety, consent, signal, draft) => {
+      const validated = validateDraft(draft, safety);
+      const requests = (await resources()).requests;
+      // Reject stale pending data before writing an updated app-owned draft.
+      if (
+        encounterCanonical(await requests.pending(sourceId)) !==
+        encounterCanonical(pending)
+      )
+        return { result: { status: 'unavailable' } };
+      if (validated && !signal.aborted)
+        await requests.saveDraft(sourceId, validated);
+      return execute(sourceId, safety, consent, signal, pending);
+    },
     async delete(sourceId) {
       await (await resources()).requests.live(sourceId);
       await (dependencies.remove ?? deleteHealthReviewSource)(sourceId);

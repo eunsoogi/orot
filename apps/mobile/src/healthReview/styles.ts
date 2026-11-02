@@ -28,6 +28,12 @@ export const healthReviewStyles = StyleSheet.create({
   column: { flexDirection: 'column' },
   choiceWide: { flex: 1, minWidth: 0 },
   choiceLabel: { flexShrink: 1 },
+  symptomRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   choiceMark: {
     width: 20,
     height: 20,
