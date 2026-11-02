@@ -9,7 +9,7 @@ enum NavigationPageActionUITestConditions {
     }
 
     /// Preserve each observed predicate so a keyboard or hit-test failure is distinguishable.
-    static func keyboardActionReady(_ action: XCUIElement, keyboard: XCUIElement) -> Bool {
+    static func keyboardActionReady(_ action: XCUIElement, keyboard: XCUIElement, app: XCUIApplication, testCase: XCTestCase) -> Bool {
         let exists = action.exists
         let hittable = exists && action.isHittable
         let keyboardExists = keyboard.exists
@@ -19,6 +19,17 @@ enum NavigationPageActionUITestConditions {
             attachment.name = "keyboard-action-state"
             attachment.lifetime = .keepAlways
             activity.add(attachment)
+        }
+        if !exists || !hittable || !keyboardExists {
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "keyboard-action-failure-native")
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "keyboard-action-failure-screen"
+            screenshot.lifetime = .keepAlways
+            testCase.add(screenshot)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "keyboard-action-failure-hierarchy"
+            hierarchy.lifetime = .keepAlways
+            testCase.add(hierarchy)
         }
         return exists && hittable && keyboardExists
     }
