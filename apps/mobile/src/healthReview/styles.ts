@@ -39,6 +39,22 @@ export const healthReviewStyles = StyleSheet.create({
   column: { flexDirection: 'column' },
   choiceWide: { flex: 1, minWidth: 0 },
   choiceLabel: { flexShrink: 1 },
+  symptomRow: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  // Preserve the shared action surface while the checkbox owns selection semantics.
+  symptomSelected: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+  },
+  symptomDisabled: { opacity: 0.45 },
   choiceMark: {
     width: 20,
     height: 20,

@@ -6,9 +6,9 @@ import { emptyHealthReviewSafety } from '../safetyInput';
 
 jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 
-function Form() {
+function Form({ disabled = false }: { disabled?: boolean }) {
   const [draft, setDraft] = useState(emptyHealthReviewSafety);
-  return <SafetyForm draft={draft} onChange={setDraft} disabled={false} />;
+  return <SafetyForm draft={draft} onChange={setDraft} disabled={disabled} />;
 }
 
 it('uses the measured form width for choice rows and stacks them for large text', async () => {
@@ -40,6 +40,24 @@ it('uses the measured form width for choice rows and stacks them for large text'
     ).flexDirection,
   ).not.toBe('row');
   await act(() => Dimensions.set({ window: original }));
+});
+
+it('marks symptom checkboxes and the Other input disabled during a run', async () => {
+  const draft = {
+    ...emptyHealthReviewSafety(),
+    symptoms: 'warning_signs' as const,
+    otherSelected: true,
+  };
+  const onChange = jest.fn();
+  await render(<SafetyForm draft={draft} onChange={onChange} disabled />);
+  const other = screen.getByRole('checkbox', {
+    name: '기타',
+    disabled: true,
+    checked: true,
+  });
+  await fireEvent.press(other);
+  expect(onChange).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('기타 증상')).toHaveProp('editable', false);
 });
 
 it('keeps unknown symptoms explicit and retains general safety inputs without manual blood-pressure fields', async () => {
@@ -83,7 +101,7 @@ it('keeps unknown symptoms explicit and retains general safety inputs without ma
     '시야 변화',
     '말하기 어려움',
   ]) {
-    expect(screen.getByRole('button', { name: sign })).toBeOnTheScreen();
+    expect(screen.getByRole('checkbox', { name: sign })).toBeOnTheScreen();
   }
   await fireEvent.press(
     screen.getByRole('radio', { name: '예정된 진료: 예정된 진료가 있음' }),
@@ -94,4 +112,36 @@ it('keeps unknown symptoms explicit and retains general safety inputs without ma
       checked: true,
     }),
   ).toBeOnTheScreen();
+});
+
+it('exposes multiple checked symptoms and restores an unchecked Other draft', async () => {
+  await render(<Form />);
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '현재 증상 확인: 아래 증상이 있음' }),
+  );
+  await fireEvent.press(screen.getByRole('checkbox', { name: '가슴 통증' }));
+  await fireEvent.press(screen.getByRole('checkbox', { name: '숨참' }));
+  expect(
+    screen.getByRole('checkbox', { name: '가슴 통증', checked: true }),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByRole('checkbox', { name: '숨참', checked: true }),
+  ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('checkbox', { name: '기타' }));
+  await fireEvent.changeText(screen.getByLabelText('기타 증상'), '어지러움');
+  await fireEvent.press(screen.getByRole('checkbox', { name: '기타' }));
+  expect(screen.queryByLabelText('기타 증상')).toBeNull();
+  await fireEvent.press(screen.getByRole('checkbox', { name: '기타' }));
+  expect(screen.getByLabelText('기타 증상')).toHaveProp('value', '어지러움');
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '현재 증상 확인: 알 수 없음' }),
+  );
+  expect(screen.queryByLabelText('기타 증상')).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('radio', { name: '현재 증상 확인: 아래 증상이 있음' }),
+  );
+  expect(
+    screen.getByRole('checkbox', { name: '가슴 통증', checked: true }),
+  ).toBeOnTheScreen();
+  expect(screen.getByLabelText('기타 증상')).toHaveProp('value', '어지러움');
 });

@@ -63,9 +63,9 @@ it('rounds choices without changing selected, disabled, or touch-target state', 
   const choiceLabel = screen.getByText('임신 중이 아닌 성인');
   expect(choiceLabel.props.allowFontScaling).not.toBe(false);
   expect(StyleSheet.flatten(choiceLabel.props.style).flexShrink).toBe(1);
-  const selectedSign = screen.getByRole('button', {
+  const selectedSign = screen.getByRole('checkbox', {
     name: '가슴 통증',
-    selected: true,
+    checked: true,
     disabled: true,
   });
   expect(StyleSheet.flatten(selectedSign.props.style)).toMatchObject({
@@ -76,9 +76,14 @@ it('rounds choices without changing selected, disabled, or touch-target state', 
   });
   expect(
     StyleSheet.flatten(
-      screen.getByRole('button', { name: '숨참' }).props.style,
+      screen.getByRole('checkbox', {
+        name: '숨참',
+        checked: false,
+        disabled: true,
+      }).props.style,
     ),
   ).toMatchObject({ backgroundColor: 'transparent' });
+  await fireEvent.press(selectedSign);
   await fireEvent.press(selected);
   expect(onChange).not.toHaveBeenCalled();
 });

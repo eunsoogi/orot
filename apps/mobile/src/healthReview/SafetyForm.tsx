@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { Pressable, TextInput, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { AppButton } from '../layout/AppButton';
+import { CheckboxIndicator } from '../layout/CheckboxIndicator';
 import { healthReviewText as copy } from '../i18n/healthReview';
 import type { HealthReviewSafetyDraft } from './safetyInput';
 import { healthReviewStyles as styles } from './styles';
@@ -121,26 +121,69 @@ export function SafetyForm({
           ['warning_signs', '아래 증상이 있음'],
         ]}
       />
-      {draft.symptoms === 'warning_signs'
-        ? signs.map(([sign, title]) => (
-            // The selected state remains semantic while variants control its surface treatment.
-            <AppButton
-              key={sign}
-              title={title}
+      {draft.symptoms === 'warning_signs' ? (
+        <View>
+          {signs.map(([sign, title]) => {
+            const checked = draft.signs.includes(sign);
+            return (
+              <Pressable
+                key={sign}
+                accessibilityRole="checkbox"
+                accessibilityLabel={title}
+                accessibilityState={{ checked, disabled }}
+                disabled={disabled}
+                style={[
+                  styles.symptomRow,
+                  checked && styles.symptomSelected,
+                  disabled && styles.symptomDisabled,
+                ]}
+                onPress={() =>
+                  set(
+                    'signs',
+                    checked
+                      ? draft.signs.filter(value => value !== sign)
+                      : [...draft.signs, sign],
+                  )
+                }
+              >
+                <CheckboxIndicator checked={checked} disabled={disabled} />
+                <Text style={styles.choiceLabel}>{title}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel="기타"
+            accessibilityState={{ checked: !!draft.otherSelected, disabled }}
+            disabled={disabled}
+            style={[
+              styles.symptomRow,
+              draft.otherSelected && styles.symptomSelected,
+              disabled && styles.symptomDisabled,
+            ]}
+            onPress={() => set('otherSelected', !draft.otherSelected)}
+          >
+            <CheckboxIndicator
+              checked={!!draft.otherSelected}
               disabled={disabled}
-              accessibilityState={{ selected: draft.signs.includes(sign) }}
-              variant={draft.signs.includes(sign) ? 'secondary' : 'list'}
-              onPress={() =>
-                set(
-                  'signs',
-                  draft.signs.includes(sign)
-                    ? draft.signs.filter(value => value !== sign)
-                    : [...draft.signs, sign],
-                )
-              }
             />
-          ))
-        : null}
+            <Text>기타</Text>
+          </Pressable>
+          {draft.otherSelected ? (
+            <View>
+              <Text>기타 증상을 1,000자 이내로 입력해 주세요.</Text>
+              <TextInput
+                accessibilityLabel="기타 증상"
+                value={draft.otherText ?? ''}
+                onChangeText={value => set('otherText', value)}
+                editable={!disabled}
+                multiline
+                style={styles.input}
+              />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       <Choices
         label={copy.visit}
         testID="health-review-visit-choices"
