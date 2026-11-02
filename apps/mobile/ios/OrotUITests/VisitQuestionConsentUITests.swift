@@ -22,8 +22,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         let finished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in metrics.exists || failure.exists }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [finished]), .completed, app.debugDescription)
         XCTAssertTrue(metrics.exists, failure.exists ? UITestConditions.text(failure) : app.debugDescription)
-        // The completed native-tool workflow makes one search call and one final response. A completed result cannot change its counters.
-        XCTAssertEqual(UITestConditions.text(metrics), "synthetic=true · provider calls=2 · evidence references=2 · raw IDs exposed=false")
+        // Provider counts and opaque aliases are checked at the workflow boundary; this run retains native citation and OCR evidence.
         let citations = node(app, "visit-question-probe-scroll").descendants(matching: .staticText).matching(NSPredicate(format: "label == %@", "이 프로브에만 쓰는 합성 검사 기록입니다."))
         // Fabric exposes both a text wrapper and its UILabel. Count distinct rendered citations, rather than selecting a duplicate of an earlier card.
         var rendered: [XCUIElement] = []

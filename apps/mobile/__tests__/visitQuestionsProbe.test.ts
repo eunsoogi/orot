@@ -33,3 +33,18 @@ test('the original synthetic probe follows the current role and citation protoco
     );
   }
 });
+
+test('the synthetic remote provider receives no request after consent is declined', async () => {
+  const metrics = createVisitQuestionsProbeMetrics();
+  const { selection, option } = selectedOption(
+    createSyntheticProvider(metrics),
+  );
+  const result = await runVisitQuestionWorkflow({
+    prepared: createPreparedContext(),
+    selection,
+    providerOptions: [option],
+    confirmConsent: async () => false,
+  });
+  expect(result.status).toBe('consent_required');
+  expect(metrics.calls).toBe(0);
+});
