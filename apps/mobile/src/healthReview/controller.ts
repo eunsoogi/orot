@@ -67,8 +67,10 @@ export class HealthReviewController {
     // Selection restores only private pending state. It never runs evidence or inference.
     this.publish({
       sourceId,
-      name: request.source.title ?? '',
-      draft: request.draft ?? emptyHealthReviewSafety(),
+      // Legacy requests have no saved draft and retain the user's current form.
+      ...(request.draft
+        ? { name: request.source.title ?? '', draft: request.draft }
+        : {}),
       invocation: undefined,
       result: request.pending
         ? { status: 'needs_clarification', pending: request.pending }
