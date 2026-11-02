@@ -70,15 +70,15 @@ enum UITestConditions {
     }
 
     /// Scroll the caller-owned viewport, preserving app-wide versus nested scroll behavior.
-    static func scrollTo(_ element: XCUIElement, in container: XCUIElement) {
+    static func scrollTo(_ element: XCUIElement, in container: XCUIElement, searchTowardTop: Bool = false) {
         for _ in 0 ..< 8 {
             let targetExists = element.exists
             if targetExists, element.isHittable {
                 return
             }
 
-            // A target above needs a downward finger swipe; unresolved targets keep the original upward search.
-            if targetExists, element.frame.midY < container.frame.midY {
+            // Use the caller's hint only when accessibility has not resolved a frame yet.
+            if targetExists ? element.frame.midY < container.frame.midY : searchTowardTop {
                 container.swipeDown()
             } else {
                 container.swipeUp()
