@@ -124,7 +124,9 @@ enum NavigationUITestConditions {
     }
 
     static func openTab(_ app: XCUIApplication, _ tab: String, markers: [String]) throws {
-        try tapNavigation(app, "navigation-tab-\(tab)")
+        if try !NavigationPageActionUITestConditions.openOverflowTab(app, tab: tab) {
+            try tapNavigation(app, "navigation-tab-\(tab)")
+        }
         route(app, markers: markers)
     }
 

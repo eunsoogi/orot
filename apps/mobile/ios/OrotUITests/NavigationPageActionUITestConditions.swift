@@ -3,6 +3,43 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
+    /// Select a hidden root destination through the actual More menu, preserving direct-tab checks.
+    static func openOverflowTab(_ app: XCUIApplication, tab: String) throws -> Bool {
+        let direct = app.buttons["navigation-tab-\(tab)"]
+        let more = app.buttons["navigation-page-action-overflow"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || more.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+        if direct.exists {
+            return false
+        }
+        guard more.exists else { throw NSError(domain: "NavigationUITests", code: 4, userInfo: [NSLocalizedDescriptionKey: "Neither tab nor More exists: \(tab)"]) }
+        XCTAssertTrue(more.isHittable, app.debugDescription)
+        more.tap()
+        let labels = ["home": "홈 탭", "records": "기록 탭", "schedule": "일정 탭", "ai": "AI 탭", "settings": "설정 탭"]
+        let item = try app.buttons[XCTUnwrap(labels[tab])]
+        XCTAssertTrue(item.exists && item.isHittable, app.debugDescription)
+        item.tap()
+        return true
+    }
+
+    /// A failing schedule still exposes its primary retry directly beside the selected tab.
+    static func assertSelectedRoot(_ app: XCUIApplication, action: XCUIElement, tab: String) {
+        XCTAssertTrue(action.isSelected, "Root tab \(tab) must expose selected state")
+        if tab == "schedule", app.buttons["schedule-retry"].exists {
+            assertRootRetryOverflow(app)
+        }
+    }
+
+    static func assertRootRetryOverflow(_ app: XCUIApplication) {
+        let retry = app.buttons["schedule-retry"], selected = app.buttons["navigation-tab-schedule"], more = app.buttons["navigation-page-action-overflow"]
+        XCTAssertTrue(retry.exists && retry.isHittable && retry.frame.width >= 88, app.debugDescription)
+        XCTAssertTrue(selected.exists && selected.isSelected && selected.isHittable, app.debugDescription)
+        XCTAssertTrue(more.exists && more.isHittable, app.debugDescription)
+        XCTAssertEqual(retry.frame.midY, selected.frame.midY, accuracy: 1)
+        XCTAssertFalse(retry.frame.intersects(selected.frame))
+        XCTAssertFalse(retry.frame.intersects(more.frame))
+    }
+
     static func assertDirectPrimary(_ app: XCUIApplication, id: String) {
         let primary = UITestConditions.element(app, id)
         XCTAssertTrue(primary.exists && primary.isHittable, "Primary action must be directly reachable before opening More")

@@ -28,7 +28,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             let action = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)")
             XCTAssertEqual(action.control.label, label)
             // Read the native accessibility selection state in addition to the rendered route.
-            XCTAssertTrue(action.control.isSelected, "Root tab \(tab) must expose selected state")
+            NavigationPageActionUITestConditions.assertSelectedRoot(app, action: action.control, tab: tab)
             try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
