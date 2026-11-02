@@ -1,12 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import type { ColorValue } from 'react-native';
 import { getAiFeatureCopy } from './copy';
-import { hubSpacing } from '../layout/hubSpacing';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { healthReviewText } from '../i18n/healthReview';
+import { styles } from './FeatureEntryScreen.styles';
 
 export interface FeatureEntryScreenProps {
   readonly embedded?: boolean;
@@ -17,7 +17,32 @@ export interface FeatureEntryScreenProps {
   readonly onOpenHealthReview?: () => void;
 }
 
-/** Keeps ordered AI entry actions in one readable page while preserving route and consent ownership. */
+type FeatureCopy = {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly action: string;
+};
+
+type FeatureEntry = {
+  readonly feature: FeatureCopy;
+  readonly action?: () => void;
+  readonly symbol: string;
+  readonly iconColor: ColorValue;
+};
+
+const featureIcons: Record<string, { name: string; color: ColorValue }> = {
+  'visit-questions': {
+    name: 'questionmark.bubble',
+    color: appColors.green,
+  },
+  'disease-hypotheses': { name: 'doc.text', color: appColors.purple },
+  'rag-conversation': { name: 'text.bubble', color: appColors.primaryText },
+  'health-review': { name: 'heart.text.square', color: appColors.pink },
+  'external-evidence': { name: 'book', color: appColors.warning },
+};
+
+/** Prioritizes record conversation, then groups preparation and review while routes retain consent ownership. */
 export function FeatureEntryScreen({
   embedded = false,
   onOpenVisitQuestions,
@@ -36,38 +61,28 @@ export function FeatureEntryScreen({
     inputRevision: 0,
   });
   const copy = getAiFeatureCopy();
-  const actions = [
-    onOpenVisitQuestions,
-    onOpenDiseaseHypotheses,
-    onOpenRagConversation,
-    onOpenExternalEvidence,
-  ];
-  const symbols = [
-    'bubble.left.and.text.bubble.right',
-    'doc.text',
-    'text.bubble',
-    'book',
-  ];
-
-  const entries = copy.features.map((feature, index) => ({
+  const actionsById: Record<string, (() => void) | undefined> = {
+    'visit-questions': onOpenVisitQuestions,
+    'disease-hypotheses': onOpenDiseaseHypotheses,
+    'rag-conversation': onOpenRagConversation,
+    'health-review': onOpenHealthReview,
+    'external-evidence': onOpenExternalEvidence,
+  };
+  const makeEntry = (feature: FeatureCopy): FeatureEntry => ({
     feature,
-    action: actions[index],
-    symbol: symbols[index],
-  }));
-  if (onOpenHealthReview)
-    entries.push({
-      feature: {
-        id: 'health-review',
-        title: healthReviewText.entry,
-        description: '측정·증상 추이와 최근 기록을 함께 확인해요.',
-        action: healthReviewText.entry,
-      },
-      action: onOpenHealthReview,
-      symbol: 'heart.text.square',
-    });
-  const renderEntries = (group: typeof entries) => (
+    action: actionsById[feature.id],
+    symbol: featureIcons[feature.id]?.name ?? 'sparkle',
+    iconColor: featureIcons[feature.id]?.color ?? appColors.secondary,
+  });
+  const conversation = makeEntry(copy.conversation);
+  const preparationEntries = copy.preparation.features.map(makeEntry);
+  const reviewEntries = copy.review.features
+    .filter(feature => feature.id !== 'health-review' || onOpenHealthReview)
+    .map(makeEntry);
+
+  const renderEntries = (entries: readonly FeatureEntry[]) => (
     <View style={styles.list}>
-      {group.map(({ feature, action, symbol }) => (
+      {entries.map(({ feature, action, symbol, iconColor }) => (
         <View key={feature.id}>
           <Pressable
             accessibilityRole="button"
@@ -77,16 +92,12 @@ export function FeatureEntryScreen({
             style={styles.row}
             testID={`ai-feature-${feature.id}`}
           >
-            <AppSymbol name={symbol ?? 'sparkle'} color={appColors.text} />
+            <AppSymbol name={symbol} color={iconColor} />
             <View style={styles.copy}>
               <Text style={styles.title}>{feature.title}</Text>
               <Text style={styles.description}>{feature.description}</Text>
             </View>
-            <AppSymbol
-              name="chevron.right"
-              size={14}
-              color={appColors.secondary}
-            />
+            <AppSymbol name="chevron.right" color={appColors.secondary} />
           </Pressable>
           {feature.id === 'visit-questions' && !action ? (
             <Text
@@ -102,7 +113,24 @@ export function FeatureEntryScreen({
     </View>
   );
 
-  // All entries share one list: splitting into padded panels adds a gap before the fourth action.
+  const renderGroup = (
+    title: string,
+    id: string,
+    entries: readonly FeatureEntry[],
+    separated = false,
+  ) => (
+    <View style={[styles.section, separated && styles.separatedSection]}>
+      <Text
+        accessibilityRole="header"
+        style={styles.sectionHeading}
+        testID={`ai-feature-group-${id}-heading`}
+      >
+        {title}
+      </Text>
+      {renderEntries(entries)}
+    </View>
+  );
+
   const content = (
     <View style={styles.panel} testID="ai-feature-columns">
       <View style={styles.headingGroup}>
@@ -111,9 +139,41 @@ export function FeatureEntryScreen({
         </Text>
         <Text style={styles.subtitle}>{copy.subtitle}</Text>
       </View>
-      {renderEntries(entries)}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !conversation.action }}
+        disabled={!conversation.action}
+        onPress={conversation.action}
+        style={[styles.row, styles.conversationRow]}
+        testID={`ai-feature-${conversation.feature.id}`}
+      >
+        {/* Keep the action outside this row so scaled copy can use the full card width. */}
+        <View
+          style={styles.conversationContent}
+          testID="ai-feature-rag-conversation-content"
+        >
+          <AppSymbol
+            name={conversation.symbol}
+            color={conversation.iconColor}
+          />
+          <View style={styles.copy}>
+            <Text style={styles.title}>{conversation.feature.title}</Text>
+            <Text style={styles.description}>
+              {conversation.feature.description}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.conversationAction}>
+          <Text style={styles.conversationActionText}>
+            {conversation.feature.action}
+          </Text>
+          <AppSymbol name="arrow.right" color={appColors.primaryText} />
+        </View>
+      </Pressable>
+      {renderGroup(copy.preparation.title, 'preparation', preparationEntries)}
+      {renderGroup(copy.review.title, 'review', reviewEntries, true)}
       <View style={styles.notice}>
-        <AppSymbol name="info.circle" size={18} />
+        <AppSymbol name="info.circle" size={18} color={appColors.secondary} />
         <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
       </View>
     </View>
@@ -137,50 +197,3 @@ export function FeatureEntryScreen({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    gap: hubSpacing.item,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
-    paddingBottom: hubSpacing.bottom,
-    backgroundColor: appColors.background,
-  },
-  embedded: { alignSelf: 'stretch', gap: hubSpacing.item },
-  panel: { minWidth: 0, gap: hubSpacing.item },
-  headingGroup: { gap: 8 },
-  heading: { color: appColors.text, fontSize: 36, fontWeight: '700' },
-  subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
-  list: {
-    gap: hubSpacing.item,
-  },
-  row: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    flexDirection: 'row',
-    gap: 14,
-    minHeight: 80,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  copy: { flex: 1, gap: 4 },
-  title: { color: appColors.text, fontSize: 16, fontWeight: '600' },
-  description: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginTop: 10,
-  },
-  unavailable: { color: appColors.danger, padding: 14 },
-  disclaimer: {
-    flex: 1,
-    color: appColors.secondary,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-});

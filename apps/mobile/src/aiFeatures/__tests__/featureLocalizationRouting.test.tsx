@@ -29,12 +29,16 @@ const featureScreens = [
         onOpenDiseaseHypotheses={jest.fn()}
         onOpenRagConversation={jest.fn()}
         onOpenExternalEvidence={jest.fn()}
+        onOpenHealthReview={jest.fn()}
       />
     ),
     expectedKeys: [
       'aiFeatures.heading',
       'aiFeatures.subtitle',
       'aiFeatures.disclaimer',
+      'aiFeatures.preparation.title',
+      'aiFeatures.review.title',
+      'aiFeatures.healthReview.description',
       'aiFeatures.visitQuestions.title',
       'aiFeatures.visitQuestions.description',
       'aiFeatures.visitQuestions.action',

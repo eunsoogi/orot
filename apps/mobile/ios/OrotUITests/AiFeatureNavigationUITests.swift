@@ -29,12 +29,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "ai-features-screen", contentID: "ai-feature-rag-conversation", navigationID: "navigation-tab-ai")
-        // Native accessibility groups titles and descriptions into button labels, so assert each actual card instead of an unexposed child.
-        for (identifier, title) in [("visit-questions", "다음 진료 질문"), ("disease-hypotheses", "증상 정리"), ("rag-conversation", "기록과 대화"), ("external-evidence", "의학 자료 찾기")] {
-            let card = app.buttons.matching(identifier: "ai-feature-\(identifier)").firstMatch
-            XCTAssertTrue(card.exists, app.debugDescription)
-            XCTAssertTrue(card.label.hasPrefix(title), card.debugDescription)
-        }
+        FeatureEntryUITestConditions.assertAccessibleLabels(in: app)
         let externalEvidence = node(app, "ai-feature-external-evidence")
         FormUITestConditions.reveal(externalEvidence, in: app, scrollID: "ai-features-screen")
         externalEvidence.tap()
@@ -97,7 +92,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
     @MainActor
     func testAiScreensAndSeparateHistoriesAcrossAppearanceChanges() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -116,7 +111,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             })
             let suffix = dark ? "dark" : "light"
             try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-            node(app, "ai-feature-disease-hypotheses").tap()
+            let hypotheses = node(app, "ai-feature-disease-hypotheses")
+            FormUITestConditions.reveal(hypotheses, in: app, scrollID: "ai-features-screen")
+            hypotheses.tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "disease-hypotheses-screen")))
             try captureAppearance(app, "symptom-preparation-\(suffix)")
             node(app, "symptom-summary-history-open").tap()
@@ -126,7 +123,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "disease-hypotheses-screen")))
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
-            node(app, "ai-feature-rag-conversation").tap()
+            let conversation = node(app, "ai-feature-rag-conversation")
+            FormUITestConditions.reveal(conversation, in: app, scrollID: "ai-features-screen")
+            conversation.tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
             try captureAppearance(app, "conversation-empty-\(suffix)")
             node(app, "rag-conversation-sessions-toggle").tap()
@@ -136,7 +135,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
-            node(app, "ai-feature-visit-questions").tap()
+            let visitQuestions = node(app, "ai-feature-visit-questions")
+            FormUITestConditions.reveal(visitQuestions, in: app, scrollID: "ai-features-screen")
+            visitQuestions.tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-title")))
             try captureAppearance(app, "visit-questions-ready-\(suffix)")
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")

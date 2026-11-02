@@ -28,6 +28,7 @@ const aiFeatureRoutes = [
   ['ai-feature-visit-questions', 'home-visit-questions-screen'],
   ['ai-feature-disease-hypotheses', 'disease-hypotheses-screen'],
   ['ai-feature-rag-conversation', 'rag-conversation-screen'],
+  ['ai-feature-health-review', 'health-review-screen'],
   ['ai-feature-external-evidence', 'external-medical-evidence-screen'],
 ] as const;
 
@@ -49,7 +50,7 @@ function VisitQuestionsHomeRouteProbe({
   return <Text testID="home-visit-questions-screen">다음 진료 질문 화면</Text>;
 }
 
-test('shows four explained AI actions and returns from each owner route', async () => {
+test('shows five explained AI actions and returns from each owner route', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -68,9 +69,9 @@ test('shows four explained AI actions and returns from each owner route', async 
   expect(screen.getByText('증상 정리')).toBeTruthy();
   expect(screen.getByText('기록과 대화')).toBeTruthy();
   expect(screen.getByText('의학 자료 찾기')).toBeTruthy();
-  expect(screen.getByText('궁금한 점을 정리해요.')).toBeTruthy();
-  expect(screen.getByText('지금 느끼는 증상을 정리해요.')).toBeTruthy();
-  expect(screen.getByText('내 기록을 바탕으로 질문해요.')).toBeTruthy();
+  expect(screen.getByText('궁금한 점을 미리 정리해요.')).toBeTruthy();
+  expect(screen.getByText('증상과 경과를 차분히 정리해요.')).toBeTruthy();
+  expect(screen.getByText('내 기록에서 궁금한 점을 물어보세요.')).toBeTruthy();
   expect(screen.getByText('의학 자료를 찾아보세요.')).toBeTruthy();
   expect(screen.queryByTestId('open-ai-features')).toBeNull();
 
@@ -84,11 +85,13 @@ test('shows four explained AI actions and returns from each owner route', async 
       ).toBeNull();
     }
     if (routeId === 'rag-conversation-screen') {
+      expect(screen.getByTestId('ai-feature-select-provider')).toBeTruthy();
       expect(
         screen.getByText(
           '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
         ),
       ).toBeTruthy();
+      expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
     }
     if (routeId === 'external-medical-evidence-screen') {
       expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
