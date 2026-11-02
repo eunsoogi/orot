@@ -151,7 +151,14 @@ final class HomeDuoUITests: OrotFailFastTestCase {
     ) throws {
         let page = UITestConditions.element(app, "home-overview-sections")
         XCTAssertTrue(page.waitForAppearance())
-        let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        let navigation: NavigationUITestConditions.NavigationAction
+        do {
+            navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        } catch {
+            // Preserve the existing geometry receipt after failure without changing the selection oracle.
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "home-navigation-failure-geometry")
+            throw error
+        }
         XCTAssertTrue(navigation.control.isSelected)
         for identifier in ["home-metric-sleep", "home-metric-heartRate"] {
             let card = UITestConditions.element(app, identifier)
