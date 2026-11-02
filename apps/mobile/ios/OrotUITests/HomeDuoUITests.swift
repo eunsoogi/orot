@@ -115,6 +115,8 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         app.launchArguments = [
             "-OROT_E2E_PROBE", "medical-appointment-app-navigation",
             "-OROT_HOME_APPOINTMENT_TIMING", "YES",
+            // Enable the native marker consumed by the rotation diagnostics below.
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryLarge",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
