@@ -1,5 +1,5 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState, ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { AppButton as Button } from '../layout/AppButton';
@@ -15,7 +15,6 @@ import { useAppointmentAddAction } from './useAppointmentAddAction';
 import {
   appointmentDisplayUntil,
   isEligibleNextVisit,
-  selectNextAppointment,
 } from '../routes/nextAppointment';
 
 interface AppointmentsScreenProps {
@@ -24,20 +23,23 @@ interface AppointmentsScreenProps {
   onAppointmentsChanged?: () => void;
 }
 
-/** Separates next-visit eligibility from detail selection while retaining each record's actions. */
+/** Keeps explicit detail selection separate while defaulting to the eligible next visit. */
 export default function AppointmentsScreen({
   active = true,
   repository,
   onAppointmentsChanged,
 }: AppointmentsScreenProps) {
   const navigationInset = useNavigationContentInset();
+  const [now, setNow] = useState(Date.now);
   const state = useAppointmentsScreenState({
     active,
+    now,
     repository,
     onAppointmentsChanged,
   });
   const reloadAppointments = state.reload;
-  const [now, setNow] = useState(Date.now);
+  const selectedAppointment = state.selectedAppointment;
+  const selectedAppointmentId = state.selectedAppointmentId;
   // Retained routes need a fresh eligibility snapshot when a visit reaches its exclusive end.
   useEffect(() => {
     if (active) setNow(Date.now());
@@ -64,17 +66,6 @@ export default function AppointmentsScreen({
       subscription.remove();
     };
   }, [active, now, state.appointments, reloadAppointments]);
-  const selectedAppointment = useMemo(
-    () =>
-      state.appointments.find(
-        appointment => appointment.id === state.selectedAppointmentId,
-      ) ?? null,
-    [state.appointments, state.selectedAppointmentId],
-  );
-  const nextAppointment = useMemo(
-    () => selectNextAppointment(state.appointments, now),
-    [state.appointments, now],
-  );
   const upcomingAppointments = state.appointments.filter(appointment =>
     isEligibleNextVisit(appointment, now),
   );
@@ -153,8 +144,8 @@ export default function AppointmentsScreen({
                   key={appointment.id}
                   appointment={appointment}
                   history={false}
-                  nextVisit={appointment.id === nextAppointment?.id}
-                  selected={appointment.id === state.selectedAppointmentId}
+                  nextVisit={appointment.id === state.nextAppointment?.id}
+                  selected={appointment.id === selectedAppointmentId}
                   onSelect={() =>
                     state.setSelectedAppointmentId(appointment.id)
                   }
@@ -176,7 +167,7 @@ export default function AppointmentsScreen({
                   appointment={appointment}
                   history
                   nextVisit={false}
-                  selected={appointment.id === state.selectedAppointmentId}
+                  selected={appointment.id === selectedAppointmentId}
                   onSelect={() =>
                     state.setSelectedAppointmentId(appointment.id)
                   }

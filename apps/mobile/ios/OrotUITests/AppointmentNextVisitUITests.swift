@@ -2,6 +2,114 @@ import XCTest
 
 /// Keeps the next-visit journey readable while preserving its existing XCTest class and selector.
 extension AppointmentsUITests {
+    /// Confirms reopened management selects the same eligible visit marked by its badge.
+    @MainActor
+    func testOpeningAppointmentsSelectsTheVisitMarkedAsNext() throws {
+        let app = XCUIApplication()
+        let calendar = Calendar.current
+        let today = Date()
+        let pastVisit = try XCTUnwrap(calendar.date(byAdding: .day, value: -2, to: today))
+        let firstVisit = try XCTUnwrap(calendar.date(byAdding: .day, value: 2, to: today))
+        let nextVisit = try XCTUnwrap(calendar.date(byAdding: .day, value: 3, to: today))
+        let laterVisit = try XCTUnwrap(calendar.date(byAdding: .day, value: 4, to: today))
+        let addedVisit = try XCTUnwrap(calendar.date(byAdding: .day, value: 5, to: today))
+        let dateFormatter = DateFormatter()
+        dateFormatter.calendar = calendar
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = calendar.timeZone
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        defer { app.terminate() }
+
+        try launch(app)
+        tap(app, "appointment-add")
+        // Relative local dates keep this regression future-dated in later test runs.
+        fill(
+            app,
+            clinic: "Cancelled visit",
+            date: dateFormatter.string(from: firstVisit),
+            time: "09:00",
+            note: "",
+        )
+        visible(app, "Cancelled visit")
+        tap(app, "appointment-cancel-manual-1")
+        visible(app, "취소됨")
+
+        tap(app, "appointment-add")
+        fill(
+            app,
+            clinic: "Past visit",
+            date: dateFormatter.string(from: pastVisit),
+            time: "09:00",
+            note: "",
+        )
+        visible(app, "Past visit")
+
+        tap(app, "appointment-add")
+        fill(
+            app,
+            clinic: "Next visit",
+            date: dateFormatter.string(from: nextVisit),
+            time: "09:00",
+            note: "",
+        )
+        visible(app, "Next visit")
+        tap(app, "appointment-add")
+        fill(
+            app,
+            clinic: "Later visit",
+            date: dateFormatter.string(from: laterVisit),
+            time: "09:00",
+            note: "",
+        )
+        visible(app, "Later visit")
+
+        app.terminate()
+        try launch(app)
+
+        let rowForClinic = { (clinic: String) in
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                    "appointment-select-",
+                    clinic,
+                ),
+            ).firstMatch
+        }
+        let cancelled = rowForClinic("Cancelled visit")
+        let past = rowForClinic("Past visit")
+        let next = rowForClinic("Next visit")
+        let later = rowForClinic("Later visit")
+        XCTAssertTrue(cancelled.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(past.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(next.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(later.waitForAppearance(), app.debugDescription)
+        XCTAssertFalse(cancelled.isSelected, app.debugDescription)
+        XCTAssertFalse(past.isSelected, app.debugDescription)
+        XCTAssertTrue(next.isSelected, app.debugDescription)
+        XCTAssertFalse(later.isSelected, app.debugDescription)
+        XCTAssertTrue(next.label.contains("다음 진료"), app.debugDescription)
+        XCTAssertFalse(cancelled.label.contains("다음 진료"), app.debugDescription)
+
+        FormUITestConditions.reveal(past, in: app, scrollID: "appointments-scroll")
+        XCTAssertTrue(past.exists && past.isHittable, app.debugDescription)
+        past.tap()
+        XCTAssertTrue(past.isSelected, app.debugDescription)
+        XCTAssertFalse(next.isSelected, app.debugDescription)
+        XCTAssertTrue(next.label.contains("다음 진료"), app.debugDescription)
+
+        tap(app, "appointment-add")
+        fill(
+            app,
+            clinic: "Added visit",
+            date: dateFormatter.string(from: addedVisit),
+            time: "09:00",
+            note: "",
+        )
+        visible(app, "Added visit")
+        XCTAssertTrue(past.exists && past.isSelected, app.debugDescription)
+        XCTAssertTrue(next.label.contains("다음 진료"), app.debugDescription)
+    }
+
     @MainActor
     func testCreationEditingAndCancellationSurviveProcessRestarts() throws {
         let app = XCUIApplication()

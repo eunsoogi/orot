@@ -112,6 +112,8 @@ export const fixtureTests = [
   'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
+  // Verify reopening appointment management selects the eligible visit marked by its badge.
+  'OrotUITests/AppointmentsUITests/testOpeningAppointmentsSelectsTheVisitMarkedAsNext',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
   // Verify the appointment clinic can be cleared and replaced with ASCII and Unicode text.
   'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
