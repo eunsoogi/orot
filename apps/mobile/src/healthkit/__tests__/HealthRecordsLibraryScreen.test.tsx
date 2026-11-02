@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
-import { correlation } from '../bloodPressure/testSupport';
+import { correlation, correlationAt } from '../bloodPressure/testSupport';
 import {
   mapCommonObservationSample,
   toCommonObservationRecord,
@@ -13,9 +13,10 @@ import {
 } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 
 test('shows imported pressure as a chart-first category and opens a separate period list', async () => {
+  const timestamp = new Date().toISOString();
   const observations = mapBloodPressureCorrelation(
-    correlation('library-pressure'),
-    '2026-10-05T10:00:00.000Z',
+    correlationAt('library-pressure', timestamp),
+    timestamp,
   ).observations;
   const loadObservations = jest.fn(async () => ({
     records: observations,

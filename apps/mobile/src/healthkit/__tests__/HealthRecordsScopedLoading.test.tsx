@@ -6,12 +6,13 @@ import type {
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
 import { HealthRecordsDetailScreen } from '../HealthRecordsDetailScreen';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
-import { correlation } from '../bloodPressure/testSupport';
+import { correlationAt } from '../bloodPressure/testSupport';
 
 test('loads each category directly and shows pressure while a Watch category remains pending', async () => {
+  const timestamp = new Date().toISOString();
   const pressure = mapBloodPressureCorrelation(
-    correlation('scoped-pressure'),
-    new Date().toISOString(),
+    correlationAt('scoped-pressure', timestamp),
+    timestamp,
   ).observations;
   let finishHeart!: (page: HealthObservationPage) => void;
   const heart = new Promise<HealthObservationPage>(resolve => {
@@ -58,7 +59,7 @@ test('loads each category directly and shows pressure while a Watch category rem
 test('detail pages pass the selected category and period on every bounded request', async () => {
   const at = new Date().toISOString();
   const pressure = mapBloodPressureCorrelation(
-    correlation('scoped-detail'),
+    correlationAt('scoped-detail', at),
     at,
   ).observations;
   const cursor = { effectiveAt: pressure[0]!.effectiveAt, id: pressure[0]!.id };
@@ -86,9 +87,10 @@ test('detail pages pass the selected category and period on every bounded reques
 });
 
 test('retries only the failed category while retaining the ready pressure card', async () => {
+  const timestamp = new Date().toISOString();
   const pressure = mapBloodPressureCorrelation(
-    correlation('ready-pressure'),
-    new Date().toISOString(),
+    correlationAt('ready-pressure', timestamp),
+    timestamp,
   ).observations;
   let failHeart = true;
   const loader = jest.fn(

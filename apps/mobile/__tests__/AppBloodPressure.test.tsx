@@ -9,7 +9,7 @@ import type { ComponentProps } from 'react';
 import App from '../App';
 import { importLocalBloodPressure } from '../src/healthkit/bloodPressure/importLocal';
 import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
-import { correlation } from '../src/healthkit/bloodPressure/testSupport';
+import { correlationAt } from '../src/healthkit/bloodPressure/testSupport';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
@@ -60,9 +60,10 @@ async function waitForNavigationBackEnabled() {
 }
 
 test('opens the chart-first health library without a manual blood-pressure import', async () => {
+  const timestamp = new Date().toISOString();
   const observations = mapBloodPressureCorrelation(
-    correlation('app-screen-correlation'),
-    '2026-10-05T10:00:00.000Z',
+    correlationAt('app-screen-correlation', timestamp),
+    timestamp,
   ).observations;
   const loadHealthObservations = jest.fn(async () => [...observations]);
   await renderApp({ loadHealthObservations });
@@ -97,9 +98,10 @@ test('opens the chart-first health library without a manual blood-pressure impor
 });
 
 test('keeps the blood-pressure probe loader compatible with the chart library', async () => {
+  const timestamp = new Date().toISOString();
   const observations = mapBloodPressureCorrelation(
-    correlation('legacy-app-loader'),
-    '2026-10-05T10:00:00.000Z',
+    correlationAt('legacy-app-loader', timestamp),
+    timestamp,
   ).observations;
   const loadBloodPressureObservations = jest.fn(async () => [...observations]);
   await renderApp({ loadBloodPressureObservations });
