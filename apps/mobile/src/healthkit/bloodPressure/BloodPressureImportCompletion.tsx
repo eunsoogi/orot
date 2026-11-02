@@ -37,6 +37,7 @@ export function BloodPressureImportCompletion({
         importantForAccessibility="no-hide-descendants"
         style={[styles.outcomeIcon, isProblem && styles.problemIcon]}
       >
+        {/* Outcome marks keep their larger status treatment outside the compact icon scale. */}
         <AppSymbol
           color={isProblem ? appColors.danger : appColors.primary}
           name={isProblem ? 'exclamationmark' : 'checkmark'}
@@ -114,7 +115,7 @@ function SummaryRow({
 }) {
   return (
     <View style={styles.summaryRow}>
-      <AppSymbol name={icon} size={22} />
+      <AppSymbol name={icon} />
       <AppText style={styles.summaryLabel}>{label}</AppText>
       <AppText style={styles.summaryCount} testID={testID}>
         {t('healthkit.bloodPressure.summary.count', { count: value })}

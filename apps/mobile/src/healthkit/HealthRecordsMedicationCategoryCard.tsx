@@ -46,11 +46,7 @@ export function HealthRecordsMedicationCategoryCard({
       <HealthRecordsCategoryHeading
         icon={
           <View style={styles.icon}>
-            <AppSymbol
-              name="pills.fill"
-              size={26}
-              color={appColors.primaryAction}
-            />
+            <AppSymbol name="pills.fill" color={appColors.primaryAction} />
           </View>
         }
         action={

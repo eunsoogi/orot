@@ -72,11 +72,7 @@ export function HealthRecordsCategoryCard({
           <View
             style={[styles.icon, { backgroundColor: appearance.background }]}
           >
-            <AppSymbol
-              name={appearance.symbol}
-              size={26}
-              color={appearance.color}
-            />
+            <AppSymbol name={appearance.symbol} color={appearance.color} />
           </View>
         }
         action={
@@ -150,11 +146,7 @@ export function HealthRecordsCategoryCard({
       {latestPressure ? (
         <View style={styles.latest}>
           <View style={styles.latestIcon}>
-            <AppSymbol
-              name="doc.text"
-              size={20}
-              color={appColors.primaryAction}
-            />
+            <AppSymbol name="doc.text" color={appColors.primaryAction} />
           </View>
           <View style={styles.latestCopy}>
             <Text style={styles.latestTitle}>

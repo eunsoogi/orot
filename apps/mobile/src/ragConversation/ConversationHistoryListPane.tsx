@@ -85,11 +85,7 @@ export function ConversationHistoryListPane({
                 testID="conversation-history-new"
               >
                 <ComposerGlassBackground />
-                <AppSymbol
-                  name="plus"
-                  size={20}
-                  color={appColors.primaryText}
-                />
+                <AppSymbol name="plus" color={appColors.primaryText} />
               </Pressable>
             ) : null}
           </View>

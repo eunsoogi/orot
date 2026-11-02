@@ -33,7 +33,6 @@ export function SummaryHeader({
           <AppSymbol
             name="clock.arrow.circlepath"
             color={appColors.primaryText}
-            size={20}
           />
         </Pressable>
       ) : null}

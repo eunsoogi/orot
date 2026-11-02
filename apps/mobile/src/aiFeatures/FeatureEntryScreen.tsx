@@ -77,16 +77,16 @@ export function FeatureEntryScreen({
             style={styles.row}
             testID={`ai-feature-${feature.id}`}
           >
-            <AppSymbol
-              name={symbol ?? 'sparkle'}
-              size={28}
-              color={appColors.text}
-            />
+            <AppSymbol name={symbol ?? 'sparkle'} color={appColors.text} />
             <View style={styles.copy}>
               <Text style={styles.title}>{feature.title}</Text>
               <Text style={styles.description}>{feature.description}</Text>
             </View>
-            <AppSymbol name="chevron.right" size={14} />
+            <AppSymbol
+              name="chevron.right"
+              size={14}
+              color={appColors.secondary}
+            />
           </Pressable>
           {feature.id === 'visit-questions' && !action ? (
             <Text

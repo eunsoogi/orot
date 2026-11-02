@@ -107,11 +107,7 @@ export default function TranscriptEvidenceItem({
           style={styles.editButton}
           testID={`transcript-edit-${segment.segmentOrdinal}`}
         >
-          <AppSymbol
-            name="square.and.pencil"
-            size={20}
-            color={appColors.primaryText}
-          />
+          <AppSymbol name="square.and.pencil" color={appColors.primaryText} />
         </Pressable>
       </View>
       {!collapsed ? (
@@ -140,7 +136,6 @@ export default function TranscriptEvidenceItem({
               >
                 <AppSymbol
                   name={playing ? 'waveform' : 'play.fill'}
-                  size={22}
                   color={appColors.onPrimary}
                 />
               </Pressable>

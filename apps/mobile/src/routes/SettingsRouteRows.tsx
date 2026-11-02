@@ -33,13 +33,13 @@ export function SettingsRouteRow({
       testID={testID}
     >
       <View style={[styles.icon, { backgroundColor: tones[tone].background }]}>
-        <AppSymbol name={symbol} size={24} color={tones[tone].foreground} />
+        <AppSymbol name={symbol} color={tones[tone].foreground} />
       </View>
       <View style={styles.rowCopy}>
         <Text style={styles.rowTitle}>{title}</Text>
         {summary ? <Text style={styles.summary}>{summary}</Text> : null}
       </View>
-      <AppSymbol name="chevron.right" size={14} />
+      <AppSymbol name="chevron.right" size={14} color={appColors.secondary} />
     </Pressable>
   );
 }
@@ -52,7 +52,7 @@ export function SettingsRouteAppInfo({
 }) {
   return (
     <View style={styles.row} testID="settings-app-info">
-      <AppSymbol name="info.circle" size={24} color={appColors.text} />
+      <AppSymbol name="info.circle" color={appColors.text} />
       <Text style={styles.rowTitle}>
         {t('app.welcome.title')}
         {version ? ` ${version}` : ''}

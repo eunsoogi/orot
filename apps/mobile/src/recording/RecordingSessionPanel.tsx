@@ -109,6 +109,7 @@ export default function RecordingSessionPanel({
               compact && styles.compactMicrophoneInner,
             ]}
           >
+            {/* The microphone is the recording control's prominent mark, so it keeps an explicit larger size. */}
             <AppSymbol name="mic.fill" size={52} color={appColors.onPrimary} />
           </View>
         </Pressable>
@@ -126,11 +127,7 @@ export default function RecordingSessionPanel({
             testID="recording-pause"
           >
             <ComposerGlassBackground />
-            <AppSymbol
-              name="pause.fill"
-              size={27}
-              color={appColors.primaryText}
-            />
+            <AppSymbol name="pause.fill" color={appColors.primaryText} />
           </Pressable>
         ) : status === 'paused' || status === 'interrupted' ? (
           <Pressable
@@ -146,11 +143,7 @@ export default function RecordingSessionPanel({
             testID="recording-resume"
           >
             <ComposerGlassBackground />
-            <AppSymbol
-              name="play.fill"
-              size={27}
-              color={appColors.primaryText}
-            />
+            <AppSymbol name="play.fill" color={appColors.primaryText} />
           </Pressable>
         ) : null}
       </View>

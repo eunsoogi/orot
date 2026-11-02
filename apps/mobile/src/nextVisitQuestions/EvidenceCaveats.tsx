@@ -18,7 +18,6 @@ export function EvidenceCaveats({
     <View style={styles.caveatBox} testID="next-visit-caveats">
       <AppSymbol
         name="exclamationmark.circle.fill"
-        size={20}
         color={theme.colors.warning}
       />
       <View style={styles.caveatContent}>

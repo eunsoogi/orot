@@ -42,7 +42,7 @@ export function NextVisitPanel({
   return (
     <View style={styles.appointment} testID="home-next-visit-panel">
       <View style={styles.sectionHeading}>
-        <AppSymbol name="calendar" size={24} color={appColors.text} />
+        <AppSymbol name="calendar" color={appColors.text} />
         <Text style={styles.sectionTitle}>{t('home.nextAppointment')}</Text>
       </View>
       {appointmentState === 'loading' ? (
@@ -87,7 +87,11 @@ export function NextVisitPanel({
           testID="home-open-schedule"
         >
           <Text style={styles.emptyText}>{t('home.noAppointment')}</Text>
-          <AppSymbol name="chevron.right" size={14} />
+          <AppSymbol
+            name="chevron.right"
+            size={14}
+            color={appColors.secondary}
+          />
         </Pressable>
       )}
     </View>
@@ -128,14 +132,18 @@ export function RecentRecordsPanel({
           style={styles.recording}
           testID="home-recent-recording"
         >
-          <AppSymbol name="doc.text" size={24} color={appColors.text} />
+          <AppSymbol name="doc.text" color={appColors.text} />
           <View style={styles.recordingCopy}>
             <Text style={styles.recordingTitle}>{recentRecording.title}</Text>
             <Text style={styles.recordingDate}>
               {formatRecordedAt(recentRecording.recordedAt)}
             </Text>
           </View>
-          <AppSymbol name="chevron.right" size={14} />
+          <AppSymbol
+            name="chevron.right"
+            size={14}
+            color={appColors.secondary}
+          />
         </Pressable>
       ) : (
         <Pressable

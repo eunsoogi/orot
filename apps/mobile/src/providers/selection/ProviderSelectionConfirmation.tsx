@@ -39,7 +39,7 @@ export default function ProviderSelectionConfirmation({
         </Text>
       ) : null}
       <View style={styles.privacy}>
-        <AppSymbol name="checkmark.shield.fill" size={24} />
+        <AppSymbol name="checkmark.shield.fill" />
         <Text
           style={styles.privacyCopy}
           testID="provider-selection-confirmation-privacy"

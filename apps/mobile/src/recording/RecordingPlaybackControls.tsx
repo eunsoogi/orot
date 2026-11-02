@@ -174,7 +174,6 @@ export default function RecordingPlaybackControls({
         >
           <AppSymbol
             name={playing ? 'waveform' : 'play.fill'}
-            size={22}
             color={appColors.onPrimary}
           />
         </Pressable>
@@ -193,10 +192,10 @@ export default function RecordingPlaybackControls({
             style={styles.playbackButton}
             testID="recording-playback-stop"
           >
-            <AppSymbol name="stop.fill" size={20} color={appColors.onPrimary} />
+            <AppSymbol name="stop.fill" color={appColors.onPrimary} />
           </Pressable>
         ) : null}
-        <AppSymbol name="waveform" size={24} color={appColors.primaryText} />
+        <AppSymbol name="waveform" color={appColors.primaryText} />
       </View>
       <View
         accessibilityRole="progressbar"

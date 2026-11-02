@@ -90,11 +90,7 @@ export default function RecordingLibrarySummaryRow({
           testID={`recording-details-${source.id}`}
         >
           <View style={styles.summaryIcon}>
-            <AppSymbol
-              name="waveform"
-              size={24}
-              color={appColors.primaryText}
-            />
+            <AppSymbol name="waveform" color={appColors.primaryText} />
           </View>
           <View style={styles.summaryText}>
             <Text style={styles.summaryTitle}>{title}</Text>

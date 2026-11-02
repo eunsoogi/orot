@@ -94,9 +94,7 @@ enum NavigationGlassButton {
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {
                 for child in content.arrangedSubviews {
                     if let icon = child as? UIImageView, let name = action.systemImageName {
-                        icon.image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(
-                            pointSize: 22, weight: .medium,
-                        ))
+                        icon.image = UIImage(systemName: name, withConfiguration: AppSymbolSizing.configuration())
                         icon.tintColor = action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label
                         icon.accessibilityIdentifier = "\(action.testID)-UIImageView"
                     }
@@ -133,28 +131,9 @@ enum NavigationGlassButton {
             configuration.image = nil
             configuration.contentInsets = .zero
         } else {
-            configuration.title =
-                action.systemImageName == nil || action.showsTitleWithSystemImage
-                    ? action.label
-                    : nil
-            if let name = action.systemImageName {
-                configuration.image = UIImage(
-                    systemName: name,
-                    withConfiguration: UIImage.SymbolConfiguration(
-                        pointSize: 24,
-                        weight: .semibold,
-                    ),
-                )
-            }
-            configuration.imagePlacement = action.titleBelowImage ? .top : .leading
-            configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
-            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-                var updated = attributes
-                // Match the shipping toolbar's readable title size without clipping localized text.
-                let titleSize: CGFloat = action.titleBelowImage ? 10 : 14
-                updated.font = .systemFont(ofSize: titleSize, weight: .medium)
-                return updated
-            }
+            // Explicit content below bounds symbols while the configuration keeps Glass styling.
+            configuration.title = nil
+            configuration.image = nil
             configuration.contentInsets = NSDirectionalEdgeInsets(
                 top: action.showsTitleWithSystemImage ? 5 : 12,
                 leading: action.showsTitleWithSystemImage ? 5 : 12,
@@ -168,6 +147,9 @@ enum NavigationGlassButton {
             ? NavigationGlassPalette.selectedRootTabForeground
             : .label
         button.configuration = configuration
+        if !action.rootTab, action.id != "home", action.id != "back" {
+            NavigationContextualActionContent.update(button, for: action)
+        }
         // Root selection has its own moving surface; UIKit's automatic selected fill would duplicate it.
         if action.rootTab {
             button.automaticallyUpdatesConfiguration = false

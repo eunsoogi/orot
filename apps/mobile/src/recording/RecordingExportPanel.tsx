@@ -195,7 +195,7 @@ export default function RecordingExportPanel({
         testID="recording-export-transcript"
       />
       <View style={styles.privacyNote} testID="recording-export-privacy-note">
-        <AppSymbol name="info.circle" size={20} color={appColors.secondary} />
+        <AppSymbol name="info.circle" color={appColors.secondary} />
         <Text style={styles.privacyCopy}>
           {t('recording.export.privacyNote')}
         </Text>

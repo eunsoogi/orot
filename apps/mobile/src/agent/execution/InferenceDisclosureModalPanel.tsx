@@ -88,7 +88,7 @@ export default function InferenceDisclosureModalPanel({
       >
         <View style={[styles.header, compact && styles.compactHeader]}>
           <View style={styles.icon}>
-            <AppSymbol name="paperplane" size={24} color={appColors.text} />
+            <AppSymbol name="paperplane" color={appColors.text} />
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             {t('medicalAppointments.inferenceDisclosure.title')}
@@ -161,6 +161,7 @@ export default function InferenceDisclosureModalPanel({
           <AppSymbol
             name={expanded ? 'chevron.down' : 'chevron.right'}
             size={16}
+            color={appColors.secondary}
           />
         </Pressable>
         {expanded ? <InferenceDisclosurePreview request={request} /> : null}

@@ -135,7 +135,6 @@ export function ConversationScreen({
               <ComposerGlassBackground testID="rag-conversation-history-glass" />
               <AppSymbol
                 name="clock.arrow.circlepath"
-                size={20}
                 color={appColors.primaryText}
               />
             </Pressable>
@@ -149,7 +148,7 @@ export function ConversationScreen({
               testID="rag-conversation-new-session"
             >
               <ComposerGlassBackground testID="rag-conversation-new-glass" />
-              <AppSymbol name="plus" size={20} color={appColors.primaryText} />
+              <AppSymbol name="plus" color={appColors.primaryText} />
             </Pressable>
           </View>
         ) : null}
