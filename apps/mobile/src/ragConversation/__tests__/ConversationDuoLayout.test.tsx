@@ -107,13 +107,16 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
     await screen.findByText('저장된 기록에서 확인한 답변이에요.'),
   ).toBeTruthy();
 
-  const evidencePanel = screen.getByTestId('rag-conversation-evidence-panel');
+  expect(screen.queryByTestId('rag-conversation-evidence-panel')).toBeNull();
+  const inlineSource = within(
+    screen.getByTestId('rag-conversation-history'),
+  ).getByLabelText(/원문 근거 열기/);
+  await fireEvent.press(inlineSource);
   expect(
     within(screen.getByTestId('rag-conversation-history')).getByLabelText(
       /원문 근거 열기/,
     ),
   ).toBeTruthy();
-  await fireEvent.press(within(evidencePanel).getByLabelText(/원문 근거 열기/));
   expect(onOpenSource).toHaveBeenCalledTimes(1);
   expect(onOpenSource).toHaveBeenCalledWith(reference);
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
