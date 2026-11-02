@@ -5,15 +5,12 @@ import type { RagConversationFailureKind } from './service';
 export function getRagConversationCopy() {
   return {
     title: t('ragConversation.title'),
-    description: t('ragConversation.description'),
-    evidenceTitle: t('ragConversation.evidenceTitle'),
-    evidenceDescription: t('ragConversation.evidenceDescription'),
-    evidenceEmpty: t('ragConversation.evidenceEmpty'),
     placeholder: t('ragConversation.placeholder'),
     send: t('ragConversation.send'),
     cancel: t('aiActivity.cancel'),
     sessions: t('ragConversation.sessions'),
     newConversation: t('ragConversation.newConversation'),
+    transmissionNotice: t('ragConversation.transmissionNotice'),
     disclaimer: t('ragConversation.disclaimer'),
     loading: t('ragConversation.loading'),
     progressAnswer: t('ragConversation.progressAnswer'),

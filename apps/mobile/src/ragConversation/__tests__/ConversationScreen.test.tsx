@@ -124,11 +124,15 @@ test('renders a grounded answer with a source action and reports absent evidence
       onOpenSource={onOpenSource}
     />,
   );
-  const description = screen.getByText(getRagConversationCopy().description);
+  // An empty session reserves space for neither introductory copy nor evidence.
+  expect(
+    screen.queryByText('내 기록을 바탕으로 궁금한 점을 물어보세요.'),
+  ).toBeNull();
+  expect(
+    screen.getByText(getRagConversationCopy().transmissionNotice),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('rag-conversation-evidence-panel')).toBeNull();
   const conversationInput = screen.getByTestId('rag-conversation-input');
-  expect(StyleSheet.flatten(description.props.style).color).toBe(
-    appColors.text,
-  );
   expect(conversationInput.props.placeholderTextColor).toBe(
     appColors.secondary,
   );
@@ -167,6 +171,7 @@ test('renders a grounded answer with a source action and reports absent evidence
   expect(
     await screen.findByText('이 질문에 답할 만한 저장된 근거를 찾지 못했어요.'),
   ).toBeTruthy();
+  expect(screen.queryByTestId('rag-conversation-evidence-empty')).toBeNull();
   expect(onSend).toHaveBeenLastCalledWith(
     '기록이 없는 질문',
     [

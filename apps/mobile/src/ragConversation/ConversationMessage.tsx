@@ -17,7 +17,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly failed?: boolean;
 }
 
-/** Citation labels reveal source type and date; opaque record aliases remain implementation details. */
+/** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
   message,
   onOpenSource,

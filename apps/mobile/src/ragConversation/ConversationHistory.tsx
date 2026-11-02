@@ -7,7 +7,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 
-/** Owns the single scrollable conversation and evidence viewport. */
+/** Owns the transcript viewport and keeps each answer's citations beside it. */
 export function ConversationHistory({
   messages,
   pendingMessage,
@@ -18,7 +18,6 @@ export function ConversationHistory({
   header,
   footer,
   compact = false,
-  citationsInPanelForMessageId,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
@@ -33,7 +32,6 @@ export function ConversationHistory({
   readonly header?: ReactNode;
   readonly footer?: ReactNode;
   readonly compact?: boolean;
-  readonly citationsInPanelForMessageId?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -162,25 +160,14 @@ export function ConversationHistory({
       }}
       scrollEventThrottle={16}
       onContentSizeChange={() => {
-        // Preserve the initial header position in empty conversations. Once an
-        // answer exists, following its bottom must not leave a large fixed header
-        // consuming the reading area at accessibility text sizes.
+        // Keep the compact header available before a conversation has a message.
+        // After an answer arrives, following its end keeps the reading viewport useful.
         followLatest();
       }}
       testID="rag-conversation-history"
     >
       {header}
       <View style={styles.container}>
-        {!messages.length && (
-          <View style={styles.empty}>
-            <Text style={styles.disclaimer}>
-              질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
-            </Text>
-            <Text style={styles.disclaimer}>
-              필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.
-            </Text>
-          </View>
-        )}
         {visibleMessages.map(message => (
           <ConversationMessage
             key={message.id}
@@ -188,8 +175,6 @@ export function ConversationHistory({
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}
             compact={compact}
-            // Keep one source action per latest answer; older answers retain inline citations.
-            showCitations={message.id !== citationsInPanelForMessageId}
           />
         ))}
         {error ? (
