@@ -72,7 +72,6 @@ export function ConversationGlassAction({
       >
         <AppSymbol
           name={busy ? 'stop.fill' : 'arrow.up'}
-          size={22}
           color={appColors.text}
         />
       </Pressable>

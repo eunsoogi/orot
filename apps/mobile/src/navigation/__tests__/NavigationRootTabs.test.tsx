@@ -46,6 +46,9 @@ test('renders five tabs and routes the selected destination', async () => {
   expect(
     StyleSheet.flatten(screen.getByTestId('navigation-tab-home').props.style),
   ).toEqual(expect.objectContaining({ borderRadius: 26, minHeight: 52 }));
+  expect(StyleSheet.flatten(screen.getByText('⌂').props.style)).toEqual(
+    expect.objectContaining({ fontSize: 18, lineHeight: 20 }),
+  );
   expect(
     StyleSheet.flatten(
       screen.getByTestId('navigation-tab-records').props.style,

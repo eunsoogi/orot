@@ -18,11 +18,7 @@ export function ManualHistoryAction({
       testID="records-open-manual-history"
     >
       <View style={styles.icon}>
-        <AppSymbol
-          name="text.book.closed"
-          size={28}
-          color={appColors.primaryAction}
-        />
+        <AppSymbol name="text.book.closed" color={appColors.primaryAction} />
       </View>
       <View style={styles.copy}>
         <AppText style={styles.title}>{t('manualHistory.title')}</AppText>

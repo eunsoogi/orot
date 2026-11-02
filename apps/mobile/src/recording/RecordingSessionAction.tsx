@@ -34,7 +34,7 @@ export default function RecordingSessionAction({
         disabled && styles.disabled,
       ]}
     >
-      <AppSymbol name={icon} size={20} color={color} />
+      <AppSymbol name={icon} color={color} />
       <AppText style={[styles.label, { color }]}>{title}</AppText>
     </Pressable>
   );

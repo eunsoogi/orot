@@ -45,7 +45,6 @@ export default function ProviderSelectionOptionCard({
       <View style={styles.icon}>
         <AppSymbol
           name={option.privacyBoundary === 'on-device' ? 'sparkles' : 'brain'}
-          size={28}
           color={appColors.primaryText}
         />
       </View>

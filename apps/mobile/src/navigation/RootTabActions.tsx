@@ -10,6 +10,7 @@ import type { NavigationController } from './navigationController';
 import type { NavigationRootTabs } from './rootTabs';
 import { rootTabItems } from './rootTabs';
 import { appColorPalettes, appColors } from '../layout/appColors';
+import { COMPACT_APP_SYMBOL_POINT_SIZE } from '../layout/iconSizing';
 import { settleNavigationRequest } from './nativeNavigationActions';
 import { NavigationMotionContext } from './NavigationMotionContext';
 import { ROOT_TAB_TOUCH_TARGET_HEIGHT } from './navigationLayout';
@@ -148,6 +149,10 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  symbol: { fontSize: 22, lineHeight: 24 },
+  // Keep the fallback glyph scale independent from the tab's touch target.
+  symbol: {
+    fontSize: COMPACT_APP_SYMBOL_POINT_SIZE,
+    lineHeight: COMPACT_APP_SYMBOL_POINT_SIZE + 2,
+  },
   label: { fontSize: 12, lineHeight: 16 },
 });

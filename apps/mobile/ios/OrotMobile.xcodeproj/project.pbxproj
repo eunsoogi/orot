@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000003 /* NavigationContextualActionContent.swift */; };
+		A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */; };
 		B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */; };
 		29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */; };
 		A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000002 /* ConversationHitUITestObservation.swift */; };
@@ -300,6 +302,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingIntegrationTests.swift; sourceTree = "<group>"; };
 		B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalControlUITestConditions.swift; sourceTree = "<group>"; };
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
@@ -451,6 +454,7 @@
 		B1810000B1810000B1810001 /* NavigationGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassComponents.swift; sourceTree = "<group>"; };
 		B19500000000000000000001 /* NavigationGlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassButton.swift; sourceTree = "<group>"; };
 		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
+		B19500000000000000000003 /* NavigationContextualActionContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationContextualActionContent.swift; sourceTree = "<group>"; };
 		B20400000000000000000001 /* AppProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppProgressView.swift; sourceTree = "<group>"; };
 		B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressIndicatorIntegrationTests.swift; sourceTree = "<group>"; };
 		B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsentFingerprintModule.swift; path = OrotMobile/ConsentFingerprintModule.swift; sourceTree = "<group>"; };
@@ -807,6 +811,7 @@
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
+				A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */,
 				D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */,
 				624BCD81A97449138708ACDB /* NavigationFocusObservationTests.swift */,
 				4CC3A1946F0241E5AD043C87 /* NavigationViewportFrameIntegrationTests.swift */,
@@ -860,6 +865,7 @@
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
 				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
+				B19500000000000000000003 /* NavigationContextualActionContent.swift */,
 				5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B20400000000000000000001 /* AppProgressView.swift */,
@@ -1250,6 +1256,7 @@
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
+				A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */,
 				2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A20400000000000000000001 /* AppProgressView.swift in Sources */,
@@ -1483,6 +1490,7 @@
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
+				A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */,
 				CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */,
 				026FA02E3DF24624A885119D /* NavigationFocusObservationTests.swift in Sources */,
 				44AEB747A2594CF8970EA120 /* NavigationViewportFrameIntegrationTests.swift in Sources */,

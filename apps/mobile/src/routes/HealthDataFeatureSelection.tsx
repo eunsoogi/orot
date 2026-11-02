@@ -58,7 +58,6 @@ export function HealthDataFeatureSelection({
                 selected.has(feature) ? appColors.primary : appColors.secondary
               }
               name={selected.has(feature) ? 'checkmark.circle.fill' : 'circle'}
-              size={22}
             />
           </Pressable>
         </View>

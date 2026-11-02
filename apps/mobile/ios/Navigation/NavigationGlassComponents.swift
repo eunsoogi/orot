@@ -125,7 +125,7 @@ enum NavigationPageMetrics {
 }
 
 enum NavigationRootTabContent {
-    /// UIKit can expand configured symbol views; fixed native subviews preserve the tab's intended padding and gap.
+    /// Fixed 18pt glyphs preserve the tab's padding and 52pt touch target.
     static func make(
         label: String,
         symbolName: String,
@@ -144,10 +144,7 @@ enum NavigationRootTabContent {
         let icon = UIImageView(
             image: UIImage(
                 systemName: symbolName,
-                withConfiguration: UIImage.SymbolConfiguration(
-                    pointSize: 22,
-                    weight: .medium,
-                ),
+                withConfiguration: AppSymbolSizing.configuration(),
             ),
         )
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -169,19 +166,19 @@ enum NavigationRootTabContent {
         stack.addArrangedSubview(icon)
         stack.addArrangedSubview(title)
         NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: 22),
-            icon.heightAnchor.constraint(equalToConstant: 22),
+            icon.widthAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
+            icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
         ])
         return stack
     }
 }
 
-/// Bounds the chevron independently from its 48pt glass target so UIKit cannot enlarge it.
+/// Bounds the 18pt chevron independently from its 48pt Glass target.
 enum NavigationBackContent {
     static func attach(to button: UIButton, testID: String) {
         let icon = UIImageView(image: UIImage(
             systemName: "chevron.left",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .medium),
+            withConfiguration: AppSymbolSizing.configuration(),
         ))
         icon.translatesAutoresizingMaskIntoConstraints = false
         icon.contentMode = .scaleAspectFit
@@ -191,8 +188,8 @@ enum NavigationBackContent {
         icon.accessibilityIdentifier = "\(testID)-UIImageView"
         button.addSubview(icon)
         NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: 20),
-            icon.heightAnchor.constraint(equalToConstant: 20),
+            icon.widthAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
+            icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
             icon.centerXAnchor.constraint(equalTo: button.centerXAnchor),
             icon.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])

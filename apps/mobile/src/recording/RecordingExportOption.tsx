@@ -44,7 +44,6 @@ export default function RecordingExportOption({
       >
         <AppSymbol
           name={transcript ? 'doc.text' : 'waveform'}
-          size={28}
           color={transcript ? appColors.green : appColors.primaryText}
         />
       </View>
@@ -53,11 +52,7 @@ export default function RecordingExportOption({
         <AppText style={styles.description}>{description}</AppText>
       </View>
       <View style={styles.trailing}>
-        <AppSymbol
-          name="square.and.arrow.up"
-          size={23}
-          color={appColors.primary}
-        />
+        <AppSymbol name="square.and.arrow.up" color={appColors.primary} />
         <AppSymbol name="chevron.right" size={15} color={appColors.secondary} />
       </View>
     </Pressable>
