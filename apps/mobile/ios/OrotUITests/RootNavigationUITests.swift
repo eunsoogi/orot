@@ -94,6 +94,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.scrollToBottom(app, "recording-controls-scroll")
         let microphone = UITestConditions.element(app, "recording-microphone-control")
+        RecordingFixtureUITestConditions.prepareRecordingAction(app, microphone: microphone)
         XCTAssertTrue(microphone.exists && microphone.isHittable)
         capture(app, "recording-xxxl-navigation")
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")

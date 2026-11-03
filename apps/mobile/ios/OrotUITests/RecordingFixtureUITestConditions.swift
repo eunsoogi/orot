@@ -37,4 +37,17 @@ enum RecordingFixtureUITestConditions {
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
     }
+
+    /// Recording starts disabled until consent; reveal each control in its measured viewport before checking reachability.
+    static func prepareRecordingAction(_ app: XCUIApplication, microphone: XCUIElement) {
+        let scrollID = "recording-controls-scroll"
+        XCTAssertTrue(microphone.exists)
+        XCTAssertFalse(microphone.isEnabled, "Recording requires explicit consent")
+        let consent = UITestConditions.element(app, "recording-consent")
+        FormUITestConditions.reveal(consent, in: app, scrollID: scrollID, keyboardMayBeVisible: false)
+        consent.tap()
+        XCTAssertEqual(UITestConditions.text(UITestConditions.element(app, "recording-consent-status")), "동의 확인됨")
+        XCTAssertTrue(microphone.isEnabled)
+        FormUITestConditions.reveal(microphone, in: app, scrollID: scrollID, towardTop: true, keyboardMayBeVisible: false)
+    }
 }
