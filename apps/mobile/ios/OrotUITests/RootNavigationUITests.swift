@@ -179,7 +179,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         tap(app, "ai-feature-rag-conversation")
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.waitForAppearance())
-        FormUITestConditions.reveal(input, in: app, scrollID: "rag-conversation-history")
+        // The composer is docked below the history, so scrolling history cannot reveal its input.
+        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
         input.tap()
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
