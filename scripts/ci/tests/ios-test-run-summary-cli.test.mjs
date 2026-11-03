@@ -238,4 +238,5 @@ test('archived replay binds cases to the source attempt and records the separate
   assert.equal(summary.coverage.oauth.status, 'failed');
   assert.equal(summary.coverage.production.status, 'passed');
   assert.match(readFileSync(stepSummary, 'utf8'), /Published by: \[run 99 attempt 2\]/);
+  assert.match(readFileSync(stepSummary, 'utf8'), /full source inventory selected:/);
 });

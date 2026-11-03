@@ -200,7 +200,7 @@ export function renderIosTestRunSummaryMarkdown(summary) {
         ]
       : []),
     `Source: \`${safeText(provenance.sourceSha)}\`; ${link(`run ${provenance.runId} attempt ${provenance.attempt}`, provenance.runUrl)}`,
-    `Validation tier: ${safeText(summary.selection.validationTier)}; full current inventory selected: ${summary.selection.fullInventorySelected ? 'yes' : 'no'}.`,
+    `Validation tier: ${safeText(summary.selection.validationTier)}; full source inventory selected: ${summary.selection.fullInventorySelected ? 'yes' : 'no'}.`,
     '',
     ...renderCoverage(coverage),
     '',
