@@ -184,7 +184,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.deepEqual(Object.keys(yaml.load(e2eWorkflow).on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(yaml.load(e2eWorkflow).on.schedule, [{ cron: '0 18 * * *' }]);
   assert.doesNotMatch(e2eWorkflow, /^[ ]{2}(pull_request|push):/m);
-  assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
+  assert.match(e2eWorkflow, /format\('ios-ci-macos-\{0\}', github\.repository\)/);
   // Nightly and manual Full runs share the Mac reservation; authentication remains serialized.
   assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
   assert.match(e2eWorkflow, /cancel-in-progress: false/);

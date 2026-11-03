@@ -162,7 +162,8 @@ export function caseReport(
         (item) => item.profile === task.profile && item.suite === task.suite,
       );
       const taskStatus = taskResult?.status;
-      let status = ['failed', 'not-run'].includes(taskStatus) ? 'unexecuted' : 'missing';
+      let status =
+        taskStatus === 'failed' ? 'unknown' : taskStatus === 'not-run' ? 'unexecuted' : 'missing';
       // A successful producer without its exact attempt artifact is missing evidence, not execution.
       if (!report)
         status =
@@ -170,7 +171,7 @@ export function caseReport(
             ? fallbackStatus
             : fallbackStatus === 'passed'
               ? 'missing'
-              : 'unexecuted';
+              : 'unknown';
       return makeCase(category, entry.cohort, identifier, status, context, root, undefined, {
         ...(taskStatus ? { taskStatus } : {}),
       });
@@ -240,7 +241,7 @@ export function authenticationCases(
         ? status
         : status === 'passed'
           ? 'missing'
-          : 'unexecuted';
+          : 'unknown';
     return makeCase('authentication', 'authentication', identifier, caseStatus, context, root);
   });
 }

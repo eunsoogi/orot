@@ -36,6 +36,12 @@ export function firstFailuresFor(reportsByCohort, context, root, tasks = iosTest
         profile: task.profile,
         suite: task.suite,
         ...(context?.runUrl ? { runUrl: context.runUrl } : {}),
+        ...(!failureCase && context?.runUrl
+          ? {
+              sourceArtifactsUrl: context.runUrl,
+              expectedRawArtifact: `ios-cohort-${cohort}-${context.runId}-${context.attempt}`,
+            }
+          : {}),
         ...(Number.isFinite(report.firstFailureElapsedMs)
           ? { elapsedMs: report.firstFailureElapsedMs }
           : {}),

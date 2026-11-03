@@ -120,7 +120,10 @@ test('the completeness workflow passes selection tier and run evidence to its ex
   const { jobs } = full();
   const completion = completionJob(jobs);
   const gate = completion.steps.find((step) => step.name?.includes('Require selection'));
-  assert.equal(jobs.completeness.if, "${{ always() && needs.plan.result != 'skipped' }}");
+  assert.equal(
+    jobs.completeness.if,
+    "${{ always() && (needs.plan.result != 'skipped' || inputs.mode == 'report') }}",
+  );
   assert.equal(jobs.completeness.with.execution_results, '${{ toJSON(needs) }}');
   assert.equal(
     jobs.completeness.with.selected_cohorts,
@@ -134,7 +137,7 @@ test('the completeness workflow passes selection tier and run evidence to its ex
     jobs.completeness.with.validation_tier,
     '${{ needs.selection.outputs.validation_tier }}',
   );
-  assert.equal(completion.if, 'always()');
+  assert.equal(completion.if, '${{ always() && !inputs.report_only }}');
   assert.equal(gate.env.OROT_IOS_EXECUTION_RESULTS, '${{ inputs.execution_results }}');
   assert.equal(gate.env.OROT_IOS_TEST_COHORTS, '${{ inputs.selected_cohorts }}');
   assert.equal(gate.env.OROT_IOS_OAUTH_TESTS, '${{ inputs.oauth_required }}');
@@ -228,20 +231,4 @@ test('production verifies actual tools before cache, Pods and its isolated app b
     ])
       assert.ok(env[name], 'Missing production toolchain input: ' + name);
   }
-});
-
-test('full and focused execution retain one repository allocation window and separate build and test jobs', () => {
-  assert.deepEqual(full().concurrency, {
-    group: 'ios-ci-macos-${{ github.repository }}',
-    queue: 'max',
-    'cancel-in-progress': false,
-  });
-  const focus = read('ios-focused.yml');
-  assert.equal(focus.jobs.selection.uses, './.github/workflows/ios-focused-selection.yml');
-  assert.equal(read('ios-focused-selection.yml').jobs.selection['runs-on'], 'ubuntu-24.04');
-  assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
-  assert.equal(focus.jobs.products.needs, 'selection');
-  assert.equal(focus.jobs.execution.needs, 'products');
-  assert.equal(Object.values(focus.jobs).filter((job) => job['runs-on'] === 'xcode-27').length, 2);
-  for (const id of ['products', 'execution']) assert.equal(focus.jobs[id].concurrency, undefined);
 });

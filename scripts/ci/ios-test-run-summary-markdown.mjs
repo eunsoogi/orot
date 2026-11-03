@@ -123,8 +123,11 @@ function renderFailures(summary) {
         : '';
       if (!location) {
         const error = item.taskError ? `: ${safeText(item.taskError)}` : '';
+        const artifacts = item.sourceArtifactsUrl
+          ? `; inspect ${link('source run artifacts', item.sourceArtifactsUrl)} for \`${safeText(item.expectedRawArtifact)}\``
+          : '';
         lines.push(
-          `- ${safeText(item.cohort)} / ${safeText(item.profile)} / ${safeText(item.suite)}: task failed, first XCTest observation unavailable${error}.`,
+          `- ${safeText(item.cohort)} / ${safeText(item.profile)} / ${safeText(item.suite)}: task failed, first XCTest observation unavailable${error}${artifacts}.`,
         );
       } else {
         const message = location.failure?.message ? `: ${safeText(location.failure.message)}` : '';

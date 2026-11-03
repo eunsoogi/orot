@@ -112,7 +112,7 @@ test('CLI reports malformed artifacts while preserving the selected cases as inc
   assert.equal(summary.reportReadErrors.length, 1);
   assert.equal(summary.coverage.ordinaryIphone.counts.passed, 0);
   assert.equal(
-    summary.coverage.ordinaryIphone.counts.unexecuted,
+    summary.coverage.ordinaryIphone.counts.unknown,
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers).length,
   );
   assert.match(readFileSync(stepSummary, 'utf8'), /Artifact diagnostics/);
