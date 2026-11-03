@@ -4,7 +4,7 @@ import XCTest
 final class FormScrollGeometryJournalRegression: XCTestCase {
     @MainActor
     func testFreshJournalGestureBoundaries() throws {
-        try FormScrollGeometryRegression.verifyClippedJournalEditor()
+        try FormScrollGeometryRegression.verify()
         SymptomDateSelectionUITestObservation.verifyCorrelation()
     }
 }

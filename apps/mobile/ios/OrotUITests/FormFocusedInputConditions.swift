@@ -4,6 +4,47 @@ import XCTest
 /// Verify editing readiness from current post-tap frames, retaining the original form occlusion boundaries.
 @MainActor
 enum FormFocusedInputConditions {
+    /// Wait for the journal's existing observer before the focus action; never accept an unattached marker.
+    static func keyboardCheckpoint(in app: XCUIApplication) throws -> FormScrollGeometryJournalPlan.KeyboardCheckpoint {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        var checkpoint: FormScrollGeometryJournalPlan.KeyboardCheckpoint?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard marker.exists, let data = UITestConditions.text(marker).data(using: .utf8),
+                  let snapshot = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return false }
+            checkpoint = FormScrollGeometryJournalPlan.keyboardCheckpoint(snapshot)
+            return checkpoint != nil
+        }, object: nil)
+        guard UITestConditions.wait(for: [ready]) == .completed else { throw CancellationError() }
+        return try XCTUnwrap(checkpoint)
+    }
+
+    /// Wait for a new native completion, not for hittability; the actual hit test remains a separate assertion.
+    static func awaitKeyboardCompletion(in app: XCUIApplication, since checkpoint: FormScrollGeometryJournalPlan.KeyboardCheckpoint, testCase: XCTestCase) -> Bool {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let keyboard = app.keyboards.firstMatch
+        var accepted: [String: Any]?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard marker.exists, let data = UITestConditions.text(marker).data(using: .utf8),
+                  let snapshot = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], keyboard.exists else { return false }
+            let frame = keyboard.frame, window = app.frame
+            let readAt = Date().timeIntervalSince1970 * 1000
+            let valid = FormScrollGeometryJournalPlan.keyboardCompleted(snapshot, since: checkpoint, keyboard: frame, window: window, readAtMs: readAt)
+            if valid {
+                accepted = ["snapshot": snapshot, "checkpoint": ["traceID": checkpoint.traceID, "scrollID": checkpoint.scrollID, "attachmentSequence": checkpoint.attachmentSequence, "sequence": checkpoint.sequence, "atMs": checkpoint.atMs],
+                            "keyboard": ["x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height],
+                            "window": ["x": window.minX, "y": window.minY, "width": window.width, "height": window.height], "readAtMs": readAt]
+            }
+            return valid
+        }, object: nil)
+        let completed = UITestConditions.wait(for: [ready]) == .completed
+        guard completed, let accepted, let data = try? JSONSerialization.data(withJSONObject: accepted) else { return false }
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "symptom-cancel-keyboard-completion"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        return true
+    }
+
     private struct Observation {
         let application: CGRect
         let input: CGRect

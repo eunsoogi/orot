@@ -78,12 +78,16 @@ final class SymptomJournalRecoveryUITests: OrotFailFastTestCase {
         add.tap()
         SymptomJournalUITestObservations.openManualOnset(app)
         let description = app.textViews["symptom-description"]
+        let keyboardCheckpoint = try FormFocusedInputConditions.keyboardCheckpoint(in: app)
         XCTAssertTrue(FormUITestConditions.replace(
             description,
             with: "Synthetic canceled symptom",
             in: app,
             scrollID: "symptoms-scroll",
         ))
+        let keyboardReady = FormFocusedInputConditions.awaitKeyboardCompletion(in: app, since: keyboardCheckpoint, testCase: self)
+        XCTAssertTrue(keyboardReady)
+        guard keyboardReady else { return }
         if ProcessInfo.processInfo.environment["OROT_TEST_FORM_OBSERVATION"] == "YES" {
             let keyboard = app.keyboards.firstMatch
             _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "symptom-cancel-pre-tap-native")
