@@ -14,6 +14,7 @@ const bytes = (value: unknown) =>
 export async function measureScaleCalendar(
   count: number,
   cancelAfterFirst = false,
+  budgetMs = 20000,
 ) {
   const appointment = createLocalQueryProbeFixtures().appointment;
   const inputStarted = performance.now();
@@ -103,21 +104,33 @@ export async function measureScaleCalendar(
     onProgress(progress) {
       if (progress.completedBatches) {
         firstProgressMs ??= performance.now() - started;
+        // A finished final batch is completion, even when the measurement deadline has elapsed.
+        if (progress.completedBatches === progress.totalBatches) return;
         if (cancelAfterFirst) controller.abort();
-        // Synthetic performance runs stop after twenty seconds; production workflow budgets are untouched.
-        if (performance.now() - started > 20000) {
+        // This measurement budget does not change production workflow budgets.
+        else if (performance.now() - started > budgetMs) {
           timeBudgetExceeded = true;
           controller.abort();
         }
       }
     },
   });
-  if (
-    (!cancelAfterFirst &&
-      !timeBudgetExceeded &&
-      result.status !== 'complete') ||
-    (cancelAfterFirst && result.completedBatches !== 1)
-  )
+  const outcome = timeBudgetExceeded
+    ? 'budget_exceeded'
+    : cancelAfterFirst && controller.signal.aborted
+      ? 'intentionally_cancelled'
+      : 'completed';
+  const valid =
+    outcome === 'completed'
+      ? result.status === 'complete' &&
+        result.completedBatches === result.totalBatches
+      : result.status === 'partial' &&
+        !result.failure &&
+        result.completedBatches > 0 &&
+        result.completedBatches < result.totalBatches &&
+        (outcome !== 'intentionally_cancelled' ||
+          result.completedBatches === 1);
+  if (!valid)
     throw new Error(
       'Scale classification did not preserve completion/cancellation: ' +
         result.status,
@@ -132,6 +145,7 @@ export async function measureScaleCalendar(
     modelCalls,
     maximumRequestBytes,
     status: result.status,
+    outcome,
     completedBatches: result.completedBatches,
     totalBatches: result.totalBatches,
     scriptedModel: true,

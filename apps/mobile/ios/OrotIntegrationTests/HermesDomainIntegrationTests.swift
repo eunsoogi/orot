@@ -12,11 +12,15 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         for run in runs.prefix(3) {
             if run["timeBudgetExceeded"] as? Bool == true {
                 XCTAssertEqual(run["status"] as? String, "partial")
+                XCTAssertEqual(run["outcome"] as? String, "budget_exceeded")
             } else {
                 XCTAssertEqual(run["status"] as? String, "complete")
+                XCTAssertEqual(run["outcome"] as? String, "completed")
             }
         }
         XCTAssertEqual(runs.last?["completedBatches"] as? Int, 1)
+        XCTAssertEqual(runs.last?["status"] as? String, "partial")
+        XCTAssertEqual(runs.last?["outcome"] as? String, "intentionally_cancelled")
     }
 
     /// Measures real encrypted local retrieval, never an actual model or user account.
