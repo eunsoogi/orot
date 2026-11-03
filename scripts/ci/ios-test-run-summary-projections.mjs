@@ -13,7 +13,7 @@ export function summarizedGroup(cases, { selected, selectionReason } = {}) {
 }
 
 /** Link first failures only when they belong to a unique current-attempt cohort report. */
-export function firstFailuresFor(reportsByCohort, context, root) {
+export function firstFailuresFor(reportsByCohort, context, root, tasks = iosTestCohortTasks) {
   const failures = [];
   for (const [cohort, reports] of reportsByCohort) {
     // Duplicate artifacts cannot identify which report owns the first failure.
@@ -23,7 +23,7 @@ export function firstFailuresFor(reportsByCohort, context, root) {
       if (task.status !== 'failed') continue;
       const observation = task.firstFailure;
       const category = cohort === 'speech' ? 'speech' : 'ordinaryIphone';
-      const expectedTask = iosTestCohortTasks(cohort).find(
+      const expectedTask = tasks(cohort).find(
         (item) => item.profile === task.profile && item.suite === task.suite,
       );
       const expected = new Set(expectedTask?.identifiers ?? []);

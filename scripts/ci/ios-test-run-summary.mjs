@@ -22,12 +22,19 @@ export function buildIosTestRunSummary({
   context = {},
   timing,
   root = process.cwd(),
+  inventory = {
+    names: IOS_TEST_COHORT_NAMES,
+    plan: iosTestExecutionPlan,
+    tasks: iosTestCohortTasks,
+    cases: iosTestInventory,
+  },
 }) {
+  const { names, plan, tasks, cases: testInventory } = inventory;
   const requestedCohorts = Array.isArray(selectedCohorts) ? selectedCohorts : [];
   let selectedPlan = [];
   let selectionError;
   try {
-    selectedPlan = iosTestExecutionPlan(requestedCohorts);
+    selectedPlan = plan(requestedCohorts);
   } catch (error) {
     selectionError = String(error.message);
   }
@@ -47,7 +54,7 @@ export function buildIosTestRunSummary({
       });
       continue;
     }
-    if (!IOS_TEST_COHORT_NAMES.includes(report.cohort)) {
+    if (!names.includes(report.cohort)) {
       unexpectedReports.push({ artifactName: entry.artifactName, cohort: report.cohort });
       continue;
     }
@@ -66,11 +73,11 @@ export function buildIosTestRunSummary({
 
   const cases = [];
   const unexpectedObservations = [];
-  for (const entry of iosTestExecutionPlan(IOS_TEST_COHORT_NAMES)) {
+  for (const entry of plan(names)) {
     const category = entry.cohort === 'speech' ? 'speech' : 'ordinaryIphone';
     const selected = !selectionError && requestedCohorts.includes(entry.cohort);
     if (!selected) {
-      for (const task of iosTestCohortTasks(entry.cohort))
+      for (const task of tasks(entry.cohort))
         for (const identifier of task.identifiers)
           cases.push(
             makeCase(
@@ -86,7 +93,7 @@ export function buildIosTestRunSummary({
     }
     const bucket = reportBuckets.get(entry.cohort) ?? [];
     if (bucket.length > 1) {
-      for (const task of iosTestCohortTasks(entry.cohort))
+      for (const task of tasks(entry.cohort))
         for (const identifier of task.identifiers)
           cases.push(
             makeCase(category, entry.cohort, identifier, 'duplicate', context, root, undefined, {
@@ -95,7 +102,7 @@ export function buildIosTestRunSummary({
           );
       continue;
     }
-    const result = caseReport(entry, bucket[0], category, context, root, executionResults);
+    const result = caseReport(entry, bucket[0], category, context, root, executionResults, tasks);
     for (const identifier of result.unexpected)
       unexpectedObservations.push({ cohort: entry.cohort, identifier });
     if (!bucket.length && staleReports.some((item) => item.cohort === entry.cohort))
@@ -104,7 +111,7 @@ export function buildIosTestRunSummary({
   }
 
   // Duo requirements are separate, opt-in inventory and never flow into iPhone totals.
-  const duoCases = iosTestInventory('duo').map((identifier) =>
+  const duoCases = testInventory('duo').map((identifier) =>
     makeCase('duo', 'duo', identifier, 'not-selected', context, root),
   );
   cases.push(...duoCases);
@@ -123,7 +130,14 @@ export function buildIosTestRunSummary({
     authReport = undefined;
   }
   cases.push(
-    ...authenticationCases(authReport, authenticationSelected, context, root, executionResults),
+    ...authenticationCases(
+      authReport,
+      authenticationSelected,
+      context,
+      root,
+      executionResults,
+      testInventory,
+    ),
   );
 
   const selectedCohortNames = new Set(selectedPlan.map((item) => item.cohort));
@@ -161,12 +175,10 @@ export function buildIosTestRunSummary({
       validationTier: validationTier ?? 'unknown',
       fullInventorySelected:
         !selectionError &&
-        selectedPlan.length === IOS_TEST_COHORT_NAMES.length &&
-        IOS_TEST_COHORT_NAMES.every((cohort) =>
-          selectedPlan.some((item) => item.cohort === cohort),
-        ),
+        selectedPlan.length === names.length &&
+        names.every((cohort) => selectedPlan.some((item) => item.cohort === cohort)),
       selectedCohorts: selectedPlan.map((item) => item.cohort),
-      notSelectedCohorts: IOS_TEST_COHORT_NAMES.filter(
+      notSelectedCohorts: names.filter(
         (name) => !selectedPlan.some((item) => item.cohort === name),
       ),
     },
@@ -221,7 +233,7 @@ export function buildIosTestRunSummary({
     counts: countStatuses(cases),
     selectedCaseCount: selectedCases.length,
     cases,
-    firstFailures: firstFailuresFor(new Map(uniqueReports), context, root),
+    firstFailures: firstFailuresFor(new Map(uniqueReports), context, root, tasks),
     staleReports,
     unexpectedReports,
     unexpectedObservations,

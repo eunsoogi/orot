@@ -186,9 +186,19 @@ function renderArtifactDiagnostics(summary) {
 export function renderIosTestRunSummaryMarkdown(summary) {
   const { provenance, coverage } = summary;
   const timing = summary.timing ?? {};
+  const publication = summary.publication;
   return [
     '## iOS test run report',
     '',
+    ...(publication?.runUrl
+      ? [
+          'Published by: ' +
+            link(
+              'run ' + publication.runId + ' attempt ' + publication.attempt,
+              publication.runUrl,
+            ),
+        ]
+      : []),
     `Source: \`${safeText(provenance.sourceSha)}\`; ${link(`run ${provenance.runId} attempt ${provenance.attempt}`, provenance.runUrl)}`,
     `Validation tier: ${safeText(summary.selection.validationTier)}; full current inventory selected: ${summary.selection.fullInventorySelected ? 'yes' : 'no'}.`,
     '',

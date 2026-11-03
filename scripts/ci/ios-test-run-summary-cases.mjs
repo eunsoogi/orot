@@ -119,8 +119,16 @@ export function makeCase(
 }
 
 /** Match observations to the maintained cohort inventory and retain every gap. */
-export function caseReport(entry, report, category, context, root, jobResults) {
-  const expected = iosTestCohortTasks(entry.cohort);
+export function caseReport(
+  entry,
+  report,
+  category,
+  context,
+  root,
+  jobResults,
+  tasks = iosTestCohortTasks,
+) {
+  const expected = tasks(entry.cohort);
   const observations = new Map();
   for (const task of report?.tasks ?? [])
     for (const observation of task.observations ?? []) {
@@ -129,7 +137,10 @@ export function caseReport(entry, report, category, context, root, jobResults) {
       observations.set(observation.identifier, values);
     }
   const executor = entry.configuration === 'Debug' ? 'debug_execution' : 'release_execution';
-  const fallbackStatus = jobStatus(jobResults?.[executor]?.result);
+  // Prefer a cohort-specific job outcome when its receipt is missing.
+  const fallbackStatus = jobStatus(
+    jobResults?.cohorts?.[entry.cohort]?.result ?? jobResults?.[executor]?.result,
+  );
   const cases = expected.flatMap((task) =>
     task.identifiers.map((identifier) => {
       const found = observations.get(identifier) ?? [];
@@ -171,8 +182,15 @@ export function caseReport(entry, report, category, context, root, jobResults) {
 }
 
 /** Authentication is a separate product and receipt, so absent evidence stays explicit. */
-export function authenticationCases(report, selected, context, root, jobResults) {
-  const identifiers = iosTestInventory('core', 'authentication');
+export function authenticationCases(
+  report,
+  selected,
+  context,
+  root,
+  jobResults,
+  inventory = iosTestInventory,
+) {
+  const identifiers = inventory('core', 'authentication');
   const observations = new Map();
   for (const observation of report?.observations ?? []) {
     const values = observations.get(observation.identifier) ?? [];
@@ -225,21 +243,4 @@ export function authenticationCases(report, selected, context, root, jobResults)
           : 'unexecuted';
     return makeCase('authentication', 'authentication', identifier, caseStatus, context, root);
   });
-}
-
-/** Keep execution outcomes from changing which planned cases belong in timing totals. */
-export function selectedSummaryCases(summary, fallbackCohorts) {
-  const cohortNames = new Set(
-    summary?.selection?.valid === false
-      ? []
-      : (summary?.selection?.selectedCohorts ?? fallbackCohorts),
-  );
-  return (
-    summary?.cases?.filter((item) => {
-      if (item.status === 'not-selected') return false;
-      if (item.category === 'authentication')
-        return summary.coverage?.authentication?.selected === true;
-      return cohortNames.has(item.cohort);
-    }) ?? []
-  );
 }

@@ -1,20 +1,8 @@
 import { iosTestCohortTasks, iosTestTaskNeedsUiPreparation } from './ios-test-cohorts.mjs';
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
-import { exactReport, selectedSummaryCases } from './ios-test-run-summary-cases.mjs';
-
-const instant = (value) => {
-  const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-const duration = (start, end) => {
-  const from = instant(start);
-  const to = instant(end);
-  return from !== undefined && to !== undefined && to >= from ? to - from : undefined;
-};
-
-const isMacJob = (job) =>
-  (job.labels ?? []).some((label) => /^(macos(?:-|$)|mac-|xcode-|apple)/i.test(label));
+import { exactReport } from './ios-test-run-summary-cases.mjs';
+import { selectedSummaryCases } from './ios-test-run-selected-cases.mjs';
+import { duration, instant, isMacJob } from './ios-test-run-time-utils.mjs';
 
 /** Keep a phase total unknown unless every matching workflow step has both timestamps. */
 function stepDurations(jobs, pattern) {
@@ -34,14 +22,14 @@ function stepDurations(jobs, pattern) {
   };
 }
 
-function uniqueSelectedReports(reports, summary, selectedCohorts) {
+function uniqueSelectedReports(reports, summary, selectedCohorts, names) {
   const grouped = new Map();
   if (summary?.selection?.valid === false) return [];
   for (const entry of reports) {
     const report = entry.report;
     if (
       !exactReport(report, summary?.provenance) ||
-      !IOS_TEST_COHORT_NAMES.includes(report.cohort) ||
+      !names.includes(report.cohort) ||
       !selectedCohorts.includes(report.cohort)
     )
       continue;
@@ -56,11 +44,9 @@ function uniqueSelectedReports(reports, summary, selectedCohorts) {
 }
 
 /** Sum preparation receipts only when every selected UI cohort reports that phase. */
-function preparationDurations(reports, selectedCohorts) {
+function preparationDurations(reports, selectedCohorts, tasks, needsPreparation) {
   const byCohort = new Map(reports.map((entry) => [entry.report.cohort, entry.report]));
-  const needsUi = selectedCohorts.filter((cohort) =>
-    iosTestCohortTasks(cohort).some(iosTestTaskNeedsUiPreparation),
-  );
+  const needsUi = selectedCohorts.filter((cohort) => tasks(cohort).some(needsPreparation));
   const missingUi = needsUi.filter(
     (cohort) => !Number.isFinite(byCohort.get(cohort)?.uiPreparationElapsedMs),
   );
@@ -87,10 +73,10 @@ function preparationDurations(reports, selectedCohorts) {
 }
 
 /** Sum only exact selected task receipts, treating explicit not-run tasks as zero execution time. */
-function taskElapsedSummary(reports, selectedCohorts) {
+function taskElapsedSummary(reports, selectedCohorts, tasks) {
   const byCohort = new Map(reports.map((entry) => [entry.report.cohort, entry.report]));
   const expectedTaskCount = selectedCohorts.reduce(
-    (count, cohort) => count + iosTestCohortTasks(cohort).length,
+    (count, cohort) => count + tasks(cohort).length,
     0,
   );
   const observedDurations = [];
@@ -98,7 +84,7 @@ function taskElapsedSummary(reports, selectedCohorts) {
 
   for (const cohort of selectedCohorts) {
     const report = byCohort.get(cohort);
-    const expectedTasks = iosTestCohortTasks(cohort);
+    const expectedTasks = tasks(cohort);
     const actualTasks = Array.isArray(report?.tasks) ? report.tasks : [];
     if (!report || actualTasks.length !== expectedTasks.length) complete = false;
     for (const task of expectedTasks) {
@@ -135,6 +121,11 @@ export function summarizeIosTestRunTiming({
   reports = [],
   selectedCohorts = [],
   generatedAt = new Date().toISOString(),
+  inventory = {
+    names: IOS_TEST_COHORT_NAMES,
+    tasks: iosTestCohortTasks,
+    needsUi: iosTestTaskNeedsUiPreparation,
+  },
 }) {
   const macJobs = jobs.filter((job) => isMacJob(job) && job.conclusion !== 'skipped');
   const completedMac = macJobs.map((job) => ({
@@ -166,9 +157,14 @@ export function summarizeIosTestRunTiming({
     /Boot the explicitly owned compatible destination once/i,
   );
   const cleanup = stepDurations(macJobs, /cleanup|tear down|remove only the owned destination/i);
-  const exactReports = uniqueSelectedReports(reports, summary, selectedCohorts);
-  const preparation = preparationDurations(exactReports, selectedCohorts);
-  const taskElapsed = taskElapsedSummary(exactReports, selectedCohorts);
+  const exactReports = uniqueSelectedReports(reports, summary, selectedCohorts, inventory.names);
+  const preparation = preparationDurations(
+    exactReports,
+    selectedCohorts,
+    inventory.tasks,
+    inventory.needsUi,
+  );
+  const taskElapsed = taskElapsedSummary(exactReports, selectedCohorts, inventory.tasks);
   const selectedCases = selectedSummaryCases(summary, selectedCohorts);
   const durationCases = selectedCases.filter(
     (item) =>

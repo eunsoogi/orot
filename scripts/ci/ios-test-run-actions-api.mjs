@@ -1,3 +1,5 @@
+import { iosTestExecutionPlan } from './ios-test-execution-plan.mjs';
+
 const maximumJobPages = 5;
 
 async function requestJson(url, token, fetchImpl) {
@@ -35,7 +37,8 @@ export async function readIosWorkflowTiming({
     const runPath = encodeURIComponent(String(runId));
     const attemptPath = encodeURIComponent(String(attempt));
     const base = apiBase + '/repos/' + repoPath + '/actions/runs/' + runPath;
-    const run = await requestJson(base, token, fetchImpl);
+    // The run endpoint describes the latest retry, which may differ from the archived attempt.
+    const run = await requestJson(base + '/attempts/' + attemptPath, token, fetchImpl);
     if (String(run.id) !== String(runId) || String(run.run_attempt) !== String(attempt))
       return {
         available: false,
@@ -72,4 +75,30 @@ export async function readIosWorkflowTiming({
   } catch (error) {
     return { available: false, reason: String(error.message) };
   }
+}
+
+/** Reconstruct per-cohort missing-receipt status from one verified Actions attempt. */
+export function iosWorkflowExecutionResults(
+  jobs,
+  selectedCohorts,
+  executionPlan = iosTestExecutionPlan,
+) {
+  const plan = executionPlan(selectedCohorts);
+  const resultForName = (name) => {
+    const matches = jobs.filter((job) => job.name === name);
+    if (matches.length !== 1 || typeof matches[0].conclusion !== 'string') return undefined;
+    return { result: matches[0].conclusion };
+  };
+  const cohorts = Object.fromEntries(
+    plan
+      .map((entry) => [entry.cohort, resultForName('Test / ' + entry.name)])
+      .filter(([, result]) => result),
+  );
+  return {
+    cohorts,
+    authentication: resultForName('Test / Keychain authentication'),
+    oauth_products: resultForName('Build / OAuth'),
+    oauth_execution: resultForName('Test / OAuth'),
+    production_validation: resultForName('Build / Production'),
+  };
 }

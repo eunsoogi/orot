@@ -39,6 +39,47 @@ test('diagnostic report publication cannot change the strict completeness result
 
   const reusable = yaml.load(readFileSync('.github/workflows/ios-test-completeness.yml', 'utf8'));
   assert.deepEqual(reusable.permissions, { actions: 'read', contents: 'read' });
+  assert.deepEqual(Object.keys(reusable.on), ['workflow_call']);
+  const callInputs = reusable.on.workflow_call.inputs;
+  assert.deepEqual(callInputs.report_only, { required: false, type: 'boolean', default: false });
+  for (const name of ['source_run_id', 'source_attempt'])
+    assert.deepEqual(callInputs[name], { required: false, type: 'string' });
+
+  // The called workflow selects its path by explicit input, not the caller's event name.
+  assert.equal(reusable.jobs.completeness.if, '${{ always() && !inputs.report_only }}');
+  const replay = reusable.jobs.report_archived_summary;
+  assert.equal(replay.if, '${{ inputs.report_only }}');
+  assert.equal(replay['runs-on'], 'ubuntu-24.04');
+  const replaySteps = replay.steps;
+  const selectionDownload = replaySteps.find(
+    (step) => step.name === 'Download the exact source selection manifest',
+  );
+  const publish = replaySteps.find(
+    (step) => step.name === 'Publish the archived run report on this Linux workflow run',
+  );
+  const sourceCheckout = replaySteps.find((step) => step.name === 'Check out the source inventory');
+  const upload = replaySteps.find(
+    (step) => step.name === 'Preserve the source report and its separate publisher identity',
+  );
+  assert.equal(selectionDownload.with['run-id'], '${{ inputs.source_run_id }}');
+  assert.equal(
+    selectionDownload.with.name,
+    'ios-e2e-selection-${{ inputs.source_run_id }}-${{ inputs.source_attempt }}',
+  );
+  assert.equal(publish.env.OROT_IOS_SOURCE_RUN_ID, '${{ inputs.source_run_id }}');
+  assert.equal(publish.env.OROT_IOS_SOURCE_ATTEMPT, '${{ inputs.source_attempt }}');
+  assert.equal(sourceCheckout.with.ref, '${{ steps.source.outputs.sha }}');
+  assert.equal(sourceCheckout.with.path, 'artifacts/ios-source');
+  assert.match(
+    publish.run,
+    /artifacts\/ios-source-selection\/ios-e2e-selection\.json artifacts\/ios-source$/,
+  );
+  assert.match(
+    upload.with.name,
+    /source-\$\{\{ inputs\.source_run_id \}\}-\$\{\{ inputs\.source_attempt \}\}-publisher-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+  );
+
+  assert.equal(caller.jobs.completeness.with.report_only, "${{ inputs.mode == 'report' }}");
 });
 
 test('candidate selection stays on its focused workflow and does not enter the Full summary caller', () => {
@@ -50,5 +91,8 @@ test('candidate selection stays on its focused workflow and does not enter the F
     '${{ needs.selection.outputs.validation_tier }}',
   );
   assert.match(workflow.jobs.plan.if, /needs\.selection\.outputs\.run_ios == 'true'/);
-  assert.equal(workflow.jobs.completeness.if, "${{ always() && needs.plan.result != 'skipped' }}");
+  assert.equal(
+    workflow.jobs.completeness.if,
+    "${{ always() && (needs.plan.result != 'skipped' || inputs.mode == 'report') }}",
+  );
 });

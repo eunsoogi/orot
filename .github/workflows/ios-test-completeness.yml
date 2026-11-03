@@ -6,12 +6,15 @@ on:
       selected_cohorts: { required: true, type: string }
       oauth_required: { required: true, type: boolean }
       validation_tier: { required: true, type: string }
+      report_only: { required: false, type: boolean, default: false }
+      source_run_id: { required: false, type: string }
+      source_attempt: { required: false, type: string }
 # The diagnostic summary reads this workflow attempt's job timestamps.
 permissions: { actions: read, contents: read }
 jobs:
   completeness:
     name: Complete
-    if: always()
+    if: ${{ always() && !inputs.report_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -72,3 +75,61 @@ jobs:
           name: ios-e2e-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-reports/complete.json
           if-no-files-found: error
+
+  # The existing E2E dispatch passes this input to replay one archived Full attempt on Linux.
+  report_archived_summary:
+    name: Report / Archived Full run
+    if: ${{ inputs.report_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Download the exact source selection manifest
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-e2e-selection-${{ inputs.source_run_id }}-${{ inputs.source_attempt }}
+          path: artifacts/ios-source-selection
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Extract the source revision
+        id: source
+        run: |
+          node -e "const s = require('./artifacts/ios-source-selection/ios-e2e-selection.json').sourceSha; if (!/^[a-f0-9]{40}$/.test(s)) throw Error('Invalid source SHA'); require('node:fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + s + '\\n')"
+      - name: Check out the source inventory
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          path: artifacts/ios-source
+          persist-credentials: false
+      - name: Download exact-attempt cohort receipts when available
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: ios-cohort-report-*-${{ inputs.source_run_id }}-${{ inputs.source_attempt }}
+          path: artifacts/ios-reports
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download exact-attempt Keychain evidence when available
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-execution-${{ inputs.source_run_id }}-${{ inputs.source_attempt }}
+          path: artifacts/ios-authentication
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Publish the archived run report on this Linux workflow run
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OROT_IOS_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          OROT_IOS_SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
+        run: node scripts/ci/ios-test-run-summary-cli.mjs artifacts/ios-reports artifacts/ios-authentication artifacts/ios-test-run-summary.json artifacts/ios-source-selection/ios-e2e-selection.json artifacts/ios-source
+      - name: Preserve the source report and its separate publisher identity
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-test-run-summary-source-${{ inputs.source_run_id }}-${{ inputs.source_attempt }}-publisher-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-test-run-summary.json
+          if-no-files-found: error
+          retention-days: 7
