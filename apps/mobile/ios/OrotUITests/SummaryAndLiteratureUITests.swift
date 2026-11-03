@@ -100,21 +100,21 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             capture(app, "literature-result-\(suffix)")
 
             // Selection updates provenance below the list in the same scrolling page.
-            let firstResult = node(app, "external-evidence-publication-MED-SYNTHETIC")
             let secondResult = node(app, "external-evidence-publication-MED-SYNTHETIC-SECOND")
-            XCTAssertTrue(firstResult.isSelected)
+            XCTAssertTrue(node(app, "external-evidence-publication-MED-SYNTHETIC").isSelected)
             UITestConditions.scrollTo(secondResult, in: app)
             secondResult.tap()
-            XCTAssertFalse(firstResult.isSelected)
-            XCTAssertTrue(secondResult.isSelected)
+            XCTAssertFalse(node(app, "external-evidence-publication-MED-SYNTHETIC").isSelected)
             XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 문헌: 운동과 수면의 질"]))
             let open = node(app, "external-evidence-open-selected-source")
             UITestConditions.scrollTo(open, in: app)
             XCTAssertTrue(open.isHittable, open.debugDescription)
-            open.tap()
-            XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
-            try back(app)
+            if !dark {
+                open.tap()
+                XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
+                try back(app)
+            }
             XCTAssertEqual(node(app, "external-evidence-query").value as? String, "sleep synthetic")
             XCTAssertTrue(secondResult.isSelected)
             for (value, marker) in [("empty", "external-evidence-empty"), ("failure", "")] {

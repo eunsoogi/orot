@@ -136,4 +136,31 @@ test('keeps loading exclusive and retries failure in place without dropping the 
   expect(onOpenArticle).toHaveBeenCalledWith(publication);
   expect(query.props.value).toBe('retained query');
   expect(search).toHaveBeenCalledTimes(2);
+  // A retry must send the same user-approved query, not merely leave it visible.
+  expect(search).toHaveBeenNthCalledWith(2, 'retained query', {
+    externalQueryConsented: true,
+    signal: expect.any(AbortSignal),
+  });
+});
+
+test('shows an error when the provider is unavailable', async () => {
+  const service: EuropePmcMedicalEvidenceService = {
+    search: jest.fn(async () => ({ status: 'unavailable' as const })),
+  };
+  await renderWithRootSafeArea(
+    <ExternalMedicalEvidenceScreen
+      onBack={jest.fn()}
+      service={service}
+      onOpenArticle={jest.fn()}
+    />,
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('external-evidence-query'),
+    'query',
+  );
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
+  expect(await screen.findByText(/외부 자료를 불러오지 못했어요/)).toBeTruthy();
 });
