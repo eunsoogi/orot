@@ -5,17 +5,19 @@ on:
     - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
-      mode: { type: choice, options: [full, candidate], default: full }
+      mode: { type: choice, options: [full, candidate, report], default: full }
       candidate_pr: { type: string, required: false }
       expected_sha: { type: string, required: false }
       profile: { type: string, required: false }
       scenario_file: { type: string, required: false }
       scenario_name: { type: string, required: false }
+      source_run_id: { type: string, required: false }
+      source_attempt: { type: string, required: false }
 permissions:
   contents: read
 concurrency:
-  # Nightly and manual Full runs share the account-wide Mac reservation without cancelling active work.
-  group: ios-ci-macos-${{ github.repository }}
+  # Full and candidate runs retain the Mac reservation; report mode uses an independent Linux-only group.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'report' && format('ios-ci-report-{0}', github.run_id) || format('ios-ci-macos-{0}', github.repository) }}
   queue: max
   cancel-in-progress: false
 jobs:
@@ -37,6 +39,7 @@ jobs:
     name: Reuse / Ready evidence
     needs: selection
     if: ${{ needs.selection.outputs.metadata_only_edit == 'true' && needs.selection.outputs.complete == 'true' && needs.selection.outputs.non_protected_contexts != 'true' }}
+    # Reuse downloads the exact selection and result artifacts from a prior Actions run.
     permissions: { actions: read, contents: read }
     env:
       OROT_METADATA_ONLY_EDIT: ${{ needs.selection.outputs.metadata_only_edit }}
@@ -200,13 +203,18 @@ jobs:
         release_execution,
         authentication,
       ]
-    if: ${{ always() && needs.plan.result != 'skipped' }}
+    if: ${{ always() && (needs.plan.result != 'skipped' || inputs.mode == 'report') }}
+    # The called diagnostic summary reads this attempt's Actions job timestamps.
+    permissions: { actions: read, contents: read }
     uses: ./.github/workflows/ios-test-completeness.yml
     with:
       execution_results: ${{ toJSON(needs) }}
       selected_cohorts: ${{ needs.plan.outputs.selected_cohorts }}
       oauth_required: ${{ needs.plan.outputs.oauth_required == 'true' }}
       validation_tier: ${{ needs.selection.outputs.validation_tier }}
+      report_only: ${{ inputs.mode == 'report' }}
+      source_run_id: ${{ inputs.source_run_id }}
+      source_attempt: ${{ inputs.source_attempt }}
   ios_simulator_build:
     name: Validate / Build
     needs: [selection, plan, completeness, reuse_ready_evidence]

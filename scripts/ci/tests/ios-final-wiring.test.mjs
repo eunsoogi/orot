@@ -51,6 +51,10 @@ test('scheduled cohort jobs use one consistent role and target', () => {
     // A matrix caller adds raw parameter suffixes in GitHub. Each feature therefore has one explicit call.
     assert.equal(job.strategy, undefined);
     for (const leaf of leaves) {
+      if (leaf.name === 'Report / Archived Full run') {
+        assert.equal(leaf.if, '${{ inputs.report_only }}');
+        continue;
+      }
       const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
       if (
         /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording|health-review)-tests\.yml$/.test(

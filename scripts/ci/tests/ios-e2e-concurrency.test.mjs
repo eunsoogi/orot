@@ -8,7 +8,10 @@ const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const workflow = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
 
 test('Full validation retains the shared Mac queue and never cancels an active run', () => {
-  assert.equal(workflow.concurrency.group, 'ios-ci-macos-${{ github.repository }}');
+  assert.equal(
+    workflow.concurrency.group,
+    "${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'report' && format('ios-ci-report-{0}', github.run_id) || format('ios-ci-macos-{0}', github.repository) }}",
+  );
   assert.equal(workflow.concurrency.queue, 'max');
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
 });

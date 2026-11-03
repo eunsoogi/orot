@@ -25,7 +25,8 @@ test('full E2E supports the daily main schedule and manual dispatch', () => {
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
   assert.equal(e2e.permissions['pull-requests'], undefined);
   assert.deepEqual(e2e.concurrency, {
-    group: 'ios-ci-macos-${{ github.repository }}',
+    group:
+      "${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'report' && format('ios-ci-report-{0}', github.run_id) || format('ios-ci-macos-{0}', github.repository) }}",
     queue: 'max',
     'cancel-in-progress': false,
   });

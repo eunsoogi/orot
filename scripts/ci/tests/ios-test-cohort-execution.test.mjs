@@ -25,13 +25,47 @@ test('first failure stops costly later tasks and records them as unexecuted prer
   const calls = [];
   const result = await executeIosTestCohortTasks(tasks, async (task) => {
     calls.push(task.profile);
-    if (task.profile === 'first') throw new Error('actual first-attempt Xcode exit 65');
+    if (task.profile === 'first') {
+      const error = new Error('actual first-attempt Xcode exit 65');
+      error.observations = [
+        {
+          identifier: task.identifiers[0],
+          result: 'Expected Failure',
+          duration: 0.5,
+          failure: {
+            message: 'XCTAssertEqual failed',
+            sourceLocation: { filePath: 'apps/mobile/Example.swift', lineNumber: 12 },
+          },
+        },
+      ];
+      throw error;
+    }
     return observations(task);
   });
   assert.deepEqual(calls, ['first']);
   assert.equal(result.passed, false);
   assert.equal(result.tasks[0].status, 'failed');
   assert.match(result.tasks[0].error, /first-attempt Xcode exit 65/);
+  assert.deepEqual(result.tasks[0].observations, [
+    {
+      identifier: tasks[0].identifiers[0],
+      result: 'Expected Failure',
+      duration: 0.5,
+      failure: {
+        message: 'XCTAssertEqual failed',
+        sourceLocation: { filePath: 'apps/mobile/Example.swift', lineNumber: 12 },
+      },
+    },
+  ]);
+  assert.deepEqual(result.tasks[0].firstFailure, {
+    identifier: tasks[0].identifiers[0],
+    result: 'Expected Failure',
+    duration: 0.5,
+    failure: {
+      message: 'XCTAssertEqual failed',
+      sourceLocation: { filePath: 'apps/mobile/Example.swift', lineNumber: 12 },
+    },
+  });
   assert.deepEqual(
     result.tasks.slice(1).map((task) => task.status),
     ['not-run', 'not-run'],

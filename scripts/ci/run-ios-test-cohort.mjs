@@ -7,7 +7,11 @@ import {
   verifyIosSimulatorOwnerContract,
 } from './ios-test-cohorts.mjs';
 import { createIosTestUiPreparationGate } from './ios-test-ui-preparation-runner.mjs';
-import { executeIosTestCohortTasks } from './ios-test-cohort-execution.mjs';
+import {
+  executeIosFixtureCohortTask,
+  executeIosTestCohortTasks,
+} from './ios-test-cohort-execution.mjs';
+import { readIosTestObservations } from './ios-test-results.mjs';
 
 const [cohort, runFile, ownerFile, output] = process.argv.slice(2);
 if (!output || !existsSync(runFile) || existsSync(output))
@@ -88,14 +92,15 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
   }
   if (task.mode === 'fixture') {
     const results = join(taskDirectory, 'phases');
-    command(
-      'ios-cohort-' + task.profile,
-      log,
-      'scripts/ci/run-ios-fixture-tests.mjs',
-      [task.profile, runFile, ownerFile, results, ...task.identifiers],
-      task.suite,
+    return executeIosFixtureCohortTask(results, () =>
+      command(
+        'ios-cohort-' + task.profile,
+        log,
+        'scripts/ci/run-ios-fixture-tests.mjs',
+        [task.profile, runFile, ownerFile, results, ...task.identifiers],
+        task.suite,
+      ),
     );
-    return JSON.parse(readFileSync(join(results, 'results.json'), 'utf8')).observations;
   }
   // Plain tasks can partition a suite too. Bind execution and verification to the same planned subset.
   const bundle = join(taskDirectory, 'results.xcresult');
@@ -145,7 +150,22 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
       );
     }
   }
-  if (executionError) throw executionError;
+  if (executionError) {
+    // The raw first-attempt xcresult remains authoritative when Xcode exits unsuccessfully.
+    try {
+      const report = JSON.parse(
+        execFileSync(
+          'xcrun',
+          ['xcresulttool', 'get', 'test-results', 'tests', '--path', bundle, '--compact'],
+          { encoding: 'utf8' },
+        ),
+      );
+      executionError.observations = readIosTestObservations(report);
+    } catch (diagnosticError) {
+      console.error('iOS failure observations unavailable: ' + String(diagnosticError));
+    }
+    throw executionError;
+  }
   return observations;
 });
 const elapsedMs = Date.now() - started;
