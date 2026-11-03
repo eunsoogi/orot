@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import App from '../App';
 import { SymptomEntrySchema } from '@orot/storage';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
+import {
+  activeHomeSymptom,
+  homeJournal,
+} from '../test-helpers/homeOverviewFixtures';
 import type { SymptomJournalRepository } from '../src/symptoms/localRepository';
 
 jest.mock('../src/healthkit/autoSyncLocal', () => ({
@@ -62,4 +66,31 @@ test('opens the encrypted journal through Records and retains its query after re
       .accessibilityState,
   ).toEqual(expect.objectContaining({ selected: true }));
   expect(journal.list).toHaveBeenLastCalledWith({ status: 'active' });
+});
+
+test('opens the active symptom from Home, returns, and preserves root navigation', async () => {
+  const store = createAppointmentStore();
+  const journal = homeJournal();
+  await render(
+    <App
+      loadAppointments={async () => store.repository}
+      loadRecordings={async () => []}
+      loadSymptoms={async () => journal}
+    />,
+  );
+  expect(await screen.findByText(/합성 손 저림/)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('home-open-symptoms'));
+  expect(await screen.findByTestId('symptoms-layout')).toBeTruthy();
+  expect(
+    await screen.findByTestId(`symptom-${activeHomeSymptom.id}-description`),
+  ).toHaveTextContent(activeHomeSymptom.description);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('welcome-title')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  expect(await screen.findByTestId('records-title')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-tab-home'));
+  expect(await screen.findByTestId('welcome-title')).toBeTruthy();
+  expect(
+    screen.getByTestId('navigation-tab-home').props.accessibilityState,
+  ).toEqual(expect.objectContaining({ selected: true }));
 });

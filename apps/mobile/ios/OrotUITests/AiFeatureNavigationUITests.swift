@@ -15,10 +15,10 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        // The Home header appears before its asynchronous recording lookup settles; observe a terminal state before checking the expected empty fixture.
-        NavigationUITestConditions.route(app, markers: ["home-capture-guidance", "home-empty-recordings", "home-recent-recording", "home-recordings-retry"])
-        XCTAssertTrue(UITestConditions.exists(node(app, "home-capture-guidance")), app.debugDescription)
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-capture-symptom", navigationID: "navigation-tab-home")
+        // The health editor is available independently of asynchronous record reads.
+        NavigationUITestConditions.route(app, markers: ["home-metrics-edit"])
+        XCTAssertTrue(UITestConditions.exists(node(app, "home-metrics-edit")), app.debugDescription)
+        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-metrics-edit", navigationID: "navigation-tab-home")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "records-open-health-library", navigationID: "navigation-tab-records")
         let recording = node(app, "records-new-recording")

@@ -38,6 +38,15 @@ export function NextVisitPanel({
 }: NextVisitPanelProps) {
   const nextAppointment =
     appointment && appointment.status !== 'cancelled' ? appointment : null;
+  const calendarDay = (date: Date) =>
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysUntil = nextAppointment
+    ? Math.round(
+        (calendarDay(new Date(nextAppointment.effectiveAt)) -
+          calendarDay(new Date())) /
+          86_400_000,
+      )
+    : null;
 
   return (
     <View style={styles.appointment} testID="home-next-visit-panel">
@@ -61,6 +70,11 @@ export function NextVisitPanel({
       ) : nextAppointment ? (
         <View style={styles.section} testID="home-next-appointment">
           <Text style={styles.appointmentTime}>
+            {daysUntil === 0
+              ? 'D-day'
+              : `D${daysUntil! > 0 ? '-' : '+'}${Math.abs(daysUntil!)}`}
+          </Text>
+          <Text style={styles.appointmentTime}>
             {appointmentTimeLabel(nextAppointment)}
           </Text>
           {/* Keep the displayed clinic independently addressable in native accessibility queries. */}
@@ -75,6 +89,7 @@ export function NextVisitPanel({
           {children}
           <AppButton
             onPress={onPrepareVisit}
+            variant="text"
             testID="home-prepare-visit"
             title={t('home.prepareVisit')}
           />

@@ -6,6 +6,7 @@ import {
 } from '../../../test-helpers/homeOverviewFixtures';
 import { savedSource } from '../../recording/recordingScreenSupport';
 import WelcomeRoute, { type WelcomeRouteProps } from '../WelcomeRoute';
+import { formatDate, t } from '../../i18n';
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('../../navigation', () => ({
@@ -42,51 +43,53 @@ function props(overrides: Partial<WelcomeRouteProps> = {}): WelcomeRouteProps {
   };
 }
 
-test('orders real preparation, active symptoms, recent recording and capture, preserving their actions', async () => {
+test('shows the saved question count and active symptoms without duplicate shortcuts', async () => {
   const input = props();
   await render(<WelcomeRoute {...input} />);
-  expect(await screen.findByText('진료 전 확인할 합성 질문')).toBeTruthy();
-  expect(await screen.findByText('합성 손 저림')).toBeTruthy();
   expect(
-    screen
-      .getAllByTestId(
-        /^home-(next-visit-panel|ongoing-symptoms|recent-records-panel|new-recording)$/,
-      )
-      .map(node => node.props.testID),
-  ).toEqual([
-    'home-next-visit-panel',
-    'home-ongoing-symptoms',
-    'home-recent-records-panel',
-    'home-new-recording',
-  ]);
-  for (const id of [
-    'home-prepare-visit',
-    'home-open-symptoms',
-    'home-recent-recording',
-    'home-new-recording',
-  ]) {
+    screen.getByText(
+      `${formatDate(new Date())} · ${t('home.localTimeZone', { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}`,
+    ),
+  ).toBeTruthy();
+  expect(await screen.findByText('저장한 질문 1개')).toBeTruthy();
+  expect(await screen.findByText(/합성 손 저림/)).toBeTruthy();
+  expect(screen.queryByTestId('home-recent-records-panel')).toBeNull();
+  expect(screen.queryByTestId('home-new-recording')).toBeNull();
+  for (const id of ['home-prepare-visit', 'home-open-symptoms']) {
     await fireEvent.press(screen.getByTestId(id));
   }
   expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
   expect(input.onOpenSymptoms).toHaveBeenCalledTimes(1);
-  expect(input.onOpenRecords).toHaveBeenCalledTimes(1);
-  expect(input.onOpenRecording).toHaveBeenCalledTimes(1);
 });
 
-test('guides an empty Home to two real capture actions without stacking empty cards', async () => {
+test('shows true zero severity and an unknown update time for a legacy symptom', async () => {
+  await render(
+    <WelcomeRoute
+      {...props({
+        loadSymptoms: async () =>
+          homeJournal([{ ...activeHomeSymptom, severity: 0 }]),
+      })}
+    />,
+  );
+  const symptom = await screen.findByTestId(
+    'home-symptom-home-synthetic-symptom',
+  );
+  expect(symptom).toHaveTextContent(/강도 0\/10/);
+  expect(symptom).toHaveTextContent(/갱신 시각 알 수 없음/);
+  expect(symptom).toHaveTextContent(/시작/);
+});
+
+test('shows empty visit and symptom states without generic capture guidance', async () => {
   const input = props({
     appointment: null,
     recentRecording: null,
     loadSymptoms: async () => homeJournal([]),
   });
   await render(<WelcomeRoute {...input} />);
-  expect(await screen.findByTestId('home-capture-guidance')).toBeTruthy();
-  expect(screen.queryByTestId('home-next-visit-panel')).toBeNull();
+  expect(await screen.findByText('기록 중인 증상이 없어요.')).toBeTruthy();
+  expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
   expect(screen.queryByTestId('home-recent-records-panel')).toBeNull();
-  expect(screen.queryByTestId('home-ongoing-symptoms')).toBeNull();
-  await fireEvent.press(screen.getByTestId('home-new-recording'));
-  await fireEvent.press(screen.getByTestId('home-capture-symptom'));
-  expect(input.onOpenRecording).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('home-open-symptoms'));
   expect(input.onOpenSymptoms).toHaveBeenCalledTimes(1);
 });
 
@@ -98,7 +101,7 @@ test('shows unfinished preparation only after a successful empty read for a real
   await render(<WelcomeRoute {...props({ loadSavedVisitQuestions })} />);
   expect(await screen.findByTestId('home-questions-retry')).toBeTruthy();
   expect(screen.queryByTestId('home-preparation-pending')).toBeNull();
-  expect(screen.getByTestId('home-recent-recording')).toBeTruthy();
+  expect(screen.queryByTestId('home-recent-recording')).toBeNull();
   await fireEvent.press(screen.getByTestId('home-questions-retry'));
   expect(await screen.findByTestId('home-preparation-pending')).toBeTruthy();
 });
@@ -116,12 +119,10 @@ test('keeps recovery and capture available when symptom reads fail instead of cl
   await render(<WelcomeRoute {...input} />);
   expect(await screen.findByTestId('home-symptoms-retry')).toBeTruthy();
   expect(screen.queryByTestId('home-capture-guidance')).toBeNull();
-  await fireEvent.press(screen.getByTestId('home-new-recording'));
   await fireEvent.press(screen.getByTestId('home-open-schedule'));
-  expect(input.onOpenRecording).toHaveBeenCalledTimes(1);
   expect(input.onOpenSchedule).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('home-symptoms-retry'));
-  expect(await screen.findByText('합성 손 저림')).toBeTruthy();
+  expect(await screen.findByText(/합성 손 저림/)).toBeTruthy();
 });
 
 test('does not claim a first record when the journal already contains resolved history outside the active summary', async () => {
@@ -142,7 +143,6 @@ test('does not claim a first record when the journal already contains resolved h
       })}
     />,
   );
-  const guidance = await screen.findByTestId('home-capture-guidance');
-  expect(guidance).not.toHaveTextContent(/첫 기록/);
-  expect(screen.getByTestId('home-new-recording')).toBeTruthy();
+  expect(await screen.findByText('기록 중인 증상이 없어요.')).toBeTruthy();
+  expect(screen.queryByTestId('home-capture-guidance')).toBeNull();
 });

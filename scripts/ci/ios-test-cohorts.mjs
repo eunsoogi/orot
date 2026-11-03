@@ -79,6 +79,8 @@ const cohorts = {
     cases: [
       'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
       'HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
+      'HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
+      'HomeDuoUITests/testHomeContentClearsBottomNavigation',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

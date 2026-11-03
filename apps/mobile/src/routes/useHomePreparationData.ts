@@ -23,6 +23,9 @@ export function useHomePreparationData(
   const focused = useIsFocused();
   const [attempt, setAttempt] = useState(0);
   const [symptoms, setSymptoms] = useState<readonly SymptomEntry[]>([]);
+  const [symptomUpdates, setSymptomUpdates] = useState<
+    Record<string, string | null>
+  >({});
   const [symptomState, setSymptomState] = useState<
     'loading' | 'ready' | 'failed'
   >('loading');
@@ -39,11 +42,25 @@ export function useHomePreparationData(
     setSymptomState('loading');
     setSymptoms([]);
     loadSymptoms()
-      .then(repository => repository.list({ status: 'active' }))
-      .then(entries => {
+      .then(async repository => {
+        if (repository.listActiveWithUpdates) {
+          const snapshots = await repository.listActiveWithUpdates();
+          return {
+            entries: snapshots.map(item => item.entry),
+            updates: Object.fromEntries(
+              snapshots.map(item => [item.entry.id, item.updatedAt]),
+            ),
+          };
+        }
+        const entries = await repository.list({ status: 'active' });
+        // A repository without snapshot support cannot safely pair separately-read edit times.
+        return { entries, updates: {} };
+      })
+      .then(({ entries, updates }) => {
         if (!active) return;
         // Defensive filtering preserves the active-only contract for injected and legacy repositories.
         setSymptoms(entries.filter(entry => entry.status === 'active'));
+        setSymptomUpdates(updates);
         setSymptomState('ready');
       })
       .catch(() => {
@@ -92,5 +109,12 @@ export function useHomePreparationData(
     return () => subscription.remove();
   }, [focused, retry]);
 
-  return { symptoms, symptomState, questions, questionState, retry };
+  return {
+    symptoms,
+    symptomUpdates,
+    symptomState,
+    questions,
+    questionState,
+    retry,
+  };
 }

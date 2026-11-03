@@ -24,7 +24,7 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-test('shows the next saved appointment and recent recording on Home', async () => {
+test('shows the next saved appointment without duplicating the records feed', async () => {
   const now = new Date();
   const appointment: Appointment = {
     id: 'next-visit',
@@ -49,14 +49,13 @@ test('shows the next saved appointment and recent recording on Home', async () =
   );
   expect(screen.getByTestId('home-overview-sections')).toBeTruthy();
   expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
-  expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
+  expect(screen.queryByTestId('home-recent-records-panel')).toBeNull();
   expect(screen.getAllByTestId('home-prepare-visit')).toHaveLength(1);
   // This identity keeps the visible clinic line distinct from duplicate native text wrappers.
   expect(screen.getByTestId('home-next-appointment-clinic')).toHaveTextContent(
     '새봄의원',
   );
   expect(screen.getByText('새봄의원')).toBeTruthy();
-  expect(screen.getByText('상담 녹음')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('settings-open-provider')).toBeNull();
 });
@@ -89,10 +88,10 @@ test('keeps an ongoing calendar appointment visible and shows its end time', asy
   expect(screen.getByTestId('home-next-appointment')).toHaveTextContent(
     new RegExp(formatTime(new Date(endsAt))),
   );
-  expect(screen.getByTestId('home-empty-recordings')).toBeTruthy();
+  expect(screen.queryByTestId('home-empty-recordings')).toBeNull();
 });
 
-test('keeps Home summaries independent while each loader recovers from failure', async () => {
+test('recovers the appointment independently from recording load failure', async () => {
   const now = new Date();
   const store = createAppointmentStore([
     {
@@ -120,18 +119,14 @@ test('keeps Home summaries independent while each loader recovers from failure',
   );
 
   expect(await screen.findByTestId('home-appointments-retry')).toBeTruthy();
-  expect(await screen.findByTestId('home-recordings-retry')).toBeTruthy();
   expect(screen.getByTestId('home-next-visit-panel')).toBeTruthy();
-  expect(screen.getByTestId('home-recent-records-panel')).toBeTruthy();
+  expect(screen.queryByTestId('home-recent-records-panel')).toBeNull();
 
-  // Each panel owns its retry path, so recovering one summary cannot replace the other.
   await fireEvent.press(screen.getByTestId('home-appointments-retry'));
-  await fireEvent.press(screen.getByTestId('home-recordings-retry'));
 
   await waitFor(() => {
     expect(screen.getByText('새봄의원')).toBeTruthy();
-    expect(screen.getByText('상담 녹음')).toBeTruthy();
   });
   expect(loadAppointments).toHaveBeenCalledTimes(2);
-  expect(loadRecordings).toHaveBeenCalledTimes(2);
+  expect(loadRecordings).toHaveBeenCalledTimes(1);
 });
