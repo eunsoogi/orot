@@ -3,12 +3,28 @@ import type {
   NavigationReservedRegion,
 } from './navigationGeometry';
 
-/** Keeps existing edge authority and recognizes only the observed zero-inset left split signature. */
+/** Keeps the unpartitioned Duo rail on the right and preserves observed split-window edge authority. */
 export function resolveNavigationSystemSide(
   geometry: NavigationGeometrySnapshot,
   intersectingDivisions: readonly NavigationReservedRegion[],
 ): 'left' | 'right' {
   const { left, right } = geometry.safeAreaInsets;
+  // A rotated hinged window with an active left-edge occlusion keeps the product rail on the right.
+  // Preserve division-based split placement and ambiguous inset-only inputs.
+  const leftOcclusion = geometry.reservedRegions.some(
+    region =>
+      region.kind === 'occlusion' &&
+      region.isActive &&
+      region.frame.x <= geometry.windowBounds.x &&
+      region.frame.x + region.frame.width >= geometry.windowBounds.x + left,
+  );
+  if (
+    geometry.hasHinge &&
+    intersectingDivisions.length === 0 &&
+    left > right &&
+    leftOcclusion
+  )
+    return 'right';
   if (left !== right) return left > right ? 'left' : 'right';
   if (left !== 0 || intersectingDivisions.length !== 1) return 'right';
   const [division] = intersectingDivisions;
