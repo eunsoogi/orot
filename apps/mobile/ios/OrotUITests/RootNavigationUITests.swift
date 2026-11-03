@@ -85,7 +85,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // Observe the actual rendered enlargement, rather than treating the launch argument as proof of large text.
         XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        try NavigationUITestConditions.openTab(app, "home", markers: ["home-metrics-edit"])
+        // At large text the metrics editor is above the scrolled viewport; confirm Home using its visible lower section.
+        try NavigationUITestConditions.openTab(app, "home", markers: ["home-open-symptoms"])
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         capture(app, "home-xxxl-glass-tabs")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
@@ -93,6 +94,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.scrollToBottom(app, "recording-controls-scroll")
         let microphone = UITestConditions.element(app, "recording-microphone-control")
+        RecordingFixtureUITestConditions.prepareRecordingAction(app, microphone: microphone)
         XCTAssertTrue(microphone.exists && microphone.isHittable)
         capture(app, "recording-xxxl-navigation")
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
@@ -179,7 +181,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         tap(app, "ai-feature-rag-conversation")
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.waitForAppearance())
-        FormUITestConditions.reveal(input, in: app, scrollID: "rag-conversation-history")
+        // The composer is docked below the history, so scrolling history cannot reveal its input.
+        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
         input.tap()
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
