@@ -3,6 +3,44 @@ import Foundation
 
 /// Plans a journal drag from one native sample and the independently measured AX usable viewport.
 enum FormScrollGeometryJournalPlan {
+    struct KeyboardCheckpoint {
+        let traceID: String
+        let scrollID: String
+        let attachmentSequence: Int
+        let sequence: Int
+        let atMs: Double
+    }
+
+    /// Bind later keyboard notifications to the attached journal observer before focusing the editor.
+    static func keyboardCheckpoint(_ snapshot: [String: Any]?) -> KeyboardCheckpoint? {
+        guard let snapshot, let at = snapshot["atMs"] as? Double, at.isFinite,
+              let trace = snapshot["symptomScrollTrace"] as? [String: Any],
+              let id = trace["traceID"] as? String, !id.isEmpty,
+              let selection = trace["selection"] as? [String: Any], selection["attached"] as? Bool == true,
+              selection["reason"] as? String == "attached", let scroll = selection["scrollViewID"] as? String, !scroll.isEmpty,
+              let sequence = trace["recordedCount"] as? Int, sequence > 0,
+              let attachment = selection["attachmentSequence"] as? Int, attachment > 0, attachment <= sequence else { return nil }
+        return KeyboardCheckpoint(traceID: id, scrollID: scroll, attachmentSequence: attachment, sequence: sequence, atMs: at)
+    }
+
+    /// A fresh completed notification must agree with the actual visible AX keyboard; this is not an atomic cross-process snapshot.
+    static func keyboardCompleted(_ snapshot: [String: Any]?, since checkpoint: KeyboardCheckpoint, keyboard: CGRect, window: CGRect, readAtMs: Double) -> Bool {
+        guard FormScrollGeometry.valid(window), FormScrollGeometry.valid(keyboard), window.intersects(keyboard),
+              let snapshot, let markerAt = snapshot["atMs"] as? Double, markerAt.isFinite, markerAt <= readAtMs,
+              let trace = snapshot["symptomScrollTrace"] as? [String: Any], trace["traceID"] as? String == checkpoint.traceID,
+              let selection = trace["selection"] as? [String: Any], selection["attached"] as? Bool == true,
+              selection["reason"] as? String == "attached", selection["scrollViewID"] as? String == checkpoint.scrollID,
+              selection["attachmentSequence"] as? Int == checkpoint.attachmentSequence,
+              let event = trace["latestKeyboard"] as? [String: Any], event["event"] as? String == "symptom-native-keyboard-frame",
+              event["traceID"] as? String == checkpoint.traceID, event["scrollViewID"] as? String == checkpoint.scrollID,
+              event["phase"] as? String == "did-change-frame", let sequence = event["sequence"] as? Int, sequence > checkpoint.sequence,
+              let recorded = trace["recordedCount"] as? Int, sequence <= recorded,
+              let at = event["receivedAtMs"] as? Double, at.isFinite, at >= checkpoint.atMs, at <= markerAt,
+              let native = keyboardFrame(event["endFrameInScreen"]), native.intersects(window),
+              native.insetBy(dx: -0.0001, dy: -0.0001).contains(keyboard) else { return false }
+        return true
+    }
+
     struct Plan {
         let start: CGVector
         let end: CGVector

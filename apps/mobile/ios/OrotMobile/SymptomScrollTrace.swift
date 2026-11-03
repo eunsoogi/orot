@@ -16,7 +16,7 @@
         private var latestKeyboard: [String: Any]?
         private var descriptionAccessory: [String: Any] = ["status": "not-refreshed"]
 
-        /// Selection and a separate 64-event history remain observable when RN events evict the shared lifecycle ring.
+        /// Selection and a bounded event history remain observable when RN events evict the shared lifecycle ring.
         func snapshot() -> [String: Any] {
             ["traceID": traceID, "selection": selection, "events": traceEvents, "capacity": 64,
              "recordedCount": recordedCount, "droppedCount": recordedCount - traceEvents.count, "latestKeyboard": latestKeyboard as Any? ?? NSNull(),
@@ -37,7 +37,7 @@
             selection = ["reason": "discovering", "attached": false, "atMs": Date().timeIntervalSince1970 * 1000,
                          "keyWindowCount": keyWindows.count,
                          "eligibleRootCount": eligibleWindows.count,
-                         "tagCount": NSNull(), "outerScrollCount": NSNull(), "census": discoveryCensus(windows)]
+                         "tagCount": NSNull(), "outerScrollCount": NSNull(), "attachmentSequence": selection["attachmentSequence"] ?? NSNull(), "census": discoveryCensus(windows)]
             // UIWindow.window may be nil; start below it and retain window-membership checks for descendants.
             let tagged = eligibleWindows.flatMap { $0.subviews.flatMap(findTaggedViews) }
             selection["tagCount"] = tagged.count
@@ -66,8 +66,7 @@
             for name in keyboardNames {
                 NotificationCenter.default.addObserver(self, selector: #selector(observeKeyboard(_:)), name: name, object: nil)
             }
-            selection["reason"] = "attached"
-            selection["attached"] = true
+            selection.merge(["reason": "attached", "attached": true, "attachmentSequence": recordedCount + 1]) { _, new in new }
             record("symptom-native-scroll-trace", fields: [
                 "phase": "attached", "traceID": traceID, "scope": "symptoms-scroll",
                 "scrollViewID": identity(candidate), "panID": identity(candidate.panGestureRecognizer),

@@ -3,6 +3,29 @@ import XCTest
 /// Preserve the original export case while exercising invalid AX frames before it touches the app.
 enum FormScrollGeometryRegression {
     static func verify() throws {
+        let selection: [String: Any] = ["attached": true, "reason": "attached", "scrollViewID": "scroll", "attachmentSequence": 1]
+        let baseline: [String: Any] = ["atMs": 100.0, "symptomScrollTrace": ["traceID": "trace", "selection": selection, "recordedCount": 4]]
+        let checkpoint = try XCTUnwrap(FormScrollGeometryJournalPlan.keyboardCheckpoint(baseline))
+        let window = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let visibleKeyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
+        let visible: [String: Double] = ["x": 0, "y": 546, "width": 402, "height": 328]
+        func sample(_ phase: String, _ sequence: Int, _ traceID: String = "trace") -> [String: Any] {
+            let event: [String: Any] = ["event": "symptom-native-keyboard-frame", "phase": phase, "sequence": sequence, "traceID": traceID, "scrollViewID": "scroll", "receivedAtMs": 102.0, "endFrameInScreen": visible]
+            return ["atMs": 103.0, "symptomScrollTrace": ["traceID": "trace", "selection": selection, "recordedCount": sequence, "events": [event], "latestKeyboard": event]]
+        }
+        let complete = sample("did-change-frame", 5)
+        XCTAssertTrue(FormScrollGeometryJournalPlan.keyboardCompleted(complete, since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(sample("will-change-frame", 5), since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(sample("did-change-frame", 4), since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(sample("did-change-frame", 5, "other"), since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        XCTAssertTrue(FormScrollGeometryJournalPlan.keyboardCompleted(sample("did-change-frame", 6), since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        var detached = sample("did-change-frame", 6)
+        var detachedTrace = detached["symptomScrollTrace"] as! [String: Any]
+        detachedTrace["selection"] = ["attached": true, "reason": "attached", "scrollViewID": "scroll", "attachmentSequence": 5]
+        detached["symptomScrollTrace"] = detachedTrace
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(detached, since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 104))
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(complete, since: checkpoint, keyboard: visibleKeyboard.offsetBy(dx: 0, dy: 400), window: window, readAtMs: 104))
+        XCTAssertFalse(FormScrollGeometryJournalPlan.keyboardCompleted(complete, since: checkpoint, keyboard: visibleKeyboard, window: window, readAtMs: 101))
         let app = CGRect(x: 0, y: 0, width: 375, height: 667)
         let scroll = CGRect(x: 0, y: 400, width: 375, height: 300)
         let geometry = try XCTUnwrap(FormScrollGeometry(application: app, scroll: scroll, keyboard: nil))
