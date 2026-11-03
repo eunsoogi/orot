@@ -85,7 +85,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // Observe the actual rendered enlargement, rather than treating the launch argument as proof of large text.
         XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        try NavigationUITestConditions.openTab(app, "home", markers: ["home-metrics-edit"])
+        // At large text the metrics editor is above the scrolled viewport; confirm Home using its visible lower section.
+        try NavigationUITestConditions.openTab(app, "home", markers: ["home-open-symptoms"])
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         capture(app, "home-xxxl-glass-tabs")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
