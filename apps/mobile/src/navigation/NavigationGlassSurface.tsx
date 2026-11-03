@@ -1,4 +1,4 @@
-import { useContext, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
 import {
   NAVIGATION_SURFACE_HEIGHT,
@@ -10,6 +10,7 @@ import {
   requireNativeComponent,
   StyleSheet,
   useColorScheme,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewProps,
@@ -30,6 +31,7 @@ export interface NavigationGlassAction {
   readonly rootTab?: boolean;
   readonly showsTitleWithSystemImage?: boolean;
   readonly titleBelowImage?: boolean;
+  readonly layoutWidth?: number;
 }
 
 export interface NavigationGlassActionEvent {
@@ -52,6 +54,7 @@ export interface NavigationGlassSurfaceProps {
   readonly railRightInset?: number;
   /** Explicit window extent after keyboard avoidance, independent of React host bounds. */
   readonly railAvailableHeight?: number;
+  readonly bottomHeight?: number;
   readonly isPageDock?: boolean;
   readonly pageMetricsRequest?: {
     readonly revision: string;
@@ -62,6 +65,9 @@ export interface NavigationGlassSurfaceProps {
       revision: string;
       width: number;
       widths: number[];
+      baselineWidths?: number[];
+      heights: number[];
+      category?: string;
     }>,
   ) => void;
 }
@@ -75,6 +81,7 @@ interface NavigationGlassNativeProps extends ViewProps {
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
   readonly railAvailableHeight?: number;
+  readonly bottomHeight?: number;
   readonly isPageDock?: boolean;
   readonly pageMetricsRequest?: NavigationGlassSurfaceProps['pageMetricsRequest'];
   readonly onPageMetrics?: NavigationGlassSurfaceProps['onPageMetrics'];
@@ -94,6 +101,7 @@ export function NavigationGlassSurface({
   railRightInset,
   railTopInset,
   railAvailableHeight,
+  bottomHeight,
   isPageDock,
   pageMetricsRequest,
   onPageMetrics,
@@ -107,14 +115,49 @@ export function NavigationGlassSurface({
     : undefined;
   const isDarkAppearance = useColorScheme() === 'dark';
   const hasRootTabs = actions.some(action => action.rootTab);
+  const { fontScale } = useWindowDimensions();
+  const revision = JSON.stringify([fontScale, actions]);
+  const [ownMetrics, setOwnMetrics] = useState<{
+    revision: string;
+    height: number;
+  }>();
+  const isBottom = layoutMode === undefined || layoutMode === 'bottom';
+  const measuredHeight =
+    ownMetrics?.revision === revision ? ownMetrics.height : 0;
+  const resolvedHeight = Math.max(
+    hasRootTabs ? ROOT_TAB_SURFACE_HEIGHT : NAVIGATION_SURFACE_HEIGHT,
+    bottomHeight ?? 0,
+    measuredHeight,
+  );
+  const ownRequest =
+    isBottom && !pageMetricsRequest ? { revision, actions } : undefined;
 
   if (NativeNavigationGlassSurface) {
     return (
       <NativeNavigationGlassSurface
         geometryLayoutRevision={geometryLayoutRevision}
         isPageDock={isPageDock}
-        pageMetricsRequest={pageMetricsRequest}
-        onPageMetrics={onPageMetrics}
+        pageMetricsRequest={pageMetricsRequest ?? ownRequest}
+        onPageMetrics={
+          pageMetricsRequest
+            ? onPageMetrics
+            : ({ nativeEvent }) => {
+                if (
+                  nativeEvent.revision !== revision ||
+                  nativeEvent.heights?.length !== actions.length ||
+                  !nativeEvent.heights?.every(
+                    value => Number.isFinite(value) && value >= 0,
+                  )
+                )
+                  return;
+                const height = Math.max(0, ...nativeEvent.heights);
+                setOwnMetrics(current =>
+                  current?.revision === revision && current.height === height
+                    ? current
+                    : { revision, height },
+                );
+              }
+        }
         actions={actions}
         layoutMode={layoutMode}
         onAction={onAction}
@@ -122,7 +165,13 @@ export function NavigationGlassSurface({
         railRightInset={railRightInset}
         railTopInset={railTopInset}
         railAvailableHeight={railAvailableHeight}
-        style={[styles.surface, hasRootTabs && styles.rootTabSurface, style]}
+        bottomHeight={isBottom ? resolvedHeight : undefined}
+        style={[
+          styles.surface,
+          hasRootTabs && styles.rootTabSurface,
+          isBottom ? { height: resolvedHeight } : undefined,
+          style,
+        ]}
         testID={testID}
       />
     );

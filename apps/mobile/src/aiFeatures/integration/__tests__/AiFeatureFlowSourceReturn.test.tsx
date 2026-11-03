@@ -133,7 +133,7 @@ test('preserves generated hypotheses after opening and returning from their cita
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
   await pressPageAction(
-    screen.getByTestId('navigation-page-action-overflow'),
+    screen.queryByTestId('navigation-page-action-overflow'),
     getDiseaseHypothesisCopy().generate,
   );
   expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();

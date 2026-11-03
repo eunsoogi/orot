@@ -10,6 +10,54 @@ const seam = leftSplitGeometry.reservedRegions[0] as NavigationReservedRegion;
 const resolve = (payload: NavigationGeometryPayload) =>
   resolveNavigationRootLayout(createNavigationGeometrySnapshot(payload));
 
+test('keeps the rotated unpartitioned Duo rail right while retaining the left safe area', () => {
+  // Captured UIKit window after Device Hub rotation; the two active occlusions are not divisions.
+  const rotated: NavigationGeometryPayload = {
+    windowBounds: { x: 0, y: 0, width: 678, height: 466 },
+    safeAreaInsets: { top: 0, left: 84, right: 0, bottom: 34 },
+    reservedRegionsSupported: true,
+    hasHinge: true,
+    reservedRegions: [
+      {
+        id: 'camera',
+        kind: 'occlusion',
+        isActive: true,
+        frame: { x: 29.333, y: 29.333, width: 37, height: 37 },
+        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+      {
+        id: 'system',
+        kind: 'occlusion',
+        isActive: true,
+        frame: { x: 0, y: 0, width: 84, height: 82 },
+        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+    ],
+  };
+  expect(resolve(rotated)).toMatchObject({
+    placement: 'right',
+    reservedRightWidth: 72,
+    contentWidth: 522,
+  });
+});
+
+test('keeps split-window edge selection when an active left occlusion is present', () => {
+  const occlusion: NavigationReservedRegion = {
+    id: 'system',
+    kind: 'occlusion',
+    isActive: true,
+    frame: { x: 0, y: 0, width: 84, height: 82 },
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+  };
+  expect(
+    resolve({
+      ...leftSplitGeometry,
+      safeAreaInsets: { top: 0, left: 84, right: 0, bottom: 34 },
+      reservedRegions: [...leftSplitGeometry.reservedRegions, occlusion],
+    }),
+  ).toMatchObject({ railSide: 'left', reservedRightWidth: 0 });
+});
+
 // These variations are synthetic guard tests. Only leftSplitGeometry is an
 // actual window observation; mirrored input does not prove right-window behavior.
 test.each([

@@ -1,4 +1,5 @@
 import {
+  fitsBottomNavigationRow,
   pageActionRailLayout,
   splitMeasuredPageActions,
   splitPageActions,
@@ -8,6 +9,21 @@ import {
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
   NAVIGATION_ROOT_RAIL_HEIGHT,
 } from '../navigationRootLayout';
+
+test('requires room for navigation and page actions together before placing one row', () => {
+  const row = {
+    navigationWidths: [48, 64],
+    actionWidths: [80, 80],
+    horizontalInsets: 32,
+    itemGap: 8,
+  };
+  expect(fitsBottomNavigationRow({ ...row, width: 328 })).toBe(true);
+  expect(fitsBottomNavigationRow({ ...row, width: 327 })).toBe(false);
+  expect(fitsBottomNavigationRow({ ...row, width: Number.NaN })).toBe(false);
+  expect(
+    fitsBottomNavigationRow({ ...row, width: 500, actionWidths: [NaN] }),
+  ).toBe(false);
+});
 
 test.each([
   ['the observed one-action rail', 768, 148, 157, 1],
@@ -72,6 +88,15 @@ test('fits measured UIKit widths including the overflow button and every gap', (
   ).toEqual({
     visible: koreanActions.slice(0, 2),
     overflow: koreanActions.slice(2),
+  });
+});
+
+test('reserves navigation widths before deciding which page actions fit', () => {
+  expect(
+    splitMeasuredPageActions(['save', 'cancel'], [80, 80, 44], 328, [48, 64]),
+  ).toEqual({
+    visible: ['save'],
+    overflow: ['cancel'],
   });
 });
 

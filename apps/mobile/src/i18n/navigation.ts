@@ -13,6 +13,8 @@ export const navigationText = {
     accessibilityLabel: '현재 화면 닫기',
   },
   closeActionMenu: '동작 메뉴 닫기',
+  save: '저장',
+  saving: '저장 중',
   home: {
     label: '홈',
     accessibilityLabel: '홈 화면으로 이동',

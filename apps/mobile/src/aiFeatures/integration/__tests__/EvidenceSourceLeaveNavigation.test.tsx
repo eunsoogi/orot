@@ -76,7 +76,7 @@ test('leaves a read-only citation without confirmation and ignores its late rere
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
   await pressPageAction(
-    route.getByTestId('navigation-page-action-overflow'),
+    route.queryByTestId('navigation-page-action-overflow'),
     getDiseaseHypothesisCopy().generate,
   );
   const openSource = await route.findByLabelText(/원문 근거 열기/);

@@ -3,6 +3,115 @@ import XCTest
 /// Exercises direct and overflow actions without treating a floating control as scroll content.
 @MainActor
 enum NavigationPageActionUITestConditions {
+    /// Exercise actual root buttons, starting with Schedule from Home, at their accessibility activation points.
+    static func verifyDirectRecordsTap(_ app: XCUIApplication) throws {
+        for (tab, markers) in [("schedule", ["calendar-title", "schedule-retry"]), ("records", ["records-title"])] {
+            let identifier = "navigation-tab-\(tab)"
+            let control = try NavigationUITestConditions.navigationAction(app, identifier).control
+            XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1, app.debugDescription)
+            guard control.isEnabled, control.isHittable else { XCTFail("\(tab) must be enabled and directly hittable: \(app.debugDescription)"); throw NSError(domain: "NavigationUITests", code: 6) }
+            control.tap()
+            NavigationUITestConditions.route(app, markers: markers)
+            XCTAssertTrue(control.isSelected, "Direct tap must select \(tab)")
+            if tab == "schedule" {
+                try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+            }
+        }
+    }
+
+    /// Select a hidden root destination through the actual More menu, preserving direct-tab checks.
+    static func openOverflowTab(_ app: XCUIApplication, tab: String) throws -> Bool {
+        let direct = app.buttons["navigation-tab-\(tab)"]
+        let more = app.buttons["navigation-page-action-overflow"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || more.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+        if direct.exists {
+            return false
+        }
+        guard more.exists else { throw NSError(domain: "NavigationUITests", code: 4, userInfo: [NSLocalizedDescriptionKey: "Neither tab nor More exists: \(tab)"]) }
+        XCTAssertTrue(more.isHittable, app.debugDescription)
+        more.tap()
+        let labels = ["home": "홈 탭", "records": "기록 탭", "schedule": "일정 탭", "ai": "AI 탭", "settings": "설정 탭"]
+        let item = try app.buttons[XCTUnwrap(labels[tab])]
+        XCTAssertTrue(item.exists && item.isHittable, app.debugDescription)
+        item.tap()
+        return true
+    }
+
+    /// A failing schedule still exposes its primary retry directly beside the selected tab.
+    static func assertSelectedRoot(_ app: XCUIApplication, action: XCUIElement, tab: String) {
+        XCTAssertTrue(action.isSelected, "Root tab \(tab) must expose selected state")
+        if tab == "schedule", app.buttons["schedule-retry"].exists {
+            assertRootRetryOverflow(app)
+        }
+    }
+
+    static func assertRootRetryOverflow(_ app: XCUIApplication) {
+        let retry = app.buttons["schedule-retry"], selected = app.buttons["navigation-tab-schedule"], more = app.buttons["navigation-page-action-overflow"]
+        XCTAssertTrue(retry.exists && retry.isHittable && retry.frame.width >= 88, app.debugDescription)
+        XCTAssertTrue(selected.exists && selected.isSelected && selected.isHittable, app.debugDescription)
+        XCTAssertTrue(more.exists && more.isHittable, app.debugDescription)
+        XCTAssertEqual(retry.frame.midY, selected.frame.midY, accuracy: 1)
+        XCTAssertFalse(retry.frame.intersects(selected.frame))
+        XCTAssertFalse(retry.frame.intersects(more.frame))
+    }
+
+    static func assertDirectPrimary(_ app: XCUIApplication, id: String) {
+        let primary = UITestConditions.element(app, id)
+        XCTAssertTrue(primary.exists && primary.isHittable, "Primary action must be directly reachable before opening More")
+    }
+
+    /// Preserve each observed predicate so a keyboard or hit-test failure is distinguishable.
+    static func keyboardActionReady(_ action: XCUIElement, keyboard: XCUIElement, app: XCUIApplication, testCase: XCTestCase) -> Bool {
+        let exists = action.exists
+        let hittable = exists && action.isHittable
+        let keyboardExists = keyboard.exists
+        XCTContext.runActivity(named: "Keyboard action state") { activity in
+            let state = "actionExists=\(exists), actionHittable=\(hittable), actionEnabled=\(exists && action.isEnabled), actionFrame=\(exists ? String(describing: action.frame) : "missing"), keyboardExists=\(keyboardExists), keyboardFrame=\(keyboardExists ? String(describing: keyboard.frame) : "missing")"
+            let attachment = XCTAttachment(string: state)
+            attachment.name = "keyboard-action-state"
+            attachment.lifetime = .keepAlways
+            activity.add(attachment)
+        }
+        if !exists || !hittable || !keyboardExists {
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "keyboard-action-failure-native")
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "keyboard-action-failure-screen"
+            screenshot.lifetime = .keepAlways
+            testCase.add(screenshot)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "keyboard-action-failure-hierarchy"
+            hierarchy.lifetime = .keepAlways
+            testCase.add(hierarchy)
+        }
+        return exists && hittable && keyboardExists
+    }
+
+    /// Check real target frames in an already-open, standard-text detail route.
+    static func assertSingleBottomRow(_ app: XCUIApplication, ids: [String], minimumWidths: [CGFloat], disabledIDs: Set<String>) {
+        XCTAssertEqual(ids.count, minimumWidths.count)
+        let buttons = ids.map { UITestConditions.element(app, $0) }
+        for (button, minimumWidth) in zip(buttons, minimumWidths) {
+            XCTAssertTrue(UITestConditions.exists(button), app.debugDescription)
+            XCTAssertGreaterThanOrEqual(button.frame.width, minimumWidth)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 48)
+            XCTAssertTrue(app.frame.contains(button.frame), app.debugDescription)
+        }
+        guard let first = buttons.first else { return }
+        for (index, button) in buttons.enumerated() {
+            XCTAssertEqual(button.frame.midY, first.frame.midY, accuracy: 1)
+            for other in buttons.dropFirst(index + 1) {
+                XCTAssertFalse(button.frame.intersects(other.frame), app.debugDescription)
+            }
+        }
+        for button in buttons where !disabledIDs.contains(button.identifier) {
+            XCTAssertTrue(button.isHittable, app.debugDescription)
+        }
+        for button in buttons where disabledIDs.contains(button.identifier) {
+            XCTAssertFalse(button.isEnabled, app.debugDescription)
+        }
+    }
+
     static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
         let direct = UITestConditions.element(app, id)
         let overflow = UITestConditions.element(app, "navigation-page-action-overflow")

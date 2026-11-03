@@ -122,6 +122,8 @@
 		98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */; };
 		4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */; };
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
+		A63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift */; };
+		A63F4029A2004AA19F104D32 /* NavigationGlassSurfaceGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F4029A2004AA19F104D32 /* NavigationGlassSurfaceGeometry.swift */; };
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
 		A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */; };
@@ -452,6 +454,8 @@
 		ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentFileOperationsTests.swift; sourceTree = "<group>"; };
 		9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportJourneyUITests.swift; sourceTree = "<group>"; };
 		B1810000B1810000B1810001 /* NavigationGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassComponents.swift; sourceTree = "<group>"; };
+		B63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTextMetrics.swift; sourceTree = "<group>"; };
+		B63F4029A2004AA19F104D32 /* NavigationGlassSurfaceGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassSurfaceGeometry.swift; sourceTree = "<group>"; };
 		B19500000000000000000001 /* NavigationGlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassButton.swift; sourceTree = "<group>"; };
 		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
 		B19500000000000000000003 /* NavigationContextualActionContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationContextualActionContent.swift; sourceTree = "<group>"; };
@@ -860,6 +864,8 @@
 				DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */,
 				096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */,
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
+				B63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift */,
+				B63F4029A2004AA19F104D32 /* NavigationGlassSurfaceGeometry.swift */,
 				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
 				B19500000000000000000003 /* NavigationContextualActionContent.swift */,
@@ -1251,6 +1257,8 @@
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
+				A63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift in Sources */,
+				A63F4029A2004AA19F104D32 /* NavigationGlassSurfaceGeometry.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
 				A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */,

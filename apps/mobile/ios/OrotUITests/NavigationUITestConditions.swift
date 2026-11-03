@@ -2,6 +2,11 @@ import XCTest
 
 @MainActor
 enum NavigationUITestConditions {
+    static let rootTabCases = [
+        ("home", ["welcome-title"], "홈 탭"), ("records", ["records-title"], "기록 탭"),
+        ("schedule", ["calendar-title", "schedule-retry"], "일정 탭"), ("ai", ["ai-features-screen"], "AI 탭"),
+        ("settings", ["settings-title"], "설정 탭"),
+    ]
     struct NavigationAction {
         let control: XCUIElement
         let toolbar: XCUIElement
@@ -124,7 +129,9 @@ enum NavigationUITestConditions {
     }
 
     static func openTab(_ app: XCUIApplication, _ tab: String, markers: [String]) throws {
-        try tapNavigation(app, "navigation-tab-\(tab)")
+        if try !NavigationPageActionUITestConditions.openOverflowTab(app, tab: tab) {
+            try tapNavigation(app, "navigation-tab-\(tab)")
+        }
         route(app, markers: markers)
     }
 

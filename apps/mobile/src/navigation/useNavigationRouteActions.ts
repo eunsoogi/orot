@@ -21,6 +21,9 @@ export function useNavigationRouteActions(
       ({
         id,
         label,
+        navigationLabel,
+        navigationPriority,
+        destructive,
         accessibilityLabel,
         testID,
         disabled,
@@ -29,6 +32,9 @@ export function useNavigationRouteActions(
       }) => ({
         id,
         label,
+        navigationLabel,
+        navigationPriority,
+        destructive,
         accessibilityLabel,
         testID,
         disabled,

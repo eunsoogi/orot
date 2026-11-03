@@ -2,25 +2,31 @@ import UIKit
 
 /// Builds native controls while keeping persistent selection exclusive to root tabs.
 enum NavigationGlassButton {
+    /// The measured bottom height grows with text; rail targets keep their existing size.
+    static func setHeight(_ height: CGFloat, for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool) {
+        let target = usesRightRail ? (action.rootTab ? 52 : 48) : max(action.rootTab ? 52 : 48, height - (action.rootTab ? 8 : 0))
+        button.constraints.first { $0.identifier == "navigation-control-height" }?.constant = target
+    }
+
     /// Keeps contextual controls at their shipping sizes except for the compact rail Home target.
-    static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool) -> CGFloat? {
+    static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool, traits: UITraitCollection) -> CGFloat? {
         // Page actions use icons and the same lane width as navigation on the rail.
         if usesRightRail, action.id.hasPrefix("page:") {
             return NavigationRootGlassBar.exteriorWidth
         }
         return switch action.id {
         case "back":
-            NavigationRootGlassBar.exteriorWidth
+            usesRightRail ? NavigationRootGlassBar.exteriorWidth : NavigationTextMetrics.width(for: action, traits: traits)
         case "home":
-            usesRightRail ? NavigationRootGlassBar.exteriorWidth : 64
+            usesRightRail ? NavigationRootGlassBar.exteriorWidth : NavigationTextMetrics.width(for: action, traits: traits)
         default:
             nil
         }
     }
 
-    /// Hides only Home's visible title in the rail; the button keeps its VoiceOver name.
+    /// The narrow rail hides visible navigation titles but retains VoiceOver names.
     static func setUsesRightRail(_ usesRightRail: Bool, for action: NavigationActionDescriptor, button: UIButton) {
-        guard action.id == "home" else { return }
+        guard action.id == "home" || action.id == "back" else { return }
         for content in button.subviews.compactMap({ $0 as? UIStackView }) {
             content.arrangedSubviews.compactMap { $0 as? UILabel }.forEach {
                 $0.isHidden = usesRightRail
@@ -31,15 +37,19 @@ enum NavigationGlassButton {
     /// Tracks localized primary titles while keeping one width constraint per stable action.
     static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
-        let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
         let compactPageAction = action.id == "page:overflow" || (usesRightRail && action.id.hasPrefix("page:"))
-        let minimumWidth = compactPageAction ? 44 : max(88, titleWidth + 24)
+        let minimumWidth = usesRightRail && compactPageAction ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
+        let relation: NSLayoutConstraint.Relation = action.layoutWidth != nil && !usesRightRail ? .equal : .greaterThanOrEqual
+        if let existing = constraints[action.id], existing.relation != relation {
+            existing.isActive = false
+            constraints.removeValue(forKey: action.id)
+        }
         if let constraint = constraints[action.id] {
             constraint.constant = minimumWidth
         } else {
-            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
+            let constraint = relation == .equal ? button.widthAnchor.constraint(equalToConstant: minimumWidth) : button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
             // Measurements can arrive after a resize; allow temporary compression instead of conflicting constraints.
-            if action.id.hasPrefix("page:") {
+            if action.id.hasPrefix("page:"), relation != .equal {
                 constraint.priority = .defaultHigh
             }
             constraint.isActive = true
@@ -53,14 +63,14 @@ enum NavigationGlassButton {
         configure(button, for: action)
         button.translatesAutoresizingMaskIntoConstraints = false
         let height: CGFloat = action.rootTab ? 52 : 48
+        let heightConstraint = button.heightAnchor.constraint(equalToConstant: height)
+        heightConstraint.identifier = "navigation-control-height"
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            button.heightAnchor.constraint(equalToConstant: height),
+            heightConstraint,
         ])
-        if action.id == "back" {
-            NavigationBackContent.attach(to: button, testID: action.testID)
-        }
-        if action.rootTab || action.id == "home", let name = action.systemImageName {
+        let symbolName = action.systemImageName ?? (action.id == "back" ? "chevron.backward" : nil)
+        if action.rootTab || action.id == "home" || action.id == "back", let name = symbolName {
             let content = NavigationRootTabContent.make(
                 label: action.label,
                 symbolName: name,
@@ -85,12 +95,7 @@ enum NavigationGlassButton {
     /// Updates a mounted control in place so UIKit keeps its active touch and Glass view identity.
     static func update(_ button: UIButton, for action: NavigationActionDescriptor) {
         configure(button, for: action)
-        if action.id == "back" {
-            button.subviews.compactMap { $0 as? UIImageView }.forEach {
-                $0.accessibilityIdentifier = "\(action.testID)-UIImageView"
-            }
-        }
-        if action.rootTab || action.id == "home" {
+        if action.rootTab || action.id == "home" || action.id == "back" {
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {
                 for child in content.arrangedSubviews {
                     if let icon = child as? UIImageView, let name = action.systemImageName {
@@ -100,6 +105,7 @@ enum NavigationGlassButton {
                     }
                     if let label = child as? UILabel {
                         label.text = action.label
+                        label.font = NavigationTextMetrics.font(for: action, traits: button.traitCollection)
                         label.textColor = action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label
                         label.accessibilityIdentifier = "\(action.testID)-UILabel"
                     }
@@ -190,6 +196,7 @@ struct NavigationActionDescriptor: Equatable {
     let rootTab: Bool
     let showsTitleWithSystemImage: Bool
     let titleBelowImage: Bool
+    let layoutWidth: CGFloat?
 
     init?(_ value: Any) {
         guard
@@ -214,5 +221,6 @@ struct NavigationActionDescriptor: Equatable {
         rootTab = payload["rootTab"] as? Bool ?? false
         showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
         titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
+        layoutWidth = (payload["layoutWidth"] as? NSNumber).map { CGFloat(truncating: $0) }
     }
 }

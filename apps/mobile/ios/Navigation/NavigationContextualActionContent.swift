@@ -65,11 +65,16 @@ enum NavigationContextualActionContent {
         if action.systemImageName == nil || action.showsTitleWithSystemImage {
             let title = UILabel()
             title.text = action.label
-            title.font = .systemFont(ofSize: action.titleBelowImage ? 10 : 14, weight: .medium)
+            title.font = NavigationTextMetrics.font(for: action, traits: button.traitCollection)
+            title.adjustsFontForContentSizeCategory = true
             title.textAlignment = .center
             title.textColor = foregroundColor
-            title.numberOfLines = 1
-            title.lineBreakMode = .byTruncatingTail
+            title.numberOfLines = action.layoutWidth == nil ? 1 : 0
+            title.lineBreakMode = action.layoutWidth == nil ? .byTruncatingTail : .byWordWrapping
+            if let width = action.layoutWidth {
+                title.preferredMaxLayoutWidth = max(1, width - 10)
+                title.widthAnchor.constraint(lessThanOrEqualToConstant: max(1, width - 10)).isActive = true
+            }
             title.isAccessibilityElement = false
             title.accessibilityIdentifier = "\(action.testID)-UILabel"
             title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

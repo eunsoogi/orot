@@ -173,7 +173,7 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         navigation.accessibilityIdentifier = "navigation-toolbar"
         window.addSubview(page)
         window.addSubview(navigation)
-        for (id, host) in [("manual-history-save", page), ("navigation-back", navigation), ("navigation-home", navigation)] {
+        for (id, host) in [("manual-history-save", page), ("symptom-form-cancel", page), ("navigation-back", navigation), ("navigation-home", navigation)] {
             let button = PrivateDockControl(frame: CGRect(x: 20, y: 20, width: 48, height: 48))
             button.accessibilityIdentifier = id
             host.addSubview(button)
@@ -182,7 +182,10 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         let sample = NavigationControlGeometryObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
         XCTAssertEqual(sample["status"] as? String, "available")
         let records = try XCTUnwrap(sample["controls"] as? [[String: Any]])
-        XCTAssertEqual(records.count, 3)
+        XCTAssertEqual(records.count, 4)
+        let cancel = try XCTUnwrap(records.first { $0["identifier"] as? String == "symptom-form-cancel" })
+        XCTAssertNotNil(cancel["activationInWindow"])
+        XCTAssertNotNil(cancel["hitRole"])
         XCTAssertTrue(records.allSatisfy { $0["windowID"] as? String == "key-window" && $0["sameWindow"] as? Bool == true })
         XCTAssertFalse(try String(decoding: JSONSerialization.data(withJSONObject: sample), as: UTF8.self).contains("private-health-content"))
         let duplicate = PrivateDockControl(frame: CGRect(x: 20, y: 20, width: 48, height: 48))

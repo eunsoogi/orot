@@ -62,7 +62,16 @@ export function useNavigationPrimaryAction(
   ownerKey.current ??= host?.routeKey;
   const onPressRef = useRef(action?.onPress);
   onPressRef.current = action?.onPress;
-  const { label, accessibilityLabel, testID, disabled } = action ?? {};
+  const {
+    label,
+    navigationLabel,
+    navigationPriority,
+    destructive,
+    accessibilityLabel,
+    testID,
+    disabled,
+    systemImageName,
+  } = action ?? {};
   const register = host?.register;
   useLayoutEffect(() => {
     if (
@@ -81,9 +90,13 @@ export function useNavigationPrimaryAction(
         {
           id: 'primary',
           label,
+          navigationLabel,
+          navigationPriority,
+          destructive,
           accessibilityLabel,
           testID,
           disabled,
+          systemImageName,
           onPress: () => (active ? onPressRef.current?.() : undefined),
         },
       ],
@@ -92,6 +105,16 @@ export function useNavigationPrimaryAction(
       active = false;
       unregister();
     };
-  }, [register, label, accessibilityLabel, testID, disabled]);
+  }, [
+    register,
+    label,
+    navigationLabel,
+    navigationPriority,
+    destructive,
+    accessibilityLabel,
+    testID,
+    disabled,
+    systemImageName,
+  ]);
   return host !== null;
 }

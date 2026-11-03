@@ -58,6 +58,13 @@ describe('independent manual appointment page', () => {
       <ManualAppointmentScreen repository={repository()} onBack={onBack} />,
     );
 
+    await fireEvent(
+      screen.getByTestId('bottom-navigation-menu-host'),
+      'layout',
+      {
+        nativeEvent: { layout: { x: 0, y: 0, width: 430, height: 60 } },
+      },
+    );
     const toolbar = screen.getByTestId('navigation-bar-native-surface');
     expect(screen.getByTestId('safe-area-root')).toBeTruthy();
     expect(toolbar.props.actions).toEqual([

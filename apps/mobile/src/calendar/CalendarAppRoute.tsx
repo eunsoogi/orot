@@ -72,6 +72,7 @@ export function CalendarAppRoute({
             label: navigationText.recording.label,
             accessibilityLabel: navigationText.recording.accessibilityLabel,
             testID: 'navigation-recording',
+            systemImageName: 'mic',
             onPress: onOpenRecording,
           }}
           testID="calendar-app-back"

@@ -5,9 +5,7 @@ import XCTest
 final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     @MainActor
     func testLargeKoreanTextKeepsSaveAndCancelReachableAcrossAppearances() throws {
-        if SymptomDateSelectionUITestObservation.enabled {
-            SymptomDateSelectionUITestObservation.verifyCorrelation()
-        }
+        SymptomJournalControlUITestConditions.verifyDateObservationIfEnabled()
         let app = XCUIApplication()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -20,6 +18,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
         try launchJournal(app, category: .large)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { original = $0 })
         try openForm(app)
+        NavigationPageActionUITestConditions.assertSingleBottomRow(app, ids: ["navigation-back", "symptom-save", "symptom-form-cancel", "navigation-home"], minimumWidths: [48, 88, 88, 64], disabledIDs: ["symptom-save"])
         let baselineFont = assertEnvironment(app, style: .light, category: .large, stage: "default-korean-font")
         app.terminate()
         try launchJournal(app, category: .accessibilityExtraExtraExtraLarge)
@@ -150,7 +149,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     private func tapKeyboardAction(_ app: XCUIApplication, id: String, label: String) throws -> Bool {
         let action = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
         let keyboard = app.keyboards.firstMatch, window = app.frame
-        guard action.exists, action.isHittable, keyboard.exists else { XCTFail("Action and keyboard must be present and hittable"); return false }
+        guard NavigationPageActionUITestConditions.keyboardActionReady(action, keyboard: keyboard, app: app, testCase: self) else { XCTFail("Action and keyboard must be present and hittable"); return false }
         let actionFrame = action.frame, keyboardFrame = keyboard.frame
         guard FormScrollGeometry.valid(window), FormScrollGeometry.valid(actionFrame), FormScrollGeometry.valid(keyboardFrame),
               window.intersects(keyboardFrame), window.contains(actionFrame), !actionFrame.intersects(keyboardFrame)
@@ -166,7 +165,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
     private func launchJournal(_ app: XCUIApplication, category: UIContentSizeCategory, recovery: Bool = true, editFixture: Bool = false) throws {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
-            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES",
             "-UIPreferredContentSizeCategoryName", category.rawValue,
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
         ] + (recovery ? ["-OROT_E2E_PROBE", "symptom-journal-save-recovery"] : []) + (editFixture ? ["-OROT_SYMPTOM_EDIT_FIXTURE", "YES"] : []) + AppearanceUITestConditions.observationArguments + (SymptomDateSelectionUITestObservation.enabled ? ["-OROT_TEST_DATE_SELECTION_OBSERVATION", SymptomDateSelectionUITestObservation.session] : [])
@@ -183,6 +182,7 @@ final class SymptomJournalAccessibilityUITests: OrotFailFastTestCase {
 
     @MainActor
     private func openForm(_ app: XCUIApplication) throws {
+        NavigationPageActionUITestConditions.assertDirectPrimary(app, id: "symptom-add")
         try tapFinal(app, "symptom-add", stage: "large-korean-add")
         SymptomJournalUITestObservations.openManualOnset(app)
         XCTAssertTrue(UITestConditions.exists(app.textViews["symptom-description"]))

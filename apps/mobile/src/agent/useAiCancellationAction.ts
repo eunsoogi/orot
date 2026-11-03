@@ -10,7 +10,13 @@ export function useAiCancellationAction(
   const label = t('aiActivity.cancel');
   return useNavigationPrimaryAction(
     busy
-      ? { label, accessibilityLabel: label, testID, onPress: onCancel }
+      ? {
+          label,
+          accessibilityLabel: label,
+          testID,
+          systemImageName: 'xmark',
+          onPress: onCancel,
+        }
       : undefined,
   );
 }

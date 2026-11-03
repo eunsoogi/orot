@@ -121,3 +121,46 @@ test('uses current native width measurements and ignores stale results', async (
   expect(view.queryByTestId('third')).toBeNull();
   expect(view.getByTestId('navigation-page-action-overflow')).toBeTruthy();
 });
+
+test('retains the page action icon and its label below on the bottom bar', async () => {
+  const view = await render(
+    <NavigationPageActionDock
+      actions={[
+        {
+          id: 'save',
+          label: 'Save symptom record',
+          navigationLabel: 'Save',
+          accessibilityLabel: 'Save symptom record',
+          testID: 'save',
+          systemImageName: 'checkmark',
+          onPress: jest.fn(),
+        },
+      ]}
+      capacity={1}
+      disabled={false}
+      isDarkAppearance={false}
+      isRail={false}
+      routeKey="route"
+      surface={NavigationGlassSurface}
+      surfaceProps={{}}
+    />,
+  );
+  const surface = view.getByTestId('navigation-page-action-surface');
+  expect(surface.props.pageMetricsRequest.actions[0]).toEqual(
+    expect.objectContaining({
+      systemImageName: 'checkmark',
+      showsTitleWithSystemImage: true,
+      titleBelowImage: true,
+    }),
+  );
+  expect(surface.props.actions[0]).toEqual(
+    expect.objectContaining({
+      id: 'page:save',
+      label: 'Save',
+      accessibilityLabel: 'Save symptom record',
+      systemImageName: 'checkmark',
+      showsTitleWithSystemImage: true,
+      titleBelowImage: true,
+    }),
+  );
+});

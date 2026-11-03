@@ -6,6 +6,59 @@ import XCTest
 /// Deterministic UIKit geometry is a regression fixture, not actual keyboard acceptance.
 final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
     @MainActor
+    func testBottomActionMetricsGrowWithAccessibilityText() throws {
+        let action = try XCTUnwrap(NavigationActionDescriptor([
+            "id": "page:save", "label": "Save", "testID": "save", "accessibilityLabel": "Save",
+            "systemImageName": "checkmark", "showsTitleWithSystemImage": true, "titleBelowImage": true,
+        ]))
+        let standard = UITraitCollection(preferredContentSizeCategory: .large)
+        let accessible = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        XCTAssertGreaterThan(NavigationTextMetrics.width(for: action, traits: accessible), NavigationTextMetrics.width(for: action, traits: standard))
+        XCTAssertGreaterThan(NavigationTextMetrics.height(for: action, traits: accessible), NavigationTextMetrics.height(for: action, traits: standard))
+    }
+
+    /// A constrained page target grows vertically without shortening its Korean label.
+    @MainActor
+    func testConstrainedAccessibilityActionKeepsFullLabelAndIncreasesHeight() throws {
+        let payload: [String: Any] = [
+            "id": "page:add", "label": "증상 기록 추가", "testID": "add", "accessibilityLabel": "증상 기록 추가",
+            "systemImageName": "plus", "showsTitleWithSystemImage": true, "titleBelowImage": true,
+        ]
+        let natural = try XCTUnwrap(NavigationActionDescriptor(payload))
+        var constrainedPayload = payload
+        constrainedPayload["layoutWidth"] = 120
+        let constrained = try XCTUnwrap(NavigationActionDescriptor(constrainedPayload))
+        let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        XCTAssertGreaterThan(NavigationTextMetrics.width(for: natural, traits: traits), 120)
+        XCTAssertGreaterThan(NavigationTextMetrics.height(for: constrained, traits: traits), NavigationTextMetrics.height(for: natural, traits: traits))
+        let button = NavigationGlassButton.make(for: constrained, onAction: { _ in })
+        let label = try XCTUnwrap(button.subviews.compactMap { $0 as? UIStackView }.first?.arrangedSubviews.compactMap { $0 as? UILabel }.first)
+        XCTAssertEqual(label.text, "증상 기록 추가")
+        XCTAssertEqual(label.numberOfLines, 0)
+        XCTAssertEqual(button.accessibilityLabel, "증상 기록 추가")
+    }
+
+    @MainActor
+    func testBackTitleIsVisibleBelowIconOnBottomAndHiddenOnRail() throws {
+        let action = try XCTUnwrap(NavigationActionDescriptor([
+            "id": "back", "label": "Back", "testID": "navigation-back", "accessibilityLabel": "Back",
+        ]))
+        let button = NavigationGlassButton.make(for: action, onAction: { _ in })
+        let content = try XCTUnwrap(button.subviews.compactMap { $0 as? UIStackView }.first)
+        let icon = try XCTUnwrap(content.arrangedSubviews.first as? UIImageView)
+        let label = try XCTUnwrap(content.arrangedSubviews.last as? UILabel)
+        XCTAssertEqual(content.axis, .vertical)
+        XCTAssertNotNil(icon.image)
+        XCTAssertEqual(label.text, "Back")
+        XCTAssertFalse(label.isHidden)
+        NavigationGlassButton.setUsesRightRail(true, for: action, button: button)
+        XCTAssertTrue(label.isHidden)
+        XCTAssertEqual(button.accessibilityLabel, "Back")
+        NavigationGlassButton.setUsesRightRail(false, for: action, button: button)
+        XCTAssertFalse(label.isHidden)
+    }
+
+    @MainActor
     func testContractedViewportRefreshesBottomAnchoredNavigationWindowFrame() throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive })

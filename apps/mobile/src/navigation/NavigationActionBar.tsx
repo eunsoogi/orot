@@ -26,6 +26,12 @@ export interface NavigationPrimaryAction {
   readonly accessibilityLabel: string;
   readonly onPress: () => void | Promise<unknown>;
   readonly testID: string;
+  readonly systemImageName?: string;
+  /** Compact visible title; the accessibility label retains the full action name. */
+  readonly navigationLabel?: string;
+  /** Explicit priority overrides registration order when a row needs More. */
+  readonly navigationPriority?: 'primary' | 'secondary';
+  readonly destructive?: boolean;
   readonly disabled?: boolean;
 }
 

@@ -9,6 +9,31 @@ const step =
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
 const groupGap = 8;
 
+/** Check the whole bottom row before choosing how to handle insufficient width. */
+export function fitsBottomNavigationRow({
+  width,
+  navigationWidths,
+  actionWidths,
+  horizontalInsets,
+  itemGap,
+}: {
+  width: number;
+  navigationWidths: readonly number[];
+  actionWidths: readonly number[];
+  horizontalInsets: number;
+  itemGap: number;
+}): boolean {
+  const items = [...navigationWidths, ...actionWidths];
+  const dimensions = [width, horizontalInsets, itemGap, ...items];
+  if (!dimensions.every(value => Number.isFinite(value) && value >= 0))
+    return false;
+  const required =
+    horizontalInsets +
+    items.reduce((total, itemWidth) => total + itemWidth, 0) +
+    Math.max(0, items.length - 1) * itemGap;
+  return required <= width;
+}
+
 /** Allocates one measured segment to the page-action dock and navigation rail. */
 export function pageActionRailLayout({
   height,
@@ -71,11 +96,18 @@ export function splitMeasuredPageActions<T>(
   actions: readonly T[],
   widths: readonly number[],
   surfaceWidth: number,
+  navigationWidths: readonly number[] = [],
+  horizontalInsets = 44,
 ) {
-  const available = surfaceWidth - 32;
   const fits = (values: readonly number[]) =>
-    values.reduce((sum, width) => sum + width, 0) + values.length * 12 <=
-    available;
+    fitsBottomNavigationRow({
+      width: surfaceWidth,
+      navigationWidths,
+      actionWidths: values,
+      // Existing page-only layout reserves one extra stack gap at its edge.
+      horizontalInsets,
+      itemGap: 12,
+    });
   if (
     widths.length !== actions.length + 1 ||
     !widths.every(width => Number.isFinite(width) && width >= 0) ||

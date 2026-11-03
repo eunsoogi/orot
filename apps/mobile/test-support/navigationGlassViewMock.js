@@ -36,14 +36,27 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
           const key = `${pageMetricsRequest.revision}:${width}:${fontScale}`;
           if (lastMetrics.current === key) return;
           lastMetrics.current = key;
-          const widths = pageMetricsRequest.actions.map(action =>
-            action.id === 'page:overflow' ? 48 : 120 * Math.max(1, fontScale),
+          const widths = pageMetricsRequest.actions.map(
+            action =>
+              action.layoutWidth ??
+              (action.rootTab
+                ? Math.max(44, action.label.length * 6 * fontScale + 8)
+                : action.id === 'back'
+                  ? 48
+                  : action.id === 'home'
+                    ? 64
+                    : action.id === 'page:overflow'
+                      ? 48
+                      : Math.max(88, action.label.length * 7 * fontScale + 24)),
           );
           onPageMetrics({
             nativeEvent: {
               revision: pageMetricsRequest.revision,
               width,
               widths,
+              heights: pageMetricsRequest.actions.map(action =>
+                action.rootTab ? 60 : 48,
+              ),
             },
           });
         }, [pageMetricsRequest, width, fontScale, onPageMetrics]);
