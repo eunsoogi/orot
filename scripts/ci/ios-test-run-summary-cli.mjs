@@ -12,6 +12,7 @@ import { readSourceInventory } from './ios-test-run-source-inventory.mjs';
 import { renderIosTestRunSummaryMarkdown } from './ios-test-run-summary-markdown.mjs';
 import { iosWorkflowExecutionResults, readIosWorkflowTiming } from './ios-test-run-actions-api.mjs';
 import { summarizeIosTestRunTiming } from './ios-test-run-timing.mjs';
+import { recoverArchivedReports } from './ios-test-legacy-log.mjs';
 
 function jsonValue(value, fallback) {
   try {
@@ -160,6 +161,17 @@ export async function writeIosTestRunSummary({
   const executionResults = selection
     ? iosWorkflowExecutionResults(timingApi.jobs, selectedCohorts, inventory.plan)
     : jsonValue(env.OROT_IOS_EXECUTION_RESULTS, {});
+  if (selection)
+    reportsRead.reports = await recoverArchivedReports({
+      reports: reportsRead.reports,
+      jobs: timingApi.jobs,
+      inventory,
+      selectedCohorts,
+      context,
+      token: env.GITHUB_TOKEN,
+      apiUrl: env.GITHUB_API_URL,
+      fetchImpl,
+    });
   const summary = buildIosTestRunSummary({
     selectedCohorts,
     reports: reportsRead.reports,

@@ -110,6 +110,7 @@ export function makeCase(
     identifier,
     status,
     ...(observation?.result ? { observedResult: observation.result } : {}),
+    ...(observation?.evidence ? { evidence: observation.evidence } : {}),
     ...(Number.isFinite(observation?.duration) ? { durationMs: observation.duration * 1000 } : {}),
     ...(failure ? { failure } : {}),
     ...(source ? { sourceUrl: source } : {}),

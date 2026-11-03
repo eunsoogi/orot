@@ -131,8 +131,12 @@ function renderFailures(summary) {
         );
       } else {
         const message = location.failure?.message ? `: ${safeText(location.failure.message)}` : '';
+        const evidence =
+          location.evidence?.kind === 'actions-job-log'
+            ? `; ${link('source job log', location.evidence.url)}`
+            : '';
         lines.push(
-          `- \`${safeText(location.identifier)}\` (${safeText(item.cohort)} / ${safeText(item.profile)} / ${safeText(item.suite)})${time}${message}${source}${run}.`,
+          `- \`${safeText(location.identifier)}\` (${safeText(item.cohort)} / ${safeText(item.profile)} / ${safeText(item.suite)})${time}${message}${source}${run}${evidence}.`,
         );
       }
     }
