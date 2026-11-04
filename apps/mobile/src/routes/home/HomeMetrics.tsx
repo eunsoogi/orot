@@ -218,7 +218,11 @@ export function HomeMetrics() {
       {data.state === 'ready' &&
         (comparisons.length ? (
           comparisons.map(metric => (
-            <Text key={metric.metric} style={styles.card}>
+            <Text
+              key={metric.metric}
+              style={styles.card}
+              testID={`home-recent-change-${metric.metric}`}
+            >
               {homeMetricTitle(metric.metric)} · {t('home.recordedDayMean')} ·{' '}
               {metric.comparison!.previousDates[0]}–
               {metric.comparison!.previousDates.at(-1)}:{' '}

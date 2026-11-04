@@ -1,7 +1,7 @@
 import XCTest
 
 extension HomeDuoUITests {
-    /// Reads native Home labels from synthetic health records; source attribution remains internal.
+    /// Reads native labels from synthetic Home cards and recent changes; attribution remains internal.
     @MainActor
     @objc
     func testHomeMetricAccessibleLabelsLocalizeUnitsAndHideAttribution() {
@@ -28,6 +28,18 @@ extension HomeDuoUITests {
             XCTAssertFalse(label.contains("min"), label)
             XCTAssertFalse(label.contains("count/min"), label)
             XCTAssertFalse(label.contains("Synthetic Watch"), label)
+            XCTAssertFalse(label.contains(TimeZone.current.identifier), label)
+        }
+
+        for (metric, unit) in [("sleep", "분"), ("heartRate", "회/분")] {
+            let change = UITestConditions.element(app, "home-recent-change-\(metric)")
+            XCTAssertTrue(change.waitForAppearance(), app.debugDescription)
+            let label = change.label
+            XCTAssertTrue(label.contains(unit), label)
+            XCTAssertFalse(label.contains("min"), label)
+            XCTAssertFalse(label.contains("count/min"), label)
+            XCTAssertFalse(label.contains("Synthetic Watch"), label)
+            XCTAssertFalse(label.contains("Synthetic Watch App"), label)
             XCTAssertFalse(label.contains(TimeZone.current.identifier), label)
         }
     }

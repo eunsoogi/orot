@@ -97,7 +97,7 @@ test('fresh creation, migration, document import, backup and native permission c
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
-  // Home metrics, stateful journeys, symptom recovery and appointment input replacement require a fresh local store.
+  // Home metrics, stateful journeys and appointment input replacement require a fresh local store.
   assert.deepEqual(full, [
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',

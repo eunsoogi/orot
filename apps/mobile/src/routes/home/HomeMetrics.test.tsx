@@ -114,6 +114,12 @@ test('formats recent comparisons without exposing source or time-zone details', 
   const summary = screen.getByTestId('home-metric-steps');
   expect(summary.props.accessibilityLabel).not.toContain('Synthetic Watch App');
   expect(summary.props.accessibilityLabel).not.toContain('Asia/Seoul');
+  const recentChange = screen.getByTestId('home-recent-change-steps');
+  expect(recentChange).toHaveTextContent(/1,000걸음/u);
+  expect(recentChange).toHaveTextContent(/1,234걸음/u);
+  expect(recentChange).not.toHaveTextContent(
+    /Synthetic Watch App|Asia\/Seoul|count/u,
+  );
   expect(screen.getByText(/기록된 날의 하루 평균/u)).toBeTruthy();
   expect(screen.getByText(/1,000걸음/u)).toBeTruthy();
   expect(screen.getByText(/1,234걸음/u)).toBeTruthy();
