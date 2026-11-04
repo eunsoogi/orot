@@ -9,6 +9,7 @@ import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createSummaryArtifactDiscovery } from './summaryArtifactDiscovery';
+import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
@@ -20,6 +21,9 @@ export interface AiFeatureLocalData extends LocalEvidenceData {
   summaryArtifactDiscovery?(
     registry: LocalEvidenceReferenceRegistry,
   ): Promise<ReturnType<typeof createSummaryArtifactDiscovery>>;
+  conversationArtifactDiscovery?(
+    registry: LocalEvidenceReferenceRegistry,
+  ): Promise<ReturnType<typeof createConversationArtifactDiscovery>>;
 }
 
 let opening: Promise<AiFeatureLocalData> | null = null;
@@ -57,6 +61,21 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       return createSummaryArtifactDiscovery({
         database,
         storage: createSymptomSummaryStorage(database),
+        data,
+        registry,
+      });
+    },
+    async conversationArtifactDiscovery(registry) {
+      const [
+        { createConversationArtifactDiscovery },
+        { createConversationArtifactStorage },
+      ] = await Promise.all([
+        import('./conversationArtifactDiscovery'),
+        import('../../storage/conversationArtifactStorage'),
+      ]);
+      return createConversationArtifactDiscovery({
+        database,
+        storage: createConversationArtifactStorage(database),
         data,
         registry,
       });

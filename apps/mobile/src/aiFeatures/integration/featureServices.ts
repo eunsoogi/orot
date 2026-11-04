@@ -34,8 +34,12 @@ import type {
 } from '../../diseaseHypotheses/savedSummaries';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { createRagConversationService } from './ragConversationService';
+import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
+  conversationArtifacts(): Promise<ReturnType<
+    typeof createConversationArtifactDiscovery
+  > | null>;
   readonly summaryHistory?: SymptomSummaryHistory;
   summarizeSymptoms?(
     signal?: AbortSignal,
@@ -182,6 +186,12 @@ export function createAiFeatureServices(
   });
 
   return {
+    async conversationArtifacts() {
+      const data = await privateLocalData();
+      return data.conversationArtifactDiscovery
+        ? data.conversationArtifactDiscovery(registry)
+        : null;
+    },
     summaryHistory: summaryPersistence.history,
     ...createVisitQuestionSourceService(registry, loadLocalData),
     externalEvidence,

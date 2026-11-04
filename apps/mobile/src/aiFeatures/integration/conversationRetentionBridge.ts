@@ -21,9 +21,7 @@ export function createConversationRetentionBridge(input: {
     onValidatedEvidence(value: readonly EvidenceReference[]) {
       references = value;
     },
-    async finish(
-      outcome: RagConversationOutcome,
-    ): Promise<{
+    async finish(outcome: RagConversationOutcome): Promise<{
       readonly outcome: RagConversationOutcome;
       readonly retained: boolean;
     }> {

@@ -1,28 +1,16 @@
-import type { EvidenceReference, EvidenceItem } from '@orot/agent-runtime';
+import type { EvidenceReference } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { SavedSymptomSummary } from '../../diseaseHypotheses/savedSummaries';
 import type { AiFeatureLocalData } from './localData';
-import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { fingerprint } from './evidenceUtils';
 import {
   summaryReferences as references,
   remapSavedAnalysis as mapAnalysis,
 } from './savedAnalysis';
-import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { summaryContentReviewIssues } from './summaryContentReview';
-import { healthOverviewFacts } from './healthOverviewFacts';
-import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
-import { healthContextRevision } from '../../healthEvidence/healthContext/scope';
-import {
-  healthContextContent,
-  registerHealthContextEvidence,
-} from './healthContextEvidence';
-import {
-  manualHistorySummaryReviewEvidence,
-  readSavedManualHistorySource,
-} from './manualHistoryEvidence';
 import { captureEvidenceSources } from './captureEvidenceSources';
+import { restoreRetainedSources } from './restoreRetainedSources';
+import { stableJson } from './evidenceUtils';
 
 /** Persist storage identities, never turn-local e1/s1 aliases that can refer to different rows after restart. */
 export async function captureSymptomSummarySources(
@@ -49,137 +37,14 @@ export async function restoreSymptomSummary(
   registry: LocalEvidenceReferenceRegistry,
   data: AiFeatureLocalData,
 ): Promise<DiseaseHypothesisAnalysis> {
-  const mapping = new Map<string, EvidenceReference>();
-  let sourceChanged = false;
-  const reviewEvidence: EvidenceItem[] = [];
-  for (const source of saved.sources) {
-    if (isPeriodSummarySource(source)) {
-      const read = data.readHealthContext;
-      const report = read
-        ? await read(source.scope.window, [source.scope.topic])
-        : undefined;
-      sourceChanged ||=
-        !report ||
-        healthContextRevision(source.scope, report) !== source.revision;
-      const current =
-        report && read
-          ? registerHealthContextEvidence({
-              registry,
-              read,
-              report,
-              scope: source.scope,
-              original: source.reference,
-              expectedRevision: source.revision,
-            })
-          : registry.add({
-              reference: source.reference,
-              content: '',
-              validate: async () => false,
-              readSource: async () => ({ status: 'unavailable' }),
-            });
-      if (
-        report &&
-        healthContextRevision(source.scope, report) === source.revision
-      )
-        reviewEvidence.push({
-          ...source.reference,
-          content: healthContextContent(source.scope, report),
-        });
-      mapping.set(JSON.stringify(source.reference), referenceOnly(current));
-      continue;
-    }
-    if (source.reference.sourceKind === 'external_medical') {
-      mapping.set(JSON.stringify(source.reference), source.reference);
-      continue;
-    }
-    const readSource = async (
-      signal: AbortSignal,
-    ): Promise<EvidenceSourceReadResult> => {
-      if (signal.aborted) return { status: 'unavailable' };
-      const records = [];
-      for (const descriptor of source.records) {
-        if (descriptor.kind === 'reviewed_memory') {
-          const memory = (await data.loadMemoryRecords()).find(
-            item => item.id === descriptor.id,
-          );
-          if (!memory) return { status: 'missing' };
-          if (
-            fingerprint({ text: memory.text, meta: memory.meta }) !==
-            descriptor.revision
-          )
-            return { status: 'changed' };
-          return {
-            status: 'available',
-            document: { sourceKind: 'reviewed_memory', record: memory },
-          };
-        }
-        if (descriptor.kind === 'manual_history')
-          return readSavedManualHistorySource(descriptor, data.manualHistory);
-        const record = await data.repository.readRecord(
-          descriptor.kind,
-          descriptor.id,
-          signal,
-        );
-        if (!record) return { status: 'missing' };
-        if (fingerprint(record) !== descriptor.revision)
-          return { status: 'changed' };
-        records.push({
-          kind: descriptor.kind,
-          record,
-        } as import('../../healthEvidence/localEvidenceRepository').LocalHealthEvidenceRecord);
-      }
-      const stale = await data.loadStaleArtifacts(
-        records.map(entry => ({ kind: entry.kind, id: entry.record.id })),
-        signal,
-      );
-      if (stale.length) return { status: 'changed' };
-      return signal.aborted
-        ? { status: 'unavailable' }
-        : {
-            status: 'available',
-            document: { sourceKind: 'personal_record', records },
-          };
-    };
-    const sourceRead = await readSource(new AbortController().signal);
-    sourceChanged ||= sourceRead.status !== 'available';
-    // Reuse the selected result's revision reads; never preload history or regenerate stored prose.
-    if (
-      sourceRead.status === 'available' &&
-      sourceRead.document.sourceKind === 'personal_record'
-    )
-      reviewEvidence.push({
-        ...source.reference,
-        content:
-          'health_overview: ' +
-          JSON.stringify({
-            records: sourceRead.document.records.map(healthOverviewFacts),
-          }),
-      });
-    if (
-      sourceRead.status === 'available' &&
-      sourceRead.document.sourceKind === 'manual_history'
-    )
-      reviewEvidence.push(
-        manualHistorySummaryReviewEvidence(
-          source.reference,
-          sourceRead.document.evidence,
-        ),
-      );
-    const current = registry.add({
-      reference: source.reference,
-      content: '',
-      readSource,
-      validate: async signal =>
-        (await readSource(signal)).status === 'available',
-    });
-    mapping.set(JSON.stringify(source.reference), referenceOnly(current));
-  }
+  const { mapping, sourceChanged, reviewEvidence } =
+    await restoreRetainedSources(saved.sources, registry, data);
   const contentReviewIssues = summaryContentReviewIssues(
     saved.analysis,
     reviewEvidence,
   );
   return {
-    ...mapAnalysis(saved.analysis, ref => mapping.get(JSON.stringify(ref))!),
+    ...mapAnalysis(saved.analysis, ref => mapping.get(stableJson(ref))!),
     savedSummary: {
       status: 'saved',
       id: saved.id,

@@ -163,6 +163,53 @@ test.each([undefined, 'symptom_summary'] as const)(
     expect(
       (await fresh.readSource(ref, new AbortController().signal)).status,
     ).toBe('available');
+    const extraReference = {
+      ...captured.sources[0]!.reference,
+      privateExtra: 'synthetic private value',
+    };
+    const untrusted = {
+      ...saved,
+      sources: [{ ...captured.sources[0]!, reference: extraReference }],
+      analysis: {
+        ...captured.analysis,
+        hypotheses: captured.analysis.hypotheses.map(item => ({
+          ...item,
+          supportingEvidence: [extraReference],
+        })),
+      },
+    };
+    const projectedRegistry = new LocalEvidenceReferenceRegistry();
+    const projected = await restoreSymptomSummary(
+      untrusted,
+      projectedRegistry,
+      data,
+    );
+    const projectedRef = projected.hypotheses[0]!.supportingEvidence[0]!;
+    expect(
+      JSON.stringify(projectedRegistry.resolve(projectedRef)),
+    ).not.toContain('synthetic private value');
+    const mixed = {
+      ...saved,
+      sources: [
+        {
+          reference: captured.sources[0]!.reference,
+          records: [
+            { kind: 'manual_history' as const, id: 'manual', revision: '1' },
+            {
+              kind: 'health_observation' as const,
+              id: record.record.id,
+              revision: '1',
+            },
+          ],
+        },
+      ],
+    };
+    const mixedResult = await restoreSymptomSummary(
+      mixed,
+      new LocalEvidenceReferenceRegistry(),
+      data,
+    );
+    expect(mixedResult.savedSummary).toMatchObject({ sourceChanged: true });
     data.repository.readRecord = jest.fn(async () => null);
     const changed = await restoreSymptomSummary(
       saved,

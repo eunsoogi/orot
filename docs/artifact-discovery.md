@@ -76,8 +76,9 @@ The draft includes a conversation-output store in the existing encrypted
 database, with session and whole-store deletion fences and source-linked
 invalidation. The conversation service can pass a validated answer and all of
 its admitted sources to a retention callback, but the screen does not yet use
-that callback to save, retry, or restore sessions. Shared discovery is also
-not connected. Its SQLite tests do not establish native restart
+that callback to save, retry, or restore sessions. A shared service can page
+and read saved turns across sessions with revalidated source links, but no AI
+tool or screen is connected to that catalog yet. Its SQLite tests do not establish native restart
 or real-model behavior. Session deletion undo and generated-parent lineage
 need integration before this boundary is complete. Memory compaction preserves
 outputs when their reviewed source content and metadata remain unchanged.
