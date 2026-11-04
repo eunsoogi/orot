@@ -16,6 +16,7 @@ import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
 import { createConversationTurnRetention } from '../../../ragConversation/conversationTurnRetention';
+import { isOriginalConversationSource } from '../../../ragConversation/conversationArtifactSources';
 
 test('a retention consumer can persist and invalidate a captured conversation through SQLite', async () => {
   const db = await healthContextFixture();
@@ -33,6 +34,7 @@ test('a retention consumer can persist and invalidate a captured conversation th
         return {
           status: 'answer' as const,
           answer: 'Synthetic answer',
+          completion: 'partial' as const,
           citations: [refs[0]!],
         };
       },
@@ -72,6 +74,7 @@ test('a retention consumer can persist and invalidate a captured conversation th
     expect(retention.canRetry()).toBe(true);
     await retention.retry();
     const saved = await storage.read('turn');
+    expect(saved?.status).toBe('partial');
     expect(saved?.sources).toHaveLength(2);
     expect(saved?.citations?.[0]?.evidenceId).toBe(records[0]!.id);
     expect(runner).toHaveBeenCalledTimes(1);
@@ -129,7 +132,9 @@ test('the conversation service captures cited and uncited sources for a validate
   expect(candidate.citations[0].evidenceId).toBe('memory-private-1');
   expect(
     candidate.sources.map(item =>
-      isPeriodSummarySource(item) ? undefined : item.records[0]?.id,
+      !isOriginalConversationSource(item) || isPeriodSummarySource(item)
+        ? undefined
+        : item.records[0]?.id,
     ),
   ).toEqual(['memory-private-1', 'memory-private-2']);
   expect(failure).not.toHaveBeenCalled();

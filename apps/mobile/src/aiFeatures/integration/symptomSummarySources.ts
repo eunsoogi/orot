@@ -1,6 +1,7 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { SavedSymptomSummary } from '../../diseaseHypotheses/savedSummaries';
+import { hasCompleteSummaryLineage } from '../../diseaseHypotheses/savedSummaries';
 import type { AiFeatureLocalData } from './localData';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
@@ -37,6 +38,9 @@ export async function restoreSymptomSummary(
   registry: LocalEvidenceReferenceRegistry,
   data: AiFeatureLocalData,
 ): Promise<DiseaseHypothesisAnalysis> {
+  // Never expose prose whose uncited inputs cannot be checked against deletion.
+  if (!hasCompleteSummaryLineage(saved))
+    throw new Error('The saved summary input lineage is unavailable.');
   const { mapping, sourceChanged, reviewEvidence } =
     await restoreRetainedSources(saved.sources, registry, data);
   const contentReviewIssues = summaryContentReviewIssues(

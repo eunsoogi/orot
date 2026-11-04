@@ -1,5 +1,5 @@
 import { isRecordKind } from '@orot/storage';
-import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
+import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
@@ -13,7 +13,7 @@ export interface ConversationArtifact {
   readonly status: 'complete' | 'partial';
   readonly question: string;
   readonly answer: string;
-  readonly sources: readonly SavedSummarySource[];
+  readonly sources: readonly ConversationArtifactSource[];
   readonly citations?: readonly EvidenceReference[];
 }
 
@@ -56,7 +56,8 @@ export function decodeConversationArtifact(
       if (
         (ref.sourceKind !== 'personal_record' &&
           ref.sourceKind !== 'reviewed_memory' &&
-          ref.sourceKind !== 'external_medical') ||
+          ref.sourceKind !== 'external_medical' &&
+          ref.sourceKind !== 'generated_artifact') ||
         (ref.effectiveTime !== null && typeof ref.effectiveTime !== 'string') ||
         (ref.reviewState !== 'reviewed' &&
           ref.reviewState !== 'unreviewed' &&
@@ -69,7 +70,35 @@ export function decodeConversationArtifact(
         )
       )
         return null;
-      if (source.kind === 'health_context_period') {
+      if (
+        source.kind === 'generated_summary' ||
+        source.kind === 'generated_conversation' ||
+        source.kind === 'generated_research'
+      ) {
+        if (
+          ref.sourceKind !== 'generated_artifact' ||
+          typeof source.id !== 'string' ||
+          !source.id ||
+          typeof source.revision !== 'string' ||
+          !source.revision ||
+          ref.sourceId !== source.id ||
+          ref.evidenceId !== source.id ||
+          ref.sourceRevision !== source.revision ||
+          ref.evidenceRevision !== source.revision ||
+          !object(ref.locator) ||
+          ref.locator.kind !== 'generated_artifact' ||
+          !(source.kind === 'generated_summary'
+            ? ['symptom_summary', 'disease_possibilities'].includes(
+                String(ref.locator.type),
+              )
+            : source.kind === 'generated_conversation'
+              ? ref.locator.type === 'conversation_turn'
+              : ['research_publication', 'research_web_explanation'].includes(
+                  String(ref.locator.type),
+                ))
+        )
+          return null;
+      } else if (source.kind === 'health_context_period') {
         const scope = parseHealthContextScope(source.scope);
         if (
           !scope ||
@@ -86,6 +115,7 @@ export function decodeConversationArtifact(
           return null;
       } else {
         if (
+          ref.sourceKind === 'generated_artifact' ||
           (object(ref.locator) &&
             ref.locator.kind === 'health_context_period') ||
           !Array.isArray(source.records) ||

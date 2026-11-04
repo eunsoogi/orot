@@ -24,6 +24,7 @@ export interface NextVisitQuestion<
   readonly rationale: string;
   readonly priority: 'routine' | 'important';
   readonly citations: readonly TReference[];
+  readonly generatedArtifactContext?: readonly TReference[];
 }
 
 export type NextVisitQuestionUpdate<

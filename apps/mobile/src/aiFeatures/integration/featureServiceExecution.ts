@@ -137,7 +137,10 @@ export function executionOptions(input: {
         input.medicalExplanation || input.external?.usesPublicWeb
           ? {
               ...EVIDENCE_WORKFLOW_BUDGET,
-              maxModelCalls: 4,
+              maxModelCalls: generatedArtifacts ? 8 : 4,
+              maxToolCalls: generatedArtifacts
+                ? 4
+                : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
               maxOutputTokens: 1024,
             }
           : input.external

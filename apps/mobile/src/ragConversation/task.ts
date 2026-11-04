@@ -17,6 +17,8 @@ export interface RagConversationMessage {
 
 export interface GroundedRagAnswer {
   readonly answer: string;
+  /** A validated answer may cover only part of the user's request. */
+  readonly completion?: 'complete' | 'partial';
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
 }
@@ -79,6 +81,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
+    'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
     'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
@@ -109,6 +112,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         description:
           'A direct Korean answer using the requested record topics and their limits. A simple fact may need one sentence; a question across topics may need short paragraphs. Omit unrelated plans, internal IDs and field names.',
       },
+      completion: { type: 'string', enum: ['complete', 'partial'] },
     },
     additionalProperties: false,
   } as JsonObject,
@@ -162,8 +166,11 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     if (
       !isObject(value) ||
       Object.keys(value).some(
-        key => key !== 'answer' && key !== 'answerKind',
+        key => key !== 'answer' && key !== 'answerKind' && key !== 'completion',
       ) ||
+      ('completion' in value &&
+        value.completion !== 'complete' &&
+        value.completion !== 'partial') ||
       ('answerKind' in value &&
         value.answerKind !== 'grounded' &&
         value.answerKind !== 'conversation' &&
@@ -187,6 +194,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       status: 'valid',
       value: {
         answer: value.answer,
+        ...(value.completion === 'partial'
+          ? { completion: 'partial' as const }
+          : {}),
         ...(value.answerKind === 'conversation' ||
         value.answerKind === 'grounded' ||
         value.answerKind === 'prior_output'

@@ -5,6 +5,8 @@ import type { HealthContextScope } from '../../healthEvidence/healthContext/scop
 import type { ManualHistoryEvidence } from '@orot/domain';
 import type { ArtifactMetadata } from '../../healthEvidence/artifactDiscovery';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
+import type { EvidenceReference } from '@orot/agent-runtime';
+import type { ResearchArtifact } from '../../storage/researchArtifactStorage';
 
 /** Original rows and computed period sources have distinct storage and revalidation contracts. */
 export type EvidenceSourceDocument =
@@ -23,8 +25,27 @@ export type EvidenceSourceDocument =
     }
   | {
       readonly sourceKind: 'generated_artifact';
-      readonly metadata: ArtifactMetadata;
+      readonly metadata: ArtifactMetadata & {
+        readonly inputLineage?: 'complete' | 'unknown';
+      };
       readonly analysis: DiseaseHypothesisAnalysis;
+      readonly sourceStatus: 'current' | 'changed' | 'unknown';
+    }
+  | {
+      readonly sourceKind: 'generated_artifact';
+      readonly metadata: ArtifactMetadata;
+      readonly research: ResearchArtifact;
+      readonly sources: readonly EvidenceReference[];
+      readonly sourceStatus: 'unknown';
+    }
+  | {
+      readonly sourceKind: 'generated_artifact';
+      readonly metadata: ArtifactMetadata;
+      readonly conversation: {
+        readonly question: string;
+        readonly answer: string;
+      };
+      readonly sources: readonly EvidenceReference[];
       readonly sourceStatus: 'current' | 'changed' | 'unknown';
     }
   | {

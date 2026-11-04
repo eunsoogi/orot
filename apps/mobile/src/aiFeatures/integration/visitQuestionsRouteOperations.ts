@@ -1,28 +1,26 @@
+import {
+  currentEvidenceCaveats,
+  type EvidenceCoverageState,
+} from './visitEvidenceCaveats';
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
-import type {
-  EvidenceBatch,
-  OutboundProcessingRequest,
-} from '@orot/agent-runtime';
+import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
-import type { VisitQuestionEvidenceCollection } from '../../agent/visitQuestions/evidenceCollection';
 import { runVisitQuestionWorkflow } from '../../agent/visitQuestions/workflow';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type { ProviderSelection } from '../../providers/selection/types';
 import type { SelectedAiResolution } from './provider';
 import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
-import type {
-  EvidenceCaveat,
-  GenerationOutcome,
-} from '../../nextVisitQuestions/types';
+import type { GenerationOutcome } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
 import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
 import type {
   VisitQuestionRouteSaveInput,
   VisitQuestionRouteSaveResult,
 } from './visitQuestionsRouteSave';
+import type { AiFeatureServices } from './featureServices';
 
 type ReadySelection = Extract<SelectedAiResolution, { status: 'ready' }>;
 type PreparedContext = Awaited<
@@ -35,13 +33,6 @@ type ReadyGeneration = Extract<
   GenerationOutcome<VisitQuestionEvidenceItem>,
   { status: 'ready' }
 >;
-type EvidenceCoverageState = Pick<
-  VisitQuestionEvidenceCollection,
-  'memoryStatus'
-> & {
-  readonly batch: Pick<EvidenceBatch, 'coverage' | 'conflicts'>;
-};
-
 export type VisitQuestionRouteGeneration =
   | (ReadyGeneration & {
       readonly validateSource: (
@@ -52,6 +43,7 @@ export type VisitQuestionRouteGeneration =
   | Exclude<GenerationOutcome<VisitQuestionEvidenceItem>, { status: 'ready' }>;
 
 export interface VisitQuestionRouteGenerationInput {
+  readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
   readonly appointment: Appointment;
   readonly selectedAi: ReadySelection;
   readonly confirmConsent: (
@@ -69,41 +61,6 @@ export interface VisitQuestionRouteOperations {
   save(
     input: VisitQuestionRouteSaveInput,
   ): Promise<VisitQuestionRouteSaveResult>;
-}
-
-function currentEvidenceCaveats(
-  collections: readonly EvidenceCoverageState[],
-): EvidenceCaveat[] {
-  const caveats = new Set<EvidenceCaveat>();
-  if (
-    collections.some(collection =>
-      collection.batch.coverage.some(item => item.gaps.length > 0),
-    )
-  )
-    caveats.add('incomplete_coverage');
-  if (
-    collections.some(collection =>
-      collection.batch.coverage.some(item => item.truncated),
-    )
-  )
-    caveats.add('truncated_results');
-  if (collections.some(collection => collection.batch.conflicts.length > 0))
-    caveats.add('conflicting_records');
-  if (
-    collections.some(
-      collection => collection.memoryStatus === 'local_memory_unavailable',
-    )
-  )
-    caveats.add('reviewed_memory_unavailable');
-  else if (
-    collections.length > 0 &&
-    collections.every(
-      collection => collection.memoryStatus === 'no_matching_current_memory',
-    )
-  ) {
-    caveats.add('no_matching_reviewed_memory');
-  }
-  return [...caveats];
 }
 
 function revalidateSource(context: ReadyContext) {
@@ -162,9 +119,32 @@ async function generate(
   }
 
   const collections: EvidenceCoverageState[] = [context.evidence];
+  const generated = await input.generatedArtifactTools?.();
+  if (input.signal.aborted) return { status: 'cancelled' };
   const periodTool = context.healthContextTool;
   const workflowContext: ReadyContext = {
     ...context,
+    async revalidateEvidence(references) {
+      const artifactReferences = references.filter(reference =>
+        generated?.owns(reference),
+      );
+      const localReferences = references.filter(
+        reference => !generated?.owns(reference),
+      );
+      // The generation signal is aborted on completion; later source opening needs a fresh validation signal.
+      return (
+        (!artifactReferences.length ||
+          Boolean(
+            generated &&
+            (await generated.validate(
+              artifactReferences,
+              new AbortController().signal,
+            )),
+          )) &&
+        (!localReferences.length ||
+          (await context.revalidateEvidence(localReferences)))
+      );
+    },
     ...(periodTool
       ? {
           healthContextTool: {
@@ -192,6 +172,7 @@ async function generate(
   };
   const result = await runVisitQuestionWorkflow({
     prepared: workflowContext,
+    generatedTools: generated?.tools,
     selection: input.selectedAi.selection as ProviderSelection,
     providerOptions: [input.selectedAi.option],
     recipient: input.selectedAi.recipient,
@@ -207,7 +188,7 @@ async function generate(
       status: 'ready',
       questions: result.questions,
       caveats,
-      validateSource: revalidateSource(context),
+      validateSource: revalidateSource(workflowContext),
     };
   }
   if (result.status === 'provider_selection_required') {

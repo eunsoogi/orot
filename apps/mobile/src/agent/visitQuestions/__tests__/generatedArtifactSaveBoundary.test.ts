@@ -7,5 +7,5 @@ test('does not save a generated artifact as independently verified question evid
       { sourceKind: 'generated_artifact' } as never,
       {} as never,
     ),
-  ).rejects.toThrow('Generated artifact lineage is unavailable');
+  ).rejects.toThrow('The generated artifact parent is incomplete or invalid.');
 });

@@ -4,6 +4,7 @@ import type {
   SavedSymptomSummary,
   SymptomSummaryStorage,
 } from '../../diseaseHypotheses/savedSummaries';
+import { hasCompleteSummaryLineage } from '../../diseaseHypotheses/savedSummaries';
 import type {
   ArtifactDiscovery,
   ArtifactMetadata,
@@ -12,6 +13,8 @@ import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { fingerprint } from './evidenceUtils';
 import { restoreSymptomSummary } from './symptomSummarySources';
+import { revalidateSummaryArtifacts } from '../../storage/summaryArtifactRevalidation';
+import { retainedResearchSearchText } from './retainedResearchSearch';
 
 type SummaryMetadata = ArtifactMetadata & {
   readonly type: 'symptom_summary' | 'disease_possibilities';
@@ -46,8 +49,18 @@ export function createSummaryArtifactDiscovery(input: {
   readonly storage: SymptomSummaryStorage;
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
-}): ArtifactDiscovery<SummaryMetadata, DiseaseHypothesisAnalysis> {
+}): ArtifactDiscovery<SummaryMetadata, DiseaseHypothesisAnalysis> & {
+  revalidatePage(
+    items: readonly { id: string; revision: string }[],
+    signal: AbortSignal,
+  ): Promise<boolean>;
+} {
   return {
+    async revalidatePage(items, signal) {
+      if (signal.aborted) return false;
+      const valid = await revalidateSummaryArtifacts(input.database, items);
+      return valid && !signal.aborted;
+    },
     async search({ query, cursor, limit, signal }) {
       if (
         !Number.isSafeInteger(limit) ||
@@ -69,6 +82,7 @@ export function createSummaryArtifactDiscovery(input: {
       const rows = result.rows.slice(0, limit);
       const items: SummaryMetadata[] = [];
       let unavailableCount = 0;
+      let unknownLineageCount = 0;
       const needle = query.trim().normalize('NFKC').toLowerCase();
       for (const row of rows) {
         if (typeof row.id !== 'string')
@@ -80,9 +94,11 @@ export function createSummaryArtifactDiscovery(input: {
           continue;
         }
         // Querying unknown-lineage prose would reveal whether a removed input appeared in it.
-        if (saved.inputLineage !== 'complete') {
-          if (needle) unavailableCount += 1;
-          else items.push(metadata(saved));
+        if (!hasCompleteSummaryLineage(saved)) {
+          if (needle) {
+            unavailableCount += 1;
+            unknownLineageCount += 1;
+          } else items.push(metadata(saved));
           continue;
         }
         const content = saved.analysis.hypotheses
@@ -95,7 +111,19 @@ export function createSummaryArtifactDiscovery(input: {
           .join(' ')
           .normalize('NFKC')
           .toLowerCase();
-        if (!needle || content.includes(needle)) items.push(metadata(saved));
+        const researchMatch =
+          needle && retainedResearchSearchText(saved.sources).includes(needle);
+        if (!needle || content.includes(needle) || researchMatch) {
+          // A title match must not reveal references belonging to an invalidated result.
+          if (
+            researchMatch &&
+            !(await revalidateSummaryArtifacts(input.database, [
+              { id: saved.id, revision: fingerprint(saved) },
+            ]))
+          )
+            unavailableCount += 1;
+          else items.push(metadata(saved));
+        }
       }
       checkCancelled(signal);
       return {
@@ -103,6 +131,7 @@ export function createSummaryArtifactDiscovery(input: {
         nextCursor:
           result.rows.length > limit ? (rows.at(-1)?.id as string) : null,
         unavailableCount,
+        ...(unknownLineageCount ? { unknownLineageCount } : {}),
       };
     },
     async read(id, signal) {
@@ -110,7 +139,7 @@ export function createSummaryArtifactDiscovery(input: {
       const saved = await input.storage.read(id);
       if (!saved) return null;
       // Older rows retained citations only; their uncited deleted inputs cannot be revalidated.
-      if (saved.inputLineage !== 'complete') return null;
+      if (!hasCompleteSummaryLineage(saved)) return null;
       const content = await restoreSymptomSummary(
         saved,
         input.registry,
@@ -118,14 +147,15 @@ export function createSummaryArtifactDiscovery(input: {
       );
       checkCancelled(signal);
       // Source deletion can remove the artifact while its dependencies are being read.
-      const current = await input.storage.read(id);
+      const latest = await input.storage.readWithStatus(id);
       checkCancelled(signal);
-      if (!current) return null;
-      if (fingerprint(current) !== fingerprint(saved))
+      if (!latest) return null;
+      if (fingerprint(latest.summary) !== fingerprint(saved))
         throw new Error('A saved artifact changed during detail read.');
       const changed =
-        content.savedSummary?.status === 'saved' &&
-        content.savedSummary.sourceChanged;
+        latest.sourceChanged ||
+        (content.savedSummary?.status === 'saved' &&
+          content.savedSummary.sourceChanged);
       return {
         metadata: metadata(saved),
         content,
@@ -135,7 +165,9 @@ export function createSummaryArtifactDiscovery(input: {
           ? 'changed'
           : saved.sources.length === 0 ||
               saved.sources.some(
-                source => source.reference.sourceKind === 'external_medical',
+                source =>
+                  source.reference.sourceKind === 'external_medical' ||
+                  ('kind' in source && source.kind === 'generated_research'),
               )
             ? 'unknown'
             : 'current',

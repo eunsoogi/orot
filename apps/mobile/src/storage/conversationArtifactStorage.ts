@@ -1,5 +1,4 @@
 import {
-  createManualHistoryRepository,
   localQueryTimestampKey,
   type SqlDatabase,
   type SqlExecutor,
@@ -10,12 +9,17 @@ import {
   type ConversationArtifact,
 } from './conversationArtifactCodec';
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
-import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
-import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
+import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createConversationArtifactReader } from './conversationArtifactRead';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
+import {
+  isGeneratedSummarySource,
+  isGeneratedConversationSource,
+  isGeneratedResearchSource,
+} from '../ragConversation/conversationArtifactSources';
+import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 
 async function generation(tx: SqlExecutor): Promise<number> {
   const result = await tx.execute(
@@ -30,7 +34,6 @@ async function generation(tx: SqlExecutor): Promise<number> {
 /** Session and source validation share each write transaction; no retry can reopen a removed session. */
 export function createConversationArtifactStorage(database: SqlDatabase) {
   let ready: Promise<void> | undefined;
-  const history = createManualHistoryRepository(database);
   const ensure = () =>
     (ready ??= database
       // Period validation can sort private health values; keep temporary storage in memory.
@@ -104,9 +107,18 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       const serialized = JSON.stringify(value);
       const decoded = decodeConversationArtifact(serialized);
       if (!decoded) throw new Error('The conversation output cannot be saved.');
+      // Install parent lifecycle guards even when this catalog opens before summary history.
+      if (decoded.sources.some(isGeneratedSummarySource))
+        await createSymptomSummaryStorage(database).list();
       assertConversationNotCancelled(signal);
       await database.transaction(async tx => {
         assertConversationNotCancelled(signal);
+        const deletedArtifact = await tx.execute(
+          'SELECT id FROM conversation_deleted_artifacts WHERE id = ? LIMIT 1',
+          [decoded.id],
+        );
+        if (deletedArtifact.rows.length)
+          throw new Error('The conversation output was removed.');
         const sessions = await tx.execute(
           'SELECT generation, version FROM conversation_artifact_sessions WHERE id = ? AND hidden = 0',
           [decoded.sessionId],
@@ -117,8 +129,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           sessions.rows[0]?.version !== expectedSessionVersion
         )
           throw new Error('Conversation session was removed.');
-        await assertConversationSourcesNotRemoved(tx, decoded);
-        await assertRetainedEvidenceCurrent(tx, decoded.sources, history);
+        await assertConversationArtifactCurrent(tx, database, decoded, true);
         assertConversationNotCancelled(signal);
         const existing = await tx.execute(
           'SELECT result_json FROM conversation_artifacts WHERE id = ?',
@@ -135,7 +146,16 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           [decoded.id, decoded.sessionId, decoded.createdAt, serialized],
         );
         for (const source of decoded.sources) {
-          if (isPeriodSummarySource(source)) {
+          if (
+            isGeneratedSummarySource(source) ||
+            isGeneratedConversationSource(source) ||
+            isGeneratedResearchSource(source)
+          ) {
+            await tx.execute(
+              'INSERT OR IGNORE INTO conversation_artifact_sources (artifact_id, record_kind, record_id) VALUES (?, ?, ?)',
+              [decoded.id, source.kind, source.id],
+            );
+          } else if (isPeriodSummarySource(source)) {
             await tx.execute(
               'INSERT OR IGNORE INTO conversation_artifact_periods (artifact_id, topic, from_key, to_key) VALUES (?, ?, ?, ?)',
               [

@@ -9,6 +9,7 @@ import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
 } from '../../agent/visitQuestions/taskContract';
+import type { VisitQuestionEvidenceMetadata } from '../../agent/visitQuestions/evidence';
 import type {
   EvidenceCaveat,
   NextVisitQuestion,
@@ -22,6 +23,10 @@ export interface VisitQuestionRouteSaveInput {
   readonly resolveSource: (
     reference: EvidenceReference,
   ) => EvidenceReference | undefined;
+  readonly validateGeneratedArtifact?: (
+    reference: VisitQuestionEvidenceItem,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
 }
 
 export interface VisitQuestionRouteSaveResult extends SaveReviewedQuestionsResult<VisitQuestionEvidenceItem> {
@@ -36,6 +41,38 @@ type VisitQuestionContextModule = Pick<
   'prepareUpcomingVisitQuestionContext'
 >;
 type VisitQuestionContextLoader = () => Promise<VisitQuestionContextModule>;
+
+function generatedArtifactSource(
+  citation: VisitQuestionEvidenceItem,
+): NonNullable<VisitQuestionEvidenceMetadata['generatedArtifactSource']> {
+  const locator = citation.locator;
+  const type =
+    typeof locator === 'object' && locator !== null && !Array.isArray(locator)
+      ? (locator as Readonly<Record<string, unknown>>).type
+      : undefined;
+  if (
+    citation.sourceKind !== 'generated_artifact' ||
+    (type !== 'symptom_summary' &&
+      type !== 'disease_possibilities' &&
+      type !== 'conversation_turn' &&
+      type !== 'research_publication' &&
+      type !== 'research_web_explanation') ||
+    citation.sourceId !== citation.evidenceId ||
+    citation.sourceRevision !== citation.evidenceRevision
+  )
+    throw new Error('The generated artifact parent is incomplete or invalid.');
+  return {
+    kind:
+      type === 'research_publication' || type === 'research_web_explanation'
+        ? 'generated_research'
+        : type === 'conversation_turn'
+          ? 'generated_conversation'
+          : 'generated_summary',
+    type,
+    id: citation.sourceId,
+    revision: citation.sourceRevision,
+  };
+}
 
 function freshCitation(
   items: readonly VisitQuestionEvidenceItem[],
@@ -60,9 +97,20 @@ export async function saveVisitQuestionRoute(
 ): Promise<VisitQuestionRouteSaveResult> {
   // Keep local context loading lazy in production while tests supply synthetic records.
   const { prepareUpcomingVisitQuestionContext } = await loadContext();
+  const generatedAliases = new Map<string, VisitQuestionEvidenceItem>();
   const context = await prepareUpcomingVisitQuestionContext({
     now: new Date().toISOString(),
     maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems,
+    validateGeneratedArtifact: async citation => {
+      const controller = new AbortController();
+      return Boolean(
+        input.validateGeneratedArtifact &&
+        (await input.validateGeneratedArtifact(
+          generatedAliases.get(visitQuestionCitationKey(citation)) ?? citation,
+          controller.signal,
+        )),
+      );
+    },
   });
   if (
     context.status !== 'ready' ||
@@ -78,13 +126,24 @@ export async function saveVisitQuestionRoute(
   const reviewed: VisitQuestionCandidate[] = [];
   for (const question of input.questions) {
     const citations: VisitQuestionEvidenceItem[] = [];
-    for (const citation of question.citations) {
+    const generatedArtifactContext: VisitQuestionEvidenceItem[] = [];
+    const inputs = [
+      ...question.citations.map(citation => ({ citation, context: false })),
+      ...(question.generatedArtifactContext ?? []).map(citation => ({
+        citation,
+        context: true,
+      })),
+    ];
+    for (const { citation, context: isContext } of inputs) {
+      if (isContext && citation.sourceKind !== 'generated_artifact')
+        throw new Error('Generated context must reference retained artifacts.');
       if (
         citation.sourceKind === 'external_medical' ||
-        citation.sourceKind === 'generated_artifact'
+        (citation.sourceKind === 'generated_artifact' &&
+          !input.validateGeneratedArtifact)
       )
         throw new Error(
-          'Visit questions can only cite current local evidence.',
+          'Visit questions can only cite current local or retained generated evidence.',
         );
       const resolved = input.resolveSource(citation);
       const key = resolved
@@ -99,6 +158,41 @@ export async function saveVisitQuestionRoute(
       let current =
         cache.get(key) ??
         freshCitation(context.evidence.batch.items, citation, resolved);
+      if (citation.sourceKind === 'generated_artifact') {
+        const durable = resolved
+          ? { ...resolved, content: citation.content }
+          : citation;
+        const source = generatedArtifactSource(durable);
+        if (
+          !input.validateGeneratedArtifact ||
+          !(await input.validateGeneratedArtifact(
+            citation,
+            new AbortController().signal,
+          ))
+        )
+          throw new Error(
+            'The generated artifact changed or is no longer available.',
+          );
+        current = durable;
+        // The registry validates the review alias; persistence requires the durable identity.
+        generatedAliases.set(visitQuestionCitationKey(current), citation);
+        if (!(context.evidence.metadataByCitation instanceof Map))
+          throw new Error(
+            'The evidence context cannot retain generated sources.',
+          );
+        context.evidence.metadataByCitation.set(
+          visitQuestionCitationKey(current),
+          {
+            sourceRecordIds: [],
+            sourceRecordRevisions: [],
+            sourceDates: [],
+            generatedArtifactSource: source,
+          },
+        );
+        cache.set(key, current);
+        (isContext ? generatedArtifactContext : citations).push(current);
+        continue;
+      }
       if (!current) {
         if (citation.sourceKind === 'personal_record') {
           const reloaded = await context.reloadPersonalEvidence(
@@ -128,6 +222,7 @@ export async function saveVisitQuestionRoute(
       rationale: question.rationale,
       priority: question.priority,
       citations,
+      ...(generatedArtifactContext.length ? { generatedArtifactContext } : {}),
     });
   }
 

@@ -73,6 +73,8 @@ export interface VisitQuestionCandidate {
   readonly rationale: string;
   readonly priority: VisitQuestionPriority;
   readonly citations: readonly VisitQuestionEvidenceItem[];
+  /** Generated context admitted during research remains a dependency even when uncited. */
+  readonly generatedArtifactContext?: readonly VisitQuestionEvidenceItem[];
 }
 
 export type VisitQuestionTaskResult =

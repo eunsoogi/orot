@@ -21,6 +21,7 @@ export type RagConversationOutcome =
   | {
       readonly status: 'answer';
       readonly answer: string;
+      readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
     }
   | { readonly status: 'insufficient' }

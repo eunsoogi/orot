@@ -14,8 +14,7 @@ import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import { operationRunId } from './featureRunIdentity';
-import { createSummaryArtifactTool } from './summaryArtifactTool';
-import { createArtifactSourceTool } from './artifactSourceTool';
+import { conversationGeneratedTools } from './conversationGeneratedTools';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import { withProviderStage } from '../../providers/diagnostics';
 import {
@@ -25,6 +24,8 @@ import {
 import { readConversationAvailability } from './readConversationAvailability';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
+import { createResearchInputTracker } from './researchInputTracker';
+import { retainLiteratureResults } from './researchRetention';
 
 type ReadySelectedAi = Extract<
   SelectedAiResolution,
@@ -94,38 +95,34 @@ export function createRagConversationService({
       const selected = await withProviderStage('rag', 'selection', selectedAi);
       stage = 'data';
       const data = await withProviderStage('rag', 'data', loadLocalData);
+      const researchInputs = createResearchInputTracker(registry, data);
       const external = createSelectedExternalEvidence({
         selected,
         consent,
-        literature: externalEvidence,
+        literature: retainLiteratureResults(
+          externalEvidence,
+          loadLocalData,
+          'record_conversation',
+          observer?.retentionSession,
+          researchInputs.recordResearch,
+          { providerId: selected.provider.id, modelId: selected.modelId },
+        ),
         literatureConsent: queryConsent,
+        loadData: loadLocalData,
+        originFeature: 'record_conversation',
+        retentionSession: observer?.retentionSession,
+        captureResearchInputs: researchInputs.capture,
+        validateResearchInputs: researchInputs.revalidate,
+        onResearchRetained: researchInputs.recordResearch,
       });
       let localRetrievalFailed = false;
-      let hasArtifactContinuation = false;
-      const generatedTools = data.summaryArtifactDiscovery
-        ? [
-            createSummaryArtifactTool(data, registry, {
-              scope: observer?.conversationScope,
-              onPage: (query, cursor) => {
-                hasArtifactContinuation = Boolean(
-                  cursor && observer?.conversationScope,
-                );
-                if (observer?.conversationScope)
-                  observer.onArtifactContinuation?.(
-                    cursor ? { query, cursor } : null,
-                  );
-              },
-            }),
-            createArtifactSourceTool('personal_record', data, registry),
-            createArtifactSourceTool('reviewed_memory', data, registry),
-          ]
-        : [];
+      const generated = conversationGeneratedTools(data, registry, observer);
       const tools = [
         ...observeLocalSearchFailures(
-          [
+          researchInputs.wrap([
             ...toolsFor(undefined, data, registry, 6, true, 'rag'),
-            ...generatedTools,
-          ],
+            ...generated.tools,
+          ]),
           () => {
             localRetrievalFailed = true;
           },
@@ -173,8 +170,10 @@ export function createRagConversationService({
         },
       );
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
+      const continuation = generated.choose(outcome);
+      observer?.onArtifactContinuation?.(continuation);
       if (
-        hasArtifactContinuation &&
+        continuation &&
         (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
       )
         return {
@@ -192,9 +191,20 @@ export function createRagConversationService({
         return { status: 'failure', kind: 'retrieval_failed' };
       }
       const finished = await retention.finish(outcome);
-      return signal.aborted && !finished.retained
-        ? { status: 'failure', kind: 'cancelled' }
-        : finished.outcome;
+      if (signal.aborted && !finished.retained)
+        return { status: 'failure', kind: 'cancelled' };
+      if (
+        continuation &&
+        finished.outcome.status === 'answer' &&
+        finished.outcome.citations.some(
+          citation => citation.sourceKind === 'generated_artifact',
+        )
+      )
+        return {
+          ...finished.outcome,
+          answer: `${finished.outcome.answer}\n\n더 이전 결과를 계속 찾아볼 수 있어요.`,
+        };
+      return finished.outcome;
     } catch (error) {
       if (
         signal.aborted ||

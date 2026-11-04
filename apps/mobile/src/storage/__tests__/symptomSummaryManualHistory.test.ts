@@ -3,6 +3,7 @@ import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { reference } from '../../diseaseHypotheses/taskTestSupport';
 import { createSymptomSummaryStorage } from '../symptomSummaryStorage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { memoryRecord } from '../../aiFeatures/integration/featureServiceFixtures';
 
 test('retains a summary with a current manual source and removes it when that source is deleted', async () => {
   const connection = openSqliteTestDatabase(':memory:');
@@ -86,7 +87,12 @@ test('protects a memory created after summary storage is first opened', async ()
     await connection.database.execute(
       'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
     );
-    const memory = { text: 'Synthetic memory', meta: { origin: 'synthetic' } };
+    const original = memoryRecord(1);
+    const memory = {
+      ...original,
+      id: 'memory',
+      vector: Array.from(original.vector),
+    };
     await connection.database.execute(
       'INSERT INTO agent_memory_records (id, record_json) VALUES (?, ?)',
       ['memory', JSON.stringify(memory)],
@@ -117,7 +123,7 @@ test('protects a memory created after summary storage is first opened', async ()
             {
               kind: 'reviewed_memory' as const,
               id: 'memory',
-              revision: fingerprint(memory),
+              revision: fingerprint({ text: memory.text, meta: memory.meta }),
             },
           ],
         },

@@ -1,6 +1,14 @@
 import type { EvidenceReference, EvidenceItem } from '@orot/agent-runtime';
 import type { SavedSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
+import {
+  isGeneratedSummarySource,
+  isGeneratedConversationSource,
+  isGeneratedResearchSource,
+} from '../../ragConversation/conversationArtifactSources';
+import { restoreConversationSummarySource } from './restoreConversationSummarySource';
+import { restoreConversationParentSource } from './restoreConversationParentSource';
+import { restoreResearchSource } from './restoreResearchSource';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { healthContextRevision } from '../../healthEvidence/healthContext/scope';
 import type { AiFeatureLocalData } from './localData';
@@ -31,6 +39,40 @@ export async function restoreRetainedSources(
   for (const source of sources) {
     // Stored data can contain extra fields; only the public reference contract may enter a new alias.
     const reference = referenceOnly(source.reference);
+    if (
+      isGeneratedSummarySource(source) ||
+      isGeneratedConversationSource(source) ||
+      isGeneratedResearchSource(source)
+    ) {
+      const signal = new AbortController().signal;
+      const restored = isGeneratedResearchSource(source)
+        ? await restoreResearchSource(source, registry, data, signal)
+        : isGeneratedSummarySource(source)
+          ? await restoreConversationSummarySource(
+              source,
+              registry,
+              data,
+              signal,
+            )
+          : await restoreConversationParentSource(
+              source,
+              registry,
+              data,
+              signal,
+            );
+      if (!restored) {
+        sourceChanged = true;
+        // Keep a non-resolving alias so a removed parent cannot become an undefined citation or leak its local ID.
+        const unavailable = registry.add({
+          reference,
+          content: '',
+          validate: async () => false,
+          readSource: async () => ({ status: 'unavailable' }),
+        });
+        mapping.set(stableJson(source.reference), referenceOnly(unavailable));
+      } else mapping.set(stableJson(source.reference), restored.reference);
+      continue;
+    }
     if (isPeriodSummarySource(source)) {
       const read = data.readHealthContext;
       const report = read

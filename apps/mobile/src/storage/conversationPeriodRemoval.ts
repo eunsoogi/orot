@@ -1,6 +1,7 @@
 import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
 /** Include direct records, provenance IDs and their recording roots in removal checks. */
 export function periodRowReferences(marker: string) {
@@ -29,7 +30,8 @@ export async function assertPeriodNotRemoved(
         `SELECT h.id FROM ${table} h CROSS JOIN (SELECT ? AS topic, ? AS from_key, ? AS to_key) p WHERE (${guard.replaceAll('OLD.', 'h.')}) AND EXISTS (SELECT 1 FROM ${marker} m WHERE ${periodRowReferences('m.source_id')}) LIMIT 1`,
         bindings,
       );
-      if (result.rows.length) throw new Error('A period source was removed.');
+      if (result.rows.length)
+        throw new RetainedSourceInvalidError('A period source was removed.');
     }
   }
 }

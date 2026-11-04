@@ -7,6 +7,7 @@ import {
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { createSummaryArtifactTool } from './summaryArtifactTool';
+import { createConversationArtifactTool } from './conversationArtifactTool';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 
 /** Resume only the calling conversation's saved local search; no query is sent to a provider. */
@@ -19,11 +20,23 @@ export async function continueArtifactSearch(input: {
   readonly onContinuation: (value: ArtifactContinuation | null) => void;
 }): Promise<RagConversationOutcome> {
   let next: ArtifactContinuation | null = null;
-  const tool = createSummaryArtifactTool(input.data, input.registry, {
+  const createTool =
+    input.continuation.catalog === 'conversation'
+      ? createConversationArtifactTool
+      : createSummaryArtifactTool;
+  const tool = createTool(input.data, input.registry, {
     scope: input.scope,
     referenceOnly: true,
     onPage: (query, cursor) => {
-      next = cursor ? { query, cursor } : null;
+      next = cursor
+        ? {
+            query,
+            cursor,
+            ...(input.continuation.catalog === 'conversation'
+              ? { catalog: 'conversation' as const }
+              : {}),
+          }
+        : null;
     },
   });
   const result = await tool.search({

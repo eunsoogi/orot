@@ -13,7 +13,7 @@ test('removes period dependency metadata even when the connection has foreign ke
   const f = await fixture();
   try {
     await f.database.execute('PRAGMA foreign_keys = OFF');
-    await f.storage.append(f.saved);
+    await f.storage.append({ ...f.saved, inputLineage: 'complete' });
     expect(
       (
         await f.database.execute(
@@ -38,7 +38,7 @@ test('removes period dependency metadata even when the connection has foreign ke
 test('restores a fixed period into a fresh registry and removes saved derived prose after in-period deletion', async () => {
   const f = await fixture();
   try {
-    await f.storage.append(f.saved);
+    await f.storage.append({ ...f.saved, inputLineage: 'complete' });
     const saved = (await f.storage.read(f.saved.id))!;
     const fresh = new LocalEvidenceReferenceRegistry();
     // Consume e1 in the fresh turn: persisted aliases must not accidentally address this unrelated source.

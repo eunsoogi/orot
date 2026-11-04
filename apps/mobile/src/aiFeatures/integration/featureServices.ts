@@ -3,83 +3,36 @@ import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQu
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
 import { withProviderStage } from '../../providers/diagnostics';
 import { createSelectedExternalEvidence } from './selectedExternalEvidence';
-import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceReference,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
-import type { RagConversationOutcome } from '../../ragConversation/service';
-import type { RagConversationObserver } from '../../ragConversation/service';
-import type { RagConversationMessage } from '../../ragConversation/task';
 import { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
 import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
-import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/task';
 import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
-import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { AiFeatureLocalData } from './localData';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { requireSelectedAi, resolveSelectedAiProvider } from './provider';
-import type { SelectedAiResolverOptions } from './provider';
 import { loadSavedVisitQuestionState } from './savedVisitQuestions';
-import type { SavedVisitQuestionsLoadState } from './savedVisitQuestions';
 import { createVisitQuestionSourceService } from './visitQuestionSourceRegistration';
 import { executionOptions, toolsFor } from './featureServiceExecution';
-import type { VisitQuestionSourceService } from './visitQuestionSourceRegistration';
-import type {
-  SymptomSummaryStorage,
-  SymptomSummaryHistory,
-} from '../../diseaseHypotheses/savedSummaries';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { createRagConversationService } from './ragConversationService';
-import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
+import { createConversationSessionOptions } from './conversationSessionOptions';
+import { conversationGeneratedTools } from './conversationGeneratedTools';
+import { retainLiteratureResults } from './researchRetention';
+import { createResearchInputTracker } from './researchInputTracker';
+import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
+export type { AiFeatureServiceDependencies } from './featureServiceDependencies';
 
-export interface AiFeatureServices extends VisitQuestionSourceService {
-  conversationArtifacts(): Promise<ReturnType<
-    typeof createConversationArtifactDiscovery
-  > | null>;
-  readonly summaryHistory?: SymptomSummaryHistory;
-  summarizeSymptoms?(
-    signal?: AbortSignal,
-    observer?: AiWorkflowObserver,
-  ): Promise<DiseaseHypothesisRunOutcome>;
-  readonly externalEvidence: EuropePmcMedicalEvidenceService;
-  loadSavedVisitQuestions(
-    appointmentId: string,
-  ): Promise<SavedVisitQuestionsLoadState>;
-  generateDiseaseHypotheses(
-    signal?: AbortSignal,
-    observer?: AiWorkflowObserver,
-  ): Promise<DiseaseHypothesisRunOutcome>;
-  sendRagMessage(
-    question: string,
-    previousMessages: readonly RagConversationMessage[],
-    signal?: AbortSignal,
-    observer?: RagConversationObserver,
-  ): Promise<RagConversationOutcome>;
-  resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
-  readSource(
-    reference: EvidenceReference,
-    signal: AbortSignal,
-  ): Promise<EvidenceSourceReadResult>;
-}
-
-export interface AiFeatureServiceDependencies {
-  readonly summaryStorage?: () => Promise<SymptomSummaryStorage>;
-  readonly selectedAi?: SelectedAiResolverOptions;
-  readonly loadLocalData?: () => Promise<AiFeatureLocalData>;
-  readonly diseaseRunner?: typeof runDiseaseHypothesisAnalysis;
-  readonly ragRunner?: typeof defaultRagRunner;
-  readonly createOperationRunId?: () => string;
-  readonly externalEvidence?: EuropePmcMedicalEvidenceService;
-  readonly externalQueryConsent?: ExternalMedicalQueryConsentPort;
-}
+import type { AiFeatureServices } from './featureServiceTypes';
+export type { AiFeatureServices } from './featureServiceTypes';
 
 const DISEASE_REQUEST =
   '현재 앱 기록에서 검토할 수 있는 질환 가능성을 찾아 주세요. 확진하지 말고, 지지·반대 근거와 불확실성 및 더 필요한 자료를 모두 밝혀 주세요.';
-/** Connects selected-AI operations and freshly revalidated local citations to owned feature screens. */
+/** Connects selected AI, durable conversation sessions and revalidated local citations to feature screens. */
 export function createAiFeatureServices(
   consent: MultiAgentWorkflowOptions['consent'],
   dependencies: AiFeatureServiceDependencies = {},
@@ -87,8 +40,6 @@ export function createAiFeatureServices(
   const registry = new LocalEvidenceReferenceRegistry();
   const queryConsent =
     dependencies.externalQueryConsent ?? publicMedicalQueryConsent(consent);
-  const externalEvidence =
-    dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService();
   const loadLocalData =
     dependencies.loadLocalData ??
     (async () => (await import('./localData')).openAiFeatureLocalData());
@@ -102,6 +53,12 @@ export function createAiFeatureServices(
     }
     return wrapped;
   }
+  const literatureService =
+    dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService();
+  const externalEvidence = retainLiteratureResults(
+    literatureService,
+    privateLocalData,
+  );
   const diseaseRunner =
     dependencies.diseaseRunner ?? runDiseaseHypothesisAnalysis;
   const ragRunner = dependencies.ragRunner ?? defaultRagRunner;
@@ -128,16 +85,32 @@ export function createAiFeatureServices(
     );
     const data = await withProviderStage('disease', 'data', privateLocalData);
     const operationSignal = signal ?? new AbortController().signal;
+    const researchInputs = createResearchInputTracker(registry, data);
     // Both explicit actions use the same bounded tools, consent and freshness boundary.
     const external = createSelectedExternalEvidence({
       selected,
       consent,
-      literature: externalEvidence,
+      literature: retainLiteratureResults(
+        literatureService,
+        privateLocalData,
+        summary ? 'symptom_summary' : 'disease_hypotheses',
+        undefined,
+        researchInputs.recordResearch,
+        { providerId: selected.provider.id, modelId: selected.modelId },
+      ),
       literatureConsent: queryConsent,
       requireAbstract: true,
+      loadData: privateLocalData,
+      originFeature: summary ? 'symptom_summary' : 'disease_hypotheses',
+      captureResearchInputs: researchInputs.capture,
+      validateResearchInputs: researchInputs.revalidate,
+      onResearchRetained: researchInputs.recordResearch,
     });
     const tools = [
-      ...toolsFor(undefined, data, registry, 6, summary),
+      ...researchInputs.wrap([
+        ...toolsFor(undefined, data, registry, 6, summary),
+        ...conversationGeneratedTools(data, registry, undefined).tools,
+      ]),
       ...external.tools,
     ];
     const runId = dependencies.createOperationRunId?.() ?? operationRunId();
@@ -177,7 +150,7 @@ export function createAiFeatureServices(
   const sendRagMessage = createRagConversationService({
     consent,
     queryConsent,
-    externalEvidence,
+    externalEvidence: literatureService,
     loadLocalData: privateLocalData,
     selectedAi,
     registry,
@@ -186,6 +159,21 @@ export function createAiFeatureServices(
   });
 
   return {
+    async generatedArtifactTools() {
+      const data = await privateLocalData();
+      return {
+        tools: conversationGeneratedTools(data, registry, undefined).tools,
+        validate: (references, signal) =>
+          registry.revalidateEvidence(references, signal),
+        owns: reference => Boolean(registry.resolve(reference)),
+      };
+    },
+    conversationSessionOptions() {
+      return createConversationSessionOptions({
+        loadLocalData: privateLocalData,
+        registry,
+      });
+    },
     async conversationArtifacts() {
       const data = await privateLocalData();
       return data.conversationArtifactDiscovery
@@ -204,6 +192,7 @@ export function createAiFeatureServices(
         sourceReader: data.repository,
         registry,
         readHealthContext: data.readHealthContext,
+        data,
       });
     },
     generateDiseaseHypotheses: (signal, observer) =>

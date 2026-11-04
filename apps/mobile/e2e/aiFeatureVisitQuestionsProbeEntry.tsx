@@ -96,6 +96,7 @@ const syntheticAiFeatureDependencies: AiFeatureServiceDependencies = {
     append: async () => undefined,
     list: async () => [],
     read: async () => null,
+    readWithStatus: async () => null,
   }),
   externalEvidence: { search: async () => ({ status: 'unavailable' }) },
   diseaseRunner: syntheticDiseaseRunner,

@@ -163,3 +163,36 @@ test('a reopened session may write only with its current active lease', async ()
     f.close();
   }
 });
+
+test('clearing data prevents an in-flight session attachment from restoring an old identity', async () => {
+  const f = await healthContextFixture();
+  try {
+    const storage = createConversationArtifactStorage(f.database);
+    await storage.createSession('durable', await storage.currentGeneration());
+    let release!: () => void;
+    let observed!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const read = new Promise<void>(resolve => { observed = resolve; });
+    const sessions = createConversationSessionRetention({
+      openStorage: async () => ({
+        ...storage,
+        async activeSessionVersion(id) {
+          const version = await storage.activeSessionVersion(id);
+          observed();
+          await gate;
+          return version;
+        },
+      }),
+      createId: () => 'new-turn',
+      now: () => '2026-10-05T00:00:00.000Z',
+    });
+    const attaching = sessions.attachExisting(1, 'durable', 0);
+    await read;
+    sessions.invalidate();
+    release();
+    await expect(attaching).rejects.toThrow();
+    expect(sessions.activeIdentity(1)).toBeNull();
+  } finally {
+    f.close();
+  }
+});

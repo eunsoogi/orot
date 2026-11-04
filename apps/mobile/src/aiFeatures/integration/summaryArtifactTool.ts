@@ -9,6 +9,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { jsonByteLength } from './evidenceUtils';
 import { registerArtifactSource } from './artifactLineage';
 import { artifactExcerpt } from './artifactExcerpt';
+import { summaryArtifactCoverage } from './summaryArtifactCoverage';
 
 // A service registry survives conversation turns; tokens never expose database identities.
 const cursorStates = new WeakMap<
@@ -47,7 +48,11 @@ export function createSummaryArtifactTool(
   registry: LocalEvidenceReferenceRegistry,
   options: {
     readonly scope?: string;
-    readonly onPage?: (query: string, cursor: string | null) => void;
+    readonly onPage?: (
+      query: string,
+      cursor: string | null,
+      items: readonly EvidenceItem[],
+    ) => void;
     readonly referenceOnly?: boolean;
   } = {},
 ): EvidenceSearchTool {
@@ -107,6 +112,8 @@ export function createSummaryArtifactTool(
         signal: request.signal,
       });
       const items: EvidenceItem[] = [];
+      const parents: { id: string; revision: string }[] = [];
+      const registrations: Array<() => void> = [];
       let omitted = page.unavailableCount;
       let lastEmittedId: string | undefined;
       let resumeCursor: string | undefined;
@@ -117,7 +124,12 @@ export function createSummaryArtifactTool(
           continue;
         }
         const sourceStatus = detail.sourceStatus;
-        const excerpt = artifactExcerpt(metadata, detail.content, sourceStatus);
+        const excerpt = artifactExcerpt(
+          metadata,
+          detail.content,
+          sourceStatus,
+          detail.sources,
+        );
         let compact = Boolean(options.referenceOnly);
         const body = compact ? excerpt.compact : excerpt.full;
         for (const id of await data.findIdentifiers(body, request.signal))
@@ -170,26 +182,42 @@ export function createSummaryArtifactTool(
             throw new Error('Artifact metadata exceeds the requested size.');
         }
         items.push(item);
+        parents.push({ id: metadata.id, revision: metadata.revision });
         lastEmittedId = metadata.id;
-        for (const section of compact ? [] : detail.content.hypotheses) {
-          for (const reference of [
-            ...section.supportingEvidence,
-            ...section.contraryEvidence,
-          ]) {
-            if (reference.sourceKind !== 'external_medical')
-              registerArtifactSource(
-                registry,
-                request.operationRunId,
-                reference,
-                {
-                  id: metadata.id,
-                  revision: metadata.revision,
-                  sourceStatus,
-                },
-              );
+        registrations.push(() => {
+          for (const section of compact ? [] : detail.content.hypotheses) {
+            for (const reference of [
+              ...section.supportingEvidence,
+              ...section.contraryEvidence,
+            ]) {
+              if (reference.sourceKind !== 'external_medical')
+                registerArtifactSource(
+                  registry,
+                  request.operationRunId,
+                  reference,
+                  {
+                    id: metadata.id,
+                    revision: metadata.revision,
+                    sourceStatus,
+                  },
+                );
+            }
           }
-        }
+        });
       }
+      if (
+        items.length &&
+        !(await registry.revalidateEvidence(items, request.signal))
+      )
+        throw new Error('A saved summary changed during search.');
+      if (
+        items.length &&
+        !(await discovery.revalidatePage(parents, request.signal))
+      )
+        throw new Error('A saved summary changed during search.');
+      if (request.signal.aborted)
+        throw new Error('Artifact search was cancelled.');
+      for (const register of registrations) register();
       const nextCursor = resumeCursor ?? page.nextCursor;
       const nextToken = nextCursor ? `page-${++state.sequence}` : undefined;
       if (nextToken && nextCursor) {
@@ -197,10 +225,7 @@ export function createSummaryArtifactTool(
           state.tokens.delete(state.tokens.keys().next().value!);
         state.tokens.set(nextToken, { scope, query, cursor: nextCursor });
       }
-      options.onPage?.(query, nextToken ?? null);
-      const gaps = [
-        ...(omitted ? ['Some saved AI results could not be included.'] : []),
-      ];
+      options.onPage?.(query, nextToken ?? null, items);
       return {
         items,
         conflicts: [],
@@ -208,7 +233,10 @@ export function createSummaryArtifactTool(
           {
             sourceKind: 'generated_artifact',
             searchedSourceIds: items.map(item => item.sourceId),
-            gaps,
+            gaps: summaryArtifactCoverage(
+              omitted,
+              page.unknownLineageCount ?? 0,
+            ),
             truncated: Boolean(omitted || nextToken),
             selectionMethod: 'paged_retrieval',
             ...(nextToken ? { nextCursor: nextToken } : {}),

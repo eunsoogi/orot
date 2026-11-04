@@ -2,6 +2,7 @@
 export interface ArtifactContinuation {
   readonly query: string;
   readonly cursor: string;
+  readonly catalog?: 'summary' | 'conversation';
 }
 
 /** Only an explicit short follow-up resumes a previous search without a new model request. */

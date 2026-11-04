@@ -86,3 +86,62 @@ test('opens the original source from a saved AI result and returns to that resul
   await fireEvent.press(screen.getByTestId('ai-feature-source-previous'));
   await screen.findByText('이전 생성 결과');
 });
+
+test('shows a prior conversation as historical AI output and opens its original source', async () => {
+  const readSource = jest.fn(
+    async (reference: EvidenceReference): Promise<EvidenceSourceReadResult> =>
+      reference.evidenceId === 'e2'
+        ? {
+            status: 'available',
+            document: {
+              sourceKind: 'generated_artifact',
+              metadata: {
+                type: 'conversation_turn',
+                id: 'private',
+                originFeature: 'record_conversation',
+                originSession: 'private-session',
+                createdAt: '2035-01-01T00:00:00Z',
+                eventTime: null,
+                revision: '1',
+                providerId: 'provider',
+                modelId: 'model',
+                completion: 'complete',
+                review: 'unreviewed',
+              },
+              sourceStatus: 'current',
+              conversation: { question: '이전 질문', answer: '이전 AI 답변' },
+              sources: [original],
+            },
+          }
+        : {
+            status: 'available',
+            document: {
+              sourceKind: 'manual_history',
+              evidence: {
+                id: 'synthetic',
+                sourceEntryId: 'private',
+                kind: 'note',
+                text: '직접 입력한 원본',
+                effectiveDate: { status: 'unknown' },
+                recordedAt: '2035-01-01T00:00:00Z',
+                provenance: { origin: 'user_reported', sourceRecordIds: [] },
+                reviewState: { status: 'unreviewed' },
+              },
+            },
+          },
+  );
+  await render(
+    <EvidenceSourceDetailScreen
+      reference={artifact}
+      onBack={() => {}}
+      readSource={readSource}
+    />,
+  );
+  await screen.findByText('이전 AI 답변');
+  expect(screen.getByText('이전 질문')).toBeTruthy();
+  expect(
+    screen.getByText(/독립적으로 확인된 의료 사실이 아닙니다/),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText(/원문 근거 열기 · 건강 기록/));
+  await screen.findByText('직접 입력한 원본');
+});

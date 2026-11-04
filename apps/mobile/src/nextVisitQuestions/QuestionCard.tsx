@@ -180,6 +180,35 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </Pressable>
       ))}
+      {(question.generatedArtifactContext ?? [])
+        .filter(
+          reference =>
+            !question.citations.some(
+              citation =>
+                citation.sourceKind === reference.sourceKind &&
+                citation.sourceId === reference.sourceId,
+            ),
+        )
+        .map((reference, sourceIndex) => (
+          <Pressable
+            accessibilityRole="button"
+            disabled={disabled}
+            key={`generated:${reference.sourceId}`}
+            onPress={() => onOpenSource(reference)}
+            style={[styles.sourceButton, disabled && styles.disabled]}
+            testID={`next-visit-generated-source-${index}-${sourceIndex}`}
+          >
+            <AppSymbol name="doc.text" color={theme.colors.textMuted} />
+            <Text style={styles.openSource}>
+              생성에 사용한 이전 AI 결과 보기
+            </Text>
+            <AppSymbol
+              name="chevron.right"
+              size={14}
+              color={theme.colors.textMuted}
+            />
+          </Pressable>
+        ))}
     </View>
   );
 }

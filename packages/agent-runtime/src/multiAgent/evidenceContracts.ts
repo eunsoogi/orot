@@ -78,8 +78,9 @@ export const DEFAULT_MULTI_AGENT_BUDGET = {
 } satisfies MultiAgentBudget;
 
 export const MAX_MULTI_AGENT_BUDGET = {
-  maxModelCalls: 4,
-  maxToolCalls: 2,
+  // Artifact-enabled workflows may inspect a retained result and its source in addition to required searches.
+  maxModelCalls: 8,
+  maxToolCalls: 4,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,

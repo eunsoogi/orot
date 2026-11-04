@@ -3,7 +3,11 @@ import {
   decodeConversationArtifact,
   type ConversationArtifact,
 } from '../storage/conversationArtifactCodec';
-import type { ConversationRetentionCandidate } from './conversationRetention';
+import type {
+  ConversationRetentionCandidate,
+  PrepareConversationRetention,
+} from './conversationRetention';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
 /** One turn keeps the same payload and identity across write retries, without another model call. */
 export function createConversationTurnRetention(input: {
@@ -17,7 +21,11 @@ export function createConversationTurnRetention(input: {
   readonly sessionVersion?: number;
 }) {
   let pending: ConversationArtifact | undefined;
+  let preparation: PrepareConversationRetention | undefined;
+  let preparing = false;
   let writing = false;
+  let suspended = false;
+  let resumeRequested = false;
   const write = async (value: ConversationArtifact, signal?: AbortSignal) => {
     if (writing)
       throw new Error('The conversation output is already being saved.');
@@ -27,38 +35,88 @@ export function createConversationTurnRetention(input: {
       if (pending === value) pending = undefined;
     } catch (error) {
       // Cancellation is not a retryable failed write; successful commit resolves instead.
-      if (signal?.aborted && pending === value) pending = undefined;
+      if (
+        (error instanceof RetainedSourceInvalidError ||
+          (signal?.aborted && !suspended)) &&
+        pending === value
+      )
+        pending = undefined;
       throw error;
     } finally {
       writing = false;
+      if (resumeRequested) suspended = false;
     }
+  };
+  const materialize = (candidate: ConversationRetentionCandidate) => {
+    const value = decodeConversationArtifact(
+      JSON.stringify({
+        ...candidate,
+        id: input.turnId,
+        sessionId: input.sessionId,
+        createdAt: input.createdAt,
+        status: candidate.status ?? 'complete',
+      }),
+    );
+    if (!value) throw new Error('The conversation output cannot be saved.');
+    return value;
   };
   return {
     async save(candidate: ConversationRetentionCandidate, signal: AbortSignal) {
-      if (pending) throw new Error('A previous save is still awaiting retry.');
+      if (pending || preparation)
+        throw new Error('A previous save is still awaiting retry.');
       if (signal.aborted)
         throw new Error('The conversation output was cancelled.');
-      const value = decodeConversationArtifact(
-        JSON.stringify({
-          ...candidate,
-          id: input.turnId,
-          sessionId: input.sessionId,
-          createdAt: input.createdAt,
-          status: 'complete',
-        }),
-      );
-      if (!value) throw new Error('The conversation output cannot be saved.');
+      const value = materialize(candidate);
       pending = value;
       await write(value, signal);
     },
-    canRetry: () => Boolean(pending) && !writing,
+    defer(prepare: PrepareConversationRetention) {
+      if (!pending && !preparation) preparation = prepare;
+    },
+    canRetry: () => Boolean(pending || preparation) && !writing && !preparing,
+    hasPending: () => Boolean(pending || preparation),
+    suspend() {
+      suspended = true;
+      resumeRequested = false;
+    },
+    resume() {
+      resumeRequested = true;
+      if (!writing && !preparing) suspended = false;
+    },
     async retry(signal?: AbortSignal) {
+      if (suspended) throw new Error('The conversation is being removed.');
+      if (preparation) {
+        if (preparing || writing)
+          throw new Error('The conversation output is already being saved.');
+        const current = preparation;
+        preparing = true;
+        try {
+          const candidate = await current(
+            signal ?? new AbortController().signal,
+          );
+          if (preparation !== current || suspended || signal?.aborted)
+            throw new Error('The conversation output was cancelled.');
+          pending = materialize(candidate);
+          preparation = undefined;
+        } catch (error) {
+          if (
+            error instanceof RetainedSourceInvalidError &&
+            preparation === current
+          )
+            preparation = undefined;
+          throw error;
+        } finally {
+          preparing = false;
+          if (resumeRequested) suspended = false;
+        }
+      }
       if (!pending)
         throw new Error('No conversation output is awaiting retry.');
       await write(pending, signal);
     },
     discardRetry() {
       pending = undefined;
+      preparation = undefined;
     },
   };
 }

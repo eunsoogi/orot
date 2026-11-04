@@ -14,7 +14,10 @@ type EvidenceIdentity = Pick<
 
 export interface VisitQuestionEvidenceAliases {
   readonly batch: VisitQuestionEvidenceBatch;
-  aliasBatch(batch: VisitQuestionEvidenceBatch): VisitQuestionEvidenceBatch;
+  aliasBatch(
+    batch: VisitQuestionEvidenceBatch,
+    alreadyRedacted?: boolean,
+  ): VisitQuestionEvidenceBatch;
   aliasOf(
     item: VisitQuestionEvidenceItem,
   ): VisitQuestionEvidenceItem | undefined;
@@ -106,6 +109,7 @@ export function createVisitQuestionEvidenceAliases(
 
   const aliasBatch = (
     batch: VisitQuestionEvidenceBatch,
+    alreadyRedacted = false,
   ): VisitQuestionEvidenceBatch => {
     const items = batch.items.map(item => {
       const originalKey = visitQuestionEvidenceIdentityKey(item);
@@ -124,7 +128,9 @@ export function createVisitQuestionEvidenceAliases(
         evidenceId: evidenceAlias,
         evidenceRevision: `evidence-revision-${nextEvidenceIndex}`,
         locator: { kind: 'opaque_evidence_reference', id: evidenceAlias },
-        content: providerEvidenceContent(item.content),
+        content: alreadyRedacted
+          ? item.content
+          : providerEvidenceContent(item.content),
       };
       aliasToOriginal.set(visitQuestionEvidenceIdentityKey(alias), item);
       originalToAlias.set(originalKey, alias);

@@ -5,6 +5,35 @@ import type {
   RagConversationOutcome,
 } from './service';
 import type { ArtifactContinuation } from './artifactContinuation';
+import type { createConversationSessionRetention } from './conversationSessionRetention';
+import type { EvidenceReference } from '@orot/agent-runtime';
+
+export interface ConversationSessionOptions {
+  readonly retention?: ReturnType<typeof createConversationSessionRetention>;
+  readonly restoreSession?: (
+    id: string,
+    signal: AbortSignal,
+  ) => Promise<
+    readonly {
+      question: string;
+      answer: string;
+      citations: readonly EvidenceReference[];
+      completion?: 'complete' | 'partial';
+    }[]
+  >;
+}
+
+export type DeletedConversation = {
+  session: ConversationSession;
+  index: number;
+  handle?: { id: string; version: number | null } | null;
+};
+
+export interface ConversationSnapshot {
+  readonly activeId: number;
+  readonly sessions: readonly ConversationSession[];
+  readonly deleted: DeletedConversation | null;
+}
 
 /** An in-flight write must settle before cancellation determines the visible result. */
 export type PendingTurn = {
@@ -41,5 +70,6 @@ export interface ConversationSession {
   readonly restoring?: boolean;
   readonly deletionError?: string;
   readonly quarantined?: boolean;
+  readonly restoreAfterRetry?: boolean;
   readonly artifactContinuation?: ArtifactContinuation | null;
 }

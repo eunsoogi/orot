@@ -20,6 +20,19 @@ export interface VisitQuestionEvidenceMetadata {
   readonly evidenceRecordId?: string;
   readonly evidenceSpanId?: string;
   readonly healthContextSource?: VisitQuestionHealthContextSource;
+  /** Retains an AI parent as typed history, never as an independently verified clinical fact. */
+  readonly generatedArtifactSource?: {
+    readonly kind:
+      'generated_summary' | 'generated_conversation' | 'generated_research';
+    readonly type:
+      | 'symptom_summary'
+      | 'disease_possibilities'
+      | 'conversation_turn'
+      | 'research_publication'
+      | 'research_web_explanation';
+    readonly id: string;
+    readonly revision: string;
+  };
   /** Keeps each reviewed-memory citation tied to the bounded local query that found it. */
   readonly memorySearchQuery?: string;
   readonly healthObservationConflict?: {

@@ -1,11 +1,14 @@
 import type { ArtifactMetadata } from '../../healthEvidence/artifactDiscovery';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
+import type { EvidenceReference } from '@orot/agent-runtime';
+import { retainedResearchMetadata } from './retainedResearchSearch';
 
 /** Bound provider text while keeping full retained content behind a revalidated citation. */
 export function artifactExcerpt(
   metadata: ArtifactMetadata,
   analysis: DiseaseHypothesisAnalysis,
   sourceStatus: 'current' | 'changed' | 'unknown',
+  sources: readonly EvidenceReference[] = [],
 ) {
   const truncated = analysis.hypotheses.some(
     section =>
@@ -15,6 +18,7 @@ export function artifactExcerpt(
       section.missingData.length > 3 ||
       section.missingData.some(text => text.length > 100),
   );
+  // Locators can contain unsupported fields; public details are exposed through the validated projection below.
   const sections = analysis.hypotheses.map(section => ({
     title: section.title.slice(0, 100),
     summary: section.summary.slice(0, 700),
@@ -25,16 +29,10 @@ export function artifactExcerpt(
     supportingSources: section.supportingEvidence.map(reference => ({
       kind: reference.sourceKind,
       evidenceId: reference.evidenceId,
-      ...(reference.sourceKind === 'external_medical'
-        ? { locator: reference.locator }
-        : {}),
     })),
     contrarySources: section.contraryEvidence.map(reference => ({
       kind: reference.sourceKind,
       evidenceId: reference.evidenceId,
-      ...(reference.sourceKind === 'external_medical'
-        ? { locator: reference.locator }
-        : {}),
     })),
   }));
   return {
@@ -47,6 +45,7 @@ export function artifactExcerpt(
       excerptTruncated: truncated,
       warning:
         'Historical AI-generated interpretation, not independently verified medical evidence.',
+      retainedResearch: retainedResearchMetadata(sources),
       sections,
     }),
     compact: JSON.stringify({

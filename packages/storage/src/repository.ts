@@ -25,6 +25,7 @@ import {
   SOURCE_DELETION_TOMBSTONES_TABLE,
 } from './sourceDeletionReferences';
 import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
+import { clearResearchArtifacts } from './researchDeletion';
 
 export interface DeletedLocalDataReferences {
   readonly sourceRecordIds: readonly string[];
@@ -154,6 +155,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     async deleteAllLocalData(withinDeletionTransaction) {
       let deleted: DeletedLocalDataReferences = { sourceRecordIds: [] };
       await database.transaction(async (transaction) => {
+        await clearResearchArtifacts(transaction);
         // Fence conversations begun before this wipe, even when no source records exist.
         const conversationStore = await transaction.execute(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",

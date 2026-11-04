@@ -2,8 +2,10 @@ import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { readHealthContextReport } from '../healthEvidence/healthContext/reader';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { healthContextRevision } from '../healthEvidence/healthContext/scope';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import { completeSummaryDeletion } from './summaryDeletionPolicy';
 
 /** Period dependencies are bounded scopes, not thousands of raw IDs or retained deleted health values. */
 export async function setupSummaryPeriods(tx: SqlExecutor) {
@@ -17,12 +19,14 @@ export async function setupSummaryPeriods(tx: SqlExecutor) {
   const guards = healthPeriodDeletionGuards();
   for (const [table, guard] of Object.entries(guards)) {
     // Direct repository deletes and provenance cascades both traverse these same triggers.
-    await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_period_deleted_${table} AFTER DELETE ON ${table} BEGIN
-      DELETE FROM symptom_summary_runs WHERE id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE ${guard}); END`);
+    await tx.execute(`DROP TRIGGER IF EXISTS summary_period_deleted_${table}`);
+    await tx.execute(`CREATE TRIGGER summary_period_deleted_${table} AFTER DELETE ON ${table} BEGIN
+      DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE ${guard}); END`);
     // A later delete must not lose its dependency merely because the event moved out of the saved scope first.
     const nextGuard = guard.replaceAll('OLD.', 'NEW.');
-    await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_period_moved_${table} AFTER UPDATE ON ${table} BEGIN
-      DELETE FROM symptom_summary_runs WHERE id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE (${guard}) AND NOT coalesce((${nextGuard}), 0)); END`);
+    await tx.execute(`DROP TRIGGER IF EXISTS summary_period_moved_${table}`);
+    await tx.execute(`CREATE TRIGGER summary_period_moved_${table} AFTER UPDATE ON ${table} BEGIN
+      DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE (${guard}) AND NOT coalesce((${nextGuard}), 0)); END`);
   }
 }
 
@@ -40,7 +44,9 @@ export async function assertSummaryPeriodCurrent(
       report.deletionGeneration !== source.deletionGeneration) ||
     healthContextRevision(source.scope, report) !== source.revision
   )
-    throw new Error('The cited health period changed before saving.');
+    throw new RetainedSourceInvalidError(
+      'The cited health period changed before saving.',
+    );
 }
 
 export async function appendSummaryPeriod(

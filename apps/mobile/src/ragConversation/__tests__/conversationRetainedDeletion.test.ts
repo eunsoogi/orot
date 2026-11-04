@@ -56,10 +56,13 @@ test('removal aborts a held retry and prevents it from restoring a deleted outpu
     const retry = store.retrySave(1);
     await entered;
     await store.remove(1);
+    await store.undoRemove();
     release();
     await retry;
     expect(await storage.read('id-2')).toBeNull();
-    await store.undoRemove();
+    expect(
+      store.getSnapshot().sessions.find(item => item.id === 1)?.retryingSave,
+    ).toBe(false);
     expect(
       store.getSnapshot().sessions.find(item => item.id === 1)?.messages,
     ).toEqual([]);

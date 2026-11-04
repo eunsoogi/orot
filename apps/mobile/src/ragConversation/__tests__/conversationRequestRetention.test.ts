@@ -81,7 +81,15 @@ test('a failed write is visible and retries the same answer without calling the 
       createId: () => `id-${++sequence}`,
       now: () => '2026-10-05T00:00:00.000Z',
     });
-    const store = createConversationSessions({ retention });
+    const store = createConversationSessions({
+      retention,
+      restoreSession: async () => {
+        const turn = await storage.read('id-2');
+        return turn
+          ? [{ question: turn.question, answer: turn.answer, citations: [] }]
+          : [];
+      },
+    });
     const sender: ConversationSender = jest.fn(
       async (_question, _history, signal, observer) => {
         try {
@@ -106,10 +114,14 @@ test('a failed write is visible and retries the same answer without calling the 
     await store.send(1, sender);
     expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(1);
     expect(await storage.read('id-2')).toBeNull();
+    store.setDraft(1, 'later question');
+    await store.send(1, async () => ({ status: 'no_evidence' }));
+    const beforeRetry = store.getSnapshot().sessions[0]!.messages;
     await store.retrySave(1);
     expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(0);
     expect((await storage.read('id-2'))?.answer).toBe('answer');
     expect(sender).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().sessions[0]?.messages).toEqual(beforeRetry);
   } finally {
     f.close();
   }

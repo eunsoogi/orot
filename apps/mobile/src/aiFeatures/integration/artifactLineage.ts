@@ -13,6 +13,7 @@ const lineages = new WeakMap<
         parentId: string;
         parentRevision: string;
         sourceStatus: 'current' | 'changed' | 'unknown';
+        catalog: 'summary' | 'conversation';
       }
     >
   >
@@ -26,6 +27,7 @@ export function registerArtifactSource(
     id: string;
     revision: string;
     sourceStatus: 'current' | 'changed' | 'unknown';
+    catalog?: 'summary' | 'conversation';
   },
 ) {
   let operations = lineages.get(registry);
@@ -45,6 +47,7 @@ export function registerArtifactSource(
     parentId: parent.id,
     parentRevision: parent.revision,
     sourceStatus: parent.sourceStatus,
+    catalog: parent.catalog ?? 'summary',
   });
 }
 

@@ -69,8 +69,9 @@ export function ExternalMedicalEvidenceScreen({
     () => () => {
       operationController.current?.abort();
       operationController.current = null;
+      service.discardPending?.();
     },
-    [],
+    [service],
   );
 
   async function search() {

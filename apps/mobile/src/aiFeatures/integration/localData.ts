@@ -10,6 +10,9 @@ import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createSummaryArtifactDiscovery } from './summaryArtifactDiscovery';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
+import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import type { createResearchArtifactStorage } from '../../storage/researchArtifactStorage';
+import type { createResearchArtifactDiscovery } from './researchArtifactDiscovery';
 
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
@@ -24,6 +27,16 @@ export interface AiFeatureLocalData extends LocalEvidenceData {
   conversationArtifactDiscovery?(
     registry: LocalEvidenceReferenceRegistry,
   ): Promise<ReturnType<typeof createConversationArtifactDiscovery>>;
+  /** Opens the same encrypted database used by the other local AI repositories. */
+  openConversationArtifactStorage?(): Promise<
+    ReturnType<typeof createConversationArtifactStorage>
+  >;
+  openResearchArtifactStorage?(): Promise<
+    ReturnType<typeof createResearchArtifactStorage>
+  >;
+  researchArtifactDiscovery?(): Promise<
+    ReturnType<typeof createResearchArtifactDiscovery>
+  >;
 }
 
 let opening: Promise<AiFeatureLocalData> | null = null;
@@ -79,6 +92,28 @@ async function openDefault(): Promise<AiFeatureLocalData> {
         data,
         registry,
       });
+    },
+    async openConversationArtifactStorage() {
+      const { createConversationArtifactStorage } =
+        await import('../../storage/conversationArtifactStorage');
+      return createConversationArtifactStorage(database);
+    },
+    async openResearchArtifactStorage() {
+      const { createResearchArtifactStorage } =
+        await import('../../storage/researchArtifactStorage');
+      return createResearchArtifactStorage(database);
+    },
+    async researchArtifactDiscovery() {
+      const [
+        { createResearchArtifactStorage },
+        { createResearchArtifactDiscovery },
+      ] = await Promise.all([
+        import('../../storage/researchArtifactStorage'),
+        import('./researchArtifactDiscovery'),
+      ]);
+      return createResearchArtifactDiscovery(
+        createResearchArtifactStorage(database),
+      );
     },
   };
   return data;

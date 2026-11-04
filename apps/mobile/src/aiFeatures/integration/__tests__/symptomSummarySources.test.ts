@@ -16,7 +16,7 @@ import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types
 import { referenceOnly } from '../../../diseaseHypotheses/resultValidation';
 import { captureEvidenceSources } from '../captureEvidenceSources';
 
-test('does not retain generated parents without transitive deletion support', async () => {
+test('rejects a generated parent without a valid identity', async () => {
   const registry = new LocalEvidenceReferenceRegistry();
   const item = registry.add({
     reference: {
@@ -47,7 +47,7 @@ test('does not retain generated parents without transitive deletion support', as
       registry,
       new AbortController().signal,
     ),
-  ).rejects.toThrow('explicit lineage support');
+  ).rejects.toThrow('The generated source identity is invalid.');
 });
 
 test('captures uncited model inputs as dependencies of the saved output', async () => {
@@ -154,6 +154,7 @@ test.each([undefined, 'symptom_summary'] as const)(
       modelId: 'synthetic',
       providerId: 'synthetic',
       modelName: 'Synthetic',
+      inputLineage: 'complete' as const,
       ...captured,
     };
     const restored = await restoreSymptomSummary(saved, fresh, data);

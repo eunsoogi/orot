@@ -9,6 +9,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreConversationArtifact } from './restoreConversationArtifact';
 import { restoreConversationSessionPage } from './conversationSessionRestoration';
 import { fingerprint } from './evidenceUtils';
+import { retainedResearchSearchText } from './retainedResearchSearch';
 
 type Metadata = ArtifactMetadata & { readonly type: 'conversation_turn' };
 type Content = { readonly question: string; readonly answer: string };
@@ -54,7 +55,40 @@ export function createConversationArtifactDiscovery(input: {
   };
   return {
     read,
+    async revalidatePage(
+      items: readonly { readonly id: string; readonly revision: string }[],
+      signal: AbortSignal,
+    ) {
+      if (signal.aborted) return false;
+      const values = await input.storage.readMany(items.map(item => item.id));
+      return (
+        !signal.aborted &&
+        values.every((value, index) =>
+          Boolean(value && fingerprint(value) === items[index]!.revision),
+        )
+      );
+    },
     listSessions: input.storage.listSessions,
+    activeSessionVersion: input.storage.activeSessionVersion,
+    async revalidateSession(
+      sessionId: string,
+      version: number,
+      items: readonly { readonly id: string; readonly revision: string }[],
+      signal: AbortSignal,
+    ) {
+      if (signal.aborted) return false;
+      const values = await input.storage.readSessionMany(
+        sessionId,
+        version,
+        items.map(item => item.id),
+      );
+      return (
+        !signal.aborted &&
+        values.every((value, index) =>
+          Boolean(value && fingerprint(value) === items[index]!.revision),
+        )
+      );
+    },
     readSession: (request: {
       readonly sessionId: string;
       readonly cursor?: { readonly createdAt: string; readonly id: string };
@@ -85,6 +119,7 @@ export function createConversationArtifactDiscovery(input: {
       );
       const rows = result.rows.slice(0, limit);
       const items: Metadata[] = [];
+      const itemCursors: string[] = [];
       let unavailableCount = 0;
       const needle = query.trim().normalize('NFKC').toLowerCase();
       for (const row of rows) {
@@ -102,15 +137,17 @@ export function createConversationArtifactDiscovery(input: {
         }
         if (
           !needle ||
-          `${saved.question} ${saved.answer}`
+          `${saved.question} ${saved.answer} ${retainedResearchSearchText(saved.sources)}`
             .normalize('NFKC')
             .toLowerCase()
             .includes(needle)
         ) {
           const detail = await read(row.id, signal);
-          if (detail && detail.metadata.revision === fingerprint(saved))
+          if (detail && detail.metadata.revision === fingerprint(saved)) {
             items.push(detail.metadata);
-          else unavailableCount += 1;
+            // Internal cursor follows this admitted row, even when earlier rows were skipped.
+            itemCursors.push(String(row.scan_key));
+          } else unavailableCount += 1;
         }
       }
       if (signal?.aborted)
@@ -118,6 +155,7 @@ export function createConversationArtifactDiscovery(input: {
       const last = rows.at(-1);
       return {
         items,
+        itemCursors,
         unavailableCount,
         nextCursor:
           result.rows.length > limit && last ? String(last.scan_key) : null,

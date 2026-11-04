@@ -8,6 +8,60 @@ import {
   response,
 } from '../testSupport/conversationEnvelopeFixtures';
 
+test('a validated partial answer retains its label in the conversation', async () => {
+  const f = fixture();
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: {
+        answerKind: 'grounded',
+        answer: '기록 일부만 확인했어요.',
+        completion: 'partial',
+      },
+      citations: ['synthetic-evidence'],
+    }),
+  );
+  const sessions = createConversationSessions();
+  const id = sessions.getSnapshot().activeId;
+  sessions.setDraft(id, f.options.question);
+  await sessions.send(id, (question, previousMessages, signal) =>
+    runRagConversationTurn(
+      { ...f.options, question, previousMessages },
+      { signal },
+    ),
+  );
+  expect(sessions.getSnapshot().sessions[0]?.messages[1]).toMatchObject({
+    completion: 'partial',
+    citations: [expect.objectContaining({ evidenceId: 'synthetic-evidence' })],
+  });
+  sessions.dispose();
+});
+
+test('an invalid completion value cannot produce a saved answer', async () => {
+  const f = fixture();
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: {
+        answerKind: 'grounded',
+        answer: '기록',
+        completion: 'unfinished',
+      },
+      citations: ['synthetic-evidence'],
+    }),
+  );
+  const capture = jest.fn();
+  expect(
+    (
+      await runRagConversationTurn({
+        ...f.options,
+        onValidatedEvidence: capture,
+      })
+    ).status,
+  ).toBe('failure');
+  expect(capture).not.toHaveBeenCalled();
+});
+
 test('only a validated completed answer publishes its admitted input references', async () => {
   const f = fixture();
   const capture = jest.fn();

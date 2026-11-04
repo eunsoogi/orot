@@ -38,3 +38,20 @@ export function ArtifactSourceLinks({
     </View>
   ));
 }
+
+/** Prior conversation sources remain linked to the validated saved parent. */
+export function ConversationArtifactSourceLinks({
+  sources,
+  onOpen,
+}: {
+  readonly sources: readonly EvidenceReference[];
+  readonly onOpen: (reference: EvidenceReference) => void;
+}) {
+  return (
+    <ConversationSources
+      references={sources}
+      onOpenSource={onOpen}
+      onLinkError={() => Alert.alert('출처를 열 수 없어요.')}
+    />
+  );
+}

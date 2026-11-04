@@ -103,6 +103,7 @@ export function createEvidenceSourceDuoServiceDependencies(
       append: async () => undefined,
       list: async () => [],
       read: async () => null,
+      readWithStatus: async () => null,
     }),
     diseaseRunner: runEvidenceSourceDuoDisease,
   };

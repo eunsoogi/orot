@@ -26,6 +26,7 @@ test.each([
       modelId: 'synthetic',
       providerId: 'synthetic',
       modelName: 'Synthetic',
+      inputLineage: 'complete' as const,
       analysis: {
         hypotheses: [hypothesis({ summary, supportingEvidence: [ref] })],
       },

@@ -46,6 +46,7 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
       'cite exact references for supporting and contrary evidence, state uncertainty, and list missing data. ' +
       'Medication and dose records, walking/activity and blood-pressure or other measurements are usable evidence; transcripts and photos are not prerequisites. ' +
       'Distinguish observed changes from reported symptoms and possible explanations. Do not infer an experienced symptom or causation from a measurement or medication alone. ' +
+      'Prior generated artifacts are historical AI interpretations, not independent clinical evidence. Attribute them to the prior output and do not treat them as verified observations. ' +
       'After inspecting local records, use the public medical literature tool when an explanation needs medical context. Search generic concepts, never names, identifiers or verbatim private records. Cite the retrieved publications and distinguish population-level findings from this person’s records. ' +
       'The ranked evidence is not an exhaustive history. Do not treat omitted records as absent findings. Write user-facing text in Korean.',
     resultSchema: {

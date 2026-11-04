@@ -11,7 +11,10 @@ import { navigationText } from '../../i18n/navigation';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { presentEvidenceSource } from './evidenceSourcePresentation';
 import { EvidenceSourceSections } from './EvidenceSourceSections';
-import { ArtifactSourceLinks } from './ArtifactSourceLinks';
+import {
+  ArtifactSourceLinks,
+  ConversationArtifactSourceLinks,
+} from './ArtifactSourceLinks';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 
@@ -168,9 +171,17 @@ export function EvidenceSourceDetailScreen({
             routeKey={navigationRouteKey}
             sections={presentation}
           />
-          {state.document.sourceKind === 'generated_artifact' ? (
+          {state.document.sourceKind === 'generated_artifact' &&
+          'analysis' in state.document ? (
             <ArtifactSourceLinks
               analysis={state.document.analysis}
+              onOpen={source => setSourceStack(current => [...current, source])}
+            />
+          ) : null}
+          {state.document.sourceKind === 'generated_artifact' &&
+          ('conversation' in state.document || 'research' in state.document) ? (
+            <ConversationArtifactSourceLinks
+              sources={state.document.sources}
               onOpen={source => setSourceStack(current => [...current, source])}
             />
           ) : null}

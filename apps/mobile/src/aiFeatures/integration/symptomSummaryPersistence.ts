@@ -2,6 +2,7 @@ import type {
   SymptomSummaryStorage,
   SymptomSummaryHistory,
 } from '../../diseaseHypotheses/savedSummaries';
+import { hasCompleteSummaryLineage } from '../../diseaseHypotheses/savedSummaries';
 import type {
   DiseaseHypothesisAnalysis,
   DiseaseHypothesisRunOutcome,
@@ -13,6 +14,7 @@ import {
   captureSymptomSummarySources,
   restoreSymptomSummary,
 } from './symptomSummarySources';
+import { fingerprint } from './evidenceUtils';
 
 async function defaultStorage() {
   const { openLocalAgentMemoryDatabase } =
@@ -39,10 +41,24 @@ export function createSymptomSummaryPersistence(input: {
     retrySave: async () => retry?.() ?? null,
     list: async before => (await store()).list(before),
     async read(id) {
-      const saved = await (await store()).read(id);
-      return saved
-        ? restoreSymptomSummary(saved, input.registry, await input.data())
-        : null;
+      const storage = await store();
+      const saved = await storage.read(id);
+      if (!saved || !hasCompleteSummaryLineage(saved)) return null;
+      const restored = await restoreSymptomSummary(
+        saved,
+        input.registry,
+        await input.data(),
+      );
+      // Deletion or revision changes may commit while source links are rebuilt.
+      const latest = await storage.readWithStatus(id);
+      if (!latest || fingerprint(latest.summary) !== fingerprint(saved))
+        return null;
+      return latest.sourceChanged && restored.savedSummary?.status === 'saved'
+        ? {
+            ...restored,
+            savedSummary: { ...restored.savedSummary, sourceChanged: true },
+          }
+        : restored;
     },
   };
   return {

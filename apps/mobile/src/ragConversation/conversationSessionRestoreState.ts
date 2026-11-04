@@ -6,6 +6,7 @@ type RestoredTurn = {
   readonly question: string;
   readonly answer: string;
   readonly citations: readonly EvidenceReference[];
+  readonly completion?: 'complete' | 'partial';
 };
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
@@ -33,6 +34,7 @@ export function createConversationSessionRestoreState(input: {
           role: 'assistant' as const,
           content: turn.answer,
           citations: turn.citations,
+          ...(turn.completion ? { completion: turn.completion } : {}),
         },
       ]);
       input.update(id, {

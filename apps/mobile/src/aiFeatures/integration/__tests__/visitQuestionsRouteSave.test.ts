@@ -64,13 +64,97 @@ function preparedContext(items: readonly VisitQuestionEvidenceItem[]) {
   return {
     status: 'ready',
     appointment,
-    evidence: { batch: { items } },
+    evidence: { batch: { items }, metadataByCitation: new Map() },
     searchEvidence: jest.fn(async () => ({ batch: { items } })),
     reloadPersonalEvidence: jest.fn(async () => items[0]),
     saveReviewedQuestions: jest.fn(async () => ({ memoryStatus: 'saved' })),
-    revalidateEvidence: jest.fn(async () => true),
+    revalidateEvidence: jest.fn(
+      async (_items: readonly VisitQuestionEvidenceItem[]) => true,
+    ),
   };
 }
+
+test('stores the resolved generated parent identity from a review alias', async () => {
+  const original = citation({
+    sourceKind: 'generated_artifact',
+    sourceId: 'turn',
+    evidenceId: 'turn',
+    sourceRevision: 'rev',
+    evidenceRevision: 'rev',
+    locator: { kind: 'generated_artifact', type: 'conversation_turn' },
+  });
+  const alias = sourceAlias(original);
+  const context = preparedContext([]);
+  const result = await saveVisitQuestionRoute(
+    {
+      appointment,
+      questions: [savedQuestion(alias)],
+      caveats: [],
+      resolveSource: () => original,
+      validateGeneratedArtifact: async () => true,
+    },
+    () => syntheticContextModule(context),
+  );
+  expect(result.questions[0]?.citations[0]).toMatchObject({
+    sourceId: 'turn',
+    evidenceId: 'turn',
+    locator: original.locator,
+  });
+  expect([...context.evidence.metadataByCitation.values()]).toEqual([
+    expect.objectContaining({
+      generatedArtifactSource: {
+        kind: 'generated_conversation',
+        type: 'conversation_turn',
+        id: 'turn',
+        revision: 'rev',
+      },
+    }),
+  ]);
+});
+
+test('revalidates a durable generated citation through the captured review alias after save', async () => {
+  const original = citation({
+    sourceKind: 'generated_artifact',
+    sourceId: 'turn',
+    evidenceId: 'turn',
+    sourceRevision: 'rev',
+    evidenceRevision: 'rev',
+    locator: { kind: 'generated_artifact', type: 'conversation_turn' },
+  });
+  const alias = sourceAlias(original);
+  const context = preparedContext([]);
+  const validate = jest.fn(
+    async (item: VisitQuestionEvidenceItem) => item.sourceId === alias.sourceId,
+  );
+  let revalidate:
+    ((item: VisitQuestionEvidenceItem) => Promise<boolean>) | undefined;
+  const result = await saveVisitQuestionRoute(
+    {
+      appointment,
+      questions: [savedQuestion(alias)],
+      caveats: [],
+      resolveSource: () => original,
+      validateGeneratedArtifact: validate,
+    },
+    async () => ({
+      prepareUpcomingVisitQuestionContext: async options => {
+        revalidate = item =>
+          options.validateGeneratedArtifact!(item, {} as never);
+        context.revalidateEvidence.mockImplementation(async items =>
+          Boolean(revalidate && (await revalidate(items[0]!))),
+        );
+        return context as never;
+      },
+    }),
+  );
+  expect(
+    await result.validateSource(
+      result.questions[0]!.citations[0]!,
+      new AbortController().signal,
+    ),
+  ).toBe(true);
+  expect(validate).toHaveBeenLastCalledWith(alias, expect.any(AbortSignal));
+});
 
 test('saves a restored citation only while its source and evidence revisions still match', async () => {
   const reviewedCitation = citation();

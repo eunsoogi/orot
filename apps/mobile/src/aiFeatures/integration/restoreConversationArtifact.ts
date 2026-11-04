@@ -4,6 +4,15 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { fingerprint, stableJson } from './evidenceUtils';
 import { restoreRetainedSources } from './restoreRetainedSources';
 import { bindConversationSources } from './conversationSourceBindings';
+import {
+  isGeneratedSummarySource,
+  isGeneratedConversationSource,
+  isGeneratedResearchSource,
+  isOriginalConversationSource,
+} from '../../ragConversation/conversationArtifactSources';
+import { restoreConversationSummarySource } from './restoreConversationSummarySource';
+import { restoreConversationParentSource } from './restoreConversationParentSource';
+import { restoreResearchSource } from './restoreResearchSource';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export async function restoreConversationArtifact(input: {
@@ -21,11 +30,43 @@ export async function restoreConversationArtifact(input: {
   if (!saved || saved.citations === undefined || input.signal.aborted)
     return null;
   const restored = await restoreRetainedSources(
-    saved.sources,
+    saved.sources.filter(isOriginalConversationSource),
     input.registry,
     input.data,
   );
   if (restored.sourceChanged || input.signal.aborted) return null;
+  let inheritedSourceUnknown = false;
+  for (const source of saved.sources) {
+    if (
+      !isGeneratedSummarySource(source) &&
+      !isGeneratedConversationSource(source) &&
+      !isGeneratedResearchSource(source)
+    )
+      continue;
+    const current = isGeneratedResearchSource(source)
+      ? await restoreResearchSource(
+          source,
+          input.registry,
+          input.data,
+          input.signal,
+        )
+      : isGeneratedSummarySource(source)
+        ? await restoreConversationSummarySource(
+            source,
+            input.registry,
+            input.data,
+            input.signal,
+          )
+        : await restoreConversationParentSource(
+            source,
+            input.registry,
+            input.data,
+            input.signal,
+          );
+    if (!current) return null;
+    inheritedSourceUnknown ||= current.sourceStatus === 'unknown';
+    restored.mapping.set(stableJson(source.reference), current.reference);
+  }
   const sourceAliases = saved.sources.map(source =>
     restored.mapping.get(stableJson(source.reference)),
   );
@@ -66,10 +107,12 @@ export async function restoreConversationArtifact(input: {
     revision: fingerprint(saved),
     sources: bound,
     citations: citations as NonNullable<(typeof citations)[number]>[],
-    sourceStatus: saved.sources.some(
-      source => source.reference.sourceKind === 'external_medical',
-    )
-      ? ('unknown' as const)
-      : ('current' as const),
+    sourceStatus:
+      inheritedSourceUnknown ||
+      saved.sources.some(
+        source => source.reference.sourceKind === 'external_medical',
+      )
+        ? ('unknown' as const)
+        : ('current' as const),
   };
 }

@@ -33,6 +33,7 @@ export interface VisitQuestionsRenderInput {
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
   readonly resolveSource: AiFeatureServices['resolveSource'];
+  readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
   readonly registerVisitQuestionSource: AiFeatureServices['registerVisitQuestionSource'];
   readonly selectedAiRevision: number;
   readonly loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'];
@@ -145,6 +146,7 @@ export function AiFeatureFlowScreen({
             resolveSelectedAi,
             confirmConsent,
             resolveSource: services.resolveSource,
+            generatedArtifactTools: services.generatedArtifactTools,
             registerVisitQuestionSource: services.registerVisitQuestionSource,
             selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,

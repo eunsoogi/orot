@@ -61,15 +61,9 @@ export async function historicalArtifactOutcome(
     ))
   )
     return { status: 'insufficient' };
-  const more = result.coverage.some(
-    coverage =>
-      coverage.sourceKind === 'generated_artifact' && coverage.nextCursor,
-  );
   return {
     status: 'answer',
-    answer: more
-      ? `${HISTORICAL_ARTIFACT_MESSAGE}\n\n더 오래된 결과가 있어요. 계속 찾아달라고 요청할 수 있어요.`
-      : HISTORICAL_ARTIFACT_MESSAGE,
+    answer: HISTORICAL_ARTIFACT_MESSAGE,
     citations: result.citations,
   };
 }

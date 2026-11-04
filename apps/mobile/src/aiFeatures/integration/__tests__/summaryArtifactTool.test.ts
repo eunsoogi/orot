@@ -207,10 +207,13 @@ test('searches retained AI output through scoped opaque references and invalidat
       await service.sendRagMessage('이전 요약을 찾아 주세요.', []),
     ).toMatchObject({ status: 'answer' });
     expect(runner).toHaveBeenCalledTimes(1);
-    await connection.database.execute(
-      'DELETE FROM symptom_summary_runs WHERE id = ?',
-      ['2035-01-01-run-c'],
-    );
+    jest.spyOn(data, 'findIdentifiers').mockImplementationOnce(async () => {
+      await connection.database.execute(
+        'DELETE FROM symptom_summary_runs WHERE id = ?',
+        ['2035-01-01-run-c'],
+      );
+      return [];
+    });
     await expect(
       follow.search({
         ...request,

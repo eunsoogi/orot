@@ -8,6 +8,7 @@ import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEviden
 import type { EvidenceSourceDocument } from './evidenceRegistry';
 import type { ManualHistoryEvidence } from '@orot/domain';
 import { presentHealthContext } from './healthContextPresentation';
+import { presentResearchSource } from './researchSourcePresentation';
 import {
   evidenceRecordHero,
   type EvidenceRecordHero,
@@ -180,6 +181,37 @@ export function presentEvidenceSource(
   }
   if (document.sourceKind === 'manual_history')
     return manualHistoryPresentation(document.evidence);
+  if (document.sourceKind === 'generated_artifact' && 'research' in document)
+    return presentResearchSource(document.research);
+  if (
+    document.sourceKind === 'generated_artifact' &&
+    'conversation' in document
+  )
+    return [
+      {
+        title: '이전 AI 대화',
+        rows: [
+          { label: '생성 시각', value: document.metadata.createdAt },
+          ...(document.metadata.completion === 'partial'
+            ? [{ label: '완료 상태', value: '일부만 생성된 답변' }]
+            : []),
+          {
+            label: '출처 상태',
+            value:
+              document.sourceStatus === 'current'
+                ? '현재 출처와 일치'
+                : '일부 출처 상태를 확인할 수 없음',
+          },
+          {
+            label: '주의',
+            value:
+              'AI가 생성한 이전 답변이며 독립적으로 확인된 의료 사실이 아닙니다.',
+          },
+          { label: '질문', value: document.conversation.question },
+        ],
+        hero: { body: document.conversation.answer, consumedLabels: [] },
+      },
+    ];
   if (document.sourceKind === 'generated_artifact')
     return document.analysis.hypotheses.map(section => ({
       title: '이전에 생성된 AI 결과',

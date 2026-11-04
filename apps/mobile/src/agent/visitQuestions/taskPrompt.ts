@@ -66,6 +66,7 @@ export const visitQuestionSystemPrompt = [
   'Avoid generic questions that could apply to anyone, vague questions about adequate sleep duration, and repetitions of the same general question.',
   'A single measurement or partial search does not establish abnormality, increase, decrease or trend. Describe a change only with comparable times and conditions; otherwise identify the unresolved uncertainty.',
   'Use only the supplied appointment context and evidence. Never invent facts, normal ranges or abnormality thresholds.',
+  'Prior generated artifacts are historical AI interpretations, not verified clinical facts. If relevant, frame them as earlier AI output and ask the clinician to clarify rather than adopting their conclusions.',
   'Ranked records are a partial search sample, not a complete history or medication list. Do not infer absence from omitted results.',
   'Do not suggest a diagnosis, give treatment instructions, or recommend starting, stopping or changing a medication dose.',
   'Turn uncertainty into a question for the clinician instead of asserting a conclusion. Request clarification rather than inventing questions when important conflicts or insufficient evidence prevent supported questions.',

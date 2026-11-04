@@ -1,3 +1,4 @@
+import { buildVisitContext } from './visitContext';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
@@ -11,6 +12,7 @@ import { localEvidenceFingerprint } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { VisitQuestionEvidenceMetadata } from './evidence';
 import type {
   EvidenceReference,
   EvidenceSearchRuntime,
@@ -62,30 +64,6 @@ export type VisitQuestionContextResult =
       ) => Promise<VisitQuestionEvidenceItem | undefined>;
     };
 
-function buildVisitContext(appointment: Appointment) {
-  const context = {
-    effectiveAt: appointment.effectiveAt,
-    timeZoneIdentifier:
-      appointment.calendarEventSnapshot?.timeZoneIdentifier ?? null,
-    title: appointment.calendarEventSnapshot?.title ?? '',
-    ...(appointment.clinicLabel
-      ? { clinicLabel: appointment.clinicLabel }
-      : {}),
-    ...(appointment.reason ? { reason: appointment.reason } : {}),
-    ...(appointment.note ? { note: appointment.note } : {}),
-  };
-  const query = [
-    context.title,
-    context.clinicLabel,
-    context.reason,
-    context.note,
-    '다음 외래 방문을 위해 최근 검사 결과와 건강 기록, 복용 정보, 전사 내용을 확인할 질문',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  return { context, query };
-}
-
 /** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
@@ -97,6 +75,10 @@ export async function prepareVisitQuestionContext(input: {
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
   readonly readHealthContext?: HealthContextReader;
+  readonly validateGeneratedArtifact?: (
+    citation: VisitQuestionEvidenceItem,
+    metadata: VisitQuestionEvidenceMetadata,
+  ) => Promise<boolean>;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionContextResult> {
   if (!Number.isFinite(Date.parse(input.now))) {
@@ -226,6 +208,26 @@ export async function prepareVisitQuestionContext(input: {
       );
       return mapped.item;
     },
-    revalidateEvidence,
+    async revalidateEvidence(citations) {
+      const generated = citations.filter(
+        citation => citation.sourceKind === 'generated_artifact',
+      );
+      const local = citations.filter(
+        citation => citation.sourceKind !== 'generated_artifact',
+      );
+      if (local.length && !(await revalidateEvidence(local))) return false;
+      for (const citation of generated) {
+        const metadata = metadataByCitation.get(
+          visitQuestionCitationKey(citation),
+        );
+        if (
+          !metadata?.generatedArtifactSource ||
+          !input.validateGeneratedArtifact ||
+          !(await input.validateGeneratedArtifact(citation, metadata))
+        )
+          return false;
+      }
+      return !input.signal?.aborted;
+    },
   };
 }

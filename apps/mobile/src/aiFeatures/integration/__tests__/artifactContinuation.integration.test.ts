@@ -172,7 +172,8 @@ test('continues empty pages in the same conversation without sharing its handle 
     expect(source.status).toBe('available');
     if (
       source.status !== 'available' ||
-      source.document.sourceKind !== 'generated_artifact'
+      source.document.sourceKind !== 'generated_artifact' ||
+      !('analysis' in source.document)
     )
       throw new Error('Expected generated artifact');
     expect(source.document.analysis.hypotheses[0]?.summary).toBe(

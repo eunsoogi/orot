@@ -18,7 +18,40 @@ export function createConversationSessionRetention(input: {
   now: () => string;
 }) {
   const slots = new Map<number, Slot>();
+  let lifecycle = 0;
   return {
+    invalidate() {
+      lifecycle += 1;
+      for (const slot of slots.values())
+        for (const turn of slot.turns) turn.discardRetry();
+      slots.clear();
+    },
+    activeIdentity(id: number) {
+      const slot = slots.get(id);
+      return slot && !slot.hidden ? slot.id : null;
+    },
+    activeLease(id: number) {
+      const slot = slots.get(id);
+      return slot && !slot.hidden
+        ? { id: slot.id, version: slot.version }
+        : null;
+    },
+    prepareRemoval(id: number) {
+      const slot = slots.get(id);
+      if (!slot) return;
+      slot.hidden = true;
+      for (const turn of slot.turns) turn.suspend();
+    },
+    async resumeIfActive(id: number) {
+      const slot = slots.get(id);
+      if (!slot) return null;
+      const storage = await input.openStorage();
+      if ((await storage.activeSessionVersion(slot.id)) !== slot.version)
+        return null;
+      slot.hidden = false;
+      for (const turn of slot.turns) turn.resume();
+      return slot.id;
+    },
     async attachExisting(
       id: number,
       durableId: string,
@@ -31,9 +64,12 @@ export function createConversationSessionRetention(input: {
         expectedVersion < 0
       )
         throw new Error('Conversation session state is invalid.');
+      // A read started before a local-data clear must never attach its old result.
+      const started = lifecycle;
       const storage = await input.openStorage();
       if (
         (await storage.activeSessionVersion(durableId)) !== expectedVersion ||
+        started !== lifecycle ||
         slots.has(id) ||
         [...slots.values()].some(slot => slot.id === durableId)
       )
@@ -100,9 +136,9 @@ export function createConversationSessionRetention(input: {
       const slot = slots.get(id);
       if (!slot) return null;
       slot.hidden = true;
-      for (const turn of slot.turns) turn.discardRetry();
       const storage = await input.openStorage();
       const version = await storage.hideSession(slot.id, slot.version);
+      for (const turn of slot.turns) turn.discardRetry();
       return { id: slot.id, version };
     },
     async undo(

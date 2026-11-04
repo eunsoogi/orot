@@ -21,6 +21,13 @@ the contract is considered complete.
 | Reviewed agent memory                       | `agent_memory_records` and source-removal records                                             | Reviewed-memory search.                                                                               | Verify current source validity, pagination and deletion across consumers.                                               |
 | Graph checkpoints                           | `langgraph_checkpoints`, `langgraph_checkpoint_writes` and source links                       | Workflow recovery, not a general artifact catalog.                                                    | Determine retained user-visible outputs separately from transient workflow state.                                       |
 
+A focused integration test saves a reviewed visit question through the existing
+save operation, reopens its SQLite file, and exercises the record-conversation
+search and source-read paths. It also checks that deleting the question revokes
+the source read. The test uses a synthetic workflow runner and ranking port; it
+does not establish native SQLCipher restart, real-model selection or cross-feature
+coverage beyond that path.
+
 ## Required contract
 
 Discovery must read authoritative encrypted stores or rebuildable projections,
@@ -45,25 +52,52 @@ Symptom Journal are being removed separately; this contract must preserve their
 retained shared data without restoring their entry points. Combined final
 feature and physical-device acceptance belongs to the integration issue.
 
-The draft implementation adds symptom-summary and possibility discovery to
-record conversation, with local source-follow tools and a revalidated source
-view. This is not yet a complete consumer matrix: the other retained AI routes,
-conversation persistence, research retention, authentic restart and real-model
-evidence remain outstanding. A generated result cannot yet be saved as a source
-for reviewed visit questions; that boundary remains closed until its lineage and
-deletion propagation are implemented.
+The draft connects symptom-summary, possibility and retained conversation
+discovery and local source-follow tools to record conversation, symptom summary,
+disease-possibility analysis and visit-question generation. Generated results
+remain labeled as historical AI output. New reviewed questions preserve their
+generated parents, including uncited generated inputs, and source invalidation
+propagates through retained descendants. Saved visit-question history restores
+generated parents as earlier AI context with revision checks. Saved questions
+do not distinguish directly cited generated parents from uncited generated
+context, so generated-only saved questions cannot be edited as cited drafts
+without regeneration. Saved summaries and conversation turns can be found using
+retained public research titles and
+expose validated public source links as historical metadata. Standalone research
+snapshots are stored in the same encrypted database and exposed through a local
+research tool. Europe PMC snapshots retain citation metadata and the original
+link, not abstract text; public-web snapshots retain the generated explanation
+and its cited links as historical AI output. Free-form results retain the local
+inputs available to the query; conversation results additionally require a
+durable session so deletion can remove text derived from the conversation.
+When this lineage is unavailable the result remains run-local and its coverage
+reports the retention gap. Local SQLite tests cover search,
+detail, deletion and selected derived artifacts, but do not establish native
+restart or real-model use. Authentic
+restart, real-model evidence and integration acceptance remain outstanding.
 
 Newly saved summaries retain every workflow evidence input, including sources
 the response did not cite. Older summaries recorded citations only. The shared
 catalog identifies those older rows with unknown input lineage, but withholds
 their body from cross-feature detail and provider use: an uncited deleted input
 cannot be reconstructed or checked. The original summary history remains a
-separate compatibility boundary. A safe migration or retention decision is
-still needed for those legacy rows; this does not establish their complete
-discovery or deletion behavior.
+separate compatibility boundary. The original stored row is preserved while
+its input lineage is unknown, and local history does not restore its body.
+This does not establish complete discovery for those legacy rows.
 
-Conversation turns currently lack durable source lineage. Until that lineage is
-available, previous assistant prose is withheld from later provider requests;
+For a text query, cross-feature search now reports a query-independent
+coverage gap when its page contains older summaries with unknown lineage. It
+does not return their identities, timestamps, sources or text as search items:
+their association with a deleted input cannot be ruled out. This notice is
+not an item-level discovery or detail-read solution. Local history displays a
+notice in place of opening an unknown-lineage result. Neither inventing source
+links nor treating the available citation list as complete can safely backfill
+the missing lineage.
+
+Newly retained conversation turns can record admitted source lineage, including
+exact retained summary, conversation and research parents and their underlying
+sources. Other generated-parent types are not yet supported. Previous assistant prose is
+therefore withheld from later provider requests;
 user questions remain in the bounded history. This protects against resending
 an answer after a source is removed, but limits follow-up continuity and does
 not remove stale text from an already visible session. Persistence must capture
@@ -74,14 +108,32 @@ and an observable retry path before saved turns can be exposed to other features
 
 The draft includes a conversation-output store in the existing encrypted
 database, with session and whole-store deletion fences and source-linked
-invalidation. The conversation service can pass a validated answer and all of
-its admitted sources to a retention callback, but the screen does not yet use
-that callback to save, retry, or restore sessions. A shared service can page
-and read saved turns across sessions with revalidated source links, but no AI
-tool or screen is connected to that catalog yet. Its SQLite tests do not establish native restart
-or real-model behavior. Session deletion undo and generated-parent lineage
-need integration before this boundary is complete. Memory compaction preserves
-outputs when their reviewed source content and metadata remain unchanged.
+invalidation. The app route now supplies retention callbacks so validated
+answers are saved, failed writes can be retried, and a session can be restored
+with freshly revalidated source links when its durable identity is attached.
+The history screen still lists only sessions created in the current process; it
+does not yet enumerate durable sessions after restart. The record-conversation
+tool can page and read saved turns across sessions with revalidated source
+links. SQLite tests do not establish native restart or real-model behavior.
+Visible cached text invalidation and durable-session enumeration need
+integration before this boundary is complete. Memory compaction
+preserves outputs when their reviewed source content and metadata remain
+unchanged.
+Validated conversation answers can declare that they address only part of a
+request; that status is displayed and retained with the answer. Uncommitted
+streaming text and cancelled attempts are not saved as artifacts. Whether a
+model identifies a partial answer accurately still requires real-model evidence.
+The native SQLite binding exposes update and transaction hooks, but dispatches
+their callbacks asynchronously to JavaScript. They cannot by themselves fence
+visible cached text at the instant a source changes or prove callback delivery
+before another operation completes. A production invalidation path must cover
+all source writers and restore while preserving transaction and failure behavior.
+The binding queues transactions but allows top-level execution on the same
+connection while a transaction is open. A notification attached only to the
+top-level call can therefore precede commit or report a change later rolled
+back. SQL transaction control can also bypass a wrapper around typed commit
+methods. The mutation boundary must account for both behaviors before cached
+conversation text is enabled for durable restoration.
 The write adapter can retry an unchanged candidate without another model call.
 Cancellation before its last transactional check rolls back the write; after
 that point a successful commit wins. The screen must retain request ownership

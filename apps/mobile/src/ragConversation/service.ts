@@ -15,10 +15,8 @@ import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/dele
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
 import { historicalArtifactOutcome } from './historicalArtifactAnswer';
-import type { ArtifactContinuation } from './artifactContinuation';
 import { providerHistoryMessage } from './conversationHistoryPayload';
 import { trackValidatedEvidence } from './conversationRetentionEvidence';
-import type { ConversationRetentionCandidate } from './conversationRetention';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -35,23 +33,7 @@ export type {
   RagConversationOutcome,
 } from './outcome';
 
-/** Screen observers receive safe progress and task-projected text, never request or evidence payloads. */
-export type RagConversationObserver = Pick<
-  MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent'
-> & {
-  readonly conversationScope?: string;
-  readonly artifactContinuation?: ArtifactContinuation | null;
-  readonly onArtifactContinuation?: (
-    value: ArtifactContinuation | null,
-  ) => void;
-  /** Resolving means commit won, even if cancellation arrived after the commit point. */
-  readonly onRetentionCandidate?: (
-    candidate: ConversationRetentionCandidate,
-    signal: AbortSignal,
-  ) => Promise<void>;
-  readonly onRetentionFailure?: () => void;
-};
+export type { RagConversationObserver } from './conversationObserver';
 
 export interface RagConversationRunOptions {
   readonly question: string;
@@ -190,7 +172,14 @@ export async function runRagConversationTurn(
               coverage => coverage.sourceKind === 'generated_artifact',
             )
             ? { status: 'insufficient' }
-            : { status: 'answer', answer: result.value.answer, citations: [] },
+            : {
+                status: 'answer',
+                answer: result.value.answer,
+                citations: [],
+                ...(result.value.completion === 'partial'
+                  ? { completion: 'partial' }
+                  : {}),
+              },
         );
       }
       if (!result.citations.length) return { status: 'insufficient' };
@@ -212,6 +201,9 @@ export async function runRagConversationTurn(
         return { status: 'insufficient' };
       return accepted({
         status: 'answer',
+        ...(result.value.completion === 'partial'
+          ? { completion: 'partial' }
+          : {}),
         // Label source-relative time even when the model omits that qualifier in its prose.
         answer: result.citations.some(isPublicWebReference)
           ? `${result.value.answer}\n\n공개 웹자료를 바탕으로 AI가 정리한 설명을 참고했어요. 함께 표시된 출처에서 원문을 확인할 수 있어요.`

@@ -13,6 +13,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;
+  readonly completion?: 'complete' | 'partial';
   /** Failed prompts stay visible when the user has already drafted a different question. */
   readonly failed?: boolean;
 }
@@ -77,6 +78,11 @@ export function ConversationMessage({
               {t('aiActivity.draft.incompleteNote')}
             </Text>
           </>
+        ) : null}
+        {message.completion === 'partial' ? (
+          <Text style={styles.activity}>
+            {t('ragConversation.savedPartial')}
+          </Text>
         ) : null}
         {activityBeforeText ? activity : null}
         {message.content ? (

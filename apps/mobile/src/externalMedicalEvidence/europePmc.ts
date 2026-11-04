@@ -33,6 +33,8 @@ export type EuropePmcFetcher = (
 ) => Promise<EuropePmcResponse>;
 
 export interface EuropePmcMedicalEvidenceService {
+  /** Drops an unsaved retry when its owning screen is dismissed. */
+  discardPending?(): void;
   search(
     query: string,
     options: {

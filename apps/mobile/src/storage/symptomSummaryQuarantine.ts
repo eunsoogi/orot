@@ -9,6 +9,7 @@ import {
   referencesDeletedSymptom,
 } from './agentMemorySymptomQuarantine';
 import { decodeAgentMemoryRecord } from './agentMemoryStorageRecords';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
 /** A pending deletion hides saved prose derived from the symptom or quarantined memory. */
 export const visibleSummary = `NOT EXISTS (
@@ -43,7 +44,9 @@ export async function assertSummarySourceAvailable(
     (kind === 'reviewed_memory' &&
       referencesDeletedSymptom(decodeAgentMemoryRecord(source), deleted))
   ) {
-    throw new Error('A cited source was removed before saving.');
+    throw new RetainedSourceInvalidError(
+      'A cited source was removed before saving.',
+    );
   }
 }
 
@@ -65,5 +68,7 @@ export async function assertSymptomPeriodAvailable(
     ],
   );
   if (result.rows.length)
-    throw new Error('A symptom period source was removed.');
+    throw new RetainedSourceInvalidError(
+      'A symptom period source was removed.',
+    );
 }

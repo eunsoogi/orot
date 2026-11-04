@@ -25,6 +25,8 @@ import {
 import { runVisitQuestionWorkflow } from './workflow';
 import { createBoundedVisitQuestionChunkBuilder } from './boundedEvidenceChunks';
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
+import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { VisitQuestionEvidenceMetadata } from './evidence';
 
 let localMemoryEmbedder: LocalE5EmbeddingProvider | null = null;
 
@@ -36,6 +38,10 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
   readonly signal?: AbortSignal;
+  readonly validateGeneratedArtifact?: (
+    citation: VisitQuestionEvidenceItem,
+    metadata: VisitQuestionEvidenceMetadata,
+  ) => Promise<boolean>;
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const [secureDatabase, rag] = await Promise.all([
@@ -73,6 +79,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
     repository,
     rag,
     readHealthContext: localData.readHealthContext,
+    validateGeneratedArtifact: input.validateGeneratedArtifact,
     buildChunks: createBoundedVisitQuestionChunkBuilder(async () =>
       createLocalEvidenceData(
         await secureDatabase.openLocalAgentMemoryDatabase(),

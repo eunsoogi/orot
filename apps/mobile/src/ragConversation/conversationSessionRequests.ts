@@ -69,10 +69,10 @@ export function createConversationSessionRequests(
   return {
     cancel,
     abandon(id: number) {
+      saveRecovery.suspend(id);
       controllers.get(id)?.abort();
       controllers.delete(id);
       pendingTurns.delete(id);
-      saveRecovery.forget(id);
       update(id, {
         busy: false,
         pendingMessage: null,
@@ -92,6 +92,8 @@ export function createConversationSessionRequests(
         !question ||
         session.busy ||
         session.restoring ||
+        session.retryingSave ||
+        (session.restoreAfterRetry && Boolean(session.unsavedCount)) ||
         session.restoreFailed ||
         session.quarantined
       )
@@ -140,6 +142,9 @@ export function createConversationSessionRequests(
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
           conversationScope: conversationScope(id),
+          ...(retention?.activeLease(id)
+            ? { retentionSession: retention.activeLease(id)! }
+            : {}),
           artifactContinuation: session.artifactContinuation ?? null,
           onArtifactContinuation(value) {
             if (current()) update(id, { artifactContinuation: value });
@@ -206,7 +211,10 @@ export function createConversationSessionRequests(
               role: 'assistant',
               content,
               ...(outcome.status === 'answer'
-                ? { citations: outcome.citations }
+                ? {
+                    citations: outcome.citations,
+                    completion: outcome.completion,
+                  }
                 : {}),
             },
           ],
@@ -236,6 +244,7 @@ export function createConversationSessionRequests(
       }
     },
     retrySave: saveRecovery.retry,
+    resumeSaves: saveRecovery.resume,
     forgetSaves: saveRecovery.forget,
   };
 }

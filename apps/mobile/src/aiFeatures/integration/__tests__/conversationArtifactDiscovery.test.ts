@@ -67,6 +67,24 @@ test('pages retained conversations across sessions after reopening and reads the
     const first = await discovery.search({ query: '찾을', limit: 1 });
     expect(first.items).toEqual([]);
     expect(first.unavailableCount).toBe(1);
+    const all = await discovery.search({ query: '', limit: 4 });
+    expect(all.items.map(item => item.id)).toEqual(['c', 'b', 'a']);
+    expect(all.itemCursors).toHaveLength(3);
+    const afterFirst = await discovery.search({
+      query: '',
+      limit: 4,
+      cursor: all.itemCursors[0],
+    });
+    expect(afterFirst.items.map(item => item.id)).toEqual(['b', 'a']);
+    const filtered = await discovery.search({ query: '답변', limit: 4 });
+    expect(filtered.unavailableCount).toBe(1);
+    expect(filtered.items.map(item => item.id)).toEqual(['c', 'b']);
+    const afterFiltered = await discovery.search({
+      query: '답변',
+      limit: 4,
+      cursor: filtered.itemCursors[0],
+    });
+    expect(afterFiltered.items.map(item => item.id)).toEqual(['b']);
     const original = await storage.read('c');
     if (!original) throw new Error('Missing synthetic turn.');
     const changed = { ...original, answer: 'changed after matching' };

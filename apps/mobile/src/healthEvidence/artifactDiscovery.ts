@@ -23,6 +23,8 @@ export interface ArtifactPage<T extends ArtifactMetadata> {
   readonly nextCursor: string | null;
   /** Rows that could not be safely read; callers must not describe the page as complete. */
   readonly unavailableCount: number;
+  /** Rows omitted from text search because their original input lineage is unknown. */
+  readonly unknownLineageCount?: number;
 }
 
 export interface ArtifactDetail<T extends ArtifactMetadata, Content> {

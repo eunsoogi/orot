@@ -34,6 +34,8 @@ export function useVisitQuestionSourceOpener(props: SourceRouteInput) {
     },
     [],
   );
+  // Save operations must keep their original validator even after the UI installs a new one.
+  const captureValidator = useCallback(() => validator.current, []);
   const onOpenSource = useCallback(
     (reference: EvidenceItem) => {
       if (resolveSource(reference)) {
@@ -55,5 +57,5 @@ export function useVisitQuestionSourceOpener(props: SourceRouteInput) {
     [openSource, registerVisitQuestionSource, resolveSource],
   );
 
-  return { onOpenSource, rememberValidator };
+  return { onOpenSource, rememberValidator, captureValidator };
 }

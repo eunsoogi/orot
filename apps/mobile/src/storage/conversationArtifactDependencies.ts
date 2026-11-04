@@ -2,6 +2,12 @@ import type { SqlExecutor } from '@orot/storage';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import type { ConversationArtifact } from './conversationArtifactCodec';
 import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
+import {
+  isGeneratedSummarySource,
+  isGeneratedConversationSource,
+  isGeneratedResearchSource,
+} from '../ragConversation/conversationArtifactSources';
 
 /** Logical tombstones fence retained results even before a physical record is removed. */
 export async function assertConversationSourcesNotRemoved(
@@ -9,6 +15,12 @@ export async function assertConversationSourcesNotRemoved(
   value: ConversationArtifact,
 ) {
   for (const source of value.sources) {
+    if (
+      isGeneratedSummarySource(source) ||
+      isGeneratedConversationSource(source) ||
+      isGeneratedResearchSource(source)
+    )
+      continue;
     if (isPeriodSummarySource(source)) {
       await assertPeriodNotRemoved(tx, source);
       continue;
@@ -25,7 +37,9 @@ export async function assertConversationSourcesNotRemoved(
         [id, id],
       );
       if (removed.rows.length)
-        throw new Error('A source was removed before saving.');
+        throw new RetainedSourceInvalidError(
+          'A source was removed before saving.',
+        );
     }
   }
 }

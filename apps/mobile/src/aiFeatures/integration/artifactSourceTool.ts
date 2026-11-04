@@ -60,16 +60,16 @@ export function createArtifactSourceTool(
         request.operationRunId,
         parsed.evidenceId as string,
       );
-      if (
-        !lineage ||
-        lineage.reference.sourceKind !== kind ||
-        !data.summaryArtifactDiscovery
-      )
+      if (!lineage || lineage.reference.sourceKind !== kind)
         throw new Error('Artifact source is unavailable.');
       const reference = lineage.reference;
       const original = registry.resolve(reference);
       if (!original) throw new Error('Artifact source is unavailable.');
-      const discovery = await data.summaryArtifactDiscovery(registry);
+      const discovery =
+        lineage.catalog === 'conversation'
+          ? await data.conversationArtifactDiscovery?.(registry)
+          : await data.summaryArtifactDiscovery?.(registry);
+      if (!discovery) throw new Error('Artifact source is unavailable.');
       const readSource = async (signal: AbortSignal) => {
         const parent = await discovery.read(lineage.parentId, signal);
         if (!parent) return { status: 'missing' as const };
@@ -109,6 +109,16 @@ export function createArtifactSourceTool(
         validate: async signal =>
           (await readSource(signal)).status === 'available',
       });
+      // Identifier scanning is asynchronous; verify both the source and parent after it finishes.
+      if (
+        !(await registry.revalidateEvidence([item], request.signal)) ||
+        !(await discovery.revalidatePage(
+          [{ id: lineage.parentId, revision: lineage.parentRevision }],
+          request.signal,
+        )) ||
+        request.signal.aborted
+      )
+        throw new Error('Artifact source changed or is unavailable.');
       return {
         items: [item],
         conflicts: [],
