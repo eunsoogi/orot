@@ -246,5 +246,4 @@ enum NavigationGeometryUITestConditions {
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
         return try XCTUnwrap(homeFrame)
     }
-
 }
