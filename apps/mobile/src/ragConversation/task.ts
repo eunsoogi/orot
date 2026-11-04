@@ -55,22 +55,30 @@ function priorMessages(
   });
 }
 
-/** Only verbatim, explicitly attributed record text can describe a prior diagnosis. */
+/** A historical claim is allowed only when its attributed phrase appears in a current record. */
 function hasUnsupportedClinicalClaim(
   answer: string,
   input: TaskResponderInput,
 ): boolean {
   if (!containsDefinitiveClinicalClaim(answer)) return false;
-  if (!/(?:기록|진료).*(?:적혀|기재|나와)/u.test(answer)) return true;
-  let remainder = answer;
-  for (const item of input.evidence.items) {
-    if (item.sourceKind !== 'personal_record' || item.content.trim().length < 8)
-      continue;
-    // Remove the exact source text only: an additional assertion must still be checked.
-    if (remainder.includes(item.content))
-      remainder = remainder.replace(item.content, '');
-  }
-  return containsDefinitiveClinicalClaim(remainder);
+  return answer.split(/(?<=[.!?\n])/u).some(sentence => {
+    if (!containsDefinitiveClinicalClaim(sentence)) return false;
+    const attributed = sentence.match(
+      /(?:기록|진료)[^.!?\n]*?([가-힣A-Za-z0-9]+(?:으로|로)\s*진단(?:받았|받으셨|되었|된))[^.!?\n]*?(?:적혀|기재|나와)/u,
+    );
+    const phrase = attributed?.[1];
+    if (
+      !phrase ||
+      !input.evidence.items.some(
+        item =>
+          item.sourceKind === 'personal_record' &&
+          item.content.includes(phrase),
+      )
+    )
+      return true;
+    // Check the remainder independently so attribution cannot hide another claim.
+    return containsDefinitiveClinicalClaim(sentence.replace(phrase, ''));
+  });
 }
 
 /** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */

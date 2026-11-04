@@ -128,7 +128,7 @@ test('permits verbatim attributed diagnosis history but not an additional diagno
           locator: { kind: 'structured_record' as const, recordId: 'history' },
           effectiveTime: null,
           reviewState: 'reviewed' as const,
-          content: '당뇨로 진단받았다고',
+          content: 'manual_history: {"note":"당뇨로 진단받았어요"}',
         },
       ],
       coverage: [],
