@@ -67,10 +67,10 @@ test('saves compact automatic-sync choices and shows the result', async () => {
     screen.getByTestId('health-data-feature-status-sleep'),
   ).toHaveTextContent('자동 동기화 꺼짐');
   expect(screen.getByTestId('health-data-connection-status')).toHaveTextContent(
-    '이 기기에서 HealthKit을 사용할 수 있어요.',
+    '이 기기에서 건강 앱 기록을 사용할 수 있어요.',
   );
   expect(screen.getByTestId('health-data-permission-status')).toHaveTextContent(
-    /HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요\./,
+    /건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요\./,
   );
 
   await fireEvent.press(bloodPressure);
@@ -150,7 +150,7 @@ test('retries the saved choices without hiding the permission limitation', async
   expect(loadSelection).toHaveBeenCalledTimes(2);
   expect(loadIntegrationStatus).toHaveBeenCalledTimes(statusLoadCalls);
   expect(screen.getByTestId('health-data-permission-status')).toHaveTextContent(
-    /HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요\./,
+    /건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요\./,
   );
 });
 
@@ -180,8 +180,9 @@ test('retries HealthKit status without replacing unsaved category choices', asyn
   const steps = await screen.findByTestId('health-data-feature-steps');
   expect(steps.props.accessibilityState.disabled).toBe(false);
   expect(screen.getByTestId('health-data-connection-status')).toHaveTextContent(
-    'HealthKit 연결 상태를 확인하지 못했어요.',
+    '건강 앱 기록 상태를 확인하지 못했어요.',
   );
+  expect(screen.queryByText('HealthKit status unavailable')).toBeNull();
   expect(screen.getByTestId('health-data-status-load-error')).toHaveTextContent(
     '연동 상태를 모두 확인하지 못했어요.',
   );
@@ -196,7 +197,7 @@ test('retries HealthKit status without replacing unsaved category choices', asyn
   await act(async () => finishRetry?.(availableIntegrationStatus));
   expect(
     await screen.findByTestId('health-data-connection-status'),
-  ).toHaveTextContent('이 기기에서 HealthKit을 사용할 수 있어요.');
+  ).toHaveTextContent('이 기기에서 건강 앱 기록을 사용할 수 있어요.');
   expect(
     screen.getByTestId('health-data-feature-status-heartRate'),
   ).toHaveTextContent('자동 동기화 켜짐');

@@ -156,7 +156,8 @@ const enumLabels: Record<string, Record<string, string>> = {
     reviewed: '검토됨',
     unreviewed: '미검토',
   },
-  system: { healthkit: 'HealthKit' },
+  // Keep the storage/provider identifier internal and show a familiar source name.
+  system: { healthkit: '건강 앱' },
 };
 
 export function visibleValue(value: unknown, key?: string): string | undefined {

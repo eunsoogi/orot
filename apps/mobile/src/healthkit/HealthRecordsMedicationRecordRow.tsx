@@ -52,9 +52,10 @@ export function HealthRecordsMedicationRecordRow({
 
 function sourceLabel(row: HealthRecordsMedicationDetailRow): string {
   const source = row.doseEvent.provenance.source;
-  // Source identifiers are import keys, so display only a readable name or the known system label.
+  // Source identifiers are import keys, so show a saved name or the localized health app label.
   if (source?.sourceName) return source.sourceName;
-  if (source?.system === 'healthkit') return 'HealthKit';
+  if (source?.system === 'healthkit')
+    return t('healthRecords.source.healthApp');
   return t('healthRecords.medicationSourceUnavailable');
 }
 

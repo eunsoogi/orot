@@ -32,6 +32,9 @@ test('shows saved dose events, exact status and period controls on a separate li
   expect(
     screen.getByTestId('health-record-medication-row-0-dose'),
   ).toHaveTextContent('1 tablet');
+  expect(
+    screen.getByTestId('health-record-medication-row-0-source'),
+  ).toHaveTextContent('출처: 건강 앱');
   await fireEvent.press(
     screen.getByTestId('health-record-period-three_months'),
   );

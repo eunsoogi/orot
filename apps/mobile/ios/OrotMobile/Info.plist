@@ -26,8 +26,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string
-    >선택하신 건강 기능에 필요한 HealthKit 데이터를 읽어 관련 정보를 제공합니다.</string>
+	<string>건강 앱에서 선택한 기록을 읽어 관련 건강 정보를 제공합니다.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true />
 	<key>UIApplicationSceneManifest</key>

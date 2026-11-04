@@ -1,5 +1,84 @@
 import XCTest
 
+/// Records and asserts the operating system's spoken result instead of treating an accessibility label as speech evidence.
+@available(iOS 27.0, *)
+@MainActor
+func assertVoiceOverSpeechOutput(
+    _ output: XCUIVoiceOverService.Output,
+    expected: String,
+    phase: String,
+    evidence: [String: Any] = [:],
+    testCase: XCTestCase,
+    file: StaticString = #filePath,
+    line: UInt = #line,
+) {
+    var payload: [String: Any] = ["utterance": output.utterance, "expected": expected]
+    for (key, value) in evidence {
+        payload[key] = value
+    }
+    let data = (try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])) ?? Data()
+    let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+    attachment.name = "voiceover-\(phase)"
+    attachment.lifetime = .keepAlways
+    testCase.add(attachment)
+    XCTAssertTrue(output.utterance.contains(expected), "Unexpected actual VoiceOver utterance: \(output.utterance)", file: file, line: line)
+}
+
+/// Owns VoiceOver's Simulator-wide setting and restores it after speech-focused test journeys.
+@available(iOS 27.0, *)
+@MainActor
+struct VoiceOverTestSession {
+    private let originallyEnabled = XCUIDevice.shared.voiceOverService.isEnabled
+
+    func registerRestoration(in testCase: XCTestCase) {
+        let previousSetting = originallyEnabled
+        testCase.addTeardownBlock { @MainActor in
+            let service = XCUIDevice.shared.voiceOverService
+            if service.isEnabled != previousSetting {
+                if previousSetting {
+                    try service.enable()
+                } else {
+                    try service.disable()
+                }
+            }
+            XCTAssertEqual(service.isEnabled, previousSetting)
+        }
+    }
+
+    /// Keeps layout and reflow assertions in ordinary interaction mode before testing spoken output.
+    func prepareForStandardInteraction() throws {
+        let service = XCUIDevice.shared.voiceOverService
+        if service.isEnabled {
+            try service.disable()
+        }
+    }
+
+    /// Requires native speech from the tapped element and rejects implementation names in that utterance.
+    func assertSpeech(
+        from element: XCUIElement,
+        expected: String,
+        forbiddenTerms: [String],
+        phase: String,
+        testCase: XCTestCase,
+    ) throws {
+        let service = XCUIDevice.shared.voiceOverService
+        if !service.isEnabled {
+            try service.enable()
+        }
+        XCTAssertTrue(service.isEnabled)
+        XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
+        element.tap()
+        let output = try service.currentSpeech()
+        assertVoiceOverSpeechOutput(output, expected: expected, phase: phase, testCase: testCase)
+        for term in forbiddenTerms {
+            XCTAssertFalse(
+                output.utterance.localizedCaseInsensitiveContains(term),
+                "VoiceOver exposed \(term) terminology: \(output.utterance)",
+            )
+        }
+    }
+}
+
 extension RootNavigationUITests {
     /// Uses real VoiceOver speech and touch activation; AX labels alone cannot prove focus or activation.
     @MainActor
@@ -88,12 +167,16 @@ extension RootNavigationUITests {
         let readStarted = Date().timeIntervalSince1970 * 1000
         let output = try read()
         let readEnded = Date().timeIntervalSince1970 * 1000
-        voiceOverAttachment(phase, ["utterance": output.utterance, "expected": expected,
-                                    "readStartedAtMs": readStarted, "readEndedAtMs": readEnded])
+        assertVoiceOverSpeechOutput(
+            output,
+            expected: expected,
+            phase: phase,
+            evidence: ["readStartedAtMs": readStarted, "readEndedAtMs": readEnded],
+            testCase: self,
+        )
         if let observationApp {
             captureHomeFocus(observationApp, speechStartedAtMs: readStarted, speechEndedAtMs: readEnded)
         }
-        XCTAssertTrue(output.utterance.contains(expected), "Unexpected actual VoiceOver utterance: \(output.utterance)")
     }
 
     /// One immutable XCTest snapshot follows the original Output attachment and precedes its unchanged assertion.
