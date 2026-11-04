@@ -165,6 +165,7 @@ export function NavigationRouteAdapter<Name extends string>({
       // retained routes cannot publish or receive input from an inactive rail.
       return (
         <NavigationViewport
+          active={active}
           childHandlesSafeArea
           actionBar={
             active ? (

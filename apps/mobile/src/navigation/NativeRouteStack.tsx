@@ -207,7 +207,8 @@ export function NativeRouteStack<Name extends string>({
           screenOptions={{
             animation: reduceMotion ? 'none' : 'default',
             contentStyle: styles.content,
-            freezeOnBlur: true,
+            // Retained routes must receive inactive updates so their portal rails unmount.
+            freezeOnBlur: false,
             gestureEnabled: true,
             headerShown: false,
           }}

@@ -35,10 +35,12 @@ export function NavigationViewport({
   children,
   actionBar,
   childHandlesSafeArea,
+  active = true,
 }: {
   readonly children: ReactNode;
   readonly actionBar: ReactNode;
   readonly childHandlesSafeArea: boolean;
+  readonly active?: boolean;
 }) {
   const [contentFrame, setContentFrame] =
     useState<NavigationLayoutFrame | null>(null);
@@ -72,11 +74,11 @@ export function NavigationViewport({
     [geometry, layout, viewportBounds],
   );
   useEffect(() => {
-    if (sharedFrame)
+    if (active && sharedFrame)
       observeNavigationTest('navigation-content-frame', {
         frame: JSON.stringify(sharedFrame),
       });
-  }, [sharedFrame]);
+  }, [active, sharedFrame]);
   const safeAreaInsets = useContext(SafeAreaInsetsContext);
   const visibleSide =
     sharedFrame?.side ??
