@@ -21,7 +21,7 @@ const publication = {
 const request = {
   operationRunId: 'turn-1',
   operationKey: 'tool-1',
-  input: { query: 'sleep duration' },
+  input: { topics: ['sleep'] },
   allowedScope: { sourceKinds: ['external_medical' as const] },
   resultLimit: 5,
   maxPayloadBytes: 65536,
@@ -48,11 +48,11 @@ test('denial sends nothing and approved references are confined to their exact t
   expect(content).toContain(publication.title);
   expect(authorize).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      query: 'sleep duration',
+      query: 'sleep',
       operationRunId: 'turn-1',
     }),
   );
-  expect(search).toHaveBeenCalledWith('sleep duration', {
+  expect(search).toHaveBeenCalledWith('sleep', {
     externalQueryConsented: true,
     signal: request.signal,
   });
@@ -128,7 +128,7 @@ test('uses available abstracts before applying the bounded medical-context resul
   ]);
   expect(search).toHaveBeenCalledTimes(1);
   expect(consent.authorize).toHaveBeenCalledWith(
-    expect.objectContaining({ query: 'sleep duration' }),
+    expect.objectContaining({ query: 'sleep' }),
   );
   const original = await createExternalConversationEvidence(
     { search },
@@ -141,6 +141,17 @@ test('uses available abstracts before applying the bounded medical-context resul
     'MED:124',
   ]);
   expect(original.coverage[0]?.gaps).toHaveLength(1);
+});
+
+test('rejects private free-form literature queries before consent or networking', async () => {
+  const search = jest.fn();
+  const authorize = jest.fn();
+  const run = createExternalConversationEvidence({ search }, { authorize });
+  await expect(
+    run.tool.search({ ...request, input: { query: '김테스트 혈압 170/100' } }),
+  ).rejects.toThrow();
+  expect(authorize).not.toHaveBeenCalled();
+  expect(search).not.toHaveBeenCalled();
 });
 
 test('does not fabricate medical context when none of the publications has an abstract', async () => {

@@ -25,6 +25,7 @@ import type {
 } from '../src/providers/selection/types';
 import type { NextVisitQuestion } from '../src/nextVisitQuestions/types';
 import { createVisitGenerationVisualRun } from './visitGenerationVisualState';
+import { PublicSearchConsentProbe } from './publicSearchConsentProbe';
 import { syntheticDiseaseCitation } from './aiFeatureVisitQuestionsSyntheticEvidence';
 import {
   evidenceSourceDuoVisitQuestionCitation,
@@ -205,6 +206,10 @@ function AiFeatureVisitQuestionsProbeEntry() {
       hidden.remove();
     };
   }, []);
+
+  if (launchSettings.OROT_PUBLIC_SEARCH_CONSENT_PROBE === 'synthetic') {
+    return <PublicSearchConsentProbe option={syntheticOption} />;
+  }
 
   return (
     <View style={styles.container}>
