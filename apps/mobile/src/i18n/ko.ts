@@ -12,6 +12,7 @@ import { symptomJournalKo } from './symptomJournal';
 import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
+import { appointmentActionsKo } from './appointmentActionsKo';
 
 export const ko = {
   ...homeOverviewKo,
@@ -169,6 +170,7 @@ export const ko = {
   'appointments.saved': '예약을 저장했어요.',
   'appointments.updated': '예약을 수정했어요.',
   'appointments.cancelled': '예약을 취소했어요.',
+  ...appointmentActionsKo,
   'appointments.form.editTitle': '예약 수정',
   'appointments.form.newTitle': '새 예약',
   'appointments.form.clinicLabel': '병원 또는 진료과',

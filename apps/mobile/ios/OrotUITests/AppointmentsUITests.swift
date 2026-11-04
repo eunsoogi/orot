@@ -60,7 +60,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         ReminderJourneyForm.assertAppointmentForm(app, clinic: "Neurology clinic")
     }
 
-    /// Confirms large text keeps details stacked and the appointment form reachable.
+    /// Confirms large text keeps details readable and each native action reachable.
     @MainActor
     func testLargeTextKeepsAppointmentDetailsInOneReadableColumn() throws {
         XCUIDevice.shared.orientation = .portrait
@@ -75,6 +75,28 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
 
+        let actionStack = UITestConditions.element(app, "appointment-actions-manual-1")
+        let oneHourReminder = UITestConditions.element(app, "appointment-reminder-manual-1-60")
+        let oneDayReminder = UITestConditions.element(app, "appointment-reminder-manual-1-1440")
+        let edit = UITestConditions.element(app, "appointment-edit-manual-1")
+        let cancel = UITestConditions.element(app, "appointment-cancel-manual-1")
+        // Portrait at accessibility text size covers narrow-width native reachability.
+        for action in [oneHourReminder, oneDayReminder, edit, cancel] {
+            FormUITestConditions.reveal(action, in: app, scrollID: "appointments-scroll")
+            XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+        }
+        XCTAssertTrue(actionStack.exists && !actionStack.frame.isEmpty, app.debugDescription)
+        XCTAssertLessThan(edit.frame.width, actionStack.frame.width, app.debugDescription)
+        XCTAssertEqual(cancel.frame.width, actionStack.frame.width, accuracy: 1, app.debugDescription)
+
+        cancel.tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.waitForAppearance(), app.debugDescription)
+        let keepAppointment = confirmation.buttons["예약 유지"]
+        XCTAssertTrue(keepAppointment.exists && keepAppointment.isHittable, app.debugDescription)
+        keepAppointment.tap()
+        XCTAssertFalse(confirmation.exists, app.debugDescription)
+
         let portraitBounds = app.frame
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForWindowBoundsChange(in: app, from: portraitBounds)
@@ -85,9 +107,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
             UITestConditions.text(UITestConditions.element(app, "appointment-clinic-manual-1")),
             "Cardiology clinic",
         )
-        let edit = UITestConditions.element(app, "appointment-edit-manual-1")
         FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
-        XCTAssertTrue(edit.exists && edit.isHittable, app.debugDescription)
         capture(app, "appointments-large-text-details")
         edit.tap()
         ReminderJourneyForm.assertAppointmentForm(app, clinic: "Cardiology clinic")
