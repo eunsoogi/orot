@@ -9,6 +9,7 @@ import type {
   TaskResponderInput,
 } from '@orot/agent-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
+import { containsDefinitiveClinicalClaim } from '../diseaseHypotheses/clinicalClaimGuard';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -120,7 +121,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         'conversation'
     )
       return undefined;
-    return extractPartialJsonStringAtPath(rawOutput, ['value', 'answer']);
+    const answer = extractPartialJsonStringAtPath(rawOutput, [
+      'value',
+      'answer',
+    ]);
+    return answer && !containsDefinitiveClinicalClaim(answer)
+      ? answer
+      : undefined;
   },
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
@@ -173,6 +180,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       return {
         status: 'needs_clarification',
         message: 'No current evidence is available.',
+      } as const;
+    }
+    // A model instruction alone cannot prevent a definitive diagnosis from reaching the user.
+    if (containsDefinitiveClinicalClaim(value.answer)) {
+      return {
+        status: 'invalid',
+        reason: 'The answer contained a definitive clinical claim.',
       } as const;
     }
     return {
