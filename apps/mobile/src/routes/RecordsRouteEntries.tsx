@@ -1,5 +1,4 @@
-import { Pressable, View, useWindowDimensions } from 'react-native';
-import { useCaptureActionHeights } from './useCaptureActionHeights';
+import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
@@ -9,7 +8,6 @@ import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
-  readonly onOpenSymptoms: () => void;
   readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
@@ -21,7 +19,6 @@ interface RecordsRouteEntriesProps {
 
 /** Groups capture actions and existing record destinations without adding a new scroll owner. */
 export function RecordsRouteEntries({
-  onOpenSymptoms,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
@@ -30,13 +27,6 @@ export function RecordsRouteEntries({
   medicalDocumentDisabled,
   onImportMedicalDocument,
 }: RecordsRouteEntriesProps) {
-  const { fontScale, width } = useWindowDimensions();
-  // At larger text sizes, full-width peers leave room for labels without limiting Dynamic Type.
-  const stackCaptureActions = fontScale > 1;
-  const { commonHeight, recordHeight } = useCaptureActionHeights(
-    width,
-    fontScale,
-  );
   return (
     <View style={styles.container}>
       <Text
@@ -47,25 +37,14 @@ export function RecordsRouteEntries({
         {t('records.title')}
       </Text>
       <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
-      <View
-        style={[
-          styles.captureActions,
-          stackCaptureActions && styles.stackedActions,
-        ]}
-        testID="records-capture-actions"
-      >
+      <View style={styles.captureActions} testID="records-capture-actions">
         <Pressable
           accessibilityRole="button"
           onPress={onOpenRecording}
-          style={[
-            styles.captureAction,
-            stackCaptureActions &&
-              commonHeight > 24 && { minHeight: commonHeight },
-          ]}
+          style={styles.captureAction}
           testID="records-new-recording"
         >
           <View
-            onLayout={event => recordHeight(0, event.nativeEvent.layout.height)}
             style={styles.captureContent}
             testID="recording-capture-content"
           >
@@ -75,30 +54,6 @@ export function RecordsRouteEntries({
             <Text style={styles.captureActionTitle}>
               {t('records.newRecording')}
             </Text>
-          </View>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenSymptoms}
-          style={[
-            styles.captureAction,
-            stackCaptureActions &&
-              commonHeight > 24 && { minHeight: commonHeight },
-          ]}
-          testID="symptoms-open"
-        >
-          <View
-            onLayout={event => recordHeight(1, event.nativeEvent.layout.height)}
-            style={styles.captureContent}
-            testID="symptom-capture-content"
-          >
-            <View style={styles.captureIcon}>
-              <AppSymbol
-                name="square.and.pencil"
-                color={appColors.primaryAction}
-              />
-            </View>
-            <Text style={styles.captureActionTitle}>{t('symptoms.title')}</Text>
           </View>
         </Pressable>
       </View>

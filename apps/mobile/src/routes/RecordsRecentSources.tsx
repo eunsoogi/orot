@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SymptomEntry } from '@orot/storage';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
-import { openLocalSymptomJournal } from '../symptoms/localRepository';
-import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -28,8 +25,6 @@ interface RecordsRecentSourcesProps {
   readonly onRetryDocuments: () => void;
   readonly onOpenMedicalDocument: (sourceId: string) => void;
   readonly onOpenSavedRecordings: () => void;
-  readonly onOpenSymptoms: () => void;
-  readonly loadSymptoms?: () => Promise<Pick<SymptomJournalRepository, 'list'>>;
 }
 
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
@@ -44,57 +39,24 @@ export function RecordsRecentSources({
   onRetryDocuments,
   onOpenMedicalDocument,
   onOpenSavedRecordings,
-  onOpenSymptoms,
-  loadSymptoms = openLocalSymptomJournal,
 }: RecordsRecentSourcesProps) {
-  const [symptoms, setSymptoms] = useState<readonly SymptomEntry[]>([]);
-  const [symptomState, setSymptomState] = useState<
-    'loading' | 'ready' | 'failed'
-  >('loading');
-  const [symptomLoadAttempt, setSymptomLoadAttempt] = useState(0);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    setSymptoms([]);
-    setSymptomState('loading');
-    // The Records feed reads the existing encrypted journal and never writes or revises its entries.
-    loadSymptoms()
-      .then(repository => repository.list())
-      .then(entries => {
-        if (!active) return;
-        setSymptoms(entries);
-        setSymptomState('ready');
-      })
-      .catch(() => {
-        if (!active) return;
-        setSymptoms([]);
-        setSymptomState('failed');
-      });
-    return () => {
-      active = false;
-    };
-  }, [loadSymptoms, symptomLoadAttempt]);
-
-  const records = buildRecentRecordEntries(recordings, documents, symptoms);
+  const records = buildRecentRecordEntries(recordings, documents);
   const groups = groupRecentRecords(records, new Date(), expanded ? null : 3);
   const isLoading =
-    recordingState === 'loading' ||
-    documentsState === 'loading' ||
-    symptomState === 'loading';
+    recordingState === 'loading' || documentsState === 'loading';
   // Independent source statuses must not replace records that loaded successfully.
   const loadErrors = [
     recordingState === 'failed' ? t('recording.library.loadError') : null,
     documentsState === 'failed'
       ? (documentsError ?? t('medicalDocument.source.loadError'))
       : null,
-    symptomState === 'failed' ? t('records.recent.symptomLoadError') : null,
   ].filter((message): message is string => message !== null);
 
   function retrySources() {
     onRetryRecordings();
     onRetryDocuments();
-    setSymptomLoadAttempt(attempt => attempt + 1);
   }
 
   return (
@@ -169,7 +131,6 @@ export function RecordsRecentSources({
                       groupLabel={group.label}
                       onOpenMedicalDocument={onOpenMedicalDocument}
                       onOpenSavedRecordings={onOpenSavedRecordings}
-                      onOpenSymptoms={onOpenSymptoms}
                       record={record}
                     />
                   );

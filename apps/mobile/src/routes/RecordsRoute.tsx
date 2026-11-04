@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { VerticalPageSections } from '../layout/VerticalPageSections';
@@ -14,17 +13,16 @@ import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDo
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
+import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetryRecordings: () => void;
-  readonly onOpenSymptoms: () => void;
   readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly documentImportService?: MedicalDocumentImportService;
-  readonly loadSymptoms?: () => Promise<Pick<SymptomJournalRepository, 'list'>>;
   readonly onOpenManualHistory: () => void;
 }
 
@@ -33,12 +31,10 @@ export function RecordsRoute({
   recordings,
   recordingState,
   onRetryRecordings,
-  onOpenSymptoms,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
   documentImportService,
-  loadSymptoms,
   onOpenManualHistory,
 }: RecordsRouteProps) {
   const {
@@ -94,7 +90,6 @@ export function RecordsRoute({
       <View testID="records-layout" style={styles.page}>
         <View style={styles.primaryPanel}>
           <RecordsRouteEntries
-            onOpenSymptoms={onOpenSymptoms}
             onOpenSavedRecordings={onOpenSavedRecordings}
             onOpenRecording={onOpenRecording}
             onOpenHealthLibrary={onOpenHealthLibrary}
@@ -113,6 +108,7 @@ export function RecordsRoute({
             </Text>
           ) : null}
         </View>
+        <LegacySymptomData />
         <RecordsRecentSources
           recordings={recordings}
           recordingState={recordingState}
@@ -124,8 +120,6 @@ export function RecordsRoute({
           onRetryDocuments={reloadSavedDocuments}
           onOpenMedicalDocument={openSavedDocument}
           onOpenSavedRecordings={onOpenSavedRecordings}
-          onOpenSymptoms={onOpenSymptoms}
-          loadSymptoms={loadSymptoms}
         />
         {sourceMessage ? (
           <Text

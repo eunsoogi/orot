@@ -39,6 +39,7 @@ export function namespacedStorage(
     // Source identities and deletion fences belong to the app, across namespaces.
     listRemovedSourceIds: () => storage.listRemovedSourceIds(),
     listInvalidatedSourceIds: () => storage.listInvalidatedSourceIds(),
+    listQuarantineRevision: storage.listQuarantineRevision?.bind(storage),
     markSourceRemoved: (sourceId) => storage.markSourceRemoved(sourceId),
     beginBatch: () => storage.beginBatch(),
     commitBatch: () => storage.commitBatch(),

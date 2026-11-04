@@ -32,6 +32,8 @@ export interface TranscriptRevisionMetadata {
 export interface EvidenceChunkMetadata {
   readonly sourceId: string;
   readonly sourceRecordIds: readonly string[];
+  /** Explicit external identities are distinct from local record IDs. */
+  readonly externalSourceSystem?: string;
   readonly evidenceId: string;
   readonly evidenceLocator: ChunkEvidenceLocator;
   readonly effectiveTime: string | null;
@@ -162,6 +164,9 @@ export function chunkStructuredRecord<K extends StructuredRecordKind>(
     metadata: {
       sourceId,
       sourceRecordIds,
+      ...(record.provenance.source?.system === 'healthkit'
+        ? { externalSourceSystem: 'healthkit' }
+        : {}),
       evidenceId: record.id,
       evidenceLocator: { kind: 'structured_record', recordId: record.id },
       effectiveTime,

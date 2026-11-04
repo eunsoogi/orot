@@ -8,7 +8,6 @@ import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
 import { healthkitSettingsKo } from './healthkitSettings';
-import { symptomJournalKo } from './symptomJournal';
 import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
@@ -17,8 +16,6 @@ import { appointmentActionsKo } from './appointmentActionsKo';
 export const ko = {
   ...homeOverviewKo,
   'healthReview.inferenceDisclosure': '최근 건강 변화 검토를 위해',
-  'symptoms.title': '증상 일지',
-  'symptoms.description': '직접 기록한 증상과 경과',
   ...probeKo,
   ...manualHistoryKo,
   ...backupKo,
@@ -48,10 +45,8 @@ export const ko = {
   'records.recent.collapse': '접기',
   'records.recent.loading': '최근 기록을 불러오는 중…',
   'records.recent.loadError': '최근 기록을 불러오지 못했어요.',
-  'records.recent.symptomLoadError': '증상 기록을 불러오지 못했어요.',
   'records.recent.empty': '아직 최근 기록이 없어요.',
   'records.recent.medicalDocument': '의료 문서',
-  'records.recent.symptom': '증상 기록',
   'records.recent.today': '{date} (오늘)',
   'records.recent.yesterday': '{date} (어제)',
   'records.recent.unknownDate': '날짜를 확인할 수 없음',
@@ -243,6 +238,5 @@ export const ko = {
   ...medicalAppointmentsKo,
   ...providerAccountsKo,
   ...healthRecordsKo,
-  ...symptomJournalKo,
   ...healthkitSettingsKo,
 } as const;
