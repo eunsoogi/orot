@@ -203,5 +203,18 @@ export async function runDiseaseHypothesisAnalysis(
       },
     };
   }
+  // Coverage is runtime-owned metadata; attach the notice only after exact section citations pass.
+  if (
+    result.status === 'result' &&
+    result.partialEvidence &&
+    result.value.presentation === 'symptom_summary'
+  )
+    return {
+      status: 'workflow',
+      result: {
+        ...result,
+        value: { ...result.value, incompleteEvidence: true },
+      },
+    };
   return { status: 'workflow', result };
 }

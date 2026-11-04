@@ -100,20 +100,32 @@ test('reserves navigation widths before deciding which page actions fit', () => 
   });
 });
 
-test('reserves room above contextual navigation and falls back when no page action fits', () => {
+test('places Back before page actions and preserves Home at the rail end', () => {
   const input = {
     height: 400,
     top: 20,
     bottom: 20,
     rootTabs: false,
     navigationCount: 2,
-    actionCount: 2,
+    actionCount: 4,
   };
   const layout = pageActionRailLayout(input);
-  expect(layout.navigationTopInset).toBeGreaterThan(
-    400 - layout.pageBottomInset,
-  );
   expect(layout.fits).toBe(true);
+  expect(layout.navigationTopInset).toBe(input.top);
+  expect(layout.pageTopInset).toBeGreaterThan(layout.navigationTopInset);
+  expect(layout.pageTopInset).toBe(
+    input.top +
+      NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
+      NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING +
+      8,
+  );
+  expect(400 - layout.pageBottomInset).toBeLessThanOrEqual(
+    input.height -
+      input.bottom -
+      NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT -
+      NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING -
+      8,
+  );
   expect(pageActionRailLayout({ ...input, height: 150 }).fits).toBe(false);
 });
 

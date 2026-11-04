@@ -1,4 +1,4 @@
-import { hasBlockingCoverage } from './coveragePolicy';
+import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
@@ -167,7 +167,8 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         combined,
         context.options.task.allowBoundedExternalEvidence,
         context.options.task.allowRankedLocalEvidence,
-      )
+      ) &&
+      !canContinueWithPartialEvidence(context.options.task, combined)
     ) {
       context.outcome = {
         status: 'needs_clarification',

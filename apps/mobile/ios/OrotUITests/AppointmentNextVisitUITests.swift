@@ -76,8 +76,24 @@ extension AppointmentsUITests {
         let cancel = app.buttons["\(updatedClinic) 예약 취소"]
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         cancel.tap()
+        let confirmation = app.alerts.firstMatch
+        XCTAssertTrue(confirmation.waitForAppearance(), app.debugDescription)
+        let keepAppointment = confirmation.buttons["예약 유지"]
+        let confirmCancellation = confirmation.buttons["예약 취소"]
+        XCTAssertTrue(keepAppointment.exists && keepAppointment.isHittable, app.debugDescription)
+        XCTAssertTrue(confirmCancellation.exists && confirmCancellation.isHittable, app.debugDescription)
+        // Dismissing the alert must leave this appointment eligible as the next visit.
+        keepAppointment.tap()
+        XCTAssertFalse(confirmation.exists, app.debugDescription)
+        XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
+        cancel.tap()
+        let confirmationAfterKeep = app.alerts.firstMatch
+        XCTAssertTrue(confirmationAfterKeep.waitForAppearance(), app.debugDescription)
+        let confirmedCancel = confirmationAfterKeep.buttons["예약 취소"]
+        XCTAssertTrue(confirmedCancel.exists && confirmedCancel.isHittable, app.debugDescription)
+        confirmedCancel.tap()
         visible(app, "취소됨")
-        XCTAssertFalse(app.buttons["예약 취소"].exists)
+        XCTAssertFalse(cancel.exists, app.debugDescription)
         let cancelledRowLabel = appointmentRow.label
         XCTAssertTrue(cancelledRowLabel.contains("취소됨"), app.debugDescription)
         XCTAssertFalse(cancelledRowLabel.contains("다음 진료"), app.debugDescription)

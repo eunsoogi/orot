@@ -181,7 +181,8 @@ export function NavigationActionBarPresentation({
         rightLayout
           ? {
               layoutMode: rightLayout.railSide ?? 'right',
-              railTopInset: rightLayout.railTopInset,
+              railTopInset:
+                pageLayout?.pageTopInset ?? rightLayout.railTopInset,
               railBottomInset: pageLayout?.pageBottomInset,
               railRightInset: rightLayout.railRightInset,
               railAvailableHeight: railHeight,

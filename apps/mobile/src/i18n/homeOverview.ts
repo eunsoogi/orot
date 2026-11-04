@@ -5,6 +5,8 @@ export const homeOverviewKo = {
   'home.metricSave': '저장',
   'home.metricCancel': '취소',
   'home.metricChoose': '지표를 2개에서 4개 선택하세요.',
+  'home.metricSelectedStatus': '홈에 표시',
+  'home.metricUnselectedStatus': '표시 안 함',
   'home.metricError': '건강 기록을 불러오지 못했어요.',
   'home.metricSaveError': '선택을 저장하지 못했어요.',
   'home.metricEmpty': '기록이 없어요.',

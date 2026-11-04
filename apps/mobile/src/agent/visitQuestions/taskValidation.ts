@@ -77,7 +77,13 @@ export function validateVisitQuestionTaskResult(
     input.evidence.items.length > 0 &&
     input.evidence.conflicts.length === 0 &&
     input.evidence.coverage.some(
-      coverage => coverage.gaps.length > 0 || coverage.truncated,
+      coverage =>
+        coverage.gaps.length > 0 ||
+        (coverage.truncated &&
+          !(
+            coverage.sourceKind !== 'external_medical' &&
+            coverage.selectionMethod === 'ranked_retrieval'
+          )),
     ) &&
     (!result.questions.some(raw => asObject(raw)?.kind === 'clarification') ||
       !result.questions.some(

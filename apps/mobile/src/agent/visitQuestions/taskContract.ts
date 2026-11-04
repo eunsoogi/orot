@@ -2,6 +2,7 @@ import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import { reportVisitQuestionValidation } from './validationDiagnostics';
 import { asQuestionObject } from './questionShape';
+import { clarificationQuestions } from './clarificationQuestions';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -158,6 +159,7 @@ export function createVisitQuestionTaskResponder() {
             `Available evidence: ${JSON.stringify(evidence)}`,
             `Record conflicts: ${JSON.stringify(input.evidence.conflicts)}`,
             `Search coverage and limits: ${JSON.stringify(input.evidence.coverage)}`,
+            `App-owned clarification questions: ${JSON.stringify(clarificationQuestions)}`,
           ].join('\n'),
         },
       ];
@@ -177,7 +179,7 @@ export function createVisitQuestionTaskResponder() {
       // Keep each measurement and unit from the same cited item; validation never converts units.
       // Unsafe copy and invalid citation bindings remain terminal; incomplete evidence may request safe wording.
       if (reason === 'An uncited clarification must use app-owned wording.')
-        return 'Rewrite the response. For each clarification, copy a distinct questionText and rationale pair exactly from the app-owned list in the system instructions, with no evidenceIds. Keep confirmed facts supported by their cited records and obey all other constraints.';
+        return 'Rewrite the response. For each clarification, copy a distinct questionText and rationale pair exactly from the app-owned list in the user message, with no evidenceIds. Keep confirmed facts supported by their cited records and obey all other constraints.';
       if (
         reason ===
         'Partial evidence requires both supported and clarification questions.'

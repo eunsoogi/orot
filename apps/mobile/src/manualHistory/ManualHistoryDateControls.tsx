@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -15,7 +15,7 @@ interface ManualHistoryDateControlsProps {
   readonly onToggleDateKnowledge: () => void;
 }
 
-/** Keeps an explicitly unknown date distinct from an empty known-date input. */
+/** A dismissed sheet leaves the form draft untouched; only Done returns a date. */
 export function ManualHistoryDateControls({
   disabled,
   dateUnknown,
@@ -24,9 +24,10 @@ export function ManualHistoryDateControls({
   onEffectiveDateChange,
   onToggleDateKnowledge,
 }: ManualHistoryDateControlsProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [request, setRequest] = useState({ id: 0, date: '' });
+  const pending = useRef(false);
   return (
-    <>
+    <View style={styles.field}>
       <Text style={styles.fieldLabel}>{t('manualHistory.form.dateLabel')}</Text>
       <View
         style={[styles.controls, inline && styles.controlsInline]}
@@ -34,21 +35,18 @@ export function ManualHistoryDateControls({
       >
         {!dateUnknown ? (
           <View style={inline && styles.inlineControl}>
-            <TextInput
-              editable={!disabled}
-              placeholderTextColor={appColors.secondary}
-              accessibilityLabel={t('manualHistory.form.dateLabel')}
-              onChangeText={onEffectiveDateChange}
-              placeholder={t('manualHistory.form.datePlaceholder')}
-              style={styles.input}
-              testID="manual-history-effective-date-input"
-              value={effectiveDate}
-            />
             <Button
               variant="secondary"
               disabled={disabled}
-              title={t('manualHistory.form.chooseDate')}
-              onPress={() => setPickerOpen(!pickerOpen)}
+              title={effectiveDate || t('manualHistory.form.chooseDate')}
+              onPress={() => {
+                if (pending.current) return;
+                pending.current = true;
+                setRequest(previous => ({
+                  id: previous.id + 1,
+                  date: effectiveDate,
+                }));
+              }}
               testID="manual-history-open-date-picker"
             />
           </View>
@@ -65,10 +63,7 @@ export function ManualHistoryDateControls({
             variant="secondary"
             disabled={disabled}
             accessibilityState={{ selected: dateUnknown }}
-            onPress={() => {
-              setPickerOpen(false);
-              onToggleDateKnowledge();
-            }}
+            onPress={onToggleDateKnowledge}
             testID="manual-history-date-unknown"
             title={
               dateUnknown
@@ -78,33 +73,25 @@ export function ManualHistoryDateControls({
           />
         </View>
       </View>
-      {!dateUnknown && pickerOpen ? (
-        <ManualHistoryDatePicker
-          value={effectiveDate}
-          disabled={disabled}
-          onChange={value => {
-            onEffectiveDateChange(value);
-            setPickerOpen(false);
-          }}
-        />
-      ) : null}
-    </>
+      {/* Keep the anchor mounted when date knowledge changes so an old request cannot replay. */}
+      <ManualHistoryDatePicker
+        request={request}
+        onResult={result => {
+          pending.current = false;
+          if (result.date) onEffectiveDateChange(result.date);
+          if (result.error) {
+            Alert.alert(t('manualHistory.form.datePickerError'));
+          }
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  field: { gap: 8 },
   fieldLabel: { color: appColors.text, fontWeight: '600' },
   controls: { gap: 10 },
   controlsInline: { alignItems: 'center', flexDirection: 'row' },
   inlineControl: { flex: 1, minWidth: 0 },
-  input: {
-    backgroundColor: appColors.surface,
-    color: appColors.text,
-    minHeight: 48,
-    fontSize: 16,
-    borderColor: appColors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 10,
-  },
 });

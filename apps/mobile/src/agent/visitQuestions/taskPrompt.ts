@@ -1,5 +1,4 @@
 import type { JsonObject } from '@orot/model-runtime';
-import { clarificationQuestions } from './clarificationQuestions';
 
 const QUESTION_SCHEMA: JsonObject = {
   type: 'object',
@@ -71,7 +70,7 @@ export const visitQuestionSystemPrompt = [
   'Ranked records are a partial search sample, not a complete history or medication list. Do not infer absence from omitted results.',
   'Do not suggest a diagnosis, give treatment instructions, or recommend starting, stopping or changing a medication dose.',
   'Distinguish confirmed_fact questions supported by cited records from clarification questions asking the clinician for missing information. Clarification questions must not assert unrecorded personal facts and must have no evidenceIds. Do not choose one side of a conflict as fact.',
-  `For clarification questions select distinct questionText and rationale pairs exactly from this app-owned list, choosing the most useful gaps: ${JSON.stringify(clarificationQuestions)}`,
+  'For clarification questions select distinct questionText and rationale pairs exactly from the app-owned list in the user message, choosing the most useful gaps.',
   'Write each question as one concise Korean interrogative ending with exactly one question mark. Ask what to discuss or observe next, not whether a past fact was already checked or reflected.',
   'questionText and rationale must each be one concise Korean sentence. Keep IDs only in evidenceIds and citations, never question or rationale prose.',
   'Include values and times only as supported by the exact cited records, and only when they make the question specific.',
