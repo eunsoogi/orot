@@ -23,8 +23,8 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         let page = UITestConditions.element(app, "home-overview-sections")
         XCTAssertTrue(page.waitForAppearance())
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
-        let identifiers = ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"]
-        // The section exists while the appointment and symptom fixtures are still loading.
+        let identifiers = ["home-prepare-visit", "home-metrics-edit"]
+        // The section exists while the appointment and metric fixtures are still loading.
         for identifier in identifiers {
             XCTAssertTrue(UITestConditions.element(app, identifier).waitForAppearance(), identifier)
         }
@@ -87,7 +87,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
     @MainActor
     private func verifyBottomClearance(_ app: XCUIApplication) throws {
         // The endpoint must represent populated content, not an earlier loading layout.
-        for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
+        for identifier in ["home-prepare-visit", "home-metrics-edit"] {
             XCTAssertTrue(UITestConditions.element(app, identifier).waitForAppearance(), identifier)
         }
         let edit = UITestConditions.element(app, "home-metrics-edit")
@@ -205,7 +205,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         }
         XCTAssertTrue(navigation.control.isSelected)
         var previousY: CGFloat = -1
-        for identifier in ["home-prepare-visit", "home-metrics-edit", "home-open-symptoms"] {
+        for identifier in ["home-prepare-visit", "home-metrics-edit"] {
             let action = UITestConditions.element(app, identifier)
             XCTAssertTrue(action.waitForAppearance())
             if identifier == "home-metrics-edit" {
@@ -219,7 +219,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             XCTAssertFalse(pageFrame.isEmpty, identifier)
             XCTAssertGreaterThanOrEqual(frame.height, 44, identifier)
             let relativeY = frame.minY - pageFrame.minY
-            XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, metrics, symptoms")
+            XCTAssertGreaterThan(relativeY, previousY, "Home order must remain visit, metrics")
             previousY = relativeY
             XCTAssertGreaterThanOrEqual(frame.minX, pageFrame.minX - 1)
             XCTAssertLessThanOrEqual(frame.maxX, pageFrame.maxX + 1)
@@ -230,8 +230,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
                 XCTAssertTrue(action.exists && action.isHittable, identifier)
                 app.buttons["취소"].tap()
             } else {
-                let destination = identifier == "home-prepare-visit" ? "appointment-preparation" : "symptoms-layout"
-                NavigationUITestConditions.route(app, markers: [destination])
+                NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
                 try NavigationUITestConditions.navigationAction(app, "navigation-back").control.tap()
                 XCTAssertTrue(page.waitForAppearance())
                 XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control.isSelected)

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
@@ -102,7 +102,7 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
 }
 
 /** Displays observed calendar-day aggregates, with gaps and sample semantics visible. */
-export function HomeMetrics({ children }: { readonly children: ReactNode }) {
+export function HomeMetrics() {
   const data = useHomeMetrics();
   const [draft, setDraft] = useState<readonly HomeMetric[] | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -217,7 +217,6 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
           />
         </View>
       )}
-      {children}
       <Text
         accessibilityRole="header"
         style={styles.title}

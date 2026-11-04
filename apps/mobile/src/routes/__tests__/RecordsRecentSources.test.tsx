@@ -4,7 +4,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import type { SymptomEntry } from '@orot/storage';
 import { RecordsRoute } from '../RecordsRoute';
 import type { MedicalDocumentSourceRecord } from '../../medicalDocuments/medicalDocumentImportService';
 import type { RecordingSourceRecord } from '../../recording/recordingTypes';
@@ -64,13 +63,11 @@ test('keeps other recent records visible when a document detail cannot be opened
       recordings={[recording]}
       recordingState="ready"
       onRetryRecordings={jest.fn()}
-      onOpenSymptoms={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
       onOpenManualHistory={jest.fn()}
       documentImportService={service}
-      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
 
@@ -87,7 +84,7 @@ test('keeps other recent records visible when a document detail cannot be opened
   expect(service.getDocument).toHaveBeenCalledWith(document.id);
 });
 
-test('groups real recordings, imported documents and symptoms and preserves their destinations', async () => {
+test('groups recordings and imported documents and preserves their destinations', async () => {
   jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 12));
   try {
     const recording = recordingSource(
@@ -108,16 +105,6 @@ test('groups real recordings, imported documents and symptoms and preserves thei
       provenance: { origin: 'imported', sourceRecordIds: [] },
       reviewState: { status: 'unreviewed' },
     };
-    const symptom: SymptomEntry = {
-      id: 'symptom-recent-1',
-      effectiveAt: new Date(2026, 10, 1, 20, 10).toISOString(),
-      recordedAt: new Date(2026, 10, 1, 20, 27).toISOString(),
-      ingestedAt: new Date(2026, 10, 1, 20, 27).toISOString(),
-      provenance: { origin: 'user_reported', sourceRecordIds: [] },
-      reviewState: { status: 'unreviewed' },
-      description: 'Cough and mild fever',
-      status: 'active',
-    };
     const service = {
       listDocuments: jest.fn().mockResolvedValue([document]),
       getDocument: jest.fn().mockResolvedValue(null),
@@ -125,31 +112,30 @@ test('groups real recordings, imported documents and symptoms and preserves thei
       saveDocument: jest.fn().mockResolvedValue('saved' as const),
       discardDocument: jest.fn().mockResolvedValue(undefined),
     };
-    const symptomRepository = {
-      list: jest.fn().mockResolvedValue([symptom]),
-    };
-    const loadSymptoms = jest.fn().mockResolvedValue(symptomRepository);
     const onOpenSavedRecordings = jest.fn();
-    const onOpenSymptoms = jest.fn();
     await render(
       <RecordsRoute
-        recordings={[recording, olderRecording]}
+        recordings={[
+          recording,
+          recordingSource(
+            'second',
+            '어제 상담',
+            new Date(2026, 10, 1, 20, 27).toISOString(),
+          ),
+          olderRecording,
+        ]}
         recordingState="ready"
         onRetryRecordings={jest.fn()}
-        onOpenSymptoms={onOpenSymptoms}
         onOpenSavedRecordings={onOpenSavedRecordings}
         onOpenRecording={jest.fn()}
         onOpenHealthLibrary={jest.fn()}
         onOpenManualHistory={jest.fn()}
         documentImportService={service}
-        loadSymptoms={loadSymptoms}
       />,
     );
 
     expect(screen.getByText('11월 2일 (오늘)')).toBeTruthy();
-    expect(screen.getByText('11월 1일 (어제)')).toBeTruthy();
     expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
-    expect(screen.getByText('Cough and mild fever')).toBeTruthy();
     expect(
       screen.getByTestId('records-recent-source-recording-recent-1'),
     ).toBeTruthy();
@@ -164,11 +150,7 @@ test('groups real recordings, imported documents and symptoms and preserves thei
     await fireEvent.press(
       screen.getByTestId('records-recent-source-recording-recent-1'),
     );
-    await fireEvent.press(
-      screen.getByTestId('records-recent-symptom-symptom-recent-1'),
-    );
     expect(onOpenSavedRecordings).toHaveBeenCalledTimes(1);
-    expect(onOpenSymptoms).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(screen.getByTestId('medical-document-source-0'));
     expect(service.getDocument).toHaveBeenCalledWith(document.id);
