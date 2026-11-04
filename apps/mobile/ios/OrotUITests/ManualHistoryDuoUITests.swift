@@ -7,7 +7,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
-    /// Covers the open device without treating its fixed scene as a rotation result.
+    /// Checks reopened draft action registration on Duo without treating its fixed scene as rotation proof.
     @MainActor
     func testOpenDuoPageActionsPreserveDraftAndSave() throws {
         let app = XCUIApplication()
@@ -22,14 +22,14 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         try openManualHistory(app)
         tap(app, "manual-history-add")
-        let formOpenedAt = Date().timeIntervalSince1970 * 1000
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
         let title = UITestConditions.element(app, "manual-history-title-input")
         XCTAssertTrue(app.keyboards.firstMatch.exists && title.isHittable, app.debugDescription)
-        try NavigationPageActionUITestConditions.assertRailAboveNavigation(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: Date().timeIntervalSince1970 * 1000, testCase: self)
         tap(app, "manual-history-form-close")
         tap(app, "manual-history-add")
         XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: Date().timeIntervalSince1970 * 1000, testCase: self)
         guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
         tap(app, "manual-history-date-unknown")
         tap(app, "manual-history-save")
@@ -64,7 +64,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         let title = UITestConditions.element(app, "manual-history-title-input")
         XCTAssertTrue(UITestConditions.exists(form), app.debugDescription)
         XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
-        try NavigationPageActionUITestConditions.assertRailAboveNavigation(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
         let formPortraitSize = app.frame.size
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForOrientation(app, landscape: true, changedFrom: formPortraitSize)
