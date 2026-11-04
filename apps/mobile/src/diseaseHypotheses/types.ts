@@ -26,7 +26,7 @@ export interface DiseaseHypothesisAnalysis {
           'prescription' | 'sleep_count' | 'step_unit' | 'sleep_duration'
         )[];
       }
-    | { readonly status: 'failed' };
+    | { readonly status: 'failed' | 'source_unavailable' };
   readonly presentation?: 'symptom_summary';
   readonly hypotheses: readonly DiseaseHypothesis[];
 }

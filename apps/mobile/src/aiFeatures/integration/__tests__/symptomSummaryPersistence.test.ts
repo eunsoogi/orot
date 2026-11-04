@@ -162,44 +162,58 @@ test('a failed SQLite write retains the generated result and can be retried with
   }
 });
 
-test('does not save or retry a summary after its cited source changes', async () => {
-  const f = await healthContextFixture();
-  try {
-    const value = {
-      ...f.saved.analysis,
-      hypotheses: f.saved.analysis.hypotheses.map(section => ({
-        ...section,
-        supportingEvidence: [f.item],
-      })),
-    };
-    const outcome = await completedOutcome(value, f.item);
-    const data = { ...localData([]).data, readHealthContext: f.read };
-    const persistence = createSymptomSummaryPersistence({
-      registry: f.registry,
-      data: async () => data,
-      storage: async () => f.storage,
-    });
-    await f.repository.put('health_observation', {
-      ...f.inside,
-      value: { kind: 'quantity', amount: 81, unit: 'count/min' },
-    });
-    const failed = await persistence.save(
-      outcome,
-      await selectedModel(),
-      'changed-source',
-      signal,
-      '2026-10-05T00:00:00Z',
-    );
-    expect(
-      failed.status === 'workflow' &&
-        failed.result.status === 'result' &&
-        failed.result.value.savedSummary,
-    ).toEqual({ status: 'failed' });
-    expect((await persistence.history.retrySave!())?.savedSummary).toEqual({
-      status: 'failed',
-    });
-    expect(await f.storage.list()).toHaveLength(0);
-  } finally {
-    f.close();
-  }
-});
+test.each(['before capture', 'during write'] as const)(
+  'does not save or retry when a cited source changes %s',
+  async phase => {
+    const f = await healthContextFixture();
+    try {
+      const value = {
+        ...f.saved.analysis,
+        hypotheses: f.saved.analysis.hypotheses.map(section => ({
+          ...section,
+          supportingEvidence: [f.item],
+        })),
+      };
+      const outcome = await completedOutcome(value, f.item);
+      const data = { ...localData([]).data, readHealthContext: f.read };
+      const change = () =>
+        f.repository.put('health_observation', {
+          ...f.inside,
+          value: { kind: 'quantity', amount: 81, unit: 'count/min' },
+        });
+      const storage = {
+        ...f.storage,
+        append: async (...args: Parameters<typeof f.storage.append>) => {
+          if (phase === 'during write') await change();
+          return f.storage.append(...args);
+        },
+      };
+      const persistence = createSymptomSummaryPersistence({
+        registry: f.registry,
+        data: async () => data,
+        storage: async () => storage,
+      });
+      if (phase === 'before capture') await change();
+      const failed = await persistence.save(
+        outcome,
+        await selectedModel(),
+        'changed-source',
+        signal,
+        '2026-10-05T00:00:00Z',
+      );
+      expect(
+        failed.status === 'workflow' &&
+          failed.result.status === 'result' &&
+          failed.result.value.savedSummary,
+      ).toEqual({
+        status: phase === 'before capture' ? 'source_unavailable' : 'failed',
+      });
+      expect((await persistence.history.retrySave!())?.savedSummary).toEqual({
+        status: 'source_unavailable',
+      });
+      expect(await f.storage.list()).toHaveLength(0);
+    } finally {
+      f.close();
+    }
+  },
+);
