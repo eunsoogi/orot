@@ -16,7 +16,7 @@ function layout(payload: NavigationGeometryPayload) {
 }
 
 test.each([
-  [openGeometry, 84, 867, 136, 18],
+  [openGeometry, 84, 867, 136, 143 / 6],
   [rotatedGeometry, 72, 597, 94, 12],
 ] as const)(
   'allocates content and a rail inside continuous measured Open space',
@@ -111,10 +111,22 @@ test('places the rail outside the right content safe edge with a real indicator 
   expect(result.placement).toBe('right');
   if (result.placement !== 'right') throw new Error('Expected a rail');
   const railRight = openGeometry.windowBounds.width - result.railRightInset;
-  expect(railRight).toBe(933);
-  expect(railRight - 48).toBe(885);
+  expect(railRight).toBeCloseTo(927 + 1 / 6);
+  expect(railRight - 48).toBeCloseTo(879 + 1 / 6);
   expect(result.contentWidth).toBe(867);
   expect(result.railTopInset).toBe(124 + 12);
+});
+
+test('redistributes only the observed lane spacing while preserving the 48pt rail', () => {
+  const result = layout(openGeometry);
+  if (result.placement !== 'right') throw new Error('Expected a rail');
+  const outer = result.railRightInset;
+  const inner = result.reservedRightWidth - 48 - outer;
+  expect(result.reservedRightWidth).toBe(84);
+  expect(result.contentWidth).toBe(867);
+  expect(outer - 18).toBeCloseTo(18 - inner);
+  expect(inner).toBeGreaterThan(0);
+  expect(951 - outer - 48 + 24).toBeCloseTo(903 + 1 / 6);
 });
 
 test('keeps window origin translations out of local rail insets', () => {
