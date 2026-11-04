@@ -72,6 +72,7 @@ export function createSymptomSummaryPersistence(input: {
     ): Promise<DiseaseHypothesisRunOutcome> {
       if (outcome.status !== 'workflow' || outcome.result.status !== 'result')
         return outcome;
+      let phase: 'source' | 'storage' = 'source';
       try {
         const admitted = outcome.result.checkpoint.evidenceReferences;
         if (!Array.isArray(admitted))
@@ -84,6 +85,8 @@ export function createSymptomSummaryPersistence(input: {
           signal,
           admitted,
         );
+        // A source read failure and an attempted storage write need different recovery guidance.
+        phase = 'storage';
         const id = `${createdAt}-${runId}`;
         await (
           await store()
@@ -132,7 +135,9 @@ export function createSymptomSummaryPersistence(input: {
             ...outcome.result,
             value: {
               ...outcome.result.value,
-              savedSummary: { status: 'failed' },
+              savedSummary: {
+                status: phase === 'source' ? 'source_unavailable' : 'failed',
+              },
             },
           },
         };

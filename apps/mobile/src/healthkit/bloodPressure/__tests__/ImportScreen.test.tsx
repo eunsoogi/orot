@@ -45,7 +45,9 @@ test('keeps saved components in the records library instead of the import result
   expect(props.loadObservations).not.toHaveBeenCalled();
   expect(
     screen.getByTestId('blood-pressure-read-authorization'),
-  ).toHaveTextContent('HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.');
+  ).toHaveTextContent(
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
+  );
   expect(props.importBloodPressure).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('blood-pressure-open-library'));
@@ -99,7 +101,9 @@ test('keeps an empty HealthKit query distinct from permission status', async () 
   ).toHaveTextContent('0개');
   expect(
     screen.getByTestId('blood-pressure-read-authorization'),
-  ).toHaveTextContent('HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.');
+  ).toHaveTextContent(
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
+  );
 });
 
 test('shows partial outcome counts and keeps the retry action available', async () => {
@@ -125,7 +129,7 @@ test('shows partial outcome counts and keeps the retry action available', async 
 test('keeps a failed import retryable without inventing result counts', async () => {
   const importBloodPressure = jest
     .fn()
-    .mockRejectedValueOnce(new Error('HealthKit query failed'))
+    .mockRejectedValueOnce(new Error('private provider query detail'))
     .mockResolvedValueOnce(completed);
   const props = propsForScreen([], importBloodPressure);
   await render(<BloodPressureImportScreen {...props} />);
@@ -133,6 +137,7 @@ test('keeps a failed import retryable without inventing result counts', async ()
   await fireEvent.press(screen.getByTestId('blood-pressure-import'));
 
   expect(await screen.findByText('가져오기를 완료하지 못했어요')).toBeTruthy();
+  expect(screen.queryByText('private provider query detail')).toBeNull();
   expect(screen.queryByTestId('blood-pressure-result-summary')).toBeNull();
   await fireEvent.press(screen.getByTestId('blood-pressure-import-again'));
   expect(
@@ -154,7 +159,9 @@ test('shows an unavailable outcome without inferring an authorization denial', a
   expect(screen.queryByTestId('blood-pressure-result-summary')).toBeNull();
   expect(
     screen.getByTestId('blood-pressure-read-authorization'),
-  ).toHaveTextContent('HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.');
+  ).toHaveTextContent(
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
+  );
 });
 
 test('renders an explicitly supplied original pair and never invents a missing component', async () => {

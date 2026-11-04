@@ -93,9 +93,15 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowRankedLocalEvidence?: boolean;
   /** A task may present an explicitly partial generated-artifact page without claiming exhaustion. */
   readonly allowPagedGeneratedArtifacts?: boolean;
+  /** Accept cited results with coverage gaps; empty evidence and conflicts remain blocking. */
+  readonly allowPartialEvidence?: boolean;
   /** Explicitly identify non-factual conversation/clarification values. Only uncited, locally
    * valid results may bypass evidence coverage; required source kinds remain mandatory. */
   isEvidenceIndependentResult?(value: JsonValue, input: TaskResponderInput): boolean;
+  /** A task may validate a mixed result despite incomplete coverage; citations still bind and revalidate normally. */
+  acceptsIncompleteEvidence?(value: JsonValue, input: TaskResponderInput): boolean;
+  /** Continue a non-native research cycle with incomplete results for task-specific final validation. */
+  readonly allowIncompleteEvidenceResearch?: boolean;
   /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
   readonly requireAllEvidenceCitations?: boolean;
   /** Opt in to current-ID enum guidance without forcing exhaustive citation counts. */
@@ -176,6 +182,7 @@ export type MultiAgentRunResult<TResult> =
       readonly citations: readonly EvidenceReference[];
       readonly coverage: readonly EvidenceCoverage[];
       readonly checkpoint: MultiAgentCheckpointState;
+      readonly partialEvidence?: true;
     }
   | {
       readonly status: 'needs_clarification';

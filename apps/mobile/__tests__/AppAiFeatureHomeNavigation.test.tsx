@@ -28,7 +28,6 @@ const aiFeatureRoutes = [
   ['ai-feature-visit-questions', 'home-visit-questions-screen'],
   ['ai-feature-disease-hypotheses', 'disease-hypotheses-screen'],
   ['ai-feature-rag-conversation', 'rag-conversation-screen'],
-  ['ai-feature-health-review', 'health-review-screen'],
   ['ai-feature-external-evidence', 'external-medical-evidence-screen'],
 ] as const;
 
@@ -50,7 +49,7 @@ function VisitQuestionsHomeRouteProbe({
   return <Text testID="home-visit-questions-screen">다음 진료 질문 화면</Text>;
 }
 
-test('shows five explained AI actions and returns from each owner route', async () => {
+test('shows four explained AI actions and returns from each owner route', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -74,6 +73,7 @@ test('shows five explained AI actions and returns from each owner route', async 
   expect(screen.getByText('내 기록에서 궁금한 점을 물어보세요.')).toBeTruthy();
   expect(screen.getByText('의학 자료를 찾아보세요.')).toBeTruthy();
   expect(screen.queryByTestId('open-ai-features')).toBeNull();
+  expect(screen.queryByTestId('ai-feature-health-review')).toBeNull();
 
   for (const [actionId, routeId] of aiFeatureRoutes) {
     await fireEvent.press(screen.getByTestId(actionId));

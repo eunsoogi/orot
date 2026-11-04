@@ -33,16 +33,17 @@ test('keeps the folded Duo rail below the actual system indicator without a divi
       placement: 'right',
       contentWidth: 382,
       railTopInset: 186,
+      railRightInset: 143 / 6,
     }),
   );
 });
 
-test('centers the rail horizontally within the observed system-side lane', () => {
+test('positions the observed rail relative to the indicator', () => {
   const result = resolveNavigationRootLayout(
     createNavigationGeometrySnapshot(openGeometry),
   );
   expect(result).toEqual(
-    expect.objectContaining({ railRightInset: 18, contentWidth: 867 }),
+    expect.objectContaining({ railRightInset: 143 / 6, contentWidth: 867 }),
   );
 });
 

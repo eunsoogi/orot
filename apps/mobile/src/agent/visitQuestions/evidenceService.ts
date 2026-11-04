@@ -58,6 +58,7 @@ export type VisitQuestionContextResult =
       ) => Promise<VisitQuestionEvidenceCollection>;
       readonly revalidateEvidence: (
         citations: readonly VisitQuestionEvidenceItem[],
+        options?: { readonly allowEmpty: boolean },
       ) => Promise<boolean>;
       readonly reloadPersonalEvidence: (
         reference: EvidenceReference,

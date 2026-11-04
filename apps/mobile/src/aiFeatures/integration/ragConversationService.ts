@@ -1,48 +1,28 @@
-import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
-import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
+import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
+import { finishRagConversation } from './finishRagConversation';
 import { isRagConversationAvailabilityQuestion } from '../../ragConversation/availabilityIntent';
-import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import { requestsArtifactContinuation } from '../../ragConversation/artifactContinuation';
 import { continueArtifactSearch } from './continueArtifactSearch';
 import type { RagConversationMessage } from '../../ragConversation/task';
-import type { AiFeatureLocalData } from './localData';
 import { boundRagConversationHistory } from './evidencePayload';
-import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import { operationRunId } from './featureRunIdentity';
 import { conversationGeneratedTools } from './conversationGeneratedTools';
-import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import { withProviderStage } from '../../providers/diagnostics';
-import {
-  AiProviderSelectionError,
-  type SelectedAiResolution,
-} from './provider';
+import { AiProviderSelectionError } from './provider';
 import { readConversationAvailability } from './readConversationAvailability';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { createResearchInputTracker } from './researchInputTracker';
 import { retainLiteratureResults } from './researchRetention';
-
-type ReadySelectedAi = Extract<
-  SelectedAiResolution,
-  { readonly status: 'ready' }
->;
-type RagObserver = RagConversationObserver;
-
-interface RagConversationServiceDependencies {
-  readonly consent: MultiAgentWorkflowOptions['consent'];
-  readonly queryConsent: ExternalMedicalQueryConsentPort;
-  readonly externalEvidence: EuropePmcMedicalEvidenceService;
-  readonly loadLocalData: () => Promise<AiFeatureLocalData>;
-  readonly selectedAi: () => Promise<ReadySelectedAi>;
-  readonly registry: LocalEvidenceReferenceRegistry;
-  readonly ragRunner: typeof defaultRagRunner;
-  readonly createOperationRunId?: () => string;
-}
+import {
+  budgetAfterPublicSearch,
+  runDefaultPublicSearch,
+} from './defaultPublicSearch';
 
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
@@ -59,7 +39,7 @@ export function createRagConversationService({
     question: string,
     previousMessages: readonly RagConversationMessage[],
     parentSignal?: AbortSignal,
-    observer?: RagObserver,
+    observer?: RagConversationObserver,
   ): Promise<RagConversationOutcome> {
     const normalizedQuestion = question.trim();
     if (!normalizedQuestion || normalizedQuestion.length > 1000) {
@@ -115,6 +95,15 @@ export function createRagConversationService({
         validateResearchInputs: researchInputs.revalidate,
         onResearchRetained: researchInputs.recordResearch,
       });
+      const runId = createOperationRunId?.() ?? operationRunId();
+      const publicSearch = await runDefaultPublicSearch({
+        tool: external.publicWebTool,
+        operationRunId: runId,
+        request: normalizedQuestion,
+        signal,
+      });
+      if (publicSearch.status === 'cancelled')
+        return { status: 'failure', kind: 'cancelled' };
       let localRetrievalFailed = false;
       const generated = conversationGeneratedTools(data, registry, observer);
       const tools = [
@@ -127,9 +116,10 @@ export function createRagConversationService({
             localRetrievalFailed = true;
           },
         ),
-        ...external.tools,
+        ...(publicSearch.status === 'success' || !external.publicWebTool
+          ? external.tools
+          : []),
       ];
-      const runId = createOperationRunId?.() ?? operationRunId();
       const retention = createConversationRetentionBridge({
         observer,
         registry,
@@ -137,6 +127,15 @@ export function createRagConversationService({
         providerId: selected.provider.id,
         modelId: selected.modelId,
         signal,
+      });
+      const execution = executionOptions({
+        consentPurpose: 'record_conversation',
+        selected,
+        operationRunId: runId,
+        consent,
+        registry,
+        tools,
+        external,
       });
       stage = 'workflow';
       const outcome = await ragRunner(
@@ -149,19 +148,24 @@ export function createRagConversationService({
             chunks: [],
           }),
           rag: data.rag,
+          ...(publicSearch.status === 'success'
+            ? { publicEvidence: publicSearch.batch }
+            : {}),
           resolveLocalEvidenceIdentity: reference =>
             registry.resolve(reference),
           readHistoricalArtifact: (reference, readSignal) =>
             registry.readSource(reference, readSignal),
-          workflow: executionOptions({
-            consentPurpose: 'record_conversation',
-            selected,
-            operationRunId: runId,
-            consent,
-            registry,
-            tools,
-            external,
-          }),
+          workflow: {
+            ...execution,
+            execution: {
+              ...execution.execution,
+              budget: budgetAfterPublicSearch(
+                execution.execution.budget,
+                publicSearch,
+                Boolean(external.publicWebTool),
+              ),
+            },
+          },
         },
         {
           onProgress: observer?.onProgress,
@@ -190,21 +194,13 @@ export function createRagConversationService({
       ) {
         return { status: 'failure', kind: 'retrieval_failed' };
       }
-      const finished = await retention.finish(outcome);
-      if (signal.aborted && !finished.retained)
-        return { status: 'failure', kind: 'cancelled' };
-      if (
-        continuation &&
-        finished.outcome.status === 'answer' &&
-        finished.outcome.citations.some(
-          citation => citation.sourceKind === 'generated_artifact',
-        )
-      )
-        return {
-          ...finished.outcome,
-          answer: `${finished.outcome.answer}\n\n더 이전 결과를 계속 찾아볼 수 있어요.`,
-        };
-      return finished.outcome;
+      return await finishRagConversation({
+        outcome,
+        publicSearch,
+        retention,
+        signal,
+        continuation: Boolean(continuation),
+      });
     } catch (error) {
       if (
         signal.aborted ||

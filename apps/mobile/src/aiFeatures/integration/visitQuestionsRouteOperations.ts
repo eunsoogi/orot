@@ -1,7 +1,3 @@
-import {
-  currentEvidenceCaveats,
-  type EvidenceCoverageState,
-} from './visitEvidenceCaveats';
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
@@ -16,6 +12,11 @@ import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
 import type { GenerationOutcome } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
 import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
+import { visitQuestionPublicSearch } from './visitQuestionPublicSearch';
+import {
+  currentEvidenceCaveats,
+  type EvidenceCoverageState,
+} from './visitEvidenceCaveats';
 import type {
   VisitQuestionRouteSaveInput,
   VisitQuestionRouteSaveResult,
@@ -118,6 +119,15 @@ async function generate(
     };
   }
 
+  const publicSearch = await visitQuestionPublicSearch({
+    selected: input.selectedAi,
+    confirm: input.confirmConsent,
+    query: context.query,
+    signal: input.signal,
+  });
+  if (publicSearch.result.status === 'cancelled')
+    return { status: 'cancelled' };
+
   const collections: EvidenceCoverageState[] = [context.evidence];
   const generated = await input.generatedArtifactTools?.();
   if (input.signal.aborted) return { status: 'cancelled' };
@@ -166,7 +176,8 @@ async function generate(
         sourceKind,
         signal,
       );
-      if (sourceKind !== 'personal_record') collections.push(result);
+      // Personal-search gaps and conflicts must reach the review beside its questions.
+      collections.push(result);
       return result;
     },
   };
@@ -178,10 +189,14 @@ async function generate(
     recipient: input.selectedAi.recipient,
     // Selection does not imply permission to transmit the resulting health context.
     confirmConsent: input.confirmConsent,
+    reservedPublicSearchCall: publicSearch.spentModelCall,
     signal: input.signal,
     ...(input.observer ? { observer: input.observer } : {}),
   });
-  const caveats = currentEvidenceCaveats(collections);
+  const caveats = [
+    ...currentEvidenceCaveats(collections),
+    ...(publicSearch.caveat ? [publicSearch.caveat] : []),
+  ];
   if (input.signal.aborted) return { status: 'cancelled' };
   if (result.status === 'ready') {
     return {

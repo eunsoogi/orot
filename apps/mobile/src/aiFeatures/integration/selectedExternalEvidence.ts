@@ -46,26 +46,22 @@ export function createSelectedExternalEvidence(input: {
       !input.validateResearchInputs ||
       input.validateResearchInputs(signal),
   });
+  const publicWebTool =
+    web && input.loadData
+      ? retainPublicWebResults(
+          web.tool,
+          input.loadData,
+          input.selected.provider.id,
+          input.selected.modelId,
+          input.originFeature ?? 'record_conversation',
+          input.retentionSession,
+          input.captureResearchInputs,
+          input.onResearchRetained,
+        )
+      : web?.tool;
   return {
-    tools: [
-      literature.tool,
-      ...(web
-        ? [
-            input.loadData
-              ? retainPublicWebResults(
-                  web.tool,
-                  input.loadData,
-                  input.selected.provider.id,
-                  input.selected.modelId,
-                  input.originFeature ?? 'record_conversation',
-                  input.retentionSession,
-                  input.captureResearchInputs,
-                  input.onResearchRetained,
-                )
-              : web.tool,
-          ]
-        : []),
-    ],
+    tools: [literature.tool, ...(publicWebTool ? [publicWebTool] : [])],
+    publicWebTool,
     usesPublicWeb: Boolean(web),
     validates: (reference: EvidenceReference) =>
       literature.validates(reference) || Boolean(web?.validates(reference)),

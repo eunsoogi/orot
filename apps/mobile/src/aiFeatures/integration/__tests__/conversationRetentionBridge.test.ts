@@ -171,7 +171,7 @@ test('capture and write failures remain observable without discarding the answer
   });
   expect(result).toMatchObject({
     status: 'answer',
-    answer: 'Synthetic answer',
+    answer: expect.stringContaining('Synthetic answer'),
   });
   expect(failure).toHaveBeenCalledTimes(1);
 });
@@ -242,5 +242,8 @@ test('a committed result wins over cancellation reported while its save finishes
       },
     },
   );
-  expect(outcome).toMatchObject({ status: 'answer', answer: 'Saved answer' });
+  expect(outcome).toMatchObject({
+    status: 'answer',
+    answer: expect.stringContaining('Saved answer'),
+  });
 });

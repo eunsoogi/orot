@@ -12,14 +12,24 @@ import {
   publicWebSources,
 } from '../../externalMedicalEvidence/publicWebSources';
 import { publicWebSearchConsentScope } from '../../agent/execution/inferenceConsentScopes';
+import { boundedPublicWebRequest } from './boundedPublicWebRequest';
 
 import {
   parsePublicWebQuery,
   publicWebQuerySchema,
 } from '../../agent/execution/publicWebQuery';
 
-/** Keep the selected public-search request isolated from private model history.
- * Topic queries are app-owned; unclassified free text needs one-time review. */
+// Only app-owned topic labels can cross this automatic search boundary. Consent
+// alone cannot establish that arbitrary model-generated text is anonymous.
+function parsePublicTopics(value: unknown) {
+  if (!value || typeof value !== 'object' || !('topics' in value))
+    return undefined;
+  return parsePublicWebQuery(value)
+    ? (value as import('@orot/model-runtime').JsonObject)
+    : undefined;
+}
+
+/** Keep the selected public-search request isolated from private model history. */
 export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
   readonly consent: ExecutionConsentPort;
@@ -40,11 +50,13 @@ export function createPublicWebEvidence(input: {
     execution: 'external_read_only',
     additionalModelCalls: 1,
     description:
-      'Search the general public web beyond Europe PMC with the selected account/model. Prefer app-owned topics to reuse public-search permission; use query only when those topics are insufficient and request explicit review. Output is a cited model explanation, not original source passages.',
+      'Search the general public web beyond Europe PMC using app-owned public topics. Output is a cited model explanation, not original source passages.',
     inputSchema: publicWebQuerySchema,
-    parseInput: parsePublicWebQuery,
+    parseInput: parsePublicTopics,
     async search(request) {
-      const parsed = parsePublicWebQuery(request.input);
+      const parsed = parsePublicTopics(request.input)
+        ? parsePublicWebQuery(request.input)
+        : undefined;
       const scoped = () =>
         request.allowedScope.sourceKinds.includes('external_medical') &&
         request.allowedScope.timeRange === undefined &&
@@ -83,10 +95,10 @@ export function createPublicWebEvidence(input: {
         throw new Error('A local research input changed before public search.');
       if (request.signal.aborted)
         throw new Error('Public web search was cancelled.');
-      const result = await search.call(
-        selected.provider,
-        { query },
-        { signal: request.signal },
+      const result = await boundedPublicWebRequest(
+        search.bind(selected.provider),
+        query,
+        request.signal,
       );
       if (request.signal.aborted)
         throw new Error('Public web search was cancelled.');

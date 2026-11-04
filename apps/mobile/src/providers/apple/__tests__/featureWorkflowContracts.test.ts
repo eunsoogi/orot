@@ -62,18 +62,21 @@ describe.each(['Apple', 'ChatGPT'] as const)(
             status: 'suggestions',
             questions: [
               {
+                kind: 'confirmed_fact',
                 questionText: '새벽에 깨는 변화는 어떻게 살펴보면 좋을까요?',
                 rationale: '기록한 수면 변화를 함께 확인해요.',
                 priority: 'important',
                 evidenceIds: ['e1'],
               },
               {
+                kind: 'confirmed_fact',
                 questionText: '다음 방문까지 어떤 수면 기록을 준비할까요?',
                 rationale: '변화의 경과를 확인할 기록이 필요해요.',
                 priority: 'routine',
                 evidenceIds: ['e1'],
               },
               {
+                kind: 'confirmed_fact',
                 questionText: '다시 잠들기 어려운 때 확인할 점이 있을까요?',
                 rationale: '기록된 불편에 관해 질문해요.',
                 priority: 'routine',

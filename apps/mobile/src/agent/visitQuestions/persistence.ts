@@ -31,6 +31,7 @@ export interface SaveReviewedVisitQuestionsInput {
   /** Rechecks the cited RAG and Rememori references immediately before the write. */
   readonly revalidateEvidence: (
     citations: readonly VisitQuestionEvidenceItem[],
+    options?: { readonly allowEmpty: boolean },
   ) => Promise<boolean>;
 }
 
@@ -50,7 +51,10 @@ export async function saveReviewedVisitQuestions(
     input.evidence.metadataByCitation,
   );
   const citations = collectVisitQuestionCitations(input.questions);
-  if (!(await input.revalidateEvidence(citations))) {
+  const current = citations.length
+    ? await input.revalidateEvidence(citations)
+    : await input.revalidateEvidence(citations, { allowEmpty: true });
+  if (!current) {
     throw new Error(
       'Cited evidence is no longer current. Refresh the suggestions before saving.',
     );
@@ -96,6 +100,38 @@ export async function saveReviewedVisitQuestions(
     }
 
     const previous = await writer.list('visit_question');
+    const legacyRecords = new Map<string, (typeof previous)[number]>();
+    for (const question of input.questions) {
+      const reference = question.legacySource;
+      if (!reference) continue;
+      const original = previous.find(row => row.id === reference.id);
+      if (
+        !original ||
+        original.appointmentId !== input.appointmentId ||
+        original.kind !== question.kind ||
+        original.kind === 'clarification' ||
+        original.evidenceSpanIds.length !== 0 ||
+        original.healthContextSources?.length ||
+        localEvidenceFingerprint(original) !== reference.revision ||
+        legacyRecords.has(reference.id)
+      ) {
+        throw new Error(
+          'The saved legacy question changed or cannot be verified.',
+        );
+      }
+      if (!sql)
+        throw new Error('Atomic legacy source validation is unavailable.');
+      const stale = await sql.execute(
+        "SELECT artifact_id FROM transcript_artifact_staleness WHERE artifact_kind = 'visit_question' AND artifact_id = ? LIMIT 1",
+        [original.id],
+      );
+      if (stale.rows.length)
+        throw new Error(
+          'The saved legacy question has stale transcript evidence.',
+        );
+      // Preserve historical provenance; a legacy reference never certifies its source as current.
+      legacyRecords.set(reference.id, original);
+    }
     for (const question of previous) {
       if (question.appointmentId === input.appointmentId) {
         await writer.delete('visit_question', question.id);
@@ -110,6 +146,9 @@ export async function saveReviewedVisitQuestions(
         position: index + 1,
         now: input.now,
         metadataByCitation: input.evidence.metadataByCitation,
+        ...(question.legacySource
+          ? { legacyRecord: legacyRecords.get(question.legacySource.id)! }
+          : {}),
       }),
     );
     for (const question of reviewed) {
@@ -123,13 +162,17 @@ export async function saveReviewedVisitQuestions(
     return { appointment, questions: reviewed };
   });
 
-  const memoryStatus = await saveReviewedVisitQuestionMemory(
-    input.memory,
-    saved.appointment,
-    input.appointmentId,
-    saved.questions,
-    citations,
-    input.evidence.metadataByCitation,
-  );
+  // A restored legacy row has no verifiable source location; do not promote it
+  // into freshly reviewed memory as though its original evidence were current.
+  const memoryStatus = input.questions.some(question => question.legacySource)
+    ? ('retry_required' as const)
+    : await saveReviewedVisitQuestionMemory(
+        input.memory,
+        saved.appointment,
+        input.appointmentId,
+        saved.questions,
+        citations,
+        input.evidence.metadataByCitation,
+      );
   return { questions: saved.questions, memoryStatus };
 }

@@ -26,6 +26,7 @@ test.each([1, 1.5, 3.571])(
         medicalDocumentOpening={false}
         medicalDocumentDisabled={false}
         onImportMedicalDocument={jest.fn()}
+        onImportMedicalPhoto={jest.fn()}
       />,
     );
     expect(screen.queryByTestId('symptoms-open')).toBeNull();

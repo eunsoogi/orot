@@ -1,12 +1,15 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { EvidenceSpanSchema, SourceRecordSchema } from '@orot/domain';
 import { saveReviewedVisitQuestions } from '../persistence';
+import { clarificationQuestions } from '../clarificationQuestions';
+import { localEvidenceFingerprint } from '../evidence';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   appointment,
   candidate,
   evidenceSpan,
   input,
+  oldQuestion,
   repository,
   sourceRecord,
 } from '../testing/persistenceFixtures';
@@ -31,6 +34,68 @@ const { tmpdir } = require('node:os') as TestOs;
 const { join } = require('node:path') as TestPath;
 
 describe('reviewed visit-question durability', () => {
+  it('preserves a legacy row while rejecting a transcript invalidation that arrives before save', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-visit-legacy-'));
+    const path = join(directory, 'records.sqlite');
+    const opened = openSqliteTestDatabase(path);
+    try {
+      await runMigrations(opened.database);
+      const records = createRecordRepository(opened.database);
+      await records.put('appointment', appointment);
+      const original = oldQuestion('legacy-question', appointment.id);
+      await records.put('visit_question', original as never);
+      const question = {
+        questionText: '이전 질문을 다시 확인할까요?',
+        rationale: '이전 내용을 확인할 수 있어요.',
+        priority: 'routine' as const,
+        citations: [],
+        legacySource: {
+          id: original.id,
+          revision: localEvidenceFingerprint(original),
+        },
+      };
+      const saved = await saveReviewedVisitQuestions({
+        ...input(repository(), { questions: [question] }),
+        repository: records,
+      });
+      expect(saved.questions[0]).toMatchObject({
+        questionText: question.questionText,
+        provenance: original.provenance,
+        evidenceSpanIds: [],
+      });
+      const current = saved.questions[0]!;
+      await opened.database.execute(
+        'INSERT INTO transcript_artifact_staleness (transcript_id, artifact_kind, artifact_id, superseded_segment_id, current_segment_id, invalidated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          'transcript',
+          'visit_question',
+          current.id,
+          'old',
+          'new',
+          '2026-10-07T04:00:00.000Z',
+        ],
+      );
+      const second = {
+        ...question,
+        legacySource: {
+          id: current.id,
+          revision: localEvidenceFingerprint(current),
+        },
+      };
+      await expect(
+        saveReviewedVisitQuestions({
+          ...input(repository(), { questions: [second] }),
+          repository: records,
+        }),
+      ).rejects.toThrow(/stale transcript evidence/i);
+      await expect(records.get('visit_question', current.id)).resolves.toEqual(
+        current,
+      );
+    } finally {
+      opened.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it('keeps the reviewed list after the local record database is reopened', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'orot-visit-question-save-'));
     const path = join(directory, 'records.sqlite');
@@ -52,6 +117,15 @@ describe('reviewed visit-question durability', () => {
       await saveReviewedVisitQuestions({
         ...input(repository()),
         repository: records,
+        questions: [
+          candidate,
+          {
+            ...clarificationQuestions[0]!,
+            kind: 'clarification',
+            priority: 'routine',
+            citations: [],
+          },
+        ],
       });
       opened.close();
       opened = null;
@@ -68,6 +142,14 @@ describe('reviewed visit-question durability', () => {
         evidenceSpanIds: ['span-1'],
         provenance: { sourceRecordIds: ['appointment-1', 'source-1'] },
         reviewState: { status: 'reviewed', reviewerId: 'local-user' },
+      });
+      await expect(
+        reopenedRecords.get('visit_question', 'visit-question:appointment-1:2'),
+      ).resolves.toMatchObject({
+        kind: 'clarification',
+        questionText: clarificationQuestions[0]!.questionText,
+        evidenceSpanIds: [],
+        provenance: { sourceRecordIds: ['appointment-1'] },
       });
     } finally {
       opened?.close();

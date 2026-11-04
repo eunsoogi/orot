@@ -92,7 +92,7 @@ export function SavedSummaryHistory({
     }
   }
   const hasDock = useNavigationRouteActions([
-    ...(current?.status === 'failed'
+    ...(current?.status === 'failed' || current?.status === 'source_unavailable'
       ? [
           {
             id: 'retry-summary-save',
@@ -152,10 +152,13 @@ export function SavedSummaryHistory({
             </AppText>
           ))
         : null}
-      {current?.status === 'failed' ? (
+      {current?.status === 'failed' ||
+      current?.status === 'source_unavailable' ? (
         <>
           <AppText accessibilityRole="alert">
-            요약을 기기에 저장하지 못했어요. 다시 저장해 주세요.
+            {current.status === 'source_unavailable'
+              ? '근거를 다시 확인하지 못해 요약을 저장하지 못했어요.'
+              : '요약을 기기에 저장하지 못했어요. 다시 저장해 주세요.'}
           </AppText>
           {!hasDock ? (
             <AppButton

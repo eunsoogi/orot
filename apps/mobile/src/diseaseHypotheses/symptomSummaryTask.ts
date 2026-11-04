@@ -1,14 +1,10 @@
 import { hasMixedSummarySources } from './summarySourceSeparation';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import { summaryResponseGuidance } from './summaryEnvelopeCorrection';
-import {
-  prepareSummaryUncertainty,
-  SUMMARY_UNCERTAINTY_REASON,
-} from './summaryUncertainty';
+import { SUMMARY_UNCERTAINTY_REASON } from './summaryUncertainty';
 import {
   normalizeSummarySections,
   summaryPresentationIssue,
-  summaryPresentationCorrection,
   SUMMARY_PRESENTATION_REASONS,
 } from './summaryPresentation';
 import type { JsonValue } from '@orot/model-runtime';
@@ -26,18 +22,19 @@ import { providerDiagnostic } from '../providers/diagnostics';
 import { reportSummaryEmptySection } from './summaryEmptySectionDiagnostic';
 import {
   summaryLanguageIssue,
-  summaryLanguageCorrection,
   SUMMARY_LANGUAGE_REASONS,
 } from './summaryLanguage';
-import {
-  applySummaryCoverageNotes,
-  summaryCoverageCorrection,
-} from './summaryCoverageNotes';
+import { applySummaryCoverageNotes } from './summaryCoverageNotes';
 import {
   SUMMARY_FACT_REASONS,
-  summaryFactCorrection,
   summaryFactIssue,
 } from './summaryFactValidation';
+import {
+  discardUnsupportedSummarySections,
+  noteOmittedSummaryContent,
+  preparePartialSummaryUncertainty,
+} from './summaryPartialValidation';
+import { summaryCorrection } from './summaryCorrection';
 
 /** A separately selected factual summary never retries or disguises a refused disease assessment. */
 export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
@@ -50,6 +47,8 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
     ...summaryResponseGuidance,
     allowRankedLocalEvidence: true,
     allowBoundedExternalEvidence: true,
+    // Incomplete coverage is disclosed after citation validation; unattributed conflicts still stop the runtime.
+    allowPartialEvidence: true,
     systemPrompt:
       'Summarize explicit facts in saved medication, dose, activity, step-count, health-measurement and symptom records. This is a factual record summary, not a disease assessment. ' +
       'For this broad summary prefer local-health-context with days=30 and detail=summary across all available topics. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview. Preserve dates, units and recorded-day coverage; describe only supplied comparisons. ' +
@@ -107,23 +106,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
       );
       return summaries.length ? summaries.join('\n\n') : undefined;
     },
-    correctionInstructionForInvalidResult(reason) {
-      if (reason === SUMMARY_UNCERTAINTY_REASON)
-        return 'Return uncertaintyNotes as an array of actual limitations written in Korean, or an empty array when none applies. Do not return the old scalar uncertainty field or untranslated placeholders. Keep valid facts and citation IDs unchanged. Do not request new sources.';
-      const presentationCorrection = summaryPresentationCorrection(reason);
-      if (presentationCorrection) return presentationCorrection;
-      const languageCorrection = summaryLanguageCorrection(reason);
-      if (languageCorrection) return languageCorrection;
-      const coverageCorrection = summaryCoverageCorrection(reason);
-      if (coverageCorrection) return coverageCorrection;
-      const factCorrection = summaryFactCorrection(reason);
-      if (factCorrection) return factCorrection;
-      if (reason === 'Keep record facts and medical context separate.')
-        return 'Separate personal-record facts and medical context into different sections. Cite personal records for facts and publications for medical context. Use only existing evidence.';
-      if (reason === 'Medication registration is not confirmed use.')
-        return 'Medication registration alone does not confirm an individual dose. Describe registered medications and explicitly recorded schedules, with any limits on dose confirmation. Use only existing evidence and the specified JSON format.';
-      return undefined;
-    },
+    correctionInstructionForInvalidResult: summaryCorrection,
     validateResult(value, input) {
       if (
         !value ||
@@ -137,7 +120,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         return { status: 'invalid', reason: 'Expected summary sections.' };
       }
       // Reuse exact-current-reference and uncertainty validation; the app sets the presentation mode.
-      const prepared = prepareSummaryUncertainty(
+      const prepared = preparePartialSummaryUncertainty(
         (value as Record<string, JsonValue>).sections,
       );
       if (prepared.status === 'invalid') {
@@ -148,9 +131,13 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         );
         return { status: 'invalid', reason: SUMMARY_UNCERTAINTY_REASON };
       }
+      const partial = discardUnsupportedSummarySections(
+        normalizeSummarySections(prepared.sections, input),
+        input,
+      );
       const validated = validateDiseaseHypothesisResult(
         {
-          hypotheses: normalizeSummarySections(prepared.sections, input),
+          hypotheses: partial.sections,
         } as JsonValue,
         input,
         {
@@ -237,6 +224,8 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         providerDiagnostic('disease', 'validation', 'task_summary_coverage');
         return covered;
       }
+      if (partial.omitted || prepared.omitted)
+        return noteOmittedSummaryContent(covered.value);
       return {
         ...covered,
         value: { ...covered.value, presentation: 'symptom_summary' },

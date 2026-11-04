@@ -35,7 +35,12 @@ export function parseHealthContextScope(
     return undefined;
   const w = v.window as Record<string, unknown>;
   if (
-    Object.keys(w).length !== 3 ||
+    Object.keys(w).some(
+      key =>
+        !['fromInclusive', 'toExclusive', 'timeZone', 'doseHistory'].includes(
+          key,
+        ),
+    ) ||
     !['fromInclusive', 'toExclusive', 'timeZone'].every(
       key => typeof w[key] === 'string',
     )
@@ -43,6 +48,28 @@ export function parseHealthContextScope(
     return undefined;
   try {
     healthContextDays(w as unknown as HealthContextWindow);
+    if (w.doseHistory !== undefined) {
+      const d = w.doseHistory as Record<string, unknown>;
+      if (
+        !d ||
+        typeof d !== 'object' ||
+        Array.isArray(d) ||
+        Object.keys(d).some(
+          key => !['medicationName', 'page', 'pageSize'].includes(key),
+        ) ||
+        !Number.isInteger(d.page) ||
+        Number(d.page) < 0 ||
+        Number(d.page) > 1000 ||
+        !Number.isInteger(d.pageSize) ||
+        Number(d.pageSize) < 1 ||
+        Number(d.pageSize) > 20 ||
+        (d.medicationName !== undefined &&
+          (typeof d.medicationName !== 'string' ||
+            !d.medicationName.trim() ||
+            d.medicationName.length > 200))
+      )
+        return undefined;
+    }
     return {
       kind: 'health_context_period',
       version: 1,
@@ -51,6 +78,9 @@ export function parseHealthContextScope(
         fromInclusive: w.fromInclusive as string,
         toExclusive: w.toExclusive as string,
         timeZone: w.timeZone as string,
+        ...(w.doseHistory
+          ? { doseHistory: w.doseHistory as HealthContextWindow['doseHistory'] }
+          : {}),
       },
     };
   } catch {
@@ -70,6 +100,7 @@ export function healthContextRevision(
       days: report.days,
       quantities: report.quantities,
       medications: report.medications,
+      ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
       sleep: report.sleep,
       symptoms: report.symptoms,
       limitations: report.limitations,

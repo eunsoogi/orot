@@ -1,9 +1,9 @@
 import { parsePublicWebQuery } from '../publicWebQuery';
 
-test('preserves free-form query text that contains no control characters', () => {
-  expect(parsePublicWebQuery({ query: '  public sleep guidance  ' })).toEqual({
-    query: 'public sleep guidance',
-  });
+test('rejects free-form search text even when it appears public', () => {
+  expect(
+    parsePublicWebQuery({ query: 'public sleep guidance' }),
+  ).toBeUndefined();
 });
 
 test.each(['public\u001fquery', 'public\u009fquery'])(

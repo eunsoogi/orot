@@ -3,8 +3,7 @@ import type { MockAppleStep } from './appleModelMockBridge';
 
 // This success scenario requires abstracts; missing abstracts must still fail shipping coverage checks.
 // Europe PMC documents HAS_ABSTRACT:y in its Web Service Reference Guide.
-export const RAG_WORKFLOW_PUBLIC_QUERY =
-  '(sleep duration adults) AND HAS_ABSTRACT:y';
+export const RAG_WORKFLOW_PUBLIC_QUERY = 'sleep duration adults';
 
 const ALLOWED_CITATION_REFERENCES_PREFIX =
   'Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n';
@@ -159,7 +158,7 @@ export function appleModelMockScript(
           text: JSON.stringify({
             kind: 'tool_calls',
             toolCalls: [
-              { name, arguments: { query: RAG_WORKFLOW_PUBLIC_QUERY } },
+              { name, arguments: { topics: ['adult_sleep_duration'] } },
             ],
           }),
         };

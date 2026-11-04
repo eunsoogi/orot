@@ -1,3 +1,4 @@
+import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
@@ -7,6 +8,7 @@ import type { AiFeatureLocalData } from './localData';
 import { restoreSavedGeneratedSources } from './savedVisitQuestionGeneratedSources';
 import { restoreVisitQuestionPeriodForHistory } from './savedVisitQuestionHealthContext';
 import { stableJson } from './evidenceUtils';
+import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import {
   hasStaleVisitQuestionEvidence,
   readCurrentTranscriptInvalidations,
@@ -20,6 +22,8 @@ import {
 export { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 
 export interface RestoredVisitQuestion {
+  readonly kind?: 'confirmed_fact' | 'clarification';
+  readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;
   readonly rationale: string;
   readonly priority: 'routine' | 'important';
@@ -80,6 +84,7 @@ export async function restoreSavedVisitQuestions(input: {
   // Memory and structured-record rows can retain source IDs without persisting a quote span.
   const hasQuestionWithoutSourceSpan = ordered.some(
     row =>
+      row.kind !== 'clarification' &&
       row.evidenceSpanIds.length === 0 &&
       !row.healthContextSources?.length &&
       !row.generatedArtifactSources?.length,
@@ -123,6 +128,17 @@ export async function restoreSavedVisitQuestions(input: {
       );
       hasUnknownGeneratedSource ||= generated.unknown;
       return {
+        ...(row.kind ? { kind: row.kind } : {}),
+        ...(row.kind !== 'clarification' &&
+        citations.length === 0 &&
+        periods.length === 0
+          ? {
+              legacySource: {
+                id: row.id,
+                revision: localEvidenceFingerprint(row),
+              },
+            }
+          : {}),
         questionText: row.questionText,
         rationale: row.rationale,
         priority: row.priority,
@@ -177,24 +193,15 @@ export async function restoreSavedVisitQuestions(input: {
     questions,
     caveats: [],
     // An empty appointment list has no legacy metadata to restore or warn about.
-    restorationNotice:
-      questions.length === 0
-        ? ''
-        : hasChangedPeriod && hasUnknownGeneratedSource
-          ? '건강 근거가 바뀌었고 이전 AI 결과의 일부 원본 상태도 확인할 수 없어요. 최신 자료를 확인해 질문을 다시 생성해 주세요.'
-          : hasChangedPeriod
-            ? '건강 기록이 바뀌어 일부 근거는 현재 자료로 확인할 수 없어요. 질문은 생성 당시의 내용으로 보관했으며, 바뀐 근거를 사용하려면 최신 기록으로 다시 생성해 주세요.'
-            : hasUnknownGeneratedSource
-              ? hasGeneratedOnly
-                ? '이전 AI 결과의 일부 원본 상태는 확인할 수 없어요. 직접 인용 위치가 저장되지 않은 질문은 다시 생성해 주세요.'
-                : '이전 AI 결과를 연결했지만 일부 원본 출처의 현재 상태는 확인할 수 없어요. 내용을 다시 확인해 주세요.'
-              : hasGeneratedOnly
-                ? '이전 AI 결과를 복원했어요. 직접 인용 위치가 저장되지 않은 질문은 다시 생성해 주세요.'
-                : hasQuestionWithoutSourceSpan
-                  ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
-                  : ordered.some(row => row.healthContextSources?.length)
-                    ? '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.'
-                    : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
+    restorationNotice: savedVisitQuestionNotice({
+      empty: questions.length === 0,
+      hasChangedPeriod,
+      hasUnknownGeneratedSource,
+      hasGeneratedOnly,
+      onlyClarifications: ordered.every(row => row.kind === 'clarification'),
+      hasQuestionWithoutSourceSpan,
+      hasPeriod: ordered.some(row => Boolean(row.healthContextSources?.length)),
+    }),
   };
 }
 

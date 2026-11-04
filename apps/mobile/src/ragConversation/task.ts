@@ -9,6 +9,7 @@ import type {
   TaskResponderInput,
 } from '@orot/agent-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
+import { hasUnsupportedClinicalClaim } from './clinicalClaimValidation';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -59,7 +60,7 @@ function priorMessages(
 /** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '5',
+  taskVersion: '6',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,
@@ -80,6 +81,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
+    // Possibility discussions need the same observation/inference boundary as the symptom summary.
+    'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
+    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, unsupported probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
@@ -93,6 +97,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Describe external evidence as a limited search sample, never a complete review; include publication dates and limitations. Request literature evidence when relevant. ' +
     'For a simple record question, answer in one short Korean sentence using only relevant facts. Do not repeat unrelated evidence or metadata. Keep IDs only in citations, never in the answer text. ' +
     'For medications, distinguish a recorded dose or prescription from confirmed current use; do not claim an old dose proves current use. Preserve qualifications and uncertainty. ' +
+    'For a specific medication and date or time, request local-health-context with an explicit time-zone-aware window and doseHistory; follow hasMore pages as needed. A scheduled time is not an intake time, and only an explicit taken or administered event establishes recorded intake. ' +
     'Preserve event status and source-relative time. A scheduled event or intention is not an ongoing or completed event; a completed event is not ongoing. Never turn a future plan into a present-tense fact. ' +
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: {
@@ -126,12 +131,20 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       return undefined;
     // An unsupported evidence-free factual draft must not appear before its required lookup.
     if (
-      !input.evidence.items.length &&
+      !input.evidence.items.some(
+        item => item.sourceKind !== 'external_medical',
+      ) &&
       extractPartialJsonStringAtPath(rawOutput, ['value', 'answerKind']) !==
         'conversation'
     )
       return undefined;
-    return extractPartialJsonStringAtPath(rawOutput, ['value', 'answer']);
+    const answer = extractPartialJsonStringAtPath(rawOutput, [
+      'value',
+      'answer',
+    ]);
+    return answer && !hasUnsupportedClinicalClaim(answer, input)
+      ? answer
+      : undefined;
   },
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
@@ -188,6 +201,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       return {
         status: 'needs_clarification',
         message: 'No current evidence is available.',
+      } as const;
+    }
+    // A model instruction alone cannot prevent a definitive diagnosis from reaching the user.
+    if (hasUnsupportedClinicalClaim(value.answer, input)) {
+      return {
+        status: 'invalid',
+        reason: 'The answer contained a definitive clinical claim.',
       } as const;
     }
     return {

@@ -60,9 +60,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let window: UIWindow
         #if OROT_TESTS
-            if let launch = HealthReviewObservationWindow.session() {
-                window = HealthReviewObservationWindow(windowScene: windowScene, launch: launch)
-            } else if let run = VisitQuestionInputGate.session() {
+            if let run = VisitQuestionInputGate.session() {
                 window = VisitQuestionInputObservationWindow(windowScene: windowScene, run: run)
             } else if let run = EncounterInputGate.session() {
                 window = EncounterInputObservationWindow(windowScene: windowScene, run: run)

@@ -27,6 +27,30 @@ test('explains why an older summary cannot be opened while preserving its histor
   expect(history.read).not.toHaveBeenCalled();
 });
 
+test('distinguishes an unavailable cited source from a storage write failure', async () => {
+  const history = {
+    list: jest.fn(async () => []),
+    read: jest.fn(async () => null),
+    retrySave: jest.fn(async () => null),
+  };
+  await render(
+    <SavedSummaryHistory
+      history={history}
+      current={{ status: 'source_unavailable' }}
+      disabled={false}
+      expanded={false}
+      onRestore={jest.fn()}
+    />,
+  );
+  expect(
+    screen.getByText('근거를 다시 확인하지 못해 요약을 저장하지 못했어요.'),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText('요약을 기기에 저장하지 못했어요. 다시 저장해 주세요.'),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: '다시 저장' })).toBeTruthy();
+});
+
 test('reopens a saved result without generating another model response', async () => {
   const value: DiseaseHypothesisAnalysis = {
     presentation: 'symptom_summary',

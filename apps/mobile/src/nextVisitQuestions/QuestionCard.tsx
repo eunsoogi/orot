@@ -1,3 +1,4 @@
+import { ActionButton } from './QuestionCardActionButton';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -158,6 +159,13 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </View>
       ) : null}
+      <Text style={styles.openSource}>
+        {question.kind === 'clarification'
+          ? '의료진에게 확인할 질문'
+          : question.legacySource
+            ? '원문 위치를 복원하지 못한 저장 질문'
+            : '기록에 근거한 질문'}
+      </Text>
       {question.citations.map((reference, citationIndex) => (
         <Pressable
           accessibilityRole="button"
@@ -210,36 +218,5 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           </Pressable>
         ))}
     </View>
-  );
-}
-
-function ActionButton({
-  accessibilityLabel,
-  disabled,
-  onPress,
-  theme,
-  testID,
-  title,
-}: {
-  accessibilityLabel: string;
-  disabled: boolean;
-  onPress: () => void;
-  theme: NextVisitQuestionsTheme;
-  testID: string;
-  title: string;
-}) {
-  const styles = createQuestionCardStyles(theme);
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.actionButton, disabled && styles.disabled]}
-      testID={testID}
-    >
-      <Text style={styles.actionText}>{title}</Text>
-    </Pressable>
   );
 }

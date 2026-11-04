@@ -2,7 +2,7 @@ import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
 import { buildResearchRequest, buildTaskRequest, responderResearchAvailability } from './requests';
-import { decodeResearchPlan } from './responses';
+import { decodeResearchPlan } from './researchResponse';
 import { canceled, completeState, operationKey, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';

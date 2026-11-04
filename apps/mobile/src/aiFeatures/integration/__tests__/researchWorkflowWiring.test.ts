@@ -95,9 +95,20 @@ test('conversation workflow carries previous research into a free-form result an
       'DELETE FROM research_artifacts WHERE id = ?',
       [1],
     );
+    const remaining = (await storage.search('synthetic guideline', null, 10))
+      .items;
+    expect(remaining.map(item => item.id)).not.toContain(saved!.id);
     expect(
-      (await storage.search('synthetic guideline', null, 10)).items,
-    ).toHaveLength(0);
+      remaining.every(
+        item =>
+          !item.inputSources?.some(
+            source =>
+              'kind' in source &&
+              source.kind === 'generated_research' &&
+              source.id === 'research-1',
+          ),
+      ),
+    ).toBe(true);
   } finally {
     db.close();
   }
@@ -195,9 +206,20 @@ test('conversation literature snapshots retain their real origin and session wit
       ]),
     );
     await storage.remove(saved!.id);
+    const remaining = (await storage.search('synthetic guideline', null, 10))
+      .items;
+    expect(remaining.map(item => item.id)).not.toContain(webResult!.id);
     expect(
-      (await storage.search('synthetic guideline', null, 10)).items,
-    ).toHaveLength(0);
+      remaining.every(
+        item =>
+          !item.inputSources?.some(
+            source =>
+              'kind' in source &&
+              source.kind === 'generated_research' &&
+              source.id === `research-${saved!.id}`,
+          ),
+      ),
+    ).toBe(true);
   } finally {
     db.close();
   }

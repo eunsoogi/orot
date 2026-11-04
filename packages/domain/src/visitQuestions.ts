@@ -40,6 +40,8 @@ const GeneratedArtifactSourcesSchema = z
 export const VisitQuestionSchema = RecordMetadataSchema.safeExtend({
   questionText: NonEmptyTextSchema,
   priority: z.enum(['routine', 'important']),
+  // Missing kind denotes a legacy, source-backed question, never a new clarification.
+  kind: z.enum(['confirmed_fact', 'clarification']).optional(),
   evidenceSpanIds: UniqueRecordIdsSchema,
   // Older lists have only quote spans. New computed citations retain their fixed period and revision.
   healthContextSources: z.array(VisitQuestionHealthContextSourceSchema).min(1).max(3).optional(),

@@ -1,3 +1,4 @@
+import { selectEvidence } from './selectEvidence';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import {
   providerDiagnostic,
@@ -5,12 +6,10 @@ import {
 } from '../providers/diagnostics';
 import type {
   EvidenceBatch,
-  EvidenceItem,
   EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
-import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
@@ -43,6 +42,8 @@ export interface RagConversationRunOptions {
     signal: AbortSignal,
   ) => Promise<RagConversationCurrentEvidence>;
   readonly rag: Pick<LocalE5RagService, 'search'>;
+  /** Public search results are already retrieved and are not local embedding hits. */
+  readonly publicEvidence?: EvidenceBatch;
   readonly resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver;
   readonly readHistoricalArtifact?: (
     reference: EvidenceReference,
@@ -56,43 +57,6 @@ export interface RagConversationRunOptions {
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
   >;
-}
-
-function chunkKey(chunk: EvidenceChunk): string {
-  return `${chunk.metadata.sourceId}\u0000${chunk.metadata.evidenceId}`;
-}
-
-function selectEvidence(
-  batch: EvidenceBatch,
-  hits: readonly HybridEvidenceSearchHit[],
-): EvidenceBatch {
-  const byKey = new Map<string, EvidenceItem>();
-  const duplicates = new Set<string>();
-  for (const item of batch.items) {
-    const key = `${item.sourceId}\u0000${item.evidenceId}`;
-    if (byKey.has(key)) duplicates.add(key);
-    else byKey.set(key, item);
-  }
-  const items: EvidenceItem[] = [];
-  const seen = new Set<string>();
-  for (const hit of hits) {
-    const key = chunkKey(hit.chunk);
-    const item = byKey.get(key);
-    if (!item || duplicates.has(key) || seen.has(key)) continue;
-    seen.add(key);
-    items.push(item);
-  }
-  const counts = new Map<string, number>();
-  for (const item of items)
-    counts.set(item.sourceKind, (counts.get(item.sourceKind) ?? 0) + 1);
-  return {
-    items,
-    coverage: batch.coverage.map(coverage => ({
-      ...coverage,
-      returnedCount: counts.get(coverage.sourceKind) ?? 0,
-    })),
-    conflicts: [...batch.conflicts],
-  };
 }
 
 function boundedHistory(
@@ -129,7 +93,20 @@ export async function runRagConversationTurn(
         })
       : [];
     providerDiagnostic('rag', 'data', 'completed');
-    const initialEvidence = selectEvidence(snapshot.batch, hits);
+    const localEvidence = selectEvidence(snapshot.batch, hits);
+    const initialEvidence = options.publicEvidence
+      ? {
+          items: [...localEvidence.items, ...options.publicEvidence.items],
+          coverage: [
+            ...localEvidence.coverage,
+            ...options.publicEvidence.coverage,
+          ],
+          conflicts: [
+            ...localEvidence.conflicts,
+            ...options.publicEvidence.conflicts,
+          ],
+        }
+      : localEvidence;
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';

@@ -1,4 +1,4 @@
-import { hasBlockingCoverage } from './coveragePolicy';
+import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
@@ -146,7 +146,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         pendingOperation: undefined,
       };
     }
-    if (next.length === 0 || hasDuplicate) {
+    if (hasDuplicate || (next.length === 0 && !options.task.allowIncompleteEvidenceResearch)) {
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The search did not add new evidence at a newer source revision.',
@@ -162,12 +162,14 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
     if (
+      !options.task.allowIncompleteEvidenceResearch &&
       hasBlockingCoverage(
         combined,
         context.options.task.allowBoundedExternalEvidence,
         context.options.task.allowRankedLocalEvidence,
         context.options.task.allowPagedGeneratedArtifacts,
-      )
+      ) &&
+      !canContinueWithPartialEvidence(context.options.task, combined)
     ) {
       context.outcome = {
         status: 'needs_clarification',

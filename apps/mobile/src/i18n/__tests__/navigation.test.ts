@@ -1,4 +1,5 @@
 import { navigationText } from '../navigation';
+import { ko } from '../ko';
 
 describe('navigation Korean terms', () => {
   it('uses distinct visible labels and accessible names for back, cancel, close, and home', () => {
@@ -29,5 +30,13 @@ describe('navigation Korean terms', () => {
     expect(navigationText.leaveRecording.cancel).toBe('계속 녹음');
     expect(navigationText.leaveOngoingOperation.message).toContain('중단');
     expect(navigationText.leaveOngoingOperation.confirm).toContain('나가기');
+  });
+
+  it('uses familiar Korean names instead of framework names in app copy', () => {
+    const frameworkTerms = Object.entries(ko)
+      .filter(([, value]) => /HealthKit|EventKit/u.test(value))
+      .map(([key]) => key);
+
+    expect(frameworkTerms).toEqual([]);
   });
 });

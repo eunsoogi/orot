@@ -43,6 +43,8 @@ export async function runVisitQuestionWorkflow(input: {
   ) => Promise<boolean>;
   readonly signal?: AbortSignal;
   readonly observer?: AiWorkflowObserver;
+  /** An earlier public search uses one slot from the same bounded operation. */
+  readonly reservedPublicSearchCall?: boolean;
 }) {
   if (!input.selection)
     return { status: 'provider_selection_required' } as const;
@@ -91,7 +93,8 @@ export async function runVisitQuestionWorkflow(input: {
     ) ?? false;
   const budget = {
     ...EVIDENCE_WORKFLOW_BUDGET,
-    maxModelCalls: artifactResearch ? 6 : 4,
+    maxModelCalls:
+      (artifactResearch ? 6 : 4) - (input.reservedPublicSearchCall ? 1 : 0),
     maxToolCalls: artifactResearch ? 4 : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
   };
   const maxInitialItems = budget.maxEvidenceItems - 3;
@@ -175,7 +178,9 @@ export async function runVisitQuestionWorkflow(input: {
         if (!item) return false;
         current.push(item);
       }
-      return input.prepared.revalidateEvidence(current);
+      return current.length
+        ? input.prepared.revalidateEvidence(current)
+        : input.prepared.revalidateEvidence(current, { allowEmpty: true });
     },
   };
 
