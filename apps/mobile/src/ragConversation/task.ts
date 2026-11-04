@@ -9,6 +9,7 @@ import type {
   TaskResponderInput,
 } from '@orot/agent-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
+import { containsDefinitiveClinicalClaim } from '../diseaseHypotheses/clinicalClaimGuard';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -54,10 +55,29 @@ function priorMessages(
   });
 }
 
+/** Recognize a narrow source-report sentence without treating lexical overlap as factual proof. */
+function hasUnsupportedClinicalClaim(
+  answer: string,
+  input: TaskResponderInput,
+): boolean {
+  if (!containsDefinitiveClinicalClaim(answer)) return false;
+  return answer.split(/(?<=[.!?\n])/u).some(sentence => {
+    if (!containsDefinitiveClinicalClaim(sentence)) return false;
+    // Citation validation still owns source identity; this grammar is not semantic fact checking.
+    const sourceReport =
+      /^\s*(?:지난\s+)?(?:진료\s+)?기록(?:에는|에)\s+[^,.!?\n]+(?:라고|다고)\s+(?:적혀\s*있어요|기재되어\s*있어요|나와\s*있어요)[.!?]?\s*$/u;
+    return (
+      !input.evidence.items.some(
+        item => item.sourceKind === 'personal_record',
+      ) || !sourceReport.test(sentence)
+    );
+  });
+}
+
 /** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '5',
+  taskVersion: '6',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
@@ -75,6 +95,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    // Possibility discussions need the same observation/inference boundary as the symptom summary.
+    'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
+    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, unsupported probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
@@ -120,7 +143,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         'conversation'
     )
       return undefined;
-    return extractPartialJsonStringAtPath(rawOutput, ['value', 'answer']);
+    const answer = extractPartialJsonStringAtPath(rawOutput, [
+      'value',
+      'answer',
+    ]);
+    return answer && !hasUnsupportedClinicalClaim(answer, input)
+      ? answer
+      : undefined;
   },
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
@@ -173,6 +202,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       return {
         status: 'needs_clarification',
         message: 'No current evidence is available.',
+      } as const;
+    }
+    // A model instruction alone cannot prevent a definitive diagnosis from reaching the user.
+    if (hasUnsupportedClinicalClaim(value.answer, input)) {
+      return {
+        status: 'invalid',
+        reason: 'The answer contained a definitive clinical claim.',
       } as const;
     }
     return {
