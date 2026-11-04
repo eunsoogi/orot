@@ -177,7 +177,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
         }
     }
 
-    /// Compare content-relative positions while scrolling, so larger text cannot pass by clipping lower actions.
+    /// Reflow metric checkboxes and Home actions, keeping every native target reachable with larger text.
     @MainActor
     private func verifyHomePanelsAndNavigationLane(
         _ app: XCUIApplication,
@@ -228,7 +228,12 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             if identifier == "home-metrics-edit" {
                 XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
                 XCTAssertTrue(action.exists && action.isHittable, identifier)
-                app.buttons["취소"].tap()
+                let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
+                XCTAssertTrue(homeScroll.waitForAppearance())
+                for metric in ["sleep", "heartRate", "bodyMass", "steps"] {
+                    UITestConditions.toggleCheckboxAndAssertState(app, identifier: "home-metric-selection-\(metric)", in: homeScroll)
+                }
+                UITestConditions.scrollToAndTap(UITestConditions.element(app, "home-metric-selection-cancel"), in: homeScroll)
             } else {
                 NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
                 try NavigationUITestConditions.navigationAction(app, "navigation-back").control.tap()

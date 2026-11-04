@@ -5,8 +5,9 @@ import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
 import { formatDateTime, formatNumber, t } from '../../i18n';
-import { homeMetrics, type HomeMetric } from './metricSelection';
+import type { HomeMetric } from './metricSelection';
 import type { HomeMetricProjection } from './metricProjection';
+import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
 
@@ -101,7 +102,7 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
   );
 }
 
-/** Displays observed calendar-day aggregates, with gaps and sample semantics visible. */
+/** Displays calendar-day aggregates and retains metric edits until save succeeds. */
 export function HomeMetrics() {
   const data = useHomeMetrics();
   const [draft, setDraft] = useState<readonly HomeMetric[] | null>(null);
@@ -180,42 +181,16 @@ export function HomeMetrics() {
         </View>
       )}
       {draft && (
-        <View style={styles.card}>
-          <Text>{t('home.metricChoose')}</Text>
-          {homeMetrics.map(metric => (
-            <Pressable
-              key={metric}
-              accessibilityRole="checkbox"
-              accessibilityState={{
-                checked: draft.includes(metric),
-                disabled: saving,
-              }}
-              disabled={saving}
-              onPress={() => toggle(metric)}
-            >
-              <Text>
-                {draft.includes(metric) ? '✓ ' : '○ '}
-                {title(metric)}
-              </Text>
-            </Pressable>
-          ))}
-          {saveError && (
-            <Text accessibilityRole="alert">{t('home.metricSaveError')}</Text>
-          )}
-          <AppButton
-            title={t('home.metricSave')}
-            variant="text"
-            disabled={saving || draft.length < 2 || draft.length > 4}
-            busy={saving}
-            onPress={save}
-          />
-          <AppButton
-            title={t('home.metricCancel')}
-            variant="cancel"
-            disabled={saving}
-            onPress={() => setDraft(null)}
-          />
-        </View>
+        <HomeMetricSelectionEditor
+          canSave={draft.length >= 2 && draft.length <= 4}
+          onCancel={() => setDraft(null)}
+          onSave={save}
+          onToggle={toggle}
+          saveError={saveError}
+          saving={saving}
+          selection={draft}
+          title={title}
+        />
       )}
       <Text
         accessibilityRole="header"
