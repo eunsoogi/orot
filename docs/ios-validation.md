@@ -220,6 +220,14 @@ The cost column is historical run 38706863863, not a forecast: **C / L / A / I /
 | N054 | F | Actual consent ordering, cancellation with zero queries/writes, same-selection retry and explicit Calendar confirmation using synthetic records. | 175.55 / 28.92 / 8.32 / 6.93 / 140.91; 2 launches, 5 drags | No failure in the recorded baseline. |
 | N055 | S | Declined remote consent causes no sends; actual review shows cited synthetic questions. | 28.81 / 9.31 / 5.55 / 1.38 / 18.59; 1 launches, 2 drags | No failure in the recorded baseline. |
 
+### Home metric selector acceptance mapping
+
+| Requirement | Receiving test | Evidence boundary |
+| --- | --- | --- |
+| Keep the selection between two and four metrics, retain it after SQLite reopen, and reject duplicate or undersized input. | [HomeMetrics.test.tsx](../apps/mobile/src/routes/home/HomeMetrics.test.tsx), [metricSelection.test.ts](../apps/mobile/src/routes/home/metricSelection.test.ts) | Rendered component behavior and real SQLite repository persistence. |
+| Present each choice as a labeled checkbox with checked state, visible status, a comfortable full-row target, and paired actions that wrap when narrow. | [HomeMetricSelectionEditor.test.tsx](../apps/mobile/src/routes/home/HomeMetricSelectionEditor.test.tsx) | React Native component contract; it does not prove UIKit geometry. |
+| Keep native checkbox targets reachable and at least 44 points high as Home reflows at larger text sizes. | [HomeDuoUITests.swift](../apps/mobile/ios/OrotUITests/HomeDuoUITests.swift) | Resolve each accessibility identifier, reveal the row in Home's scroll view, then check its accessibility value and measured target frame. The assertions remain in the existing Core/fixtures and Duo case; a current-candidate Simulator run remains pending allocation. |
+
 ### Setup, wrapper and current local observations
 
 The same hosted Release run spent 2,753.583s in cohort execution, with 1,865.346s of XCTest bodies. The remaining 888.237s includes installation/reset, host launch, Xcode/result handling and scheduling; it is not all removable overhead. Its measured task wrappers were Core integration 184.643s, Core UI 426.231s, navigation fixtures 668.521s, recording fixtures 549.351s, question fixtures 346.677s, Calendar fixtures 333.588s, Backup 133.084s and local model 111.315s. Debug wrappers were provider 100.905s, Health import 477.126s, microphone 167.846s and provider selection 454.167s. Individual setup costs inside shared native invocations were not separately attributable to one requirement.

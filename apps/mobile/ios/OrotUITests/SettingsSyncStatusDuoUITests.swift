@@ -91,10 +91,10 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         for feature in ["bloodPressure", "medications", "heartRate", "sleep", "steps", "bodyMass"] {
             let choice = node(app, "health-data-feature-\(feature)")
             XCTAssertTrue(choice.waitForAppearance(), app.debugDescription)
-            if checkboxIsChecked(choice) != requested.contains(feature) {
+            if UITestConditions.checkboxIsChecked(choice) != requested.contains(feature) {
                 choice.tap()
             }
-            XCTAssertEqual(checkboxIsChecked(choice), requested.contains(feature), app.debugDescription)
+            XCTAssertEqual(UITestConditions.checkboxIsChecked(choice), requested.contains(feature), app.debugDescription)
         }
         tap(app, "health-data-save")
         let saved = node(app, "health-data-status")
@@ -164,17 +164,6 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
             )
         }
         assertPanelsAvoidNativeReservations(app, primary: first, secondary: second, phase: phase)
-    }
-
-    /// React Native exposes a checkbox's checked state through its accessibility value on iOS.
-    @MainActor
-    private func checkboxIsChecked(_ element: XCUIElement) -> Bool {
-        let value = (element.value as? String)?.lowercased() ?? ""
-        XCTAssertTrue(
-            value.contains("checked") || value.contains("unchecked"),
-            "Checkbox value must expose its checked state: \(element.debugDescription)",
-        )
-        return value.contains("checked") && !value.contains("unchecked")
     }
 
     @MainActor
