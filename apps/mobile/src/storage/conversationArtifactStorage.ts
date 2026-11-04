@@ -12,6 +12,8 @@ import {
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { listConversationArtifactPage } from './conversationArtifactPages';
+import { assertConversationNotCancelled } from './conversationArtifactCancellation';
 
 async function generation(tx: SqlExecutor): Promise<number> {
   const result = await tx.execute(
@@ -97,12 +99,14 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         );
       });
     },
-    async append(value: ConversationArtifact) {
+    async append(value: ConversationArtifact, signal?: AbortSignal) {
       await ensure();
       const serialized = JSON.stringify(value);
       const decoded = decodeConversationArtifact(serialized);
       if (!decoded) throw new Error('The conversation output cannot be saved.');
+      assertConversationNotCancelled(signal);
       await database.transaction(async tx => {
+        assertConversationNotCancelled(signal);
         const sessions = await tx.execute(
           'SELECT generation FROM conversation_artifact_sessions WHERE id = ?',
           [decoded.sessionId],
@@ -114,6 +118,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           throw new Error('Conversation session was removed.');
         await assertNotRemoved(tx, decoded);
         await assertRetainedEvidenceCurrent(tx, decoded.sources, history);
+        assertConversationNotCancelled(signal);
         const existing = await tx.execute(
           'SELECT result_json FROM conversation_artifacts WHERE id = ?',
           [decoded.id],
@@ -121,6 +126,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         if (existing.rows.length) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different output already owns this identity.');
+          assertConversationNotCancelled(signal);
           return;
         }
         await tx.execute(
@@ -156,6 +162,8 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
               );
           }
         }
+        // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
+        assertConversationNotCancelled(signal);
       });
     },
     async read(id: string): Promise<ConversationArtifact | null> {
@@ -195,38 +203,8 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       cursor?: { readonly createdAt: string; readonly id: string },
       limit = 50,
     ) {
-      if (
-        !Number.isSafeInteger(limit) ||
-        limit < 1 ||
-        limit > 50 ||
-        (cursor &&
-          (!cursor.id ||
-            !Number.isFinite(Date.parse(cursor.createdAt)) ||
-            new Date(cursor.createdAt).toISOString() !== cursor.createdAt))
-      )
-        throw new RangeError('Invalid conversation page.');
       await ensure();
-      const result = await database.execute(
-        'SELECT id, created_at FROM conversation_artifacts WHERE session_id = ? AND (? IS NULL OR created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT ?',
-        [
-          sessionId,
-          cursor?.createdAt ?? null,
-          cursor?.createdAt ?? null,
-          cursor?.createdAt ?? null,
-          cursor?.id ?? null,
-          limit + 1,
-        ],
-      );
-      const rows = result.rows.slice(0, limit);
-      const items = rows.map(row => {
-        if (typeof row.id !== 'string' || typeof row.created_at !== 'string')
-          throw new Error('Invalid conversation metadata.');
-        return { id: row.id, createdAt: row.created_at };
-      });
-      return {
-        items,
-        nextCursor: result.rows.length > limit ? (items.at(-1) ?? null) : null,
-      };
+      return listConversationArtifactPage(database, sessionId, cursor, limit);
     },
   };
 }

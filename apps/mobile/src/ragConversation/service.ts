@@ -45,6 +45,7 @@ export type RagConversationObserver = Pick<
   readonly onArtifactContinuation?: (
     value: ArtifactContinuation | null,
   ) => void;
+  /** Resolving means commit won, even if cancellation arrived after the commit point. */
   readonly onRetentionCandidate?: (
     candidate: ConversationRetentionCandidate,
     signal: AbortSignal,

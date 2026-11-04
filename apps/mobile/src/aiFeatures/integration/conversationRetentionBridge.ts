@@ -23,13 +23,16 @@ export function createConversationRetentionBridge(input: {
     },
     async finish(
       outcome: RagConversationOutcome,
-    ): Promise<RagConversationOutcome> {
+    ): Promise<{
+      readonly outcome: RagConversationOutcome;
+      readonly retained: boolean;
+    }> {
       if (
         !input.observer?.onRetentionCandidate ||
         outcome.status !== 'answer' ||
         input.signal.aborted
       )
-        return outcome;
+        return { outcome, retained: false };
       try {
         if (
           !references ||
@@ -62,6 +65,8 @@ export function createConversationRetentionBridge(input: {
           },
           input.signal,
         );
+        // A resolved callback means its atomic commit won the cancellation race.
+        return { outcome, retained: true };
       } catch {
         if (!input.signal.aborted) {
           try {
@@ -71,7 +76,7 @@ export function createConversationRetentionBridge(input: {
           }
         }
       }
-      return outcome;
+      return { outcome, retained: false };
     },
   };
 }

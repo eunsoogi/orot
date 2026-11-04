@@ -192,9 +192,9 @@ export function createRagConversationService({
         return { status: 'failure', kind: 'retrieval_failed' };
       }
       const finished = await retention.finish(outcome);
-      return signal.aborted
+      return signal.aborted && !finished.retained
         ? { status: 'failure', kind: 'cancelled' }
-        : finished;
+        : finished.outcome;
     } catch (error) {
       if (
         signal.aborted ||

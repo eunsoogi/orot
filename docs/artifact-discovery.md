@@ -81,6 +81,10 @@ not connected. Its SQLite tests do not establish native restart
 or real-model behavior. Session deletion undo and generated-parent lineage
 need integration before this boundary is complete. Memory compaction preserves
 outputs when their reviewed source content and metadata remain unchanged.
+The write adapter can retry an unchanged candidate without another model call.
+Cancellation before its last transactional check rolls back the write; after
+that point a successful commit wins. The screen must retain request ownership
+until that outcome is known and discard pending retries on deletion or clear.
 
 ## Cross-kind deletion identity
 

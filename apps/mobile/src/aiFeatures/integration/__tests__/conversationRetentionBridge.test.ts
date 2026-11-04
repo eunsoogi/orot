@@ -15,6 +15,7 @@ import { healthContextFixture } from '../testSupport/healthContextPersistenceFix
 import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
+import { createConversationTurnRetention } from '../../../ragConversation/conversationTurnRetention';
 
 test('a retention consumer can persist and invalidate a captured conversation through SQLite', async () => {
   const db = await healthContextFixture();
@@ -47,23 +48,33 @@ test('a retention consumer can persist and invalidate a captured conversation th
       loadLocalData: async () => localData(records).data,
       ragRunner: runner,
     });
+    let failWrite = true;
+    const retention = createConversationTurnRetention({
+      sessionId: 'session',
+      turnId: 'turn',
+      createdAt: '2026-10-05T00:00:00.000Z',
+      storage: {
+        append: async (...args) => {
+          if (failWrite) {
+            failWrite = false;
+            throw new Error('synthetic write failure');
+          }
+          await storage.append(...args);
+        },
+      },
+    });
     const failure = jest.fn();
     await services.sendRagMessage('기억 내용을 알려 주세요', [], undefined, {
-      onRetentionCandidate: async candidate => {
-        await storage.append({
-          ...candidate,
-          id: 'turn',
-          sessionId: 'session',
-          createdAt: '2026-10-05T00:00:00.000Z',
-          status: 'complete',
-        });
-      },
+      onRetentionCandidate: retention.save,
       onRetentionFailure: failure,
     });
+    expect(failure).toHaveBeenCalledTimes(1);
+    expect(retention.canRetry()).toBe(true);
+    await retention.retry();
     const saved = await storage.read('turn');
     expect(saved?.sources).toHaveLength(2);
     expect(saved?.citations?.[0]?.evidenceId).toBe(records[0]!.id);
-    expect(failure).not.toHaveBeenCalled();
+    expect(runner).toHaveBeenCalledTimes(1);
     await memory.tombstone(records[1]!.id);
     expect(await storage.read('turn')).toBeNull();
   } finally {
@@ -191,4 +202,40 @@ test('a citation missing from admitted inputs cannot become a retained output', 
   expect(result.status).toBe('answer');
   expect(save).not.toHaveBeenCalled();
   expect(failure).toHaveBeenCalledTimes(1);
+});
+
+test('a committed result wins over cancellation reported while its save finishes', async () => {
+  const controller = new AbortController();
+  const runner = jest.fn(
+    async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      options.onValidatedEvidence?.([]);
+      return {
+        status: 'answer' as const,
+        answer: 'Saved answer',
+        citations: [],
+      };
+    },
+  ) as unknown as typeof runRagConversationTurn;
+  const services = createAiFeatureServices(consent, {
+    selectedAi: {
+      selectionStore: selectionStore({
+        providerId: apple.provider.id,
+        modelId: apple.modelId,
+      }),
+      loadAppleOption: async () => apple,
+    },
+    loadLocalData: async () => localData([]).data,
+    ragRunner: runner,
+  });
+  const outcome = await services.sendRagMessage(
+    '합성 질문',
+    [],
+    controller.signal,
+    {
+      onRetentionCandidate: async () => {
+        controller.abort();
+      },
+    },
+  );
+  expect(outcome).toMatchObject({ status: 'answer', answer: 'Saved answer' });
 });
