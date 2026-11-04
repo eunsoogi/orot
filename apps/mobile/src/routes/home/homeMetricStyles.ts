@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
+import { homeMetricGridGap } from './homeMetricLayout';
 
 /** Shared card and chart geometry stays inside the Home route's single scroll owner. */
 export const homeMetricStyles = StyleSheet.create({
@@ -25,7 +26,12 @@ export const homeMetricStyles = StyleSheet.create({
     flexShrink: 1,
     maxWidth: '100%',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  grid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: homeMetricGridGap,
+  },
   card: {
     backgroundColor: appColors.surface,
     borderRadius: 16,
@@ -110,7 +116,7 @@ export const homeMetricStyles = StyleSheet.create({
     flexGrow: 1,
     minWidth: 128,
   },
-  gridCard: { flexGrow: 0, flexBasis: '48%', minWidth: 140 },
+  gridCard: { flexGrow: 0, flexShrink: 0 },
   cardTitle: { color: appColors.text, fontWeight: '700' },
   metricHeading: {
     flexDirection: 'row',
