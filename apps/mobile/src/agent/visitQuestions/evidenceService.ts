@@ -209,14 +209,19 @@ export async function prepareVisitQuestionContext(input: {
       );
       return mapped.item;
     },
-    async revalidateEvidence(citations) {
+    async revalidateEvidence(citations, options) {
       const generated = citations.filter(
         citation => citation.sourceKind === 'generated_artifact',
       );
       const local = citations.filter(
         citation => citation.sourceKind !== 'generated_artifact',
       );
-      if (local.length && !(await revalidateEvidence(local))) return false;
+      if (
+        !(await revalidateEvidence(local, {
+          allowEmpty: generated.length > 0 || Boolean(options?.allowEmpty),
+        }))
+      )
+        return false;
       for (const citation of generated) {
         const metadata = metadataByCitation.get(
           visitQuestionCitationKey(citation),

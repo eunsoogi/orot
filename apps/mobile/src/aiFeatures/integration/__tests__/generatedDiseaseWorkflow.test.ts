@@ -5,6 +5,7 @@ import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStor
 import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';
 import { createAiFeatureServices } from '../featureServices';
 import { localData, consent, selectionStore } from '../featureServiceFixtures';
+import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import {
   makeProvider,
   selectedOption,
@@ -82,32 +83,17 @@ test.each(['disease', 'summary'] as const)(
         contraryEvidence: [],
       };
       const outputs = [
-        ...(mode === 'summary'
-          ? [
-              JSON.stringify({
-                text: '',
-                toolCalls: [
-                  {
-                    id: 'records',
-                    name: 'local-personal-records',
-                    arguments: { query: 'Synthetic' },
-                  },
-                ],
-                finishReason: 'tool_calls',
-              }),
-              JSON.stringify({
-                text: '',
-                toolCalls: [
-                  {
-                    id: 'literature',
-                    name: 'europe-pmc-publication-search',
-                    arguments: { query: 'sleep' },
-                  },
-                ],
-                finishReason: 'tool_calls',
-              }),
-            ]
-          : []),
+        JSON.stringify({
+          text: '',
+          toolCalls: [
+            {
+              id: 'records',
+              name: 'local-personal-records',
+              arguments: { query: 'Synthetic' },
+            },
+          ],
+          finishReason: 'tool_calls',
+        }),
         JSON.stringify({
           text: '',
           toolCalls: [
@@ -129,7 +115,10 @@ test.each(['disease', 'summary'] as const)(
         }),
       ];
       const { provider, requests } = makeProvider(outputs);
-      const { selection, option } = selectedOption(provider, 'on-device');
+      const { selection, option } = selectedOption(
+        { ...provider, searchPublicWeb: publicEvidenceFixture().search },
+        'selected-context-remote',
+      );
       const services = createAiFeatureServices(consent, {
         selectedAi: {
           selectionStore: selectionStore(selection),
@@ -144,11 +133,7 @@ test.each(['disease', 'summary'] as const)(
         mode === 'summary'
           ? await services.summarizeSymptoms!()
           : await services.generateDiseaseHypotheses();
-      if (
-        mode === 'summary' &&
-        outcome.status === 'workflow' &&
-        outcome.result.status !== 'result'
-      )
+      if (outcome.status === 'workflow' && outcome.result.status !== 'result')
         throw new Error(JSON.stringify(outcome.result));
       expect(outcome).toMatchObject({
         status: 'workflow',
@@ -178,7 +163,7 @@ test.each(['disease', 'summary'] as const)(
       );
       expect(JSON.stringify(requests)).not.toContain('private-turn');
       expect(JSON.stringify(requests)).not.toContain('other-turn');
-      expect(requests).toHaveLength(mode === 'summary' ? 4 : 2);
+      expect(requests).toHaveLength(3);
       const cited = services.resolveSource(
         outcome.result.value.hypotheses[0]!.supportingEvidence[0]!,
       );

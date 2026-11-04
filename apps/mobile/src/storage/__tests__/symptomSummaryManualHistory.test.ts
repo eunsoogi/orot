@@ -23,6 +23,7 @@ test('retains a summary with a current manual source and removes it when that so
       id: 'synthetic-summary',
       createdAt: '2035-01-01T00:00:00Z',
       modelName: 'Synthetic model',
+      inputLineage: 'complete' as const,
       modelId: 'synthetic-model',
       providerId: 'synthetic-provider',
       analysis: {
@@ -101,6 +102,7 @@ test('protects a memory created after summary storage is first opened', async ()
       id: 'memory-summary',
       createdAt: '2035-01-01T00:00:00Z',
       modelName: 'Synthetic',
+      inputLineage: 'complete' as const,
       modelId: 'model',
       providerId: 'provider',
       analysis: {
@@ -139,14 +141,17 @@ test('protects a memory created after summary storage is first opened', async ()
       'INSERT INTO agent_memory_records (id, record_json) VALUES (?, ?)',
       ['memory', JSON.stringify(memory)],
     );
-    await store.append(value);
+    await expect(store.append(value)).rejects.toThrow(
+      'removed or its sources changed',
+    );
+    await store.append({ ...value, id: 'memory-summary-recreated' });
     await connection.database.execute('DROP TRIGGER summary_memory_deleted');
     await connection.database.execute(
       'DELETE FROM agent_memory_records WHERE id = ?',
       ['memory'],
     );
     const reopened = createSymptomSummaryStorage(connection.database);
-    expect(await reopened.read('memory-summary')).toBeNull();
+    expect(await reopened.read('memory-summary-recreated')).toBeNull();
   } finally {
     connection.close();
   }

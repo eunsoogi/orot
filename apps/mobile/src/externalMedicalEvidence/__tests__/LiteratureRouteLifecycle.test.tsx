@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import * as inferenceConsent from '../../agent/execution/useInferenceConsent';
 import { AiFeatureRoute } from '../../aiFeatures/integration/AiFeatureRoute';
+import { localData } from '../../aiFeatures/integration/featureServiceFixtures';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
 import { navigationText } from '../../i18n/navigation';
 import { publications } from '../testSupport/literatureLayoutFixtures';
@@ -36,7 +37,10 @@ test('confirmed route removal aborts the request and a late result cannot popula
   const route = await render(
     <AiFeatureRoute
       onBack={jest.fn()}
-      serviceDependencies={{ externalEvidence: { search } }}
+      serviceDependencies={{
+        externalEvidence: { search },
+        loadLocalData: async () => localData([]).data,
+      }}
     />,
   );
   await fireEvent.press(route.getByTestId('ai-feature-external-evidence'));

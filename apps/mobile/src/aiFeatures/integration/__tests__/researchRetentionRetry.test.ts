@@ -3,7 +3,6 @@ import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tes
 import { createResearchArtifactStorage } from '../../../storage/researchArtifactStorage';
 import { localData } from '../featureServiceFixtures';
 import { createPublicWebEvidence } from '../publicWebEvidence';
-import { parsePublicWebQuery } from '../../../agent/execution/publicWebQuery';
 import { retainPublicWebResults } from '../researchRetention';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 
@@ -29,7 +28,7 @@ test('a failed research write is surfaced and a repeated search can save without
     );
     const request = {
       ...run.request,
-      input: parsePublicWebQuery({ topics: ['sleep'] })!,
+      input: { topics: ['sleep'] },
     };
     await expect(retained.search(request)).rejects.toThrow(
       'Synthetic write failure',
@@ -68,7 +67,7 @@ test('retry after an uncertain commit reuses the saved snapshot without another 
     );
     const request = {
       ...run.request,
-      input: parsePublicWebQuery({ topics: ['sleep'] })!,
+      input: { topics: ['sleep'] },
     };
     await expect(retained.search(request)).rejects.toThrow(
       'Synthetic lost acknowledgement',
@@ -105,7 +104,7 @@ test('a deleted result cannot be restored by retrying a lost commit acknowledgem
     );
     const request = {
       ...run.request,
-      input: parsePublicWebQuery({ topics: ['sleep'] })!,
+      input: { topics: ['sleep'] },
     };
     await expect(retained.search(request)).rejects.toThrow(
       'Synthetic lost acknowledgement',

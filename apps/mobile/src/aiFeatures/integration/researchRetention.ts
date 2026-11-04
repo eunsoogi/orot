@@ -3,7 +3,10 @@ import type { AiFeatureLocalData } from './localData';
 import { retainedResearchMetadata } from './retainedResearchSearch';
 import type { ResearchSessionLease } from '../../storage/researchArtifactStorage';
 import type { ResearchArtifactInput } from '../../storage/researchArtifactStorage';
-import { isControlledPublicWebQuery } from '../../agent/execution/publicWebQuery';
+import {
+  isControlledPublicWebQuery,
+  parsePublicWebQuery,
+} from '../../agent/execution/publicWebQuery';
 import type { SavedSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { stableJson } from './evidenceUtils';
 import { RetainedSourceInvalidError } from './retainedSourceError';
@@ -75,7 +78,9 @@ export function retainPublicWebResults(
         pending.delete(key);
         return prior.result;
       }
-      const query = request.input.query;
+      // The public tool accepts topic labels and constructs the outbound query itself.
+      const query =
+        parsePublicWebQuery(request.input)?.query ?? request.input.query;
       const controlled =
         typeof query === 'string' && isControlledPublicWebQuery(query);
       let inputSources: readonly SavedSummarySource[] | null =

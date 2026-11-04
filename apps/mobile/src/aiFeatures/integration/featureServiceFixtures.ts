@@ -117,6 +117,23 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
   const memoryStorage: Pick<AgentMemoryStorageAdapter, 'listRecords'> = {
     listRecords: jest.fn(async () => [...currentRecords]),
   };
+  // Route tests use a small in-memory session port; storage semantics have separate SQLite coverage.
+  const sessions = new Map<string, number>();
+  const conversationStorage = {
+    currentGeneration: async () => 0,
+    createSession: async (id: string) => {
+      sessions.set(id, 0);
+    },
+    activeSessionVersion: async (id: string) => sessions.get(id) ?? null,
+    append: async () => undefined,
+    hideSession: async (id: string) => {
+      sessions.delete(id);
+      return 1;
+    },
+    deleteSession: async (id: string) => {
+      sessions.delete(id);
+    },
+  };
   return {
     searchedChunks,
     indexedChunks,
@@ -138,6 +155,7 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
       findIdentifiers: jest.fn(async () => []),
       loadStaleArtifacts: jest.fn(async () => []),
       loadMemoryRecords: jest.fn(async () => [...currentRecords]),
+      openConversationArtifactStorage: async () => conversationStorage as never,
     },
   };
 }

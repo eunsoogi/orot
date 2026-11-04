@@ -1,7 +1,7 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { VisitQuestionCreateSchema } from '@orot/domain';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { createRecursiveArtifactChain } from '../../../storage/__tests__/helpers/generatedArtifactChain';
+import { createRecursiveArtifactChain } from '../../../storage/testSupport/generatedArtifactChain';
 import { fingerprint } from '../evidenceUtils';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';

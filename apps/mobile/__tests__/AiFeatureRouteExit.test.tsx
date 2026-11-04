@@ -5,7 +5,7 @@ jest.mock('../src/agent/execution/useInferenceConsent', () => ({
   useInferenceConsent: () => ({ consent: {}, disclosureSheet: null }),
 }));
 jest.mock('../src/aiFeatures/integration/featureServices', () => ({
-  createAiFeatureServices: () => ({}),
+  createAiFeatureServices: () => ({ conversationSessionOptions: () => ({}) }),
 }));
 jest.mock('../src/aiFeatures/integration/AiFeatureFlow', () => {
   const { Text } = require('react-native') as typeof import('react-native');

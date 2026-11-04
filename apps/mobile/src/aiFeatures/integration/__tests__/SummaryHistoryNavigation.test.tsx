@@ -130,6 +130,7 @@ test('keeps history in a measured region and restores saved content and provenan
   };
   const generate = jest.fn();
   jest.mocked(createAiFeatureServices).mockReturnValue({
+    conversationSessionOptions: () => ({}),
     summaryHistory: history,
     generateDiseaseHypotheses: generate,
     summarizeSymptoms: generate,

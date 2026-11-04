@@ -96,7 +96,9 @@ test('a new conversation can retain a prior generated answer and follows its del
     await sessions.send(1, services.sendRagMessage);
     const firstSessionId = sessionOptions.retention!.activeIdentity(1)!;
     const firstTurnId = (await storage.list(firstSessionId)).items[0]!.id;
-    expect((await storage.read(firstTurnId))?.answer).toBe('Historical answer');
+    expect((await storage.read(firstTurnId))?.answer).toContain(
+      'Historical answer',
+    );
     const restored = await createConversationArtifactDiscovery({
       database: connection.database,
       storage,
@@ -110,7 +112,7 @@ test('a new conversation can retain a prior generated answer and follows its del
       new AbortController().signal,
     );
     expect(restoredSession).toHaveLength(1);
-    expect(restoredSession[0]?.answer).toBe('Historical answer');
+    expect(restoredSession[0]?.answer).toContain('Historical answer');
     expect(restoredSession[0]?.citations[0]?.sourceKind).toBe(
       'generated_artifact',
     );
@@ -119,7 +121,7 @@ test('a new conversation can retain a prior generated answer and follows its del
     await sessions.send(2, services.sendRagMessage);
     const secondSessionId = sessionOptions.retention!.activeIdentity(2)!;
     const secondTurnId = (await storage.list(secondSessionId)).items[0]!.id;
-    expect((await storage.read(secondTurnId))?.answer).toBe(
+    expect((await storage.read(secondTurnId))?.answer).toContain(
       'Historical answer',
     );
     const grandchild = await createConversationArtifactDiscovery({

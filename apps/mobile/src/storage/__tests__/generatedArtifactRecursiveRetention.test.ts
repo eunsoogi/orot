@@ -1,4 +1,4 @@
-import { createRecursiveArtifactChain } from './helpers/generatedArtifactChain';
+import { createRecursiveArtifactChain } from '../testSupport/generatedArtifactChain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { saveReviewedVisitQuestions } from '../../agent/visitQuestions/persistence';

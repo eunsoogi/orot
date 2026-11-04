@@ -33,6 +33,7 @@ function saved(id = '2035-01-01-01'): SavedSymptomSummary {
     id,
     createdAt: '2035-01-01T00:00:00Z',
     modelName: 'Synthetic model',
+    inputLineage: 'complete' as const,
     modelId: 'synthetic',
     providerId: 'synthetic',
     analysis: {

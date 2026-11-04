@@ -4,7 +4,6 @@ import { createResearchArtifactStorage } from '../../../storage/researchArtifact
 import { localData } from '../featureServiceFixtures';
 import { createPublicWebEvidence } from '../publicWebEvidence';
 import { createSelectedExternalEvidence } from '../selectedExternalEvidence';
-import { parsePublicWebQuery } from '../../../agent/execution/publicWebQuery';
 import {
   retainLiteratureResults,
   retainPublicWebResults,
@@ -57,7 +56,7 @@ test('successful research searches retain separate public snapshots without publ
     if (!web) throw new Error('Missing public web tool');
     await web.search({
       ...run.request,
-      input: parsePublicWebQuery({ topics: ['sleep'] })!,
+      input: { topics: ['sleep'] },
     });
     const reopened = createResearchArtifactStorage(connection.database);
     const study = (await reopened.search('synthetic study', null, 10))
@@ -134,12 +133,12 @@ test('free-form web results remain available but are not retained without their 
     const run = publicEvidenceFixture();
     const web = createPublicWebEvidence(run)!;
     const result = await retainPublicWebResults(
-      web.tool,
+      { ...web.tool, search: () => web.tool.search(run.request) },
       async () => data,
       'provider',
       'model',
       'record_conversation',
-    ).search(run.request);
+    ).search({ ...run.request, input: { query: 'private free form' } });
     if ('status' in result) throw new Error('Unexpected consent');
     expect(result.items).toHaveLength(1);
     expect(result.coverage[0]?.gaps).toContain(

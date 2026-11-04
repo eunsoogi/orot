@@ -54,6 +54,7 @@ test('compaction preserves unchanged memory dependencies and invalidates changed
       providerId: 'provider',
       modelId: 'model',
       modelName: 'Synthetic',
+      inputLineage: 'complete',
       analysis: {
         presentation: 'symptom_summary',
         hypotheses: [

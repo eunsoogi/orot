@@ -1,7 +1,7 @@
 import type { SqlDatabase } from '@orot/storage';
-import { createConversationArtifactStorage } from '../../conversationArtifactStorage';
-import { createSymptomSummaryStorage } from '../../symptomSummaryStorage';
-import { fingerprint } from '../../../aiFeatures/integration/evidenceUtils';
+import { createConversationArtifactStorage } from '../conversationArtifactStorage';
+import { createSymptomSummaryStorage } from '../symptomSummaryStorage';
+import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 
 const reference = {
   sourceKind: 'generated_artifact' as const,

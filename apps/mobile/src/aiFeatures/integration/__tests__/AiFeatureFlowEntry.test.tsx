@@ -9,6 +9,7 @@ import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { Text } from 'react-native';
 import * as inferenceConsent from '../../../agent/execution/useInferenceConsent';
 import { AiFeatureRoute } from '../AiFeatureRoute';
+import { localData } from '../featureServiceFixtures';
 import { publications } from '../../../externalMedicalEvidence/testSupport/literatureLayoutFixtures';
 
 /** Covers entry-only screens and article-launch errors through the production route. */
@@ -106,6 +107,7 @@ test('keeps an article-open failure inside the literature page', async () => {
       onBack={jest.fn()}
       onOpenArticle={open}
       serviceDependencies={{
+        loadLocalData: async () => localData([]).data,
         externalEvidence: {
           search: jest.fn(async () => ({
             status: 'available' as const,
