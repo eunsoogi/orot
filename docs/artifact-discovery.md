@@ -74,8 +74,30 @@ and an observable retry path before saved turns can be exposed to other features
 
 The draft includes a conversation-output store in the existing encrypted
 database, with session and whole-store deletion fences and source-linked
-invalidation. It is not yet connected to the conversation producer, restored
-sessions, or shared discovery. Its SQLite tests do not establish native restart
+invalidation. The conversation service can pass a validated answer and all of
+its admitted sources to a retention callback, but the screen does not yet use
+that callback to save, retry, or restore sessions. Shared discovery is also
+not connected. Its SQLite tests do not establish native restart
 or real-model behavior. Session deletion undo and generated-parent lineage
 need integration before this boundary is complete. Memory compaction preserves
 outputs when their reviewed source content and metadata remain unchanged.
+
+## Cross-kind deletion identity
+
+Artifact identities pair a type with an ID, and exact record dependencies pair
+a record kind with an ID. That is not yet an end-to-end deletion contract:
+the existing source and memory tombstones, memory provenance, retrieval fences,
+and local source alias map also compare untyped IDs. A collision between a
+legacy symptom and another record, manual-history row, or transcript family
+can therefore invalidate unrelated material. The conservative collision
+refusal in #611 remains necessary; it does not resolve a new collision created
+between its preflight and the later deletion stages.
+
+A complete typed fence needs a shared `{ kind, id }` identity accepted by
+record deletion, memory removal and provenance, retrieval deletion and
+eligibility, alias resolution, and artifact dependencies. Existing untyped
+tombstones and backup data need a compatible, conservative dual-read migration;
+ambiguous old IDs cannot safely be attributed to one kind. Multi-stage deletion
+also needs an atomic reservation or equivalent fence against a new colliding ID
+until all deletion stages complete. This contract and its migration are not yet
+implemented.

@@ -8,6 +8,79 @@ import {
   response,
 } from '../testSupport/conversationEnvelopeFixtures';
 
+test('only a validated completed answer publishes its admitted input references', async () => {
+  const f = fixture();
+  const capture = jest.fn();
+  const original = await f.options.loadCurrentEvidence(
+    'question',
+    new AbortController().signal,
+  );
+  const item = original.batch.items[0]!;
+  const chunk = original.chunks[0]!;
+  const other = {
+    ...item,
+    evidenceId: 'uncited-evidence',
+    content: 'Synthetic uncited evidence',
+  };
+  const otherChunk = {
+    ...chunk,
+    id: 'other',
+    metadata: { ...chunk.metadata, evidenceId: other.evidenceId },
+  };
+  const input = {
+    ...f.options,
+    loadCurrentEvidence: async () => ({
+      ...original,
+      chunks: [chunk, otherChunk],
+      batch: {
+        ...original.batch,
+        items: [item, other],
+        coverage: original.batch.coverage.map(coverage => ({
+          ...coverage,
+          resultLimit: 2,
+          returnedCount: 2,
+        })),
+      },
+    }),
+    rag: {
+      search: jest.fn(
+        async () =>
+          [
+            { chunk, score: 1 },
+            { chunk: otherChunk, score: 0.9 },
+          ] as never,
+      ),
+    },
+  };
+  const outcome = await runRagConversationTurn({
+    ...input,
+    onValidatedEvidence: capture,
+  });
+  expect(outcome.status).toBe('answer');
+  expect(capture).toHaveBeenCalledTimes(1);
+  expect(capture.mock.calls[0]?.[0]).toEqual([
+    expect.objectContaining({ evidenceId: 'synthetic-evidence' }),
+    expect.objectContaining({ evidenceId: 'uncited-evidence' }),
+  ]);
+  expect(JSON.stringify(capture.mock.calls[0])).not.toContain(
+    'Synthetic evidence',
+  );
+  f.generate
+    .mockReset()
+    .mockResolvedValueOnce(malformed())
+    .mockResolvedValueOnce(malformed());
+  capture.mockClear();
+  expect(
+    (
+      await runRagConversationTurn({
+        ...input,
+        onValidatedEvidence: capture,
+      })
+    ).status,
+  ).toBe('failure');
+  expect(capture).not.toHaveBeenCalled();
+});
+
 test('repairs only malformed citation shape once and commits the validated answer to history', async () => {
   const f = fixture();
   const sessions = createConversationSessions();

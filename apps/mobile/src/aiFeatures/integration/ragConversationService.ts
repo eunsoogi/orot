@@ -1,6 +1,5 @@
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
-import { loadLocalHealthKitAutoSyncStatus } from '../../healthkit/autoSyncLocal';
 import { isRagConversationAvailabilityQuestion } from '../../ragConversation/availabilityIntent';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
@@ -23,8 +22,9 @@ import {
   AiProviderSelectionError,
   type SelectedAiResolution,
 } from './provider';
-import { describeLocalRecordAvailability } from './ragConversationAvailability';
+import { readConversationAvailability } from './readConversationAvailability';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
+import { createConversationRetentionBridge } from './conversationRetentionBridge';
 
 type ReadySelectedAi = Extract<
   SelectedAiResolution,
@@ -88,38 +88,7 @@ export function createRagConversationService({
       if (isRagConversationAvailabilityQuestion(normalizedQuestion)) {
         stage = 'data';
         const data = await withProviderStage('rag', 'data', loadLocalData);
-        const inventory = await withProviderStage('rag', 'data', () =>
-          data.repository.readInventory({ signal }),
-        );
-        // Manual history has its own table and is not represented in structured inventory.
-        const manualHistory = await withProviderStage('rag', 'data', () =>
-          data.manualHistory.listEvidence({ limit: 1 }),
-        );
-        let syncStatus = null;
-        try {
-          syncStatus = await withProviderStage(
-            'rag',
-            'data',
-            loadLocalHealthKitAutoSyncStatus,
-          );
-        } catch (error) {
-          // Sync status is optional; an interrupted request remains a cancellation.
-          if (
-            signal.aborted ||
-            (error instanceof Error && error.name === 'AbortError')
-          )
-            throw error;
-        }
-        if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
-        return {
-          status: 'answer',
-          answer: describeLocalRecordAvailability(
-            inventory,
-            syncStatus,
-            manualHistory.length > 0,
-          ),
-          citations: [],
-        };
+        return await readConversationAvailability(data, signal);
       }
 
       const selected = await withProviderStage('rag', 'selection', selectedAi);
@@ -164,11 +133,20 @@ export function createRagConversationService({
         ...external.tools,
       ];
       const runId = createOperationRunId?.() ?? operationRunId();
+      const retention = createConversationRetentionBridge({
+        observer,
+        registry,
+        question: normalizedQuestion,
+        providerId: selected.provider.id,
+        modelId: selected.modelId,
+        signal,
+      });
       stage = 'workflow';
       const outcome = await ragRunner(
         {
           question: normalizedQuestion,
           previousMessages: boundRagConversationHistory(previousMessages),
+          onValidatedEvidence: retention.onValidatedEvidence,
           loadCurrentEvidence: async () => ({
             batch: { items: [], coverage: [], conflicts: [] },
             chunks: [],
@@ -213,7 +191,10 @@ export function createRagConversationService({
       ) {
         return { status: 'failure', kind: 'retrieval_failed' };
       }
-      return outcome;
+      const finished = await retention.finish(outcome);
+      return signal.aborted
+        ? { status: 'failure', kind: 'cancelled' }
+        : finished;
     } catch (error) {
       if (
         signal.aborted ||

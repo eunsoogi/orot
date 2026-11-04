@@ -6,12 +6,12 @@ import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceReference,
-  MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
+import type { RagConversationObserver } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
 import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
@@ -53,7 +53,7 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
     question: string,
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
-    observer?: Pick<MultiAgentInvocation, 'onProgress' | 'onTaskStreamEvent'>,
+    observer?: RagConversationObserver,
   ): Promise<RagConversationOutcome>;
   resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
   readSource(

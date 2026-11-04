@@ -142,6 +142,19 @@ test('rejects valid JSON with invalid typed output and source metadata', async (
     const source = value.sources[0]!;
     expect(
       decodeConversationArtifact(
+        JSON.stringify({ ...value, citations: [source.reference] }),
+      ),
+    ).not.toBeNull();
+    expect(
+      decodeConversationArtifact(
+        JSON.stringify({
+          ...value,
+          citations: [{ ...source.reference, evidenceId: 'different' }],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      decodeConversationArtifact(
         JSON.stringify({
           ...value,
           sources: [

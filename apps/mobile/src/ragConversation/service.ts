@@ -17,6 +17,8 @@ import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenc
 import { historicalArtifactOutcome } from './historicalArtifactAnswer';
 import type { ArtifactContinuation } from './artifactContinuation';
 import { providerHistoryMessage } from './conversationHistoryPayload';
+import { trackValidatedEvidence } from './conversationRetentionEvidence';
+import type { ConversationRetentionCandidate } from './conversationRetention';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -43,6 +45,11 @@ export type RagConversationObserver = Pick<
   readonly onArtifactContinuation?: (
     value: ArtifactContinuation | null,
   ) => void;
+  readonly onRetentionCandidate?: (
+    candidate: ConversationRetentionCandidate,
+    signal: AbortSignal,
+  ) => Promise<void>;
+  readonly onRetentionFailure?: () => void;
 };
 
 export interface RagConversationRunOptions {
@@ -58,6 +65,10 @@ export interface RagConversationRunOptions {
     reference: EvidenceReference,
     signal: AbortSignal,
   ) => Promise<EvidenceSourceReadResult>;
+  /** The caller may capture all admitted inputs only after the final answer passes validation. */
+  readonly onValidatedEvidence?: (
+    references: readonly EvidenceReference[],
+  ) => void;
   readonly workflow: Omit<
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
@@ -166,20 +177,29 @@ export async function runRagConversationTurn(
       'reason' in result ? result.reason : undefined,
     );
     if (result.status === 'result') {
+      const accepted = trackValidatedEvidence(
+        result.checkpoint?.evidenceReferences,
+        options.onValidatedEvidence,
+        invocation.signal,
+      );
       if (result.value.answerKind === 'conversation') {
-        return result.citations.length ||
-          result.coverage.some(
-            coverage => coverage.sourceKind === 'generated_artifact',
-          )
-          ? { status: 'insufficient' }
-          : { status: 'answer', answer: result.value.answer, citations: [] };
+        return accepted(
+          result.citations.length ||
+            result.coverage.some(
+              coverage => coverage.sourceKind === 'generated_artifact',
+            )
+            ? { status: 'insufficient' }
+            : { status: 'answer', answer: result.value.answer, citations: [] },
+        );
       }
       if (!result.citations.length) return { status: 'insufficient' };
       if (result.value.answerKind === 'prior_output') {
-        return historicalArtifactOutcome(
-          result,
-          options,
-          invocation.signal ?? new AbortController().signal,
+        return accepted(
+          await historicalArtifactOutcome(
+            result,
+            options,
+            invocation.signal ?? new AbortController().signal,
+          ),
         );
       }
       // A previous AI statement cannot by itself ground a new clinical assertion.
@@ -189,7 +209,7 @@ export async function runRagConversationTurn(
         )
       )
         return { status: 'insufficient' };
-      return {
+      return accepted({
         status: 'answer',
         // Label source-relative time even when the model omits that qualifier in its prose.
         answer: result.citations.some(isPublicWebReference)
@@ -206,7 +226,7 @@ export async function runRagConversationTurn(
               ? `${result.value.answer}\n\n원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
               : `${result.value.answer}\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.`,
         citations: result.citations,
-      };
+      });
     }
     return failureFromWorkflow(result);
   } catch (error) {

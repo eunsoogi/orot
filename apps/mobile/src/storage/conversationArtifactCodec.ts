@@ -1,6 +1,8 @@
 import { isRecordKind } from '@orot/storage';
 import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
+import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
+import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
 export interface ConversationArtifact {
   readonly id: string;
@@ -12,6 +14,7 @@ export interface ConversationArtifact {
   readonly question: string;
   readonly answer: string;
   readonly sources: readonly SavedSummarySource[];
+  readonly citations?: readonly EvidenceReference[];
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -109,6 +112,19 @@ export function decodeConversationArtifact(
           return null;
       }
     }
+    const sources = value.sources as Record<string, unknown>[];
+    if (
+      value.citations !== undefined &&
+      (!Array.isArray(value.citations) ||
+        value.citations.length > 24 ||
+        value.citations.some(
+          citation =>
+            !sources.some(
+              source => stableJson(source.reference) === stableJson(citation),
+            ),
+        ))
+    )
+      return null;
     return value as unknown as ConversationArtifact;
   } catch {
     return null;
