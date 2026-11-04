@@ -8,7 +8,14 @@ import type {
   NavigationController,
   NavigationRoute,
 } from './navigationController';
-import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
+import type {
+  NavigationLeaveStateSource,
+  NavigationRouteActions,
+} from './navigationRouteContracts';
+export type {
+  NavigationLeaveStateSource,
+  NavigationRouteActions,
+} from './navigationRouteContracts';
 import type { NavigationSurface } from './NavigationActionBar';
 import type { NavigationPrimaryAction } from './NavigationActionBar';
 import type { NavigationRootTabs } from './rootTabs';
@@ -24,23 +31,6 @@ import {
   useNavigationReduceMotion,
 } from './NavigationMotionContext';
 import type { NavigationRouteLayoutPolicy } from './appContentLayoutPolicy';
-
-export interface NavigationRouteActions<Name extends string> {
-  readonly route: NavigationRoute<Name>;
-  readonly onBack: () => Promise<boolean>;
-  readonly onHome: () => Promise<boolean>;
-  readonly push: (name: Name) => NavigationRoute<Name> | null;
-  readonly replace: (name: Name) => NavigationRoute<Name> | null;
-  readonly registerLeaveState: (
-    source: NavigationLeaveStateSource<Name>,
-  ) => () => void;
-}
-
-export type NavigationLeaveStateSource<Name extends string> = Pick<
-  NavigationLeaveGuardOptions<Name>,
-  'readState'
-> &
-  Partial<Pick<NavigationLeaveGuardOptions<Name>, 'confirm' | 'stopRecording'>>;
 
 interface RegisteredLeaveState<Name extends string> {
   readonly token: symbol;
@@ -167,28 +157,50 @@ export function NavigationRouteAdapter<Name extends string>({
           : contentSafeAreaHandledByChild;
       const routeRootTabs =
         typeof rootTabs === 'function' ? rootTabs(route) : rootTabs;
-      // Route ownership controls horizontal panels separately from safe-area handling.
       const layoutOwner =
         typeof contentLayoutOwner === 'function'
           ? contentLayoutOwner(route, routeRootTabs)
           : contentLayoutOwner;
-
+      // Keep the rail inside its native route while the stack spans the window;
+      // retained routes cannot publish or receive input from an inactive rail.
       return (
-        <NavigationRouteScene
+        <NavigationViewport
           active={active}
-          childHandlesSafeArea={routeHandlesSafeArea}
-          controller={controller}
-          getLeaveStateSource={() => getLeaveStateSource(route.key)}
-          key={route.key}
-          primaryActionHost={primary.host}
-          registerLeaveStateForRoute={registerLeaveState}
-          rootTabs={routeRootTabs}
-          route={route}
-          scrollable={routeIsScrollable}
-          contentLayoutOwner={layoutOwner}
+          childHandlesSafeArea
+          actionBar={
+            active ? (
+              <NavigationActionBar
+                controller={controller}
+                leaveDisabled={activeLeaveDisabled}
+                showHome={showHome}
+                homeAction={homeAction}
+                pageActions={primary.actions}
+                primaryAction={
+                  primary.actions.length ? undefined : primaryAction
+                }
+                routeKey={route.key}
+                rootTabs={routeRootTabs}
+                surface={surface}
+              />
+            ) : null
+          }
         >
-          {children}
-        </NavigationRouteScene>
+          <NavigationRouteScene
+            active={active}
+            childHandlesSafeArea={routeHandlesSafeArea}
+            controller={controller}
+            getLeaveStateSource={() => getLeaveStateSource(route.key)}
+            key={route.key}
+            primaryActionHost={primary.host}
+            registerLeaveStateForRoute={registerLeaveState}
+            rootTabs={routeRootTabs}
+            route={route}
+            scrollable={routeIsScrollable}
+            contentLayoutOwner={layoutOwner}
+          >
+            {children}
+          </NavigationRouteScene>
+        </NavigationViewport>
       );
     },
     [
@@ -198,28 +210,18 @@ export function NavigationRouteAdapter<Name extends string>({
       controller,
       getLeaveStateSource,
       primary.host,
+      primary.actions,
       registerLeaveState,
       rootTabs,
       scrollable,
       snapshot.currentRoute.key,
+      activeLeaveDisabled,
+      showHome,
+      homeAction,
+      primaryAction,
+      surface,
     ],
   );
-  const routeRootTabs =
-    typeof rootTabs === 'function' ? rootTabs(snapshot.currentRoute) : rootTabs;
-  const actionBar = (
-    <NavigationActionBar
-      controller={controller}
-      leaveDisabled={activeLeaveDisabled}
-      showHome={showHome}
-      homeAction={homeAction}
-      pageActions={primary.actions}
-      primaryAction={primary.actions.length ? undefined : primaryAction}
-      routeKey={snapshot.currentRoute.key}
-      rootTabs={routeRootTabs}
-      surface={surface}
-    />
-  );
-
   return (
     <NavigationMotionContext.Provider value={reduceMotion}>
       <SafeAreaProvider style={styles.fill}>
@@ -229,17 +231,15 @@ export function NavigationRouteAdapter<Name extends string>({
             style={styles.fill}
             testID="navigation-keyboard-avoiding-root"
           >
-            <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
-              <NativeRouteStack
-                controller={controller}
-                canNativeGoBack={canNativeGoBack}
-                isTransitioning={snapshot.isTransitioning}
-                reduceMotion={reduceMotion}
-                renderRoute={renderRoute}
-                routes={snapshot.routes}
-                onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
-              />
-            </NavigationViewport>
+            <NativeRouteStack
+              controller={controller}
+              canNativeGoBack={canNativeGoBack}
+              isTransitioning={snapshot.isTransitioning}
+              reduceMotion={reduceMotion}
+              renderRoute={renderRoute}
+              routes={snapshot.routes}
+              onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
+            />
           </KeyboardAvoidingView>
         </NavigationGeometryProvider>
       </SafeAreaProvider>
