@@ -56,8 +56,11 @@ export async function removeLocalSourceWithMemory(
     const rag = deletionRag(database);
     await rag.prepare();
     // Capture cascade roots before SQL removal so transcript-only memory references are deleted too.
-    const deletionReferences =
-      await repository.listSourceDeletionReferences(normalizedSourceId);
+    const typedReferences =
+      await repository.listTypedSourceDeletionReferences?.(normalizedSourceId);
+    const deletionReferences = typedReferences
+      ? [...new Set(typedReferences.map(reference => reference.id))].sort()
+      : await repository.listSourceDeletionReferences(normalizedSourceId);
     // Memory invalidation commits before source removal; refresh even if the latter fails.
     const result = await memory
       .removeSource(
@@ -75,6 +78,7 @@ export async function removeLocalSourceWithMemory(
           );
         },
         deletionReferences,
+        typedReferences,
       )
       .finally(notifyLocalSourceDeleted);
     endDerivedCleanup('success');

@@ -1,9 +1,18 @@
 import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind } from './contracts';
-import type { SqlExecutor } from './sql';
+import type { SqlDatabase, SqlExecutor } from './sql';
 
 export const SOURCE_DELETION_TOMBSTONES_TABLE = 'source_deletion_tombstones';
+
+/** Read both deletion projections from a consistent database snapshot. */
+export async function readSourceDeletionSnapshot(database: SqlDatabase, sourceId: string) {
+  let references: readonly { kind: string; id: string }[] = [];
+  await database.transaction(async (tx) => {
+    references = await listTypedSourceDeletionReferences(tx, sourceId);
+  });
+  return references;
+}
 
 /** Reads record identities only so all-local deletion can fence without loading saved payloads. */
 export async function listAllLocalDeletionReferences(
@@ -75,29 +84,36 @@ export async function listSourceDeletionReferences(
   executor: SqlExecutor,
   sourceRecordId: string,
 ): Promise<readonly string[]> {
+  const references = await listTypedSourceDeletionReferences(executor, sourceRecordId);
+  return [...new Set(references.map((reference) => reference.id))].sort();
+}
+
+/** Capture kind with each identity before the source cascade removes its rows. */
+export async function listTypedSourceDeletionReferences(
+  executor: SqlExecutor,
+  sourceRecordId: string,
+): Promise<readonly { kind: string; id: string }[]> {
   const sourceId = RecordIdSchema.parse(sourceRecordId);
-  const references = new Set<string>([sourceId]);
+  const references = new Map<string, { kind: string; id: string }>();
+  const add = (kind: string, value: unknown) => {
+    if (typeof value !== 'string') throw new Error('A deletion reference ID is invalid.');
+    const id = RecordIdSchema.parse(value);
+    references.set(JSON.stringify([kind, id]), { kind, id });
+  };
+  add('source_record', sourceId);
   const spans = await executor.execute(
     "SELECT id FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = ?",
     [sourceId],
   );
-  for (const row of spans.rows) {
-    if (typeof row.id !== 'string') throw new Error('A source evidence span ID is invalid.');
-    references.add(RecordIdSchema.parse(row.id));
-  }
-
+  for (const row of spans.rows) add('evidence_span', row.id);
   const transcripts = await executor.execute(
     "SELECT id, json_extract(payload_json, '$.transcriptId') AS transcript_id FROM transcript_segments WHERE json_extract(payload_json, '$.recordingSourceId') = ?",
     [sourceId],
   );
   for (const row of transcripts.rows) {
-    if (typeof row.id !== 'string' || typeof row.transcript_id !== 'string') {
-      throw new Error('A transcript deletion reference is invalid.');
-    }
-    references.add(RecordIdSchema.parse(row.id));
-    references.add(RecordIdSchema.parse(row.transcript_id));
+    add('transcript_segment', row.id);
+    add('transcript_family', row.transcript_id);
   }
-
   for (const kind of Object.keys(STORAGE_TABLES) as RecordKind[]) {
     if (kind === 'source_record' || kind === 'evidence_span' || kind === 'transcript_segment')
       continue;
@@ -109,13 +125,9 @@ export async function listSourceDeletionReferences(
         ? [sourceId, sourceId, sourceId]
         : [sourceId, sourceId],
     );
-    for (const row of rows.rows) {
-      if (typeof row.id !== 'string') throw new Error('A dependent record ID is invalid.');
-      references.add(RecordIdSchema.parse(row.id));
-    }
+    for (const row of rows.rows) add(kind, row.id);
   }
-
-  return [...references].sort();
+  return [...references.values()];
 }
 
 /** Builds the SQL predicate that prevents a deleted identity from entering a record again. */

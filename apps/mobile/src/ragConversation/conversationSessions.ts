@@ -25,7 +25,7 @@ import {
 } from './conversationSessionTransitions';
 export type { ConversationSender, ConversationSession };
 let nextSessionOwner = 0;
-/** App-owned memory-only sessions survive route removal without persisting health text. */
+/** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
   options: ConversationSessionOptions = {},
 ) {

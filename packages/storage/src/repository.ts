@@ -21,7 +21,7 @@ import type { TranscriptEvidenceRepository } from './transcriptEvidence';
 import {
   hasStoredRecordId as readStoredRecordIdPresence,
   listAllLocalDeletionReferences as readAllLocalDeletionReferences,
-  listSourceDeletionReferences as readSourceDeletionReferences,
+  readSourceDeletionSnapshot,
   SOURCE_DELETION_TOMBSTONES_TABLE,
 } from './sourceDeletionReferences';
 import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
@@ -64,6 +64,9 @@ export interface RecordRepository extends RecordWriter {
   listAllLocalDeletionReferences(): Promise<readonly string[]>;
   hasStoredRecordId(recordId: string): Promise<boolean>;
   listSourceDeletionReferences(sourceRecordId: string): Promise<readonly string[]>;
+  listTypedSourceDeletionReferences(
+    sourceRecordId: string,
+  ): Promise<readonly { kind: string; id: string }[]>;
   listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
 
@@ -217,12 +220,11 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       return readStoredRecordIdPresence(database, recordId);
     },
     async listSourceDeletionReferences(sourceRecordId) {
-      // Read the cascade identities in one snapshot before memory is deleted.
-      let references: readonly string[] = [];
-      await database.transaction(async (transaction) => {
-        references = await readSourceDeletionReferences(transaction, sourceRecordId);
-      });
-      return references;
+      const references = await readSourceDeletionSnapshot(database, sourceRecordId);
+      return [...new Set(references.map((reference) => reference.id))].sort();
+    },
+    async listTypedSourceDeletionReferences(sourceRecordId) {
+      return readSourceDeletionSnapshot(database, sourceRecordId);
     },
     async listDeletedSourceReferenceIds(referenceIds) {
       // Checkpoint resume must reject deleted identities without loading their former content.

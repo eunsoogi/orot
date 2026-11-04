@@ -36,6 +36,7 @@ export interface AgentMemoryService {
     sourceId: string,
     deleteSourceRecord: () => Promise<boolean>,
     dependentReferenceIds?: readonly string[],
+    typedReferences?: readonly { id: string; kind: string }[],
   ): Promise<AgentMemorySourceRemovalResult>;
   close(): Promise<void>;
 }

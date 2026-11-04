@@ -63,7 +63,7 @@ export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listInvalidatedSourceIds(): Promise<string[]>;
   /** Changes when typed quarantine fences change, without conflating them with raw IDs. */
   listQuarantineRevision?(): Promise<string>;
-  markSourceRemoved(sourceId: string): Promise<void>;
+  markSourceRemoved(sourceId: string, kinds?: readonly string[]): Promise<void>;
   beginBatch(): void;
   commitBatch(): Promise<void>;
   rollbackBatch(): void;
