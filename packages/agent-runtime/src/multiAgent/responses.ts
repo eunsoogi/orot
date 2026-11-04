@@ -1,11 +1,7 @@
+import { clarificationMessageFromValidation } from './clarificationResult';
 import { hasBlockingCoverage } from './coveragePolicy';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
-import type {
-  TaskClarificationValue,
-  TaskResponderContract,
-  TaskResponderInput,
-  TaskResultValidation,
-} from './contracts';
+import type { TaskResponderContract, TaskResponderInput } from './contracts';
 import { referencesFromBatch } from './evidence';
 import {
   canonicalJson,
@@ -107,6 +103,7 @@ export async function consumeResponderResponse<TResult>(
   }
   if (
     !independent &&
+    !context.options.task.acceptsIncompleteEvidence?.(decoded.value as JsonValue, input) &&
     hasBlockingCoverage(
       input.evidence,
       context.options.task.allowBoundedExternalEvidence,
@@ -225,26 +222,5 @@ async function outputExceedsLimit(
 export function requireTaskContract<TResult>(contract: TaskResponderContract<TResult>): boolean {
   return Boolean(
     contract.taskType.trim() && contract.taskVersion.trim() && contract.systemPrompt.trim(),
-  );
-}
-
-/** Projects copy only from an explicit clarification result returned by task validation. */
-function clarificationMessageFromValidation(
-  validation: TaskResultValidation<unknown>,
-): string | undefined {
-  if (validation.status === 'needs_clarification') return validation.message;
-  if (validation.status !== 'valid' || !isTaskClarificationValue(validation.value))
-    return undefined;
-  return validation.value.message;
-}
-
-/** Some task result unions carry their validated clarification as a normal valid value. */
-function isTaskClarificationValue(value: unknown): value is TaskClarificationValue {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    candidate.status === 'needs_clarification' &&
-    typeof candidate.message === 'string' &&
-    candidate.message.trim().length > 0
   );
 }

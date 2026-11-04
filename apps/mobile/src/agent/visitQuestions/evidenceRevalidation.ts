@@ -46,9 +46,13 @@ export function createVisitQuestionEvidenceRevalidator(input: {
   readonly validateHealthContext?: (
     source: VisitQuestionHealthContextSource,
   ) => Promise<boolean>;
-}): (citations: readonly VisitQuestionEvidenceItem[]) => Promise<boolean> {
-  return async citations => {
-    if (citations.length === 0) return false;
+}): (
+  citations: readonly VisitQuestionEvidenceItem[],
+  options?: { readonly allowEmpty: boolean },
+) => Promise<boolean> {
+  return async (citations, options) => {
+    // Empty evidence is valid only for an explicitly source-free visit question.
+    if (citations.length === 0 && !options?.allowEmpty) return false;
     try {
       const currentNow = input.currentTime();
       if (!Number.isFinite(Date.parse(currentNow))) return false;

@@ -158,6 +158,13 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </View>
       ) : null}
+      <Text style={styles.openSource}>
+        {question.kind === 'clarification'
+          ? '의료진에게 확인할 질문'
+          : question.legacySource
+            ? '원문 위치를 복원하지 못한 저장 질문'
+            : '기록에 근거한 질문'}
+      </Text>
       {question.citations.map((reference, citationIndex) => (
         <Pressable
           accessibilityRole="button"

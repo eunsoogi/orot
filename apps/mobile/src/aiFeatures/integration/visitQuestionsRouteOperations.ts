@@ -186,7 +186,8 @@ async function generate(
         sourceKind,
         signal,
       );
-      if (sourceKind !== 'personal_record') collections.push(result);
+      // Personal-search gaps and conflicts must reach the review beside its questions.
+      collections.push(result);
       return result;
     },
   };

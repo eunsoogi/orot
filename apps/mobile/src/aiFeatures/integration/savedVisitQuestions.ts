@@ -5,6 +5,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
 import { restoreVisitQuestionPeriodForHistory } from './savedVisitQuestionHealthContext';
 import { stableJson } from './evidenceUtils';
+import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import {
   hasStaleVisitQuestionEvidence,
   readCurrentTranscriptInvalidations,
@@ -18,6 +19,8 @@ import {
 export { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 
 export interface RestoredVisitQuestion {
+  readonly kind?: 'confirmed_fact' | 'clarification';
+  readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;
   readonly rationale: string;
   readonly priority: 'routine' | 'important';
@@ -76,7 +79,9 @@ export async function restoreSavedVisitQuestions(input: {
   // Memory and structured-record rows can retain source IDs without persisting a quote span.
   const hasQuestionWithoutSourceSpan = ordered.some(
     row =>
-      row.evidenceSpanIds.length === 0 && !row.healthContextSources?.length,
+      row.kind !== 'clarification' &&
+      row.evidenceSpanIds.length === 0 &&
+      !row.healthContextSources?.length,
   );
   const citationCache = new Map<string, EvidenceItem>();
   let hasChangedPeriod = false;
@@ -110,6 +115,17 @@ export async function restoreSavedVisitQuestions(input: {
       );
       if (periods.some(period => period.changed)) hasChangedPeriod = true;
       return {
+        ...(row.kind ? { kind: row.kind } : {}),
+        ...(row.kind !== 'clarification' &&
+        citations.length === 0 &&
+        periods.length === 0
+          ? {
+              legacySource: {
+                id: row.id,
+                revision: localEvidenceFingerprint(row),
+              },
+            }
+          : {}),
         questionText: row.questionText,
         rationale: row.rationale,
         priority: row.priority,
@@ -150,11 +166,13 @@ export async function restoreSavedVisitQuestions(input: {
         ? ''
         : hasChangedPeriod
           ? '건강 기록이 바뀌어 일부 근거는 현재 자료로 확인할 수 없어요. 질문은 생성 당시의 내용으로 보관했으며, 바뀐 근거를 사용하려면 최신 기록으로 다시 생성해 주세요.'
-          : hasQuestionWithoutSourceSpan
-            ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
-            : ordered.some(row => row.healthContextSources?.length)
-              ? '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.'
-              : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
+          : ordered.every(row => row.kind === 'clarification')
+            ? '의료진에게 확인할 질문으로 저장했어요. 생성 당시의 추가 경고는 복원되지 않았습니다.'
+            : hasQuestionWithoutSourceSpan
+              ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
+              : ordered.some(row => row.healthContextSources?.length)
+                ? '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.'
+                : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
   };
 }
 
