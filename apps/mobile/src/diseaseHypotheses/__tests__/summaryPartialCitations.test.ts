@@ -50,6 +50,30 @@ test('does not retain a section if any of its citations are unknown', () => {
   expect(result.status).toBe('invalid');
 });
 
+test('retains a supported section when another has malformed uncertainty notes', () => {
+  const result = symptomSummaryTask.validateResult(
+    {
+      sections: [
+        supported,
+        {
+          title: supported.title,
+          summary: supported.summary,
+          supportingEvidence: supported.supportingEvidence,
+          contraryEvidence: [],
+          missingData: [],
+          uncertaintyNotes: 'unknown',
+        },
+      ],
+    } as never,
+    input,
+  );
+  expect(result.status).toBe('valid');
+  if (result.status !== 'valid') return;
+  expect(result.value.hypotheses).toHaveLength(1);
+  expect(result.value.hypotheses[0]!.uncertainty).toBe(supported.uncertainty);
+  expect(result.value.omittedUnsupportedContent).toBe(true);
+});
+
 test('retains the safe section through the workflow without accepting the unknown citation', async () => {
   const options = workflowOptionsFor({
     sections: [supported, { ...supported, supportingEvidence: ['unknown'] }],

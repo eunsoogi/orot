@@ -1,9 +1,6 @@
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import { summaryResponseGuidance } from './summaryEnvelopeCorrection';
-import {
-  prepareSummaryUncertainty,
-  SUMMARY_UNCERTAINTY_REASON,
-} from './summaryUncertainty';
+import { SUMMARY_UNCERTAINTY_REASON } from './summaryUncertainty';
 import {
   normalizeSummarySections,
   summaryPresentationIssue,
@@ -34,6 +31,7 @@ import {
 import {
   discardUncitedSummarySections,
   noteOmittedSummaryCitations,
+  preparePartialSummaryUncertainty,
 } from './summaryPartialCitations';
 import { summaryCorrection } from './summaryCorrection';
 
@@ -118,7 +116,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         return { status: 'invalid', reason: 'Expected summary sections.' };
       }
       // Reuse exact-current-reference and uncertainty validation; the app sets the presentation mode.
-      const prepared = prepareSummaryUncertainty(
+      const prepared = preparePartialSummaryUncertainty(
         (value as Record<string, JsonValue>).sections,
       );
       if (prepared.status === 'invalid') {
@@ -229,7 +227,8 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         providerDiagnostic('disease', 'validation', 'task_summary_coverage');
         return covered;
       }
-      if (partial.omitted) return noteOmittedSummaryCitations(covered.value);
+      if (partial.omitted || prepared.omitted)
+        return noteOmittedSummaryCitations(covered.value);
       return {
         ...covered,
         value: { ...covered.value, presentation: 'symptom_summary' },

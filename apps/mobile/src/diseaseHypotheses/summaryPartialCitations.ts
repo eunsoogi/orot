@@ -9,6 +9,30 @@ import {
   type DiseaseHypothesisAnalysis,
 } from './types';
 import { summaryFactIssue } from './summaryFactValidation';
+import { prepareSummaryUncertainty } from './summaryUncertainty';
+
+/** Discard a whole malformed notes section while preserving every surviving limitation. */
+export function preparePartialSummaryUncertainty(
+  sections: JsonValue | undefined,
+) {
+  const prepared = prepareSummaryUncertainty(sections);
+  if (prepared.status === 'ready') return { ...prepared, omitted: false };
+  if (
+    !Array.isArray(sections) ||
+    sections.length < 2 ||
+    sections.length > MAX_SYMPTOM_SUMMARY_SECTIONS
+  )
+    return prepared;
+  const retained: JsonValue[] = [];
+  for (const section of sections) {
+    const item = prepareSummaryUncertainty([section]);
+    if (item.status === 'ready' && Array.isArray(item.sections))
+      retained.push(...item.sections);
+  }
+  return retained.length
+    ? { status: 'ready' as const, sections: retained, omitted: true }
+    : prepared;
+}
 
 /** Drop whole sections with invalid citations or locally detectable factual errors without repairing them. */
 export function discardUncitedSummarySections(
