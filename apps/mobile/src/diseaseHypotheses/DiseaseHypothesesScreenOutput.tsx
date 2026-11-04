@@ -9,6 +9,7 @@ import { getDiseaseHypothesisCopy } from './copy';
 import { readableHypothesis } from './readableHypothesis';
 import { styles } from './DiseaseHypothesesScreen.styles';
 import type { DiseaseGenerationState } from './useDiseaseHypothesisGeneration';
+import { OMITTED_SUMMARY_CITATION_NOTE } from './summaryPartialCitations';
 
 /** Presents the active generation state and validated evidence in the secondary screen panel. */
 export function DiseaseHypothesesScreenOutput({
@@ -76,6 +77,11 @@ export function DiseaseHypothesesScreenOutput({
               ? copy.summaryScope
               : '관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한 진단은 아니에요.'}
           </Text>
+          {state.value.omittedUnsupportedContent === true ? (
+            <Text testID="symptom-summary-omitted-content">
+              {OMITTED_SUMMARY_CITATION_NOTE}
+            </Text>
+          ) : null}
           {state.value.hypotheses
             .map(readableHypothesis)
             .map((hypothesis, index) => (

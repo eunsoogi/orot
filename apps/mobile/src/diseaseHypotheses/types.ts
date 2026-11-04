@@ -14,6 +14,7 @@ export interface DiseaseHypothesis {
 }
 
 export interface DiseaseHypothesisAnalysis {
+  readonly omittedUnsupportedContent?: boolean;
   readonly savedSummary?:
     | {
         readonly status: 'saved';
