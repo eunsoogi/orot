@@ -1,9 +1,8 @@
-import type { SymptomEntry } from '@orot/storage';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import { t } from '../i18n';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 
-export type RecentRecordKind = 'recording' | 'medical_document' | 'symptom';
+export type RecentRecordKind = 'recording' | 'medical_document';
 
 export interface RecentRecordEntry {
   readonly id: string;
@@ -23,7 +22,6 @@ export interface RecentRecordGroup {
 export function buildRecentRecordEntries(
   recordings: readonly RecordingSourceRecord[],
   documents: readonly MedicalDocumentSourceRecord[],
-  symptoms: readonly SymptomEntry[],
 ): RecentRecordEntry[] {
   return [
     ...recordings.map(recording => ({
@@ -38,14 +36,6 @@ export function buildRecentRecordEntries(
       timestamp: document.ingestedAt,
       title: t('records.recent.medicalDocument'),
       summary: document.title ?? t('medicalDocument.source.untitled'),
-    })),
-    ...symptoms.map(symptom => ({
-      id: symptom.id,
-      kind: 'symptom' as const,
-      // Timeline order reflects when the user recorded the journal entry, not symptom onset.
-      timestamp: symptom.recordedAt,
-      title: t('records.recent.symptom'),
-      summary: symptom.description,
     })),
   ].sort(compareRecency);
 }

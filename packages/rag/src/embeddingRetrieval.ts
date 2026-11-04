@@ -9,6 +9,7 @@ export interface PersistedLocalEmbedding {
 
 export interface LocalEmbeddingWrite extends PersistedLocalEmbedding {
   readonly sourceRecordIds: readonly string[];
+  readonly sourceReferences?: readonly { readonly kind: string; readonly id: string }[];
 }
 
 export interface RemovedEvidenceReferences {
@@ -17,6 +18,10 @@ export interface RemovedEvidenceReferences {
 }
 
 export interface LocalEmbeddingVectorStore {
+  /** Checks typed local-record fences without conflating other kinds sharing the ID. */
+  findRemovedTypedEvidence?(
+    references: readonly { readonly kind: string; readonly id: string }[],
+  ): Promise<readonly { readonly kind: string; readonly id: string }[]>;
   /** Persists source and chunk fences with vector removal in one transaction. */
   deleteEvidence(
     sourceRecordIds: readonly string[],

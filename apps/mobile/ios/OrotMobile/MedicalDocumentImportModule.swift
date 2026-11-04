@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @objc(MedicalDocumentImportModule)
 public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelegate {
     private let fileStore = MedicalDocumentFileStore()
+    private let photoPicker = MedicalDocumentPhotoPicker()
     private var pendingPicker: UIDocumentPickerViewController?
     private var pendingPromise: (resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock)?
 
@@ -21,7 +22,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
     ) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            guard pendingPromise == nil else {
+            guard pendingPromise == nil, !photoPicker.isActive else {
                 reject("IMPORT_FAILED", "A document selection is already active.", nil)
                 return
             }
@@ -51,6 +52,27 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
                     _ = self.finishPicker()
                     reject("IMPORT_FAILED", "The document picker could not be presented.", nil)
                     return
+                }
+            }
+        }
+    }
+
+    @objc(pickMedicalDocumentPhoto:rejecter:)
+    public func pickMedicalDocumentPhoto(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        DispatchQueue.main.async {
+            guard self.pendingPromise == nil, !self.photoPicker.isActive,
+                  let presenter = Self.activePresenter()
+            else {
+                reject("IMPORT_FAILED", "The photo picker is unavailable.", nil)
+                return
+            }
+            self.photoPicker.present(from: presenter) { result in
+                switch result {
+                case let .success(document): resolve(document as Any? ?? NSNull())
+                case let .failure(error): Self.reject(reject, error: error)
                 }
             }
         }

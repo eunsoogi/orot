@@ -2,7 +2,7 @@ import type { EvidenceChunk, LocalEmbeddingVectorStore } from '@orot/rag';
 
 export type EvidenceRemovalReader = Pick<
   LocalEmbeddingVectorStore,
-  'findRemovedEvidence'
+  'findRemovedEvidence' | 'findRemovedTypedEvidence'
 >;
 
 /** Apply the existing persisted deletion fence to a caller-owned candidate page. */
@@ -50,9 +50,24 @@ export async function eligibleLexicalEvidence(
   );
   const sources = new Set(removed.sourceRecordIds);
   const ids = new Set(removed.chunkIds);
+  const removedTyped =
+    (await reader.findRemovedTypedEvidence?.(
+      chunks.map(chunk => ({
+        kind: chunk.metadata.recordType,
+        id: chunk.metadata.evidenceId,
+      })),
+    )) ?? [];
+  const typed = new Set(
+    removedTyped.map(reference =>
+      JSON.stringify([reference.kind, reference.id]),
+    ),
+  );
   return chunks.filter(
     chunk =>
       !ids.has(chunk.id) &&
+      !typed.has(
+        JSON.stringify([chunk.metadata.recordType, chunk.metadata.evidenceId]),
+      ) &&
       !identities.get(chunk.id)!.some(sourceId => sources.has(sourceId)),
   );
 }

@@ -67,7 +67,10 @@ export function callerStreamHandlers(callbacks?: Callbacks): BaseCallbackHandler
   });
 }
 
-export type EvidenceRemovalReader = Pick<LocalEmbeddingVectorStore, 'findRemovedEvidence'>;
+export type EvidenceRemovalReader = Pick<
+  LocalEmbeddingVectorStore,
+  'findRemovedEvidence' | 'findRemovedTypedEvidence'
+>;
 
 /** Recheck retained pages against the same root, local-row and tombstone fences as local search. */
 export async function eligibleHybridChunks(
@@ -110,10 +113,19 @@ export async function eligibleHybridChunks(
     [...new Set(roots)],
     [...new Set(localRecords)],
   );
+  const typedRemoved =
+    (await reader.findRemovedTypedEvidence?.(
+      chunks.map((chunk) => ({ kind: chunk.metadata.recordType, id: chunk.metadata.evidenceId })),
+    )) ?? [];
+  const typed = new Set(
+    typedRemoved.map((reference) => JSON.stringify([reference.kind, reference.id])),
+  );
   const sourceIds = new Set(removed.sourceRecordIds);
   const chunkIds = new Set(removed.chunkIds);
   return chunks.filter(
     (chunk) =>
-      !chunkIds.has(chunk.id) && !identities.get(chunk.id)!.some((id) => sourceIds.has(id)),
+      !chunkIds.has(chunk.id) &&
+      !typed.has(JSON.stringify([chunk.metadata.recordType, chunk.metadata.evidenceId])) &&
+      !identities.get(chunk.id)!.some((id) => sourceIds.has(id)),
   );
 }

@@ -25,6 +25,8 @@ export const manualHistoryKo = {
   'manualHistory.form.kind': '기록 종류',
   'manualHistory.form.required': '(필수)',
   'manualHistory.form.chooseDate': '달력에서 날짜 선택',
+  'manualHistory.form.datePickerError':
+    '달력을 열 수 없어요. 다시 시도해 주세요.',
   'manualHistory.form.calendarMonth': '{year}년 {month}월',
   'manualHistory.form.previousMonth': '이전 달',
   'manualHistory.form.nextMonth': '다음 달',

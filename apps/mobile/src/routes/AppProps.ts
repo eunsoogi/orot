@@ -7,7 +7,6 @@ import type {
   AiFeatureServices,
   AiFeatureServiceDependencies,
 } from '../aiFeatures/integration/featureServices';
-import type { SymptomJournalRepository } from '../symptoms/localRepository';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppRootTab } from '../navigation/rootTabs';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -25,7 +24,6 @@ import type { AppNavigationRoute } from './appNavigationRoute';
 /** Shared route input contract is separate from rendering so adding a destination does not grow the shell. */
 export interface AppRouteContentProps {
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
-  readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
   readonly selectTab: (tab: AppRootTab) => void;
