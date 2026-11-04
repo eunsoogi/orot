@@ -134,16 +134,26 @@ extension HealthImportDuoUITests {
         captureHealthDetail(app, "health-record-detail-dark")
     }
 
-    /// Medication options and history retain selection inside one vertical owner on Duo.
+    /// Medication history preserves its period on Duo and speaks a familiar source name.
     @MainActor
     func testMedicationHistoryAndPeriodSurviveDuoReflow() throws {
+        guard #available(iOS 27.0, *) else {
+            XCTFail("The medication-source VoiceOver assertion requires the public iOS 27 service")
+            return
+        }
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
+        let voiceOver = VoiceOverTestSession()
         defer {
             XCUIDevice.shared.orientation = originalOrientation
             app.terminate()
         }
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "blood-pressure", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        voiceOver.registerRestoration(in: self)
+        try voiceOver.prepareForStandardInteraction()
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "blood-pressure", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
+        ]
         // Start in portrait so the initial vertical layout assertion is deterministic.
         XCUIDevice.shared.orientation = .portrait
         app.launch()
@@ -192,6 +202,14 @@ extension HealthImportDuoUITests {
         waitForHealthDetailWidthChange(app.windows.firstMatch, from: landscapeWidth)
         XCTAssertTrue(healthDetailNode(app, "health-record-period-three_months").isSelected, app.debugDescription)
         XCTAssertTrue(primary.frame.contains(secondary.frame), app.debugDescription)
+
+        try voiceOver.assertSpeech(
+            from: healthDetailNode(app, "health-record-medication-row-0-source"),
+            expected: "건강 앱",
+            forbiddenTerms: ["HealthKit", "EventKit"],
+            phase: "medication-source",
+            testCase: self,
+        )
     }
 
     @MainActor
