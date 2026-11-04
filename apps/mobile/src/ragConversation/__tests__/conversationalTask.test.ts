@@ -56,4 +56,24 @@ test('projects only explicitly conversational text before evidence is available'
   const grounded = conversation.replace('conversation', 'grounded');
   expect(project(conversation, input)).toBe('천만에요!');
   expect(project(grounded, input)).toBeUndefined();
+  const publicOnly = {
+    ...input,
+    evidence: {
+      ...input.evidence,
+      items: [
+        {
+          sourceKind: 'external_medical' as const,
+          sourceId: 'public-web',
+          sourceRevision: '1',
+          evidenceId: 'web-1',
+          evidenceRevision: '1',
+          locator: {},
+          effectiveTime: null,
+          reviewState: 'unknown' as const,
+          content: 'Public explanation',
+        },
+      ],
+    },
+  };
+  expect(project(grounded, publicOnly)).toBeUndefined();
 });

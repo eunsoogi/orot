@@ -157,7 +157,7 @@ test('uses native usable regions and retains a category through compact, narrow,
   await screen.findByTestId('health-data-feature-status-sleep');
   expect(screen.getByTestId('health-data-title')).toBeTruthy();
   expect(screen.getByTestId('health-data-permission-status')).toHaveTextContent(
-    /HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요\./,
+    /건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요\./,
   );
   const layout = screen.getByTestId('health-data-layout');
   const direction = () => StyleSheet.flatten(layout.props.style)?.flexDirection;

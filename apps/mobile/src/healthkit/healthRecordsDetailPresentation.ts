@@ -37,10 +37,13 @@ export function hasUnavailableSourceValue(
   );
 }
 
-/** Shows only the saved source system and name; external identifiers stay internal. */
+/** Shows a readable source system and saved name; external identifiers stay internal. */
 export function provenanceLabel(observation: HealthObservation): string {
   const source = observation.provenance.source;
   if (!source) return t('healthRecords.sourceUnavailable');
-  const system = source.system === 'healthkit' ? 'HealthKit' : source.system;
+  const system =
+    source.system === 'healthkit'
+      ? t('healthRecords.source.healthApp')
+      : source.system;
   return [system, source.sourceName].filter(Boolean).join(' · ');
 }

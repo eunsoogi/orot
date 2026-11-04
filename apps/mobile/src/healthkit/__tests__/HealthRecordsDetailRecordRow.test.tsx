@@ -71,7 +71,7 @@ test('shows saved source values and HealthKit provenance without source identifi
   ).toBe('수축기 16 kPa');
   expect(
     screen.getByTestId('health-record-row-0-systolic-source'),
-  ).toHaveTextContent('HealthKit · Synthetic home monitor');
+  ).toHaveTextContent('건강 앱 · Synthetic home monitor');
   expect(screen.queryByText('com.example.device')).toBeNull();
   expect(
     screen.queryByTestId('health-record-row-0-systolic-source-value'),
@@ -142,7 +142,7 @@ test('uses an available original quantity for a non-pressure observation', async
     '72 bpm',
   );
   expect(screen.getByTestId('health-record-row-0-source')).toHaveTextContent(
-    'HealthKit · Synthetic watch',
+    '건강 앱 · Synthetic watch',
   );
 });
 

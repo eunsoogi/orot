@@ -135,7 +135,11 @@ export type EvidenceCaveat =
   | 'conflicting_records'
   | 'insufficient_evidence'
   | 'reviewed_memory_unavailable'
-  | 'no_matching_reviewed_memory';
+  | 'no_matching_reviewed_memory'
+  | 'public_search_not_retained'
+  | 'public_search_consent_required'
+  | 'public_search_empty'
+  | 'public_search_unavailable';
 
 export type QuestionGenerationPhase =
   'idle' | 'generating' | 'reviewing' | 'saving' | 'saved' | 'error';

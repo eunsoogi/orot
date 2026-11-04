@@ -116,7 +116,7 @@
                 "startDate": start,
                 "endDate": end,
                 "sourceIdentifier": "com.orot.healthkit.synthetic",
-                "sourceName": "Synthetic HealthKit probe",
+                "sourceName": "Synthetic health records probe",
             ]
             if let value {
                 result["value"] = value
@@ -148,7 +148,7 @@
                                      rejecter reject: @escaping RCTPromiseRejectBlock)
         {
             guard HealthKitBoundary.isSupported(feature) else {
-                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic HealthKit fixture feature is unsupported.", nil)
+                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic health record type is not supported.", nil)
                 return
             }
             fixtureLock.lock()
@@ -165,7 +165,7 @@
             guard let plan = HealthKitBatchAuthorization.plan(for: features),
                   plan.unsupportedFeatures.isEmpty
             else {
-                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic HealthKit fixture selection is unsupported.", nil)
+                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic health record selection is not supported.", nil)
                 return
             }
             fixtureLock.lock()
@@ -210,7 +210,7 @@
                                            rejecter reject: @escaping RCTPromiseRejectBlock)
         {
             guard let plan = HealthKitBatchAuthorization.plan(for: features) else {
-                reject("INVALID_REQUEST", "HealthKit batch authorization selection is invalid.", nil)
+                reject("INVALID_REQUEST", "Health record permission selection is invalid.", nil)
                 return
             }
             resolve([

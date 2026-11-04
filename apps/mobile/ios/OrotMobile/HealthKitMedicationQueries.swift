@@ -42,9 +42,10 @@ public extension HealthKitModule {
         var finished = false
         let query = HKUserAnnotatedMedicationQuery(predicate: nil, limit: queryLimit) { _, medication, done, error in
             guard !finished else { return }
-            if let error {
+            // Keep provider descriptions and record details out of the JavaScript-facing error.
+            if error != nil {
                 finished = true
-                reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                reject("HEALTHKIT_QUERY_FAILED", "Health record query failed.", nil)
                 return
             }
             do {
@@ -62,7 +63,7 @@ public extension HealthKitModule {
                 }
             } catch {
                 finished = true
-                reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
+                reject("HEALTHKIT_SERIALIZATION_FAILED", "Medication records could not be processed.", nil)
             }
         }
         store.execute(query)
