@@ -52,3 +52,13 @@ conversation persistence, research retention, authentic restart and real-model
 evidence remain outstanding. A generated result cannot yet be saved as a source
 for reviewed visit questions; that boundary remains closed until its lineage and
 deletion propagation are implemented.
+
+Conversation turns currently lack durable source lineage. Until that lineage is
+available, previous assistant prose is withheld from later provider requests;
+user questions remain in the bounded history. This protects against resending
+an answer after a source is removed, but limits follow-up continuity and does
+not remove stale text from an already visible session. Persistence must capture
+all evidence supplied to the model, including uncited inputs, and preserve
+parent artifact dependencies when following an artifact's source. Citation
+lists alone cannot establish that lineage. Writes also need deletion fencing
+and an observable retry path before saved turns can be exposed to other features.
