@@ -1,11 +1,6 @@
 import { hasBlockingCoverage } from './coveragePolicy';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
-import type {
-  TaskClarificationValue,
-  TaskResponderContract,
-  TaskResponderInput,
-  TaskResultValidation,
-} from './contracts';
+import type { TaskResponderContract, TaskResponderInput } from './contracts';
 import { referencesFromBatch } from './evidence';
 import {
   canonicalJson,
@@ -21,6 +16,7 @@ import type { WorkflowState } from './state';
 import { decodeTaskResponse } from './taskResponseDecoding';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
 import { isEvidenceIndependentResult } from './evidenceIndependentResult';
+import { clarificationMessageFromValidation } from './taskClarification';
 
 export async function consumeResponderResponse<TResult>(
   context: RuntimeContext<TResult>,
@@ -111,6 +107,7 @@ export async function consumeResponderResponse<TResult>(
       input.evidence,
       context.options.task.allowBoundedExternalEvidence,
       context.options.task.allowRankedLocalEvidence,
+      context.options.task.allowPagedGeneratedArtifacts,
     )
   ) {
     let taskClarificationMessage: string | undefined;
@@ -225,26 +222,5 @@ async function outputExceedsLimit(
 export function requireTaskContract<TResult>(contract: TaskResponderContract<TResult>): boolean {
   return Boolean(
     contract.taskType.trim() && contract.taskVersion.trim() && contract.systemPrompt.trim(),
-  );
-}
-
-/** Projects copy only from an explicit clarification result returned by task validation. */
-function clarificationMessageFromValidation(
-  validation: TaskResultValidation<unknown>,
-): string | undefined {
-  if (validation.status === 'needs_clarification') return validation.message;
-  if (validation.status !== 'valid' || !isTaskClarificationValue(validation.value))
-    return undefined;
-  return validation.value.message;
-}
-
-/** Some task result unions carry their validated clarification as a normal valid value. */
-function isTaskClarificationValue(value: unknown): value is TaskClarificationValue {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    candidate.status === 'needs_clarification' &&
-    typeof candidate.message === 'string' &&
-    candidate.message.trim().length > 0
   );
 }

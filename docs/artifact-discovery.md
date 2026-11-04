@@ -44,3 +44,11 @@ disease-possibility analysis and visit-question generation. Health Review and
 Symptom Journal are being removed separately; this contract must preserve their
 retained shared data without restoring their entry points. Combined final
 feature and physical-device acceptance belongs to the integration issue.
+
+The draft implementation adds symptom-summary and possibility discovery to
+record conversation, with local source-follow tools and a revalidated source
+view. This is not yet a complete consumer matrix: the other retained AI routes,
+conversation persistence, research retention, authentic restart and real-model
+evidence remain outstanding. A generated result cannot yet be saved as a source
+for reviewed visit questions; that boundary remains closed until its lineage and
+deletion propagation are implemented.

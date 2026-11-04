@@ -166,6 +166,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         combined,
         context.options.task.allowBoundedExternalEvidence,
         context.options.task.allowRankedLocalEvidence,
+        context.options.task.allowPagedGeneratedArtifacts,
       )
     ) {
       context.outcome = {

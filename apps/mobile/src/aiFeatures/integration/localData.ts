@@ -7,6 +7,8 @@ import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEv
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
+import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
+import type { createSummaryArtifactDiscovery } from './summaryArtifactDiscovery';
 
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
@@ -15,6 +17,9 @@ export interface AiFeatureLocalData extends LocalEvidenceData {
   readonly rag: Pick<LocalE5RagService, 'index' | 'search'>;
   readonly memoryStorage: Pick<SqlCipherAgentMemoryStorage, 'listRecords'>;
   loadMemoryRecords(): Promise<readonly PersistedMemoryRecord[]>;
+  summaryArtifactDiscovery?(
+    registry: LocalEvidenceReferenceRegistry,
+  ): Promise<ReturnType<typeof createSummaryArtifactDiscovery>>;
 }
 
 let opening: Promise<AiFeatureLocalData> | null = null;
@@ -35,11 +40,27 @@ async function openDefault(): Promise<AiFeatureLocalData> {
   const repository = createLocalHealthEvidenceRepository(database);
   const rag = createLocalE5RagService(database);
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
-  return {
+  const data: AiFeatureLocalData = {
     repository,
     rag,
     memoryStorage,
     ...createLocalEvidenceData(database),
     loadMemoryRecords: () => memoryStorage.listRecords(),
+    async summaryArtifactDiscovery(registry) {
+      const [
+        { createSummaryArtifactDiscovery },
+        { createSymptomSummaryStorage },
+      ] = await Promise.all([
+        import('./summaryArtifactDiscovery'),
+        import('../../storage/symptomSummaryStorage'),
+      ]);
+      return createSummaryArtifactDiscovery({
+        database,
+        storage: createSymptomSummaryStorage(database),
+        data,
+        registry,
+      });
+    },
   };
+  return data;
 }

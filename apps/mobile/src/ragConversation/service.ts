@@ -6,12 +6,16 @@ import {
 import type {
   EvidenceBatch,
   EvidenceItem,
+  EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
+import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
+import { historicalArtifactOutcome } from './historicalArtifactAnswer';
+import type { ArtifactContinuation } from './artifactContinuation';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -32,7 +36,13 @@ export type {
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
   'onProgress' | 'onTaskStreamEvent'
->;
+> & {
+  readonly conversationScope?: string;
+  readonly artifactContinuation?: ArtifactContinuation | null;
+  readonly onArtifactContinuation?: (
+    value: ArtifactContinuation | null,
+  ) => void;
+};
 
 export interface RagConversationRunOptions {
   readonly question: string;
@@ -43,6 +53,10 @@ export interface RagConversationRunOptions {
   ) => Promise<RagConversationCurrentEvidence>;
   readonly rag: Pick<LocalE5RagService, 'search'>;
   readonly resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver;
+  readonly readHistoricalArtifact?: (
+    reference: EvidenceReference,
+    signal: AbortSignal,
+  ) => Promise<EvidenceSourceReadResult>;
   readonly workflow: Omit<
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
@@ -150,11 +164,28 @@ export async function runRagConversationTurn(
     );
     if (result.status === 'result') {
       if (result.value.answerKind === 'conversation') {
-        return result.citations.length
+        return result.citations.length ||
+          result.coverage.some(
+            coverage => coverage.sourceKind === 'generated_artifact',
+          )
           ? { status: 'insufficient' }
           : { status: 'answer', answer: result.value.answer, citations: [] };
       }
       if (!result.citations.length) return { status: 'insufficient' };
+      if (result.value.answerKind === 'prior_output') {
+        return historicalArtifactOutcome(
+          result,
+          options,
+          invocation.signal ?? new AbortController().signal,
+        );
+      }
+      // A previous AI statement cannot by itself ground a new clinical assertion.
+      if (
+        result.citations.some(
+          reference => reference.sourceKind === 'generated_artifact',
+        )
+      )
+        return { status: 'insufficient' };
       return {
         status: 'answer',
         // Label source-relative time even when the model omits that qualifier in its prose.

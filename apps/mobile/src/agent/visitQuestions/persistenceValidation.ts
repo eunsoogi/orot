@@ -102,6 +102,11 @@ export async function assertCurrentVisitQuestionRecord(
   item: VisitQuestionEvidenceItem,
   metadata: VisitQuestionEvidenceMetadata,
 ): Promise<void> {
+  // Generated artifacts need durable lineage before they can be saved as question evidence.
+  if (item.sourceKind === 'generated_artifact')
+    throw new Error(
+      'Generated artifact lineage is unavailable for saved questions.',
+    );
   if (metadata.recordKind && metadata.evidenceRecordId) {
     const currentEvidence = await writer.get(
       metadata.recordKind,

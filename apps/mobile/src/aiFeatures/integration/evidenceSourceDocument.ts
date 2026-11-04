@@ -3,6 +3,8 @@ import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEviden
 import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
 import type { HealthContextScope } from '../../healthEvidence/healthContext/scope';
 import type { ManualHistoryEvidence } from '@orot/domain';
+import type { ArtifactMetadata } from '../../healthEvidence/artifactDiscovery';
+import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 
 /** Original rows and computed period sources have distinct storage and revalidation contracts. */
 export type EvidenceSourceDocument =
@@ -18,6 +20,12 @@ export type EvidenceSourceDocument =
   | {
       readonly sourceKind: 'manual_history';
       readonly evidence: ManualHistoryEvidence;
+    }
+  | {
+      readonly sourceKind: 'generated_artifact';
+      readonly metadata: ArtifactMetadata;
+      readonly analysis: DiseaseHypothesisAnalysis;
+      readonly sourceStatus: 'current' | 'changed' | 'unknown';
     }
   | {
       readonly sourceKind: 'reviewed_memory';

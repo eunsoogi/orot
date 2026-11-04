@@ -79,7 +79,10 @@ export async function saveVisitQuestionRoute(
   for (const question of input.questions) {
     const citations: VisitQuestionEvidenceItem[] = [];
     for (const citation of question.citations) {
-      if (citation.sourceKind === 'external_medical')
+      if (
+        citation.sourceKind === 'external_medical' ||
+        citation.sourceKind === 'generated_artifact'
+      )
         throw new Error(
           'Visit questions can only cite current local evidence.',
         );

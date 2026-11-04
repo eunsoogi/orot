@@ -18,7 +18,7 @@ export interface RagConversationMessage {
 export interface GroundedRagAnswer {
   readonly answer: string;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
-  readonly answerKind?: 'grounded' | 'conversation';
+  readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -60,6 +60,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskVersion: '5',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
+  allowPagedGeneratedArtifacts: true,
   // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
   correctionInstructionForInvalidEnvelope(reason) {
     if (
@@ -74,7 +75,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   systemPrompt:
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
+    'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
@@ -95,7 +98,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     properties: {
       answerKind: {
         type: 'string',
-        enum: ['conversation', 'grounded'],
+        enum: ['conversation', 'grounded', 'prior_output'],
         description:
           'Conversation contains no factual record or medical claims; grounded answers require current supporting evidence and citations.',
       },
@@ -110,6 +113,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     additionalProperties: false,
   } as JsonObject,
   projectStreamedText(rawOutput, input) {
+    // Generated evidence is rendered only after citation and source revalidation.
+    if (
+      input.evidence.items.some(
+        item => item.sourceKind === 'generated_artifact',
+      )
+    )
+      return undefined;
     // An unsupported evidence-free factual draft must not appear before its required lookup.
     if (
       !input.evidence.items.length &&
@@ -156,7 +166,8 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       ) ||
       ('answerKind' in value &&
         value.answerKind !== 'grounded' &&
-        value.answerKind !== 'conversation') ||
+        value.answerKind !== 'conversation' &&
+        value.answerKind !== 'prior_output') ||
       typeof value.answer !== 'string' ||
       value.answer.trim().length === 0 ||
       value.answer.length > 4000
@@ -177,7 +188,8 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       value: {
         answer: value.answer,
         ...(value.answerKind === 'conversation' ||
-        value.answerKind === 'grounded'
+        value.answerKind === 'grounded' ||
+        value.answerKind === 'prior_output'
           ? { answerKind: value.answerKind }
           : {}),
       },

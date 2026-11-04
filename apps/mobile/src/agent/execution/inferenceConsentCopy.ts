@@ -18,6 +18,8 @@ const categories = {
   health_records: 'medicalAppointments.inferenceDisclosure.healthRecords',
   reviewed_memory: 'medicalAppointments.inferenceDisclosure.memory',
   conversation: 'medicalAppointments.inferenceDisclosure.conversation',
+  generated_artifacts:
+    'medicalAppointments.inferenceDisclosure.generatedArtifacts',
   visit_title_time: 'medicalAppointments.inferenceDisclosure.visit',
   medical_literature: 'medicalAppointments.inferenceDisclosure.literature',
   medical_search_terms: 'medicalAppointments.inferenceDisclosure.searchTerms',

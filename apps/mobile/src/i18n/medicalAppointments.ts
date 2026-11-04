@@ -59,6 +59,8 @@ export const medicalAppointmentsKo = {
     '건강·복약·활동·수면·증상 기록',
   'medicalAppointments.inferenceDisclosure.memory': '확인한 기억',
   'medicalAppointments.inferenceDisclosure.conversation': '질문과 대화',
+  'medicalAppointments.inferenceDisclosure.generatedArtifacts':
+    '이전에 생성한 AI 결과',
   'medicalAppointments.inferenceDisclosure.visit': '진료 일정 제목과 시각',
   'medicalAppointments.inferenceDisclosure.literature': '공개 의학 문헌',
   'medicalAppointments.inferenceDisclosure.searchTerms':

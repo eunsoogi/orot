@@ -180,6 +180,35 @@ export function presentEvidenceSource(
   }
   if (document.sourceKind === 'manual_history')
     return manualHistoryPresentation(document.evidence);
+  if (document.sourceKind === 'generated_artifact')
+    return document.analysis.hypotheses.map(section => ({
+      title: '이전에 생성된 AI 결과',
+      rows: [
+        { label: '생성 시각', value: document.metadata.createdAt },
+        {
+          label: '출처 상태',
+          value:
+            document.sourceStatus === 'current'
+              ? '현재 출처와 일치'
+              : document.sourceStatus === 'changed'
+                ? '출처가 변경됨'
+                : '일부 출처 상태를 확인할 수 없음',
+        },
+        {
+          label: '주의',
+          value:
+            'AI가 생성한 이전 결과이며 독립적으로 확인된 의료 사실이 아닙니다.',
+        },
+        ...(section.uncertainty
+          ? [{ label: '불확실성', value: section.uncertainty }]
+          : []),
+      ],
+      hero: {
+        heading: section.title,
+        body: section.summary,
+        consumedLabels: [],
+      },
+    }));
   return document.records.map(entry => ({
     title: recordTitle(entry),
     rows: personalRecordRows(entry),

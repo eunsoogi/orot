@@ -7,6 +7,7 @@ import type {
 import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
 import { progressCopy } from './conversationProgress';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
+import type { ArtifactContinuation } from './artifactContinuation';
 
 export type ConversationSender = (
   question: string,
@@ -29,12 +30,14 @@ export interface ConversationSession {
   } | null;
   readonly busy: boolean;
   readonly error: string;
+  readonly artifactContinuation?: ArtifactContinuation | null;
 }
 
 /** Owns request lifetime and prevents late results from clearing a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
+  conversationScope: (id: number) => string,
 ) {
   let messageId = 0;
   const controllers = new Map<number, AbortController>();
@@ -95,6 +98,7 @@ export function createConversationSessionRequests(
     controller.abort();
     controllers.delete(id);
     pendingTurns.delete(id);
+    update(id, { artifactContinuation: null });
     retainPartial(id, getRagConversationCopy().progressCancelled, true);
     if (turn)
       restoreFailedPrompt(
@@ -159,6 +163,11 @@ export function createConversationSessionRequests(
         controllers.get(id) === controller && !controller.signal.aborted;
       try {
         const outcome = await onSend(question, history, controller.signal, {
+          conversationScope: conversationScope(id),
+          artifactContinuation: session.artifactContinuation ?? null,
+          onArtifactContinuation(value) {
+            if (current()) update(id, { artifactContinuation: value });
+          },
           onProgress(event) {
             if (current())
               update(id, {

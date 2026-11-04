@@ -6,7 +6,10 @@ import type { AiWorkflowObserver } from '../agent/workflowActivity';
 /** A UI projection of an evidence link; the opaque citation remains intact for save and open callbacks. */
 export interface NextVisitEvidenceReference {
   readonly sourceKind:
-    'personal_record' | 'reviewed_memory' | 'external_medical';
+    | 'personal_record'
+    | 'reviewed_memory'
+    | 'generated_artifact'
+    | 'external_medical';
   readonly sourceId: string;
   readonly effectiveTime: string | null;
   readonly reviewState: 'reviewed' | 'unreviewed' | 'unknown';

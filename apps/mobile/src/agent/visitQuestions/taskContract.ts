@@ -20,7 +20,10 @@ export {
 
 export type VisitQuestionPriority = 'routine' | 'important';
 export type VisitQuestionSourceKind =
-  'personal_record' | 'reviewed_memory' | 'external_medical';
+  | 'personal_record'
+  | 'reviewed_memory'
+  | 'generated_artifact'
+  | 'external_medical';
 
 export interface VisitQuestionEvidenceItem {
   readonly sourceKind: VisitQuestionSourceKind;
@@ -47,7 +50,8 @@ export interface VisitQuestionEvidenceCoverage {
   };
   readonly gaps: readonly string[];
   readonly truncated: boolean;
-  readonly selectionMethod?: 'ranked_retrieval';
+  readonly selectionMethod?: 'ranked_retrieval' | 'paged_retrieval';
+  readonly nextCursor?: string;
   readonly resultLimit: number;
   readonly returnedCount: number;
 }

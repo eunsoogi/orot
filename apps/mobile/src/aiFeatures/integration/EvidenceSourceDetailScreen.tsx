@@ -11,6 +11,7 @@ import { navigationText } from '../../i18n/navigation';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { presentEvidenceSource } from './evidenceSourcePresentation';
 import { EvidenceSourceSections } from './EvidenceSourceSections';
+import { ArtifactSourceLinks } from './ArtifactSourceLinks';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 
@@ -40,7 +41,11 @@ export function EvidenceSourceDetailScreen({
 }: EvidenceSourceDetailScreenProps) {
   const navigationInset = useNavigationContentInset();
   const [attempt, setAttempt] = useState(0);
+  const [sourceStack, setSourceStack] = useState<readonly EvidenceReference[]>(
+    [],
+  );
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
+  const selectedReference = sourceStack.at(-1) ?? reference;
   const retryLabel = t('appointments.retry');
   const hasDock = useNavigationRouteActions(
     state.status === 'unavailable'
@@ -73,7 +78,7 @@ export function EvidenceSourceDetailScreen({
     const controller = new AbortController();
     let mounted = true;
     setState({ status: 'loading' });
-    readSource(reference, controller.signal)
+    readSource(selectedReference, controller.signal)
       .then(result => {
         if (mounted) setState(result);
       })
@@ -84,7 +89,9 @@ export function EvidenceSourceDetailScreen({
       mounted = false;
       controller.abort();
     };
-  }, [attempt, readSource, reference]);
+  }, [attempt, readSource, selectedReference]);
+
+  useEffect(() => setSourceStack([]), [reference]);
 
   const presentation =
     state.status === 'available' ? presentEvidenceSource(state.document) : [];
@@ -103,6 +110,13 @@ export function EvidenceSourceDetailScreen({
           title={navigationText.back.label}
         />
       )}
+      {sourceStack.length ? (
+        <AppButton
+          title="이전 출처로 돌아가기"
+          onPress={() => setSourceStack(current => current.slice(0, -1))}
+          testID="ai-feature-source-previous"
+        />
+      ) : null}
       <Text accessibilityRole="header" style={styles.heading}>
         근거 살펴보기
       </Text>
@@ -149,10 +163,18 @@ export function EvidenceSourceDetailScreen({
         </View>
       ) : null}
       {state.status === 'available' ? (
-        <EvidenceSourceSections
-          routeKey={navigationRouteKey}
-          sections={presentation}
-        />
+        <>
+          <EvidenceSourceSections
+            routeKey={navigationRouteKey}
+            sections={presentation}
+          />
+          {state.document.sourceKind === 'generated_artifact' ? (
+            <ArtifactSourceLinks
+              analysis={state.document.analysis}
+              onOpen={source => setSourceStack(current => [...current, source])}
+            />
+          ) : null}
+        </>
       ) : null}
     </ScrollView>
   );

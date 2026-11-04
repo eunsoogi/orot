@@ -91,6 +91,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
+  /** A task may present an explicitly partial generated-artifact page without claiming exhaustion. */
+  readonly allowPagedGeneratedArtifacts?: boolean;
   /** Explicitly identify non-factual conversation/clarification values. Only uncited, locally
    * valid results may bypass evidence coverage; required source kinds remain mandatory. */
   isEvidenceIndependentResult?(value: JsonValue, input: TaskResponderInput): boolean;

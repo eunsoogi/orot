@@ -13,7 +13,7 @@ import {
   remapSavedAnalysis as mapAnalysis,
 } from './savedAnalysis';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
-import { summaryFactIssue } from '../../diseaseHypotheses/summaryFactValidation';
+import { summaryContentReviewIssues } from './summaryContentReview';
 import { healthOverviewFacts } from './healthOverviewFacts';
 import {
   isPeriodSummarySource,
@@ -61,6 +61,9 @@ export async function captureSymptomSummarySources(
       mapping.set(JSON.stringify(ref), original);
       continue;
     }
+    // Generated results cannot be captured as reviewed memory or laundered into a new summary.
+    if (read.document.sourceKind === 'generated_artifact')
+      throw new Error('Generated artifacts require explicit lineage support.');
     const records: SavedRecordSummarySource['records'] =
       read.document.sourceKind === 'personal_record'
         ? read.document.records.map(entry => ({
@@ -220,22 +223,10 @@ export async function restoreSymptomSummary(
     });
     mapping.set(JSON.stringify(source.reference), referenceOnly(current));
   }
-  const contentReviewIssues = [
-    ...new Set(
-      saved.analysis.hypotheses.flatMap(section => {
-        const issue = summaryFactIssue(
-          { hypotheses: [section] },
-          reviewEvidence,
-        );
-        return issue === 'prescription' ||
-          issue === 'sleep_count' ||
-          issue === 'sleep_duration' ||
-          issue === 'step_unit'
-          ? [issue]
-          : [];
-      }),
-    ),
-  ];
+  const contentReviewIssues = summaryContentReviewIssues(
+    saved.analysis,
+    reviewEvidence,
+  );
   return {
     ...mapAnalysis(saved.analysis, ref => mapping.get(JSON.stringify(ref))!),
     savedSummary: {

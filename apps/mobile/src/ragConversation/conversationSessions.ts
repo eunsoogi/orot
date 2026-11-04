@@ -10,8 +10,11 @@ export type {
   ConversationSession,
 } from './conversationSessionRequests';
 
+let nextSessionOwner = 0;
+
 /** App-owned memory-only sessions survive route removal without persisting health text. */
 export function createConversationSessions() {
+  const owner = ++nextSessionOwner;
   let nextId = 0;
   const empty = (): ConversationSession => ({
     id: ++nextId,
@@ -41,7 +44,11 @@ export function createConversationSessions() {
   };
   const find = (id: number) =>
     snapshot.sessions.find(session => session.id === id)!;
-  const requests = createConversationSessionRequests(find, update);
+  const requests = createConversationSessionRequests(
+    find,
+    update,
+    id => `${owner}:${id}`,
+  );
   return {
     subscribe(listener: () => void) {
       listeners.add(listener);

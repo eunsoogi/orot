@@ -54,7 +54,9 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     options.request.trim().length > 0 &&
     execution.allowedScope.sourceKinds.length > 0 &&
     execution.allowedScope.sourceKinds.every((kind) =>
-      ['personal_record', 'reviewed_memory', 'external_medical'].includes(kind),
+      ['personal_record', 'reviewed_memory', 'generated_artifact', 'external_medical'].includes(
+        kind,
+      ),
     ) &&
     provider.capabilities.inputTypes.includes('text') &&
     new Set(options.tools.map((tool) => tool.id)).size === options.tools.length &&

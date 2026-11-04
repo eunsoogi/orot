@@ -124,6 +124,8 @@ function sourceLabel(kind: NextVisitEvidenceReference['sourceKind']): string {
       return copy.evidence.personalRecord;
     case 'reviewed_memory':
       return copy.evidence.reviewedMemory;
+    case 'generated_artifact':
+      return '이전 AI 결과';
     case 'external_medical':
       return copy.evidence.externalMedical;
   }

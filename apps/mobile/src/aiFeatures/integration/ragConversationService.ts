@@ -1,13 +1,12 @@
-import type {
-  EvidenceSearchTool,
-  MultiAgentInvocation,
-  MultiAgentWorkflowOptions,
-} from '@orot/agent-runtime';
+import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import { loadLocalHealthKitAutoSyncStatus } from '../../healthkit/autoSyncLocal';
 import { isRagConversationAvailabilityQuestion } from '../../ragConversation/availabilityIntent';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
+import type { RagConversationObserver } from '../../ragConversation/service';
+import { requestsArtifactContinuation } from '../../ragConversation/artifactContinuation';
+import { continueArtifactSearch } from './continueArtifactSearch';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import type { AiFeatureLocalData } from './localData';
 import { boundRagConversationHistory } from './evidencePayload';
@@ -16,6 +15,8 @@ import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import { operationRunId } from './featureRunIdentity';
+import { createSummaryArtifactTool } from './summaryArtifactTool';
+import { createArtifactSourceTool } from './artifactSourceTool';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import { withProviderStage } from '../../providers/diagnostics';
 import {
@@ -23,55 +24,13 @@ import {
   type SelectedAiResolution,
 } from './provider';
 import { describeLocalRecordAvailability } from './ragConversationAvailability';
+import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 
 type ReadySelectedAi = Extract<
   SelectedAiResolution,
   { readonly status: 'ready' }
 >;
-type RagObserver = Pick<
-  MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent'
->;
-
-const LOCAL_SEARCH_FAILURE_GAP =
-  '로컬 검색을 사용할 수 없어 근거를 찾지 못했어요.';
-
-/** Tracks local read failures without retaining exceptions or treating cancellation as failure. */
-function observeLocalSearchFailures(
-  tools: readonly EvidenceSearchTool[],
-  onFailure: () => void,
-): readonly EvidenceSearchTool[] {
-  return tools.map(tool => {
-    if (tool.execution !== 'local_read_only') return tool;
-    return {
-      ...tool,
-      async search(...args: Parameters<EvidenceSearchTool['search']>) {
-        let outcome: Awaited<ReturnType<EvidenceSearchTool['search']>>;
-        try {
-          outcome = await tool.search(...args);
-        } catch (error) {
-          // Invalid requests and cancellations are not evidence that local storage failed.
-          if (
-            !args[0].signal.aborted &&
-            tool.parseInput(args[0].input) !== undefined &&
-            !(error instanceof Error && error.name === 'AbortError')
-          )
-            onFailure();
-          throw error;
-        }
-        if (
-          'coverage' in outcome &&
-          outcome.coverage.some(coverage =>
-            coverage.gaps.includes(LOCAL_SEARCH_FAILURE_GAP),
-          )
-        ) {
-          onFailure();
-        }
-        return outcome;
-      },
-    };
-  });
-}
+type RagObserver = RagConversationObserver;
 
 interface RagConversationServiceDependencies {
   readonly consent: MultiAgentWorkflowOptions['consent'];
@@ -109,6 +68,23 @@ export function createRagConversationService({
     const signal = linked.controller.signal;
     let stage: 'selection' | 'data' | 'workflow' = 'selection';
     try {
+      if (
+        observer?.conversationScope &&
+        observer.artifactContinuation &&
+        requestsArtifactContinuation(normalizedQuestion)
+      ) {
+        stage = 'data';
+        const data = await withProviderStage('rag', 'data', loadLocalData);
+        return await continueArtifactSearch({
+          data,
+          registry,
+          scope: observer.conversationScope,
+          continuation: observer.artifactContinuation,
+          signal,
+          onContinuation: value => observer.onArtifactContinuation?.(value),
+        });
+      }
+      observer?.onArtifactContinuation?.(null);
       if (isRagConversationAvailabilityQuestion(normalizedQuestion)) {
         stage = 'data';
         const data = await withProviderStage('rag', 'data', loadLocalData);
@@ -156,9 +132,31 @@ export function createRagConversationService({
         literatureConsent: queryConsent,
       });
       let localRetrievalFailed = false;
+      let hasArtifactContinuation = false;
+      const generatedTools = data.summaryArtifactDiscovery
+        ? [
+            createSummaryArtifactTool(data, registry, {
+              scope: observer?.conversationScope,
+              onPage: (query, cursor) => {
+                hasArtifactContinuation = Boolean(
+                  cursor && observer?.conversationScope,
+                );
+                if (observer?.conversationScope)
+                  observer.onArtifactContinuation?.(
+                    cursor ? { query, cursor } : null,
+                  );
+              },
+            }),
+            createArtifactSourceTool('personal_record', data, registry),
+            createArtifactSourceTool('reviewed_memory', data, registry),
+          ]
+        : [];
       const tools = [
         ...observeLocalSearchFailures(
-          toolsFor(undefined, data, registry, 6, true, 'rag'),
+          [
+            ...toolsFor(undefined, data, registry, 6, true, 'rag'),
+            ...generatedTools,
+          ],
           () => {
             localRetrievalFailed = true;
           },
@@ -178,6 +176,8 @@ export function createRagConversationService({
           rag: data.rag,
           resolveLocalEvidenceIdentity: reference =>
             registry.resolve(reference),
+          readHistoricalArtifact: (reference, readSignal) =>
+            registry.readSource(reference, readSignal),
           workflow: executionOptions({
             consentPurpose: 'record_conversation',
             selected,
@@ -188,9 +188,23 @@ export function createRagConversationService({
             external,
           }),
         },
-        { ...observer, signal },
+        {
+          onProgress: observer?.onProgress,
+          onTaskStreamEvent: observer?.onTaskStreamEvent,
+          signal,
+        },
       );
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
+      if (
+        hasArtifactContinuation &&
+        (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
+      )
+        return {
+          status: 'answer',
+          citations: [],
+          answer:
+            '아직 일치하는 결과를 찾지 못했어요. 더 이전 결과를 계속 찾아볼 수 있어요.',
+        };
       if (
         localRetrievalFailed &&
         (outcome.status === 'no_evidence' ||
