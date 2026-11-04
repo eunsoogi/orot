@@ -26,6 +26,7 @@ export function createSelectedExternalEvidence(input: {
   const web = createPublicWebEvidence(input);
   return {
     tools: [literature.tool, ...(web ? [web.tool] : [])],
+    publicWebTool: web?.tool,
     usesPublicWeb: Boolean(web),
     validates: (reference: EvidenceReference) =>
       literature.validates(reference) || Boolean(web?.validates(reference)),

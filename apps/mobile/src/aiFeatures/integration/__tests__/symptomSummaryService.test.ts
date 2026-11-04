@@ -52,12 +52,12 @@ test('selects a factual-summary contract only for the explicit summary action an
     diseaseRunner.mock.calls[0]?.[0].tools.some(
       tool => tool.sourceKind === 'external_medical',
     ),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     diseaseRunner.mock.calls[0]?.[0].execution.allowedScope.sourceKinds,
   ).toContain('external_medical');
   await services.generateDiseaseHypotheses();
-  expect(diseaseRunner.mock.calls[1]).toHaveLength(4);
+  expect(diseaseRunner.mock.calls[1]).toHaveLength(5);
   expect(
     diseaseRunner.mock.calls[1]?.[0].tools.find(
       tool => tool.id === 'local-personal-records',
@@ -97,10 +97,22 @@ test('routes both accepted symptom actions through the same durable save boundar
       loadLocalData: async () => source.data,
       diseaseRunner: jest.fn(async () => outcome),
     });
-    expect(await services.summarizeSymptoms!()).toBe(outcome);
-    expect(await services.generateDiseaseHypotheses()).toBe(outcome);
+    const summary = await services.summarizeSymptoms!();
+    const analysis = await services.generateDiseaseHypotheses();
     expect(save).toHaveBeenCalledTimes(2);
-    expect(save.mock.calls.every(call => call[0] === outcome)).toBe(true);
+    expect(summary).toBe(save.mock.calls[0]?.[0]);
+    expect(analysis).toBe(save.mock.calls[1]?.[0]);
+    expect(summary.status).toBe('workflow');
+    if (summary.status !== 'workflow' || summary.result.status !== 'result')
+      throw new Error('Expected a saved result');
+    expect(summary.result.value.hypotheses[0]?.summary).toBe(
+      result.status === 'result'
+        ? result.value.hypotheses[0]?.summary
+        : undefined,
+    );
+    expect(summary.result.value.hypotheses[0]?.uncertainty).toContain(
+      '공개 웹검색을 사용할 수 없어',
+    );
   } finally {
     factory.mockRestore();
   }

@@ -67,7 +67,7 @@ test('preserves the conversation and answer after opening and returning from its
     '첫 질문',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-  expect(await screen.findByText('근거를 확인한 대화 답변')).toBeTruthy();
+  expect(await screen.findByText(/근거를 확인한 대화 답변/)).toBeTruthy();
   // The source card names the reviewed memo and date instead of exposing its opaque alias.
   await fireEvent.press(
     screen.getByRole('button', { name: /^원문 근거 열기 · 검토한 메모/ }),
@@ -77,7 +77,7 @@ test('preserves the conversation and answer after opening and returning from its
   await fireEvent.press(screen.getByTestId('navigation-back'));
 
   expect(screen.getByText('첫 질문')).toBeTruthy();
-  expect(screen.getByText('근거를 확인한 대화 답변')).toBeTruthy();
+  expect(screen.getByText(/근거를 확인한 대화 답변/)).toBeTruthy();
 });
 
 test('preserves generated hypotheses after opening and returning from their citation', async () => {

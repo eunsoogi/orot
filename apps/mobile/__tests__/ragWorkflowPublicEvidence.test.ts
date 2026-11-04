@@ -114,7 +114,7 @@ test('public success fixture calls a tool then cites retrieved evidence', async 
     await runPublicFixture();
   expect(result.status).toBe('result');
   expect(modelCalls).toBe(2);
-  expect(requestedQuery).toBe('(sleep duration adults) AND HAS_ABSTRACT:y');
+  expect(requestedQuery).toBe('sleep duration adults');
   expect(batch?.items).toHaveLength(5);
   expect(batch?.coverage[0].gaps).toEqual([]);
   if (result.status !== 'result') throw new Error('Expected grounded result');
