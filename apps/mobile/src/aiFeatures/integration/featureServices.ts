@@ -34,6 +34,13 @@ import type {
 } from '../../diseaseHypotheses/savedSummaries';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { createRagConversationService } from './ragConversationService';
+import {
+  annotatePublicSearchLimit,
+  budgetAfterPublicSearch,
+  runDefaultPublicSearch,
+} from './defaultPublicSearch';
+import { diseaseTaskWithPublicContext } from './diseaseTaskWithPublicContext';
+import { publicSummaryTask } from './publicSummaryTask';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
   readonly summaryHistory?: SymptomSummaryHistory;
@@ -132,26 +139,49 @@ export function createAiFeatureServices(
       literatureConsent: queryConsent,
       requireAbstract: true,
     });
-    const tools = [
-      ...toolsFor(undefined, data, registry, 6, summary),
-      ...external.tools,
-    ];
+    const localTools = toolsFor(undefined, data, registry, 6, summary);
     const runId = dependencies.createOperationRunId?.() ?? operationRunId();
+    const publicSearch = await runDefaultPublicSearch({
+      tool: external.publicWebTool,
+      operationRunId: runId,
+      request: summary ? '혈압 심박 수면 활동' : DISEASE_REQUEST,
+      signal: operationSignal,
+    });
+    // A failed or denied lookup must not trigger another external request or
+    // prevent the workflow from producing a result from local records.
+    const tools = [
+      ...localTools,
+      ...(publicSearch.status === 'success'
+        ? external.tools.filter(tool => tool.id !== 'public-web-search')
+        : []),
+    ];
+    const execution = executionOptions({
+      selected,
+      operationRunId: runId,
+      consent,
+      registry,
+      tools,
+      external,
+      medicalExplanation: true,
+      consentPurpose: summary ? 'symptom_summary' : 'disease_hypotheses',
+    });
     const workflow = {
-      ...executionOptions({
-        selected,
-        operationRunId: runId,
-        consent,
-        registry,
-        tools,
-        external,
-        medicalExplanation: true,
-        consentPurpose: summary ? 'symptom_summary' : 'disease_hypotheses',
-      }),
+      ...execution,
+      execution: {
+        ...execution.execution,
+        budget: budgetAfterPublicSearch(
+          execution.execution.budget,
+          publicSearch,
+          Boolean(external.publicWebTool),
+        ),
+      },
       request: summary
-        ? '복용약과 활동·걸음수, 혈압·심박수·체중, 수면 및 증상 기록에서 확인된 내용을 날짜와 함께 정리해 주세요. 이어서 이 기록을 이해하는 데 도움이 되는 공개 의학 문헌을 검색하고, 문헌이 설명하는 일반적인 의미를 별도 항목으로 작성해 주세요. 개인 기록의 사실과 일반 의학 설명을 구분하고 개인의 질환이나 원인으로 단정하지 마세요. 검색을 사용할 수 없다면 의학 설명은 만들지 말고 그 한계를 밝히세요.'
+        ? '복용약과 활동·걸음수, 혈압·심박수·체중, 수면 및 증상 기록에서 확인된 내용을 날짜와 함께 정리해 주세요. 관련 공개 웹자료나 의학 문헌의 일반적인 의미를 별도 항목으로 작성해 주세요. 웹검색에서 AI가 정리한 설명과 원문 문헌, 개인 기록의 사실을 구분하고 개인의 질환이나 원인으로 단정하지 마세요. 검색을 사용할 수 없다면 의학 설명은 만들지 말고 그 한계를 밝히세요.'
         : DISEASE_REQUEST,
-      initialEvidence: { items: [], coverage: [], conflicts: [] },
+      initialEvidence:
+        publicSearch.status === 'success'
+          ? publicSearch.batch
+          : { items: [], coverage: [], conflicts: [] },
     };
     const invocation = { ...observer, signal: operationSignal };
     const resolver = (reference: EvidenceReference) =>
@@ -162,12 +192,25 @@ export function createAiFeatureServices(
           undefined,
           invocation,
           resolver,
-          symptomSummaryTaskForProvider(selected.provider.id),
+          publicSummaryTask(
+            symptomSummaryTaskForProvider(selected.provider.id),
+          ),
         )
-      : diseaseRunner(workflow, undefined, invocation, resolver));
+      : diseaseRunner(
+          workflow,
+          undefined,
+          invocation,
+          resolver,
+          diseaseTaskWithPublicContext,
+        ));
     // Both actions produce durable results; presentation remains part of the
     // saved analysis so reopening possibilities cannot turn them into factual summaries.
-    return summaryPersistence.save(outcome, selected, runId, operationSignal);
+    return summaryPersistence.save(
+      annotatePublicSearchLimit(outcome, publicSearch),
+      selected,
+      runId,
+      operationSignal,
+    );
   }
 
   const sendRagMessage = createRagConversationService({

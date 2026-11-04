@@ -110,9 +110,11 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     additionalProperties: false,
   } as JsonObject,
   projectStreamedText(rawOutput, input) {
-    // An unsupported evidence-free factual draft must not appear before its required lookup.
+    // A public-only snapshot cannot support an unvalidated draft about personal records.
     if (
-      !input.evidence.items.length &&
+      !input.evidence.items.some(
+        item => item.sourceKind !== 'external_medical',
+      ) &&
       extractPartialJsonStringAtPath(rawOutput, ['value', 'answerKind']) !==
         'conversation'
     )

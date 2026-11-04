@@ -59,7 +59,7 @@ export function publicEvidenceFixture() {
   const request = {
     operationRunId: 'synthetic-run',
     operationKey: 'tool-2',
-    input: { query: 'Public concept' },
+    input: { topics: ['sleep'] },
     allowedScope: { sourceKinds: ['external_medical' as const] },
     resultLimit: 2,
     maxPayloadBytes: 65536,

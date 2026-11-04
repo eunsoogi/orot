@@ -29,7 +29,7 @@ public final class HealthKitModule: NSObject {
             return
         }
         guard let plan = HealthKitBoundary.authorizationPlan(for: feature) else {
-            reject("UNSUPPORTED_FEATURE", "HealthKit feature is unsupported.", nil)
+            reject("UNSUPPORTED_FEATURE", "Selected health record type is not supported.", nil)
             return
         }
 
@@ -70,7 +70,7 @@ public final class HealthKitModule: NSObject {
                                           rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         guard let plan = HealthKitBatchAuthorization.plan(for: features) else {
-            reject("INVALID_REQUEST", "HealthKit batch authorization selection is invalid.", nil)
+            reject("INVALID_REQUEST", "Health record permission selection is invalid.", nil)
             return
         }
         guard !plan.requestedFeatures.isEmpty else {
@@ -135,7 +135,7 @@ public final class HealthKitModule: NSObject {
                              rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         guard let query = HealthKitBoundary.decodeSampleQuery(request) else {
-            reject("INVALID_REQUEST", "HealthKit sample query is invalid.", nil)
+            reject("INVALID_REQUEST", "Health record request is invalid.", nil)
             return
         }
         guard HealthKitBoundary.isSupported(query.feature) else {
@@ -154,15 +154,16 @@ public final class HealthKitModule: NSObject {
             return
         }
         guard let sampleType = HealthKitBoundary.sampleType(feature: query.feature, kind: query.sampleKind) else {
-            reject("UNSUPPORTED_SAMPLE_KIND", "HealthKit sample kind is unsupported.", nil)
+            reject("UNSUPPORTED_SAMPLE_KIND", "Selected health record type is not supported.", nil)
             return
         }
 
         let predicate = HKQuery.predicateForSamples(withStart: query.startDate, end: query.endDate, options: [])
+        // Only stable codes and generic bridge messages cross into the app; provider descriptions can contain private details.
         withMedicationDoseScope(feature: query.feature, predicate: predicate) { scoped in
             guard case let .success(scope) = scoped else {
-                if case let .failure(error) = scoped {
-                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                if case .failure = scoped {
+                    reject("HEALTHKIT_QUERY_FAILED", "Health record query failed.", nil)
                 }
                 return
             }
@@ -172,12 +173,12 @@ public final class HealthKitModule: NSObject {
                 limit: query.limit,
                 sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)],
             ) { _, samples, error in
-                if let error {
-                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                if error != nil {
+                    reject("HEALTHKIT_QUERY_FAILED", "Health record query failed.", nil)
                     return
                 }
                 guard let samples else {
-                    reject("HEALTHKIT_QUERY_FAILED", "HealthKit returned no query result.", nil)
+                    reject("HEALTHKIT_QUERY_FAILED", "No health record results were returned.", nil)
                     return
                 }
                 // An empty result only means no matching samples are visible to this app.
@@ -185,7 +186,7 @@ public final class HealthKitModule: NSObject {
                     let snapshots = try samples.map(HealthKitBoundary.snapshot)
                     resolve(HealthKitBoundary.sampleResult(availability: "available", samples: snapshots))
                 } catch {
-                    reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
+                    reject("HEALTHKIT_SERIALIZATION_FAILED", "Health record data could not be processed.", nil)
                 }
             }
             self.store.execute(nativeQuery)
@@ -200,7 +201,7 @@ public final class HealthKitModule: NSObject {
         {
             // This reports the native identifier without querying any HealthKit samples.
             guard let sampleType = HealthKitBoundary.sampleType(feature: feature, kind: sampleKind) else {
-                reject("UNSUPPORTED_SAMPLE_KIND", "HealthKit sample kind is unsupported.", nil)
+                reject("UNSUPPORTED_SAMPLE_KIND", "Selected health record type is not supported.", nil)
                 return
             }
             resolve(sampleType.identifier)

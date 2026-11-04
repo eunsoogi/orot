@@ -88,9 +88,9 @@ test('full integration execution preserves profile observations and every regist
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   // Nine host regressions run outside iOS; the three picker journeys still repeat across cohorts.
-  assert.equal(scheduled.length, 187);
+  assert.equal(scheduled.length, 188);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 184);
+  assert.equal(identifiers.size, 185);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

@@ -11,20 +11,20 @@ export const healthkitSettingsKo = {
     '자동으로 동기화할 건강 기록을 선택해 주세요. 앱을 열거나 다시 실행하면 새 기록을 확인해요.',
   'settings.healthData.autoSyncEnabled': '자동 동기화 켜짐',
   'settings.healthData.autoSyncDisabled': '자동 동기화 꺼짐',
-  'settings.healthData.connection': 'HealthKit 연결 상태',
+  'settings.healthData.connection': '건강 앱 연결 상태',
   'settings.healthData.connectionAvailable':
-    '이 기기에서 HealthKit을 사용할 수 있어요.',
+    '이 기기에서 건강 앱 기록을 사용할 수 있어요.',
   'settings.healthData.connectionUnavailable':
-    '이 기기에서 HealthKit을 사용할 수 없어요.',
+    '이 기기에서 건강 앱 기록을 사용할 수 없어요.',
   'settings.healthData.connectionUnknown':
-    'HealthKit 연결 상태를 확인하지 못했어요.',
+    '건강 앱 기록 상태를 확인하지 못했어요.',
   'settings.healthData.lastSync': '최근 동기화',
   'settings.healthData.statusLoading': '연동 상태를 확인하는 중…',
   'settings.healthData.statusLoadError': '연동 상태를 모두 확인하지 못했어요.',
   'settings.healthData.localOnly':
     '선택한 기록은 이 기기의 암호화된 저장소에 보관하며 AI 제공자에게 자동 전송하지 않아요.',
   'settings.healthData.permissionNote':
-    'HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요. 권한 화면이 다시 뜨지 않으면 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인하고, 돌아와 다시 저장해 주세요.',
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요. 권한 화면이 다시 뜨지 않으면 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 돌아와 다시 저장해 주세요.',
   'settings.healthData.save': '자동 동기화 설정 저장',
   'settings.healthData.saving': '설정 저장 중…',
   'settings.healthData.saved': '자동 동기화 설정을 저장했어요.',
@@ -33,19 +33,37 @@ export const healthkitSettingsKo = {
   'settings.healthData.retryable':
     '설정은 저장했지만 동기화하지 못했어요. 권한 및 동기화 상태에서 확인해 주세요.',
   'settings.healthData.authorizationUnavailable':
-    '이 기기에서 HealthKit을 사용할 수 없어 권한 요청을 시작하지 못했어요. 건강 앱을 확인한 뒤 다시 저장해 주세요.',
+    '이 기기에서 건강 기록을 사용할 수 없어 권한 요청을 시작하지 못했어요. 건강 앱을 확인한 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationUnsupportedFeature':
     '선택한 항목 중 이 기기에서 요청할 수 없는 항목이 있어요. 항목을 확인한 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationStandardRequestFailed':
-    'HealthKit 권한 요청을 완료하지 못했어요. 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 다시 저장해 주세요.',
+    '건강 기록 권한 요청을 완료하지 못했어요. 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationMedicationRequestFailed':
     '복약 기록 권한 요청을 완료하지 못했어요. 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationPresentationFailed':
     '복약 권한 화면을 열지 못했어요. 열린 시스템 화면을 닫은 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationRequestFailed':
-    'HealthKit 권한 요청을 마치지 못했어요. 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 다시 저장해 주세요.',
+    '건강 기록 권한 요청을 마치지 못했어요. 건강 앱에서 프로필 > 개인정보 보호 > 앱 > 오롯을 확인한 뒤 다시 저장해 주세요.',
   'settings.healthData.authorizationDiagnostic':
-    '요청 단계: {stage}, 오류 코드: {code}',
+    '확인 단계: {stage}, 결과: {code}',
+  'settings.healthData.authorizationDiagnostic.stage.availability':
+    '기기 상태 확인',
+  'settings.healthData.authorizationDiagnostic.stage.standardRequest':
+    '건강 기록 권한 요청',
+  'settings.healthData.authorizationDiagnostic.stage.medicationRequest':
+    '복약 기록 권한 요청',
+  'settings.healthData.authorizationDiagnostic.stage.presentation':
+    '권한 화면 표시',
+  'settings.healthData.authorizationDiagnostic.stage.authorization':
+    '권한 요청',
+  'settings.healthData.authorizationDiagnostic.code.healthDataUnavailable':
+    '건강 기록을 사용할 수 없음',
+  'settings.healthData.authorizationDiagnostic.code.unsupportedFeature':
+    '선택한 기록 유형을 지원하지 않음',
+  'settings.healthData.authorizationDiagnostic.code.requestFailed':
+    '권한 요청을 완료하지 못함',
+  'settings.healthData.authorizationDiagnostic.code.presentationUnavailable':
+    '권한 화면을 열지 못함',
   'settings.healthData.disabled': '자동 동기화를 껐어요.',
   'settings.healthData.loading': '저장한 동기화 설정을 불러오는 중…',
   'settings.healthData.loadError': '저장한 설정을 불러오지 못했어요.',

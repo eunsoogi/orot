@@ -126,6 +126,7 @@ test('shows stored HealthKit medication counts and opens its separate detail lis
   expect(
     await screen.findByTestId('health-record-medications-count'),
   ).toHaveTextContent('1개 약 · 1개 복용 기록');
+  expect(screen.getByText('출처: 건강 앱')).toBeTruthy();
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-medications'),
   );
