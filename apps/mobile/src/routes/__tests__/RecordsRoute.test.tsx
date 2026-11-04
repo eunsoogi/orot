@@ -63,12 +63,10 @@ function routeProps(
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
-    onOpenSymptoms: jest.fn(),
     onOpenSavedRecordings: jest.fn(),
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
-    loadSymptoms: async () => ({ list: async () => [] }),
     ...overrides,
   };
 }
@@ -95,13 +93,11 @@ test('keeps existing Records actions and medical document import available', asy
     await screen.findByTestId('medical-document-source-empty-list'),
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('records-new-recording'));
-  await fireEvent.press(screen.getByTestId('symptoms-open'));
   await fireEvent.press(screen.getByTestId('records-open-saved-recordings'));
   await fireEvent.press(screen.getByTestId('records-open-manual-history'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
 
   expect(props.onOpenRecording).toHaveBeenCalledTimes(1);
-  expect(props.onOpenSymptoms).toHaveBeenCalledTimes(1);
   expect(props.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
   expect(props.onOpenManualHistory).toHaveBeenCalledTimes(1);
   expect(props.onOpenHealthLibrary).toHaveBeenCalledTimes(1);

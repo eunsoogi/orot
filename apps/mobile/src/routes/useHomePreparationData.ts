@@ -1,75 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import type { SymptomEntry } from '@orot/storage';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServices';
 import type { SavedVisitQuestionsLoadState } from '../aiFeatures/integration/savedVisitQuestions';
-import { openLocalSymptomJournal } from '../symptoms/localRepository';
-import type { SymptomJournalRepository } from '../symptoms/localRepository';
 
 export interface HomePreparationLoaders {
-  readonly loadSymptoms?: () => Promise<SymptomJournalRepository>;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }
 
 /** Reads existing local summaries only; a Home visit never generates questions or writes health data. */
 export function useHomePreparationData(
   appointmentId: string | undefined,
-  {
-    loadSymptoms = openLocalSymptomJournal,
-    loadSavedVisitQuestions,
-  }: HomePreparationLoaders,
+  { loadSavedVisitQuestions }: HomePreparationLoaders,
 ) {
   const focused = useIsFocused();
   const [attempt, setAttempt] = useState(0);
-  const [symptoms, setSymptoms] = useState<readonly SymptomEntry[]>([]);
-  const [symptomUpdates, setSymptomUpdates] = useState<
-    Record<string, string | null>
-  >({});
-  const [symptomState, setSymptomState] = useState<
-    'loading' | 'ready' | 'failed'
-  >('loading');
   const [questions, setQuestions] =
     useState<SavedVisitQuestionsLoadState | null>(null);
   const [questionState, setQuestionState] = useState<
     'loading' | 'ready' | 'failed'
   >('loading');
   const retry = useCallback(() => setAttempt(value => value + 1), []);
-
-  useEffect(() => {
-    if (!focused) return;
-    let active = true;
-    setSymptomState('loading');
-    setSymptoms([]);
-    loadSymptoms()
-      .then(async repository => {
-        if (repository.listActiveWithUpdates) {
-          const snapshots = await repository.listActiveWithUpdates();
-          return {
-            entries: snapshots.map(item => item.entry),
-            updates: Object.fromEntries(
-              snapshots.map(item => [item.entry.id, item.updatedAt]),
-            ),
-          };
-        }
-        const entries = await repository.list({ status: 'active' });
-        // A repository without snapshot support cannot safely pair separately-read edit times.
-        return { entries, updates: {} };
-      })
-      .then(({ entries, updates }) => {
-        if (!active) return;
-        // Defensive filtering preserves the active-only contract for injected and legacy repositories.
-        setSymptoms(entries.filter(entry => entry.status === 'active'));
-        setSymptomUpdates(updates);
-        setSymptomState('ready');
-      })
-      .catch(() => {
-        if (active) setSymptomState('failed');
-      });
-    return () => {
-      active = false;
-    };
-  }, [focused, loadSymptoms, attempt]);
 
   useEffect(() => {
     if (!focused) return;
@@ -110,9 +61,6 @@ export function useHomePreparationData(
   }, [focused, retry]);
 
   return {
-    symptoms,
-    symptomUpdates,
-    symptomState,
     questions,
     questionState,
     retry,

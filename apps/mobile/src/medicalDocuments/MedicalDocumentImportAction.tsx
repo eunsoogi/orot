@@ -9,6 +9,7 @@ interface MedicalDocumentImportActionProps {
   readonly disabled: boolean;
   readonly onPress: () => void;
   readonly showDivider?: boolean;
+  readonly source?: 'files' | 'photos';
 }
 
 /** Keeps document import in the Records body instead of duplicating it in navigation actions. */
@@ -17,19 +18,35 @@ export function MedicalDocumentImportAction({
   disabled,
   onPress,
   showDivider = false,
+  source = 'files',
 }: MedicalDocumentImportActionProps) {
-  const label = t('medicalDocument.import.title');
+  const label = t(
+    source === 'photos'
+      ? 'medicalDocument.import.photos'
+      : 'medicalDocument.import.title',
+  );
   const content = (
     <>
       <View style={styles.icon}>
-        <AppSymbol name="doc.text" color={appColors.primaryAction} />
+        <AppSymbol
+          name={source === 'photos' ? 'photo' : 'doc.text'}
+          color={appColors.primaryAction}
+        />
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{label}</Text>
         <Text style={styles.summary}>
           {opening
-            ? t('medicalDocument.import.opening')
-            : t('medicalDocument.import.summary')}
+            ? t(
+                source === 'photos'
+                  ? 'medicalDocument.import.photosOpening'
+                  : 'medicalDocument.import.opening',
+              )
+            : t(
+                source === 'photos'
+                  ? 'medicalDocument.import.photosSummary'
+                  : 'medicalDocument.import.summary',
+              )}
         </Text>
       </View>
       <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
@@ -45,7 +62,11 @@ export function MedicalDocumentImportAction({
         showDivider && styles.divider,
         disabled && styles.disabled,
       ]}
-      testID="records-import-medical-document"
+      testID={
+        source === 'photos'
+          ? 'records-import-medical-photo'
+          : 'records-import-medical-document'
+      }
     >
       {content}
     </Pressable>

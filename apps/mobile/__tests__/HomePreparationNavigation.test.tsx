@@ -9,10 +9,7 @@ import App from '../App';
 import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
-import {
-  homeJournal,
-  savedHomeQuestions,
-} from '../test-helpers/homeOverviewFixtures';
+import { savedHomeQuestions } from '../test-helpers/homeOverviewFixtures';
 
 const mockLoadQuestions = jest.fn(async (id: string) =>
   savedHomeQuestions(id, ['예약별 합성 질문: ' + id]),
@@ -38,7 +35,6 @@ test('a visit canceled after Home loads never falls back to another future Calen
     <App
       loadAppointments={async () => store.repository}
       loadRecordings={async () => []}
-      loadSymptoms={async () => homeJournal([])}
     />,
   );
   expect(await screen.findByTestId('home-prepare-visit')).toBeTruthy();
@@ -108,7 +104,6 @@ test.each(['manual', 'ongoing-calendar'] as const)(
       <App
         loadAppointments={async () => store.repository}
         loadRecordings={async () => []}
-        loadSymptoms={async () => homeJournal([])}
       />,
     );
     expect(
@@ -158,7 +153,6 @@ test('a valid future Calendar visit still reaches the actual editable generation
       <App
         loadAppointments={async () => store.repository}
         loadRecordings={async () => []}
-        loadSymptoms={async () => homeJournal([])}
         aiFeatureServiceDependencies={{
           selectedAi: {
             selectionStore: {

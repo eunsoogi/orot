@@ -57,7 +57,11 @@ export function pageActionRailLayout({
   const pageSpace = rootTabs
     ? (available - navHeight) / 2
     : available - navHeight;
-  const capacity = Math.max(0, Math.floor((pageSpace - groupGap) / step));
+  const railGapCount = rootTabs ? 1 : Math.min(navigationCount, 2);
+  const capacity = Math.max(
+    0,
+    Math.floor((pageSpace - railGapCount * groupGap) / step),
+  );
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
   const displayedActionHeight =
@@ -66,18 +70,18 @@ export function pageActionRailLayout({
   // Center the complete action-and-tab group around the measured usable segment.
   const actionGroupHeight =
     displayed > 0 ? displayedActionHeight + groupGap : 0;
+  // Keep Back at the lane top and Home at its bottom; page actions use the space between them.
+  const pageTopInset =
+    !rootTabs && navigationCount > 0 ? top + step + groupGap : top;
   const pageBottom = rootTabs
     ? top + (available - navHeight) / 2 - groupGap + actionGroupHeight / 2
-    : top + displayed * step;
+    : pageTopInset + displayed * step;
   return {
     fits,
     capacity,
+    pageTopInset,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset: rootTabs
-      ? top + actionGroupHeight
-      : !displayed
-        ? top
-        : top + displayed * step + groupGap,
+    navigationTopInset: rootTabs ? top + actionGroupHeight : top,
   };
 }
 
