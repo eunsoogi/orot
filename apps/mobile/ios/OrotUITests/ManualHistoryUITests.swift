@@ -10,10 +10,11 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testKnownDateProvenanceAndCorrectionSurviveProcessRestart() throws {
         let app = XCUIApplication()
-        launch(app, largeText: true, initialDate: "2024-02-01")
+        ManualHistoryUITestSupport.launch(app, largeText: true, initialDate: "2024-02-01")
         defer { app.terminate() }
         try openManualHistory(app)
         tap(app, "manual-history-add", in: "manual-history-scroll")
+
         guard replace(app, "manual-history-title-input", with: "Synthetic history before correction") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic details recorded by the user.", multiline: true) else { return }
         ManualHistoryDateSheetUITestSupport.exerciseDismissalsAndSelect(app, day: 9)
@@ -26,6 +27,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(save.isHittable)
         NavigationGeometryUITestConditions.captureScreen(app, name: "manual-history-large-text-keyboard-save", testCase: self)
         save.tap()
+
         visible(app, "Synthetic history before correction")
         visible(app, "기준일: 2024-02-09")
         visible(app, "직접 입력 · 미확인")
@@ -43,7 +45,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         visible(app, "직접 입력 · 미확인")
 
         app.terminate()
-        launch(app)
+        ManualHistoryUITestSupport.launch(app)
         try openManualHistory(app)
         visible(app, "Synthetic corrected history")
         visible(app, "기준일: 2024-02-10")
@@ -57,7 +59,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart() throws {
         let app = XCUIApplication()
-        launch(app)
+        ManualHistoryUITestSupport.launch(app)
         defer { app.terminate() }
         try openManualHistory(app)
         tap(app, "manual-history-add", in: "manual-history-scroll")
@@ -84,7 +86,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-empty")))
 
         app.terminate()
-        launch(app)
+        ManualHistoryUITestSupport.launch(app)
         try openManualHistory(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-empty")))
         XCTAssertFalse(app.staticTexts["Synthetic unknown history"].exists)
@@ -94,7 +96,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testUnsavedDraftRequiresConfirmationBeforeLeavingManualHistory() throws {
         let app = XCUIApplication()
-        launch(app)
+        ManualHistoryUITestSupport.launch(app)
         defer { app.terminate() }
         try openManualHistory(app)
         tap(app, "manual-history-add", in: "manual-history-scroll")
@@ -119,7 +121,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testContextualBackAndHomeHonorDepartureConfirmationInRightRail() throws {
         let app = XCUIApplication()
-        launch(app, observeGeometry: true)
+        ManualHistoryUITestSupport.launch(app, observeGeometry: true)
         defer { app.terminate() }
         try openManualHistory(app)
         // Observe the list and edited form independently from the departure guard's state assertions.
@@ -156,7 +158,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     func testRouteOpenFailureRetryAndBackAfterDuoReflow() throws {
         let app = XCUIApplication()
         XCUIDevice.shared.orientation = .portrait
-        launch(app, largeText: true, scenario: "manual-history-recovery", observeAppearance: true)
+        ManualHistoryUITestSupport.launch(app, largeText: true, scenario: "manual-history-recovery", observeAppearance: true)
         var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
             if let originalAppearance {
@@ -190,19 +192,6 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-empty")), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-    }
-
-    @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false, initialDate: String? = nil) {
-        app.launchArguments = [
-            scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
-            scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
-            + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
-            + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
-            + (initialDate.map { ["-OROT_TEST_MANUAL_HISTORY_DATE", $0] } ?? [])
-        app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     @MainActor

@@ -1,11 +1,28 @@
 import XCTest
 
+/// Shares the manual-history launch configuration across persistence and sheet journeys.
+enum ManualHistoryUITestSupport {
+    @MainActor
+    static func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false, initialDate: String? = nil) {
+        app.launchArguments = [
+            scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
+            scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+            + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
+            + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
+            + (initialDate.map { ["-OROT_TEST_MANUAL_HISTORY_DATE", $0] } ?? [])
+        app.launch()
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+    }
+}
+
 /// Uses the real UIKit calendar; the test build fixes only the initial month.
 enum ManualHistoryDateSheetUITestSupport {
     @MainActor
     static func exerciseDismissalsAndSelect(_ app: XCUIApplication, day: Int) {
         open(app)
-        XCTAssertFalse(UITestConditions.element(app, "manual-history-title-input").isHittable, app.debugDescription)
+        // open(_:) just established that this same control was hittable before presentation.
+        XCTAssertFalse(UITestConditions.element(app, "manual-history-open-date-picker").isHittable, app.debugDescription)
         tapDay(app, day)
         app.buttons["manual-history-date-cancel"].tap()
         XCTAssertTrue(UITestConditions.element(app, "manual-history-open-date-picker").label.contains("달력에서 날짜 선택"))
