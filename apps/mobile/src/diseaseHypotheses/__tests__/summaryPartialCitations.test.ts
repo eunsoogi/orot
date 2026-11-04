@@ -199,38 +199,34 @@ test('does not accept an unrelated wrong measurement when a section from the sam
   expect(result.status).toBe('invalid');
 });
 
-test.each(['missing', 'conflicting'] as const)(
-  'retains a supported summary with explicit limitations when evidence is %s',
-  async condition => {
-    const partialEvidence = {
+test('retains a supported summary with an explicit marker when evidence is missing', async () => {
+  const partialEvidence = {
+    ...evidence,
+    coverage: evidence.coverage.map(entry => ({
+      ...entry,
+      gaps: ['Some sources unavailable'],
+    })),
+  };
+  const result = await runMultiAgentWorkflow({
+    ...workflowOptionsFor({ sections: [supported] }),
+    initialEvidence: partialEvidence,
+    task: symptomSummaryTask,
+  });
+  expect(result.status).toBe('result');
+  if (result.status !== 'result') return;
+  expect(result.value.hypotheses[0]!.supportingEvidence).toEqual([reference]);
+  expect(result.partialEvidence).toBe(true);
+  expect(result.value.hypotheses[0]!.uncertainty).toBe(supported.uncertainty);
+});
+
+test('does not infer which evidence is safe from an unattributed conflict string', async () => {
+  const result = await runMultiAgentWorkflow({
+    ...workflowOptionsFor({ sections: [supported] }),
+    initialEvidence: {
       ...evidence,
-      coverage: evidence.coverage.map(entry => ({
-        ...entry,
-        gaps: condition === 'missing' ? ['Some sources unavailable'] : [],
-      })),
-      conflicts:
-        condition === 'conflicting'
-          ? ['Synthetic conflicting source reports']
-          : [],
-    };
-    const options = workflowOptionsFor({ sections: [supported] });
-    const result = await runMultiAgentWorkflow({
-      ...options,
-      initialEvidence: partialEvidence,
-      task: symptomSummaryTask,
-    });
-    expect(result.status).toBe('result');
-    if (result.status !== 'result') return;
-    expect(result.value.hypotheses[0]!.supportingEvidence).toEqual([reference]);
-    if (condition === 'missing') {
-      expect(result.partialEvidence).toBe(true);
-      expect(result.value.hypotheses[0]!.uncertainty).toBe(
-        supported.uncertainty,
-      );
-    } else {
-      expect(result.value.hypotheses[0]!.uncertainty).toMatch(
-        /상충|차이|서로/u,
-      );
-    }
-  },
-);
+      conflicts: ['Synthetic conflicting source reports'],
+    },
+    task: symptomSummaryTask,
+  });
+  expect(result.status).toBe('needs_clarification');
+});
