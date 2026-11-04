@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 
-/** Presents retry guidance from sanitized HealthKit codes without exposing native error text. */
+/** Presents localized retry guidance without exposing native error text or codes. */
 export function HealthDataAuthorizationRecoveryNotice({
   failure,
 }: {
@@ -21,8 +21,8 @@ export function HealthDataAuthorizationRecoveryNotice({
       </Text>
       <Text style={styles.note} testID="health-data-authorization-diagnostic">
         {t('settings.healthData.authorizationDiagnostic', {
-          stage: failure.stage,
-          code: failure.code,
+          stage: authorizationStageLabel(failure.stage),
+          code: authorizationCodeLabel(failure.code),
         })}
       </Text>
     </View>
@@ -53,5 +53,55 @@ function authorizationFailureMessage(
       return t('settings.healthData.authorizationPresentationFailed');
     default:
       return t('settings.healthData.authorizationRequestFailed');
+  }
+}
+
+function authorizationStageLabel(
+  stage: HealthKitAuthorizationFailure['stage'],
+): string {
+  switch (stage) {
+    case 'availability':
+      return t(
+        'settings.healthData.authorizationDiagnostic.stage.availability',
+      );
+    case 'standardRequest':
+      return t(
+        'settings.healthData.authorizationDiagnostic.stage.standardRequest',
+      );
+    case 'medicationRequest':
+      return t(
+        'settings.healthData.authorizationDiagnostic.stage.medicationRequest',
+      );
+    case 'presentation':
+      return t(
+        'settings.healthData.authorizationDiagnostic.stage.presentation',
+      );
+    case 'authorization':
+      return t(
+        'settings.healthData.authorizationDiagnostic.stage.authorization',
+      );
+  }
+}
+
+function authorizationCodeLabel(
+  code: HealthKitAuthorizationFailure['code'],
+): string {
+  switch (code) {
+    case 'healthDataUnavailable':
+      return t(
+        'settings.healthData.authorizationDiagnostic.code.healthDataUnavailable',
+      );
+    case 'unsupportedFeature':
+      return t(
+        'settings.healthData.authorizationDiagnostic.code.unsupportedFeature',
+      );
+    case 'requestFailed':
+      return t(
+        'settings.healthData.authorizationDiagnostic.code.requestFailed',
+      );
+    case 'presentationUnavailable':
+      return t(
+        'settings.healthData.authorizationDiagnostic.code.presentationUnavailable',
+      );
   }
 }

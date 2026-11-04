@@ -8,6 +8,26 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// This checks the native disclosure with a synthetic search response, not a real provider account.
+    @MainActor
+    func testPublicSearchShowsConsentBeforeSyntheticSearch() {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_PUBLIC_SEARCH_CONSENT_PROBE", "synthetic"]
+        app.launch()
+        let start = UITestConditions.element(app, "public-search-probe-start")
+        XCTAssertTrue(start.waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(start.isHittable)
+        start.tap()
+        let sheet = UITestConditions.element(app, "inference-disclosure-sheet")
+        XCTAssertTrue(sheet.waitForAppearance(), app.debugDescription)
+        let allow = UITestConditions.element(app, "inference-disclosure-allow")
+        XCTAssertTrue(allow.exists)
+        XCTAssertTrue(allow.isHittable)
+        allow.tap()
+        UITestConditions.value(UITestConditions.element(app, "public-search-probe-status"), equals: "success")
+    }
+
     @MainActor
     func testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable() throws {
         let app = XCUIApplication()

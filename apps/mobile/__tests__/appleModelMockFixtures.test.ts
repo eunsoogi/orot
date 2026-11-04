@@ -37,7 +37,7 @@ test.each([undefined, 'required'] as const)(
       toolCalls: [
         {
           name: tools[0].name,
-          arguments: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
+          arguments: { topics: ['adult_sleep_duration'] },
         },
       ],
     });

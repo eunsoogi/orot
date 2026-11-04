@@ -17,7 +17,7 @@ const copy: CommonObservationsImportCopy = {
     importing: '가져오는 중이에요.',
     complete: '가져왔어요.',
     empty: '새로운 변경이 없어요.',
-    unavailable: 'HealthKit을 사용할 수 없어요.',
+    unavailable: '건강 기록을 사용할 수 없어요.',
     unsupportedFeature: '이 기록 유형은 지원하지 않아요.',
     unsupportedPlatform: '이 플랫폼은 지원하지 않아요.',
     unsupportedData: '처리할 수 없는 기록이에요.',

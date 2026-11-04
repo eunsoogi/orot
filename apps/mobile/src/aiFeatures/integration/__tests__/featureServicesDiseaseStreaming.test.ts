@@ -60,5 +60,6 @@ test('forwards disease progress and projected-text observers into the workflow',
     undefined,
     expect.any(Object),
     expect.any(Function),
+    expect.objectContaining({ requiredToolEvidenceKinds: ['personal_record'] }),
   );
 });

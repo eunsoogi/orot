@@ -6,6 +6,11 @@ import type {
   ExternalMedicalQueryConsentPort,
 } from '@orot/agent-runtime';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
+import {
+  publicMedicalTopicLabels,
+  publicWebQuerySchema,
+} from '../../agent/execution/publicWebQuery';
+import type { JsonObject } from '@orot/model-runtime';
 
 function canonical(value: unknown): string {
   if (!value || typeof value !== 'object') return JSON.stringify(value);
@@ -84,8 +89,23 @@ export function createExternalConversationEvidence(
   return {
     tool: {
       ...adapter,
+      // The model may select a public concept but cannot send source text or identifiers.
+      inputSchema: publicWebQuerySchema,
+      description:
+        'Search original Europe PMC publications using app-owned public topics.',
+      parseInput(value: unknown) {
+        return publicMedicalTopicLabels(value)
+          ? (value as JsonObject)
+          : undefined;
+      },
       async search(request: Parameters<typeof adapter.search>[0]) {
-        const batch = await adapter.search(request);
+        const labels = publicMedicalTopicLabels(request.input);
+        if (!labels)
+          throw new Error('The public literature topics were invalid.');
+        const batch = await adapter.search({
+          ...request,
+          input: { query: labels.join(' AND ') },
+        });
         // This filtered literature sample is never a complete review. Preserve actual adapter
         // gaps and conflicts; an omitted metadata-only hit is not missing personal health data.
         const result =

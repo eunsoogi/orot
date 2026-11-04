@@ -175,7 +175,7 @@ test('gives the production health detail route the full lane for its panels', as
   ).toBe('수축기 120 mmHg');
   expect(
     screen.getByTestId('health-record-row-0-systolic-source'),
-  ).toHaveTextContent('HealthKit · Blood pressure monitor');
+  ).toHaveTextContent('건강 앱 · Blood pressure monitor');
 
   await act(async () => {
     Dimensions.set({ window: viewport(500), screen: viewport(500) });
