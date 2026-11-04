@@ -23,6 +23,7 @@ import {
   findRemovedRagEvidence,
   upsertRagEmbeddingSources,
 } from './ragEmbeddingDeletionStorage';
+import { deletedSymptomIds } from './agentMemorySymptomQuarantine';
 
 const EMBEDDINGS_TABLE = 'rag_embeddings';
 
@@ -41,6 +42,16 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
   /** Prepares RAG tables before callers join vector cleanup to an open deletion transaction. */
   async prepare(): Promise<void> {
     await this.ensureSchema();
+  }
+
+  async findRemovedTypedEvidence(
+    references: readonly { readonly kind: string; readonly id: string }[],
+  ): Promise<readonly { readonly kind: string; readonly id: string }[]> {
+    const deleted = await deletedSymptomIds(this.database);
+    return references.filter(
+      reference =>
+        reference.kind === 'symptom_entry' && deleted.has(reference.id),
+    );
   }
 
   async upsertBatch(

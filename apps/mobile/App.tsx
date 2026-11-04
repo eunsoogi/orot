@@ -3,8 +3,6 @@ import {
   withAppointmentReminderApp,
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
-import type { SymptomJournalRepository } from './src/symptoms/localRepository';
-import { SymptomFilterProvider } from './src/symptoms/SymptomFilterContext';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
@@ -48,7 +46,6 @@ import type { HealthRecordsMedicationLoader } from './src/healthkit/healthRecord
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 
 interface AppProps {
-  loadSymptoms?: () => Promise<SymptomJournalRepository>;
   loadAppointments?: () => Promise<AppointmentRepository>;
   loadRecordings?: () => Promise<readonly RecordingSourceRecord[]>;
   calendarBridge?: CalendarBridge;
@@ -63,7 +60,6 @@ interface AppProps {
 }
 
 function App({
-  loadSymptoms,
   loadAppointments = defaultReminderAppointmentLoader,
   loadRecordings = loadRecordingSummaries,
   calendarBridge = eventKitCalendarBridge,
@@ -138,106 +134,101 @@ function App({
 
   return (
     <View style={styles.appShell}>
-      <SymptomFilterProvider>
-        <RecordingSelectionProvider>
-          <AiFeatureSharedNavigationStateProvider>
-            <NavigationRouteAdapter
-              controller={appNavigation}
-              // Root tabs share one scroll host; guarded detail routes own their scrollers.
-              scrollable={route =>
-                route.name === 'home' &&
-                ['home', 'records', 'settings'].includes(activeTab)
-              }
-              showHome
-              homeAction={async () => {
-                if (await appNavigation.requestHome()) setActiveTab('home');
-              }}
-              rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
-              contentLayoutOwner={appContentLayoutOwner}
-            >
-              {/* Settings and AI use the same account services and persisted selection. */}
-              {actions =>
-                isAppAiRoute(actions.route.name) ? (
-                  <AppAiFeatureScene
-                    actions={actions}
-                    consent={ai.consent}
-                    services={ai.services}
-                    renderVisitQuestions={
-                      renderVisitQuestions ?? renderVisitQuestionsRoute
-                    }
-                    serviceDependencies={aiFeatureServiceDependencies}
-                    onProviderSelectionCommitted={(_, provider) =>
-                      setSelectedProvider(provider.displayName)
-                    }
-                  />
-                ) : actions.route.name === 'medical' ||
-                  actions.route.name === 'medical-manual' ? (
-                  <MedicalAppointmentRoute
-                    bridge={calendarBridge}
-                    calendarSync={calendarSync}
-                    manual={actions.route.name === 'medical-manual'}
-                    onOpenCalendarSettings={() =>
-                      appNavigation.push('settings-sync-status')
-                    }
-                    onOpenManual={() => actions.push('medical-manual')}
-                    onOpenProviderSelection={() =>
-                      actions.push('settings-provider')
-                    }
-                    loadAppointments={loadAppointments}
-                    selectedAiResolverOptions={
-                      aiFeatureServiceDependencies?.selectedAi
-                    }
-                  />
-                ) : (
-                  <AppRouteContent
-                    {...homeData}
-                    loadSavedVisitQuestions={
-                      ai.services.loadSavedVisitQuestions
-                    }
-                    actions={actions}
-                    loadSymptoms={loadSymptoms}
-                    activeTab={activeTab}
-                    selectTab={setActiveTab}
-                    backupPreparationState={backupPreparation.state}
-                    retryBackupPreparation={backupPreparation.retry}
-                    calendarBridge={calendarBridge}
-                    calendarSync={calendarSync}
-                    selectedProvider={selectedProvider}
-                    serviceDependencies={aiFeatureServiceDependencies}
-                    onProviderSelectionCommitted={(_, provider) =>
-                      setSelectedProvider(provider.displayName)
-                    }
-                    openProviderSettings={() =>
-                      appNavigation.push('settings-provider')
-                    }
-                    openVisitQuestions={() =>
-                      appNavigation.push('visit-questions')
-                    }
-                    openDiseaseHypotheses={() =>
-                      appNavigation.push('disease-hypotheses')
-                    }
-                    openRagConversation={() =>
-                      appNavigation.push('rag-conversation')
-                    }
-                    openExternalEvidence={() =>
-                      appNavigation.push('external-evidence')
-                    }
-                    openRecording={openRecording}
-                    loadHealthObservations={readHealthPage}
-                    loadHealthRecordMedications={readHealthRecordMedications}
-                    healthRecordDetailSelection={healthRecordDetailSelection}
-                    onHealthRecordDetailSelectionChange={
-                      setHealthRecordDetailSelection
-                    }
-                  />
-                )
-              }
-            </NavigationRouteAdapter>
-            <AppointmentReminderDeliveryHost controller={appNavigation} />
-            {ai.disclosureSheet}
-          </AiFeatureSharedNavigationStateProvider>
-        </RecordingSelectionProvider>
-      </SymptomFilterProvider>
+      <RecordingSelectionProvider>
+        <AiFeatureSharedNavigationStateProvider>
+          <NavigationRouteAdapter
+            controller={appNavigation}
+            // Root tabs share one scroll host; guarded detail routes own their scrollers.
+            scrollable={route =>
+              route.name === 'home' &&
+              ['home', 'records', 'settings'].includes(activeTab)
+            }
+            showHome
+            homeAction={async () => {
+              if (await appNavigation.requestHome()) setActiveTab('home');
+            }}
+            rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+            contentLayoutOwner={appContentLayoutOwner}
+          >
+            {/* Settings and AI use the same account services and persisted selection. */}
+            {actions =>
+              isAppAiRoute(actions.route.name) ? (
+                <AppAiFeatureScene
+                  actions={actions}
+                  consent={ai.consent}
+                  services={ai.services}
+                  renderVisitQuestions={
+                    renderVisitQuestions ?? renderVisitQuestionsRoute
+                  }
+                  serviceDependencies={aiFeatureServiceDependencies}
+                  onProviderSelectionCommitted={(_, provider) =>
+                    setSelectedProvider(provider.displayName)
+                  }
+                />
+              ) : actions.route.name === 'medical' ||
+                actions.route.name === 'medical-manual' ? (
+                <MedicalAppointmentRoute
+                  bridge={calendarBridge}
+                  calendarSync={calendarSync}
+                  manual={actions.route.name === 'medical-manual'}
+                  onOpenCalendarSettings={() =>
+                    appNavigation.push('settings-sync-status')
+                  }
+                  onOpenManual={() => actions.push('medical-manual')}
+                  onOpenProviderSelection={() =>
+                    actions.push('settings-provider')
+                  }
+                  loadAppointments={loadAppointments}
+                  selectedAiResolverOptions={
+                    aiFeatureServiceDependencies?.selectedAi
+                  }
+                />
+              ) : (
+                <AppRouteContent
+                  {...homeData}
+                  loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
+                  actions={actions}
+                  activeTab={activeTab}
+                  selectTab={setActiveTab}
+                  backupPreparationState={backupPreparation.state}
+                  retryBackupPreparation={backupPreparation.retry}
+                  calendarBridge={calendarBridge}
+                  calendarSync={calendarSync}
+                  selectedProvider={selectedProvider}
+                  serviceDependencies={aiFeatureServiceDependencies}
+                  onProviderSelectionCommitted={(_, provider) =>
+                    setSelectedProvider(provider.displayName)
+                  }
+                  openProviderSettings={() =>
+                    appNavigation.push('settings-provider')
+                  }
+                  openVisitQuestions={() =>
+                    appNavigation.push('visit-questions')
+                  }
+                  openDiseaseHypotheses={() =>
+                    appNavigation.push('disease-hypotheses')
+                  }
+                  openRagConversation={() =>
+                    appNavigation.push('rag-conversation')
+                  }
+                  openExternalEvidence={() =>
+                    appNavigation.push('external-evidence')
+                  }
+                  openRecording={openRecording}
+                  loadHealthObservations={readHealthPage}
+                  loadHealthRecordMedications={readHealthRecordMedications}
+                  healthRecordDetailSelection={healthRecordDetailSelection}
+                  onHealthRecordDetailSelectionChange={
+                    setHealthRecordDetailSelection
+                  }
+                />
+              )
+            }
+          </NavigationRouteAdapter>
+          <AppointmentReminderDeliveryHost controller={appNavigation} />
+          {ai.disclosureSheet}
+        </AiFeatureSharedNavigationStateProvider>
+      </RecordingSelectionProvider>
     </View>
   );
 }

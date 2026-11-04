@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
@@ -27,7 +28,23 @@ beforeEach(() => {
   jest.setSystemTime(now);
 });
 
-afterEach(() => jest.useRealTimers());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
+
+/** Calls the explicit destructive choice while keeping row-press behavior observable. */
+function confirmCancellation(alert: jest.SpyInstance) {
+  const buttons =
+    (alert.mock.calls[alert.mock.calls.length - 1]?.[2] as
+      | Array<{
+          style?: 'default' | 'cancel' | 'destructive';
+          onPress?: (value?: string) => void;
+        }>
+      | undefined) ?? [];
+  const confirmation = buttons.find(button => button.style === 'destructive');
+  confirmation?.onPress?.();
+}
 
 test('leaves details unselected when every appointment is cancelled or past', async () => {
   const store = createAppointmentStore([
@@ -45,6 +62,9 @@ test('leaves details unselected when every appointment is cancelled or past', as
 });
 
 test('keeps an explicitly selected appointment after cancellation', async () => {
+  const cancellationAlert = jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation(() => undefined);
   const store = createAppointmentStore([
     appointment('current', now + 60_000),
     appointment('following', now + 2 * 60_000),
@@ -55,6 +75,8 @@ test('keeps an explicitly selected appointment after cancellation', async () => 
   await fireEvent.press(current);
   expect(screen.getByTestId('appointment-next-visit-current')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('appointment-cancel-current'));
+  expect(cancellationAlert).toHaveBeenCalledTimes(1);
+  await act(async () => confirmCancellation(cancellationAlert));
 
   expect(
     await screen.findByTestId('appointment-next-visit-following'),
@@ -91,6 +113,9 @@ test('keeps an explicitly selected appointment after cancellation', async () => 
 });
 
 test('moves an automatic selection to the following visit after cancellation', async () => {
+  const cancellationAlert = jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation(() => undefined);
   const store = createAppointmentStore([
     appointment('current', now + 60_000),
     appointment('following', now + 2 * 60_000),
@@ -100,6 +125,8 @@ test('moves an automatic selection to the following visit after cancellation', a
   const current = await screen.findByTestId('appointment-select-current');
   expect(current.props.accessibilityState.selected).toBe(true);
   await fireEvent.press(screen.getByTestId('appointment-cancel-current'));
+  expect(cancellationAlert).toHaveBeenCalledTimes(1);
+  await act(async () => confirmCancellation(cancellationAlert));
 
   expect(
     await screen.findByTestId('appointment-next-visit-following'),

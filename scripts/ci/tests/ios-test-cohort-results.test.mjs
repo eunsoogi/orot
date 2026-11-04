@@ -29,9 +29,9 @@ function report(cohort) {
 
 test('Linux aggregation retains all first-attempt observations from each compatible cohort', () => {
   for (const [cohort, count] of [
-    ['release', 165],
-    ['release-core', 112],
-    ['release-ui', 53],
+    ['release', 154],
+    ['release-core', 109],
+    ['release-ui', 45],
     ['speech', 9],
     ['debug', 24],
   ])

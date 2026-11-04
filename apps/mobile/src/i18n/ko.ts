@@ -8,15 +8,13 @@ import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
 import { healthkitSettingsKo } from './healthkitSettings';
-import { symptomJournalKo } from './symptomJournal';
 import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
+import { appointmentActionsKo } from './appointmentActionsKo';
 
 export const ko = {
   ...homeOverviewKo,
-  'symptoms.title': '증상 일지',
-  'symptoms.description': '직접 기록한 증상과 경과',
   ...probeKo,
   ...manualHistoryKo,
   ...backupKo,
@@ -46,10 +44,8 @@ export const ko = {
   'records.recent.collapse': '접기',
   'records.recent.loading': '최근 기록을 불러오는 중…',
   'records.recent.loadError': '최근 기록을 불러오지 못했어요.',
-  'records.recent.symptomLoadError': '증상 기록을 불러오지 못했어요.',
   'records.recent.empty': '아직 최근 기록이 없어요.',
   'records.recent.medicalDocument': '의료 문서',
-  'records.recent.symptom': '증상 기록',
   'records.recent.today': '{date} (오늘)',
   'records.recent.yesterday': '{date} (어제)',
   'records.recent.unknownDate': '날짜를 확인할 수 없음',
@@ -58,11 +54,18 @@ export const ko = {
   'records.savedRecordingsSummary': '녹음과 전사 내용을 확인해요.',
   'records.healthRecords': '가져온 건강 기록',
   'medicalDocument.import.title': '의료 문서 가져오기',
+  'medicalDocument.import.photos': '사진에서 의료 문서 가져오기',
+  'medicalDocument.import.photosSummary':
+    '선택한 사진의 글자를 기기에서 읽어요.',
+  'medicalDocument.import.photosOpening': '사진을 선택해 주세요.',
   'medicalDocument.import.summary':
     '텍스트 PDF 또는 텍스트 파일을 출처와 함께 저장해요.',
   'medicalDocument.import.opening': '문서를 선택해 주세요.',
   'medicalDocument.review.title': '문서 내용 확인',
   'medicalDocument.review.content': '가져올 문서 내용',
+  'medicalDocument.review.originalPhoto': '선택한 원본 사진',
+  'medicalDocument.review.photoReselect':
+    '글자가 정확하지 않으면 가져오지 않고 다른 사진을 선택해 주세요.',
   'medicalDocument.review.description':
     '내용을 확인한 뒤 저장해 주세요. 진단과 약 변경은 자동으로 확정되지 않아요.',
   'medicalDocument.review.page': '{page}쪽',
@@ -168,6 +171,7 @@ export const ko = {
   'appointments.saved': '예약을 저장했어요.',
   'appointments.updated': '예약을 수정했어요.',
   'appointments.cancelled': '예약을 취소했어요.',
+  ...appointmentActionsKo,
   'appointments.form.editTitle': '예약 수정',
   'appointments.form.newTitle': '새 예약',
   'appointments.form.clinicLabel': '병원 또는 진료과',
@@ -240,6 +244,5 @@ export const ko = {
   ...medicalAppointmentsKo,
   ...providerAccountsKo,
   ...healthRecordsKo,
-  ...symptomJournalKo,
   ...healthkitSettingsKo,
 } as const;

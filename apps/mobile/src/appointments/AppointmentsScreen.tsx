@@ -12,6 +12,7 @@ import AppointmentForm from './AppointmentForm';
 import styles from './appointmentsStyles';
 import { useAppointmentsScreenState } from './useAppointmentsScreenState';
 import { useAppointmentAddAction } from './useAppointmentAddAction';
+import { requestAppointmentCancellationConfirmation } from './appointmentActionConfirmation';
 import {
   appointmentDisplayUntil,
   isEligibleNextVisit,
@@ -196,7 +197,12 @@ export default function AppointmentsScreen({
         <AppointmentCard
           appointment={selectedAppointment}
           onEdit={() => state.startEditing(selectedAppointment)}
-          onCancel={() => state.cancelAppointment(selectedAppointment)}
+          onCancel={() =>
+            requestAppointmentCancellationConfirmation(
+              selectedAppointment,
+              () => state.cancelAppointment(selectedAppointment),
+            )
+          }
         />
       ) : (
         <Text

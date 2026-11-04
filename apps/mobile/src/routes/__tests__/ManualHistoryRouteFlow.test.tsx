@@ -47,12 +47,10 @@ function RecordsAndManualHistoryRoutes() {
       recordings={[]}
       recordingState="ready"
       onRetryRecordings={() => undefined}
-      onOpenSymptoms={() => undefined}
       onOpenSavedRecordings={() => undefined}
       onOpenRecording={() => undefined}
       onOpenHealthLibrary={() => undefined}
       onOpenManualHistory={() => setShowManualHistory(true)}
-      loadSymptoms={async () => ({ list: async () => [] })}
     />
   );
 }

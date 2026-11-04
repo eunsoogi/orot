@@ -6,6 +6,7 @@ import { createSymptomSummarySchema } from './symptomSummarySchema';
 import type { DiseaseHypothesisAnalysis } from './types';
 import { appleSummaryFactChecklist } from './appleSummaryFactChecklist';
 import { providerDiagnostic } from '../providers/diagnostics';
+import { withSourceBoundOverview } from './summaryOverviewTask';
 import {
   appleRecordTopics,
   appleRecordSummarySchema,
@@ -191,7 +192,9 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
 
 /** Keep cloud-provider requests unchanged; this addresses the on-device context boundary only. */
 export function symptomSummaryTaskForProvider(providerId: string) {
-  return providerId === APPLE_PROVIDER_ID
-    ? partitionedSymptomSummaryTask
-    : symptomSummaryTask;
+  return withSourceBoundOverview(
+    providerId === APPLE_PROVIDER_ID
+      ? partitionedSymptomSummaryTask
+      : symptomSummaryTask,
+  );
 }
