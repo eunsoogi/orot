@@ -54,10 +54,13 @@ export function annotatePublicSearchLimit(
       ...outcome.result,
       value: {
         ...outcome.result.value,
-        hypotheses: outcome.result.value.hypotheses.map(item => ({
-          ...item,
-          uncertainty: `${item.uncertainty} ${notice}`,
-        })),
+        // Keep the already validated uncertainty intact; the existing list accepts
+        // a short additional limitation without exceeding its 500-character bound.
+        hypotheses: outcome.result.value.hypotheses.map((item, index) =>
+          index === 0
+            ? { ...item, missingData: [...item.missingData, notice] }
+            : item,
+        ),
       },
     },
   };

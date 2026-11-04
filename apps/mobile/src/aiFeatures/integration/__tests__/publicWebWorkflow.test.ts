@@ -191,7 +191,7 @@ test('denied search still returns the local analysis with a visible limitation',
   if (result.status !== 'workflow' || result.result.status !== 'result')
     throw new Error('Expected local result');
   expect(result.result.value.hypotheses[0]?.summary).toBe('기록 요약');
-  expect(result.result.value.hypotheses[0]?.uncertainty).toContain(
+  expect(result.result.value.hypotheses[0]?.missingData.join(' ')).toContain(
     '동의가 없어',
   );
 });

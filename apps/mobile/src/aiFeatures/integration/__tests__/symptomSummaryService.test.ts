@@ -110,7 +110,7 @@ test('routes both accepted symptom actions through the same durable save boundar
         ? result.value.hypotheses[0]?.summary
         : undefined,
     );
-    expect(summary.result.value.hypotheses[0]?.uncertainty).toContain(
+    expect(summary.result.value.hypotheses[0]?.missingData.join(' ')).toContain(
       '공개 웹검색을 사용할 수 없어',
     );
   } finally {

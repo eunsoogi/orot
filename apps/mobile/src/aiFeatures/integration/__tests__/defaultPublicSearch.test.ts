@@ -89,7 +89,9 @@ test.each([
   if (result.status !== 'workflow' || result.result.status !== 'result')
     throw new Error('Expected local result');
   expect(result.result.value.hypotheses[0]?.summary).toBe('로컬 근거');
-  expect(result.result.value.hypotheses[0]?.uncertainty).toContain(notice);
+  expect(result.result.value.hypotheses[0]?.missingData.join(' ')).toContain(
+    notice,
+  );
 });
 
 test('reserves an attempted public provider call, including an empty result', () => {
