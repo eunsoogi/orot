@@ -141,6 +141,12 @@ test('permits verbatim attributed diagnosis history but not an additional diagno
   ).toBe('valid');
   expect(
     ragConversationTask.validateResult(
+      { answer: '진료 기록에는 당뇨를 진단받았다고 적혀 있어요.' },
+      input,
+    ).status,
+  ).toBe('valid');
+  expect(
+    ragConversationTask.validateResult(
       { answer: `${history} 현재 당뇨로 진단되었습니다.` },
       input,
     ).status,
