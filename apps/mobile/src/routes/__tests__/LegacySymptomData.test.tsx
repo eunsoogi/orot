@@ -1,3 +1,4 @@
+import { chunkStructuredRecord } from '@orot/rag';
 import {
   act,
   fireEvent,
@@ -41,6 +42,10 @@ test('legacy source remains readable and confirmed deletion invalidates linked s
     await runMigrations(database);
     const repository = createRecordRepository(database);
     await repository.put('symptom_entry', entry);
+    await repository.put(
+      'health_observation',
+      healthObservation(entry.id, 'heart_rate', entry.effectiveAt),
+    );
     const summaries = createSymptomSummaryStorage(database);
     await summaries.list(); // Set up the same persistent deletion triggers as a saved summary.
     await database.execute(
@@ -51,19 +56,19 @@ test('legacy source remains readable and confirmed deletion invalidates linked s
       'INSERT INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',
       ['saved', 'symptom_entry', entry.id],
     );
+    await database.execute(
+      'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
+      ['other', entry.recordedAt, 'Synthetic', '{}'],
+    );
+    await database.execute(
+      'INSERT INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',
+      ['other', 'health_observation', entry.id],
+    );
     const rag = createLocalE5RagService(database);
     await rag.prepare();
-    const memory = {
-      removeSource: jest.fn(
-        async (_id: string, remove: () => Promise<boolean>) => ({
-          sourceDeleted: await remove(),
-          memoriesDeleted: 0,
-        }),
-      ),
-    };
     const openStore = async () =>
       createLegacySymptomStore(repository, id =>
-        removeLegacySymptom(repository, rag, memory, id),
+        removeLegacySymptom(repository, rag, id),
       );
     const view = await render(<LegacySymptomData openStore={openStore} />);
     await fireEvent.press(await screen.findByTestId('legacy-symptom-toggle'));
@@ -93,15 +98,19 @@ test('legacy source remains readable and confirmed deletion invalidates linked s
     expect(
       (
         await database.execute(
-          'SELECT source_record_id FROM rag_embedding_removed_sources WHERE source_record_id = ?',
-          [entry.id],
+          'SELECT id FROM symptom_summary_runs WHERE id = ?',
+          ['other'],
         )
       ).rows,
     ).toHaveLength(1);
-    expect(memory.removeSource).toHaveBeenCalledWith(
-      entry.id,
-      expect.any(Function),
-    );
+    expect(
+      (
+        await database.execute(
+          'SELECT chunk_id FROM rag_embedding_removed_chunks WHERE chunk_id = ?',
+          [chunkStructuredRecord('symptom_entry', entry).id],
+        )
+      ).rows,
+    ).toHaveLength(1);
     await waitFor(() =>
       expect(screen.queryByTestId('legacy-symptom-data')).toBeNull(),
     );
@@ -112,7 +121,7 @@ test('legacy source remains readable and confirmed deletion invalidates linked s
   }
 });
 
-test('does not remove or fence an ambiguous shared record ID', async () => {
+test('keeps another record with the same ID when deleting the symptom', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
   try {
     await runMigrations(database);
@@ -122,14 +131,12 @@ test('does not remove or fence an ambiguous shared record ID', async () => {
       'health_observation',
       healthObservation(entry.id, 'heart_rate', entry.effectiveAt),
     );
-    const rag = { deleteChunks: jest.fn() };
-    const memory = { removeSource: jest.fn() };
-    await expect(
-      removeLegacySymptom(repository, rag, memory, entry.id),
-    ).rejects.toThrow('shared by another record');
-    expect(memory.removeSource).not.toHaveBeenCalled();
-    expect(rag.deleteChunks).not.toHaveBeenCalled();
-    expect(await repository.get('symptom_entry', entry.id)).not.toBeNull();
+    const rag = createLocalE5RagService(database);
+    await rag.prepare();
+    await expect(removeLegacySymptom(repository, rag, entry.id)).resolves.toBe(
+      true,
+    );
+    expect(await repository.get('symptom_entry', entry.id)).toBeNull();
     expect(await repository.get('health_observation', entry.id)).not.toBeNull();
   } finally {
     close();

@@ -54,7 +54,20 @@ describe('lexical retriever evidence eligibility', () => {
     });
     await expect(setup.retriever.invoke('진료')).resolves.toEqual([]);
     expect(setup.textStore.search).toHaveBeenCalledTimes(1);
-    expect(setup.removalReader.findRemovedEvidence).toHaveBeenCalledTimes(2);
+    expect(setup.removalReader.findRemovedEvidence).toHaveBeenCalledTimes(3);
+  });
+
+  it('drops a source removed while the full-text query is running', async () => {
+    const setup = lexicalSetup();
+    setup.removalReader.findRemovedEvidence
+      .mockResolvedValueOnce({ sourceRecordIds: [], chunkIds: [] })
+      .mockResolvedValueOnce({
+        sourceRecordIds: [setup.chunks[0].metadata.sourceId],
+        chunkIds: [],
+      });
+    await expect(setup.retriever.invoke('진료')).resolves.toMatchObject([
+      { id: setup.chunks[1].id },
+    ]);
   });
 
   it('preserves root, external provenance and manual structured row semantics', async () => {

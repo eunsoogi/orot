@@ -56,20 +56,19 @@ test('a source-side failure leaves durable recovery and a later retry finishes d
       removeLegacySymptom(
         records,
         {
-          deleteChunks: async () => {
+          deleteSymptom: async () => {
             throw new Error('index failure');
           },
         },
-        memory,
         symptom.id,
       ),
     ).rejects.toThrow('index failure');
     expect(await records.get('symptom_entry', symptom.id)).not.toBeNull();
     expect(await pendingSymptomDeletions(records)).toEqual([symptom.id]);
     expect(await memory.getByKey('synthetic-key')).toBeNull();
-    await expect(
-      removeLegacySymptom(records, rag, memory, symptom.id),
-    ).resolves.toBe(true);
+    await expect(removeLegacySymptom(records, rag, symptom.id)).resolves.toBe(
+      true,
+    );
     expect(await records.get('symptom_entry', symptom.id)).toBeNull();
     expect(await pendingSymptomDeletions(records)).toEqual([]);
   } finally {
@@ -78,7 +77,7 @@ test('a source-side failure leaves durable recovery and a later retry finishes d
   }
 });
 
-test('rejects an ID shared with a transcript family before fencing memory', async () => {
+test('deletes the symptom while retaining a transcript family with the same ID', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
   try {
     await runMigrations(database);
@@ -94,20 +93,15 @@ test('rejects an ID shared with a transcript family before fencing memory', asyn
       ...symptom,
       id: segment.transcriptId,
     });
-    const memory = { removeSource: jest.fn() };
+    const rag = createLocalE5RagService(database);
+    await rag.prepare();
     await expect(
-      removeLegacySymptom(
-        records,
-        { deleteChunks: jest.fn() },
-        memory,
-        segment.transcriptId,
-      ),
-    ).rejects.toThrow('shared by a transcript');
-    expect(memory.removeSource).not.toHaveBeenCalled();
-    expect(await pendingSymptomDeletions(records)).toEqual([]);
-    expect(
-      await records.get('symptom_entry', segment.transcriptId),
-    ).not.toBeNull();
+      removeLegacySymptom(records, rag, segment.transcriptId),
+    ).resolves.toBe(true);
+    expect(await records.transcripts.listForRecording(source.id)).toHaveLength(
+      1,
+    );
+    expect(await records.get('symptom_entry', segment.transcriptId)).toBeNull();
   } finally {
     close();
   }
@@ -128,21 +122,16 @@ test('preserves manual-history evidence when its ID matches the legacy source', 
       effectiveDate: { status: 'unknown' },
     });
     await records.put('symptom_entry', symptom);
-    const memory = { removeSource: jest.fn() };
-    await expect(
-      removeLegacySymptom(
-        records,
-        { deleteChunks: jest.fn() },
-        memory,
-        symptom.id,
-      ),
-    ).rejects.toThrow('shared by manual history');
-    expect(memory.removeSource).not.toHaveBeenCalled();
+    const rag = createLocalE5RagService(database);
+    await rag.prepare();
+    await expect(removeLegacySymptom(records, rag, symptom.id)).resolves.toBe(
+      true,
+    );
     expect(await history.getEvidence(symptom.id)).toMatchObject({
       sourceEntryId: symptom.id,
       text: 'Synthetic history\nRetained evidence',
     });
-    expect(await records.get('symptom_entry', symptom.id)).not.toBeNull();
+    expect(await records.get('symptom_entry', symptom.id)).toBeNull();
   } finally {
     close();
   }

@@ -20,19 +20,14 @@ async function openLegacySymptomStore(): Promise<LegacySymptomStore> {
   const { openLocalStorage } = await import('../storage/secureDatabase');
   const records = await openLocalStorage();
   return createLegacySymptomStore(records, async id => {
-    const [
-      { openLocalAgentMemoryDatabase },
-      { createLocalE5RagService },
-      { openOrReuseLocalAgentMemory },
-    ] = await Promise.all([
-      import('../storage/secureDatabase'),
-      import('../rag/localE5RagService'),
-      import('../memory/localAgentMemory'),
-    ]);
+    const [{ openLocalAgentMemoryDatabase }, { createLocalE5RagService }] =
+      await Promise.all([
+        import('../storage/secureDatabase'),
+        import('../rag/localE5RagService'),
+      ]);
     const rag = createLocalE5RagService(await openLocalAgentMemoryDatabase());
     await rag.prepare();
-    const memory = await openOrReuseLocalAgentMemory(rag.provider);
-    return removeLegacySymptom(records, rag, memory, id);
+    return removeLegacySymptom(records, rag, id);
   });
 }
 
@@ -107,7 +102,7 @@ export function LegacySymptomData({
   const confirm = (id: string) =>
     Alert.alert(
       '이전 증상 데이터 삭제',
-      '이 데이터를 사용한 저장된 AI 결과도 삭제될 수 있어요. 삭제할까요?',
+      '이 데이터를 사용한 저장된 AI 결과가 삭제될 수 있어요. 출처를 구분할 수 없는 AI 메모리는 보관하되 사용을 제한해요. 삭제할까요?',
       [
         { text: '취소', style: 'cancel' },
         {
