@@ -4,22 +4,19 @@ import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
-import { formatDateTime, formatNumber, t } from '../../i18n';
+import { formatDateTime, t } from '../../i18n';
 import { homeMetrics, type HomeMetric } from './metricSelection';
+import {
+  formatHomeMetricDaySummary,
+  formatHomeMetricValue,
+  homeMetricStatistic,
+  homeMetricTitle,
+} from './metricFormatting';
 import type { HomeMetricProjection } from './metricProjection';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
 
-const title = (metric: HomeMetric) =>
-  ({
-    sleep: t('home.metricSleep'),
-    heartRate: t('home.metricHeartRate'),
-    bodyMass: t('home.metricBodyMass'),
-    steps: t('home.metricSteps'),
-  })[metric];
-const value = (number: number, unit: string) =>
-  `${formatNumber(number, { maximumFractionDigits: 1 })} ${unit}`;
-
+/** Keeps provenance and time-zone metadata in the projection without exposing it on the overview. */
 function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
   const accent =
     metric.metric === 'sleep'
@@ -36,44 +33,38 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
     steps: 'figure.walk',
   }[metric.metric];
   const maximum = Math.max(1, ...metric.days.map(day => day.value ?? 0));
-  const statistic =
-    metric.metric === 'heartRate'
-      ? t('home.dailyMean')
-      : metric.metric === 'bodyMass'
-        ? t('home.dailyLatest')
-        : t('home.dailySum');
-  const summary = metric.days
-    .map(
-      day =>
-        `${day.date}: ${day.value === null ? t('home.metricEmpty') : value(day.value, metric.unit)}${day.partial ? `, ${t('home.partialToday')}` : ''}`,
-    )
-    .join('; ');
+  const statistic = homeMetricStatistic(metric.metric);
+  const latestValue = formatHomeMetricValue(
+    metric.metric,
+    metric.latest.value,
+    metric.unit,
+  );
+  const summary = formatHomeMetricDaySummary(metric);
   return (
     <View
       style={[styles.card, styles.gridCard]}
       testID={`home-metric-${metric.metric}`}
-      accessibilityLabel={`${title(metric.metric)}. ${metric.latest.date} ${statistic}: ${value(metric.latest.value, metric.unit)}. ${metric.measuredAt ? formatDateTime(new Date(metric.measuredAt)) : t('home.measurementUnknown')}. ${metric.source}. ${metric.timeZone}. ${summary}`}
+      accessibilityLabel={`${homeMetricTitle(metric.metric)}. ${metric.latest.date} ${statistic}: ${latestValue}. ${metric.measuredAt ? formatDateTime(new Date(metric.measuredAt)) : t('home.measurementUnknown')}. ${summary}`}
       accessible
     >
       <View style={styles.metricHeading}>
         <View style={styles.metricIcon}>
           <AppSymbol name={symbol} color={accent} />
         </View>
-        <Text style={styles.cardTitle}>{title(metric.metric)}</Text>
+        <Text style={styles.cardTitle}>{homeMetricTitle(metric.metric)}</Text>
       </View>
-      <Text style={styles.number}>
-        {value(metric.latest.value, metric.unit)}
-      </Text>
+      <Text style={styles.number}>{latestValue}</Text>
       <Text style={styles.detail}>
         {metric.latest.date} · {statistic}
       </Text>
       <Text style={styles.detail}>
         {metric.measuredAt
           ? formatDateTime(new Date(metric.measuredAt))
-          : t('home.measurementUnknown')}{' '}
-        · {metric.source} · {metric.timeZone}
+          : t('home.measurementUnknown')}
       </Text>
-      <Text style={styles.detail}>0 – {value(maximum, metric.unit)}</Text>
+      <Text style={styles.detail}>
+        0 – {formatHomeMetricValue(metric.metric, maximum, metric.unit)}
+      </Text>
       <View style={styles.chart}>
         {metric.days.map(day => (
           <View key={day.date} style={styles.column}>
@@ -168,7 +159,7 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
               <MetricCard key={metric} metric={data.metrics[metric]!} />
             ) : (
               <View key={metric} style={[styles.card, styles.gridCard]}>
-                <Text style={styles.cardTitle}>{title(metric)}</Text>
+                <Text style={styles.cardTitle}>{homeMetricTitle(metric)}</Text>
                 <Text>
                   {metric !== 'sleep' && data.quantityTruncated
                     ? t('home.metricTruncated')
@@ -195,7 +186,7 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
             >
               <Text>
                 {draft.includes(metric) ? '✓ ' : '○ '}
-                {title(metric)}
+                {homeMetricTitle(metric)}
               </Text>
             </Pressable>
           ))}
@@ -229,16 +220,23 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
         (comparisons.length ? (
           comparisons.map(metric => (
             <Text key={metric.metric} style={styles.card}>
-              {title(metric.metric)} · {t('home.recordedDayMean')} ·{' '}
+              {homeMetricTitle(metric.metric)} · {t('home.recordedDayMean')} ·{' '}
               {metric.comparison!.previousDates[0]}–
               {metric.comparison!.previousDates.at(-1)}:{' '}
-              {value(metric.comparison!.previous, metric.unit)} (
-              {metric.comparison!.previousCoverage}/7) →{' '}
+              {formatHomeMetricValue(
+                metric.metric,
+                metric.comparison!.previous,
+                metric.unit,
+              )}{' '}
+              ({metric.comparison!.previousCoverage}/7) →{' '}
               {metric.comparison!.recentDates[0]}–
               {metric.comparison!.recentDates.at(-1)}:{' '}
-              {value(metric.comparison!.recent, metric.unit)} (
-              {metric.comparison!.recentCoverage}/7) · {metric.source} ·{' '}
-              {metric.timeZone}
+              {formatHomeMetricValue(
+                metric.metric,
+                metric.comparison!.recent,
+                metric.unit,
+              )}{' '}
+              ({metric.comparison!.recentCoverage}/7)
             </Text>
           ))
         ) : (
