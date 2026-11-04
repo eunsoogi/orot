@@ -133,6 +133,7 @@ test('prevents changing or cancelling a draft while its save is pending', async 
   expect(screen.getAllByText('최근 14일과 오늘에 기록이 없어요.')).toHaveLength(
     2,
   );
+  expect(screen.getByText('비교할 기록이 충분하지 않아요.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   const press = fireEvent.press(screen.getByRole('button', { name: '저장' }));
   await waitFor(() =>
