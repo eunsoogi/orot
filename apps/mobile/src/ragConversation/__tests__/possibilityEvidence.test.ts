@@ -95,6 +95,12 @@ test('rejects a definite diagnosis from medication evidence while allowing a ten
       input,
     ),
   ).toBeUndefined();
+  expect(
+    ragConversationTask.projectStreamedText?.(
+      '{"value":{"answerKind":"grounded","answer":"현재 기록상 당뇨로 진단되었습니다.',
+      input,
+    ),
+  ).toBeUndefined();
   const tentative =
     '피로에는 여러 원인이 있을 수 있어요. 약 등록만으로 원인을 알 수 없어 증상의 시기와 다른 기록을 확인해야 해요.';
   expect(
@@ -106,4 +112,37 @@ test('rejects a definite diagnosis from medication evidence while allowing a ten
       input,
     ),
   ).toBe(tentative);
+});
+
+test('permits verbatim attributed diagnosis history but not an additional diagnosis', () => {
+  const input = {
+    request: '진료 기록에는 무엇이 적혀 있나요?',
+    evidence: {
+      items: [
+        {
+          sourceKind: 'personal_record' as const,
+          sourceId: 'history',
+          sourceRevision: '1',
+          evidenceId: 'history',
+          evidenceRevision: '1',
+          locator: { kind: 'structured_record' as const, recordId: 'history' },
+          effectiveTime: null,
+          reviewState: 'reviewed' as const,
+          content: '당뇨로 진단받았다고',
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  const history = '지난 진료 기록에는 당뇨로 진단받았다고 적혀 있어요.';
+  expect(
+    ragConversationTask.validateResult({ answer: history }, input).status,
+  ).toBe('valid');
+  expect(
+    ragConversationTask.validateResult(
+      { answer: `${history} 현재 당뇨로 진단되었습니다.` },
+      input,
+    ).status,
+  ).toBe('invalid');
 });

@@ -55,6 +55,24 @@ function priorMessages(
   });
 }
 
+/** Only verbatim, explicitly attributed record text can describe a prior diagnosis. */
+function hasUnsupportedClinicalClaim(
+  answer: string,
+  input: TaskResponderInput,
+): boolean {
+  if (!containsDefinitiveClinicalClaim(answer)) return false;
+  if (!/(?:기록|진료).*(?:적혀|기재|나와)/u.test(answer)) return true;
+  let remainder = answer;
+  for (const item of input.evidence.items) {
+    if (item.sourceKind !== 'personal_record' || item.content.trim().length < 8)
+      continue;
+    // Remove the exact source text only: an additional assertion must still be checked.
+    if (remainder.includes(item.content))
+      remainder = remainder.replace(item.content, '');
+  }
+  return containsDefinitiveClinicalClaim(remainder);
+}
+
 /** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
@@ -125,7 +143,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       'value',
       'answer',
     ]);
-    return answer && !containsDefinitiveClinicalClaim(answer)
+    return answer && !hasUnsupportedClinicalClaim(answer, input)
       ? answer
       : undefined;
   },
@@ -183,7 +201,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       } as const;
     }
     // A model instruction alone cannot prevent a definitive diagnosis from reaching the user.
-    if (containsDefinitiveClinicalClaim(value.answer)) {
+    if (hasUnsupportedClinicalClaim(value.answer, input)) {
       return {
         status: 'invalid',
         reason: 'The answer contained a definitive clinical claim.',
