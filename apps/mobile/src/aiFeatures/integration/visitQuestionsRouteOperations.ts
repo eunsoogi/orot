@@ -1,24 +1,22 @@
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
-import type {
-  EvidenceBatch,
-  OutboundProcessingRequest,
-} from '@orot/agent-runtime';
+import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
-import type { VisitQuestionEvidenceCollection } from '../../agent/visitQuestions/evidenceCollection';
 import { runVisitQuestionWorkflow } from '../../agent/visitQuestions/workflow';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type { ProviderSelection } from '../../providers/selection/types';
 import type { SelectedAiResolution } from './provider';
 import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
-import type {
-  EvidenceCaveat,
-  GenerationOutcome,
-} from '../../nextVisitQuestions/types';
+import type { GenerationOutcome } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
 import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
+import { visitQuestionPublicSearch } from './visitQuestionPublicSearch';
+import {
+  currentEvidenceCaveats,
+  type EvidenceCoverageState,
+} from './visitEvidenceCaveats';
 import type {
   VisitQuestionRouteSaveInput,
   VisitQuestionRouteSaveResult,
@@ -35,12 +33,6 @@ type ReadyGeneration = Extract<
   GenerationOutcome<VisitQuestionEvidenceItem>,
   { status: 'ready' }
 >;
-type EvidenceCoverageState = Pick<
-  VisitQuestionEvidenceCollection,
-  'memoryStatus'
-> & {
-  readonly batch: Pick<EvidenceBatch, 'coverage' | 'conflicts'>;
-};
 
 export type VisitQuestionRouteGeneration =
   | (ReadyGeneration & {
@@ -69,41 +61,6 @@ export interface VisitQuestionRouteOperations {
   save(
     input: VisitQuestionRouteSaveInput,
   ): Promise<VisitQuestionRouteSaveResult>;
-}
-
-function currentEvidenceCaveats(
-  collections: readonly EvidenceCoverageState[],
-): EvidenceCaveat[] {
-  const caveats = new Set<EvidenceCaveat>();
-  if (
-    collections.some(collection =>
-      collection.batch.coverage.some(item => item.gaps.length > 0),
-    )
-  )
-    caveats.add('incomplete_coverage');
-  if (
-    collections.some(collection =>
-      collection.batch.coverage.some(item => item.truncated),
-    )
-  )
-    caveats.add('truncated_results');
-  if (collections.some(collection => collection.batch.conflicts.length > 0))
-    caveats.add('conflicting_records');
-  if (
-    collections.some(
-      collection => collection.memoryStatus === 'local_memory_unavailable',
-    )
-  )
-    caveats.add('reviewed_memory_unavailable');
-  else if (
-    collections.length > 0 &&
-    collections.every(
-      collection => collection.memoryStatus === 'no_matching_current_memory',
-    )
-  ) {
-    caveats.add('no_matching_reviewed_memory');
-  }
-  return [...caveats];
 }
 
 function revalidateSource(context: ReadyContext) {
@@ -161,6 +118,15 @@ async function generate(
     };
   }
 
+  const publicSearch = await visitQuestionPublicSearch({
+    selected: input.selectedAi,
+    confirm: input.confirmConsent,
+    query: context.query,
+    signal: input.signal,
+  });
+  if (publicSearch.result.status === 'cancelled')
+    return { status: 'cancelled' };
+
   const collections: EvidenceCoverageState[] = [context.evidence];
   const periodTool = context.healthContextTool;
   const workflowContext: ReadyContext = {
@@ -197,10 +163,14 @@ async function generate(
     recipient: input.selectedAi.recipient,
     // Selection does not imply permission to transmit the resulting health context.
     confirmConsent: input.confirmConsent,
+    reservedPublicSearchCall: publicSearch.spentModelCall,
     signal: input.signal,
     ...(input.observer ? { observer: input.observer } : {}),
   });
-  const caveats = currentEvidenceCaveats(collections);
+  const caveats = [
+    ...currentEvidenceCaveats(collections),
+    ...(publicSearch.caveat ? [publicSearch.caveat] : []),
+  ];
   if (input.signal.aborted) return { status: 'cancelled' };
   if (result.status === 'ready') {
     return {

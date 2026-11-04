@@ -74,8 +74,11 @@ test('retains an actual period coverage gap in the review screen instead of losi
       status: 'ready',
       selection,
       option,
+      provider,
+      modelId: selection.modelId,
+      remoteProcessing: true,
       recipient: 'Synthetic account',
-    } as never,
+    },
     confirmConsent: async () => true,
     signal: new AbortController().signal,
   });
@@ -170,8 +173,11 @@ test.each([
           status: 'ready',
           selection,
           option,
+          provider,
+          modelId: selection.modelId,
+          remoteProcessing: true,
           recipient: 'Synthetic account',
-        } as never,
+        },
         confirmConsent: async () => true,
         signal: new AbortController().signal,
       });
@@ -179,9 +185,13 @@ test.each([
         status: 'ready',
         caveats: limitation
           ? truncated
-            ? ['incomplete_coverage', 'truncated_results']
-            : ['incomplete_coverage']
-          : [],
+            ? [
+                'incomplete_coverage',
+                'truncated_results',
+                'public_search_unavailable',
+              ]
+            : ['incomplete_coverage', 'public_search_unavailable']
+          : ['public_search_unavailable'],
       });
     } finally {
       f.close();

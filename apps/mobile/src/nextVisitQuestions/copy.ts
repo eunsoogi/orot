@@ -106,4 +106,11 @@ export const evidenceCaveatCopy: Readonly<Record<EvidenceCaveat, string>> = {
   insufficient_evidence: '현재 확인된 근거가 부족해 질문을 만들지 않았어요.',
   reviewed_memory_unavailable: '이전 검토 기록을 확인하지 못했어요.',
   no_matching_reviewed_memory: '관련된 이전 검토 기록을 찾지 못했어요.',
+  public_search_not_retained:
+    '공개 웹검색은 실행됐지만, 검색 결과는 이 질문에 반영하거나 저장하지 않았어요.',
+  public_search_consent_required:
+    '공개 웹검색 동의가 없어 검색 결과를 반영하지 않았어요.',
+  public_search_empty: '공개 웹검색에서 결과를 찾지 못했어요.',
+  public_search_unavailable:
+    '공개 웹검색을 사용할 수 없어 검색 결과를 반영하지 않았어요.',
 };

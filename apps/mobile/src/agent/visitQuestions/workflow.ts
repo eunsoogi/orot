@@ -41,6 +41,8 @@ export async function runVisitQuestionWorkflow(input: {
   ) => Promise<boolean>;
   readonly signal?: AbortSignal;
   readonly observer?: AiWorkflowObserver;
+  /** An earlier public search uses one slot from the same bounded operation. */
+  readonly reservedPublicSearchCall?: boolean;
 }) {
   if (!input.selection)
     return { status: 'provider_selection_required' } as const;
@@ -83,7 +85,10 @@ export async function runVisitQuestionWorkflow(input: {
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
 
   // Leave room within the shared maximum for one malformed-envelope correction after two searches.
-  const budget = { ...EVIDENCE_WORKFLOW_BUDGET, maxModelCalls: 4 };
+  const budget = {
+    ...EVIDENCE_WORKFLOW_BUDGET,
+    maxModelCalls: input.reservedPublicSearchCall ? 3 : 4,
+  };
   const maxInitialItems = budget.maxEvidenceItems - 3;
   if (input.prepared.evidence.batch.items.length > maxInitialItems) {
     return {
