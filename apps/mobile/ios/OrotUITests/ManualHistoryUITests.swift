@@ -10,23 +10,22 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     @MainActor
     func testKnownDateProvenanceAndCorrectionSurviveProcessRestart() throws {
         let app = XCUIApplication()
-        launch(app, largeText: true)
+        launch(app, largeText: true, initialDate: "2024-02-01")
         defer { app.terminate() }
         try openManualHistory(app)
         tap(app, "manual-history-add", in: "manual-history-scroll")
-
         guard replace(app, "manual-history-title-input", with: "Synthetic history before correction") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic details recorded by the user.", multiline: true) else { return }
-        guard replace(app, "manual-history-effective-date-input", with: "2024-02-01") else { return }
-        tap(app, "manual-history-open-date-picker", in: "manual-history-scroll")
-        tap(app, "manual-history-calendar-day-9", in: "manual-history-scroll")
+        ManualHistoryDateSheetUITestSupport.exerciseDismissalsAndSelect(app, day: 9)
+        let details = FormUITestConditions.multilineInput(app, identifier: "manual-history-details-input")
+        FormUITestConditions.reveal(details, in: app, scrollID: "manual-history-scroll")
+        details.tap()
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch), app.debugDescription)
         let save = UITestConditions.element(app, "manual-history-save")
         FormUITestConditions.reveal(save, in: app, scrollID: "manual-history-scroll")
         XCTAssertTrue(save.isHittable)
         NavigationGeometryUITestConditions.captureScreen(app, name: "manual-history-large-text-keyboard-save", testCase: self)
         save.tap()
-
         visible(app, "Synthetic history before correction")
         visible(app, "기준일: 2024-02-09")
         visible(app, "직접 입력 · 미확인")
@@ -34,7 +33,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         tap(app, "manual-history-correct", in: "manual-history-scroll")
         guard replace(app, "manual-history-title-input", with: "Synthetic corrected history") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic corrected details.", multiline: true) else { return }
-        guard replace(app, "manual-history-effective-date-input", with: "2024-02-10") else { return }
+        ManualHistoryDateSheetUITestSupport.select(app, day: 10)
         guard replace(app, "manual-history-correction-note-input", with: "Corrected synthetic wording.") else { return }
         tap(app, "manual-history-save", in: "manual-history-scroll")
         visible(app, "Synthetic history before correction")
@@ -194,13 +193,14 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false) {
+    private func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false, initialDate: String? = nil) {
         app.launchArguments = [
             scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
             scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
             + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
             + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
+            + (initialDate.map { ["-OROT_TEST_MANUAL_HISTORY_DATE", $0] } ?? [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }

@@ -51,9 +51,13 @@ describe('ManualHistoryScreen', () => {
       ),
     ).toBeTruthy();
 
-    await fireEvent.changeText(
-      view.getByTestId('manual-history-effective-date-input'),
-      '2024-02-09',
+    await fireEvent.press(view.getByTestId('manual-history-open-date-picker'));
+    await fireEvent(
+      view.getByTestId('manual-history-date-sheet-anchor', {
+        includeHiddenElements: true,
+      }),
+      'onResult',
+      { nativeEvent: { date: '2024-02-09' } },
     );
     await fireEvent.press(view.getByTestId('manual-history-save'));
 
