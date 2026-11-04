@@ -176,7 +176,11 @@ test('renders a grounded answer with a source action and reports absent evidence
     '기록이 없는 질문',
     [
       { role: 'user', content: '혈압 기록을 보여줘' },
-      { role: 'assistant', content: '저장된 기록을 찾았어요.' },
+      {
+        role: 'assistant',
+        content:
+          '이전 AI 답변은 현재 출처를 다시 확인하기 전에는 사용할 수 없어요.',
+      },
     ],
     expect.any(AbortSignal),
     expect.objectContaining({

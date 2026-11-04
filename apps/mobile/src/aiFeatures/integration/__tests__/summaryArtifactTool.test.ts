@@ -42,6 +42,7 @@ test('searches retained AI output through scoped opaque references and invalidat
         modelName: 'Synthetic',
         modelId: 'model',
         providerId: 'provider',
+        inputLineage: 'complete',
         analysis: {
           presentation: 'symptom_summary',
           hypotheses: [

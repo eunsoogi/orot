@@ -53,6 +53,15 @@ evidence remain outstanding. A generated result cannot yet be saved as a source
 for reviewed visit questions; that boundary remains closed until its lineage and
 deletion propagation are implemented.
 
+Newly saved summaries retain every workflow evidence input, including sources
+the response did not cite. Older summaries recorded citations only. The shared
+catalog identifies those older rows with unknown input lineage, but withholds
+their body from cross-feature detail and provider use: an uncited deleted input
+cannot be reconstructed or checked. The original summary history remains a
+separate compatibility boundary. A safe migration or retention decision is
+still needed for those legacy rows; this does not establish their complete
+discovery or deletion behavior.
+
 Conversation turns currently lack durable source lineage. Until that lineage is
 available, previous assistant prose is withheld from later provider requests;
 user questions remain in the bounded history. This protects against resending

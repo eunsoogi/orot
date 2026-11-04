@@ -32,6 +32,8 @@ export interface SavedSymptomSummary {
   readonly modelName: string;
   readonly modelId: string;
   readonly providerId: string;
+  /** Absent on older results that only recorded citations, not all model inputs. */
+  readonly inputLineage?: 'complete';
   readonly analysis: DiseaseHypothesisAnalysis;
   readonly sources: readonly SavedSummarySource[];
 }

@@ -35,6 +35,7 @@ test('discovers persisted output in pages and marks a corrected source before de
         modelName: 'Synthetic',
         modelId: 'model',
         providerId: 'provider',
+        inputLineage: 'complete',
         analysis: {
           presentation: 'symptom_summary',
           hypotheses: [

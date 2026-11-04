@@ -5,6 +5,78 @@ import {
 } from '../testSupport/healthContextPersistenceFixture';
 import { decodeSavedSymptomSummary } from '../../../storage/symptomSummaryStorageCodec';
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
+import { registerHealthContextEvidence } from '../healthContextEvidence';
+import { createSymptomSummaryPersistence } from '../symptomSummaryPersistence';
+
+test('deleting uncited model input removes its retained summary', async () => {
+  const f = await fixture();
+  try {
+    await f.repository.put(
+      'health_observation',
+      healthObservation('uncited-steps', 'step_count', '2026-10-01T01:00:00Z'),
+    );
+    const report = await f.read(window, ['activity']);
+    const uncited = registerHealthContextEvidence({
+      registry: f.registry,
+      read: f.read,
+      report,
+      scope: {
+        kind: 'health_context_period',
+        version: 1,
+        topic: 'activity',
+        window,
+      },
+    });
+    const persistence = createSymptomSummaryPersistence({
+      registry: f.registry,
+      data: async () => ({}) as never,
+      storage: async () => f.storage,
+    });
+    const outcome = await persistence.save(
+      {
+        status: 'workflow',
+        result: {
+          status: 'result',
+          value: {
+            presentation: 'symptom_summary',
+            hypotheses: [
+              {
+                title: '심박 기록',
+                summary: '심박 기록이에요.',
+                uncertainty: '',
+                missingData: [],
+                supportingEvidence: [f.item],
+                contraryEvidence: [],
+              },
+            ],
+          },
+          citations: [f.item],
+          checkpoint: { evidenceReferences: [f.item, uncited] },
+          coverage: [],
+        },
+      } as never,
+      {
+        provider: { id: 'synthetic' },
+        modelId: 'synthetic',
+        option: { displayName: 'Synthetic' },
+      } as never,
+      'uncited-input',
+      signal,
+      f.saved.createdAt,
+    );
+    expect(outcome).toMatchObject({
+      result: { value: { savedSummary: { status: 'saved' } } },
+    });
+    const [saved] = await f.storage.list();
+    expect(await f.storage.read(saved!.id)).toMatchObject({
+      inputLineage: 'complete',
+    });
+    await f.repository.delete('health_observation', 'uncited-steps');
+    expect(await f.storage.read(saved!.id)).toBeNull();
+  } finally {
+    f.close();
+  }
+});
 
 test('a transcript correction removes its derived health fact from cache, current evidence and atomic save', async () => {
   const f = await fixture();

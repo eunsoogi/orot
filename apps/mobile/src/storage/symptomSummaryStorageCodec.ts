@@ -40,6 +40,7 @@ export function decodeSavedSymptomSummary(
       ) ||
       !Number.isFinite(Date.parse(value.createdAt as string)) ||
       !object(value.analysis) ||
+      (value.inputLineage !== undefined && value.inputLineage !== 'complete') ||
       !Array.isArray(value.sources) ||
       value.sources.length > 24
     )

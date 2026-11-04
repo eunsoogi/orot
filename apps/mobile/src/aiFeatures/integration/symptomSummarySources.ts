@@ -35,10 +35,14 @@ export async function captureSymptomSummarySources(
   analysis: DiseaseHypothesisAnalysis,
   registry: LocalEvidenceReferenceRegistry,
   signal: AbortSignal,
+  admittedReferences: readonly EvidenceReference[] = references(analysis),
 ) {
   const mapping = new Map<string, EvidenceReference>();
   const sources: SavedSummarySource[] = [];
-  for (const ref of references(analysis)) {
+  // Uncited inputs can influence prose and must share the same deletion boundary.
+  const all = [...references(analysis), ...admittedReferences];
+  for (const ref of all) {
+    if (mapping.has(JSON.stringify(ref))) continue;
     if (signal.aborted) throw new Error('Saving was cancelled.');
     if (ref.sourceKind === 'external_medical') {
       sources.push({ reference: ref, records: [] });

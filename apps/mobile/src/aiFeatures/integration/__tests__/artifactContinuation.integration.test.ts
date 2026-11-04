@@ -36,6 +36,7 @@ test('continues empty pages in the same conversation without sharing its handle 
         modelName: 'Synthetic',
         modelId: 'model',
         providerId: 'provider',
+        inputLineage: 'complete',
         analysis: {
           presentation: 'symptom_summary',
           hypotheses: [

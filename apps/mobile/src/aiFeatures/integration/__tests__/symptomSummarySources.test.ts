@@ -15,6 +15,51 @@ import { localData } from '../featureServiceFixtures';
 import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types';
 import { referenceOnly } from '../../../diseaseHypotheses/resultValidation';
 
+test('captures uncited model inputs as dependencies of the saved output', async () => {
+  const records = [
+    healthObservation('cited', []),
+    healthObservation('uncited', []),
+  ];
+  const registry = new LocalEvidenceReferenceRegistry();
+  const snapshot = await createLocalEvidenceSnapshot({
+    records,
+    inventory: inventory(records),
+    persistedChunks: records.map(record =>
+      chunkStructuredRecord('health_observation', record.record as never),
+    ),
+    loadCurrentPersistedChunks: async () =>
+      records.map(record =>
+        chunkStructuredRecord('health_observation', record.record as never),
+      ),
+    ...noStaleEvidence,
+    repository: repository(records),
+    memoryRecords: [],
+    memoryStorage: { listRecords: async () => [] },
+    registry,
+  });
+  const refs = snapshot.items.map(referenceOnly);
+  const captured = await captureSymptomSummarySources(
+    {
+      hypotheses: [
+        {
+          title: '요약',
+          summary: '기록',
+          uncertainty: '',
+          missingData: [],
+          supportingEvidence: [refs[0]!],
+          contraryEvidence: [],
+        },
+      ],
+    },
+    registry,
+    new AbortController().signal,
+    refs,
+  );
+  expect(captured.sources.map(source => source.reference.evidenceId)).toEqual(
+    expect.arrayContaining(['cited', 'uncited']),
+  );
+});
+
 test.each([undefined, 'symptom_summary'] as const)(
   'restores saved sources and presentation %s in a fresh registry after alias reuse',
   async presentation => {

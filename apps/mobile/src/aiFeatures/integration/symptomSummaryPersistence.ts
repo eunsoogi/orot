@@ -57,10 +57,16 @@ export function createSymptomSummaryPersistence(input: {
       if (outcome.status !== 'workflow' || outcome.result.status !== 'result')
         return outcome;
       try {
+        const admitted = outcome.result.checkpoint.evidenceReferences;
+        if (!Array.isArray(admitted))
+          throw new Error(
+            'The generated result has no complete input lineage.',
+          );
         const captured = await captureSymptomSummarySources(
           outcome.result.value,
           input.registry,
           signal,
+          admitted,
         );
         const id = `${createdAt}-${runId}`;
         await (
@@ -71,6 +77,7 @@ export function createSymptomSummaryPersistence(input: {
           providerId: selected.provider.id,
           modelId: selected.modelId,
           modelName: selected.option.displayName,
+          inputLineage: 'complete',
           ...captured,
         });
         retry = undefined;

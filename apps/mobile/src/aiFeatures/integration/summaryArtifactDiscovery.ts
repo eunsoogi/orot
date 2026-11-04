@@ -15,6 +15,7 @@ import { restoreSymptomSummary } from './symptomSummarySources';
 
 type SummaryMetadata = ArtifactMetadata & {
   readonly type: 'symptom_summary' | 'disease_possibilities';
+  readonly inputLineage: 'complete' | 'unknown';
 };
 
 function metadata(saved: SavedSymptomSummary): SummaryMetadata {
@@ -31,6 +32,7 @@ function metadata(saved: SavedSymptomSummary): SummaryMetadata {
     modelId: saved.modelId,
     completion: 'complete',
     review: 'unreviewed',
+    inputLineage: saved.inputLineage ?? 'unknown',
   };
 }
 
@@ -77,6 +79,12 @@ export function createSummaryArtifactDiscovery(input: {
           unavailableCount += 1;
           continue;
         }
+        // Querying unknown-lineage prose would reveal whether a removed input appeared in it.
+        if (saved.inputLineage !== 'complete') {
+          if (needle) unavailableCount += 1;
+          else items.push(metadata(saved));
+          continue;
+        }
         const content = saved.analysis.hypotheses
           .flatMap(section => [
             section.title,
@@ -101,6 +109,8 @@ export function createSummaryArtifactDiscovery(input: {
       checkCancelled(signal);
       const saved = await input.storage.read(id);
       if (!saved) return null;
+      // Older rows retained citations only; their uncited deleted inputs cannot be revalidated.
+      if (saved.inputLineage !== 'complete') return null;
       const content = await restoreSymptomSummary(
         saved,
         input.registry,
