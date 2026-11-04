@@ -35,7 +35,7 @@ export interface ManualHistoryRepository {
   listEvidence(
     query?: Omit<ManualHistoryQuery, 'includeSuperseded'>,
   ): Promise<ManualHistoryEvidence[]>;
-  getEvidence(id: string): Promise<ManualHistoryEvidence | null>;
+  getEvidence(id: string, transaction?: SqlExecutor): Promise<ManualHistoryEvidence | null>;
 }
 
 export interface ManualHistoryRepositoryOptions {
@@ -202,14 +202,17 @@ export function createManualHistoryRepository(
       const entries = await list({ ...query, includeSuperseded: false });
       return entries.map(toManualHistoryEvidence);
     },
-    async getEvidence(id) {
+    async getEvidence(id, transaction) {
       let evidence: ManualHistoryEvidence | null = null;
-      await database.transaction(async (transaction) => {
-        const entry = await readManualHistoryEntry(transaction, id);
-        if (entry && !(await readSuccessor(transaction, id))) {
+      const readCurrent = async (executor: SqlExecutor) => {
+        const entry = await readManualHistoryEntry(executor, id);
+        if (entry && !(await readSuccessor(executor, id))) {
           evidence = toManualHistoryEvidence(entry);
         }
-      });
+      };
+      // Callers saving dependent artifacts must validate inside their write transaction.
+      if (transaction) await readCurrent(transaction);
+      else await database.transaction(readCurrent);
       return evidence;
     },
   };

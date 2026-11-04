@@ -80,7 +80,11 @@ export function decodeSavedSymptomSummary(
           record =>
             !object(record) ||
             typeof record.kind !== 'string' ||
-            !(isRecordKind(record.kind) || record.kind === 'reviewed_memory') ||
+            !(
+              isRecordKind(record.kind) ||
+              record.kind === 'reviewed_memory' ||
+              record.kind === 'manual_history'
+            ) ||
             typeof record.id !== 'string' ||
             typeof record.revision !== 'string',
         )

@@ -1,4 +1,8 @@
-import { STORAGE_TABLES, type SqlDatabase } from '@orot/storage';
+import {
+  createManualHistoryRepository,
+  STORAGE_TABLES,
+  type SqlDatabase,
+} from '@orot/storage';
 import type { SymptomSummaryStorage } from '../diseaseHypotheses/savedSummaries';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
@@ -14,6 +18,7 @@ export function createSymptomSummaryStorage(
   database: SqlDatabase,
 ): SymptomSummaryStorage {
   let ready: Promise<void> | undefined;
+  const manualHistory = createManualHistoryRepository(database);
   const ensure = () =>
     (ready ??= setup().catch(error => {
       ready = undefined;
@@ -35,6 +40,13 @@ export function createSymptomSummaryStorage(
       await tx.execute(
         'CREATE INDEX IF NOT EXISTS symptom_summary_source_identity ON symptom_summary_sources (record_kind, record_id)',
       );
+      // SQLCipher connections may disable foreign keys; dependency rows are only a projection.
+      await tx.execute(
+        'CREATE TRIGGER IF NOT EXISTS summary_source_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN DELETE FROM symptom_summary_sources WHERE summary_id = OLD.id; END',
+      );
+      await tx.execute(
+        'DELETE FROM symptom_summary_sources WHERE NOT EXISTS (SELECT 1 FROM symptom_summary_runs WHERE id = summary_id)',
+      );
       await setupSummaryPeriods(tx);
       // Delete derived health text when a cited row is deleted, including direct repository deletion.
       for (const [kind, { table }] of Object.entries(STORAGE_TABLES)) {
@@ -42,13 +54,34 @@ export function createSymptomSummaryStorage(
           `CREATE TRIGGER IF NOT EXISTS summary_source_deleted_${kind} AFTER DELETE ON ${table} BEGIN DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = '${kind}' AND record_id = OLD.id); END`,
         );
       }
-      const memory = await tx.execute(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_memory_records'",
+      // Manual history is outside STORAGE_TABLES but carries the same deletion boundary.
+      await tx.execute(
+        "CREATE TRIGGER IF NOT EXISTS summary_manual_history_deleted AFTER DELETE ON manual_history_entries BEGIN DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'manual_history' AND record_id = OLD.id); END",
       );
-      if (memory.rows.length)
+      // Memory may be opened after history. Install its deletion guard before either can write.
+      await tx.execute(
+        'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
+      );
+      await tx.execute(
+        "CREATE TRIGGER IF NOT EXISTS summary_memory_deleted AFTER DELETE ON agent_memory_records BEGIN DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END",
+      );
+      // Repair results retained by older versions when a referenced source was already deleted.
+      const sourceTables = {
+        ...Object.fromEntries(
+          Object.entries(STORAGE_TABLES).map(([kind, value]) => [
+            kind,
+            value.table,
+          ]),
+        ),
+        manual_history: 'manual_history_entries',
+        reviewed_memory: 'agent_memory_records',
+      };
+      for (const [kind, table] of Object.entries(sourceTables)) {
         await tx.execute(
-          "CREATE TRIGGER IF NOT EXISTS summary_memory_deleted AFTER DELETE ON agent_memory_records BEGIN DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END",
+          `DELETE FROM symptom_summary_runs WHERE id IN (SELECT s.summary_id FROM symptom_summary_sources s WHERE s.record_kind = ? AND NOT EXISTS (SELECT 1 FROM ${table} source WHERE source.id = s.record_id))`,
+          [kind],
         );
+      }
     });
   }
   return {
@@ -74,6 +107,12 @@ export function createSymptomSummaryStorage(
             continue;
           }
           for (const record of source.records) {
+            if (record.kind === 'manual_history') {
+              const current = await manualHistory.getEvidence(record.id, tx);
+              if (!current || fingerprint(current) !== record.revision)
+                throw new Error('A cited source changed before saving.');
+              continue;
+            }
             const memory = record.kind === 'reviewed_memory';
             const table = memory
               ? 'agent_memory_records'
