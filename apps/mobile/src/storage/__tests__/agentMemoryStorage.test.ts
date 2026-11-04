@@ -32,6 +32,13 @@ class TranscriptMemoryDatabase implements SqlDatabase {
 
   private async run(query: string, parameters: SqlValue[]): Promise<SqlResult> {
     if (query.startsWith('CREATE TABLE')) return { rows: [] };
+    // The migrated database has the deletion fence, but these transcript fixtures have no deleted symptoms.
+    if (
+      query ===
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'legacy_symptom_deleted'"
+    )
+      return { rows: [{ 1: 1 }] };
+    if (query === 'SELECT id FROM legacy_symptom_deleted') return { rows: [] };
     if (query.startsWith('SELECT source_id FROM agent_memory_removed_sources'))
       return { rows: [] };
     if (query.startsWith('SELECT DISTINCT json_extract(payload_json')) {

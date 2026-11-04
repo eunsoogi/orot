@@ -7,6 +7,10 @@ import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { assertSummaryPeriodCurrent } from './symptomSummaryPeriods';
+import {
+  assertSummarySourceAvailable,
+  assertSymptomPeriodAvailable,
+} from './symptomSummaryQuarantine';
 
 /** Validate source revisions in the same transaction as the derived output write. */
 export async function assertRetainedEvidenceCurrent(
@@ -17,6 +21,7 @@ export async function assertRetainedEvidenceCurrent(
 ) {
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
+      await assertSymptomPeriodAvailable(tx, source);
       await assertSummaryPeriodCurrent(tx, source, requireGeneration);
       continue;
     }
@@ -39,6 +44,12 @@ export async function assertRetainedEvidenceCurrent(
       const serialized = current.rows[0]?.source_json;
       if (typeof serialized !== 'string')
         throw new Error('A cited source was removed before saving.');
+      await assertSummarySourceAvailable(
+        tx,
+        record.kind,
+        record.id,
+        serialized,
+      );
       const parsed = JSON.parse(serialized);
       if (
         fingerprint(

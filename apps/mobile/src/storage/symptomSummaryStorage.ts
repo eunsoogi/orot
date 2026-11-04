@@ -6,6 +6,7 @@ import {
 import type { SymptomSummaryStorage } from '../diseaseHypotheses/savedSummaries';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
+import { visibleSummary } from './symptomSummaryQuarantine';
 import {
   setupSummaryPeriods,
   appendSummaryPeriod,
@@ -94,6 +95,8 @@ export function createSymptomSummaryStorage(
       if (serialized.length > 128_000 || !decodeSavedSymptomSummary(serialized))
         throw new Error('The summary cannot be saved.');
       await database.transaction(async tx => {
+        // Recheck even an idempotent retry; a quarantined result must not report a successful save.
+        await assertRetainedEvidenceCurrent(tx, value.sources, manualHistory);
         const existing = await tx.execute(
           'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
           [value.id],
@@ -103,8 +106,6 @@ export function createSymptomSummaryStorage(
             throw new Error('A different result already owns this summary ID.');
           return;
         }
-        // Recheck inside the write transaction so deletion cannot race a completed source read.
-        await assertRetainedEvidenceCurrent(tx, value.sources, manualHistory);
         await tx.execute(
           'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
           [value.id, value.createdAt, value.modelName, serialized],
@@ -127,7 +128,7 @@ export function createSymptomSummaryStorage(
       await ensure();
       // A stable cursor and fixed page size bound history reads independently of total saved runs.
       const rows = await database.execute(
-        'SELECT id, created_at, model_name FROM symptom_summary_runs WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT 10',
+        `SELECT r.id, r.created_at, r.model_name FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
         [before ?? null, before ?? null],
       );
       return rows.rows.flatMap(row =>
@@ -147,7 +148,7 @@ export function createSymptomSummaryStorage(
     async read(id) {
       await ensure();
       const result = await database.execute(
-        'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
+        `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
         [id],
       );
       return decodeSavedSymptomSummary(result.rows[0]?.result_json);
