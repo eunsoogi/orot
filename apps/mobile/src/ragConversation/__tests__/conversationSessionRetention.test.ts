@@ -128,3 +128,38 @@ test('a turn waiting for storage cannot acquire a lease issued after undo', asyn
     f.close();
   }
 });
+
+test('a reopened session may write only with its current active lease', async () => {
+  const f = await healthContextFixture();
+  try {
+    const storage = createConversationArtifactStorage(f.database);
+    await storage.createSession('durable', await storage.currentGeneration());
+    const sessions = createConversationSessionRetention({
+      openStorage: async () => storage,
+      createId: () => 'new-turn',
+      now: () => '2026-10-05T00:00:00.000Z',
+    });
+    await sessions.attachExisting(1, 'durable', 0);
+    await expect(sessions.attachExisting(2, 'durable', 0)).rejects.toThrow();
+    const turn = await sessions.beginTurn(1, new AbortController().signal);
+    await turn.save(
+      {
+        question: 'question',
+        answer: 'answer',
+        providerId: 'provider',
+        modelId: 'model',
+        sources: f.saved.sources,
+        citations: [f.saved.sources[0]!.reference],
+      },
+      new AbortController().signal,
+    );
+    expect(await storage.read('new-turn')).not.toBeNull();
+    await storage.hideSession('durable', 0);
+    await expect(
+      sessions.beginTurn(1, new AbortController().signal),
+    ).rejects.toThrow();
+    await expect(sessions.attachExisting(3, 'durable', 0)).rejects.toThrow();
+  } finally {
+    f.close();
+  }
+});

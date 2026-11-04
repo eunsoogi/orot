@@ -1,4 +1,5 @@
 import type { SqlDatabase } from '@orot/storage';
+import { listConversationSessionPage } from './conversationSessionPages';
 
 /** Hide immediately from discovery while keeping one recoverable undo until finalization. */
 export function createConversationSessionVisibility(
@@ -6,6 +7,29 @@ export function createConversationSessionVisibility(
   ensure: () => Promise<void>,
 ) {
   return {
+    async activeSessionVersion(id: string) {
+      await ensure();
+      const result = await database.execute(
+        'SELECT s.version FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0',
+        [id],
+      );
+      if (!result.rows.length) return null;
+      const version = result.rows[0]?.version;
+      if (
+        typeof version !== 'number' ||
+        !Number.isSafeInteger(version) ||
+        version < 0
+      )
+        throw new Error('Conversation session state is invalid.');
+      return version;
+    },
+    async listSessions(
+      cursor?: { readonly updatedAt: string; readonly id: string },
+      limit = 50,
+    ) {
+      await ensure();
+      return listConversationSessionPage(database, cursor, limit);
+    },
     async hideSession(id: string, expectedVersion = 0) {
       if (
         !Number.isSafeInteger(expectedVersion) ||

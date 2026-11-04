@@ -19,6 +19,33 @@ export function createConversationSessionRetention(input: {
 }) {
   const slots = new Map<number, Slot>();
   return {
+    async attachExisting(
+      id: number,
+      durableId: string,
+      expectedVersion: number,
+    ) {
+      if (
+        slots.has(id) ||
+        !durableId ||
+        !Number.isSafeInteger(expectedVersion) ||
+        expectedVersion < 0
+      )
+        throw new Error('Conversation session state is invalid.');
+      const storage = await input.openStorage();
+      if (
+        (await storage.activeSessionVersion(durableId)) !== expectedVersion ||
+        slots.has(id) ||
+        [...slots.values()].some(slot => slot.id === durableId)
+      )
+        throw new Error('Conversation is unavailable.');
+      slots.set(id, {
+        id: durableId,
+        version: expectedVersion,
+        hidden: false,
+        ready: Promise.resolve(),
+        turns: new Set(),
+      });
+    },
     async beginTurn(id: number, signal: AbortSignal) {
       let slot = slots.get(id);
       if (!slot) {
@@ -55,6 +82,9 @@ export function createConversationSessionRetention(input: {
         });
       }
       await current.ready;
+      assertLease();
+      if ((await storage.activeSessionVersion(current.id)) !== version)
+        throw new Error('Conversation is unavailable.');
       assertLease();
       const turn = createConversationTurnRetention({
         storage,

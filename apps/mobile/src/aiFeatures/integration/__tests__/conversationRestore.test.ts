@@ -57,6 +57,9 @@ test('reopens a saved conversation with fresh source aliases and rejects it afte
     connection.close();
     connection = openSqliteTestDatabase(path);
     storage = createConversationArtifactStorage(connection.database);
+    expect((await storage.listSessions()).items).toEqual([
+      { id: 'session', updatedAt: '2026-10-05T00:00:00.000Z', version: 0 },
+    ]);
     const registry = new LocalEvidenceReferenceRegistry();
     const data = localData([record]).data;
     const restored = await restoreConversationArtifact({
@@ -86,6 +89,7 @@ test('reopens a saved conversation with fresh source aliases and rejects it afte
       [record.id],
     );
     expect(stillPresent.rows).toHaveLength(1);
+    expect((await storage.listSessions()).items).toEqual([]);
     expect(
       (await registry.readSource(citation, new AbortController().signal))
         .status,
