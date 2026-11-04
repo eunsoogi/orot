@@ -46,7 +46,11 @@ test.each([false, true])(
     await fireEvent.press(view.getByTestId('search'));
     expect(await view.findByTestId('inference-disclosure-sheet')).toBeTruthy();
     expect(fixture.search).not.toHaveBeenCalled();
-    await fireEvent.press(view.getByTestId('inference-disclosure-expand'));
+    expect(
+      await view.findByText(
+        'General public health information about: blood pressure. Guidelines, associations, possible explanations and limitations.',
+      ),
+    ).toBeTruthy();
     expect(view.queryByText(/김테스트|170\/100/)).toBeNull();
     await fireEvent.press(
       view.getByTestId(
