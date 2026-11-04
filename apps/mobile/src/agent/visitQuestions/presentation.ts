@@ -19,6 +19,7 @@ export async function validateVisitQuestionPresentation(
   result: VisitQuestionTaskResult,
   revalidateEvidence: (
     citations: readonly VisitQuestionEvidenceItem[],
+    options?: { readonly allowEmpty: boolean },
   ) => Promise<boolean>,
 ): Promise<VisitQuestionPresentationResult> {
   if (result.status === 'needs_clarification') return result;
@@ -28,14 +29,13 @@ export async function validateVisitQuestionPresentation(
       citations.set(visitQuestionCitationKey(citation), citation);
     }
   }
-  if (citations.size === 0) {
-    return {
-      status: 'refresh_required',
-      message: t('visitQuestions.presentation.noEvidence'),
-    };
-  }
   try {
-    if (await revalidateEvidence([...citations.values()])) {
+    const current = [...citations.values()];
+    if (
+      await (current.length
+        ? revalidateEvidence(current)
+        : revalidateEvidence(current, { allowEmpty: true }))
+    ) {
       return { status: 'ready', questions: result.questions };
     }
   } catch {

@@ -168,7 +168,7 @@ test('retains a RAG external search on leave and ignores results after explicit 
             .search({
               operationRunId: 'test-turn',
               operationKey: 'search',
-              input: { query: '수면과 혈압 연구' },
+              input: { topics: ['sleep', 'blood_pressure'] },
               allowedScope: options.workflow.execution.allowedScope,
               resultLimit: 5,
               maxPayloadBytes: 65536,

@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
+import { homeMetricGridGap } from './homeMetricLayout';
 
 /** Shared card and chart geometry stays inside the Home route's single scroll owner. */
 export const homeMetricStyles = StyleSheet.create({
@@ -25,14 +26,97 @@ export const homeMetricStyles = StyleSheet.create({
     flexShrink: 1,
     maxWidth: '100%',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  grid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: homeMetricGridGap,
+  },
   card: {
     backgroundColor: appColors.surface,
     borderRadius: 16,
     padding: 14,
     gap: 6,
   },
-  gridCard: { flexGrow: 0, flexBasis: '48%', minWidth: 140 },
+  // Stack periods at full width so larger system text can wrap without shrinking either sample.
+  recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
+  comparisonTitle: {
+    color: appColors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  comparisonStatistic: { color: appColors.secondary, flexShrink: 1 },
+  comparisonPeriod: {
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+    gap: 2,
+  },
+  comparisonPeriodLabel: {
+    color: appColors.text,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  comparisonDateRange: { color: appColors.secondary, flexShrink: 1 },
+  comparisonValue: {
+    color: appColors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  comparisonCoverage: { color: appColors.secondary, flexShrink: 1 },
+  comparisonMetadata: { color: appColors.secondary, flexShrink: 1 },
+  selectionPanel: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  selectionPrompt: { marginBottom: 4 },
+  selectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: appColors.border,
+  },
+  selectionRow: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    // Match Health Data's comfortable checkbox row target at larger text sizes.
+    minHeight: 68,
+    paddingVertical: 10,
+  },
+  selectionLabel: { flex: 1, gap: 3, minWidth: 0 },
+  selectionTitle: { color: appColors.text, fontSize: 15, fontWeight: '500' },
+  selectionStatus: {
+    color: appColors.secondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  selectionMark: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  selectionMarkSelected: { backgroundColor: appColors.primary },
+  // Equal button slots stay paired when they fit and wrap into a stack when narrow.
+  selectionActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  selectionActionSlot: {
+    flexBasis: 140,
+    flexGrow: 1,
+    minWidth: 128,
+  },
+  gridCard: { flexGrow: 0, flexShrink: 0 },
   cardTitle: { color: appColors.text, fontWeight: '700' },
   metricHeading: {
     flexDirection: 'row',

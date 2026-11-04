@@ -149,8 +149,8 @@ enum NavigationPageActionUITestConditions {
         }
     }
 
-    /// On a Duo rail, the actual page buttons must remain above navigation and inside the window.
-    static func assertRailAboveNavigation(_ app: XCUIApplication, pageIDs: [String], sampledAfter: Double, testCase: XCTestCase) throws {
+    /// Keep page actions between the native Back and Home controls on the Duo rail.
+    static func assertBackBeforePageActions(_ app: XCUIApplication, pageIDs: [String], sampledAfter: Double, testCase: XCTestCase) throws {
         let buttons = pageIDs.map { UITestConditions.element(app, $0) }.filter(\.exists)
         if !UITestConditions.element(app, "navigation-page-action-overflow").exists {
             XCTAssertTrue(UITestConditions.element(app, "manual-history-save").exists && UITestConditions.element(app, "manual-history-form-close").exists, app.debugDescription)
@@ -226,7 +226,7 @@ enum NavigationPageActionUITestConditions {
         for button in buttons {
             XCTAssertTrue(button.isHittable && window.contains(button.frame), app.debugDescription)
             XCTAssertFalse(button.frame.intersects(content.frame), app.debugDescription)
-            XCTAssertLessThanOrEqual(button.frame.maxY, min(back.frame.minY, home.frame.minY), app.debugDescription)
+            XCTAssertTrue(back.frame.maxY <= button.frame.minY && button.frame.maxY <= home.frame.minY, "Back, page actions, and Home must remain vertically ordered: \(app.debugDescription)")
             XCTAssertLessThanOrEqual(button.frame.maxY, keyboard.frame.minY, app.debugDescription)
         }
         for (index, button) in buttons.enumerated() {

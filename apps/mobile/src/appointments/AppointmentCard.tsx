@@ -1,5 +1,5 @@
 import { AppointmentReminderControls } from '../appointmentReminders/AppointmentReminderControls';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
@@ -16,7 +16,7 @@ interface AppointmentCardProps {
   onCancel: () => void;
 }
 
-/** Keeps the selected appointment's existing status, reminder, edit, and cancel actions together. */
+/** Keeps reminder choices and editing secondary while isolating destructive cancellation. */
 export default function AppointmentCard({
   appointment,
   onEdit,
@@ -44,20 +44,40 @@ export default function AppointmentCard({
       </Text>
       <AppointmentReminderControls appointment={appointment} />
       {canEdit ? (
-        <View style={styles.actions}>
-          <Button
-            onPress={onEdit}
-            testID={`appointment-edit-${appointment.id}`}
-            title={t('appointments.actions.edit')}
+        <View
+          style={styles.actions}
+          testID={`appointment-actions-${appointment.id}`}
+        >
+          <View
+            style={styles.actionDivider}
+            testID={`appointment-action-divider-edit-${appointment.id}`}
           />
-          <Button
-            onPress={onCancel}
-            testID={`appointment-cancel-${appointment.id}`}
+          <View style={styles.editAction}>
+            <Button
+              onPress={onEdit}
+              size="compact"
+              testID={`appointment-edit-${appointment.id}`}
+              title={t('appointments.actions.edit')}
+              variant="secondary"
+            />
+          </View>
+          <View
+            style={styles.actionDivider}
+            testID={`appointment-action-divider-cancel-${appointment.id}`}
+          />
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t('appointments.actions.cancelForClinic', {
               clinic: clinicName,
             })}
-            title={t('appointments.actions.cancel')}
-          />
+            onPress={onCancel}
+            style={styles.cancelAction}
+            testID={`appointment-cancel-${appointment.id}`}
+          >
+            <Text style={styles.cancelActionText}>
+              {t('appointments.actions.cancel')}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
     </View>

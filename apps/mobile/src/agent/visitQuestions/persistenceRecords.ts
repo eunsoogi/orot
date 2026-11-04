@@ -1,6 +1,10 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import { VisitQuestionCreateSchema } from '@orot/domain';
-import type { Appointment, VisitQuestionCreate } from '@orot/domain';
+import type {
+  Appointment,
+  VisitQuestion,
+  VisitQuestionCreate,
+} from '@orot/domain';
 import { visitQuestionCitationKey } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import type {
@@ -20,6 +24,7 @@ export function createReviewedVisitQuestionRecord(input: {
   readonly position: number;
   readonly now: string;
   readonly metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'];
+  readonly legacyRecord?: VisitQuestion;
 }): VisitQuestionCreate {
   const sourceRecordIds = uniqueValues([
     input.appointmentId,
@@ -53,7 +58,10 @@ export function createReviewedVisitQuestionRecord(input: {
     effectiveAt: input.appointment.effectiveAt,
     recordedAt: input.now,
     ingestedAt: input.now,
-    provenance: { origin: 'derived', sourceRecordIds },
+    provenance: input.legacyRecord?.provenance ?? {
+      origin: 'derived',
+      sourceRecordIds,
+    },
     reviewState: {
       status: 'reviewed',
       reviewerId: 'local-user',
@@ -62,6 +70,7 @@ export function createReviewedVisitQuestionRecord(input: {
     questionText: input.question.questionText.trim(),
     rationale: input.question.rationale.trim(),
     priority: input.question.priority,
+    ...(input.question.kind ? { kind: input.question.kind } : {}),
     evidenceSpanIds,
     ...(healthContextSources.length ? { healthContextSources } : {}),
     appointmentId: input.appointmentId,

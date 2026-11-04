@@ -97,3 +97,11 @@ test('exposes separate EventKit consent and lookup calls while retaining the Cal
     1,
   );
 });
+
+test('uses a plain calendar message when the native bridge is unavailable', async () => {
+  const bridge = createCalendarBridge(undefined);
+
+  await expect(bridge.listUpcomingEvents()).rejects.toThrow(
+    /^Calendar access is unavailable\.$/u,
+  );
+});

@@ -15,7 +15,7 @@ interface HealthRecordsMedicationCategoryCardProps {
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
 }
 
-/** Shows stored medication events as a summary instead of a numeric chart. */
+/** Shows stored medication events with a readable source instead of a numeric chart. */
 export function HealthRecordsMedicationCategoryCard({
   summary,
   onOpenDetail,
@@ -96,7 +96,7 @@ export function HealthRecordsMedicationCategoryCard({
               source:
                 latestDose.provenance.source?.sourceName ??
                 (latestDose.provenance.source?.system === 'healthkit'
-                  ? 'HealthKit'
+                  ? t('healthRecords.source.healthApp')
                   : t('healthRecords.medicationSourceUnavailable')),
             })}
           </Text>

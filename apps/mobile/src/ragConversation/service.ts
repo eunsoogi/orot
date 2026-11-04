@@ -42,6 +42,8 @@ export interface RagConversationRunOptions {
     signal: AbortSignal,
   ) => Promise<RagConversationCurrentEvidence>;
   readonly rag: Pick<LocalE5RagService, 'search'>;
+  /** Public search results are already retrieved and are not local embedding hits. */
+  readonly publicEvidence?: EvidenceBatch;
   readonly resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver;
   readonly workflow: Omit<
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
@@ -118,7 +120,20 @@ export async function runRagConversationTurn(
         })
       : [];
     providerDiagnostic('rag', 'data', 'completed');
-    const initialEvidence = selectEvidence(snapshot.batch, hits);
+    const localEvidence = selectEvidence(snapshot.batch, hits);
+    const initialEvidence = options.publicEvidence
+      ? {
+          items: [...localEvidence.items, ...options.publicEvidence.items],
+          coverage: [
+            ...localEvidence.coverage,
+            ...options.publicEvidence.coverage,
+          ],
+          conflicts: [
+            ...localEvidence.conflicts,
+            ...options.publicEvidence.conflicts,
+          ],
+        }
+      : localEvidence;
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';

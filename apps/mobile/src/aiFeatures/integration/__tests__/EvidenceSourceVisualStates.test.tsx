@@ -32,7 +32,7 @@ describe('source detail visual-state content', () => {
         />,
       );
       expect(await screen.findByText(value)).toBeTruthy();
-      expect(screen.getByText('HealthKit')).toBeTruthy();
+      expect(screen.getByText('건강 앱')).toBeTruthy();
       // The displayed date can cross midnight when the device uses another time zone.
       const eventTime = new Intl.DateTimeFormat('ko-KR', {
         year: 'numeric',

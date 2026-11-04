@@ -4,9 +4,11 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { AiFeatureRoute } from '../../aiFeatures/integration/AiFeatureRoute';
+import { getRagConversationCopy } from '../copy';
 import {
   apple,
   localData,
@@ -72,6 +74,10 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   );
 
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  const copy = getRagConversationCopy();
+  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
+  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
+  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
   // The screen chooses a single native region for its continuous page.
   expect(screen.queryByTestId('navigation-route-columns-route-2')).toBeNull();
 
@@ -94,6 +100,25 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: expandedGeometry,
   });
+  await waitFor(() =>
+    expect(screen.getByTestId('navigation-right-rail-host')).toBeTruthy(),
+  );
+  const rail = screen.getByTestId('navigation-right-rail-host');
+  expect(
+    within(rail).getByTestId('rag-conversation-sessions-toggle'),
+  ).toBeTruthy();
+  expect(within(rail).getByTestId('rag-conversation-new-session')).toBeTruthy();
+  expect(
+    within(screen.getByTestId('navigation-page-action-surface'))
+      .getAllByRole('button')
+      .map(button => button.props.testID),
+  ).toEqual([
+    'rag-conversation-sessions-toggle',
+    'rag-conversation-new-session',
+  ]);
+  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
+  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
+  expect(screen.queryByTestId('rag-conversation-history-glass')).toBeNull();
 
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
@@ -136,11 +161,20 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     await fireEvent(sensor, 'geometryChange', { nativeEvent: narrowGeometry });
   });
 
-  await waitFor(() => expect(panelAxis()).toBe('column'));
+  await waitFor(() => {
+    expect(panelAxis()).toBe('column');
+    expect(screen.queryByTestId('navigation-right-rail-host')).toBeNull();
+  });
+  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
+  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
+  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',
   );
   expect(requestSignal?.aborted).toBe(false);
   expect(ragRunner).toHaveBeenCalledTimes(1);
+
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(screen.getByTestId('conversation-history-screen')).toBeTruthy();
 });

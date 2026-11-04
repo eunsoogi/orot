@@ -72,6 +72,7 @@ export const SUMMARY_FACT_REASONS = {
     'A factual registration summary does not require missing dose completion or schedule details.',
 } as const;
 
+/** Gives the model correction guidance using health app terms people recognize. */
 export function summaryFactCorrection(reason: string): string | undefined {
   if (reason === SUMMARY_FACT_REASONS.statistic_roles)
     return 'Use only sampleCount for the number of observation samples. A latest amount, minimum, maximum or mean is a measured quantity, never a sample count. Preserve each sensor series and exact citations.';
@@ -82,9 +83,9 @@ export function summaryFactCorrection(reason: string): string | undefined {
   if (reason === SUMMARY_FACT_REASONS.step_unit)
     return 'State step_count amounts using the Korean unit for steps, not occurrences. Preserve the original amounts, source times, other record topics and citation IDs.';
   if (reason === SUMMARY_FACT_REASONS.prescription)
-    return 'Describe the cited medications as registered in Health. hasSchedule indicates only whether a medication schedule is registered; it does not establish prescribed or not prescribed. Keep all other concrete topics and exact citation IDs. Do not invent prescription status or remove available facts.';
+    return 'Describe the cited medications as registered in the health app. hasSchedule indicates only whether a medication schedule is registered; it does not establish prescribed or not prescribed. Keep all other concrete topics and exact citation IDs. Do not invent prescription status or remove available facts.';
   if (reason === SUMMARY_FACT_REASONS.sleep_count)
-    return 'Use the decoded sleep stage and the supplied individual interval. A HealthKit sleep category code is not a number of occurrences. Express intervalDurationSeconds in readable minutes and seconds; do not count sleep episodes or infer a nightly total. Preserve other facts and citation IDs.';
+    return 'Use the decoded sleep stage and the supplied individual interval. A sleep category code from the health records is not a number of occurrences. Express intervalDurationSeconds in readable minutes and seconds; do not count sleep episodes or infer a nightly total. Preserve other facts and citation IDs.';
   if (reason === SUMMARY_FACT_REASONS.facts_placeholder)
     return 'Every section citing personal_record must state a concrete fact from that exact source. A general publication explanation must cite external_medical sources only, never personal records. Remove duplicate sections, empty headings and standalone symptom-coverage limitations. Keep the concrete facts for every available record topic. Use optional coverageNotes for a supported supplied-subset symptom limitation; never invent symptoms or imply the app lacks records.';
   const topic = Object.entries(SUMMARY_FACT_REASONS).find(

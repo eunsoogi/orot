@@ -5,6 +5,7 @@ import {
 } from './generation';
 import { readHealthQuantityContext } from './quantityQuery';
 import { readHealthMedicationContext } from './medicationQuery';
+import { readDoseHistory } from './doseHistoryQuery';
 import { readHealthSleepContext } from './sleepQuery';
 import { readHealthSymptomContext } from './symptomQuery';
 import { healthContextDays } from './window';
@@ -81,6 +82,9 @@ export async function readHealthContextReport(
         : selected.has('measurements'),
     ),
     medications: medications.medications,
+    ...(selected.has('medications') && window.doseHistory
+      ? { doseHistory: await readDoseHistory(executor, window) }
+      : {}),
     sleep: sleep.days,
     symptoms,
     limitations: [

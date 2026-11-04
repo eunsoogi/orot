@@ -3,12 +3,11 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { FeatureEntryScreen } from '../FeatureEntryScreen';
 
-test('prioritizes record conversation, groups preparation and review, and routes all five actions', async () => {
+test('prioritizes record conversation, groups preparation and review, and routes all four actions', async () => {
   const actions = {
     conversation: jest.fn(),
     questions: jest.fn(),
     symptoms: jest.fn(),
-    healthReview: jest.fn(),
     literature: jest.fn(),
   };
   await render(
@@ -16,7 +15,6 @@ test('prioritizes record conversation, groups preparation and review, and routes
       onOpenRagConversation={actions.conversation}
       onOpenVisitQuestions={actions.questions}
       onOpenDiseaseHypotheses={actions.symptoms}
-      onOpenHealthReview={actions.healthReview}
       onOpenExternalEvidence={actions.literature}
     />,
   );
@@ -25,15 +23,15 @@ test('prioritizes record conversation, groups preparation and review, and routes
     'rag-conversation',
     'visit-questions',
     'disease-hypotheses',
-    'health-review',
     'external-evidence',
   ];
   const cards = screen.getAllByTestId(
-    /^ai-feature-(rag-conversation|visit-questions|disease-hypotheses|health-review|external-evidence)$/,
+    /^ai-feature-(rag-conversation|visit-questions|disease-hypotheses|external-evidence)$/,
   );
   expect(cards.map(card => card.props.testID)).toEqual(
     destinationIds.map(id => `ai-feature-${id}`),
   );
+  expect(screen.queryByTestId('ai-feature-health-review')).toBeNull();
   expect(screen.getByText('진료를 준비해요')).toBeTruthy();
   expect(screen.getByText('기록을 더 살펴봐요')).toBeTruthy();
   expect(screen.getByText('대화 시작')).toBeTruthy();
@@ -57,7 +55,6 @@ test('keeps unavailable visit questions disabled with an accessible explanation'
       onOpenRagConversation={conversation}
       onOpenDiseaseHypotheses={symptoms}
       onOpenExternalEvidence={jest.fn()}
-      onOpenHealthReview={jest.fn()}
     />,
   );
 
@@ -76,7 +73,6 @@ test('keeps conversation copy in a full row above its scalable action cue', asyn
       onOpenRagConversation={jest.fn()}
       onOpenVisitQuestions={jest.fn()}
       onOpenDiseaseHypotheses={jest.fn()}
-      onOpenHealthReview={jest.fn()}
       onOpenExternalEvidence={jest.fn()}
     />,
   );

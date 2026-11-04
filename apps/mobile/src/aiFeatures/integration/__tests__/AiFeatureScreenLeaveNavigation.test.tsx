@@ -99,6 +99,7 @@ test('finishes a RAG turn while absent and shows it once on reentry', async () =
     });
   });
   await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
-  expect(view.getAllByText('늦게 완료된 답변')).toHaveLength(1);
+  expect(view.getAllByText(/늦게 완료된 답변/)).toHaveLength(1);
+  expect(view.getByText(/공개 웹검색을 사용할 수 없어/)).toBeTruthy();
   expect(ragRunner).toHaveBeenCalledTimes(1);
 });

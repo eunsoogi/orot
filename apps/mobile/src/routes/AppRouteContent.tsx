@@ -2,7 +2,6 @@ import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
 import { canGenerateHomeVisit } from './HomeVisitQuestionsRoute';
-import { SymptomsRoute } from '../symptoms/SymptomsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -20,14 +19,12 @@ import { ManualHistoryRoute } from './ManualHistoryRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
-import { HealthReviewRoute } from '../healthReview/route';
 
 export type { AppNavigationRoute } from './appNavigationRoute';
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
   loadSavedVisitQuestions,
-  loadSymptoms,
   actions,
   activeTab,
   selectTab,
@@ -83,9 +80,7 @@ export function AppRouteContent({
             onPrepareVisit={openHomePreparation}
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
-            loadSymptoms={loadSymptoms}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
-            onOpenSymptoms={() => actions.push('symptoms')}
             onOpenRecording={openRecording}
           />
         );
@@ -94,10 +89,7 @@ export function AppRouteContent({
           <RecordsRoute
             recordings={recordings}
             recordingState={recordingState}
-            // Keep the recent symptom feed on the same injected journal source as Home and Symptoms.
-            loadSymptoms={loadSymptoms}
             onRetryRecordings={() => refreshRecordings()}
-            onOpenSymptoms={() => actions.push('symptoms')}
             onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
@@ -124,7 +116,6 @@ export function AppRouteContent({
             onOpenDiseaseHypotheses={openDiseaseHypotheses}
             onOpenRagConversation={openRagConversation}
             onOpenExternalEvidence={openExternalEvidence}
-            onOpenHealthReview={() => actions.push('health-review')}
           />
         );
       case 'settings':
@@ -145,9 +136,6 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
-    case 'health-review':
-    case 'health-review-source':
-      return <HealthReviewRoute actions={actions} />;
     case 'appointment-preparation':
       return (
         <AppointmentPreparationRoute
@@ -161,10 +149,6 @@ export function AppRouteContent({
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
-      );
-    case 'symptoms':
-      return (
-        <SymptomsRoute loadSymptoms={loadSymptoms} onBack={actions.onBack} />
       );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;

@@ -19,6 +19,7 @@ import { validateVector } from './ragEmbeddingVector';
 import {
   eligibleVectorChunks,
   evidenceIdentities,
+  evidenceReferences,
   MAX_VECTOR_CANDIDATES,
   vectorStoreChunks,
 } from './ragVectorStoreEvidence';
@@ -142,6 +143,7 @@ export class SqlCipherVectorStore extends VectorStore {
           chunkId: chunk.id,
           vector: vectors[index],
           sourceRecordIds: evidenceIdentities(chunk),
+          sourceReferences: evidenceReferences(chunk),
         })),
       );
       for (let index = 0; index < chunks.length; index += 1) {

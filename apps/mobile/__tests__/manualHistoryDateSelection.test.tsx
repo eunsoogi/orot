@@ -1,10 +1,6 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 import ManualHistoryForm from '../src/manualHistory/ManualHistoryForm';
 import ManualHistoryScreen from '../src/manualHistory/ManualHistoryScreen';
-import {
-  ManualHistoryDatePicker,
-  manualHistoryDateValue,
-} from '../src/manualHistory/ManualHistoryDatePicker';
 import { createManualHistoryTestRepository } from '../test-support/manualHistoryTestRepository';
 
 // Observe the form callback while rendering the real fields, so rapid saves reach the screen's guard.
@@ -20,7 +16,7 @@ jest.mock('../src/manualHistory/ManualHistoryForm', () => {
   };
 });
 
-test('calendar browsing does not infer a date and explicit leap-day selection preserves date-only storage', async () => {
+test('dismissal preserves the prior date and Done commits a date-only value', async () => {
   const view = await render(
     <ManualHistoryScreen
       onBack={jest.fn()}
@@ -29,54 +25,35 @@ test('calendar browsing does not infer a date and explicit leap-day selection pr
   );
   await fireEvent.press(await view.findByTestId('manual-history-add'));
   await fireEvent.press(view.getByTestId('manual-history-open-date-picker'));
-  await fireEvent.press(view.getByTestId('manual-history-previous-month'));
-  expect(
-    view.getByTestId('manual-history-effective-date-input').props.value,
-  ).toBe('');
+  const anchor = () =>
+    view.getByTestId('manual-history-date-sheet-anchor', {
+      includeHiddenElements: true,
+    });
+  expect(anchor().props.request).toEqual({
+    id: 1,
+    date: '',
+  });
+  await fireEvent(anchor(), 'onResult', {
+    nativeEvent: {},
+  });
+  expect(view.getByText('달력에서 날짜 선택')).toBeTruthy();
   await fireEvent.press(view.getByTestId('manual-history-open-date-picker'));
-  await fireEvent.changeText(
-    view.getByTestId('manual-history-effective-date-input'),
-    '2024-02-09',
-  );
+  await fireEvent(anchor(), 'onResult', {
+    nativeEvent: { date: '2024-02-29' },
+  });
+  expect(view.getByText('2024-02-29')).toBeTruthy();
   await fireEvent.press(view.getByTestId('manual-history-open-date-picker'));
-  expect(view.queryByTestId('manual-history-calendar-day-30')).toBeNull();
-  await fireEvent.press(view.getByTestId('manual-history-calendar-day-29'));
-  expect(
-    view.getByTestId('manual-history-effective-date-input').props.value,
-  ).toBe('2024-02-29');
+  expect(anchor().props.request.date).toBe('2024-02-29');
+  await fireEvent(anchor(), 'onResult', {
+    nativeEvent: {},
+  });
+  expect(view.getByText('2024-02-29')).toBeTruthy();
+  const originalAnchor = anchor();
   await fireEvent.press(view.getByTestId('manual-history-date-unknown'));
-  expect(view.queryByTestId('manual-history-effective-date-input')).toBeNull();
-  expect(view.queryByTestId('manual-history-date-picker')).toBeNull();
+  expect(view.queryByTestId('manual-history-open-date-picker')).toBeNull();
   await fireEvent.press(view.getByTestId('manual-history-date-unknown'));
-  expect(
-    view.getByTestId('manual-history-effective-date-input').props.value,
-  ).toBe('');
-});
-
-test('calendar arithmetic preserves early years and Gregorian leap-year boundaries', async () => {
-  expect(manualHistoryDateValue(1, 0, 1)).toBe('0001-01-01');
-  const onChange = jest.fn();
-  const view = await render(
-    <ManualHistoryDatePicker
-      value="0004-02-01"
-      disabled={false}
-      onChange={onChange}
-    />,
-  );
-  await fireEvent.press(view.getByTestId('manual-history-calendar-day-29'));
-  expect(onChange).toHaveBeenLastCalledWith('0004-02-29');
-  await fireEvent.press(view.getByTestId('manual-history-previous-month'));
-  await fireEvent.press(view.getByTestId('manual-history-calendar-day-31'));
-  expect(onChange).toHaveBeenLastCalledWith('0004-01-31');
-  await view.unmount();
-  const century = await render(
-    <ManualHistoryDatePicker
-      value="1900-02-01"
-      disabled={false}
-      onChange={onChange}
-    />,
-  );
-  expect(century.queryByTestId('manual-history-calendar-day-29')).toBeNull();
+  expect(anchor()).toBe(originalAnchor);
+  expect(view.getByText('달력에서 날짜 선택')).toBeTruthy();
 });
 
 // Calling the form callback twice covers the same-event interval before disabled props publish.

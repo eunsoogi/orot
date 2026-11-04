@@ -31,9 +31,6 @@ export const iosFixtureGroups = Object.freeze({
     // Keep this one-field text-selection probe in the appointment fixture group.
     'AppointmentTextSelectionUITests',
     'AppointmentReminderJourneyUITests',
-    'SymptomJournalUITests',
-    'SymptomJournalRecoveryUITests',
-    'SymptomJournalAccessibilityUITests',
     'CalendarSelectionUITests',
     'ScheduleCalendarUITests',
     'ManualHistoryUITests',

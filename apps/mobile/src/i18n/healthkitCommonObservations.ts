@@ -13,17 +13,17 @@ export const commonObservationsKo = {
   'healthkit.commonObservations.status.idle':
     '가져올 기록 유형을 선택해 주세요.',
   'healthkit.commonObservations.status.importing':
-    '선택한 HealthKit 기록을 불러오고 있어요…',
+    '선택한 건강 기록을 불러오고 있어요…',
   'healthkit.commonObservations.status.complete':
     '선택한 기록의 변경을 가져왔어요.',
   'healthkit.commonObservations.status.empty':
-    '새로운 변경이 없어요. HealthKit 읽기 권한 상태는 앱에서 확인할 수 없어요.',
+    '새로운 변경이 없어요. 건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
   'healthkit.commonObservations.status.unavailable':
-    'HealthKit을 사용할 수 없어요.',
+    '건강 기록을 사용할 수 없어요.',
   'healthkit.commonObservations.status.unsupportedFeature':
     '선택한 기록 유형은 이 기기에서 지원하지 않아요.',
   'healthkit.commonObservations.status.unsupportedPlatform':
-    '이 플랫폼에서는 HealthKit을 지원하지 않아요.',
+    '이 기기에서는 건강 기록을 사용할 수 없어요.',
   'healthkit.commonObservations.status.unsupportedData':
     '처리할 수 없는 기록이 있어 가져오기를 멈췄어요.',
   'healthkit.commonObservations.status.partial':

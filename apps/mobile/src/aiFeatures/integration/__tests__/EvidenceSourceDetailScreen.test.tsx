@@ -60,7 +60,7 @@ const savedRecords: readonly LocalHealthEvidenceRecord[] = [
     record: {
       id: 'private-source',
       sourceKind: 'device_export',
-      title: 'HealthKit import',
+      title: '건강 기록 가져오기',
       effectiveAt: '2026-01-02T08:00:00.000Z',
       recordedAt: '2026-01-02T08:00:00.000Z',
       ingestedAt: '2026-01-02T08:02:00.000Z',
@@ -118,13 +118,13 @@ describe('EvidenceSourceDetailScreen', () => {
     expect(await screen.findByText('70.5 kg')).toBeTruthy();
     expectReferenceHeading();
     expect(screen.getAllByText(/2026년 1월 2일/u).length).toBeGreaterThan(0);
-    expect(screen.getByText('HealthKit')).toBeTruthy();
+    expect(screen.getByText('건강 앱')).toBeTruthy();
     expect(screen.queryByText('원문에 기록된 측정값')).toBeNull();
     await fireEvent.press(screen.getByRole('tab', { name: '원문 발췌 2' }));
     expect(screen.getByText('원문에 기록된 측정값')).toBeTruthy();
     expect(screen.queryByText('70.5 kg')).toBeNull();
     await fireEvent.press(screen.getByRole('tab', { name: '저장된 출처 3' }));
-    expect(screen.getByText('HealthKit import')).toBeTruthy();
+    expect(screen.getByText('건강 기록 가져오기')).toBeTruthy();
     expect(screen.queryByText('private-observation')).toBeNull();
     expect(screen.queryByText('opaque-source-id')).toBeNull();
     await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
@@ -166,7 +166,7 @@ describe('EvidenceSourceDetailScreen', () => {
       screen.queryByTestId('ai-feature-source-detail-columns-secondary'),
     ).toBeNull();
     await fireEvent.press(screen.getByRole('tab', { name: '저장된 출처 3' }));
-    expect(screen.getByText('HealthKit import')).toBeTruthy();
+    expect(screen.getByText('건강 기록 가져오기')).toBeTruthy();
 
     windowBounds.set('ai-feature-source-detail-columns-host', {
       x: 0,
@@ -191,7 +191,7 @@ describe('EvidenceSourceDetailScreen', () => {
         screen.getByTestId('ai-feature-source-row-0').props.style,
       )?.flexDirection,
     ).toBe('column');
-    expect(screen.getByText('HealthKit import')).toBeTruthy();
+    expect(screen.getByText('건강 기록 가져오기')).toBeTruthy();
 
     windowBounds.set('ai-feature-source-detail-columns-host', {
       x: 0,
@@ -212,7 +212,7 @@ describe('EvidenceSourceDetailScreen', () => {
         screen.getByTestId('ai-feature-source-detail-columns').props.style,
       )?.flexDirection,
     ).toBe('column');
-    expect(screen.getByText('HealthKit import')).toBeTruthy();
+    expect(screen.getByText('건강 기록 가져오기')).toBeTruthy();
     expect(screen.getByTestId('ai-feature-source-detail')).toBeTruthy();
     expect(readSource).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByTestId('ai-feature-source-back'));

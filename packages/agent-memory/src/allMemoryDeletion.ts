@@ -15,7 +15,7 @@ export async function forgetAllPersistedRecords(
   if (normalizedRecordIds.some((recordId) => !recordId)) {
     throw new Error('A local record identifier is required.');
   }
-  const records = await storage.listRecords();
+  const records = await (storage.listAllRecordsForPurge?.() ?? storage.listRecords());
   const referencesToFence = new Set(normalizedRecordIds);
   for (const record of records) {
     for (const sourceId of provenanceFrom(record.meta)?.sourceIds ?? []) {

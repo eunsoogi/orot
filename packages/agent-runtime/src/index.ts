@@ -1,16 +1,4 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
-export { runHealthReviewGraph } from './health-review/graph';
-export { collectHealthReviewEvidence } from './health-review/evidence';
-export type {
-  HealthReviewMode,
-  HealthReviewOptions,
-  HealthReviewPending,
-  HealthReviewPort,
-  HealthReviewResult,
-  HealthReviewSafety,
-  HealthReviewText,
-} from './health-review/contracts';
-export { isHealthReviewObservationEligible } from './health-review/contracts';
 export { createProductionChatModel, invokeProductionRequest } from './langchain/production';
 export {
   createLocalRecordQueryService,

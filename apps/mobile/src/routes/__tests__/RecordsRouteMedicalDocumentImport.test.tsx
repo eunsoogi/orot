@@ -57,13 +57,11 @@ test('disables the Records body import action while the picker is opening', asyn
       recordings={[]}
       recordingState="ready"
       onRetryRecordings={jest.fn()}
-      onOpenSymptoms={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
       onOpenManualHistory={jest.fn()}
       documentImportService={service}
-      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
 
@@ -87,4 +85,94 @@ test('disables the Records body import action while the picker is opening', asyn
 
   expect(screen.getByTestId('records-import-medical-document')).toBeEnabled();
   expect(screen.getByText(t('medicalDocument.import.summary'))).toBeTruthy();
+});
+
+test('routes Photos selection separately and returns to both actions after cancellation', async () => {
+  const service: MedicalDocumentImportService = {
+    listDocuments: jest.fn().mockResolvedValue([]),
+    getDocument: jest.fn().mockResolvedValue(null),
+    selectDocument: jest.fn().mockResolvedValue(null),
+    saveDocument: jest.fn(),
+    discardDocument: jest.fn(),
+  };
+  await render(
+    <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={jest.fn()}
+      onOpenSavedRecordings={jest.fn()}
+      onOpenRecording={jest.fn()}
+      onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
+      documentImportService={service}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('records-import-medical-photo'));
+  expect(service.selectDocument).toHaveBeenCalledWith('photos');
+  expect(screen.getByTestId('records-import-medical-document')).toBeEnabled();
+  expect(screen.getByTestId('records-import-medical-photo')).toBeEnabled();
+});
+
+test('reviews the selected photo and saves through the existing document service', async () => {
+  const photo = {
+    ...document('synthetic-photo'),
+    previewData: 'data:image/jpeg;base64,c3ludGhldGlj',
+    sections: [
+      { id: 'section', text: 'Synthetic text', startOffset: 0, endOffset: 14 },
+    ],
+  };
+  const service: MedicalDocumentImportService = {
+    listDocuments: jest.fn().mockResolvedValue([]),
+    getDocument: jest.fn().mockResolvedValue(null),
+    selectDocument: jest.fn().mockResolvedValue(photo),
+    saveDocument: jest.fn().mockResolvedValue('saved'),
+    discardDocument: jest.fn(),
+  };
+  await render(
+    <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={jest.fn()}
+      onOpenSavedRecordings={jest.fn()}
+      onOpenRecording={jest.fn()}
+      onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
+      documentImportService={service}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('records-import-medical-photo'));
+  expect(
+    screen.getByTestId('medical-document-review-original-photo'),
+  ).toBeTruthy();
+  expect(screen.getByText('Synthetic text')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
+  expect(service.saveDocument).toHaveBeenCalledWith(photo);
+});
+
+test('leaves import available when photo retrieval fails', async () => {
+  const service: MedicalDocumentImportService = {
+    listDocuments: jest.fn().mockResolvedValue([]),
+    getDocument: jest.fn().mockResolvedValue(null),
+    selectDocument: jest.fn().mockRejectedValue(new Error('Synthetic failure')),
+    saveDocument: jest.fn(),
+    discardDocument: jest.fn(),
+  };
+  await render(
+    <RecordsRoute
+      recordings={[]}
+      recordingState="ready"
+      onRetryRecordings={jest.fn()}
+      onOpenSavedRecordings={jest.fn()}
+      onOpenRecording={jest.fn()}
+      onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
+      documentImportService={service}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('records-import-medical-photo'));
+  expect(
+    screen.getByTestId('medical-document-import-status'),
+  ).toHaveTextContent(t('medicalDocument.error.importFailed'));
+  expect(screen.getByTestId('records-import-medical-photo')).toBeEnabled();
+  expect(service.saveDocument).not.toHaveBeenCalled();
 });

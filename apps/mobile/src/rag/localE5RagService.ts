@@ -7,12 +7,13 @@ import type {
 } from '@orot/rag';
 import {
   clearEvidenceIndex,
+  chunkStructuredRecord,
   deleteEvidenceChunks,
   evidenceChunkToDocument,
   HybridRetriever,
   LocalEmbeddingJobError,
 } from '@orot/rag';
-import type { SqlDatabase, SqlExecutor } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor, SymptomEntry } from '@orot/storage';
 import { LocalE5EmbeddingProvider } from './localE5EmbeddingProvider';
 import { LocalE5Embeddings } from './localE5Embeddings';
 import { LocalLexicalRetriever } from './localLexicalRetriever';
@@ -36,6 +37,8 @@ export interface LocalE5RagService {
     sourceRecordIds?: readonly string[],
     transaction?: SqlExecutor,
   ): Promise<void>;
+  /** Removes only this symptom's stable vector identity, not unrelated raw IDs. */
+  deleteSymptom(record: SymptomEntry, transaction: SqlExecutor): Promise<void>;
   clear(
     sourceRecordIds?: readonly string[],
     transaction?: SqlExecutor,
@@ -88,6 +91,13 @@ export function createLocalE5RagService(
   const textSearch = new SqlCipherRagFullTextSearchStore(database);
   return {
     provider,
+    async deleteSymptom(record, transaction) {
+      await storage.deleteEvidence(
+        [],
+        [chunkStructuredRecord('symptom_entry', record).id],
+        transaction,
+      );
+    },
     prepare() {
       return storage.prepare();
     },

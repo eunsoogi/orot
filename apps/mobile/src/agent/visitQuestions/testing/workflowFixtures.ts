@@ -218,6 +218,7 @@ export function successfulOutputs(
     '이 결과와 관련해 추가로 살펴볼 점이 있나요?',
     '다음 진료 전까지 기록할 내용이 있을까요?',
   ].map(questionText => ({
+    kind: 'confirmed_fact',
     questionText,
     rationale: '현재 기록에 확인할 검사 내용이 있어요.',
     priority: 'routine',

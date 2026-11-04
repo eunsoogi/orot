@@ -5,55 +5,137 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Text } from 'react-native';
 import { HomeMetrics } from './HomeMetrics';
 import { useHomeMetrics } from './useHomeMetrics';
 import type { HomeMetric } from './metricSelection';
+import type { HomeMetricProjection } from './metricProjection';
 
 jest.mock('./useHomeMetrics');
 const mocked = jest.mocked(useHomeMetrics);
 
 test.each([
-  ['sleep', '해당 날짜 기록 합계', 'min'],
-  ['heartRate', '해당 날짜 측정 평균', 'count/min'],
-  ['bodyMass', '해당 날짜 마지막 측정', 'kg'],
-  ['steps', '해당 날짜 기록 합계', 'count'],
+  ['sleep', '해당 날짜 기록 합계', 'min', 70.4, '70분', 'min'],
+  [
+    'heartRate',
+    '해당 날짜 측정 평균',
+    'count/min',
+    70.25,
+    '70.3회/분',
+    'count/min',
+  ],
+  ['bodyMass', '해당 날짜 마지막 측정', 'kg', 70.25, '70.3 kg', null],
+  ['steps', '해당 날짜 기록 합계', 'count', 70.6, '71걸음', 'count'],
 ] as const)(
-  'announces the %s statistic, unit and source in its accessible summary',
-  async (metric: HomeMetric, statistic, unit) => {
+  'formats the %s metric in Korean and hides overview provenance',
+  async (
+    metric: HomeMetric,
+    statistic: string,
+    unit: string,
+    measuredValue: number,
+    formattedValue: string,
+    rawUnit: string | null,
+  ) => {
+    const projection: HomeMetricProjection = {
+      metric,
+      unit,
+      source: 'Synthetic Watch App',
+      measuredAt: '2026-10-14T10:00:00Z',
+      timeZone: 'Asia/Seoul',
+      latest: { date: '2026-10-14', value: measuredValue },
+      days: [{ date: '2026-10-14', value: measuredValue, partial: false }],
+      comparison: null,
+    };
     mocked.mockReturnValue({
       selection: [metric, metric === 'sleep' ? 'heartRate' : 'sleep'],
-      metrics: {
-        [metric]: {
-          metric,
-          unit,
-          source: 'Watch',
-          measuredAt: '2026-10-14T10:00:00Z',
-          timeZone: 'UTC',
-          latest: { date: '2026-10-14', value: 70 },
-          days: [],
-          comparison: null,
-        },
-      },
+      metrics: { [metric]: projection },
       quantityTruncated: false,
       state: 'ready',
       retry: jest.fn(),
       save: jest.fn(),
     });
-    await render(
-      <HomeMetrics>
-        <Text>증상</Text>
-      </HomeMetrics>,
-    );
+
+    await render(<HomeMetrics />);
+
     const summary = screen.getByTestId(`home-metric-${metric}`);
     expect(summary.props.accessibilityLabel).toContain(statistic);
-    expect(summary.props.accessibilityLabel).toContain(`70 ${unit}.`);
-    expect(summary.props.accessibilityLabel).toContain('Watch');
+    expect(summary.props.accessibilityLabel).toContain(`${formattedValue}.`);
+    if (rawUnit)
+      expect(summary.props.accessibilityLabel).not.toContain(rawUnit);
+    expect(summary.props.accessibilityLabel).not.toContain(
+      'Synthetic Watch App',
+    );
+    expect(summary.props.accessibilityLabel).not.toContain('Asia/Seoul');
+    expect(screen.getByText(formattedValue)).toBeTruthy();
+    expect(
+      screen.queryByText(/Synthetic Watch App|Asia\/Seoul|count|min/u),
+    ).toBeNull();
+    expect(projection).toMatchObject({
+      unit,
+      source: 'Synthetic Watch App',
+      timeZone: 'Asia/Seoul',
+      latest: { value: measuredValue },
+    });
   },
 );
 
+test('formats recent comparison units without exposing projection provenance', async () => {
+  const dates = (first: number) =>
+    Array.from(
+      { length: 7 },
+      (_, offset) => `2026-10-${String(first + offset).padStart(2, '0')}`,
+    );
+  const projection: HomeMetricProjection = {
+    metric: 'steps',
+    unit: 'count',
+    source: 'Synthetic Watch App',
+    measuredAt: '2026-10-14T10:00:00Z',
+    timeZone: 'Asia/Seoul',
+    latest: { date: '2026-10-14', value: 500 },
+    days: [],
+    comparison: {
+      previous: 1000.4,
+      recent: 1234.4,
+      previousCoverage: 7,
+      recentCoverage: 6,
+      previousDates: dates(1),
+      recentDates: dates(8),
+    },
+  };
+  mocked.mockReturnValue({
+    selection: ['steps', 'sleep'],
+    metrics: { steps: projection },
+    quantityTruncated: false,
+    state: 'ready',
+    retry: jest.fn(),
+    save: jest.fn(),
+  });
+
+  await render(<HomeMetrics />);
+
+  const recentChange = screen.getByTestId('home-recent-change-steps');
+  expect(recentChange).toHaveTextContent(/1,000걸음/u);
+  expect(recentChange).toHaveTextContent(/1,234걸음/u);
+  expect(recentChange.props.accessibilityLabel).not.toContain(
+    'Synthetic Watch App',
+  );
+  expect(recentChange.props.accessibilityLabel).not.toContain('Asia/Seoul');
+  expect(recentChange).not.toHaveTextContent(
+    /Synthetic Watch App|Asia\/Seoul|count/u,
+  );
+  expect(projection).toMatchObject({
+    unit: 'count',
+    source: 'Synthetic Watch App',
+    timeZone: 'Asia/Seoul',
+    latest: { value: 500 },
+    comparison: { previous: 1000.4, recent: 1234.4 },
+  });
+});
+
 test('shows accessible gaps and keeps a failed selection save open for retry', async () => {
-  const save = jest.fn().mockRejectedValue(new Error('locked'));
+  const save = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('locked'))
+    .mockResolvedValueOnce(undefined);
   mocked.mockReturnValue({
     selection: ['sleep', 'heartRate'],
     metrics: {
@@ -76,11 +158,7 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
     retry: jest.fn(),
     save,
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   expect(screen.getByLabelText(/2026-10-15: 기록이 없어요/)).toBeTruthy();
   expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
@@ -88,6 +166,37 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
   await fireEvent.press(screen.getByRole('button', { name: '저장' }));
   expect(await screen.findByText('선택을 저장하지 못했어요.')).toBeTruthy();
   expect(save).toHaveBeenCalledWith(['sleep', 'heartRate', 'bodyMass']);
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(screen.queryByRole('checkbox')).toBeNull());
+  expect(save).toHaveBeenCalledTimes(2);
+});
+
+test('cancel discards the draft and keeps the saved selection when editing again', async () => {
+  const save = jest.fn();
+  mocked.mockReturnValue({
+    selection: ['sleep', 'heartRate'],
+    metrics: {},
+    quantityTruncated: false,
+    state: 'ready',
+    retry: jest.fn(),
+    save,
+  });
+  await render(<HomeMetrics />);
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(save).not.toHaveBeenCalled();
+  expect(screen.queryByRole('checkbox')).toBeNull();
+
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  expect(
+    screen.getByRole('checkbox', { name: /체중/ }).props.accessibilityState
+      .checked,
+  ).toBe(false);
+  expect(
+    screen.getByRole('checkbox', { name: /기록된 수면/ }).props
+      .accessibilityState.checked,
+  ).toBe(true);
 });
 
 test('prevents changing or cancelling a draft while its save is pending', async () => {
@@ -104,14 +213,11 @@ test('prevents changing or cancelling a draft while its save is pending', async 
     retry: jest.fn(),
     save,
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   expect(screen.getAllByText('최근 14일과 오늘에 기록이 없어요.')).toHaveLength(
     2,
   );
+  expect(screen.getByText('비교할 기록이 충분하지 않아요.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   const press = fireEvent.press(screen.getByRole('button', { name: '저장' }));
   await waitFor(() =>
@@ -119,6 +225,8 @@ test('prevents changing or cancelling a draft while its save is pending', async 
   );
   expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   expect(screen.getByRole('checkbox', { name: /체중/ })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  expect(save).toHaveBeenCalledTimes(1);
   await act(async () => finish());
   await press;
   expect(screen.queryByRole('button', { name: '취소' })).toBeNull();

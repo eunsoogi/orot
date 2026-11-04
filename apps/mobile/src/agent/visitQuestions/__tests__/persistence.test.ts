@@ -2,6 +2,7 @@ import type { AgentMemoryInput } from '@orot/agent-memory';
 import type { Appointment } from '@orot/domain';
 import type { VisitQuestionEvidenceItem } from '../taskContract';
 import { saveReviewedVisitQuestions } from '../persistence';
+import { localEvidenceFingerprint } from '../evidence';
 import {
   appointment,
   candidate,
@@ -13,6 +14,27 @@ import {
 } from '../testing/persistenceFixtures';
 
 describe('saving reviewed visit questions', () => {
+  it('fails closed when a legacy edit cannot check transcript staleness atomically', async () => {
+    const legacy = oldQuestion('legacy-question', 'appointment-1');
+    const store = repository({
+      appointment: [appointment],
+      visit_question: [legacy],
+    });
+    const question = {
+      questionText: '이전에 정리한 내용을 다시 확인할까요?',
+      rationale: '이전 질문을 의료진과 상의할 수 있어요.',
+      priority: 'routine' as const,
+      citations: [],
+      legacySource: {
+        id: legacy.id,
+        revision: localEvidenceFingerprint(legacy),
+      },
+    };
+    await expect(
+      saveReviewedVisitQuestions(input(store, { questions: [question] })),
+    ).rejects.toThrow(/atomic legacy source validation/i);
+    expect(store.list('visit_question')).toEqual([legacy]);
+  });
   it('replaces only this appointment list and writes a source-linked human-reviewed memory', async () => {
     const store = repository({
       appointment: [appointment],
