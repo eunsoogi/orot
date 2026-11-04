@@ -69,7 +69,7 @@ export async function queryHealthEvidenceRows<K extends RecordKind>(
     `SELECT id,
       CASE WHEN length(CAST(payload_json AS BLOB)) <= ? THEN payload_json ELSE NULL END AS payload_json,
       length(CAST(payload_json AS BLOB)) AS payload_bytes
-     FROM ${STORAGE_TABLES[kind].table} WHERE ${condition.sql} ORDER BY id LIMIT ?`,
+     FROM ${STORAGE_TABLES[kind].table} WHERE ${condition.sql}${kind === 'symptom_entry' ? ' AND NOT EXISTS (SELECT 1 FROM legacy_symptom_deleted deleted WHERE deleted.id = symptom_entries.id)' : ''} ORDER BY id LIMIT ?`,
     [MAX_HEALTH_EVIDENCE_RECORD_BYTES, ...condition.parameters, limit],
   );
   // SQLite calls are not interruptible through SqlDatabase; discard their result after cancellation.

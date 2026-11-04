@@ -65,9 +65,18 @@ function normalizeProvenance(value: AgentMemoryProvenance): AgentMemoryProvenanc
       (left, right) =>
         left.sourceId.localeCompare(right.sourceId) || left.date.localeCompare(right.date),
     );
-  return sourceDates === undefined
-    ? { sourceIds, reviewState: value.reviewState }
-    : { sourceIds, sourceDates, reviewState: value.reviewState };
+  const sourceReferences = value.sourceReferences
+    ?.map((reference) => ({
+      kind: reference.kind.trim(),
+      id: reference.id.trim(),
+    }))
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
+  return {
+    sourceIds,
+    ...(sourceDates === undefined ? {} : { sourceDates }),
+    ...(sourceReferences === undefined ? {} : { sourceReferences }),
+    reviewState: value.reviewState,
+  };
 }
 
 export function isProvenance(value: unknown): value is AgentMemoryProvenance {
@@ -78,6 +87,20 @@ export function isProvenance(value: unknown): value is AgentMemoryProvenance {
   if (
     !Array.isArray(provenance.sourceIds) ||
     provenance.sourceIds.some((id) => typeof id !== 'string' || !id.trim())
+  )
+    return false;
+  if (
+    provenance.sourceReferences !== undefined &&
+    (!Array.isArray(provenance.sourceReferences) ||
+      provenance.sourceReferences.some(
+        (reference) =>
+          !reference ||
+          typeof reference.kind !== 'string' ||
+          !reference.kind.trim() ||
+          typeof reference.id !== 'string' ||
+          !reference.id.trim() ||
+          !provenance.sourceIds?.includes(reference.id),
+      ))
   )
     return false;
   if (provenance.sourceDates !== undefined) {

@@ -1,5 +1,12 @@
 import type { SqlDatabase } from '@orot/storage';
 import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
+import {
+  deletedSymptomIds,
+  listAllMemoryRecords,
+  referencesDeletedSymptom,
+  symptomQuarantineRevision,
+} from './agentMemorySymptomQuarantine';
+import { compactAgentMemory } from './agentMemoryCompaction';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
@@ -12,9 +19,8 @@ import {
   referencesAnySource,
 } from './agentMemoryStorageRecords';
 
-type PendingWrite = PersistedMemoryRecord | null;
 interface PendingBatch {
-  readonly writes: Map<string, PendingWrite>;
+  readonly writes: Map<string, PersistedMemoryRecord | null>;
   readonly removedSourceIds: Set<string>;
 }
 
@@ -39,11 +45,13 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       );
       const invalidatedSourceIds =
         await listSupersededTranscriptRevisionIds(transaction);
+      const removedSymptoms = await deletedSymptomIds(transaction);
       const result = await transaction.execute(
         'SELECT id, record_json FROM agent_memory_records ORDER BY id',
       );
       for (const row of result.rows) {
         const record = decodeAgentMemoryRecord(row.record_json);
+        if (referencesDeletedSymptom(record, removedSymptoms)) continue;
         if (
           referencesAnySource(record, removedSourceIds) ||
           referencesAnySource(record, invalidatedSourceIds)
@@ -60,6 +68,11 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
 
   async listRecords(): Promise<PersistedMemoryRecord[]> {
     return this.load();
+  }
+
+  async listAllRecordsForPurge(): Promise<PersistedMemoryRecord[]> {
+    await this.ensureTable();
+    return listAllMemoryRecords(this.database);
   }
 
   async append(record: PersistedMemoryRecord): Promise<void> {
@@ -82,30 +95,9 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     if (this.pending)
       throw new Error('Cannot compact agent memory during a write batch.');
     await this.ensureTable();
-    await this.database.transaction(async transaction => {
-      const removedResult = await transaction.execute(
-        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
-      );
-      const removedSourceIds = new Set(
-        removedResult.rows.flatMap(row =>
-          typeof row.source_id === 'string' ? [row.source_id] : [],
-        ),
-      );
-      const invalidatedSourceIds =
-        await listSupersededTranscriptRevisionIds(transaction);
-      for (const record of records)
-        assertNoSourceReference(
-          record,
-          removedSourceIds,
-          'Memory cannot reference a source being or already removed.',
-        );
-      const currentRecords = records.filter(
-        record => !referencesAnySource(record, invalidatedSourceIds),
-      );
-      await transaction.execute('DELETE FROM agent_memory_records');
-      for (const record of currentRecords)
-        await insertAgentMemoryRecord(transaction, record);
-    });
+    await this.database.transaction(transaction =>
+      compactAgentMemory(transaction, records),
+    );
   }
 
   async listRemovedSourceIds(): Promise<string[]> {
@@ -130,6 +122,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     ];
   }
 
+  listQuarantineRevision = () => symptomQuarantineRevision(this.database);
   async markSourceRemoved(sourceId: string): Promise<void> {
     const normalizedId = sourceId.trim();
     if (!normalizedId) throw new Error('A source identifier is required.');
@@ -181,7 +174,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   private async executeWrites(
-    writes: Map<string, PendingWrite>,
+    writes: Map<string, PersistedMemoryRecord | null>,
     removedSourceIdsToAdd: Set<string>,
   ): Promise<void> {
     await this.ensureTable();
@@ -198,8 +191,11 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
         removedSourceIds.add(sourceId);
       const invalidatedSourceIds =
         await listSupersededTranscriptRevisionIds(transaction);
+      const removedSymptoms = await deletedSymptomIds(transaction);
       for (const record of writes.values()) {
         if (record) {
+          if (referencesDeletedSymptom(record, removedSymptoms))
+            throw new Error('Memory cannot reference a deleted symptom.');
           assertNoSourceReference(
             record,
             removedSourceIds,
@@ -218,6 +214,12 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
         );
         for (const row of records.rows) {
           const record = decodeAgentMemoryRecord(row.record_json);
+          // A separately requested source deletion still owns its existing hard-delete boundary.
+          if (
+            referencesDeletedSymptom(record, removedSymptoms) &&
+            !referencesAnySource(record, removedSourceIdsToAdd)
+          )
+            continue;
           if (
             referencesAnySource(record, removedSourceIds) ||
             referencesAnySource(record, invalidatedSourceIds)

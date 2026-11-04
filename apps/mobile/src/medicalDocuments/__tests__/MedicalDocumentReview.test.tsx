@@ -93,13 +93,11 @@ function routeProps(
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
-    onOpenSymptoms: jest.fn(),
     onOpenSavedRecordings: jest.fn(),
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
     documentImportService,
-    loadSymptoms: async () => ({ list: async () => [] }),
   };
 }
 

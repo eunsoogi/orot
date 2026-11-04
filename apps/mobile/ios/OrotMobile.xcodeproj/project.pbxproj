@@ -9,13 +9,10 @@
 /* Begin PBXBuildFile section */
 		A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000003 /* NavigationContextualActionContent.swift */; };
 		A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */; };
-		B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */; };
 		29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */; };
 		A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000002 /* ConversationHitUITestObservation.swift */; };
-		D49300000000000000000001 /* SymptomDateSelectionUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
-		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */; };
-		C49300000000000000000001 /* FormScrollGeometryJournalPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */; };
+		D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */; };
 		A68F00000000000000000001 /* AppointmentReminderTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */; };
 		A93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */; };
 		AC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */; };
@@ -89,19 +86,13 @@
 		44AEB747A2594CF8970EA120 /* NavigationViewportFrameIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC3A1946F0241E5AD043C87 /* NavigationViewportFrameIntegrationTests.swift */; };
 		9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */; };
 		C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */; };
-		A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */; };
-		081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */; };
-		F9DD5D73A89A4091A7E3B176 /* SymptomJournalAccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
 		BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */; };
-		B49300000000000000000001 /* SymptomControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49300000000000000000002 /* SymptomControlGeometryObservation.swift */; };
-		B49300000000000000000003 /* SymptomDockControlObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49300000000000000000004 /* SymptomDockControlObservation.swift */; };
 		A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000004 /* ConversationHitTestObservation.swift */; };
-		D49300000000000000000003 /* SymptomDateSelectionObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49300000000000000000004 /* SymptomDateSelectionObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
@@ -184,7 +175,6 @@
 		A67F00000000000000000004 /* AppointmentReminderDelivery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000004 /* AppointmentReminderDelivery.swift */; };
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
-		A8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
 		856e3b193f8769f1bc09bda3 /* ProviderSelectionDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = a23c13bada0fd75e87404dfe /* ProviderSelectionDuoUITests.swift */; };
@@ -198,11 +188,8 @@
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
 		C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */; };
-		C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */; };
-		C9EB3A61F4704C389AB45F65 /* SymptomAccessorySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F338ACB5824E578A229C10 /* SymptomAccessorySnapshot.swift */; };
 		CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */; };
 		CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2F722F9A5281E9B9A73231 /* TestControl.m */; };
-		D07B0333F0F848AA9E9B56D4 /* FormFocusedInputConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1862B9BC72394CB4A17A0580 /* FormFocusedInputConditions.swift */; };
 		D3F6E2F9AEE7D2059B8FD74A /* HealthKitAuthorizationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
 		DAB96891474DE7DFC4A63BB8 /* libPods-OrotIntegrationTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F502DE5A77E3F51FB2915E76 /* libPods-OrotIntegrationTests.a */; };
@@ -264,7 +251,6 @@
 		F24E0000000000000000000A /* swift-package-support-sentencepiece in Frameworks */ = {isa = PBXBuildFile; productRef = F24E00000000000000000022 /* swift-package-support-sentencepiece */; };
 		F5C1F537290F12893BBE97E9 /* TestFixtureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE6F89196C20B76EB9AEC58 /* TestFixtureState.swift */; };
 		F7534DE9B1E4004AF1E0777B /* RecordingFixtureUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */; };
-		F9A40EB1180C4A2AB69881C5 /* SymptomAccessorySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84B32B25A66940F5B8E52E61 /* SymptomAccessorySnapshotTests.swift */; };
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		607365FCA0E94B0589DEAF02 /* RecordingDeletionLatencyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A670E5C349B64234AA94155A /* RecordingDeletionLatencyUITests.swift */; };
 		4F4BD3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */; };
@@ -305,13 +291,10 @@
 
 /* Begin PBXFileReference section */
 		A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingIntegrationTests.swift; sourceTree = "<group>"; };
-		B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalControlUITestConditions.swift; sourceTree = "<group>"; };
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
-		D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomDateSelectionUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
-		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalRegression.swift; sourceTree = "<group>"; };
-		C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryJournalPlan.swift; sourceTree = "<group>"; };
+		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryUITests.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
 		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
 		BC50F7116C46F4A96B65832CF /* AppointmentReminderFailureOrigin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderFailureOrigin.swift; sourceTree = "<group>"; };
@@ -333,7 +316,6 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = OrotMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingFixtureUITestConditions.swift; sourceTree = "<group>"; };
-		1862B9BC72394CB4A17A0580 /* FormFocusedInputConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormFocusedInputConditions.swift; sourceTree = "<group>"; };
 		193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.release.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.release.xcconfig"; sourceTree = "<group>"; };
 		1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RenderedTextUITestConditions.swift; sourceTree = "<group>"; };
 		1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingLibraryUITests.swift; sourceTree = "<group>"; };
@@ -348,7 +330,6 @@
 		38F894914E4F39E9162E577E /* RecordingExportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportUITests.swift; sourceTree = "<group>"; };
 		395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitReadAuthorization.swift; path = OrotMobile/HealthKitReadAuthorization.swift; sourceTree = "<group>"; };
 		39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MicrophoneMeteringUITests.swift; sourceTree = "<group>"; };
-		3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomJournalUITestObservations.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.debug.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedHealthRecordsUITests.swift; sourceTree = "<group>"; };
 		418ED459FC663BD5BF8F8725 /* synthetic-korean.json */ = {isa = PBXFileReference; includeInIndex = 1; path = "synthetic-korean.json"; sourceTree = "<group>"; };
@@ -377,12 +358,10 @@
 		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
 		A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportPresentationFixture.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		83F338ACB5824E578A229C10 /* SymptomAccessorySnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SymptomAccessorySnapshot.swift; path = OrotMobile/SymptomAccessorySnapshot.swift; sourceTree = "<group>"; };
 		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
 		17B4A2C9F3E04EDAB3FEA002 /* ProductionRagConversationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProductionRagConversationUITests.swift; sourceTree = "<group>"; };
 		A27415DB31F6D1B47C931A02 /* RecordsHubUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordsHubUITests.swift; sourceTree = "<group>"; };
 		B27800000000000000000002 /* RecordingDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingDuoUITests.swift; sourceTree = "<group>"; };
-		84B32B25A66940F5B8E52E61 /* SymptomAccessorySnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomAccessorySnapshotTests.swift; sourceTree = "<group>"; };
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
@@ -392,9 +371,6 @@
 		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
 		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
 		D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryUITestConditions.swift; sourceTree = "<group>"; };
-		A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomJournalUITests.swift; sourceTree = "<group>"; };
-		6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SymptomJournalRecoveryUITests.swift; sourceTree = "<group>"; };
-		A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymptomJournalAccessibilityUITests.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
@@ -421,10 +397,7 @@
 		DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGeometryView.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
 		058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationControlGeometryObservation.swift; path = OrotMobile/NavigationControlGeometryObservation.swift; sourceTree = "<group>"; };
-		B49300000000000000000002 /* SymptomControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomControlGeometryObservation.swift; path = OrotMobile/SymptomControlGeometryObservation.swift; sourceTree = "<group>"; };
-		B49300000000000000000004 /* SymptomDockControlObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomDockControlObservation.swift; path = OrotMobile/SymptomDockControlObservation.swift; sourceTree = "<group>"; };
 		A49300000000000000000004 /* ConversationHitTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationHitTestObservation.swift; path = OrotMobile/ConversationHitTestObservation.swift; sourceTree = "<group>"; };
-		D49300000000000000000004 /* SymptomDateSelectionObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SymptomDateSelectionObservation.swift; path = OrotMobile/SymptomDateSelectionObservation.swift; sourceTree = "<group>"; };
 		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		C9177E4AA0B54B519EBD6E20 /* HomeMetricAccessibilityUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricAccessibilityUITests.swift; sourceTree = "<group>"; };
@@ -513,7 +486,6 @@
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
-		B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SymptomScrollTrace.swift; path = OrotMobile/SymptomScrollTrace.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
 		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
 		BE2F722F9A5281E9B9A73231 /* TestControl.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = TestControl.m; path = OrotMobile/TestControl.m; sourceTree = "<group>"; };
@@ -730,12 +702,8 @@
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
 				058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */,
-				B49300000000000000000002 /* SymptomControlGeometryObservation.swift */,
-				B49300000000000000000004 /* SymptomDockControlObservation.swift */,
 				A49300000000000000000004 /* ConversationHitTestObservation.swift */,
-				D49300000000000000000004 /* SymptomDateSelectionObservation.swift */,
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
-				B8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift */,
 				DB4C9FC1D4D64A1EA215A023 /* HealthReviewObservationWindow.swift */,
 				C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */,
 				1FBA5CF1F52655B5FCBEC22C /* EncounterInputObservationWindow.swift */,
@@ -744,7 +712,6 @@
 				48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */,
 				2FB1C9E3891B420B996B02B6D9613670 /* VisitQuestionInputObservationWindow.swift */,
 				061F1D7BA0514AA0A9DB534F /* HealthReviewFormSnapshot.swift */,
-				83F338ACB5824E578A229C10 /* SymptomAccessorySnapshot.swift */,
 				B64F00000000000000000013 /* TestAppearanceRefresh.swift */,
 				BE2F722F9A5281E9B9A73231 /* TestControl.m */,
 				C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */,
@@ -818,7 +785,6 @@
 				D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */,
 				624BCD81A97449138708ACDB /* NavigationFocusObservationTests.swift */,
 				4CC3A1946F0241E5AD043C87 /* NavigationViewportFrameIntegrationTests.swift */,
-				84B32B25A66940F5B8E52E61 /* SymptomAccessorySnapshotTests.swift */,
 				B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */,
 				5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */,
 				69AD0E21B2F7450387C628D6 /* StandardAdapterIntegrationTests.swift */,
@@ -938,16 +904,9 @@
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
 				89FDE65A9F504246A94295CB /* AppointmentNextVisitUITests.swift */,
 				1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */,
-				A0760E4351CE4231B3A9AB02 /* SymptomJournalUITests.swift */,
-				B93FA3FB664A495A8070B2B2 /* SymptomJournalControlUITestConditions.swift */,
 				22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */,
 				A49300000000000000000002 /* ConversationHitUITestObservation.swift */,
-				D49300000000000000000002 /* SymptomDateSelectionUITestObservation.swift */,
-				6F78323E1937408C9D46752B /* SymptomJournalRecoveryUITests.swift */,
-				A6F868AF77C142549DA53FE4 /* SymptomJournalAccessibilityUITests.swift */,
-				3AB5FA38EAE14D4CA02A0187 /* SymptomJournalUITestObservations.swift */,
 				E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */,
-				1862B9BC72394CB4A17A0580 /* FormFocusedInputConditions.swift */,
 				FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */,
 				740703467F7A488F909E33F198B5E669 /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift */,
 				FC32B0D5D9C44392BAD164E491F78A1F /* ScheduleCalendarUITests.swift */,
@@ -981,8 +940,7 @@
 				5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */,
 				FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */,
 				F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */,
-				D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryJournalRegression.swift */,
-				C49300000000000000000002 /* FormScrollGeometryJournalPlan.swift */,
+				D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */,
 			);
 			name = OrotUITests;
 			path = OrotUITests;
@@ -1253,10 +1211,7 @@
 				BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
 				758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */,
-				B49300000000000000000001 /* SymptomControlGeometryObservation.swift in Sources */,
-				B49300000000000000000003 /* SymptomDockControlObservation.swift in Sources */,
 				A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */,
-				D49300000000000000000003 /* SymptomDateSelectionObservation.swift in Sources */,
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
@@ -1364,7 +1319,6 @@
 				E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */,
 				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
-				A8D5B4397CC847F0A16E2051 /* SymptomScrollTrace.swift in Sources */,
 				9D2CD03ED6AA42DB85D1499E /* HealthReviewObservationWindow.swift in Sources */,
 				074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */,
 				A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */,
@@ -1373,7 +1327,6 @@
 				09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */,
 				D09B8C3B135C4759A63CC2390808EC9B /* VisitQuestionInputObservationWindow.swift in Sources */,
 				DEA5F41CFF3B49AFB1F93EBC /* HealthReviewFormSnapshot.swift in Sources */,
-				C9EB3A61F4704C389AB45F65 /* SymptomAccessorySnapshot.swift in Sources */,
 				A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */,
 				CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */,
 				165B7B0D6D7095B471560BD2 /* BackupProbeBridge.swift in Sources */,
@@ -1429,16 +1382,9 @@
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
 				0CEE70841F2C4CD7AD262796 /* AppointmentNextVisitUITests.swift in Sources */,
 				D6165760823C41C2B78A1A55 /* AppointmentTextSelectionUITests.swift in Sources */,
-				A0760E4351CE4231B3A9AB01 /* SymptomJournalUITests.swift in Sources */,
-				B93FA3FB664A495A8070B2B1 /* SymptomJournalControlUITestConditions.swift in Sources */,
 				29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */,
 				A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */,
-				D49300000000000000000001 /* SymptomDateSelectionUITestObservation.swift in Sources */,
-				081A9DBEDD684B99B4BDF17E /* SymptomJournalRecoveryUITests.swift in Sources */,
-				F9DD5D73A89A4091A7E3B176 /* SymptomJournalAccessibilityUITests.swift in Sources */,
-				C7F8BF8342EE480FB45CD06D /* SymptomJournalUITestObservations.swift in Sources */,
 				876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */,
-				D07B0333F0F848AA9E9B56D4 /* FormFocusedInputConditions.swift in Sources */,
 				72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */,
 				BCE683BFF6DE47F6B69A41AADB62634C /* ScheduleCalendarAdaptiveLayoutUITestConditions.swift in Sources */,
 				C588B7000ADF488292FE20DEF531275E /* ScheduleCalendarUITests.swift in Sources */,
@@ -1479,8 +1425,7 @@
 				4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */,
 				9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */,
 				A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */,
-				D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryJournalRegression.swift in Sources */,
-				C49300000000000000000001 /* FormScrollGeometryJournalPlan.swift in Sources */,
+				D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1502,7 +1447,6 @@
 				CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */,
 				026FA02E3DF24624A885119D /* NavigationFocusObservationTests.swift in Sources */,
 				44AEB747A2594CF8970EA120 /* NavigationViewportFrameIntegrationTests.swift in Sources */,
-				F9A40EB1180C4A2AB69881C5 /* SymptomAccessorySnapshotTests.swift in Sources */,
 				A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */,
 				E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */,
 				F65DC9A7A1FC4089B25A63C0 /* StandardAdapterIntegrationTests.swift in Sources */,

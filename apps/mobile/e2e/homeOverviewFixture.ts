@@ -1,5 +1,4 @@
-import type { RecordRepository, SymptomEntry } from '@orot/storage';
-import type { SymptomJournalRepository } from '../src/symptoms/localRepository';
+import type { RecordRepository } from '@orot/storage';
 import type { RecordingSourceRecord } from '../src/recording/recordingTypes';
 
 const timestamp = '2026-10-20T09:00:00Z';
@@ -9,29 +8,6 @@ const metadata = {
   ingestedAt: timestamp,
   provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
   reviewState: { status: 'unreviewed' as const },
-};
-const symptom: SymptomEntry = {
-  ...metadata,
-  id: 'synthetic-home-active',
-  description: '합성 지속 증상',
-  status: 'active',
-};
-
-/** Read-only fixture for the existing Home timing probe; it never reaches production data loaders. */
-export const homeOverviewJournal: SymptomJournalRepository = {
-  list: async filter =>
-    [symptom].filter(
-      entry => !filter?.status || entry.status === filter.status,
-    ),
-  create: async () => {
-    throw new Error('Read-only Home fixture');
-  },
-  update: async () => {
-    throw new Error('Read-only Home fixture');
-  },
-  resolve: async () => {
-    throw new Error('Read-only Home fixture');
-  },
 };
 export const homeOverviewRecordings: readonly RecordingSourceRecord[] = [
   {
