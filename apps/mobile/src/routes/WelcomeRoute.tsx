@@ -8,10 +8,7 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel } from './HomeSummaryPanels';
 import { HomeMetrics } from './home/HomeMetrics';
-import {
-  HomeOngoingSymptoms,
-  HomePreparationQuestions,
-} from './HomePreparationPanels';
+import { HomePreparationQuestions } from './HomePreparationPanels';
 import {
   useHomePreparationData,
   type HomePreparationLoaders,
@@ -27,23 +24,19 @@ export interface WelcomeRouteProps extends HomePreparationLoaders {
   readonly onPrepareVisit: () => void;
   readonly onOpenSchedule: () => void;
   readonly onOpenRecords: () => void;
-  readonly onOpenSymptoms: () => void;
   readonly onOpenRecording: () => void;
 }
 
-/** Keeps visit preparation, active symptoms, recent audio and capture in one ordered page. */
+/** Keeps visit preparation and health metrics in one ordered page. */
 export default function WelcomeRoute({
   appointment,
   appointmentState,
   onRetryAppointments,
   onPrepareVisit,
   onOpenSchedule,
-  onOpenSymptoms,
-  loadSymptoms,
   loadSavedVisitQuestions,
 }: WelcomeRouteProps) {
   const preparation = useHomePreparationData(appointment?.id, {
-    loadSymptoms,
     loadSavedVisitQuestions,
   });
   useNavigationLeaveStateRegistration({
@@ -95,15 +88,7 @@ export default function WelcomeRoute({
             />
           ) : null}
         </NextVisitPanel>
-        <HomeMetrics>
-          <HomeOngoingSymptoms
-            symptoms={preparation.symptoms}
-            updates={preparation.symptomUpdates}
-            state={preparation.symptomState}
-            onRetry={preparation.retry}
-            onOpen={onOpenSymptoms}
-          />
-        </HomeMetrics>
+        <HomeMetrics />
       </View>
     </View>
   );

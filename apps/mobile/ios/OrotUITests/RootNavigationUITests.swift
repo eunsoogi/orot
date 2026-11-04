@@ -86,7 +86,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
         // At large text the metrics editor is above the scrolled viewport; confirm Home using its visible lower section.
-        try NavigationUITestConditions.openTab(app, "home", markers: ["home-open-symptoms"])
+        try NavigationUITestConditions.openTab(app, "home", markers: ["home-recent-changes"])
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
         capture(app, "home-xxxl-glass-tabs")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])

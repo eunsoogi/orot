@@ -47,12 +47,10 @@ function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
-    onOpenSymptoms: jest.fn(),
     onOpenSavedRecordings: jest.fn(),
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
-    loadSymptoms: async () => ({ list: async () => [] }),
     documentImportService: {
       listDocuments: jest.fn().mockResolvedValue([]),
       getDocument: jest.fn().mockResolvedValue(null),
@@ -75,7 +73,6 @@ test('keeps one primary recording action and every existing Records destination'
   expect(screen.getByTestId('records-import-medical-document')).toBeTruthy();
   for (const id of [
     'records-new-recording',
-    'symptoms-open',
     'records-open-saved-recordings',
     'records-open-manual-history',
     'records-open-health-library',
@@ -84,7 +81,6 @@ test('keeps one primary recording action and every existing Records destination'
   }
 
   expect(routeProps.onOpenRecording).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenSymptoms).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenManualHistory).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenHealthLibrary).toHaveBeenCalledTimes(1);

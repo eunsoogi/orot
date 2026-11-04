@@ -1,5 +1,5 @@
-import { Memory } from 'rememori';
-import type { Embedder, RecallOptions } from 'rememori';
+import type { Memory, Embedder, RecallOptions } from 'rememori';
+import { openMemoryEngine } from './openMemoryEngine';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
 import { writeMemory } from './memoryWrites';
@@ -13,6 +13,7 @@ export class LocalAgentMemory implements AgentMemoryService {
   private closed = false;
   private removedSourceIds = new Set<string>();
   private invalidatedSourceIds = new Set<string>();
+  private quarantineRevision = '';
 
   constructor(
     private readonly embedder: Embedder,
@@ -23,7 +24,8 @@ export class LocalAgentMemory implements AgentMemoryService {
   async open(): Promise<void> {
     this.removedSourceIds = new Set(await this.storage.listRemovedSourceIds());
     this.invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
-    this.engine = await this.openEngine();
+    this.quarantineRevision = (await this.storage.listQuarantineRevision?.()) ?? '';
+    this.engine = await openMemoryEngine(this.embedder, this.storage);
   }
 
   getByKey(memoryKey: string): Promise<Omit<AgentMemoryHit, 'score'> | null> {
@@ -65,8 +67,13 @@ export class LocalAgentMemory implements AgentMemoryService {
         ...(await this.storage.listInvalidatedSourceIds()),
         ...(await this.storage.listRemovedSourceIds()),
       ]);
-      await this.refreshEngineForInvalidatedSources(invalidatedSourceIds);
+      await this.refreshFilters(invalidatedSourceIds);
       const hits = await (await this.getEngine()).recall(query, { ...options, graph: false });
+      // A deletion may commit while ranking is in flight; never return that stale page.
+      if (((await this.storage.listQuarantineRevision?.()) ?? '') !== this.quarantineRevision) {
+        await this.refreshFilters(invalidatedSourceIds);
+        return [];
+      }
       return hits.flatMap((hit) => {
         const metadata = metadataFrom(hit.meta);
         if (
@@ -203,33 +210,23 @@ export class LocalAgentMemory implements AgentMemoryService {
   }
 
   private async getEngine(): Promise<Memory> {
-    if (!this.engine) this.engine = await this.openEngine();
+    if (!this.engine) this.engine = await openMemoryEngine(this.embedder, this.storage);
     return this.engine;
   }
 
-  private async refreshEngineForInvalidatedSources(
-    invalidatedSourceIds: Set<string>,
-  ): Promise<void> {
+  // Rebuild before ranking so hidden records cannot consume a limited result page.
+  private async refreshFilters(invalidatedSourceIds: Set<string>): Promise<void> {
+    const revision = (await this.storage.listQuarantineRevision?.()) ?? '';
     const changed =
       invalidatedSourceIds.size !== this.invalidatedSourceIds.size ||
-      [...invalidatedSourceIds].some((sourceId) => !this.invalidatedSourceIds.has(sourceId));
-    if (!changed) return;
-
-    // Rememori ranks before returning its limited result set; reopen after a transcript correction so stale indexed hits cannot consume the caller's limit.
-    const previousEngine = this.engine;
+      [...invalidatedSourceIds].some((id) => !this.invalidatedSourceIds.has(id));
+    if (!changed && revision === this.quarantineRevision) return;
+    const previous = this.engine;
     this.engine = null;
-    if (previousEngine) await previousEngine.close();
-    this.engine = await this.openEngine();
+    if (previous) await previous.close();
+    this.engine = await openMemoryEngine(this.embedder, this.storage);
+    this.quarantineRevision = revision;
     this.invalidatedSourceIds = invalidatedSourceIds;
-  }
-
-  private openEngine(): Promise<Memory> {
-    return Memory.open(':memory:', {
-      embedder: this.embedder,
-      storage: this.storage,
-      extractor: false,
-      index: 'flat',
-    });
   }
 
   private enqueue<T>(operation: () => Promise<T>, allowClosed = false): Promise<T> {

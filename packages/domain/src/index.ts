@@ -44,20 +44,6 @@ export type {
   SymptomEntryStatus,
 } from './records';
 export {
-  CreateSymptomEntryInputSchema,
-  EditSymptomEntryInputSchema,
-  SymptomEntryFilterSchema,
-  createSymptomEntry,
-  editSymptomEntry,
-  filterSymptomEntries,
-  resolveSymptomEntry,
-} from './symptoms';
-export type {
-  CreateSymptomEntryInput,
-  EditSymptomEntryInput,
-  SymptomEntryFilter,
-} from './symptoms';
-export {
   CurrentMedicationConfirmationSchema,
   DoseObservationStatusSchema,
   DoseEventSchema,
