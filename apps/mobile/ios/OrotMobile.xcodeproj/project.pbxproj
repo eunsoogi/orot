@@ -104,7 +104,7 @@
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */; };
-		A37000000000000000000002 /* MedicalDocumentPhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000002 /* MedicalDocumentPhotoPicker.swift */; };
+		A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */; };
 		A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000002 /* MedicalDocumentFileStore.swift */; };
 		A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000003 /* MedicalDocumentImportModule.swift */; };
 		A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000004 /* MedicalDocumentImportModule.m */; };
@@ -419,7 +419,7 @@
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
 		B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentTextExtractor.swift; path = OrotMobile/MedicalDocumentTextExtractor.swift; sourceTree = "<group>"; };
-		B37000000000000000000002 /* MedicalDocumentPhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPhotoPicker.swift; path = OrotMobile/MedicalDocumentPhotoPicker.swift; sourceTree = "<group>"; };
+		B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPhotoPicker.swift; path = OrotMobile/MedicalDocumentPhotoPicker.swift; sourceTree = "<group>"; };
 		B37000000000000000000002 /* MedicalDocumentFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStore.swift; path = OrotMobile/MedicalDocumentFileStore.swift; sourceTree = "<group>"; };
 		B37000000000000000000003 /* MedicalDocumentImportModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportModule.swift; path = OrotMobile/MedicalDocumentImportModule.swift; sourceTree = "<group>"; };
 		B37000000000000000000004 /* MedicalDocumentImportModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MedicalDocumentImportModule.m; path = OrotMobile/MedicalDocumentImportModule.m; sourceTree = "<group>"; };
@@ -654,7 +654,7 @@
 				B11600000000000000000001 /* BackupMigrationModule.swift */,
 				B11600000000000000000002 /* BackupMigrationModule.m */,
 				B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */,
-				B37000000000000000000002 /* MedicalDocumentPhotoPicker.swift */,
+				B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */,
 				B37000000000000000000002 /* MedicalDocumentFileStore.swift */,
 				B37000000000000000000003 /* MedicalDocumentImportModule.swift */,
 				B37000000000000000000004 /* MedicalDocumentImportModule.m */,
@@ -1278,7 +1278,7 @@
 				A11600000000000000000001 /* BackupMigrationModule.swift in Sources */,
 				A11600000000000000000002 /* BackupMigrationModule.m in Sources */,
 				A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */,
-				A37000000000000000000002 /* MedicalDocumentPhotoPicker.swift in Sources */,
+				A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */,
 				A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */,
 				A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */,
 				A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */,

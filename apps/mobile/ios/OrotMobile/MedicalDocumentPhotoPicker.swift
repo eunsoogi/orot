@@ -8,7 +8,9 @@ import Vision
 final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate {
     private let fileStore = MedicalDocumentFileStore()
     private var completion: ((Result<[String: Any]?, Error>) -> Void)?
-    var isActive: Bool { completion != nil }
+    var isActive: Bool {
+        completion != nil
+    }
 
     func present(from presenter: UIViewController, completion: @escaping (Result<[String: Any]?, Error>) -> Void) {
         self.completion = completion
@@ -35,10 +37,12 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
         result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] url, error in
             do {
                 guard let self else { return }
-                if let error { throw error }
+                if let error {
+                    throw error
+                }
                 guard let url else { throw CocoaError(.fileReadUnknown) }
                 let data = try Data(contentsOf: url)
-                let document = try self.extractAndStore(data)
+                let document = try extractAndStore(data)
                 DispatchQueue.main.async { self.finish(.success(document)) }
             } catch {
                 DispatchQueue.main.async { self?.finish(.failure(error)) }

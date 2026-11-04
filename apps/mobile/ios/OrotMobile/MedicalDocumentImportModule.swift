@@ -64,7 +64,8 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
     ) {
         DispatchQueue.main.async {
             guard self.pendingPromise == nil, !self.photoPicker.isActive,
-                  let presenter = Self.activePresenter() else {
+                  let presenter = Self.activePresenter()
+            else {
                 reject("IMPORT_FAILED", "The photo picker is unavailable.", nil)
                 return
             }
