@@ -55,7 +55,7 @@ final class ManualHistoryDateSheetAnchorManager: RCTViewManager {
 }
 
 /// The system owns calendar drawing, drag dismissal, adaptation and background dimming.
-final class ManualHistoryDateSheetController: UIViewController, UIAdaptivePresentationControllerDelegate {
+final class ManualHistoryDateSheetController: UIViewController, UISheetPresentationControllerDelegate {
     private let picker = UIDatePicker()
     private let initial: Date
     private let hasOriginal: Bool
