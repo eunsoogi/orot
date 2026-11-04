@@ -92,13 +92,11 @@ async function renderRecords(
           recordings={[]}
           recordingState="ready"
           onRetryRecordings={jest.fn()}
-          onOpenSymptoms={jest.fn()}
           onOpenSavedRecordings={jest.fn()}
           onOpenRecording={jest.fn()}
           onOpenHealthLibrary={jest.fn()}
           onOpenManualHistory={jest.fn()}
           documentImportService={documentImportService}
-          loadSymptoms={async () => ({ list: async () => [] })}
         />
       )}
     </NavigationRouteAdapter>,

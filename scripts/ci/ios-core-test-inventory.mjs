@@ -24,9 +24,6 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
-  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testAttachmentPairsObjectsInsteadOfRepeatedNativeIDs',
-  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testMissingAndDetachedTargetsRemainExplicit',
-  'OrotIntegrationTests/SymptomAccessorySnapshotTests/testSnapshotPreservesFocusAndOmitsTextAndHierarchy',
   'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
   ...statePersistenceTests,
   ...encounterReviewPersistenceTests,
@@ -79,5 +76,5 @@ export const coreTests = [
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
   'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
-  'OrotUITests/FormScrollGeometryJournalRegression/testFreshJournalGestureBoundaries',
+  'OrotUITests/FormScrollGeometryUITests/testFormGestureBoundaries',
 ];

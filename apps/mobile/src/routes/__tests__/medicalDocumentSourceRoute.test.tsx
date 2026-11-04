@@ -50,13 +50,11 @@ test('opens saved medical document text and provenance in measured detail panels
       recordings={[]}
       recordingState="ready"
       onRetryRecordings={jest.fn()}
-      onOpenSymptoms={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
       onOpenRecording={jest.fn()}
       onOpenHealthLibrary={jest.fn()}
       onOpenManualHistory={jest.fn()}
       documentImportService={service}
-      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
 

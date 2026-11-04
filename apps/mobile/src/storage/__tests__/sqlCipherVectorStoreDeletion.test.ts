@@ -1,4 +1,7 @@
 import type { SqlDatabase } from '@orot/storage';
+import { createRecordRepository } from '@orot/storage';
+import { chunkStructuredRecord } from '@orot/rag';
+import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { SqlCipherRagEmbeddingStorage } from '../ragEmbeddingStorage';
 import {
   chunk,
@@ -18,6 +21,47 @@ describe('VectorStore source deletion and tombstones', () => {
     close = opened.close;
   });
   afterEach(() => close());
+
+  it('indexes a transcript whose source has the same ID as a deleted symptom', async () => {
+    await database.execute(
+      'INSERT INTO legacy_symptom_deleted (id) VALUES (?)',
+      ['source-a'],
+    );
+    const original = chunk();
+    const { vectors } = store(database);
+    await expect(vectors.addDocuments([document(original)])).resolves.toEqual([
+      original.id,
+    ]);
+    expect(
+      await vectors.similaritySearchVectorWithScore([1, 0], 1, {
+        candidates: [original],
+      }),
+    ).toHaveLength(1);
+  });
+
+  it('indexes a HealthKit sample whose external ID matches a deleted symptom', async () => {
+    const observation = {
+      ...healthObservation('observation', 'heart_rate', '2026-10-01T12:00:00Z'),
+      provenance: {
+        origin: 'imported' as const,
+        sourceRecordIds: ['sample'],
+        source: { system: 'healthkit', sourceIdentifier: 'synthetic' },
+      },
+    };
+    await createRecordRepository(database).put(
+      'health_observation',
+      observation,
+    );
+    await database.execute(
+      'INSERT INTO legacy_symptom_deleted (id) VALUES (?)',
+      ['sample'],
+    );
+    const evidence = chunkStructuredRecord('health_observation', observation);
+    const { vectors } = store(database);
+    await expect(vectors.addDocuments([document(evidence)])).resolves.toEqual([
+      evidence.id,
+    ]);
+  });
 
   it('fences a deleted chunk across models and rejects delayed writes after recreation', async () => {
     const original = chunk();

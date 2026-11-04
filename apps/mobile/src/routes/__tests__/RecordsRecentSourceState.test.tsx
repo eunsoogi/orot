@@ -27,13 +27,11 @@ function routeProps(
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
-    onOpenSymptoms: jest.fn(),
     onOpenSavedRecordings: jest.fn(),
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
     documentImportService: service,
-    loadSymptoms: async () => ({ list: async () => [] }),
     ...overrides,
   };
 }
@@ -51,15 +49,11 @@ test('shows and retries a failed imported-document list read', async () => {
     discardDocument: jest.fn().mockResolvedValue(undefined),
   };
   const onRetryRecordings = jest.fn();
-  const loadSymptoms = jest.fn().mockResolvedValue({
-    list: jest.fn().mockResolvedValue([]),
-  });
   await render(
     <RecordsRoute
       {...routeProps({
         documentImportService: service,
         onRetryRecordings,
-        loadSymptoms,
       })}
     />,
   );
@@ -73,22 +67,4 @@ test('shows and retries a failed imported-document list read', async () => {
   });
   expect(listDocuments).toHaveBeenCalledTimes(2);
   expect(onRetryRecordings).toHaveBeenCalledTimes(1);
-  expect(loadSymptoms).toHaveBeenCalledTimes(2);
-});
-
-test('shows and retries a failed local symptom read', async () => {
-  const loadSymptoms = jest
-    .fn()
-    .mockRejectedValueOnce(new Error('Local symptom read failed.'))
-    .mockResolvedValue({ list: jest.fn().mockResolvedValue([]) });
-  await render(<RecordsRoute {...routeProps({ loadSymptoms })} />);
-
-  expect(
-    await screen.findByTestId('records-recent-sources-error'),
-  ).toHaveTextContent('증상 기록을 불러오지 못했어요.');
-  await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
-  await waitFor(() => {
-    expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();
-  });
-  expect(loadSymptoms).toHaveBeenCalledTimes(2);
 });

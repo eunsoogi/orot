@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { HomeMetrics } from './HomeMetrics';
 import { useHomeMetrics } from './useHomeMetrics';
@@ -16,11 +16,7 @@ test('presents choices as full-row checkboxes with selected and unselected statu
     retry: jest.fn(),
     save: jest.fn(),
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
 
   const selected = screen.getByRole('checkbox', { name: /기록된 수면/ });
@@ -74,11 +70,7 @@ test('explains the two-to-four selection limit and disables save below two choic
     retry: jest.fn(),
     save: jest.fn(),
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
 
   expect(screen.getByText('지표를 2개에서 4개 선택하세요.')).toBeTruthy();

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
@@ -102,8 +102,8 @@ function MetricCard({ metric }: { readonly metric: HomeMetricProjection }) {
   );
 }
 
-/** Shows calendar-day aggregates and keeps metric edits in a draft until save succeeds. */
-export function HomeMetrics({ children }: { readonly children: ReactNode }) {
+/** Displays calendar-day aggregates and retains metric edits until save succeeds. */
+export function HomeMetrics() {
   const data = useHomeMetrics();
   const [draft, setDraft] = useState<readonly HomeMetric[] | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -192,7 +192,6 @@ export function HomeMetrics({ children }: { readonly children: ReactNode }) {
           title={title}
         />
       )}
-      {children}
       <Text
         accessibilityRole="header"
         style={styles.title}

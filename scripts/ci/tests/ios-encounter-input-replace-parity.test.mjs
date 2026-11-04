@@ -79,18 +79,16 @@ func run(_ observe: Bool, deletes: Bool, scrollID: String) -> ([String], Bool, S
   return (input.actions, result, input.value as? String ?? "")
 }
 for deletes in [true, false] {
-  for scroll in ["navigation-route-scroll", "symptoms-scroll"] {
+  for scroll in ["navigation-route-scroll"] {
     let absent = run(false, deletes: deletes, scrollID: scroll)
     let observed = run(true, deletes: deletes, scrollID: scroll)
     precondition(absent.0 == observed.0 && absent.1 == observed.1 && absent.2 == observed.2)
     if deletes {
       precondition(absent.0 == ["reveal", "tap", "focus", "select", "delete", "assert-empty", "type", "type", "assert-value"])
       precondition(absent.1 && absent.2 == "ab")
-    } else if scroll == "navigation-route-scroll" {
+    } else {
       precondition(absent.0.suffix(3) == ["type", "type", "assert-value"])
       precondition(!absent.1 && absent.2 == "priorab")
-    } else {
-      precondition(absent.0.last == "assert-empty" && !absent.1 && absent.2 == "prior")
     }
   }
 }
