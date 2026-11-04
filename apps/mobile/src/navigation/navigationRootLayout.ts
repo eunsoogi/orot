@@ -120,8 +120,28 @@ export function resolveNavigationRootLayout(
   const {
     width,
     laneWidth,
-    edgeInset: railRightInset,
+    edgeInset: centeredInset,
   } = navigationSideLane(geometry, side);
+  // The two measured Duo states share this edge reservation; other indicator shapes remain unmeasured.
+  const measuredEdgeReservation = geometry.reservedRegions.some(
+    region =>
+      region.kind === 'occlusion' &&
+      region.isActive &&
+      region.frame.x === windowRight - laneWidth &&
+      region.frame.y === window.y &&
+      region.frame.width === laneWidth &&
+      (region.frame.height === 124 || region.frame.height === 174),
+  );
+  const measuredLane =
+    side === 'right' &&
+    viewport.x === window.x &&
+    viewport.y === window.y &&
+    viewport.width === window.width &&
+    viewport.height === window.height &&
+    width === 48 &&
+    laneWidth === 84 &&
+    measuredEdgeReservation;
+  const railRightInset = centeredInset + (measuredLane ? 35 / 6 : 0);
   const railLeft =
     side === 'right'
       ? windowRight - laneWidth + railRightInset
