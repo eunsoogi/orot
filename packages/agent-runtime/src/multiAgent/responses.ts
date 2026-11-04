@@ -1,4 +1,4 @@
-import { hasBlockingCoverage } from './coveragePolicy';
+import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
 import type {
   TaskClarificationValue,
@@ -7,14 +7,8 @@ import type {
   TaskResultValidation,
 } from './contracts';
 import { referencesFromBatch } from './evidence';
-import {
-  canonicalJson,
-  citationReferences,
-  parseJsonOutput,
-  parseResearchPlan,
-  utf8ByteLength,
-} from './protocol';
-import type { ResearchPlan } from './protocol';
+import { citationReferences } from './protocol';
+import { outputExceedsLimit } from './researchResponse';
 import { completeState, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
@@ -105,14 +99,14 @@ export async function consumeResponderResponse<TResult>(
     );
     return completeState();
   }
-  if (
+  const partial =
     !independent &&
     hasBlockingCoverage(
       input.evidence,
       context.options.task.allowBoundedExternalEvidence,
       context.options.task.allowRankedLocalEvidence,
-    )
-  ) {
+    );
+  if (partial && !canContinueWithPartialEvidence(context.options.task, input.evidence)) {
     let taskClarificationMessage: string | undefined;
     try {
       const validation = context.options.task.validateResult(decoded.value as JsonValue, input);
@@ -190,36 +184,22 @@ export async function consumeResponderResponse<TResult>(
     };
     return completeState();
   }
-  context.outcome = { status: 'result', value: validation.value, citations };
+  if (partial) {
+    if (!citations.length) {
+      stop(context, 'A partial result requires cited evidence.', 'invalid_output');
+      return completeState();
+    }
+  }
+  context.outcome = {
+    status: 'result',
+    value: validation.value,
+    citations,
+    ...(partial ? { partialEvidence: true } : {}),
+  };
   return {
     ...completeState(),
     evidenceReferences: referencesFromBatch(input.evidence),
   };
-}
-
-export async function decodeResearchPlan(
-  response: LanguageModelResponse,
-  maxPayloadBytes: number,
-): Promise<ResearchPlan | undefined> {
-  if (response.finishReason !== 'complete' || response.toolCalls.length > 0) return undefined;
-  if (await outputExceedsLimit(response, maxPayloadBytes)) return undefined;
-  try {
-    return parseResearchPlan(await parseJsonOutput(response));
-  } catch {
-    return undefined;
-  }
-}
-
-async function outputExceedsLimit(
-  response: LanguageModelResponse,
-  maxPayloadBytes: number,
-): Promise<boolean> {
-  if (utf8ByteLength(response.text) > maxPayloadBytes) return true;
-  try {
-    return utf8ByteLength(canonicalJson(await parseJsonOutput(response))) > maxPayloadBytes;
-  } catch {
-    return false;
-  }
 }
 
 export function requireTaskContract<TResult>(contract: TaskResponderContract<TResult>): boolean {

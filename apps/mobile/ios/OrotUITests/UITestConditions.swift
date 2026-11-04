@@ -55,6 +55,53 @@ enum UITestConditions {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
+    /// React Native exposes a checkbox's VoiceOver state through its localized accessibility value.
+    static func checkboxIsChecked(_ element: XCUIElement) -> Bool {
+        let value = (element.value as? String)?.lowercased() ?? ""
+        XCTAssertTrue(
+            value.contains("checked") || value.contains("unchecked"),
+            "Checkbox value must expose its checked state: \(element.debugDescription)",
+        )
+        return value.contains("checked") && !value.contains("unchecked")
+    }
+
+    /// Verify that an accessibility activation changes checkbox state while retaining a native hit target.
+    static func toggleCheckboxAndAssertState(
+        _ element: XCUIElement,
+        minimumHitHeight: CGFloat = 44,
+    ) {
+        let initialState = checkboxIsChecked(element)
+        XCTAssertTrue(
+            element.exists && element.isHittable && element.frame.height >= minimumHitHeight,
+            element.debugDescription,
+        )
+        element.tap()
+        XCTAssertTrue(
+            element.exists && element.isHittable && element.frame.height >= minimumHitHeight,
+            element.debugDescription,
+        )
+        XCTAssertNotEqual(checkboxIsChecked(element), initialState, element.debugDescription)
+    }
+
+    /// Resolve and reveal an identifier-matched checkbox before reading its native accessibility state.
+    static func toggleCheckboxAndAssertState(
+        _ app: XCUIApplication,
+        identifier: String,
+        in container: XCUIElement,
+        minimumHitHeight: CGFloat = 44,
+    ) {
+        let checkbox = element(app, identifier)
+        scrollTo(checkbox, in: container)
+        toggleCheckboxAndAssertState(checkbox, minimumHitHeight: minimumHitHeight)
+    }
+
+    /// Reveal an identifier-matched target in its owning viewport before activating its native hit target.
+    static func scrollToAndTap(_ element: XCUIElement, in container: XCUIElement) {
+        scrollTo(element, in: container)
+        XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
+        element.tap()
+    }
+
     static func text(_ element: XCUIElement) -> String {
         // One snapshot keeps the empty-value label fallback within a single Accessibility observation.
         guard let snapshot = try? element.snapshot() else {

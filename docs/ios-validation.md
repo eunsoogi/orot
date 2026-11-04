@@ -152,6 +152,12 @@ The table preserves all 55 declarations and their original requirement descripti
 | N054 | [unified-import-probe.detox.e2e.js:47](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/unified-import-probe.detox.e2e.js#L47): covers consent ordering and the cancellable synthetic retry path | UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation + testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry | Hosted baseline passed (debug); final candidate pending. Synthetic records or UI do not establish personal device-data access. |
 | N055 | [visit-questions.e2e.js:10](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/visit-questions.e2e.js#L10): stops after declined remote consent and presents cited questions for review | VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable | Hosted baseline passed (release); final candidate pending. |
 
+## Supplemental Orot 0.6.0 requirement coverage
+
+| Requirement boundary | Receiving test layer | Current source of truth |
+| --- | --- | --- |
+| [#616 appointment detail actions](https://github.com/eunsoogi/orot/issues/616) keep reminder and edit controls secondary, separate destructive cancellation, preserve the confirmation step, and retain reachable hit targets at large text sizes | Appointment component regressions, question-present/absent Home preparation tests, `AppointmentsUITests/testLargeTextKeepsAppointmentDetailsInOneReadableColumn`, `AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts`, and `AppointmentReminderJourneyUITests/testLocalReplacementCancellationAndActualRunningAndColdNotificationTaps` | `apps/mobile/src/appointments/__tests__/AppointmentsScreenNextVisit.test.tsx`, `apps/mobile/src/appointments/__tests__/AppointmentsScreenSelectionMutations.test.tsx`, `apps/mobile/src/routes/__tests__/useHomePreparationData.test.tsx`, `apps/mobile/src/routes/__tests__/WelcomeRouteOverview.test.tsx`, `apps/mobile/ios/OrotUITests/AppointmentsUITests.swift`, `apps/mobile/ios/OrotUITests/AppointmentNextVisitUITests.swift`, and `apps/mobile/ios/OrotUITests/AppointmentReminderJourneyUITests.swift` |
+
 The first general-state native candidate rejected its invalid storage fixture prefix. After that was corrected, the next candidate passed seed but failed restart because storage and memory fixtures derived identical content hashes from a shared UUID, causing source deduplication. Distinct domain UUIDs and a pre-install collision regression preserve the real deduplication rule. The changed candidate passed all three processes in 0.235s, 0.194s and 0.096s; the complete group, including fresh installation and final scoped cleanup, took 14.811s. Both failures and their unexecuted later phases remain recorded.
 
 ## Requirement classification, reset and cost
@@ -219,6 +225,14 @@ The cost column is historical run 38706863863, not a forecast: **C / L / A / I /
 | N053 | S + I | Actual import route, provider selection and light/dark rendering before data request; native disabled state preserves selection. | 55.62 / 9.28 / 5.69 / 2.91 / 43.77; 1 launches, 2 drags | API-only theme mismatch, Home transition and Settings-icon candidates rejected. |
 | N054 | F | Actual consent ordering, cancellation with zero queries/writes, same-selection retry and explicit Calendar confirmation using synthetic records. | 175.55 / 28.92 / 8.32 / 6.93 / 140.91; 2 launches, 5 drags | No failure in the recorded baseline. |
 | N055 | S | Declined remote consent causes no sends; actual review shows cited synthetic questions. | 28.81 / 9.31 / 5.55 / 1.38 / 18.59; 1 launches, 2 drags | No failure in the recorded baseline. |
+
+### Home metric selector acceptance mapping
+
+| Requirement | Receiving test | Evidence boundary |
+| --- | --- | --- |
+| Keep the selection between two and four metrics, retain it after SQLite reopen, and reject duplicate or undersized input. | [HomeMetrics.test.tsx](../apps/mobile/src/routes/home/HomeMetrics.test.tsx), [metricSelection.test.ts](../apps/mobile/src/routes/home/metricSelection.test.ts) | Rendered component behavior and real SQLite repository persistence. |
+| Present each choice as a labeled checkbox with checked state, visible status, a comfortable full-row target, and paired actions that wrap when narrow. | [HomeMetricSelectionEditor.test.tsx](../apps/mobile/src/routes/home/HomeMetricSelectionEditor.test.tsx) | React Native component contract; it does not prove UIKit geometry. |
+| Keep native checkbox targets reachable and at least 44 points high as Home reflows at larger text sizes. | [HomeDuoUITests.swift](../apps/mobile/ios/OrotUITests/HomeDuoUITests.swift) | Resolve each accessibility identifier, reveal the row in Home's scroll view, then check its accessibility value and measured target frame. The assertions remain in the existing Core/fixtures and Duo case; a current-candidate Simulator run remains pending allocation. |
 
 ### Setup, wrapper and current local observations
 

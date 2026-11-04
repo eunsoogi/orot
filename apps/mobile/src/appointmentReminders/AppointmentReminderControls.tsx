@@ -3,12 +3,14 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
+import { t } from '../i18n';
+import { appColors } from '../layout/appColors';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import type { AppointmentReminderRuntime } from './AppointmentReminderContext';
 import { appointmentStartTime } from '../calendar/appointmentTime';
 import { beginReminderAction } from './reminderActionObservation';
 
-/** Side-by-side panels need room for both the preview text and action stack. */
+/** Side-by-side panels need room for the reminder copy and its choice row. */
 const REMINDER_TWO_PANEL_MIN_WIDTH = 480;
 
 /** Permission is requested only by an explicit card action; default is off. */
@@ -75,17 +77,29 @@ function Controls({
       testID="appointment-reminder-controls"
     >
       <View style={[styles.preview, horizontal && styles.horizontalPanel]}>
+        <AppText
+          accessibilityRole="header"
+          style={styles.title}
+          testID="appointment-reminder-title"
+        >
+          {t('appointments.reminder.title')}
+        </AppText>
         <AppText>진료 준비 알림 · 한 예약에만 설정할 수 있어요.</AppText>
         <AppText>잠금 화면에는 예약 내용 없이 준비 안내만 표시해요.</AppText>
       </View>
-      <View style={[styles.actions, horizontal && styles.horizontalPanel]}>
+      <View
+        style={[styles.actions, horizontal && styles.horizontalPanel]}
+        testID="appointment-reminder-actions"
+      >
         {([60, 1440] as const).map(minutes => (
           <AppButton
             key={minutes}
             disabled={state.busy}
+            size="compact"
             title={minutes === 60 ? '1시간 전 알림' : '하루 전 알림'}
             testID={`appointment-reminder-${appointment.id}-${minutes}`}
             onPress={() => select(minutes)}
+            variant="secondary"
           />
         ))}
         {selected ? (
@@ -98,8 +112,10 @@ function Controls({
             <AppButton
               title="알림 끄기"
               disabled={state.busy}
+              size="compact"
               onPress={() => select(null)}
               testID={`appointment-reminder-off-${appointment.id}`}
+              variant="secondary"
             />
           </>
         ) : null}
@@ -119,6 +135,14 @@ const styles = StyleSheet.create({
   container: { flexDirection: 'column', gap: 12, minWidth: 0 },
   horizontal: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   preview: { gap: 8, minWidth: 0 },
-  actions: { gap: 12, minWidth: 0 },
+  title: { color: appColors.text, fontSize: 16, fontWeight: '700' },
+  // Wrap compact choices instead of shrinking their minimum native hit areas.
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
   horizontalPanel: { flex: 1 },
 });

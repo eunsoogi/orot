@@ -108,7 +108,7 @@ test('retains draft and disabled primary action across continuous Open geometry 
   ).toEqual(expect.objectContaining({ width: 66, height: 669, right: 0 }));
   expect(
     screen.getByTestId('navigation-right-rail-insets').props.children,
-  ).toBe('18,204');
+  ).toBe('18,136');
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');
