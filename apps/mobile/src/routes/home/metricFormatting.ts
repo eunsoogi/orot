@@ -57,7 +57,10 @@ export function formatHomeMetricValue(
   value: number,
   unit: string,
 ): string {
-  const unitKey = localizedUnitKeys[metric]?.[unit];
+  const unitKeys = localizedUnitKeys[metric];
+  // Inherited names such as "constructor" do not establish a metric unit meaning.
+  const unitKey =
+    unitKeys && Object.hasOwn(unitKeys, unit) ? unitKeys[unit] : undefined;
   if (!unitKey)
     return `${formatNumber(value, { maximumFractionDigits: 1 })} ${unit}`;
 
