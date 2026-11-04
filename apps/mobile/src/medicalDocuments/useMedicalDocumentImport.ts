@@ -84,12 +84,12 @@ export function useMedicalDocumentImport(
     inputRevision: stagedDocument === null ? 0 : 1,
   });
 
-  async function selectMedicalDocument() {
+  async function selectMedicalDocument(source: 'files' | 'photos' = 'files') {
     if (activity !== null || stagedDocument !== null) return;
     setMessage(null);
     setActivity('selecting');
     try {
-      const selected = await service.selectDocument();
+      const selected = await service.selectDocument(source);
       if (selected) setStagedDocument(selected);
     } catch (error) {
       setMessage(errorMessage(error));
