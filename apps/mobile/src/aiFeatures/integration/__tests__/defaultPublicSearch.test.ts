@@ -23,6 +23,32 @@ test('runs one public search using only controlled topics selected from the requ
   expect(query).not.toContain('170/100');
 });
 
+test.each([
+  ['산소포화도 92%의 의미', 'oxygen saturation'],
+  ['최근 체중 변화', 'body weight'],
+  ['혈당 추세', 'blood glucose'],
+  ['호흡수와 체온', 'respiratory rate'],
+  ['예약 시간을 잠시 확인해 주세요', 'general health'],
+])(
+  'selects a relevant public topic without copying personal text: %s',
+  async (request, expected) => {
+    const run = publicEvidenceFixture();
+    await runDefaultPublicSearch({
+      tool: createPublicWebEvidence(run)!.tool,
+      operationRunId: 'topic-test',
+      request,
+      signal: run.controller.signal,
+    });
+    const query = run.search.mock.calls[0]![0].query;
+    expect(query).toContain(expected);
+    expect(query).not.toContain('92%');
+    if (expected === 'general health') {
+      expect(query).not.toContain('sleep');
+      expect(query).not.toContain('medication');
+    }
+  },
+);
+
 test('keeps denied consent, unavailability, empty and cancellation distinct', async () => {
   const run = publicEvidenceFixture();
   const tool = createPublicWebEvidence(run)!.tool;
