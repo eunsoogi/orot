@@ -17,6 +17,10 @@ export interface NextVisitEvidenceReference {
 export interface NextVisitQuestion<
   TReference extends NextVisitEvidenceReference = NextVisitEvidenceReference,
 > {
+  /** Legacy questions omit kind and retain their source-backed semantics. */
+  readonly kind?: 'confirmed_fact' | 'clarification';
+  /** Binds a source-free legacy review to its unchanged saved record. */
+  readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;
   readonly rationale: string;
   readonly priority: 'routine' | 'important';

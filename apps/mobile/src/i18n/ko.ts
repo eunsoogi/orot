@@ -15,7 +15,6 @@ import { appointmentActionsKo } from './appointmentActionsKo';
 
 export const ko = {
   ...homeOverviewKo,
-  'healthReview.inferenceDisclosure': '최근 건강 변화 검토를 위해',
   ...probeKo,
   ...manualHistoryKo,
   ...backupKo,

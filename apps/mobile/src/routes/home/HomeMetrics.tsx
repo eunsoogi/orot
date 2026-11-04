@@ -10,6 +10,7 @@ import type { HomeMetricProjection } from './metricProjection';
 import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
+import { HomeRecentHealthChange } from './HomeRecentHealthChange';
 
 const title = (metric: HomeMetric) =>
   ({
@@ -202,18 +203,12 @@ export function HomeMetrics() {
       {data.state === 'ready' &&
         (comparisons.length ? (
           comparisons.map(metric => (
-            <Text key={metric.metric} style={styles.card}>
-              {title(metric.metric)} · {t('home.recordedDayMean')} ·{' '}
-              {metric.comparison!.previousDates[0]}–
-              {metric.comparison!.previousDates.at(-1)}:{' '}
-              {value(metric.comparison!.previous, metric.unit)} (
-              {metric.comparison!.previousCoverage}/7) →{' '}
-              {metric.comparison!.recentDates[0]}–
-              {metric.comparison!.recentDates.at(-1)}:{' '}
-              {value(metric.comparison!.recent, metric.unit)} (
-              {metric.comparison!.recentCoverage}/7) · {metric.source} ·{' '}
-              {metric.timeZone}
-            </Text>
+            <HomeRecentHealthChange
+              key={metric.metric}
+              metric={metric}
+              title={title(metric.metric)}
+              formatValue={value}
+            />
           ))
         ) : (
           <Text>{t('home.noChanges')}</Text>

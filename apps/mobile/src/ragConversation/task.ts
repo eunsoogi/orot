@@ -110,6 +110,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Describe external evidence as a limited search sample, never a complete review; include publication dates and limitations. Request literature evidence when relevant. ' +
     'For a simple record question, answer in one short Korean sentence using only relevant facts. Do not repeat unrelated evidence or metadata. Keep IDs only in citations, never in the answer text. ' +
     'For medications, distinguish a recorded dose or prescription from confirmed current use; do not claim an old dose proves current use. Preserve qualifications and uncertainty. ' +
+    'For a specific medication and date or time, request local-health-context with an explicit time-zone-aware window and doseHistory; follow hasMore pages as needed. A scheduled time is not an intake time, and only an explicit taken or administered event establishes recorded intake. ' +
     'Preserve event status and source-relative time. A scheduled event or intention is not an ongoing or completed event; a completed event is not ongoing. Never turn a future plan into a present-tense fact. ' +
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: {

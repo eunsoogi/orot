@@ -37,7 +37,9 @@ test('projects only visit questions supported by available evidence and safe to 
   const responder = createVisitQuestionTaskResponder();
   const project = (questionText: string) =>
     responder.projectStreamedText(
-      JSON.stringify({ value: { questions: [{ questionText }] } }),
+      JSON.stringify({
+        value: { questions: [{ kind: 'confirmed_fact', questionText }] },
+      }),
       input,
     );
 
@@ -48,6 +50,27 @@ test('projects only visit questions supported by available evidence and safe to 
     undefined,
   );
   expect(project('약을 중단하세요?')).toBeUndefined();
+  expect(
+    responder.projectStreamedText(
+      JSON.stringify({
+        value: {
+          questions: [
+            {
+              questionText: '제가 복용 중인 약은 무엇인가요?',
+              kind: 'clarification',
+            },
+          ],
+        },
+      }),
+      input,
+    ),
+  ).toBeUndefined();
+  expect(
+    responder.projectStreamedText(
+      '{"value":{"questions":[{"kind":"confirmed_fact","questionText":"제가 복용 중인 약은 무엇인가요?","kind":"clarification"}]}}',
+      input,
+    ),
+  ).toBeUndefined();
 });
 
 test('streams only the first question field and keeps evidence activity content-free', async () => {

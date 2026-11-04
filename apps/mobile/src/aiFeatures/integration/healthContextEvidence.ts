@@ -25,7 +25,9 @@ export function healthContextContent(
   const facts =
     scope.topic === 'measurements' || scope.topic === 'activity'
       ? { quantities: projected.quantities }
-      : { [scope.topic]: projected[scope.topic] };
+      : scope.topic === 'medications' && projected.doseHistory
+        ? {}
+        : { [scope.topic]: projected[scope.topic] };
   return (
     'health_context: ' +
     JSON.stringify({
@@ -34,6 +36,9 @@ export function healthContextContent(
       calendarDays,
       partialDates,
       ...facts,
+      ...(scope.topic === 'medications' && projected.doseHistory
+        ? { doseHistory: projected.doseHistory }
+        : {}),
       // App-authored meanings accompany the tool result; no extra samples or availability claims are inferred.
       statisticSemantics:
         scope.topic === 'measurements' || scope.topic === 'activity'
@@ -51,6 +56,8 @@ export function healthContextContent(
             ? {
                 scheduleStatus:
                   'registered and not_registered are known Health schedule states; not_available means this source supplies no schedule flag. No registered schedule does not negate recorded medication use or prove no prescription.',
+                doseHistory:
+                  'effectiveAt is the source event time, not necessarily intake: only taken or administered events or observed status taken establish recorded intake. scheduledAt is a scheduled time, not intake. Missing events are unknown. Pages are ordered by event time then internal identity; data changes between pages can shift results.',
                 useEvidence:
                   'Acknowledge user_confirmed_current_use or recorded_doses_in_period as known evidence. The latter confirms observed doses only in this period, not future adherence. catalog_only and prescription_only describe this source, not the absence of use elsewhere. Missing dates remain unknown, not missed doses.',
               }

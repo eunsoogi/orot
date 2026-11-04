@@ -32,6 +32,34 @@ export const homeMetricStyles = StyleSheet.create({
     padding: 14,
     gap: 6,
   },
+  // Stack periods at full width so larger system text can wrap without shrinking either sample.
+  recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
+  comparisonTitle: {
+    color: appColors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  comparisonStatistic: { color: appColors.secondary, flexShrink: 1 },
+  comparisonPeriod: {
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+    gap: 2,
+  },
+  comparisonPeriodLabel: {
+    color: appColors.text,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  comparisonDateRange: { color: appColors.secondary, flexShrink: 1 },
+  comparisonValue: {
+    color: appColors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  comparisonCoverage: { color: appColors.secondary, flexShrink: 1 },
+  comparisonMetadata: { color: appColors.secondary, flexShrink: 1 },
   selectionPanel: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,

@@ -59,7 +59,14 @@ export function assertReviewedVisitQuestions(
       !/[\uac00-\ud7a3]/u.test(rationale) ||
       !text.endsWith('?') ||
       (question.priority !== 'routine' && question.priority !== 'important') ||
-      question.citations.length < 1 ||
+      (question.kind === 'clarification'
+        ? question.citations.length !== 0
+        : question.citations.length < 1 && !question.legacySource) ||
+      (question.legacySource !== undefined &&
+        (question.kind === 'clarification' ||
+          question.citations.length !== 0 ||
+          !question.legacySource.id ||
+          !question.legacySource.revision)) ||
       question.citations.length > 3
     ) {
       throw new Error(

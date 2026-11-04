@@ -121,6 +121,8 @@ export async function saveVisitQuestionRoute(
       citations.push(current);
     }
     reviewed.push({
+      ...(question.kind ? { kind: question.kind } : {}),
+      ...(question.legacySource ? { legacySource: question.legacySource } : {}),
       questionText: question.questionText,
       rationale: question.rationale,
       priority: question.priority,
@@ -130,7 +132,17 @@ export async function saveVisitQuestionRoute(
 
   const saved = await context.saveReviewedQuestions(reviewed);
   return {
-    questions: reviewed,
+    questions: reviewed.map((question, index) =>
+      question.legacySource
+        ? {
+            ...question,
+            legacySource: {
+              id: saved.questions[index]!.id,
+              revision: localEvidenceFingerprint(saved.questions[index]),
+            },
+          }
+        : question,
+    ),
     caveats: input.caveats,
     memoryStatus: saved.memoryStatus,
     validateSource: async (reference, signal) =>

@@ -64,7 +64,7 @@ public extension HealthKitModule {
                             rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         guard let request = HealthKitBoundary.decodeSampleChangesQuery(raw) else {
-            reject("INVALID_REQUEST", "HealthKit sample changes query is invalid.", nil)
+            reject("INVALID_REQUEST", "Health record request is invalid.", nil)
             return
         }
         guard HealthKitBoundary.isSupported(request.feature) else {
@@ -82,7 +82,7 @@ public extension HealthKitModule {
             return
         }
         guard let sampleType = HealthKitBoundary.sampleType(feature: request.feature, kind: request.sampleKind) else {
-            reject("UNSUPPORTED_SAMPLE_KIND", "HealthKit sample kind is unsupported.", nil)
+            reject("UNSUPPORTED_SAMPLE_KIND", "Selected health record type is not supported.", nil)
             return
         }
         withMedicationDoseScope(feature: request.feature, predicate: nil,
@@ -90,8 +90,9 @@ public extension HealthKitModule {
                                 retainedConcepts: request.medicationConceptIdentifiers)
         { scoped in
             guard case let .success(scope) = scoped else {
-                if case let .failure(error) = scoped {
-                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                if case .failure = scoped {
+                    // Only stable bridge codes cross this boundary; native errors can contain private details.
+                    reject("HEALTHKIT_QUERY_FAILED", "Health record query failed.", nil)
                 }
                 return
             }
@@ -100,7 +101,7 @@ public extension HealthKitModule {
                 anchor = try HealthKitBoundary.decodeAnchor(scope.cursor?.anchor ??
                     (request.feature == "medications" ? nil : request.cursor))
             } catch {
-                reject("INVALID_CURSOR", "HealthKit query cursor is invalid.", error as NSError)
+                reject("INVALID_CURSOR", "Health record cursor is invalid.", nil)
                 return
             }
             let query = HKAnchoredObjectQuery(
@@ -109,12 +110,12 @@ public extension HealthKitModule {
                 anchor: anchor,
                 limit: request.limit,
             ) { _, samples, deletedObjects, newAnchor, error in
-                if let error {
-                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                if error != nil {
+                    reject("HEALTHKIT_QUERY_FAILED", "Health record query failed.", nil)
                     return
                 }
                 guard let samples, let deletedObjects else {
-                    reject("HEALTHKIT_QUERY_FAILED", "HealthKit returned no query result.", nil)
+                    reject("HEALTHKIT_QUERY_FAILED", "No health record changes were returned.", nil)
                     return
                 }
                 do {
@@ -123,7 +124,7 @@ public extension HealthKitModule {
                     let cursor = try scope.cursor.map { try $0.encoded(anchor: rawAnchor ?? $0.anchor) } ??
                         rawAnchor ?? request.cursor
                     guard rawAnchor != nil || anchor != nil || (snapshots.isEmpty && deletedObjects.isEmpty) else {
-                        reject("HEALTHKIT_SERIALIZATION_FAILED", "HealthKit returned changes without an anchor.", nil)
+                        reject("HEALTHKIT_SERIALIZATION_FAILED", "Health record changes could not be processed.", nil)
                         return
                     }
                     // A full bounded page may have more rows; an extra empty page proves the anchor is current.
@@ -136,7 +137,7 @@ public extension HealthKitModule {
                         hasMore: hasMore,
                     ))
                 } catch {
-                    reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
+                    reject("HEALTHKIT_SERIALIZATION_FAILED", "Health record data could not be processed.", nil)
                 }
             }
             self.store.execute(query)

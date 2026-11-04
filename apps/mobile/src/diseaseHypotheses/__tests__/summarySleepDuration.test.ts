@@ -1,4 +1,8 @@
 import { symptomSummaryTask } from '../symptomSummaryTask';
+import {
+  SUMMARY_FACT_REASONS,
+  summaryFactCorrection,
+} from '../summaryFactValidation';
 import { evidence, hypothesis, reference } from '../taskTestSupport';
 
 const content =
@@ -46,3 +50,16 @@ test('does not confuse an explicit start clock time with an interval duration', 
     ).status,
   ).toBe('valid');
 });
+
+test.each([
+  SUMMARY_FACT_REASONS.sleep_count,
+  SUMMARY_FACT_REASONS.prescription,
+])(
+  'uses plain health app language in model correction instructions: %s',
+  reason => {
+    const correction = summaryFactCorrection(reason);
+
+    expect(correction).toContain('health');
+    expect(correction).not.toMatch(/HealthKit|EventKit/u);
+  },
+);

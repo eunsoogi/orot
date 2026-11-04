@@ -19,9 +19,9 @@ const copy: CommonObservationsImportCopy = {
     importing: '가져오는 중이에요.',
     complete: '가져오기를 마쳤어요.',
     empty: '새로운 변경이 없어요. 읽기 권한 상태는 확인할 수 없어요.',
-    unavailable: 'HealthKit을 사용할 수 없어요.',
+    unavailable: '건강 기록을 사용할 수 없어요.',
     unsupportedFeature: '선택한 건강 기록 유형은 지원하지 않아요.',
-    unsupportedPlatform: '이 기기에서는 HealthKit을 지원하지 않아요.',
+    unsupportedPlatform: '이 기기에서는 건강 기록을 사용할 수 없어요.',
     unsupportedData: '지원할 수 없는 건강 기록이 있어 가져오기를 멈췄어요.',
     partial: '일부 기록만 가져왔어요. 다시 시도해 주세요.',
     failed: '기록을 가져오지 못했어요. 다시 시도해 주세요.',
@@ -88,9 +88,9 @@ describe('common observations import screen', () => {
   });
 
   it.each([
-    ['unavailable', 'HealthKit을 사용할 수 없어요.'],
+    ['unavailable', '건강 기록을 사용할 수 없어요.'],
     ['unsupportedFeature', '선택한 건강 기록 유형은 지원하지 않아요.'],
-    ['unsupportedPlatform', '이 기기에서는 HealthKit을 지원하지 않아요.'],
+    ['unsupportedPlatform', '이 기기에서는 건강 기록을 사용할 수 없어요.'],
     ['unsupportedData', '지원할 수 없는 건강 기록이 있어 가져오기를 멈췄어요.'],
     ['partial', '일부 기록만 가져왔어요. 다시 시도해 주세요.'],
   ] as const)(

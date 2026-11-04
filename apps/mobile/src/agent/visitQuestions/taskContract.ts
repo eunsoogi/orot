@@ -1,7 +1,8 @@
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
-import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import { reportVisitQuestionValidation } from './validationDiagnostics';
+import { asQuestionObject } from './questionShape';
+import { clarificationQuestions } from './clarificationQuestions';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -65,6 +66,8 @@ export interface VisitQuestionResponderInput {
 }
 
 export interface VisitQuestionCandidate {
+  readonly kind?: 'confirmed_fact' | 'clarification';
+  readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;
   readonly rationale: string;
   readonly priority: VisitQuestionPriority;
@@ -89,19 +92,44 @@ export function createVisitQuestionTaskResponder() {
     taskType: 'visit-question-recommendation',
     taskVersion: '1',
     allowRankedLocalEvidence: true,
+    allowIncompleteEvidenceResearch: true,
+    // Only this task opts in; its validator still binds every cited fact to the current batch.
+    acceptsIncompleteEvidence(
+      value: JsonValue,
+      input: VisitQuestionResponderInput,
+    ) {
+      return (
+        input.evidence.coverage.length > 0 &&
+        asQuestionObject(value)?.status === 'suggestions'
+      );
+    },
     systemPrompt: visitQuestionSystemPrompt,
     resultSchema: visitQuestionResultSchema,
     /** Streams only evidence-supported, clinically safe copy without exposing the evidence envelope. */
     projectStreamedText(rawOutput: string, input: VisitQuestionResponderInput) {
-      const questionText = extractPartialJsonStringAtPath(rawOutput, [
-        'value',
-        'questions',
-        0,
-        'questionText',
-      ]);
+      let decoded: unknown;
+      try {
+        // Partial strings are ambiguous: a later suffix can change the declared kind.
+        decoded = JSON.parse(rawOutput);
+      } catch {
+        return undefined;
+      }
+      const value = asQuestionObject(asQuestionObject(decoded)?.value);
+      const first = Array.isArray(value?.questions)
+        ? asQuestionObject(value.questions[0])
+        : undefined;
+      const questionText =
+        typeof first?.questionText === 'string'
+          ? first.questionText
+          : undefined;
+      const questionKind = first?.kind;
       // The final validator narrows this provisional evidence set to the candidate's exact citations.
       const isSafePreview =
         input.evidence.items.length > 0 &&
+        questionKind === 'confirmed_fact' &&
+        input.evidence.coverage.every(
+          coverage => !coverage.truncated && coverage.gaps.length === 0,
+        ) &&
         input.evidence.conflicts.length === 0 &&
         !hasUnsupportedDateOrValue(
           questionText ?? '',
@@ -131,6 +159,7 @@ export function createVisitQuestionTaskResponder() {
             `Available evidence: ${JSON.stringify(evidence)}`,
             `Record conflicts: ${JSON.stringify(input.evidence.conflicts)}`,
             `Search coverage and limits: ${JSON.stringify(input.evidence.coverage)}`,
+            `App-owned clarification questions: ${JSON.stringify(clarificationQuestions)}`,
           ].join('\n'),
         },
       ];
@@ -148,7 +177,19 @@ export function createVisitQuestionTaskResponder() {
     correctionInstructionForInvalidResult(reason: string): string | undefined {
       // All corrections share one retry and the original budget, consent and freshness checks.
       // Keep each measurement and unit from the same cited item; validation never converts units.
-      // Missing evidence, conflicts, unsafe copy and invalid citation bindings remain terminal.
+      // Unsafe copy and invalid citation bindings remain terminal; incomplete evidence may request safe wording.
+      if (reason === 'An uncited clarification must use app-owned wording.')
+        return 'Rewrite the response. For each clarification, copy a distinct questionText and rationale pair exactly from the app-owned list in the user message, with no evidenceIds. Keep confirmed facts supported by their cited records and obey all other constraints.';
+      if (
+        reason ===
+        'Partial evidence requires both supported and clarification questions.'
+      )
+        return 'Rewrite the response with both confirmed_fact questions supported by current citations and clarification questions copied exactly from the app-owned list. Do not assume missing personal information.';
+      if (
+        reason ===
+        'Conflicting or absent evidence requires clarification-only questions.'
+      )
+        return 'Rewrite the response with three distinct clarification questions copied exactly from the app-owned list. Do not assert or cite either side of a conflict; return an empty citations array.';
       if (reason === UNSUPPORTED_QUESTION_FACTS_REASON)
         return [
           'The previous questions failed exact date, value or unit validation against their cited evidence.',

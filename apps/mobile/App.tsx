@@ -5,7 +5,6 @@ import {
 import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
-import { withHealthReviewApp } from './src/healthReview/withHealthReviewApp';
 import { AppState, StyleSheet, View } from 'react-native';
 import type {
   AppointmentRepository,
@@ -237,4 +236,4 @@ function App({
 const styles = StyleSheet.create({
   appShell: { flex: 1, backgroundColor: appColors.background },
 });
-export default withHealthReviewApp(withAppointmentReminderApp(App));
+export default withAppointmentReminderApp(App);

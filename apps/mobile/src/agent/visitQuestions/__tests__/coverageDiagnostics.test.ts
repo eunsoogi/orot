@@ -1,6 +1,7 @@
 import { NativeModules } from 'react-native';
 import { createVisitQuestionTaskResponder } from '../taskContract';
 import type { VisitQuestionEvidenceBatch } from '../taskContract';
+import { clarificationQuestions } from '../clarificationQuestions';
 
 jest.mock('react-native', () => ({
   NativeModules: { OrotProviderDiagnostics: { report: jest.fn() } },
@@ -29,12 +30,20 @@ const coverage = {
 };
 const value = {
   status: 'suggestions',
-  questions: Array.from({ length: 3 }, () => ({
-    questionText: '기록의 변화를 의료진과 어떻게 확인하면 좋을까요?',
-    rationale: '기록의 의미를 진료에서 함께 살펴봐요.',
-    priority: 'routine',
-    evidenceIds: [item.evidenceId],
-  })),
+  questions: [
+    ...[0, 1].map(() => ({
+      questionText: '기록의 변화를 의료진과 어떻게 확인하면 좋을까요?',
+      rationale: '기록의 의미를 진료에서 함께 살펴봐요.',
+      priority: 'routine',
+      evidenceIds: [item.evidenceId],
+    })),
+    {
+      ...clarificationQuestions[0]!,
+      kind: 'clarification',
+      priority: 'routine',
+      evidenceIds: [],
+    },
+  ],
 };
 
 /** Observe the actual responder boundary without changing what validation accepts. */
