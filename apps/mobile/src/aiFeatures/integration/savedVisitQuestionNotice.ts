@@ -7,8 +7,9 @@ export function savedVisitQuestionNotice(input: {
   onlyClarifications: boolean;
   hasQuestionWithoutSourceSpan: boolean;
   hasPeriod: boolean;
+  hasGeneratedSources: boolean;
 }): string {
-  return input.empty
+  const notice = input.empty
     ? ''
     : input.hasChangedPeriod && input.hasUnknownGeneratedSource
       ? '건강 근거가 바뀌었고 이전 AI 결과의 일부 원본 상태도 확인할 수 없어요. 최신 자료를 확인해 질문을 다시 생성해 주세요.'
@@ -27,4 +28,8 @@ export function savedVisitQuestionNotice(input: {
                 : input.hasPeriod
                   ? '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.'
                   : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.';
+  // Direct public-web citations are not saved on questions; generated parents can retain separate research.
+  return input.empty || input.hasGeneratedSources
+    ? notice
+    : `${notice} 공개 웹검색 결과와 출처는 저장되지 않았어요.`;
 }

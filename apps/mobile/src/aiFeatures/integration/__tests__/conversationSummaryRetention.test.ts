@@ -132,7 +132,12 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     const sessions = createConversationSessions({ retention });
     sessions.setDraft(1, 'Find previous summary');
     await sessions.send(1, services.sendRagMessage);
-    expect((await storage.read('id-2'))?.answer).toBe('Historical summary');
+    expect((await storage.read('id-2'))?.answer).toContain(
+      'Historical summary',
+    );
+    expect((await storage.read('id-2'))?.answer).toContain(
+      '공개 웹검색을 사용할 수 없어',
+    );
     const reopened = await createConversationArtifactDiscovery({
       database: connection.database,
       storage,

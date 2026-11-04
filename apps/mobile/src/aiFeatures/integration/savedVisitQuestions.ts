@@ -201,6 +201,9 @@ export async function restoreSavedVisitQuestions(input: {
       onlyClarifications: ordered.every(row => row.kind === 'clarification'),
       hasQuestionWithoutSourceSpan,
       hasPeriod: ordered.some(row => Boolean(row.healthContextSources?.length)),
+      hasGeneratedSources: ordered.some(row =>
+        Boolean(row.generatedArtifactSources?.length),
+      ),
     }),
   };
 }
