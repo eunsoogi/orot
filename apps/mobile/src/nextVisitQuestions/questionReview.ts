@@ -23,7 +23,9 @@ export function isValidReview<TReference extends NextVisitEvidenceReference>(
       question =>
         question.questionText.trim().length > 1 &&
         question.rationale.trim().length > 1 &&
-        question.citations.length > 0,
+        (question.kind === 'clarification'
+          ? question.citations.length === 0
+          : question.citations.length > 0 || Boolean(question.legacySource)),
     ) && new Set(normalized).size === normalized.length
   );
 }

@@ -150,7 +150,9 @@ export async function runVisitQuestionWorkflow(input: {
         if (!item) return false;
         current.push(item);
       }
-      return input.prepared.revalidateEvidence(current);
+      return current.length
+        ? input.prepared.revalidateEvidence(current)
+        : input.prepared.revalidateEvidence(current, { allowEmpty: true });
     },
   };
 

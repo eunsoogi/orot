@@ -103,7 +103,6 @@ export async function mapVisitQuestionWorkflowResult(input: {
     result.citations.map(visitQuestionEvidenceIdentityKey),
   );
   if (
-    questionCitationKeys.size === 0 ||
     questionCitationKeys.size !== resultCitationKeys.size ||
     [...questionCitationKeys].some(key => !resultCitationKeys.has(key))
   ) {

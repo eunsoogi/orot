@@ -5,8 +5,9 @@ import {
   successfulOutputs,
 } from '../testing/workflowFixtures';
 import { runVisitQuestionWorkflow } from '../workflow';
+import { clarificationQuestions } from '../clarificationQuestions';
 
-test('keeps coverage gaps blocking when the visit-question task has not opted in', async () => {
+test('requires both source-linked and clarification questions when visit coverage has gaps', async () => {
   const prepared = preparedContext();
   const preparedWithGap = {
     ...prepared,
@@ -26,14 +27,31 @@ test('keeps coverage gaps blocking when the visit-question task has not opted in
       };
     },
   };
-  const { provider } = makeProvider(
-    successfulOutputs(prepared.initialEvidence, prepared.supplementalEvidence),
+  const outputs = successfulOutputs(
+    prepared.initialEvidence,
+    prepared.supplementalEvidence,
   );
+  const corrected = JSON.parse(outputs[1]!);
+  corrected.value.questions[2] = {
+    ...clarificationQuestions[0],
+    kind: 'clarification',
+    priority: 'routine',
+    evidenceIds: [],
+  };
+  const { provider } = makeProvider([...outputs, JSON.stringify(corrected)]);
   const { selection, option } = selectedOption(provider, 'on-device');
   const result = await runVisitQuestionWorkflow({
     prepared: preparedWithGap,
     selection,
     providerOptions: [option],
   });
-  expect(result.status).toBe('needs_clarification');
+  expect(result.status).toBe('ready');
+  if (result.status !== 'ready') throw new Error('Expected questions');
+  expect(result.questions[0]?.citations).toEqual([
+    prepared.supplementalEvidence,
+  ]);
+  expect(result.questions[2]).toMatchObject({
+    kind: 'clarification',
+    citations: [],
+  });
 });
