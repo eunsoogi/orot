@@ -14,7 +14,6 @@ export interface FeatureEntryScreenProps {
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
   readonly onOpenExternalEvidence: () => void;
-  readonly onOpenHealthReview?: () => void;
 }
 
 type FeatureCopy = {
@@ -38,7 +37,6 @@ const featureIcons: Record<string, { name: string; color: ColorValue }> = {
   },
   'disease-hypotheses': { name: 'doc.text', color: appColors.purple },
   'rag-conversation': { name: 'text.bubble', color: appColors.primaryText },
-  'health-review': { name: 'heart.text.square', color: appColors.pink },
   'external-evidence': { name: 'book', color: appColors.warning },
 };
 
@@ -49,7 +47,6 @@ export function FeatureEntryScreen({
   onOpenDiseaseHypotheses,
   onOpenRagConversation,
   onOpenExternalEvidence,
-  onOpenHealthReview,
 }: FeatureEntryScreenProps) {
   const navigationInset = useNavigationContentInset();
   useNavigationLeaveStateRegistration({
@@ -65,7 +62,6 @@ export function FeatureEntryScreen({
     'visit-questions': onOpenVisitQuestions,
     'disease-hypotheses': onOpenDiseaseHypotheses,
     'rag-conversation': onOpenRagConversation,
-    'health-review': onOpenHealthReview,
     'external-evidence': onOpenExternalEvidence,
   };
   const makeEntry = (feature: FeatureCopy): FeatureEntry => ({
@@ -76,9 +72,7 @@ export function FeatureEntryScreen({
   });
   const conversation = makeEntry(copy.conversation);
   const preparationEntries = copy.preparation.features.map(makeEntry);
-  const reviewEntries = copy.review.features
-    .filter(feature => feature.id !== 'health-review' || onOpenHealthReview)
-    .map(makeEntry);
+  const reviewEntries = copy.review.features.map(makeEntry);
 
   const renderEntries = (entries: readonly FeatureEntry[]) => (
     <View style={styles.list}>

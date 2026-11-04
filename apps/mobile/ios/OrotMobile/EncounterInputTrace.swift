@@ -1,6 +1,6 @@
 import Foundation
 
-/// SceneDelegate gives HealthReview and visit-question observation windows precedence.
+/// SceneDelegate gives the visit-question observation window precedence.
 /// Invalid or missing Encounter flags never enable the bridge, notifications or window subclass.
 enum EncounterInputGate {
     static func session(defaults: UserDefaults = .standard) -> UUID? {

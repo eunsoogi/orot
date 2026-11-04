@@ -150,17 +150,6 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
-HealthReview의 여덟 화면 여정은 `health-review-ui` 전용 cohort에서 `core` Release 제품과 `ui` suite로 실행합니다. 전체 실행 계획에는 각 사례가 한 번씩 들어갑니다. 각 메서드가 자기 UUID의 요청·관찰 fixture를 만들고 정리하며, fresh-process pending 복원은 한 메서드 안에서 앱을 종료한 뒤 `restore` 모드로 다시 시작합니다. 기존 graph/shared persistence driver의 세 단계와 초기화 경계는 바꾸지 않습니다.
-
-```sh
-node scripts/ci/build-ios-tests.mjs core build/integration-tests-health-review
-node scripts/ci/ios-test-simulator.mjs prepare-cohort health-review-ui build/ios-health-review-owner.json
-PROFILE=core node scripts/ci/run-ios-test-cohort.mjs health-review-ui build/integration-tests-health-review/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun build/ios-health-review-owner.json build/ios-health-review-results
-node scripts/ci/ios-test-simulator.mjs cleanup health-review-ui build/ios-health-review-owner.json
-```
-
-실패해도 마지막 cleanup을 실행하고 새 `simctl list -j`로 소유 UDID가 없는지 확인합니다. 이 등록은 실제 빌드·화면 실행·20분 예산 통과의 근거가 아닙니다. provider 응답만 합성하며 App 진입, SQLCipher, graph, safety·consent, citation과 요청 삭제는 production 경로를 사용합니다.
-
 전사 후보 검토의 영속화는 `encounter-review-persistence` 전용 cohort에서 별도로 실행합니다. 기존 state/shared persistence 묶음이 저장한 건강 관찰도 실제 충돌 검사 대상이므로 같은 데이터베이스의 다음 단계로 덧붙이지 않습니다. 다른 작업과 겹치지 않는 제품 경로와 소유권 파일을 사용하세요.
 
 ```sh
