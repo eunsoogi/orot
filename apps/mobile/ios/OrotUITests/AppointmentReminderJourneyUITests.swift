@@ -135,7 +135,13 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         let movedTime = ReminderJourneyForm.time(minutesAhead: 100)
         ReminderJourneyForm.edit(app, id: id, start: movedTime)
         try ReminderJourneyObservation.assertPending(app, id: id, start: movedTime, stage: "replacement", testCase: self)
+        // Appointment cancellation now waits for the user's native confirmation choice.
         ReminderJourneyForm.tap(app, "appointment-cancel-" + id)
+        let cancellationConfirmation = app.alerts.firstMatch
+        XCTAssertTrue(cancellationConfirmation.waitForAppearance(), app.debugDescription)
+        let confirmCancellation = cancellationConfirmation.buttons["예약 취소"]
+        XCTAssertTrue(confirmCancellation.exists && confirmCancellation.isHittable, app.debugDescription)
+        confirmCancellation.tap()
         let cancelled = try ReminderJourneyObservation.fresh(app, stage: "cancelled", testCase: self)
         XCTAssertTrue(cancelled.pending.isEmpty)
 

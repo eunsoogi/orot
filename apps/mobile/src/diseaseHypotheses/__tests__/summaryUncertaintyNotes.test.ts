@@ -50,6 +50,19 @@ test('does not resolve contradictory old and new limitation fields by silently d
   expect(validate([], { uncertainty: 'None' }).status).toBe('invalid');
 });
 
+test('does not turn an entirely malformed set into a completed summary', () => {
+  const section = {
+    ...hypothesis({ supportingEvidence: [reference.evidenceId] }),
+    uncertaintyNotes: 'None',
+  };
+  expect(
+    symptomSummaryTask.validateResult(
+      { sections: [section, section] } as never,
+      { request: '합성 요약', evidence },
+    ).status,
+  ).toBe('invalid');
+});
+
 test('native guidance offers an optional notes array instead of a scalar placeholder', () => {
   const schema = JSON.parse(JSON.stringify(createSymptomSummarySchema()));
   const fields = schema.properties.sections.items.properties;

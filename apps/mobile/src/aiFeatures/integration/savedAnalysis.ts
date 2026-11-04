@@ -20,6 +20,14 @@ export function remapSavedAnalysis(
     // An absent presentation denotes possibility exploration, including its
     // contrary evidence and uncertainty; retain that mode across source remapping.
     ...(analysis.presentation ? { presentation: analysis.presentation } : {}),
+    ...(analysis.omittedUnsupportedContent === true &&
+    analysis.presentation === 'symptom_summary'
+      ? { omittedUnsupportedContent: true }
+      : {}),
+    ...(analysis.incompleteEvidence === true &&
+    analysis.presentation === 'symptom_summary'
+      ? { incompleteEvidence: true }
+      : {}),
     hypotheses: analysis.hypotheses.map(item => ({
       ...item,
       supportingEvidence: item.supportingEvidence.map(map),

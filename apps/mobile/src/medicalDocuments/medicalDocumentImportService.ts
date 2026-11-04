@@ -35,7 +35,9 @@ export interface SavedMedicalDocument extends MedicalDocumentSourceRecord {
 export interface MedicalDocumentImportService {
   listDocuments(): Promise<MedicalDocumentSourceRecord[]>;
   getDocument(sourceId: string): Promise<SavedMedicalDocument | null>;
-  selectDocument(): Promise<StagedMedicalDocument | null>;
+  selectDocument(
+    source?: 'files' | 'photos',
+  ): Promise<StagedMedicalDocument | null>;
   saveDocument(
     document: StagedMedicalDocument,
   ): Promise<MedicalDocumentSaveResult>;
@@ -87,7 +89,7 @@ export function createMedicalDocumentImportService(
       evidenceSpans.sort(compareMedicalDocumentEvidenceSpans);
       return { ...source, evidenceSpans };
     },
-    async selectDocument() {
+    async selectDocument(selectionSource = 'files') {
       // Bind the database snapshot and picker call to one lifecycle epoch.
       const generation = currentMedicalDocumentGeneration();
       if (!canUseMedicalDocumentGeneration(generation)) {
@@ -102,7 +104,7 @@ export function createMedicalDocumentImportService(
       if (!canUseMedicalDocumentGeneration(generation)) {
         throw new MedicalDocumentImportError('IMPORT_FAILED');
       }
-      const document = await pick();
+      const document = await pick(selectionSource);
       if (dependencies.pick !== undefined && document) {
         if (!canUseMedicalDocumentGeneration(generation)) {
           throw new MedicalDocumentImportError('IMPORT_FAILED');

@@ -91,6 +91,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
+  /** Accept cited results with coverage gaps; empty evidence and conflicts remain blocking. */
+  readonly allowPartialEvidence?: boolean;
   /** Explicitly identify non-factual conversation/clarification values. Only uncited, locally
    * valid results may bypass evidence coverage; required source kinds remain mandatory. */
   isEvidenceIndependentResult?(value: JsonValue, input: TaskResponderInput): boolean;
@@ -174,6 +176,7 @@ export type MultiAgentRunResult<TResult> =
       readonly citations: readonly EvidenceReference[];
       readonly coverage: readonly EvidenceCoverage[];
       readonly checkpoint: MultiAgentCheckpointState;
+      readonly partialEvidence?: true;
     }
   | {
       readonly status: 'needs_clarification';

@@ -48,7 +48,10 @@ test.each([
 );
 
 test('shows accessible gaps and keeps a failed selection save open for retry', async () => {
-  const save = jest.fn().mockRejectedValue(new Error('locked'));
+  const save = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('locked'))
+    .mockResolvedValueOnce(undefined);
   mocked.mockReturnValue({
     selection: ['sleep', 'heartRate'],
     metrics: {
@@ -79,6 +82,37 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
   await fireEvent.press(screen.getByRole('button', { name: '저장' }));
   expect(await screen.findByText('선택을 저장하지 못했어요.')).toBeTruthy();
   expect(save).toHaveBeenCalledWith(['sleep', 'heartRate', 'bodyMass']);
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(screen.queryByRole('checkbox')).toBeNull());
+  expect(save).toHaveBeenCalledTimes(2);
+});
+
+test('cancel discards the draft and keeps the saved selection when editing again', async () => {
+  const save = jest.fn();
+  mocked.mockReturnValue({
+    selection: ['sleep', 'heartRate'],
+    metrics: {},
+    quantityTruncated: false,
+    state: 'ready',
+    retry: jest.fn(),
+    save,
+  });
+  await render(<HomeMetrics />);
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(save).not.toHaveBeenCalled();
+  expect(screen.queryByRole('checkbox')).toBeNull();
+
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  expect(
+    screen.getByRole('checkbox', { name: /체중/ }).props.accessibilityState
+      .checked,
+  ).toBe(false);
+  expect(
+    screen.getByRole('checkbox', { name: /기록된 수면/ }).props
+      .accessibilityState.checked,
+  ).toBe(true);
 });
 
 test('prevents changing or cancelling a draft while its save is pending', async () => {
@@ -107,6 +141,8 @@ test('prevents changing or cancelling a draft while its save is pending', async 
   );
   expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   expect(screen.getByRole('checkbox', { name: /체중/ })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  expect(save).toHaveBeenCalledTimes(1);
   await act(async () => finish());
   await press;
   expect(screen.queryByRole('button', { name: '취소' })).toBeNull();

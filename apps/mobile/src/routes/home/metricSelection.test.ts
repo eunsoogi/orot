@@ -2,6 +2,7 @@ import { MemoryObservationRepository } from '../../healthkit/commonObservations/
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import {
+  homeMetrics,
   loadHomeMetricSelection,
   saveHomeMetricSelection,
 } from './metricSelection';
@@ -19,13 +20,18 @@ test('persists ordered choices and rejects invalid selections without changing t
     'bodyMass',
   ]);
   await expect(
+    saveHomeMetricSelection(repository, ['sleep']),
+  ).rejects.toThrow();
+  await saveHomeMetricSelection(repository, homeMetrics);
+  await expect(loadHomeMetricSelection(repository)).resolves.toEqual(
+    homeMetrics,
+  );
+  await expect(
     saveHomeMetricSelection(repository, ['sleep', 'sleep']),
   ).rejects.toThrow();
-  await expect(loadHomeMetricSelection(repository)).resolves.toEqual([
-    'steps',
-    'sleep',
-    'bodyMass',
-  ]);
+  await expect(loadHomeMetricSelection(repository)).resolves.toEqual(
+    homeMetrics,
+  );
 });
 
 test('propagates save failures', async () => {

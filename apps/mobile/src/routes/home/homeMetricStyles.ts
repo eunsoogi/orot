@@ -60,6 +60,56 @@ export const homeMetricStyles = StyleSheet.create({
   },
   comparisonCoverage: { color: appColors.secondary, flexShrink: 1 },
   comparisonMetadata: { color: appColors.secondary, flexShrink: 1 },
+  selectionPanel: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  selectionPrompt: { marginBottom: 4 },
+  selectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: appColors.border,
+  },
+  selectionRow: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    // Match Health Data's comfortable checkbox row target at larger text sizes.
+    minHeight: 68,
+    paddingVertical: 10,
+  },
+  selectionLabel: { flex: 1, gap: 3, minWidth: 0 },
+  selectionTitle: { color: appColors.text, fontSize: 15, fontWeight: '500' },
+  selectionStatus: {
+    color: appColors.secondary,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  selectionMark: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  selectionMarkSelected: { backgroundColor: appColors.primary },
+  // Equal button slots stay paired when they fit and wrap into a stack when narrow.
+  selectionActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  selectionActionSlot: {
+    flexBasis: 140,
+    flexGrow: 1,
+    minWidth: 128,
+  },
   gridCard: { flexGrow: 0, flexBasis: '48%', minWidth: 140 },
   cardTitle: { color: appColors.text, fontWeight: '700' },
   metricHeading: {
