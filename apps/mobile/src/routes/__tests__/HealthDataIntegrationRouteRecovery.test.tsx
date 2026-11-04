@@ -58,9 +58,10 @@ test('shows sanitized recovery guidance and leaves the request retryable', async
   );
   expect(
     screen.getByTestId('health-data-authorization-diagnostic'),
-  ).toHaveTextContent(
-    '요청 단계: presentation, 오류 코드: presentationUnavailable',
-  );
+  ).toHaveTextContent('확인 단계: 권한 화면 표시, 결과: 권한 화면을 열지 못함');
+  expect(
+    screen.getByTestId('health-data-authorization-diagnostic'),
+  ).not.toHaveTextContent(/presentation|Unavailable/u);
   expect(
     screen.getByTestId('health-data-save').props.accessibilityState.disabled,
   ).toBe(false);

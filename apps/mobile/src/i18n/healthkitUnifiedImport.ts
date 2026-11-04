@@ -13,7 +13,7 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.localOnly':
     '건강 기록은 이 기기의 암호화 저장소에 보관하고, 직접 확인한 캘린더 일정만 저장해요.',
   'healthkit.unifiedImport.readAuthorization':
-    'HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.',
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
   'healthkit.unifiedImport.back': '뒤로',
   'healthkit.unifiedImport.import': '선택 항목 가져오기',
   'healthkit.unifiedImport.cancel': '가져오기 취소',
@@ -37,15 +37,14 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.featureStatus.unsupportedPlatform':
     '이 플랫폼에서 지원되지 않음',
   'healthkit.unifiedImport.featureStatus.unavailable':
-    'HealthKit을 사용할 수 없음',
+    '건강 기록을 사용할 수 없음',
   'healthkit.unifiedImport.featureStatus.unsupportedData':
     '처리할 수 없는 데이터',
   'healthkit.unifiedImport.featureStatus.notRun': '실행되지 않음',
   'healthkit.unifiedImport.featureStatus.failed': '실패',
   'healthkit.unifiedImport.featureStatus.cancelled': '취소됨',
   'healthkit.unifiedImport.phase.queued': '대기 중',
-  'healthkit.unifiedImport.phase.authorizingHealthKit':
-    'HealthKit 권한 확인 중…',
+  'healthkit.unifiedImport.phase.authorizingHealthKit': '건강 앱 권한 확인 중…',
   'healthkit.unifiedImport.phase.authorizingEventKit': '캘린더 권한 확인 중…',
   'healthkit.unifiedImport.phase.preparingStorage': '기록 저장소 준비 중…',
   'healthkit.unifiedImport.phase.querying': '선택한 건강 기록 확인 중…',

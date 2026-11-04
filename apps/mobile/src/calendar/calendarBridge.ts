@@ -21,7 +21,8 @@ interface NativeCalendarModule {
 }
 
 function unavailable<T>(): Promise<T> {
-  return Promise.reject(new Error('EventKit calendar access is unavailable.'));
+  // Keep the bridge fallback independent of the underlying calendar framework name.
+  return Promise.reject(new Error('Calendar access is unavailable.'));
 }
 
 export function createCalendarBridge(

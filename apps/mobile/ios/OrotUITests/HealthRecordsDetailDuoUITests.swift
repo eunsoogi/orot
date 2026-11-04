@@ -173,7 +173,7 @@ extension HealthImportDuoUITests {
         XCTAssertTrue(period.isSelected, app.debugDescription)
         let source = healthDetailNode(app, "health-record-medication-row-0-source")
         XCTAssertTrue(source.waitForAppearance(), app.debugDescription)
-        XCTAssertTrue(UITestConditions.text(source).contains("HealthKit"), app.debugDescription)
+        XCTAssertTrue(UITestConditions.text(source).contains("건강 앱"), app.debugDescription)
         let primary = healthDetailNode(app, "health-records-medication-detail-layout-primary")
         let secondary = healthDetailNode(app, "health-records-detail-scroll")
         XCTAssertTrue(primary.exists && secondary.exists, app.debugDescription)
