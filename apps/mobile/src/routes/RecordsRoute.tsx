@@ -96,7 +96,8 @@ export function RecordsRoute({
             onOpenManualHistory={onOpenManualHistory}
             medicalDocumentOpening={activity === 'selecting'}
             medicalDocumentDisabled={activity !== null}
-            onImportMedicalDocument={selectMedicalDocument}
+            onImportMedicalDocument={() => selectMedicalDocument('files')}
+            onImportMedicalPhoto={() => selectMedicalDocument('photos')}
           />
           {message ? (
             <Text
