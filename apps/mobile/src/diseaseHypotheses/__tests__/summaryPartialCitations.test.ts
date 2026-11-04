@@ -222,8 +222,15 @@ test.each(['missing', 'conflicting'] as const)(
     expect(result.status).toBe('result');
     if (result.status !== 'result') return;
     expect(result.value.hypotheses[0]!.supportingEvidence).toEqual([reference]);
-    expect(result.value.hypotheses[0]!.uncertainty).toMatch(
-      condition === 'missing' ? /일부|누락|부족/u : /상충|차이|서로/u,
-    );
+    if (condition === 'missing') {
+      expect(result.partialEvidence).toBe(true);
+      expect(result.value.hypotheses[0]!.uncertainty).toBe(
+        supported.uncertainty,
+      );
+    } else {
+      expect(result.value.hypotheses[0]!.uncertainty).toMatch(
+        /상충|차이|서로/u,
+      );
+    }
   },
 );

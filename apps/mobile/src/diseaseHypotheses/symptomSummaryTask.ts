@@ -46,6 +46,8 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
     ...summaryResponseGuidance,
     allowRankedLocalEvidence: true,
     allowBoundedExternalEvidence: true,
+    // Incomplete coverage is disclosed after citation validation; unattributed conflicts still stop the runtime.
+    allowPartialEvidence: true,
     systemPrompt:
       'Summarize explicit facts in saved medication, dose, activity, step-count, health-measurement and symptom records. This is a factual record summary, not a disease assessment. ' +
       'For this broad summary prefer local-health-context with days=30 and detail=summary across all available topics. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview. Preserve dates, units and recorded-day coverage; describe only supplied comparisons. ' +

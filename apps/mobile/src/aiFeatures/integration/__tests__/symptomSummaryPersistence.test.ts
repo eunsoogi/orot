@@ -63,7 +63,7 @@ test('saves a completed summary and reopens its original source in a fresh regis
       throw new Error(
         `Expected supported section: ${JSON.stringify(validation)}`,
       );
-    const value = validation.value;
+    const value = { ...validation.value, incompleteEvidence: true };
     const outcome = await completedOutcome(value, f.item);
     const data = { ...localData([]).data, readHealthContext: f.read };
     const persistence = createSymptomSummaryPersistence({
@@ -94,6 +94,7 @@ test('saves a completed summary and reopens its original source in a fresh regis
       '일부 기록만 확인했어요.',
     );
     expect(reopened?.omittedUnsupportedContent).toBe(true);
+    expect(reopened?.incompleteEvidence).toBe(true);
     expect(reopened?.hypotheses).toHaveLength(1);
     expect(reopened?.savedSummary).toMatchObject({
       status: 'saved',

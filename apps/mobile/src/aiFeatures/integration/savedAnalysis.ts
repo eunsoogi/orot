@@ -24,6 +24,10 @@ export function remapSavedAnalysis(
     analysis.presentation === 'symptom_summary'
       ? { omittedUnsupportedContent: true }
       : {}),
+    ...(analysis.incompleteEvidence === true &&
+    analysis.presentation === 'symptom_summary'
+      ? { incompleteEvidence: true }
+      : {}),
     hypotheses: analysis.hypotheses.map(item => ({
       ...item,
       supportingEvidence: item.supportingEvidence.map(map),

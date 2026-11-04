@@ -1,5 +1,6 @@
 import type { EvidenceBatch } from './contracts';
 import { hasIncompleteCoverage } from './evidence';
+import type { TaskResponderContract } from './contracts';
 
 /** Distinguishes a ranked result page from missing input; conflicts and gaps always remain blocking. */
 export function hasBlockingCoverage(
@@ -20,4 +21,19 @@ export function hasBlockingCoverage(
         : coverage,
     ),
   });
+}
+
+/** Empty evidence and unstructured conflicts cannot support an opt-in partial result. */
+export function canContinueWithPartialEvidence<TResult>(
+  task: TaskResponderContract<TResult>,
+  batch: EvidenceBatch,
+): boolean {
+  if (
+    task.allowPartialEvidence !== true ||
+    !batch.items.length ||
+    !batch.coverage.length ||
+    batch.conflicts.length
+  )
+    return false;
+  return true;
 }

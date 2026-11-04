@@ -6,12 +6,11 @@ import {
   selectionStore,
 } from '../featureServiceFixtures';
 import { healthContextFixture } from '../testSupport/healthContextPersistenceFixture';
-import type { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
-import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { symptomSummaryTask } from '../../../diseaseHypotheses/symptomSummaryTask';
 import { providerSuccess } from '@orot/model-runtime';
 
-test.each(['result', 'invalid_output'] as const)(
+test.each(['result', 'partial_result', 'invalid_output'] as const)(
   'a synthetic streamed %s is saved only when the completed workflow returns a result',
   async status => {
     const f = await healthContextFixture();
@@ -26,6 +25,7 @@ test.each(['result', 'invalid_output'] as const)(
         options,
         _inventory,
         invocation,
+        resolver,
       ) => {
         const tool = options.tools.find(
           item => item.id === 'local-health-context',
@@ -63,7 +63,7 @@ test.each(['result', 'invalid_output'] as const)(
           text,
           toolCalls: [],
           finishReason:
-            status === 'result'
+            status !== 'invalid_output'
               ? ('complete' as const)
               : ('length_limit' as const),
         };
@@ -81,21 +81,29 @@ test.each(['result', 'invalid_output'] as const)(
             yield providerSuccess({ type: 'completed' as const, response });
           },
         };
-        const result = await runMultiAgentWorkflow(
+        const result = await runDiseaseHypothesisAnalysis(
           {
             ...options,
             provider,
-            task: symptomSummaryTask,
-            initialEvidence: batch,
+            initialEvidence:
+              status === 'partial_result'
+                ? {
+                    ...batch,
+                    coverage: batch.coverage.map(entry => ({
+                      ...entry,
+                      gaps: ['Synthetic source unavailable'],
+                    })),
+                  }
+                : batch,
             tools: [],
           },
+          undefined,
           invocation,
+          resolver,
+          symptomSummaryTask,
         );
         events.push('runner-finished');
-        return {
-          status: 'workflow',
-          result,
-        };
+        return result;
       };
       const data = { ...localData([]).data, readHealthContext: f.read };
       const storage = {
@@ -129,7 +137,7 @@ test.each(['result', 'invalid_output'] as const)(
       ).toBe(true);
       expect(events).toContain('runner-finished');
       expect(result.status).toBe('workflow');
-      if (status === 'result') {
+      if (status !== 'invalid_output') {
         expect(events.indexOf('runner-finished')).toBeLessThan(
           events.indexOf('write'),
         );
@@ -139,6 +147,20 @@ test.each(['result', 'invalid_output'] as const)(
             result.result.value.savedSummary,
         ).toMatchObject({ status: 'saved' });
         expect(await services.summaryHistory!.list()).toHaveLength(1);
+        if (status === 'partial_result') {
+          if (
+            result.status !== 'workflow' ||
+            result.result.status !== 'result' ||
+            result.result.value.savedSummary?.status !== 'saved'
+          )
+            throw new Error('Expected saved partial result');
+          expect(result.result.value.incompleteEvidence).toBe(true);
+          const reopened = await services.summaryHistory!.read(
+            result.result.value.savedSummary.id,
+          );
+          expect(reopened?.incompleteEvidence).toBe(true);
+          expect(reopened?.hypotheses[0]?.supportingEvidence).toHaveLength(1);
+        }
       } else {
         expect(events).not.toContain('write');
         expect(result.status === 'workflow' && result.result.status).toBe(
