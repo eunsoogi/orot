@@ -98,6 +98,10 @@
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
 		2C23D9984D5148FD953E8DAC /* NavigationGeometryReservedRegionMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */; };
 		C48E4D8B9A064C7D850136A0 /* WindowPresentationAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */; };
+		A3D8E7F491204AB5812C0401 /* ManualHistoryDateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E7F491204AB5812C0401 /* ManualHistoryDateSheet.swift */; };
+		A3D8E7F491204AB5812C0402 /* ManualHistoryDateSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E7F491204AB5812C0402 /* ManualHistoryDateSheet.m */; };
+		A3D8E7F491204AB5812C0403 /* ManualHistorySheetDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E7F491204AB5812C0403 /* ManualHistorySheetDate.swift */; };
+		A3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift */; };
 		5E87FF95506955455199819F /* PopoverSourceRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */; };
 		C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */; };
 		E3C71A4D0BDB468A9C3F6217 /* ManualHistoryDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18E52C6342445A2AE89D337 /* ManualHistoryDuoUITests.swift */; };
@@ -413,6 +417,10 @@
 		B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoUITests.swift; sourceTree = "<group>"; };
 		B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrientationPresentationAnchorUITests.swift; sourceTree = "<group>"; };
 		D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WindowPresentationAnchor.swift; path = OrotMobile/WindowPresentationAnchor.swift; sourceTree = "<group>"; };
+		B3D8E7F491204AB5812C0401 /* ManualHistoryDateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ManualHistoryDateSheet.swift; path = OrotMobile/ManualHistoryDateSheet.swift; sourceTree = "<group>"; };
+		B3D8E7F491204AB5812C0402 /* ManualHistoryDateSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ManualHistoryDateSheet.m; path = OrotMobile/ManualHistoryDateSheet.m; sourceTree = "<group>"; };
+		B3D8E7F491204AB5812C0403 /* ManualHistorySheetDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ManualHistorySheetDate.swift; path = OrotMobile/ManualHistorySheetDate.swift; sourceTree = "<group>"; };
+		B3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualHistoryDateSheetUITestSupport.swift; sourceTree = "<group>"; };
 		82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PopoverSourceRegion.swift; path = OrotMobile/PopoverSourceRegion.swift; sourceTree = "<group>"; };
 		D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManualHistoryUITests.swift; sourceTree = "<group>"; };
 		B18E52C6342445A2AE89D337 /* ManualHistoryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ManualHistoryDuoUITests.swift; sourceTree = "<group>"; };
@@ -646,6 +654,9 @@
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				D72B3E5A114C4F95AA230786 /* WindowPresentationAnchor.swift */,
+				B3D8E7F491204AB5812C0401 /* ManualHistoryDateSheet.swift */,
+				B3D8E7F491204AB5812C0402 /* ManualHistoryDateSheet.m */,
+				B3D8E7F491204AB5812C0403 /* ManualHistorySheetDate.swift */,
 				82B2E42E923A6B61C1257174 /* PopoverSourceRegion.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
 				B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */,
@@ -885,6 +896,7 @@
 				CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */,
 				B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */,
 				D59A0A1C34DF4A639125A87B /* ManualHistoryUITests.swift */,
+				B3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift */,
 				B18E52C6342445A2AE89D337 /* ManualHistoryDuoUITests.swift */,
 				9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */,
 				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
@@ -1269,6 +1281,9 @@
 				A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				C48E4D8B9A064C7D850136A0 /* WindowPresentationAnchor.swift in Sources */,
+				A3D8E7F491204AB5812C0401 /* ManualHistoryDateSheet.swift in Sources */,
+				A3D8E7F491204AB5812C0402 /* ManualHistoryDateSheet.m in Sources */,
+				A3D8E7F491204AB5812C0403 /* ManualHistorySheetDate.swift in Sources */,
 				5E87FF95506955455199819F /* PopoverSourceRegion.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
 				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,
@@ -1418,6 +1433,7 @@
 				2C23D9984D5148FD953E8DAC /* NavigationGeometryReservedRegionMatcher.swift in Sources */,
 				A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */,
 				C47E9D15C6F44EB1A2D8876A /* ManualHistoryUITests.swift in Sources */,
+				A3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift in Sources */,
 				E3C71A4D0BDB468A9C3F6217 /* ManualHistoryDuoUITests.swift in Sources */,
 				4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */,
 				B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */,
