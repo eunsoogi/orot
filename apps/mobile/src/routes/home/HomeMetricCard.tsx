@@ -2,10 +2,15 @@ import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
-import { formatDateTime, formatNumber, t } from '../../i18n';
+import { formatDateTime, t } from '../../i18n';
 import type { HomeMetric } from './metricSelection';
 import type { HomeMetricProjection } from './metricProjection';
 import { homeMetricStyles as styles } from './homeMetricStyles';
+import {
+  formatHomeMetricDaySummary,
+  formatHomeMetricValue,
+  homeMetricStatistic,
+} from './metricFormatting';
 
 export const homeMetricTitle = (metric: HomeMetric) =>
   ({
@@ -15,10 +20,7 @@ export const homeMetricTitle = (metric: HomeMetric) =>
     steps: t('home.metricSteps'),
   })[metric];
 
-export const homeMetricValue = (number: number, unit: string) =>
-  `${formatNumber(number, { maximumFractionDigits: 1 })} ${unit}`;
-
-/** Renders one metric and its seven-day chart at the width measured by its parent grid. */
+/** Renders a metric and chart without exposing source or time-zone metadata on the overview. */
 export function HomeMetricCard({
   metric,
   width,
@@ -41,23 +43,26 @@ export function HomeMetricCard({
     steps: 'figure.walk',
   }[metric.metric];
   const maximum = Math.max(1, ...metric.days.map(day => day.value ?? 0));
-  const statistic =
-    metric.metric === 'heartRate'
-      ? t('home.dailyMean')
-      : metric.metric === 'bodyMass'
-        ? t('home.dailyLatest')
-        : t('home.dailySum');
-  const summary = metric.days
-    .map(
-      day =>
-        `${day.date}: ${day.value === null ? t('home.metricEmpty') : homeMetricValue(day.value, metric.unit)}${day.partial ? `, ${t('home.partialToday')}` : ''}`,
-    )
-    .join('; ');
+  const statistic = homeMetricStatistic(metric.metric);
+  const latestValue = formatHomeMetricValue(
+    metric.metric,
+    metric.latest.value,
+    metric.unit,
+  );
+  const summary = formatHomeMetricDaySummary(metric);
+  const accessibilityLabel = [
+    homeMetricTitle(metric.metric),
+    `${metric.latest.date} ${statistic}: ${latestValue}`,
+    metric.measuredAt
+      ? formatDateTime(new Date(metric.measuredAt))
+      : t('home.measurementUnknown'),
+    summary,
+  ].join('. ');
   return (
     <View
       style={[styles.card, styles.gridCard, { width }]}
       testID={`home-metric-${metric.metric}`}
-      accessibilityLabel={`${homeMetricTitle(metric.metric)}. ${metric.latest.date} ${statistic}: ${homeMetricValue(metric.latest.value, metric.unit)}. ${metric.measuredAt ? formatDateTime(new Date(metric.measuredAt)) : t('home.measurementUnknown')}. ${metric.source}. ${metric.timeZone}. ${summary}`}
+      accessibilityLabel={accessibilityLabel}
       accessible
     >
       <View style={styles.metricHeading}>
@@ -67,7 +72,7 @@ export function HomeMetricCard({
         <Text style={styles.cardTitle}>{homeMetricTitle(metric.metric)}</Text>
       </View>
       <Text style={styles.number}>
-        {homeMetricValue(metric.latest.value, metric.unit)}
+        {latestValue}
       </Text>
       <Text style={styles.detail}>
         {metric.latest.date} · {statistic}
@@ -75,11 +80,10 @@ export function HomeMetricCard({
       <Text style={styles.detail}>
         {metric.measuredAt
           ? formatDateTime(new Date(metric.measuredAt))
-          : t('home.measurementUnknown')}{' '}
-        · {metric.source} · {metric.timeZone}
+          : t('home.measurementUnknown')}
       </Text>
       <Text style={styles.detail}>
-        0 – {homeMetricValue(maximum, metric.unit)}
+        0 – {formatHomeMetricValue(metric.metric, maximum, metric.unit)}
       </Text>
       <View style={styles.chart} testID={`home-metric-chart-${metric.metric}`}>
         {metric.days.map(day => (

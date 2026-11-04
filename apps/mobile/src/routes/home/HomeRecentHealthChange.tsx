@@ -22,7 +22,7 @@ interface Props {
 const coverage = ({ recordedDays, totalDays }: ComparisonPeriod) =>
   t('home.comparisonCoverage', { count: recordedDays, total: totalDays });
 
-/** Keeps each period, value, and recorded-day count distinct in visual and spoken order. */
+/** Keeps period values distinct in visual and spoken order while omitting source and time-zone metadata. */
 export function HomeRecentHealthChange({ metric, title, formatValue }: Props) {
   // Non-null comparisons have both complete seven-day windows, even when their coverage differs.
   const comparison = metric.comparison;
@@ -56,8 +56,6 @@ export function HomeRecentHealthChange({ metric, title, formatValue }: Props) {
     recent.dateRange,
     recent.value,
     coverage(recent),
-    metric.source,
-    metric.timeZone,
   ].join('. ');
 
   return (
@@ -78,9 +76,6 @@ export function HomeRecentHealthChange({ metric, title, formatValue }: Props) {
           <Text style={styles.comparisonCoverage}>{coverage(period)}</Text>
         </View>
       ))}
-      <Text style={styles.comparisonMetadata}>
-        {metric.source} · {metric.timeZone}
-      </Text>
     </View>
   );
 }

@@ -9,11 +9,11 @@ import { homeMetricStyles as styles } from './homeMetricStyles';
 import {
   HomeMetricCard,
   homeMetricTitle as title,
-  homeMetricValue as value,
 } from './HomeMetricCard';
 import { resolveHomeMetricGridLayout } from './homeMetricLayout';
 import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
 import { HomeRecentHealthChange } from './HomeRecentHealthChange';
+import { formatHomeMetricValue } from './metricFormatting';
 
 /**
  * Shows calendar-day metrics and sizes cards to the measured grid.
@@ -147,7 +147,9 @@ export function HomeMetrics() {
               key={metric.metric}
               metric={metric}
               title={title(metric.metric)}
-              formatValue={value}
+              formatValue={(amount, unit) =>
+                formatHomeMetricValue(metric.metric, amount, unit)
+              }
             />
           ))
         ) : (
