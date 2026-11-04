@@ -21,33 +21,15 @@ import {
 } from './savedVisitQuestionCitation';
 export { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 
-export interface RestoredVisitQuestion {
-  readonly kind?: 'confirmed_fact' | 'clarification';
-  readonly legacySource?: { readonly id: string; readonly revision: string };
-  readonly questionText: string;
-  readonly rationale: string;
-  readonly priority: 'routine' | 'important';
-  readonly position: number;
-  readonly citations: readonly EvidenceItem[];
-  readonly generatedArtifactContext?: readonly EvidenceItem[];
-}
-
-export interface RestoredSavedVisitQuestions {
-  readonly appointmentId: string;
-  readonly questions: readonly RestoredVisitQuestion[];
-  readonly caveats: readonly [];
-  /** Explains which source locations and generated metadata are absent from persisted questions. */
-  readonly restorationNotice: string;
-}
-
-export type SavedVisitQuestionsLoadState =
-  | ({ readonly status: 'ready' } & RestoredSavedVisitQuestions)
-  | {
-      readonly status: 'error';
-      readonly appointmentId: string;
-      readonly questions: readonly [];
-      readonly message: string;
-    };
+import type {
+  RestoredSavedVisitQuestions,
+  SavedVisitQuestionsLoadState,
+} from './savedVisitQuestionTypes';
+export type {
+  RestoredSavedVisitQuestions,
+  RestoredVisitQuestion,
+  SavedVisitQuestionsLoadState,
+} from './savedVisitQuestionTypes';
 
 /** Restores reviewed questions with source links that are current or explicitly marked changed. */
 export async function restoreSavedVisitQuestions(input: {
