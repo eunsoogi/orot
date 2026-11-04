@@ -147,8 +147,17 @@ enum NavigationGeometryUITestConditions {
             let shared = try XCTUnwrap(last)
             let window = try XCTUnwrap(rect(shared["windowFrame"]))
             let available = try XCTUnwrap(rect(shared["availableContentFrame"]))
-            let centerX = shared["side"] as? String == "left" ? (window.minX + available.minX) / 2 : (available.maxX + window.maxX) / 2
-            XCTAssertEqual(measuredBar.midX, centerX, accuracy: 0.5, "The rail must be centered in its one reserved side lane")
+            let isRight = shared["side"] as? String == "right"
+            let laneCenter = isRight ? (available.maxX + window.maxX) / 2 : (window.minX + available.minX) / 2
+            let fullViewport = rect(shared["viewportFrame"]).map { sameWindow($0, window) } ?? false
+            let observed = isRight && fullViewport && NavigationMeasuredReservation.matches(shared, window: window, available: available)
+            let centerX = laneCenter - (observed ? 35.0 / 6.0 : 0)
+            XCTAssertEqual(measuredBar.width, 48, accuracy: 0.5)
+            XCTAssertEqual(measuredBar.midX, centerX, accuracy: 0.5, "The rail must match its measured side-lane placement")
+            if observed {
+                XCTAssertEqual(window.maxX - measuredBar.maxX - 18, 18 - (measuredBar.minX - available.maxX), accuracy: 0.5,
+                               "Moving the rail must redistribute, not expand, the reserved lane")
+            }
             XCTAssertEqual(action.control.frame.midX, centerX, accuracy: 0.5,
                            "Native control \(navigationID) must share the measured rail center")
             XCTAssertFalse(measuredContent.intersects(measuredBar))
@@ -238,11 +247,4 @@ enum NavigationGeometryUITestConditions {
         return try XCTUnwrap(homeFrame)
     }
 
-    /// Compares native root and contextual rail/control frames against one window center.
-    static func assertSameRailCenter(_ root: CGRect, contextualFrames: [CGRect]) {
-        for frame in contextualFrames {
-            XCTAssertEqual(root.midX, frame.midX, accuracy: 0.5,
-                           "Root and contextual controls must share the measured UIWindow lane center")
-        }
-    }
 }

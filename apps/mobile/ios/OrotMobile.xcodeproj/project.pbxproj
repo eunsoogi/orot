@@ -79,6 +79,7 @@
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
 		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
 		D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */; };
+		AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */; };
 		9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */; };
 		9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */; };
 		CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */; };
@@ -371,6 +372,7 @@
 		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
 		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
 		D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryUITestConditions.swift; sourceTree = "<group>"; };
+		AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationMeasuredReservation.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
@@ -866,6 +868,7 @@
 				4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */,
+				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
 				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
 				0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */,
 				F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */,
@@ -1351,6 +1354,7 @@
 				BBD39ED4CA5C1F73E2C05D80 /* EncounterInputObservation.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */,
+				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,
 				7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */,
