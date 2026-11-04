@@ -7,7 +7,6 @@ import {
 import { NativeModules } from 'react-native';
 import {
   createAppointmentRepository,
-  createSymptomRepository,
   openEncryptedStorage,
   resolveDatabaseKey,
 } from '@orot/storage';
@@ -15,7 +14,6 @@ import type {
   AppointmentRepository,
   RecordRepository,
   SqlDatabase,
-  SymptomRepository,
 } from '@orot/storage';
 import type { DB } from '@op-engineering/op-sqlite';
 import {
@@ -160,11 +158,6 @@ export async function openLocalAppointmentRepository(): Promise<AppointmentRepos
   const records = await openLocalStorage();
   if (!database) throw new Error('The encrypted database is not open.');
   return createAppointmentRepository(records, database);
-}
-
-/** Reuses the initialized SQLCipher connection and its restore/deletion safeguards. */
-export async function openLocalSymptomRepository(): Promise<SymptomRepository> {
-  return createSymptomRepository(await openLocalAgentMemoryDatabase());
 }
 
 export async function hasDatabaseKey(): Promise<boolean> {

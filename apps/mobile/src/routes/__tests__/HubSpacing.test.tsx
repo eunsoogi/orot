@@ -21,8 +21,6 @@ test.each(['loading', 'failed', 'ready'] as const)(
         onRetryDocuments={jest.fn()}
         onOpenMedicalDocument={jest.fn()}
         onOpenSavedRecordings={jest.fn()}
-        onOpenSymptoms={jest.fn()}
-        loadSymptoms={async () => ({ list: async () => [] })}
       />,
     );
     const style = StyleSheet.flatten(
@@ -46,8 +44,6 @@ test('populated rows use the same page edge and equal gaps while retaining reada
       onRetryDocuments={jest.fn()}
       onOpenMedicalDocument={jest.fn()}
       onOpenSavedRecordings={jest.fn()}
-      onOpenSymptoms={jest.fn()}
-      loadSymptoms={async () => ({ list: async () => [] })}
     />,
   );
   const row = screen.getByTestId('records-recent-source-' + savedSource.id);

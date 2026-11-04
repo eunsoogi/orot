@@ -5,7 +5,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Text } from 'react-native';
 import { HomeMetrics } from './HomeMetrics';
 import { useHomeMetrics } from './useHomeMetrics';
 import type { HomeMetric } from './metricSelection';
@@ -40,11 +39,7 @@ test.each([
       retry: jest.fn(),
       save: jest.fn(),
     });
-    await render(
-      <HomeMetrics>
-        <Text>증상</Text>
-      </HomeMetrics>,
-    );
+    await render(<HomeMetrics />);
     const summary = screen.getByTestId(`home-metric-${metric}`);
     expect(summary.props.accessibilityLabel).toContain(statistic);
     expect(summary.props.accessibilityLabel).toContain(`70 ${unit}.`);
@@ -76,11 +71,7 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
     retry: jest.fn(),
     save,
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   expect(screen.getByLabelText(/2026-10-15: 기록이 없어요/)).toBeTruthy();
   expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
@@ -104,11 +95,7 @@ test('prevents changing or cancelling a draft while its save is pending', async 
     retry: jest.fn(),
     save,
   });
-  await render(
-    <HomeMetrics>
-      <Text>증상</Text>
-    </HomeMetrics>,
-  );
+  await render(<HomeMetrics />);
   expect(screen.getAllByText('최근 14일과 오늘에 기록이 없어요.')).toHaveLength(
     2,
   );

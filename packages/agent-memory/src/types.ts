@@ -10,6 +10,8 @@ export interface AgentMemorySourceDate {
 
 export interface AgentMemoryProvenance {
   readonly sourceIds: readonly string[];
+  /** Typed identities disambiguate records that share a raw local identifier. */
+  readonly sourceReferences?: readonly { readonly kind: string; readonly id: string }[];
   readonly sourceDates?: readonly AgentMemorySourceDate[];
   readonly reviewState: AgentMemoryReviewState;
 }
@@ -55,8 +57,12 @@ export interface PersistedMemoryRecord extends MemoryRecord {}
 /** Rememori's storage contract plus the atomic operations needed by app corrections. */
 export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listRecords(): Promise<PersistedMemoryRecord[]>;
+  /** Explicit global deletion must include rows hidden from normal evidence reads. */
+  listAllRecordsForPurge?(): Promise<PersistedMemoryRecord[]>;
   listRemovedSourceIds(): Promise<string[]>;
   listInvalidatedSourceIds(): Promise<string[]>;
+  /** Changes when typed quarantine fences change, without conflating them with raw IDs. */
+  listQuarantineRevision?(): Promise<string>;
   markSourceRemoved(sourceId: string): Promise<void>;
   beginBatch(): void;
   commitBatch(): Promise<void>;

@@ -6,8 +6,9 @@ import type { SqlDatabase, SqlExecutor } from './sql';
 import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigrations';
 import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
+import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -217,10 +218,8 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     throw new Error('The database schema is newer than this application supports.');
   }
   if (currentVersion === CURRENT_SCHEMA_VERSION) return;
-
   await database.transaction(async (transaction) => {
-    // Version nine already has the other integrity/index structures. Do not
-    // rebuild those large indexes merely to add the category/period reader.
+    // Version nine already has the other integrity and index structures.
     if (currentVersion < 9) {
       if (currentVersion === 0) {
         const hasLegacy = await hasLegacyTable(transaction);
@@ -245,6 +244,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     if (currentVersion < 11) await createManualHistoryTable(transaction);
     await createHealthObservationLibraryIndex(transaction);
     await createHealthMedicationLibraryIndex(transaction);
-    await transaction.execute('PRAGMA user_version = 11');
+    if (currentVersion < 12) await ensureSymptomDeletionFence(transaction);
+    await transaction.execute('PRAGMA user_version = 12');
   });
 }

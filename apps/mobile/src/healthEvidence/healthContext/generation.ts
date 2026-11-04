@@ -19,6 +19,10 @@ export async function ensureHealthContextGeneration(
   await executor.execute(
     'INSERT OR IGNORE INTO health_context_generation (singleton, mutations, deletions) VALUES (1, 0, 0)',
   );
+  // A deletion intent hides the source before its row is removed, invalidating cached aggregates.
+  await executor.execute(
+    'CREATE TRIGGER IF NOT EXISTS health_context_symptom_fenced AFTER INSERT ON legacy_symptom_deleted BEGIN UPDATE health_context_generation SET mutations = mutations + 1, deletions = deletions + 1 WHERE singleton = 1; END',
+  );
   // Concept and exact-instant bounds apply before period aggregation, independently of total imported history.
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_quantity_time ON health_observations (json_extract(payload_json, '$.concept'), ${localQueryTimestampKeyExpression('effective_at')})`,
