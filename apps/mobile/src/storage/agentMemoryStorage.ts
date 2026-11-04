@@ -174,7 +174,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   private async executeWrites(
-    writes: Map<string, PendingWrite>,
+    writes: Map<string, PersistedMemoryRecord | null>,
     removedSourceIdsToAdd: Set<string>,
   ): Promise<void> {
     await this.ensureTable();

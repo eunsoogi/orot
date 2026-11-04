@@ -26,7 +26,9 @@ export async function listAllMemoryRecords(
   return result.rows.map(row => decodeAgentMemoryRecord(row.record_json));
 }
 
-export async function symptomQuarantineRevision(sql: SqlExecutor): Promise<string> {
+export async function symptomQuarantineRevision(
+  sql: SqlExecutor,
+): Promise<string> {
   return JSON.stringify([...(await deletedSymptomIds(sql))].sort());
 }
 
