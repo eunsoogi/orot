@@ -7,6 +7,7 @@ import type { createConversationArtifactStorage } from '../../storage/conversati
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreConversationArtifact } from './restoreConversationArtifact';
+import { restoreConversationSessionPage } from './conversationSessionRestoration';
 import { fingerprint } from './evidenceUtils';
 
 type Metadata = ArtifactMetadata & { readonly type: 'conversation_turn' };
@@ -27,7 +28,7 @@ export function createConversationArtifactDiscovery(input: {
   readonly storage: ReturnType<typeof createConversationArtifactStorage>;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly data: AiFeatureLocalData;
-}): ArtifactDiscovery<Metadata, Content> {
+}) {
   const read = async (id: string, signal = new AbortController().signal) => {
     const saved = await restoreConversationArtifact({ ...input, id, signal });
     if (!saved) return null;
@@ -53,7 +54,19 @@ export function createConversationArtifactDiscovery(input: {
   };
   return {
     read,
-    async search({ query, cursor: next, limit, signal }) {
+    listSessions: input.storage.listSessions,
+    readSession: (request: {
+      readonly sessionId: string;
+      readonly cursor?: { readonly createdAt: string; readonly id: string };
+      readonly limit?: number;
+      readonly signal: AbortSignal;
+    }) => restoreConversationSessionPage({ ...input, ...request }),
+    async search({
+      query,
+      cursor: next,
+      limit,
+      signal,
+    }: Parameters<ArtifactDiscovery<Metadata, Content>['search']>[0]) {
       if (
         !Number.isSafeInteger(limit) ||
         limit < 1 ||

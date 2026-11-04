@@ -10,6 +10,7 @@ import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { restoreConversationArtifact } from '../restoreConversationArtifact';
+import { restoreConversationSessionPage } from '../conversationSessionRestoration';
 import { fingerprint } from '../evidenceUtils';
 import { localData, memoryRecord } from '../featureServiceFixtures';
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
@@ -62,6 +63,57 @@ test('reopens a saved conversation with fresh source aliases and rejects it afte
     ]);
     const registry = new LocalEvidenceReferenceRegistry();
     const data = localData([record]).data;
+    const page = await restoreConversationSessionPage({
+      sessionId: 'session',
+      storage,
+      registry,
+      data,
+      signal: new AbortController().signal,
+    });
+    expect(page.items.map(item => item.answer)).toEqual(['answer']);
+    expect(page.items[0]?.citations[0]?.evidenceId).not.toBe(record.id);
+    await storage.append({ ...(await storage.read('turn'))!, id: 'turn-2' });
+    await connection.database.execute(
+      "INSERT INTO conversation_artifacts (id, session_id, created_at, result_json) VALUES ('broken', 'session', 'broken', '{}')",
+    );
+    const firstPage = await restoreConversationSessionPage({
+      sessionId: 'session',
+      storage,
+      registry,
+      data,
+      limit: 1,
+      signal: new AbortController().signal,
+    });
+    expect(firstPage.nextCursor).not.toBeNull();
+    const nextPage = await restoreConversationSessionPage({
+      sessionId: 'session',
+      storage,
+      registry,
+      data,
+      limit: 1,
+      cursor: firstPage.nextCursor!,
+      signal: new AbortController().signal,
+    });
+    expect(
+      [...firstPage.items, ...nextPage.items].map(item => item.id).sort(),
+    ).toEqual(['turn', 'turn-2']);
+    let undo: number | null = null;
+    const hiddenPage = await restoreConversationSessionPage({
+      sessionId: 'session',
+      registry,
+      data,
+      signal: new AbortController().signal,
+      storage: {
+        ...storage,
+        async readMany(ids) {
+          undo = await storage.hideSession('session');
+          return storage.readMany(ids);
+        },
+      },
+    });
+    expect(hiddenPage.items).toEqual([]);
+    expect(hiddenPage.unavailableCount).toBe(2);
+    await storage.undoHiddenSession('session', undo!);
     const restored = await restoreConversationArtifact({
       id: 'turn',
       storage,
@@ -90,6 +142,17 @@ test('reopens a saved conversation with fresh source aliases and rejects it afte
     );
     expect(stillPresent.rows).toHaveLength(1);
     expect((await storage.listSessions()).items).toEqual([]);
+    expect(
+      (
+        await restoreConversationSessionPage({
+          sessionId: 'session',
+          storage,
+          registry,
+          data,
+          signal: new AbortController().signal,
+        })
+      ).items,
+    ).toEqual([]);
     expect(
       (await registry.readSource(citation, new AbortController().signal))
         .status,

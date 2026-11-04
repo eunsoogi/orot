@@ -11,7 +11,8 @@ import {
 } from './conversationArtifactCodec';
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
-import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
+import { createConversationArtifactReader } from './conversationArtifactRead';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
@@ -24,30 +25,6 @@ async function generation(tx: SqlExecutor): Promise<number> {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
     throw new Error('Conversation generation is unavailable.');
   return value;
-}
-
-/** Check logical removal in addition to the physical row and revision checks. */
-async function assertNotRemoved(tx: SqlExecutor, value: ConversationArtifact) {
-  for (const source of value.sources) {
-    if (isPeriodSummarySource(source)) {
-      await assertPeriodNotRemoved(tx, source);
-      continue;
-    }
-    if (source.reference.sourceKind === 'external_medical') continue;
-    const ids = [
-      source.reference.sourceId,
-      source.reference.evidenceId,
-      ...source.records.map(record => record.id),
-    ];
-    for (const id of ids) {
-      const removed = await tx.execute(
-        'SELECT source_id FROM source_deletion_tombstones WHERE source_id = ? UNION ALL SELECT source_id FROM agent_memory_removed_sources WHERE source_id = ? LIMIT 1',
-        [id, id],
-      );
-      if (removed.rows.length)
-        throw new Error('A source was removed before saving.');
-    }
-  }
 }
 
 /** Session and source validation share each write transaction; no retry can reopen a removed session. */
@@ -65,6 +42,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       }));
   return {
     ...createConversationSessionVisibility(database, ensure),
+    ...createConversationArtifactReader(database, ensure),
     async currentGeneration() {
       await ensure();
       return generation(database);
@@ -139,7 +117,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           sessions.rows[0]?.version !== expectedSessionVersion
         )
           throw new Error('Conversation session was removed.');
-        await assertNotRemoved(tx, decoded);
+        await assertConversationSourcesNotRemoved(tx, decoded);
         await assertRetainedEvidenceCurrent(tx, decoded.sources, history);
         assertConversationNotCancelled(signal);
         const existing = await tx.execute(
@@ -188,38 +166,6 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
       });
-    },
-    async read(id: string): Promise<ConversationArtifact | null> {
-      await ensure();
-      let output: ConversationArtifact | null = null;
-      await database.transaction(async tx => {
-        const row = await tx.execute(
-          'SELECT a.id, a.session_id, a.created_at, a.result_json FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE a.id = ?',
-          [id],
-        );
-        const value = decodeConversationArtifact(row.rows[0]?.result_json);
-        if (
-          !value ||
-          value.id !== row.rows[0]?.id ||
-          value.sessionId !== row.rows[0]?.session_id ||
-          value.createdAt !== row.rows[0]?.created_at
-        )
-          return;
-        try {
-          await assertNotRemoved(tx, value);
-          // Reads compare the actual period revision; unrelated deletions need not hide saved output.
-          await assertRetainedEvidenceCurrent(
-            tx,
-            value.sources,
-            history,
-            false,
-          );
-          output = value;
-        } catch {
-          /* Changed sources make the result unavailable. */
-        }
-      });
-      return output;
     },
     async list(
       sessionId: string,
