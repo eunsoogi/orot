@@ -14,6 +14,41 @@ import {
 import { localData } from '../featureServiceFixtures';
 import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types';
 import { referenceOnly } from '../../../diseaseHypotheses/resultValidation';
+import { captureEvidenceSources } from '../captureEvidenceSources';
+
+test('does not retain generated parents without transitive deletion support', async () => {
+  const registry = new LocalEvidenceReferenceRegistry();
+  const item = registry.add({
+    reference: {
+      sourceKind: 'generated_artifact',
+      sourceId: 'parent',
+      sourceRevision: '1',
+      evidenceId: 'parent',
+      evidenceRevision: '1',
+      locator: {},
+      effectiveTime: null,
+      reviewState: 'unreviewed',
+    },
+    content: 'Synthetic prior result',
+    validate: async () => true,
+    readSource: async () => ({
+      status: 'available',
+      document: {
+        sourceKind: 'generated_artifact',
+        metadata: {} as never,
+        analysis: { hypotheses: [] },
+        sourceStatus: 'current',
+      },
+    }),
+  });
+  await expect(
+    captureEvidenceSources(
+      [referenceOnly(item)],
+      registry,
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('explicit lineage support');
+});
 
 test('captures uncited model inputs as dependencies of the saved output', async () => {
   const records = [

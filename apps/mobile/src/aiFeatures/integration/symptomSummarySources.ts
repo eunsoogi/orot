@@ -1,9 +1,6 @@
 import type { EvidenceReference, EvidenceItem } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
-import type {
-  SavedSummarySource,
-  SavedSymptomSummary,
-} from '../../diseaseHypotheses/savedSummaries';
+import type { SavedSymptomSummary } from '../../diseaseHypotheses/savedSummaries';
 import type { AiFeatureLocalData } from './localData';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -15,10 +12,7 @@ import {
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { summaryContentReviewIssues } from './summaryContentReview';
 import { healthOverviewFacts } from './healthOverviewFacts';
-import {
-  isPeriodSummarySource,
-  type SavedRecordSummarySource,
-} from '../../diseaseHypotheses/savedSummaries';
+import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { healthContextRevision } from '../../healthEvidence/healthContext/scope';
 import {
   healthContextContent,
@@ -27,8 +21,8 @@ import {
 import {
   manualHistorySummaryReviewEvidence,
   readSavedManualHistorySource,
-  savedManualHistorySource,
 } from './manualHistoryEvidence';
+import { captureEvidenceSources } from './captureEvidenceSources';
 
 /** Persist storage identities, never turn-local e1/s1 aliases that can refer to different rows after restart. */
 export async function captureSymptomSummarySources(
@@ -37,59 +31,12 @@ export async function captureSymptomSummarySources(
   signal: AbortSignal,
   admittedReferences: readonly EvidenceReference[] = references(analysis),
 ) {
-  const mapping = new Map<string, EvidenceReference>();
-  const sources: SavedSummarySource[] = [];
   // Uncited inputs can influence prose and must share the same deletion boundary.
-  const all = [...references(analysis), ...admittedReferences];
-  for (const ref of all) {
-    if (mapping.has(JSON.stringify(ref))) continue;
-    if (signal.aborted) throw new Error('Saving was cancelled.');
-    if (ref.sourceKind === 'external_medical') {
-      sources.push({ reference: ref, records: [] });
-      mapping.set(JSON.stringify(ref), ref);
-      continue;
-    }
-    const original = registry.resolve(ref);
-    const read = await registry.readSource(ref, signal);
-    if (!original || read.status !== 'available')
-      throw new Error('The cited source changed before saving.');
-    if (read.document.sourceKind === 'health_context_period') {
-      const { scope, report } = read.document;
-      sources.push({
-        kind: 'health_context_period',
-        reference: original,
-        scope,
-        revision: healthContextRevision(scope, report),
-        deletionGeneration: report.deletionGeneration,
-      });
-      mapping.set(JSON.stringify(ref), original);
-      continue;
-    }
-    // Generated results cannot be captured as reviewed memory or laundered into a new summary.
-    if (read.document.sourceKind === 'generated_artifact')
-      throw new Error('Generated artifacts require explicit lineage support.');
-    const records: SavedRecordSummarySource['records'] =
-      read.document.sourceKind === 'personal_record'
-        ? read.document.records.map(entry => ({
-            kind: entry.kind,
-            id: entry.record.id,
-            revision: fingerprint(entry.record),
-          }))
-        : read.document.sourceKind === 'manual_history'
-          ? [savedManualHistorySource(read.document.evidence)]
-          : [
-              {
-                kind: 'reviewed_memory',
-                id: read.document.record.id,
-                revision: fingerprint({
-                  text: read.document.record.text,
-                  meta: read.document.record.meta,
-                }),
-              },
-            ];
-    sources.push({ reference: original, records });
-    mapping.set(JSON.stringify(ref), original);
-  }
+  const { mapping, sources } = await captureEvidenceSources(
+    [...references(analysis), ...admittedReferences],
+    registry,
+    signal,
+  );
   return {
     analysis: mapAnalysis(analysis, ref => mapping.get(JSON.stringify(ref))!),
     sources,
