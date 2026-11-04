@@ -30,7 +30,7 @@ export function isEvidenceReference(value: unknown): value is EvidenceReference 
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const reference = value as Partial<EvidenceReference>;
   return (
-    ['personal_record', 'reviewed_memory', 'external_medical'].includes(
+    ['personal_record', 'reviewed_memory', 'generated_artifact', 'external_medical'].includes(
       reference.sourceKind ?? '',
     ) &&
     typeof reference.sourceId === 'string' &&
@@ -130,7 +130,14 @@ export function validateEvidenceBatch(
   for (const coverage of batch.coverage) {
     if (
       !isSourceAllowed(scope, coverage.sourceKind) ||
-      (coverage.selectionMethod !== undefined && coverage.selectionMethod !== 'ranked_retrieval') ||
+      (coverage.selectionMethod !== undefined &&
+        !['ranked_retrieval', 'paged_retrieval'].includes(coverage.selectionMethod)) ||
+      (coverage.selectionMethod === 'paged_retrieval' &&
+        coverage.sourceKind !== 'generated_artifact') ||
+      (coverage.nextCursor !== undefined &&
+        (coverage.selectionMethod !== 'paged_retrieval' ||
+          !coverage.truncated ||
+          !/^[a-zA-Z0-9-]{1,64}$/u.test(coverage.nextCursor))) ||
       !Number.isInteger(coverage.resultLimit) ||
       coverage.resultLimit < 1 ||
       coverage.resultLimit > budget.maxEvidenceItems ||

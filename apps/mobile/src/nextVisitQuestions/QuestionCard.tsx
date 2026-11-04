@@ -1,3 +1,4 @@
+import { ActionButton } from './QuestionCardActionButton';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -187,37 +188,35 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </Pressable>
       ))}
+      {(question.generatedArtifactContext ?? [])
+        .filter(
+          reference =>
+            !question.citations.some(
+              citation =>
+                citation.sourceKind === reference.sourceKind &&
+                citation.sourceId === reference.sourceId,
+            ),
+        )
+        .map((reference, sourceIndex) => (
+          <Pressable
+            accessibilityRole="button"
+            disabled={disabled}
+            key={`generated:${reference.sourceId}`}
+            onPress={() => onOpenSource(reference)}
+            style={[styles.sourceButton, disabled && styles.disabled]}
+            testID={`next-visit-generated-source-${index}-${sourceIndex}`}
+          >
+            <AppSymbol name="doc.text" color={theme.colors.textMuted} />
+            <Text style={styles.openSource}>
+              생성에 사용한 이전 AI 결과 보기
+            </Text>
+            <AppSymbol
+              name="chevron.right"
+              size={14}
+              color={theme.colors.textMuted}
+            />
+          </Pressable>
+        ))}
     </View>
-  );
-}
-
-function ActionButton({
-  accessibilityLabel,
-  disabled,
-  onPress,
-  theme,
-  testID,
-  title,
-}: {
-  accessibilityLabel: string;
-  disabled: boolean;
-  onPress: () => void;
-  theme: NextVisitQuestionsTheme;
-  testID: string;
-  title: string;
-}) {
-  const styles = createQuestionCardStyles(theme);
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.actionButton, disabled && styles.disabled]}
-      testID={testID}
-    >
-      <Text style={styles.actionText}>{title}</Text>
-    </Pressable>
   );
 }

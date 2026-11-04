@@ -96,6 +96,7 @@ test('one selected overview returns bounded diverse facts with exact, revalidate
       providerId: 'synthetic',
       modelId: 'synthetic',
       modelName: 'Synthetic',
+      inputLineage: 'complete',
     },
     restoredRegistry,
     {

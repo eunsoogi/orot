@@ -3,7 +3,7 @@ import type { EvidenceSearchTool } from '@orot/agent-runtime';
 const LOCAL_SEARCH_FAILURE_GAP =
   '로컬 검색을 사용할 수 없어 근거를 찾지 못했어요.';
 
-/** Track storage failures without retaining exceptions or treating cancellation as failure. */
+/** Track local read failures without retaining exceptions or treating cancellation as failure. */
 export function observeLocalSearchFailures(
   tools: readonly EvidenceSearchTool[],
   onFailure: () => void,
@@ -17,6 +17,7 @@ export function observeLocalSearchFailures(
         try {
           outcome = await tool.search(...args);
         } catch (error) {
+          // Invalid requests and cancellations are not evidence that local storage failed.
           if (
             !args[0].signal.aborted &&
             tool.parseInput(args[0].input) !== undefined &&

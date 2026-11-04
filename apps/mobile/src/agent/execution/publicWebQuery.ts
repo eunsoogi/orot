@@ -92,7 +92,11 @@ export function isReusablePublicWebQuery(
   const message = request.payload.messages[0];
   if (message?.role !== 'user' || typeof message.content !== 'string')
     return false;
-  const query = message.content;
+  return isControlledPublicWebQuery(message.content);
+}
+
+/** Only app-constructed topic queries are known not to contain private record text. */
+export function isControlledPublicWebQuery(query: string): boolean {
   if (!query.startsWith(prefix) || !query.endsWith(suffix)) return false;
   const labels = query.slice(prefix.length, -suffix.length).split('; ');
   return (

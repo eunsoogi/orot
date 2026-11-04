@@ -1,3 +1,4 @@
+import { hasMixedSummarySources } from './summarySourceSeparation';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import { summaryResponseGuidance } from './summaryEnvelopeCorrection';
 import { SUMMARY_UNCERTAINTY_REASON } from './summaryUncertainty';
@@ -60,6 +61,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
       'Use uncertaintyNotes only for actual interpretive limits, as an array of concise Korean notes; omit it or use an empty array when no limit applies. Do not return a scalar uncertainty field or an English placeholder. Include missingData only when it is necessary for this summary and could not be established through permitted searches; otherwise omit it or use an empty array. ' +
       'Do not create a standalone section that only states missing subjective-symptom coverage. When that limit matters and all supplied clinical records are typed non-symptom records, use coverageNotes=["no_symptom_entries_in_supplied_records"] instead; the app verifies this supplied-subset limit and places it in uncertainty. Omit coverageNotes otherwise. ' +
       'The request includes both a personal-record summary and public medical context explaining the recorded concepts. After searching personal records, use the public medical literature tool for related general concepts. Queries must contain only generic medical concepts, never names, identifiers or verbatim private records. ' +
+      'Previously generated artifacts are historical AI interpretations, not independently verified health facts. If used, describe them explicitly as earlier AI output in a separate section and cite the generated artifact. Do not turn their interpretations into observations. ' +
       "Keep record facts and medical context in separate sections. Cite only retrieved publications for medical context. If tool errors, denied consent or insufficient sources prevent completing research, state that actual limitation and do not invent an explanation. Population-level findings never establish this person's diagnosis or cause. " +
       "Do not describe appointment times or locations as symptoms. Do not infer the person's disease, cause, clinical risk or abnormality, or recommend treatment. Distinguish unavailable evidence from negative findings. " +
       'Use exact evidence IDs for every section. Write titles, summaries, uncertaintyNotes and missing information in Korean.',
@@ -82,7 +84,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
             })),
             coverage: input.evidence.coverage,
             outputInstructions:
-              'Write section titles, summaries, uncertaintyNotes and missingData in Korean. Omit uncertaintyNotes or use an empty array if no actual interpretive limit applies. Group sections by records.sourceKind: personal_record facts and external_medical context must be in separate sections, with supportingEvidence IDs from that kind only. Return contraryEvidence as an empty array. Top-level citations must match the used IDs.',
+              'Write section titles, summaries, uncertaintyNotes and missingData in Korean. Omit uncertaintyNotes or use an empty array if no actual interpretive limit applies. Group sections by records.sourceKind: personal_record facts, external_medical context, and historical generated_artifact interpretations must be separate, with supportingEvidence IDs from that kind only. Return contraryEvidence as an empty array. Top-level citations must match the used IDs.',
           }),
         },
       ];
@@ -159,14 +161,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
             reason: SUMMARY_PRESENTATION_REASONS[presentationIssue],
           };
         }
-        if (
-          validated.value.hypotheses.some(item => {
-            const kinds = item.supportingEvidence.map(
-              ref => ref.sourceKind === 'external_medical',
-            );
-            return kinds.some(Boolean) && !kinds.every(Boolean);
-          })
-        ) {
+        if (hasMixedSummarySources(validated.value)) {
           providerDiagnostic('disease', 'validation', 'task_summary_sources');
           return {
             status: 'invalid',

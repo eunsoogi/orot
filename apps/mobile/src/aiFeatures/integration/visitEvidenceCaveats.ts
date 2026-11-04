@@ -9,7 +9,7 @@ export type EvidenceCoverageState = Pick<
   readonly batch: Pick<EvidenceBatch, 'coverage' | 'conflicts'>;
 };
 
-/** Preserve distinct local coverage and memory limitations in the review UI. */
+/** Preserve search gaps without exposing source content. */
 export function currentEvidenceCaveats(
   collections: readonly EvidenceCoverageState[],
 ): EvidenceCaveat[] {
@@ -39,7 +39,8 @@ export function currentEvidenceCaveats(
     collections.every(
       collection => collection.memoryStatus === 'no_matching_current_memory',
     )
-  )
+  ) {
     caveats.add('no_matching_reviewed_memory');
+  }
   return [...caveats];
 }

@@ -2,6 +2,31 @@ import { act, render, fireEvent, screen } from '@testing-library/react-native';
 import { SavedSummaryHistory } from '../SavedSummaryHistory';
 import type { DiseaseHypothesisAnalysis } from '../types';
 
+test('explains why an older summary cannot be opened while preserving its history row', async () => {
+  const history = {
+    list: async () => [
+      {
+        id: 'old',
+        createdAt: '2035-01-01T00:00:00Z',
+        modelName: 'Synthetic',
+        inputLineage: 'unknown' as const,
+      },
+    ],
+    read: jest.fn(async () => null),
+  };
+  await render(
+    <SavedSummaryHistory
+      expanded
+      history={history}
+      disabled={false}
+      onRestore={jest.fn()}
+    />,
+  );
+  expect(await screen.findByText(/원본은 보관되어 있어요/)).toBeTruthy();
+  expect(screen.getByRole('button', { name: /Synthetic/ })).toBeDisabled();
+  expect(history.read).not.toHaveBeenCalled();
+});
+
 test('distinguishes an unavailable cited source from a storage write failure', async () => {
   const history = {
     list: jest.fn(async () => []),

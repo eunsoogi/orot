@@ -162,6 +162,57 @@ export function createVisitQuestionSourceService(
                 }
               : { status: 'missing' };
           }
+          if (reference.sourceKind === 'generated_artifact') {
+            const locator =
+              typeof reference.locator === 'object' &&
+              reference.locator !== null &&
+              !Array.isArray(reference.locator)
+                ? (reference.locator as Readonly<Record<string, unknown>>)
+                : undefined;
+            const generatedConversation =
+              locator?.kind === 'generated_artifact' &&
+              locator.type === 'conversation_turn';
+            if (
+              locator?.kind !== 'generated_artifact' ||
+              (generatedConversation
+                ? !data.conversationArtifactDiscovery
+                : !data.summaryArtifactDiscovery)
+            )
+              return { status: 'unavailable' };
+            const result = generatedConversation
+              ? await (
+                  await data.conversationArtifactDiscovery!(registry)
+                ).read(reference.sourceId, signal)
+              : await (
+                  await data.summaryArtifactDiscovery!(registry)
+                ).read(reference.sourceId, signal);
+            if (!result) return { status: 'missing' };
+            if (
+              result.metadata.revision !== reference.sourceRevision ||
+              result.metadata.revision !== reference.evidenceRevision ||
+              result.sourceStatus === 'changed' ||
+              result.metadata.type !== locator.type
+            )
+              return { status: 'changed' };
+            return {
+              status: 'available',
+              document:
+                'question' in result.content
+                  ? {
+                      sourceKind: 'generated_artifact',
+                      metadata: result.metadata,
+                      conversation: result.content,
+                      sources: result.sources,
+                      sourceStatus: result.sourceStatus,
+                    }
+                  : {
+                      sourceKind: 'generated_artifact',
+                      metadata: result.metadata,
+                      analysis: result.content,
+                      sourceStatus: result.sourceStatus,
+                    },
+            };
+          }
           return { status: 'unavailable' };
         },
       });

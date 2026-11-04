@@ -208,4 +208,28 @@ describe('multi-agent evidence boundaries', () => {
     expect(result.checkpoint.evidenceReferences).toEqual([reference]);
     expect(JSON.stringify(result.checkpoint)).not.toContain(privateValue);
   });
+
+  it('retains an uncited model input in the result checkpoint', async () => {
+    const batch = completeBatch();
+    const uncited = { ...reference, evidenceId: 'observation-2', evidenceRevision: 'revision-2' };
+    const options = workflowOptions({
+      ...batch,
+      items: [...batch.items, { ...uncited, content: 'Synthetic uncited observation.' }],
+      coverage: [{ ...batch.coverage[0]!, returnedCount: 2 }],
+    });
+    const generate = jest.fn(options.provider.generate);
+    const result = await runMultiAgentWorkflow({
+      ...options,
+      provider: { ...options.provider, generate },
+      task: {
+        ...options.task,
+        createMessages: ({ evidence }) => [{ role: 'user', content: JSON.stringify(evidence) }],
+      },
+    });
+    expect(result.status).toBe('result');
+    expect(JSON.stringify(generate.mock.calls[0])).toContain('Synthetic uncited observation.');
+    expect(result.citations).toEqual([reference]);
+    expect(result.checkpoint.evidenceReferences).toEqual([reference, uncited]);
+    expect(JSON.stringify(result.checkpoint)).not.toContain('Synthetic uncited observation.');
+  });
 });

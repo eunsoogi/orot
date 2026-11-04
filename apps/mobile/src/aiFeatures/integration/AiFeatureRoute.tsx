@@ -42,6 +42,10 @@ export function AiFeatureRoute({
     () => createAiFeatureServices(consent, serviceDependencies),
     [consent, serviceDependencies],
   );
+  const conversationSessionOptions = useMemo(
+    () => services.conversationSessionOptions(),
+    [services],
+  );
   const [controller] = useState(() => {
     const navigation =
       createNavigationController<AiFeatureRouteName>('app-home');
@@ -93,7 +97,9 @@ export function AiFeatureRoute({
 
   return (
     // Native route scenes keep their own feature state; overlay routing lives above them.
-    <AiFeatureSharedNavigationStateProvider>
+    <AiFeatureSharedNavigationStateProvider
+      conversationSessionOptions={conversationSessionOptions}
+    >
       <>
         <NavigationRouteAdapter
           controller={controller}

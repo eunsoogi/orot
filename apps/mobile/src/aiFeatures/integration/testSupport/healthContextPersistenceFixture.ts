@@ -69,6 +69,7 @@ export async function healthContextFixture(sourceId?: string) {
   );
   const saved: SavedSymptomSummary = {
     ...captured,
+    inputLineage: 'complete',
     id: 'period-summary',
     createdAt: '2026-10-05T00:00:00Z',
     modelName: 'Synthetic',

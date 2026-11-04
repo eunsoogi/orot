@@ -192,15 +192,23 @@ export function SavedSummaryHistory({
             <AppText>저장된 요약이 없어요.</AppText>
           ) : null}
           {rows.map(row => (
-            <AppButton
-              key={row.id}
-              variant="secondary"
-              title={`${new Date(row.createdAt).toLocaleString('ko-KR')} · ${row.modelName}`}
-              disabled={disabled || busy}
-              onPress={() => {
-                read(row.id);
-              }}
-            />
+            <View key={row.id}>
+              <AppButton
+                key={row.id}
+                variant="secondary"
+                title={`${new Date(row.createdAt).toLocaleString('ko-KR')} · ${row.modelName}`}
+                disabled={disabled || busy || row.inputLineage === 'unknown'}
+                onPress={() => {
+                  read(row.id);
+                }}
+              />
+              {row.inputLineage === 'unknown' ? (
+                <AppText>
+                  원본은 보관되어 있어요. 생성에 사용된 자료를 확인할 수 없어
+                  내용을 표시하지 않아요.
+                </AppText>
+              ) : null}
+            </View>
           ))}
           {hasMore ? (
             <AppButton

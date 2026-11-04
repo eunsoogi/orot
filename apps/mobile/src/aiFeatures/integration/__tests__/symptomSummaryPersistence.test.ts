@@ -25,7 +25,12 @@ async function completedOutcome(
     throw new Error('Expected completed workflow');
   return {
     status: 'workflow' as const,
-    result: { ...result, value, citations: [citation] },
+    result: {
+      ...result,
+      value,
+      citations: [citation],
+      checkpoint: { ...result.checkpoint, evidenceReferences: [citation] },
+    },
   };
 }
 

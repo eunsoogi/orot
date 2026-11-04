@@ -95,7 +95,8 @@ export async function saveReviewedVisitQuestions(
         if (!sql)
           throw new Error('Atomic health-period validation is unavailable.');
         await assertHealthPeriodCurrent(sql, metadata.healthContextSource);
-      } else await assertCurrentVisitQuestionRecord(writer, citation, metadata);
+      } else
+        await assertCurrentVisitQuestionRecord(writer, citation, metadata, sql);
     }
 
     const previous = await writer.list('visit_question');

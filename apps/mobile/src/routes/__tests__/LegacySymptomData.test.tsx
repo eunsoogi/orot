@@ -50,7 +50,7 @@ test('legacy source remains readable and confirmed deletion invalidates linked s
     await summaries.list(); // Set up the same persistent deletion triggers as a saved summary.
     await database.execute(
       'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
-      ['saved', entry.recordedAt, 'Synthetic', '{}'],
+      ['saved', entry.recordedAt, 'Synthetic', '{"inputLineage":"complete"}'],
     );
     await database.execute(
       'INSERT INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',

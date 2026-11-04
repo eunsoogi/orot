@@ -5,6 +5,7 @@ import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import { NextVisitQuestionsSessionProvider } from './NextVisitQuestionsSession';
 import { ConversationSessionsProvider } from '../../ragConversation/ConversationSessionsContext';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
+import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 
 export interface AiFeatureSharedNavigationState {
   readonly summaryReturnRouteKey: string | null;
@@ -41,17 +42,19 @@ const initialState: AiFeatureSharedNavigationState = {
 const AiFeatureSharedNavigationStateContext =
   createContext<AiFeatureSharedNavigationStateContextValue | null>(null);
 
-/** Shares overlay data across native scenes retained behind the active screen. */
+/** Shares overlay state and the durable conversation owner across retained native scenes. */
 export function AiFeatureSharedNavigationStateProvider({
   children,
+  conversationSessionOptions,
 }: {
   readonly children: ReactNode;
+  readonly conversationSessionOptions?: ConversationSessionOptions;
 }) {
   const [state, setState] = useState(initialState);
   const value = useMemo(() => ({ state, setState }), [state]);
   return (
     <AiFeatureSharedNavigationStateContext.Provider value={value}>
-      <ConversationSessionsProvider>
+      <ConversationSessionsProvider options={conversationSessionOptions}>
         <NextVisitQuestionsSessionProvider
           selectedAiRevision={state.selectedAiRevision}
         >

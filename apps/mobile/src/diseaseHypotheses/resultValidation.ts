@@ -1,7 +1,6 @@
 import type { JsonValue } from '@orot/model-runtime';
 import type {
   EvidenceBatch,
-  EvidenceItem,
   EvidenceReference,
   TaskResponderInput,
   TaskResultValidation,
@@ -36,7 +35,7 @@ function stableJson(value: unknown): string {
     .join(',')}}`;
 }
 
-export function referenceOnly(item: EvidenceItem): EvidenceReference {
+export function referenceOnly(item: EvidenceReference): EvidenceReference {
   const {
     sourceKind,
     sourceId,

@@ -1,7 +1,8 @@
 import type { JsonObject, JsonValue, LanguageModelRequest } from '@orot/model-runtime';
 import type { BaseStore } from '@langchain/langgraph/web';
 
-export type EvidenceSourceKind = 'personal_record' | 'reviewed_memory' | 'external_medical';
+export type EvidenceSourceKind =
+  'personal_record' | 'reviewed_memory' | 'generated_artifact' | 'external_medical';
 export type EvidenceNeed = 'missing_coverage' | 'verify_conflict' | 'confirm_value' | 'other';
 
 // Half-open bounds match LocalRecordQueryService so adapters pass time filters without widening.
@@ -41,7 +42,9 @@ export interface EvidenceCoverage {
   readonly gaps: readonly string[];
   readonly truncated: boolean;
   /** A completed search selected ranked hits; this never certifies a complete medical history. */
-  readonly selectionMethod?: 'ranked_retrieval';
+  readonly selectionMethod?: 'ranked_retrieval' | 'paged_retrieval';
+  /** Opaque continuation is meaningful only for the tool that issued it. */
+  readonly nextCursor?: string;
   readonly resultLimit: number;
   readonly returnedCount: number;
 }
@@ -75,8 +78,9 @@ export const DEFAULT_MULTI_AGENT_BUDGET = {
 } satisfies MultiAgentBudget;
 
 export const MAX_MULTI_AGENT_BUDGET = {
-  maxModelCalls: 4,
-  maxToolCalls: 2,
+  // Artifact-enabled workflows may inspect a retained result and its source in addition to required searches.
+  maxModelCalls: 8,
+  maxToolCalls: 4,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,

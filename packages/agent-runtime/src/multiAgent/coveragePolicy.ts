@@ -7,13 +7,17 @@ export function hasBlockingCoverage(
   batch: EvidenceBatch,
   allowBoundedExternalEvidence = false,
   allowRankedLocalEvidence = false,
+  allowPagedGeneratedArtifacts = false,
 ): boolean {
-  if (!allowBoundedExternalEvidence && !allowRankedLocalEvidence)
+  if (!allowBoundedExternalEvidence && !allowRankedLocalEvidence && !allowPagedGeneratedArtifacts)
     return hasIncompleteCoverage(batch);
   return hasIncompleteCoverage({
     ...batch,
     coverage: batch.coverage.map((coverage) =>
       (coverage.sourceKind === 'external_medical' && allowBoundedExternalEvidence) ||
+      (coverage.sourceKind === 'generated_artifact' &&
+        allowPagedGeneratedArtifacts &&
+        coverage.selectionMethod === 'paged_retrieval') ||
       (coverage.sourceKind !== 'external_medical' &&
         allowRankedLocalEvidence &&
         coverage.selectionMethod === 'ranked_retrieval')

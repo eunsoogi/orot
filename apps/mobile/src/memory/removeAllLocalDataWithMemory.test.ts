@@ -6,6 +6,7 @@ import {
   openLocalStorage,
 } from '../storage/secureDatabase';
 import { removeAllLocalDataWithMemory } from './removeAllLocalDataWithMemory';
+import { subscribeLocalDataClear } from '../storage/localDataClearEvents';
 
 jest.mock('../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -129,6 +130,8 @@ describe('removeAllLocalDataWithMemory', () => {
 
   it('forgets memory before clearing local records and shared-transaction RAG state', async () => {
     const memory = makeMemory();
+    const notify = jest.fn(() => events.push('notify-clear'));
+    const unsubscribe = subscribeLocalDataClear(notify);
 
     await expect(deleteAllWithAudio(memory)).resolves.toEqual({
       ...deleted,
@@ -136,6 +139,8 @@ describe('removeAllLocalDataWithMemory', () => {
       audioCleanupPending: false,
       medicalDocumentCleanupPending: false,
     });
+    unsubscribe();
+    expect(notify).toHaveBeenCalledTimes(1);
 
     expect(events).toEqual([
       'rag-prepare',
@@ -145,6 +150,7 @@ describe('removeAllLocalDataWithMemory', () => {
       'memory-forget-all',
       'local-delete',
       'rag-clear',
+      'notify-clear',
       'audio-commit:synthetic-source-1',
       'audio-commit:synthetic-source-2',
     ]);
@@ -154,10 +160,14 @@ describe('removeAllLocalDataWithMemory', () => {
 
   it('keeps source records when persistent memory removal fails', async () => {
     const memory = makeMemory(new Error('Synthetic memory-storage failure.'));
+    const notify = jest.fn();
+    const unsubscribe = subscribeLocalDataClear(notify);
 
     await expect(deleteAllWithAudio(memory)).rejects.toThrow(
       'Synthetic memory-storage failure.',
     );
+    unsubscribe();
+    expect(notify).not.toHaveBeenCalled();
 
     expect(audioDeletion.restore).toHaveBeenNthCalledWith(
       1,

@@ -24,6 +24,7 @@ import {
 import { formatStorageOpenDiagnostic } from './storageDiagnostics';
 import { setupVisitQuestionPeriods } from './visitQuestionPeriods';
 import { agentMemoryDatabaseFacade } from './agentMemoryDatabaseFacade';
+import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
@@ -130,6 +131,8 @@ export function openLocalStorage(): Promise<RecordRepository> {
       // Install derived-period deletion guards before any caller receives a writer, including after restore.
       if (!database) throw new Error('The encrypted database is not open.');
       await database.transaction(setupVisitQuestionPeriods);
+      // Upgrade retained-summary deletion guards before any repository can remove a source.
+      await createSymptomSummaryStorage(database).list();
       return records;
     })().catch(error => {
       // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.

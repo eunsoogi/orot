@@ -14,6 +14,86 @@ import {
 import { localData } from '../featureServiceFixtures';
 import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types';
 import { referenceOnly } from '../../../diseaseHypotheses/resultValidation';
+import { captureEvidenceSources } from '../captureEvidenceSources';
+
+test('rejects a generated parent without a valid identity', async () => {
+  const registry = new LocalEvidenceReferenceRegistry();
+  const item = registry.add({
+    reference: {
+      sourceKind: 'generated_artifact',
+      sourceId: 'parent',
+      sourceRevision: '1',
+      evidenceId: 'parent',
+      evidenceRevision: '1',
+      locator: {},
+      effectiveTime: null,
+      reviewState: 'unreviewed',
+    },
+    content: 'Synthetic prior result',
+    validate: async () => true,
+    readSource: async () => ({
+      status: 'available',
+      document: {
+        sourceKind: 'generated_artifact',
+        metadata: {} as never,
+        analysis: { hypotheses: [] },
+        sourceStatus: 'current',
+      },
+    }),
+  });
+  await expect(
+    captureEvidenceSources(
+      [referenceOnly(item)],
+      registry,
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('The generated source identity is invalid.');
+});
+
+test('captures uncited model inputs as dependencies of the saved output', async () => {
+  const records = [
+    healthObservation('cited', []),
+    healthObservation('uncited', []),
+  ];
+  const registry = new LocalEvidenceReferenceRegistry();
+  const snapshot = await createLocalEvidenceSnapshot({
+    records,
+    inventory: inventory(records),
+    persistedChunks: records.map(record =>
+      chunkStructuredRecord('health_observation', record.record as never),
+    ),
+    loadCurrentPersistedChunks: async () =>
+      records.map(record =>
+        chunkStructuredRecord('health_observation', record.record as never),
+      ),
+    ...noStaleEvidence,
+    repository: repository(records),
+    memoryRecords: [],
+    memoryStorage: { listRecords: async () => [] },
+    registry,
+  });
+  const refs = snapshot.items.map(referenceOnly);
+  const captured = await captureSymptomSummarySources(
+    {
+      hypotheses: [
+        {
+          title: '요약',
+          summary: '기록',
+          uncertainty: '',
+          missingData: [],
+          supportingEvidence: [refs[0]!],
+          contraryEvidence: [],
+        },
+      ],
+    },
+    registry,
+    new AbortController().signal,
+    refs,
+  );
+  expect(captured.sources.map(source => source.reference.evidenceId)).toEqual(
+    expect.arrayContaining(['cited', 'uncited']),
+  );
+});
 
 test.each([undefined, 'symptom_summary'] as const)(
   'restores saved sources and presentation %s in a fresh registry after alias reuse',
@@ -74,6 +154,7 @@ test.each([undefined, 'symptom_summary'] as const)(
       modelId: 'synthetic',
       providerId: 'synthetic',
       modelName: 'Synthetic',
+      inputLineage: 'complete' as const,
       ...captured,
     };
     const restored = await restoreSymptomSummary(saved, fresh, data);
@@ -83,6 +164,53 @@ test.each([undefined, 'symptom_summary'] as const)(
     expect(
       (await fresh.readSource(ref, new AbortController().signal)).status,
     ).toBe('available');
+    const extraReference = {
+      ...captured.sources[0]!.reference,
+      privateExtra: 'synthetic private value',
+    };
+    const untrusted = {
+      ...saved,
+      sources: [{ ...captured.sources[0]!, reference: extraReference }],
+      analysis: {
+        ...captured.analysis,
+        hypotheses: captured.analysis.hypotheses.map(item => ({
+          ...item,
+          supportingEvidence: [extraReference],
+        })),
+      },
+    };
+    const projectedRegistry = new LocalEvidenceReferenceRegistry();
+    const projected = await restoreSymptomSummary(
+      untrusted,
+      projectedRegistry,
+      data,
+    );
+    const projectedRef = projected.hypotheses[0]!.supportingEvidence[0]!;
+    expect(
+      JSON.stringify(projectedRegistry.resolve(projectedRef)),
+    ).not.toContain('synthetic private value');
+    const mixed = {
+      ...saved,
+      sources: [
+        {
+          reference: captured.sources[0]!.reference,
+          records: [
+            { kind: 'manual_history' as const, id: 'manual', revision: '1' },
+            {
+              kind: 'health_observation' as const,
+              id: record.record.id,
+              revision: '1',
+            },
+          ],
+        },
+      ],
+    };
+    const mixedResult = await restoreSymptomSummary(
+      mixed,
+      new LocalEvidenceReferenceRegistry(),
+      data,
+    );
+    expect(mixedResult.savedSummary).toMatchObject({ sourceChanged: true });
     data.repository.readRecord = jest.fn(async () => null);
     const changed = await restoreSymptomSummary(
       saved,

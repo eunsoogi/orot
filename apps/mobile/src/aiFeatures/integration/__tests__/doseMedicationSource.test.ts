@@ -162,6 +162,7 @@ test('saved summary descriptors retain the linked name revision for restoration 
     providerId: 'synthetic',
     modelId: 'synthetic',
     modelName: 'Synthetic',
+    inputLineage: 'complete' as const,
     ...captured,
   };
   const fresh = new LocalEvidenceReferenceRegistry();

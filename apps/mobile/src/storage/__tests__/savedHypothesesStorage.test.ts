@@ -37,6 +37,7 @@ test('retains possibilities, contrary sources and uncertainty after closing and 
       createdAt: '2035-01-01T00:00:00Z',
       modelId: 'synthetic-model',
       modelName: 'Synthetic model',
+      inputLineage: 'complete',
       providerId: 'synthetic',
       analysis: {
         hypotheses: [

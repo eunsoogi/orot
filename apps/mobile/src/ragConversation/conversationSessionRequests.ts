@@ -1,103 +1,62 @@
-import type { DisplayMessage } from './ConversationMessage';
-import type { RagConversationMessage } from './task';
-import type {
-  RagConversationObserver,
-  RagConversationOutcome,
-} from './service';
 import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
 import { progressCopy } from './conversationProgress';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
+import { conversationHistoryPayload } from './conversationHistoryPayload';
+import type { createConversationSessionRetention } from './conversationSessionRetention';
+import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
+import {
+  retainPartial as retainFailedPartial,
+  restoreFailedPrompt,
+} from './conversationFailedPrompt';
 
-export type ConversationSender = (
-  question: string,
-  history: readonly RagConversationMessage[],
-  signal?: AbortSignal,
-  observer?: RagConversationObserver,
-) => Promise<RagConversationOutcome>;
-
-/** Memory-only conversation state keeps drafts and request activity scoped to one session. */
-export interface ConversationSession {
-  readonly id: number;
-  readonly title: string;
-  readonly createdAt: string;
-  readonly draft: string;
-  readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: {
-    id: number;
-    content: string;
-    activity: string;
-  } | null;
-  readonly busy: boolean;
-  readonly error: string;
-}
+import type {
+  ConversationSender,
+  ConversationSession,
+  PendingTurn,
+} from './conversationSessionTypes';
+export type {
+  ConversationSender,
+  ConversationSession,
+} from './conversationSessionTypes';
 
 /** Owns request lifetime and prevents late results from clearing a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
+  conversationScope: (id: number) => string,
+  retention?: ReturnType<typeof createConversationSessionRetention>,
 ) {
   let messageId = 0;
+  const saveRecovery = createConversationRequestSaveRecovery(update);
   const controllers = new Map<number, AbortController>();
-  const pendingTurns = new Map<
-    number,
-    { readonly question: string; readonly userMessageId: number }
-  >();
+  const pendingTurns = new Map<number, PendingTurn>();
 
-  const retainPartial = (id: number, activity: string, retainEmpty = false) => {
-    const session = find(id);
-    const content = session.pendingMessage?.content ?? '';
-    // Partial assistant text stays visible as an incomplete draft, never as validated history.
-    update(id, {
-      pendingMessage: null,
-      messages:
-        content || retainEmpty
-          ? [
-              ...session.messages,
-              {
-                id: session.pendingMessage?.id ?? ++messageId,
-                role: 'assistant',
-                content,
-                activity,
-                incomplete: true,
-              },
-            ]
-          : session.messages,
-    });
-  };
-
-  // Keep failed user prompts in session history while restoring their retry draft.
-  const restoreFailedPrompt = (
-    id: number,
-    question: string,
-    userMessageId: number,
-    error?: string,
-    idle = false,
-  ) => {
-    const session = find(id);
-    const hasDifferentDraft =
-      session.draft.trim().length > 0 && session.draft.trim() !== question;
-    update(id, {
-      pendingMessage: null,
-      draft: hasDifferentDraft ? session.draft : question,
-      messages: session.messages.map(message =>
-        message.id === userMessageId ? { ...message, failed: true } : message,
-      ),
-      ...(error === undefined ? {} : { error }),
-      ...(idle ? { busy: false } : {}),
-    });
-  };
+  const retainPartial = (id: number, activity: string, retainEmpty = false) =>
+    retainFailedPartial(
+      find,
+      update,
+      () => ++messageId,
+      id,
+      activity,
+      retainEmpty,
+    );
 
   /** Stops only the active request, keeps an incomplete user-visible stream, and restores its prompt. */
-  const cancel = (id: number) => {
+  const cancel = (id: number, settled = false) => {
     const controller = controllers.get(id);
     if (!controller) return;
     const turn = pendingTurns.get(id);
     controller.abort();
+    // A database commit may already have won; wait for that write's outcome.
+    if (turn?.saving && !settled) return;
     controllers.delete(id);
     pendingTurns.delete(id);
+    update(id, { artifactContinuation: null });
     retainPartial(id, getRagConversationCopy().progressCancelled, true);
     if (turn)
       restoreFailedPrompt(
+        find,
+        update,
         id,
         turn.question,
         turn.userMessageId,
@@ -109,7 +68,19 @@ export function createConversationSessionRequests(
 
   return {
     cancel,
+    abandon(id: number) {
+      saveRecovery.suspend(id);
+      controllers.get(id)?.abort();
+      controllers.delete(id);
+      pendingTurns.delete(id);
+      update(id, {
+        busy: false,
+        pendingMessage: null,
+        artifactContinuation: null,
+      });
+    },
     dispose() {
+      saveRecovery.dispose();
       controllers.forEach(controller => controller.abort());
       controllers.clear();
       pendingTurns.clear();
@@ -117,25 +88,29 @@ export function createConversationSessionRequests(
     async send(id: number, onSend: ConversationSender) {
       const session = find(id);
       const question = session.draft.trim();
-      if (!question || session.busy) return;
+      if (
+        !question ||
+        session.busy ||
+        session.restoring ||
+        session.retryingSave ||
+        (session.restoreAfterRetry && Boolean(session.unsavedCount)) ||
+        session.restoreFailed ||
+        session.quarantined
+      )
+        return;
       const copy = getRagConversationCopy();
-      // Keep failed questions as context unless this send is retrying that prompt.
-      const history = session.messages
-        .filter(
-          message =>
-            !message.incomplete &&
-            !(
-              message.failed &&
-              message.role === 'user' &&
-              message.content === question
-            ),
-        )
-        .map(({ role, content }) => ({ role, content }));
+      const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
       controllers.set(id, controller);
       const userMessageId = ++messageId;
       const responseId = ++messageId;
-      pendingTurns.set(id, { question, userMessageId });
+      const request = {
+        question,
+        userMessageId,
+        saving: false,
+        committed: false,
+      };
+      pendingTurns.set(id, request);
       const messagesWithoutRetry = session.messages.filter(
         message =>
           !(
@@ -152,13 +127,28 @@ export function createConversationSessionRequests(
           { id: userMessageId, role: 'user', content: question },
         ],
         busy: true,
-        error: '',
+        error: session.unsavedCount ? '저장하지 못한 답변이 남아 있어요.' : '',
         pendingMessage: { id: responseId, content: '', activity: copy.loading },
       });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
       try {
+        const retained = retention
+          ? await retention.beginTurn(id, controller.signal)
+          : undefined;
+        if (!current()) return;
         const outcome = await onSend(question, history, controller.signal, {
+          ...(retained
+            ? saveRecovery.observer(id, retained, request, current)
+            : {}),
+          conversationScope: conversationScope(id),
+          ...(retention?.activeLease(id)
+            ? { retentionSession: retention.activeLease(id)! }
+            : {}),
+          artifactContinuation: session.artifactContinuation ?? null,
+          onArtifactContinuation(value) {
+            if (current()) update(id, { artifactContinuation: value });
+          },
           onProgress(event) {
             if (current())
               update(id, {
@@ -184,14 +174,25 @@ export function createConversationSessionRequests(
               });
           },
         });
-        if (!current()) return;
+        if (
+          !current() &&
+          !(controllers.get(id) === controller && request.committed)
+        )
+          return;
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
           // A retained stream and its retry guidance must describe the same failure.
           const failureCopy = getRagConversationFailureCopy(kind);
           retainPartial(id, failureCopy);
-          restoreFailedPrompt(id, question, userMessageId, failureCopy);
+          restoreFailedPrompt(
+            find,
+            update,
+            id,
+            question,
+            userMessageId,
+            failureCopy,
+          );
           return;
         }
         const content =
@@ -210,7 +211,10 @@ export function createConversationSessionRequests(
               role: 'assistant',
               content,
               ...(outcome.status === 'answer'
-                ? { citations: outcome.citations }
+                ? {
+                    citations: outcome.citations,
+                    completion: outcome.completion,
+                  }
                 : {}),
             },
           ],
@@ -219,6 +223,8 @@ export function createConversationSessionRequests(
         if (current()) {
           retainPartial(id, copy.unavailable);
           restoreFailedPrompt(
+            find,
+            update,
             id,
             question,
             userMessageId,
@@ -227,11 +233,18 @@ export function createConversationSessionRequests(
         }
       } finally {
         if (controllers.get(id) === controller) {
+          if (controller.signal.aborted && !request.committed) {
+            cancel(id, true);
+            return;
+          }
           controllers.delete(id);
           pendingTurns.delete(id);
           update(id, { busy: false });
         }
       }
     },
+    retrySave: saveRecovery.retry,
+    resumeSaves: saveRecovery.resume,
+    forgetSaves: saveRecovery.forget,
   };
 }

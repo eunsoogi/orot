@@ -69,6 +69,7 @@ test('hides saved symptom-derived prose and rejects delayed saves while deletion
     );
     expect(await store.read(result.id)).toBeNull();
     expect(await store.list()).toEqual([]);
+    await expect(store.append(result)).rejects.toThrow('removed');
     await expect(store.append({ ...result, id: 'delayed' })).rejects.toThrow(
       'removed',
     );

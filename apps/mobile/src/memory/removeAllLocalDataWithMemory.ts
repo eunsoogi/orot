@@ -19,6 +19,7 @@ import {
   openLocalAgentMemoryDatabase,
   openLocalStorage,
 } from '../storage/secureDatabase';
+import { notifyLocalDataCleared } from '../storage/localDataClearEvents';
 
 export type AllLocalDataDeletionResult = Awaited<
   ReturnType<RecordRepository['deleteAllLocalData']>
@@ -90,6 +91,7 @@ export async function removeAllLocalDataWithMemory(
       (transaction, _deletedSourceIds, deletedLocalRecordIds) =>
         rag.clear(deletedLocalRecordIds, transaction),
     );
+    notifyLocalDataCleared();
 
     // Database deletion owns the lifecycle; retire the whole batch before any asynchronous file cleanup.
     retireDeletedMedicalDocumentSources(stagedDocumentIds);

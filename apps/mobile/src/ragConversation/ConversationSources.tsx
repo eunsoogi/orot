@@ -52,7 +52,9 @@ export function ConversationSources({
             : 'Europe PMC 문헌'
           : reference.sourceKind === 'reviewed_memory'
             ? '검토한 메모'
-            : '건강 기록';
+            : reference.sourceKind === 'generated_artifact'
+              ? '이전 AI 결과'
+              : '건강 기록';
         const date = reference.effectiveTime?.slice(0, 10);
         const retrievedAt =
           typeof locator?.retrievedAt === 'string'

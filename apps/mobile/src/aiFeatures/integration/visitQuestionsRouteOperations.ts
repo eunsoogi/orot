@@ -21,6 +21,7 @@ import type {
   VisitQuestionRouteSaveInput,
   VisitQuestionRouteSaveResult,
 } from './visitQuestionsRouteSave';
+import type { AiFeatureServices } from './featureServices';
 
 type ReadySelection = Extract<SelectedAiResolution, { status: 'ready' }>;
 type PreparedContext = Awaited<
@@ -33,7 +34,6 @@ type ReadyGeneration = Extract<
   GenerationOutcome<VisitQuestionEvidenceItem>,
   { status: 'ready' }
 >;
-
 export type VisitQuestionRouteGeneration =
   | (ReadyGeneration & {
       readonly validateSource: (
@@ -44,6 +44,7 @@ export type VisitQuestionRouteGeneration =
   | Exclude<GenerationOutcome<VisitQuestionEvidenceItem>, { status: 'ready' }>;
 
 export interface VisitQuestionRouteGenerationInput {
+  readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
   readonly appointment: Appointment;
   readonly selectedAi: ReadySelection;
   readonly confirmConsent: (
@@ -128,9 +129,32 @@ async function generate(
     return { status: 'cancelled' };
 
   const collections: EvidenceCoverageState[] = [context.evidence];
+  const generated = await input.generatedArtifactTools?.();
+  if (input.signal.aborted) return { status: 'cancelled' };
   const periodTool = context.healthContextTool;
   const workflowContext: ReadyContext = {
     ...context,
+    async revalidateEvidence(references) {
+      const artifactReferences = references.filter(reference =>
+        generated?.owns(reference),
+      );
+      const localReferences = references.filter(
+        reference => !generated?.owns(reference),
+      );
+      // The generation signal is aborted on completion; later source opening needs a fresh validation signal.
+      return (
+        (!artifactReferences.length ||
+          Boolean(
+            generated &&
+            (await generated.validate(
+              artifactReferences,
+              new AbortController().signal,
+            )),
+          )) &&
+        (!localReferences.length ||
+          (await context.revalidateEvidence(localReferences)))
+      );
+    },
     ...(periodTool
       ? {
           healthContextTool: {
@@ -159,6 +183,7 @@ async function generate(
   };
   const result = await runVisitQuestionWorkflow({
     prepared: workflowContext,
+    generatedTools: generated?.tools,
     selection: input.selectedAi.selection as ProviderSelection,
     providerOptions: [input.selectedAi.option],
     recipient: input.selectedAi.recipient,
@@ -178,7 +203,7 @@ async function generate(
       status: 'ready',
       questions: result.questions,
       caveats,
-      validateSource: revalidateSource(context),
+      validateSource: revalidateSource(workflowContext),
     };
   }
   if (result.status === 'provider_selection_required') {

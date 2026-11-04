@@ -51,6 +51,23 @@ export function createReviewedVisitQuestionRecord(input: {
     )?.healthContextSource;
     return source ? [source] : [];
   });
+  const generatedArtifactSources = [
+    ...input.question.citations,
+    ...(input.question.generatedArtifactContext ?? []),
+  ]
+    .flatMap(citation => {
+      const source = input.metadataByCitation.get(
+        visitQuestionCitationKey(citation),
+      )?.generatedArtifactSource;
+      return source ? [source] : [];
+    })
+    .filter(
+      (source, index, all) =>
+        all.findIndex(
+          candidate =>
+            candidate.kind === source.kind && candidate.id === source.id,
+        ) === index,
+    );
 
   // The local app has no user account ID; this marks an explicit on-device human review.
   return VisitQuestionCreateSchema.parse({
@@ -73,6 +90,7 @@ export function createReviewedVisitQuestionRecord(input: {
     ...(input.question.kind ? { kind: input.question.kind } : {}),
     evidenceSpanIds,
     ...(healthContextSources.length ? { healthContextSources } : {}),
+    ...(generatedArtifactSources.length ? { generatedArtifactSources } : {}),
     appointmentId: input.appointmentId,
     position: input.position,
   });
@@ -91,6 +109,9 @@ export async function saveReviewedVisitQuestionMemory(
     questions.flatMap(question => [
       question.appointmentId,
       ...question.provenance.sourceRecordIds,
+      ...(question.generatedArtifactSources ?? []).map(
+        source => `generated-artifact:${source.kind}:${source.id}`,
+      ),
       ...(question.healthContextSources ?? []).map(healthPeriodDependencyId),
     ]),
   );

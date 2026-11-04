@@ -102,6 +102,7 @@ export async function consumeResponderResponse<TResult>(
       input.evidence,
       context.options.task.allowBoundedExternalEvidence,
       context.options.task.allowRankedLocalEvidence,
+      context.options.task.allowPagedGeneratedArtifacts,
     );
   if (partial && !canContinueWithPartialEvidence(context.options.task, input.evidence)) {
     let taskClarificationMessage: string | undefined;

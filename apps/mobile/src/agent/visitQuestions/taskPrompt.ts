@@ -67,6 +67,7 @@ export const visitQuestionSystemPrompt = [
   'Choose distinct questions most relevant to this visit; avoid vague questions about adequate sleep duration and repetitive questions.',
   'A single measurement or partial search does not establish abnormality, increase, decrease or trend. Describe a change only with comparable times and conditions; otherwise identify the unresolved uncertainty.',
   'Use only the supplied appointment context and evidence. Never invent facts, normal ranges or abnormality thresholds.',
+  'Prior generated artifacts are historical AI interpretations, not verified clinical facts. If relevant, frame them as earlier AI output and ask the clinician to clarify rather than adopting their conclusions.',
   'Ranked records are a partial search sample, not a complete history or medication list. Do not infer absence from omitted results.',
   'Do not suggest a diagnosis, give treatment instructions, or recommend starting, stopping or changing a medication dose.',
   'Distinguish confirmed_fact questions supported by cited records from clarification questions asking the clinician for missing information. Clarification questions must not assert unrecorded personal facts and must have no evidenceIds. Do not choose one side of a conflict as fact.',

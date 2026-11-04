@@ -1,8 +1,11 @@
+import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
+import type { AiFeatureLocalData } from './localData';
+import { restoreSavedGeneratedSources } from './savedVisitQuestionGeneratedSources';
 import { restoreVisitQuestionPeriodForHistory } from './savedVisitQuestionHealthContext';
 import { stableJson } from './evidenceUtils';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
@@ -18,32 +21,15 @@ import {
 } from './savedVisitQuestionCitation';
 export { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 
-export interface RestoredVisitQuestion {
-  readonly kind?: 'confirmed_fact' | 'clarification';
-  readonly legacySource?: { readonly id: string; readonly revision: string };
-  readonly questionText: string;
-  readonly rationale: string;
-  readonly priority: 'routine' | 'important';
-  readonly position: number;
-  readonly citations: readonly EvidenceItem[];
-}
-
-export interface RestoredSavedVisitQuestions {
-  readonly appointmentId: string;
-  readonly questions: readonly RestoredVisitQuestion[];
-  readonly caveats: readonly [];
-  /** Explains which source locations and generated metadata are absent from persisted questions. */
-  readonly restorationNotice: string;
-}
-
-export type SavedVisitQuestionsLoadState =
-  | ({ readonly status: 'ready' } & RestoredSavedVisitQuestions)
-  | {
-      readonly status: 'error';
-      readonly appointmentId: string;
-      readonly questions: readonly [];
-      readonly message: string;
-    };
+import type {
+  RestoredSavedVisitQuestions,
+  SavedVisitQuestionsLoadState,
+} from './savedVisitQuestionTypes';
+export type {
+  RestoredSavedVisitQuestions,
+  RestoredVisitQuestion,
+  SavedVisitQuestionsLoadState,
+} from './savedVisitQuestionTypes';
 
 /** Restores reviewed questions with source links that are current or explicitly marked changed. */
 export async function restoreSavedVisitQuestions(input: {
@@ -52,6 +38,7 @@ export async function restoreSavedVisitQuestions(input: {
   readonly sourceReader: LocalHealthEvidenceRepository;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly readHealthContext?: HealthContextReader;
+  readonly data?: AiFeatureLocalData;
 }): Promise<RestoredSavedVisitQuestions> {
   const appointmentId = input.appointmentId.trim();
   if (!appointmentId)
@@ -81,10 +68,12 @@ export async function restoreSavedVisitQuestions(input: {
     row =>
       row.kind !== 'clarification' &&
       row.evidenceSpanIds.length === 0 &&
-      !row.healthContextSources?.length,
+      !row.healthContextSources?.length &&
+      !row.generatedArtifactSources?.length,
   );
   const citationCache = new Map<string, EvidenceItem>();
   let hasChangedPeriod = false;
+  let hasUnknownGeneratedSource = false;
   const questions = await Promise.all(
     ordered.map(async row => {
       if (!isValidSavedVisitQuestion(row)) {
@@ -114,6 +103,12 @@ export async function restoreSavedVisitQuestions(input: {
         ),
       );
       if (periods.some(period => period.changed)) hasChangedPeriod = true;
+      const generated = await restoreSavedGeneratedSources(
+        row.generatedArtifactSources ?? [],
+        input.data,
+        input.registry,
+      );
+      hasUnknownGeneratedSource ||= generated.unknown;
       return {
         ...(row.kind ? { kind: row.kind } : {}),
         ...(row.kind !== 'clarification' &&
@@ -131,6 +126,9 @@ export async function restoreSavedVisitQuestions(input: {
         priority: row.priority,
         position: row.position,
         citations: [...citations, ...periods.map(period => period.item)],
+        ...(generated.items.length
+          ? { generatedArtifactContext: generated.items }
+          : {}),
       };
     }),
   );
@@ -155,25 +153,40 @@ export async function restoreSavedVisitQuestions(input: {
     )
   )
     throw new SavedVisitQuestionsReadError('changed_saved_questions');
+  const generatedLinks = questions.flatMap(
+    question => question.generatedArtifactContext ?? [],
+  );
+  if (
+    generatedLinks.length &&
+    !(await input.registry.revalidateEvidence(
+      generatedLinks,
+      new AbortController().signal,
+    ))
+  )
+    throw new SavedVisitQuestionsReadError('changed_generated_source');
+  const hasGeneratedOnly = questions.some(
+    question =>
+      question.citations.length === 0 &&
+      (question.generatedArtifactContext?.length ?? 0) > 0,
+  );
 
   return {
     appointmentId,
     questions,
     caveats: [],
     // An empty appointment list has no legacy metadata to restore or warn about.
-    restorationNotice:
-      questions.length === 0
-        ? ''
-        : (hasChangedPeriod
-            ? '건강 기록이 바뀌어 일부 근거는 현재 자료로 확인할 수 없어요. 질문은 생성 당시의 내용으로 보관했으며, 바뀐 근거를 사용하려면 최신 기록으로 다시 생성해 주세요.'
-            : ordered.every(row => row.kind === 'clarification')
-              ? '의료진에게 확인할 질문으로 저장했어요. 생성 당시의 추가 경고는 복원되지 않았습니다.'
-              : hasQuestionWithoutSourceSpan
-                ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
-                : ordered.some(row => row.healthContextSources?.length)
-                  ? '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.'
-                  : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.') +
-          ' 공개 웹검색 결과와 출처는 저장되지 않았어요.',
+    restorationNotice: savedVisitQuestionNotice({
+      empty: questions.length === 0,
+      hasChangedPeriod,
+      hasUnknownGeneratedSource,
+      hasGeneratedOnly,
+      onlyClarifications: ordered.every(row => row.kind === 'clarification'),
+      hasQuestionWithoutSourceSpan,
+      hasPeriod: ordered.some(row => Boolean(row.healthContextSources?.length)),
+      hasGeneratedSources: ordered.some(row =>
+        Boolean(row.generatedArtifactSources?.length),
+      ),
+    }),
   };
 }
 
@@ -184,6 +197,7 @@ export async function loadSavedVisitQuestionState(input: {
   readonly sourceReader: LocalHealthEvidenceRepository;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly readHealthContext?: HealthContextReader;
+  readonly data?: AiFeatureLocalData;
 }): Promise<SavedVisitQuestionsLoadState> {
   const appointmentId = input.appointmentId.trim();
   try {
@@ -197,17 +211,20 @@ export async function loadSavedVisitQuestionState(input: {
       error.reason === 'missing_citation_source'
         ? '질문에 연결된 원문 근거를 찾을 수 없어 저장 목록을 불러오지 못했어요.'
         : error instanceof SavedVisitQuestionsReadError &&
-            error.reason === 'changed_saved_questions'
-          ? '저장된 질문 목록이 바뀌었어요. 다시 불러와 주세요.'
+            error.reason === 'changed_generated_source'
+          ? '이전 AI 결과가 바뀌었거나 삭제되어 저장된 질문을 불러오지 못했어요. 다시 생성해 주세요.'
           : error instanceof SavedVisitQuestionsReadError &&
-              error.reason === 'changed_health_context'
-            ? '건강 기록이 바뀌었거나 근거를 확인할 수 없어 저장된 질문을 불러오지 못했어요. 다시 생성해 주세요.'
+              error.reason === 'changed_saved_questions'
+            ? '저장된 질문 목록이 바뀌었어요. 다시 불러와 주세요.'
             : error instanceof SavedVisitQuestionsReadError &&
-                error.reason === 'stale_artifact'
-              ? '녹취 내용이 수정되어 저장된 질문의 원문 근거를 불러오지 못했어요.'
-              : error instanceof SavedVisitQuestionsReadError
-                ? '저장된 질문의 정보가 올바르지 않아 불러오지 못했어요.'
-                : '저장된 질문을 불러오지 못했어요. 다시 시도해 주세요.';
+                error.reason === 'changed_health_context'
+              ? '건강 기록이 바뀌었거나 근거를 확인할 수 없어 저장된 질문을 불러오지 못했어요. 다시 생성해 주세요.'
+              : error instanceof SavedVisitQuestionsReadError &&
+                  error.reason === 'stale_artifact'
+                ? '녹취 내용이 수정되어 저장된 질문의 원문 근거를 불러오지 못했어요.'
+                : error instanceof SavedVisitQuestionsReadError
+                  ? '저장된 질문의 정보가 올바르지 않아 불러오지 못했어요.'
+                  : '저장된 질문을 불러오지 못했어요. 다시 시도해 주세요.';
     return {
       status: 'error',
       appointmentId,

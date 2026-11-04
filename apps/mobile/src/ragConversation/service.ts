@@ -1,3 +1,4 @@
+import { selectEvidence } from './selectEvidence';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import {
   providerDiagnostic,
@@ -5,13 +6,16 @@ import {
 } from '../providers/diagnostics';
 import type {
   EvidenceBatch,
-  EvidenceItem,
+  EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
-import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
+import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
+import { historicalArtifactOutcome } from './historicalArtifactAnswer';
+import { providerHistoryMessage } from './conversationHistoryPayload';
+import { trackValidatedEvidence } from './conversationRetentionEvidence';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -28,11 +32,7 @@ export type {
   RagConversationOutcome,
 } from './outcome';
 
-/** Screen observers receive safe progress and task-projected text, never request or evidence payloads. */
-export type RagConversationObserver = Pick<
-  MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent'
->;
+export type { RagConversationObserver } from './conversationObserver';
 
 export interface RagConversationRunOptions {
   readonly question: string;
@@ -45,57 +45,30 @@ export interface RagConversationRunOptions {
   /** Public search results are already retrieved and are not local embedding hits. */
   readonly publicEvidence?: EvidenceBatch;
   readonly resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver;
+  readonly readHistoricalArtifact?: (
+    reference: EvidenceReference,
+    signal: AbortSignal,
+  ) => Promise<EvidenceSourceReadResult>;
+  /** The caller may capture all admitted inputs only after the final answer passes validation. */
+  readonly onValidatedEvidence?: (
+    references: readonly EvidenceReference[],
+  ) => void;
   readonly workflow: Omit<
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
   >;
 }
 
-function chunkKey(chunk: EvidenceChunk): string {
-  return `${chunk.metadata.sourceId}\u0000${chunk.metadata.evidenceId}`;
-}
-
-function selectEvidence(
-  batch: EvidenceBatch,
-  hits: readonly HybridEvidenceSearchHit[],
-): EvidenceBatch {
-  const byKey = new Map<string, EvidenceItem>();
-  const duplicates = new Set<string>();
-  for (const item of batch.items) {
-    const key = `${item.sourceId}\u0000${item.evidenceId}`;
-    if (byKey.has(key)) duplicates.add(key);
-    else byKey.set(key, item);
-  }
-  const items: EvidenceItem[] = [];
-  const seen = new Set<string>();
-  for (const hit of hits) {
-    const key = chunkKey(hit.chunk);
-    const item = byKey.get(key);
-    if (!item || duplicates.has(key) || seen.has(key)) continue;
-    seen.add(key);
-    items.push(item);
-  }
-  const counts = new Map<string, number>();
-  for (const item of items)
-    counts.set(item.sourceKind, (counts.get(item.sourceKind) ?? 0) + 1);
-  return {
-    items,
-    coverage: batch.coverage.map(coverage => ({
-      ...coverage,
-      returnedCount: counts.get(coverage.sourceKind) ?? 0,
-    })),
-    conflicts: [...batch.conflicts],
-  };
-}
-
 function boundedHistory(
   messages: readonly RagConversationMessage[],
 ): readonly RagConversationMessage[] {
-  // Keep old claims available for conversational context without letting them become citations.
-  return messages.slice(-8).map(message => ({
-    role: message.role,
-    content: message.content.slice(0, 2000),
-  }));
+  // Keep user context while excluding prior AI prose until its complete lineage is retained.
+  return messages.slice(-8).map(message =>
+    providerHistoryMessage({
+      role: message.role,
+      content: message.content.slice(0, 2000),
+    }),
+  );
 }
 
 /** Runs local E5 retrieval on a fresh bounded snapshot before every consent-checked model turn. */
@@ -164,14 +137,50 @@ export async function runRagConversationTurn(
       'reason' in result ? result.reason : undefined,
     );
     if (result.status === 'result') {
+      const accepted = trackValidatedEvidence(
+        result.checkpoint?.evidenceReferences,
+        options.onValidatedEvidence,
+        invocation.signal,
+      );
       if (result.value.answerKind === 'conversation') {
-        return result.citations.length
-          ? { status: 'insufficient' }
-          : { status: 'answer', answer: result.value.answer, citations: [] };
+        return accepted(
+          result.citations.length ||
+            result.coverage.some(
+              coverage => coverage.sourceKind === 'generated_artifact',
+            )
+            ? { status: 'insufficient' }
+            : {
+                status: 'answer',
+                answer: result.value.answer,
+                citations: [],
+                ...(result.value.completion === 'partial'
+                  ? { completion: 'partial' }
+                  : {}),
+              },
+        );
       }
       if (!result.citations.length) return { status: 'insufficient' };
-      return {
+      if (result.value.answerKind === 'prior_output') {
+        return accepted(
+          await historicalArtifactOutcome(
+            result,
+            options,
+            invocation.signal ?? new AbortController().signal,
+          ),
+        );
+      }
+      // A previous AI statement cannot by itself ground a new clinical assertion.
+      if (
+        result.citations.some(
+          reference => reference.sourceKind === 'generated_artifact',
+        )
+      )
+        return { status: 'insufficient' };
+      return accepted({
         status: 'answer',
+        ...(result.value.completion === 'partial'
+          ? { completion: 'partial' }
+          : {}),
         // Label source-relative time even when the model omits that qualifier in its prose.
         answer: result.citations.some(isPublicWebReference)
           ? `${result.value.answer}\n\n공개 웹자료를 바탕으로 AI가 정리한 설명을 참고했어요. 함께 표시된 출처에서 원문을 확인할 수 있어요.`
@@ -187,7 +196,7 @@ export async function runRagConversationTurn(
               ? `${result.value.answer}\n\n원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
               : `${result.value.answer}\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.`,
         citations: result.citations,
-      };
+      });
     }
     return failureFromWorkflow(result);
   } catch (error) {

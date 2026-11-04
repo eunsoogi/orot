@@ -2,7 +2,7 @@ import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { SqlTransaction } from '@orot/storage';
 import {
   assertNoSourceReference,
-  insertAgentMemoryRecord,
+  reconcileAgentMemoryRecords,
   listSupersededTranscriptRevisionIds,
   referencesAnySource,
 } from './agentMemoryStorageRecords';
@@ -32,7 +32,5 @@ export async function compactAgentMemory(
   const current = records.filter(
     record => !referencesAnySource(record, invalidated),
   );
-  await transaction.execute('DELETE FROM agent_memory_records');
-  for (const record of current)
-    await insertAgentMemoryRecord(transaction, record);
+  await reconcileAgentMemoryRecords(transaction, current);
 }

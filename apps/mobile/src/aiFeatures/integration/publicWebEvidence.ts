@@ -34,6 +34,10 @@ export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
   readonly consent: ExecutionConsentPort;
   readonly now?: () => string;
+  readonly beforeDispatch?: (
+    query: string,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
 }) {
   const { selected, consent } = input;
   const search = selected.provider.searchPublicWeb;
@@ -84,6 +88,13 @@ export function createPublicWebEvidence(input: {
       });
       if (approved !== 'authorized' || request.signal.aborted || !scoped())
         return { status: 'consent_required' };
+      if (
+        input.beforeDispatch &&
+        !(await input.beforeDispatch(query, request.signal))
+      )
+        throw new Error('A local research input changed before public search.');
+      if (request.signal.aborted)
+        throw new Error('Public web search was cancelled.');
       const result = await boundedPublicWebRequest(
         search.bind(selected.provider),
         query,

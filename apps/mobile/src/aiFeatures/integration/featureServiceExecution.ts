@@ -100,6 +100,9 @@ export function executionOptions(input: {
   readonly consentPurpose:
     'symptom_summary' | 'disease_hypotheses' | 'record_conversation';
 }) {
+  const generatedArtifacts = input.tools.some(
+    tool => tool.sourceKind === 'generated_artifact',
+  );
   return {
     execution: {
       operationRunId: input.operationRunId,
@@ -113,26 +116,31 @@ export function executionOptions(input: {
           'health_records',
           'reviewed_memory',
           'conversation',
+          ...(generatedArtifacts ? ['generated_artifacts'] : []),
           ...(input.external ? ['medical_literature'] : []),
           ...(input.external?.usesPublicWeb ? ['public_web_results'] : []),
         ],
-        policyVersion: 'local-records-v1',
+        policyVersion: generatedArtifacts
+          ? 'local-artifacts-v1'
+          : 'local-records-v1',
       },
       allowedScope: {
-        sourceKinds: input.external
-          ? ([
-              'personal_record',
-              'reviewed_memory',
-              'external_medical',
-            ] as const)
-          : (['personal_record', 'reviewed_memory'] as const),
+        sourceKinds: [
+          'personal_record' as const,
+          'reviewed_memory' as const,
+          ...(generatedArtifacts ? (['generated_artifact'] as const) : []),
+          ...(input.external ? (['external_medical'] as const) : []),
+        ],
       },
       // Both local and literature tools need time for retrieval plus a cited answer.
       budget:
         input.medicalExplanation || input.external?.usesPublicWeb
           ? {
               ...EVIDENCE_WORKFLOW_BUDGET,
-              maxModelCalls: 4,
+              maxModelCalls: generatedArtifacts ? 8 : 4,
+              maxToolCalls: generatedArtifacts
+                ? 4
+                : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
               maxOutputTokens: 1024,
             }
           : input.external

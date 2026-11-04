@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationHistoryLayout } from './ConversationHistoryLayout';
+import { AppText as Text } from '../layout/AppText';
 
 export interface ConversationHistoryRow {
   readonly id: number;
@@ -44,17 +45,23 @@ export function ConversationHistoryScreen({
   const selectedSession = state.sessions.find(
     session => session.id === state.activeId,
   );
+  const error = state.sessions.find(
+    session => session.deletionError,
+  )?.deletionError;
 
   return (
-    <ConversationHistoryLayout
-      deleted={state.deleted !== null}
-      onBack={onBack}
-      onCreateSession={store.create}
-      onDeleteSession={store.remove}
-      onSelectSession={store.select}
-      onUndoRemove={store.undoRemove}
-      rows={rows}
-      selectedSession={selectedSession ?? null}
-    />
+    <>
+      {error ? <Text accessibilityRole="alert">{error}</Text> : null}
+      <ConversationHistoryLayout
+        deleted={state.deleted !== null}
+        onBack={onBack}
+        onCreateSession={store.create}
+        onDeleteSession={store.remove}
+        onSelectSession={store.select}
+        onUndoRemove={store.undoRemove}
+        rows={rows}
+        selectedSession={selectedSession ?? null}
+      />
+    </>
   );
 }

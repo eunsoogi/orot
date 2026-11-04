@@ -22,6 +22,7 @@ export function ConversationComposer({
   onLayout,
   compact = false,
   maximumInputHeight,
+  disabled = false,
 }: {
   readonly value: string;
   readonly busy: boolean;
@@ -31,6 +32,7 @@ export function ConversationComposer({
   readonly onLayout?: ViewProps['onLayout'];
   readonly compact?: boolean;
   readonly maximumInputHeight?: number;
+  readonly disabled?: boolean;
 }) {
   const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
   const copy = getRagConversationCopy();
@@ -59,7 +61,7 @@ export function ConversationComposer({
         <ConversationGlassAction
           busy={busy}
           label={busy ? copy.cancel : copy.send}
-          disabled={!busy && !value.trim()}
+          disabled={!busy && (disabled || !value.trim())}
           onPress={busy ? onCancel : onSend}
         />
         <View

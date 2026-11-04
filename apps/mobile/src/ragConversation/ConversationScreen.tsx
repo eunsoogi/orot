@@ -188,6 +188,15 @@ export function ConversationScreen({
               messages={messages}
               pendingMessage={pendingMessage}
               error={error}
+              unsavedCount={session.unsavedCount}
+              retryingSave={session.retryingSave || busy}
+              onRetrySave={() => {
+                store.retrySave(id);
+              }}
+              restoreFailed={session.restoreFailed}
+              onRetryRestore={() => {
+                store.retryRestore(id);
+              }}
               onOpenSource={onOpenSource}
               onLinkError={onLinkError}
               footer={
@@ -199,6 +208,13 @@ export function ConversationScreen({
             <ConversationComposer
               value={draft}
               busy={busy}
+              disabled={
+                session.restoring ||
+                session.restoreFailed ||
+                session.quarantined ||
+                session.retryingSave ||
+                (session.restoreAfterRetry && Boolean(session.unsavedCount))
+              }
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}

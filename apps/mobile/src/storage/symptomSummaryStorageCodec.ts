@@ -12,9 +12,12 @@ function object(value: unknown): value is Record<string, unknown> {
 function reference(value: unknown): value is EvidenceReference {
   return (
     object(value) &&
-    ['personal_record', 'reviewed_memory', 'external_medical'].includes(
-      String(value.sourceKind),
-    ) &&
+    [
+      'personal_record',
+      'reviewed_memory',
+      'external_medical',
+      'generated_artifact',
+    ].includes(String(value.sourceKind)) &&
     [
       'sourceId',
       'sourceRevision',
@@ -40,6 +43,7 @@ export function decodeSavedSymptomSummary(
       ) ||
       !Number.isFinite(Date.parse(value.createdAt as string)) ||
       !object(value.analysis) ||
+      (value.inputLineage !== undefined && value.inputLineage !== 'complete') ||
       !Array.isArray(value.sources) ||
       value.sources.length > 24
     )
@@ -51,6 +55,37 @@ export function decodeSavedSymptomSummary(
       return null;
     const factualSummary = value.analysis.presentation === 'symptom_summary';
     for (const source of value.sources) {
+      if (
+        object(source) &&
+        (source.kind === 'generated_summary' ||
+          source.kind === 'generated_conversation' ||
+          source.kind === 'generated_research')
+      ) {
+        const ref = source.reference;
+        const expectedTypes =
+          source.kind === 'generated_summary'
+            ? ['symptom_summary', 'disease_possibilities']
+            : source.kind === 'generated_conversation'
+              ? ['conversation_turn']
+              : ['research_publication', 'research_web_explanation'];
+        if (
+          !reference(ref) ||
+          ref.sourceKind !== 'generated_artifact' ||
+          typeof source.id !== 'string' ||
+          !source.id ||
+          typeof source.revision !== 'string' ||
+          !source.revision ||
+          ref.sourceId !== source.id ||
+          ref.evidenceId !== source.id ||
+          ref.sourceRevision !== source.revision ||
+          ref.evidenceRevision !== source.revision ||
+          !object(ref.locator) ||
+          ref.locator.kind !== 'generated_artifact' ||
+          !expectedTypes.includes(String(ref.locator.type))
+        )
+          return null;
+        continue;
+      }
       if (object(source) && source.kind === 'health_context_period') {
         const scope = parseHealthContextScope(source.scope);
         if (
@@ -80,7 +115,11 @@ export function decodeSavedSymptomSummary(
           record =>
             !object(record) ||
             typeof record.kind !== 'string' ||
-            !(isRecordKind(record.kind) || record.kind === 'reviewed_memory') ||
+            !(
+              isRecordKind(record.kind) ||
+              record.kind === 'reviewed_memory' ||
+              record.kind === 'manual_history'
+            ) ||
             typeof record.id !== 'string' ||
             typeof record.revision !== 'string',
         )

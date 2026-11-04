@@ -77,5 +77,6 @@ export const ragConversationKo = {
   'ragConversation.availability.category.manualHistory':
     '수기로 작성한 건강 이력',
   'ragConversation.speakerUser': '나',
+  'ragConversation.savedPartial': '일부만 생성되어 저장된 답변이에요.',
   'ragConversation.source': '원문 근거 열기 · {sourceId}',
 } as const;

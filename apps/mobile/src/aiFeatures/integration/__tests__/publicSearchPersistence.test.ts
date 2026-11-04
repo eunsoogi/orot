@@ -62,7 +62,7 @@ test.each([490, 500])(
             },
             citations: [alias],
             coverage: [],
-            checkpoint: {} as never,
+            checkpoint: { evidenceReferences: [alias] } as never,
           },
         },
         { status: 'unavailable' },

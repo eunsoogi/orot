@@ -115,6 +115,24 @@ export async function mapVisitQuestionWorkflowResult(input: {
     };
   }
 
+  const generatedContext: VisitQuestionEvidenceItem[] = [];
+  for (const reference of result.checkpoint.evidenceReferences) {
+    if (reference.sourceKind !== 'generated_artifact') continue;
+    const original = aliases.originalOf(reference);
+    if (!original)
+      return {
+        status: 'rejected_output',
+        message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
+        memoryStatus: prepared.evidence.memoryStatus,
+      };
+    generatedContext.push(original);
+  }
+  if (generatedContext.length > 3)
+    return {
+      status: 'unavailable',
+      message: t(SAFE_FAILURE_MESSAGE_KEYS.unavailable),
+      memoryStatus: prepared.evidence.memoryStatus,
+    };
   const questions: VisitQuestionCandidate[] = [];
   for (const question of result.value.questions) {
     const citations: VisitQuestionEvidenceItem[] = [];
@@ -131,7 +149,13 @@ export async function mapVisitQuestionWorkflowResult(input: {
       }
       citations.push(original);
     }
-    questions.push({ ...question, citations });
+    questions.push({
+      ...question,
+      citations,
+      ...(generatedContext.length
+        ? { generatedArtifactContext: generatedContext }
+        : {}),
+    });
   }
   const presentation = await validateVisitQuestionPresentation(
     { status: 'suggestions', questions },

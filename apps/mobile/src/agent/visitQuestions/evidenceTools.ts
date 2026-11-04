@@ -77,13 +77,17 @@ export function createVisitQuestionEvidenceSearchTools(input: {
   readonly initialEvidenceCount: number;
   readonly maxEvidenceItems: number;
   readonly healthContextTool?: EvidenceSearchTool;
+  readonly generatedTools?: readonly EvidenceSearchTool[];
 }): readonly EvidenceSearchTool[] {
   const knownReferences = new Set(
     input.aliases.batch.items.map(visitQuestionEvidenceIdentityKey),
   );
   // All model-selected tools share the same alias identity and deduplication boundary.
-  const aliasBatch = (value: EvidenceBatch): EvidenceBatch => {
-    const aliased = input.aliases.aliasBatch(value);
+  const aliasBatch = (
+    value: EvidenceBatch,
+    alreadyRedacted = false,
+  ): EvidenceBatch => {
+    const aliased = input.aliases.aliasBatch(value, alreadyRedacted);
     const items = aliased.items.filter(item => {
       const key = visitQuestionEvidenceIdentityKey(item);
       if (knownReferences.has(key)) return false;
@@ -153,6 +157,7 @@ export function createVisitQuestionEvidenceSearchTools(input: {
   });
 
   const period = input.healthContextTool;
+  let generatedCount = 0;
   return [
     ...(period
       ? [
@@ -167,5 +172,33 @@ export function createVisitQuestionEvidenceSearchTools(input: {
       : []),
     search('personal_record'),
     search('reviewed_memory'),
+    // Artifact tools have already redacted storage IDs and expose opaque source tokens for detail lookup.
+    ...(input.generatedTools ?? []).map(tool => ({
+      ...tool,
+      async search(
+        request: EvidenceSearchRequest,
+        runtime?: EvidenceSearchRuntime,
+      ) {
+        const remaining = 3 - generatedCount;
+        if (tool.sourceKind === 'generated_artifact' && remaining < 1)
+          throw new Error(
+            'The visit question has reached its generated parent limit.',
+          );
+        const result = await tool.search(
+          tool.sourceKind === 'generated_artifact'
+            ? {
+                ...request,
+                resultLimit: Math.min(request.resultLimit, remaining),
+              }
+            : request,
+          runtime,
+        );
+        if ('status' in result) return result;
+        const aliased = aliasBatch(result, true);
+        if (tool.sourceKind === 'generated_artifact')
+          generatedCount += aliased.items.length;
+        return aliased;
+      },
+    })),
   ];
 }

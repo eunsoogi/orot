@@ -30,9 +30,10 @@ export function useNextVisitQuestionsRoute(
     onOpenProviderSelection,
     resolveSelectedAi,
     resolveSource,
+    generatedArtifactTools,
     selectedAiRevision,
   } = props;
-  const { onOpenSource, rememberValidator } =
+  const { onOpenSource, rememberValidator, captureValidator } =
     useVisitQuestionSourceOpener(props);
   const operationsOverride = props.operations;
   const operations = useMemo(
@@ -158,6 +159,7 @@ export function useNextVisitQuestionsRoute(
             selectedAi: resolved,
             confirmConsent,
             signal: activeSignal,
+            ...(generatedArtifactTools ? { generatedArtifactTools } : {}),
             ...(observer ? { observer } : {}),
           });
           if (activeSignal.aborted || request !== generationRequest.current)
@@ -185,6 +187,7 @@ export function useNextVisitQuestionsRoute(
     },
     [
       operations,
+      generatedArtifactTools,
       confirmConsent,
       rememberValidator,
       resolveSelectedAi,
@@ -207,6 +210,7 @@ export function useNextVisitQuestionsRoute(
           questions,
           caveats,
           resolveSource,
+          validateGeneratedArtifact: captureValidator() ?? undefined,
         });
         rememberValidator(result.validateSource);
         return {
@@ -222,7 +226,7 @@ export function useNextVisitQuestionsRoute(
         throw error;
       }
     },
-    [operations, rememberValidator, resolveSource],
+    [operations, rememberValidator, resolveSource, captureValidator],
   );
 
   return {

@@ -1,12 +1,15 @@
 import {
+  localQueryTimestampKey,
   localQueryTimestampKeyExpression,
   type SqlExecutor,
 } from '@orot/storage';
+import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
   deletedSymptomIds,
   referencesDeletedSymptom,
 } from './agentMemorySymptomQuarantine';
 import { decodeAgentMemoryRecord } from './agentMemoryStorageRecords';
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
 /** A pending deletion hides saved prose derived from the symptom or quarantined memory. */
 export const visibleSummary = `NOT EXISTS (
@@ -41,6 +44,31 @@ export async function assertSummarySourceAvailable(
     (kind === 'reviewed_memory' &&
       referencesDeletedSymptom(decodeAgentMemoryRecord(source), deleted))
   ) {
-    throw new Error('A cited source was removed before saving.');
+    throw new RetainedSourceInvalidError(
+      'A cited source was removed before saving.',
+    );
   }
+}
+
+/** A pending typed symptom removal fences only the affected symptom period. */
+export async function assertSymptomPeriodAvailable(
+  tx: SqlExecutor,
+  source: SavedPeriodSummarySource,
+) {
+  if (source.scope.topic !== 'symptoms' || !(await deletedSymptomIds(tx)).size)
+    return;
+  const at = localQueryTimestampKeyExpression(
+    "coalesce(json_extract(h.payload_json, '$.startedAt'), h.effective_at)",
+  );
+  const result = await tx.execute(
+    `SELECT h.id FROM symptom_entries h JOIN legacy_symptom_deleted d ON d.id = h.id WHERE ${at} >= ? AND ${at} < ? LIMIT 1`,
+    [
+      localQueryTimestampKey(source.scope.window.fromInclusive),
+      localQueryTimestampKey(source.scope.window.toExclusive),
+    ],
+  );
+  if (result.rows.length)
+    throw new RetainedSourceInvalidError(
+      'A symptom period source was removed.',
+    );
 }

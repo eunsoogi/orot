@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { ComponentRef, ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { AppButton as Button } from '../layout/AppButton';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
@@ -18,6 +19,11 @@ export function ConversationHistory({
   header,
   footer,
   compact = false,
+  unsavedCount = 0,
+  retryingSave = false,
+  onRetrySave,
+  restoreFailed = false,
+  onRetryRestore,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
@@ -32,6 +38,11 @@ export function ConversationHistory({
   readonly header?: ReactNode;
   readonly footer?: ReactNode;
   readonly compact?: boolean;
+  readonly unsavedCount?: number;
+  readonly retryingSave?: boolean;
+  readonly onRetrySave?: () => void;
+  readonly restoreFailed?: boolean;
+  readonly onRetryRestore?: () => void;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -185,6 +196,16 @@ export function ConversationHistory({
           >
             {error}
           </Text>
+        ) : null}
+        {unsavedCount > 0 && onRetrySave ? (
+          <Button
+            title="답변 저장 다시 시도"
+            onPress={onRetrySave}
+            disabled={retryingSave}
+          />
+        ) : null}
+        {restoreFailed && onRetryRestore ? (
+          <Button title="대화 다시 불러오기" onPress={onRetryRestore} />
         ) : null}
       </View>
       {/* The footer stays in place while compact follow targets the end of messages. */}

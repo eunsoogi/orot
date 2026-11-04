@@ -47,9 +47,31 @@ export async function insertAgentMemoryRecord(
     vector: Array.from(record.vector),
   });
   await transaction.execute(
-    'INSERT OR REPLACE INTO agent_memory_records (id, record_json) VALUES (?, ?)',
+    'INSERT INTO agent_memory_records (id, record_json) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET record_json = excluded.record_json',
     [record.id, serialized],
   );
+}
+
+/** Delete only absent memories so compaction does not erase artifacts linked to surviving rows. */
+export async function reconcileAgentMemoryRecords(
+  transaction: SqlTransaction,
+  records: readonly PersistedMemoryRecord[],
+): Promise<void> {
+  const existing = await transaction.execute(
+    'SELECT id, record_json FROM agent_memory_records ORDER BY id',
+  );
+  const next = new Map(records.map(record => [record.id, record]));
+  for (const row of existing.rows) {
+    if (typeof row.id !== 'string')
+      throw new Error('Encrypted agent-memory data is invalid.');
+    if (!next.has(row.id))
+      await transaction.execute(
+        'DELETE FROM agent_memory_records WHERE id = ?',
+        [row.id],
+      );
+  }
+  for (const record of next.values())
+    await insertAgentMemoryRecord(transaction, record);
 }
 
 export function decodeAgentMemoryRecord(value: unknown): PersistedMemoryRecord {

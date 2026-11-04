@@ -4,6 +4,7 @@ import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 import type {
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,
+  EvidenceSearchTool,
 } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../workflowActivity';
 import { createExecutionConsentRegistry } from '../execution/consentRegistry';
@@ -33,6 +34,7 @@ let nextOperationId = 0;
 /** Runs visit preparation through the shared handoff; consent precedes each remote payload. */
 export async function runVisitQuestionWorkflow(input: {
   readonly prepared: ReadyContext;
+  readonly generatedTools?: readonly EvidenceSearchTool[];
   readonly selection: ProviderSelection | null;
   readonly providerOptions: readonly ProviderSelectionOption[];
   readonly recipient?: string;
@@ -85,9 +87,15 @@ export async function runVisitQuestionWorkflow(input: {
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
 
   // Leave room within the shared maximum for one malformed-envelope correction after two searches.
+  const artifactResearch =
+    input.generatedTools?.some(
+      tool => tool.sourceKind === 'generated_artifact',
+    ) ?? false;
   const budget = {
     ...EVIDENCE_WORKFLOW_BUDGET,
-    maxModelCalls: input.reservedPublicSearchCall ? 3 : 4,
+    maxModelCalls:
+      (artifactResearch ? 6 : 4) - (input.reservedPublicSearchCall ? 1 : 0),
+    maxToolCalls: artifactResearch ? 4 : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
   };
   const maxInitialItems = budget.maxEvidenceItems - 3;
   if (input.prepared.evidence.batch.items.length > maxInitialItems) {
@@ -114,6 +122,7 @@ export async function runVisitQuestionWorkflow(input: {
     initialEvidenceCount: aliases.batch.items.length,
     maxEvidenceItems: budget.maxEvidenceItems,
     healthContextTool: input.prepared.healthContextTool,
+    generatedTools: input.generatedTools,
   });
   nextOperationId += 1;
   const operationRunId = `visit-question-${nextOperationId}`;
@@ -127,9 +136,28 @@ export async function runVisitQuestionWorkflow(input: {
       modelId: input.selection.modelId,
       recipient: recipient!,
       remoteProcessing,
-      consentScope: visitConsentScope,
+      consentScope: input.generatedTools?.some(
+        tool => tool.sourceKind === 'generated_artifact',
+      )
+        ? {
+            ...visitConsentScope,
+            dataCategories: [
+              ...visitConsentScope.dataCategories,
+              'generated_artifacts',
+            ],
+            policyVersion: 'local-artifacts-v1',
+          }
+        : visitConsentScope,
       allowedScope: {
-        sourceKinds: ['personal_record', 'reviewed_memory'],
+        sourceKinds: [
+          'personal_record',
+          'reviewed_memory',
+          ...(input.generatedTools?.some(
+            tool => tool.sourceKind === 'generated_artifact',
+          )
+            ? ['generated_artifact' as const]
+            : []),
+        ],
       },
       budget,
     },

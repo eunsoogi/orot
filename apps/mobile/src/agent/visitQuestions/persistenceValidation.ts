@@ -1,7 +1,7 @@
-import { compareTimestamps } from '@orot/domain';
+import { assertGeneratedVisitQuestionSource } from './generatedVisitQuestionValidation';
 import { readVisitEvidenceSnapshots } from './evidenceSourceSnapshots';
-import type { Appointment, TranscriptEvidenceSegment } from '@orot/domain';
-import type { RecordWriter } from '@orot/storage';
+import type { TranscriptEvidenceSegment } from '@orot/domain';
+import type { RecordWriter, SqlExecutor } from '@orot/storage';
 import { localEvidenceFingerprint, visitQuestionCitationKey } from './evidence';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import type { VisitQuestionEvidenceMetadata } from './evidence';
@@ -11,25 +11,17 @@ import type {
   VisitQuestionEvidenceItem,
 } from './taskContract';
 
-export function isUpcomingConfirmedCalendarAppointment(
-  appointment: Appointment,
-  now: string,
-): boolean {
-  return (
-    (appointment.status === 'scheduled' ||
-      appointment.status === 'rescheduled') &&
-    Boolean(appointment.calendarEventIdentifier) &&
-    appointment.calendarEventSnapshot !== undefined &&
-    compareTimestamps(appointment.effectiveAt, now) >= 0
-  );
-}
+export { isUpcomingConfirmedCalendarAppointment } from './appointmentFreshness';
 
 export function collectVisitQuestionCitations(
   questions: readonly VisitQuestionCandidate[],
 ): VisitQuestionEvidenceItem[] {
   const citations = new Map<string, VisitQuestionEvidenceItem>();
   for (const question of questions) {
-    for (const citation of question.citations) {
+    for (const citation of [
+      ...question.citations,
+      ...(question.generatedArtifactContext ?? []),
+    ]) {
       citations.set(visitQuestionCitationKey(citation), citation);
     }
   }
@@ -78,10 +70,19 @@ export function assertReviewedVisitQuestions(
       throw new Error('The reviewed list contains a duplicate question.');
     texts.add(normalizedText);
     const citationKeys = question.citations.map(visitQuestionCitationKey);
+    if (
+      (question.generatedArtifactContext ?? []).some(
+        item => item.sourceKind !== 'generated_artifact',
+      )
+    )
+      throw new Error('Generated context must reference retained artifacts.');
     if (new Set(citationKeys).size !== citationKeys.length) {
       throw new Error('A question contains duplicate evidence links.');
     }
-    for (const citation of question.citations) {
+    for (const citation of [
+      ...question.citations,
+      ...(question.generatedArtifactContext ?? []),
+    ]) {
       if (!metadataByCitation.has(visitQuestionCitationKey(citation))) {
         throw new Error(
           'A reviewed question refers to evidence outside the current result set.',
@@ -108,7 +109,10 @@ export async function assertCurrentVisitQuestionRecord(
   writer: RecordWriter,
   item: VisitQuestionEvidenceItem,
   metadata: VisitQuestionEvidenceMetadata,
+  sql?: SqlExecutor,
 ): Promise<void> {
+  if (item.sourceKind === 'generated_artifact')
+    return assertGeneratedVisitQuestionSource(item, metadata, sql);
   if (metadata.recordKind && metadata.evidenceRecordId) {
     const currentEvidence = await writer.get(
       metadata.recordKind,

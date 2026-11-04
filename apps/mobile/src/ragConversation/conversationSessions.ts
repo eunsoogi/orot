@@ -1,36 +1,56 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
-import { getRagConversationCopy } from './copy';
 import type {
   ConversationSender,
   ConversationSession,
 } from './conversationSessionRequests';
-
+import type {
+  ConversationSessionOptions,
+  DeletedConversation,
+  ConversationSnapshot,
+} from './conversationSessionTypes';
+import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
+import { createConversationSessionAttachment } from './conversationSessionAttachment';
+import { createConversationRetrySave } from './conversationRetrySave';
+import {
+  createEmptyConversation,
+  quarantineConversation,
+} from './conversationEmptySession';
+import {
+  addConversation,
+  removeConversation,
+  selectConversation,
+  undoMemoryConversation,
+  undoRetainedConversation,
+} from './conversationSessionTransitions';
 export type {
   ConversationSender,
   ConversationSession,
 } from './conversationSessionRequests';
-
+let nextSessionOwner = 0;
 /** App-owned memory-only sessions survive route removal without persisting health text. */
-export function createConversationSessions() {
+export function createConversationSessions(
+  options: ConversationSessionOptions = {},
+) {
+  const owner = ++nextSessionOwner;
   let nextId = 0;
-  const empty = (): ConversationSession => ({
-    id: ++nextId,
-    title: getRagConversationCopy().newConversation,
-    createdAt: new Date().toISOString(),
-    draft: '',
-    messages: [],
-    pendingMessage: null,
-    busy: false,
-    error: '',
-  });
+  const empty = () => createEmptyConversation(++nextId);
   let snapshot = {
     activeId: 1,
     sessions: [empty()] as readonly ConversationSession[],
-    deleted: null as { session: ConversationSession; index: number } | null,
+    deleted: null as DeletedConversation | null,
   };
   const listeners = new Set<() => void>();
+  let disposed = false;
+  let lifecycle = 0;
   const emit = () => listeners.forEach(listener => listener());
+  const apply = (next: ConversationSnapshot | null) => {
+    if (next) {
+      snapshot = next;
+      emit();
+    }
+  };
   const update = (id: number, change: Partial<ConversationSession>) => {
+    if (disposed) return;
     snapshot = {
       ...snapshot,
       sessions: snapshot.sessions.map(session =>
@@ -41,59 +61,188 @@ export function createConversationSessions() {
   };
   const find = (id: number) =>
     snapshot.sessions.find(session => session.id === id)!;
-  const requests = createConversationSessionRequests(find, update);
+  const requests = createConversationSessionRequests(
+    find,
+    update,
+    id => `${owner}:${id}`,
+    options.retention,
+  );
+  const restoration = createConversationSessionRestoreState({
+    read: options.restoreSession,
+    update,
+  });
+  const retrySave = createConversationRetrySave({
+    find: id => snapshot.sessions.find(session => session.id === id),
+    update,
+    disposed: () => disposed,
+    requests,
+    restoration,
+    options,
+  });
+  let deleting = false;
+  const quarantinedDrafts = new Map<number, string>();
+  const removeLocal = (
+    id: number,
+    handle?: { id: string; version: number | null } | null,
+  ) => {
+    apply(removeConversation(snapshot, id, empty, handle));
+  };
+  const removeRetained = async (id: number) => {
+    if (
+      disposed ||
+      deleting ||
+      !snapshot.sessions.some(session => session.id === id)
+    )
+      return;
+    if (!quarantinedDrafts.has(id)) quarantinedDrafts.set(id, find(id).draft);
+    const started = lifecycle;
+    deleting = true;
+    options.retention!.prepareRemoval(id);
+    requests.abandon(id);
+    restoration.forget(id);
+    update(id, quarantineConversation());
+    try {
+      if (snapshot.deleted?.handle !== undefined) {
+        await options.retention!.finalize(snapshot.deleted.handle);
+        if (lifecycle !== started) return;
+        snapshot = { ...snapshot, deleted: null };
+        emit();
+      }
+      const handle = await options.retention!.hide(id);
+      if (disposed) {
+        await options.retention!.finalize(handle);
+        return;
+      }
+      if (lifecycle !== started) return;
+      quarantinedDrafts.delete(id);
+      requests.forgetSaves(id);
+      update(id, { ...quarantineConversation(), busy: false });
+      removeLocal(id, handle);
+    } catch {
+      if (lifecycle !== started) return;
+      let activeId: string | null = null;
+      try {
+        activeId = await options.retention!.resumeIfActive(id);
+      } catch {
+        /* Unknown state remains quarantined. */
+      }
+      if (lifecycle !== started) return;
+      if (activeId && !disposed) {
+        update(id, {
+          quarantined: false,
+          draft: find(id).draft || quarantinedDrafts.get(id) || '',
+          restoreAfterRetry: true,
+        });
+        quarantinedDrafts.delete(id);
+        if (options.restoreSession) await restoration.start(id, activeId);
+        else update(id, { restoreFailed: true });
+        if (lifecycle !== started) return;
+        requests.resumeSaves(id);
+        update(id, { restoreAfterRetry: Boolean(find(id).unsavedCount) });
+      }
+      update(id, {
+        busy: false,
+        error: '대화를 삭제하지 못했어요. 다시 시도해 주세요.',
+        deletionError: '대화를 삭제하지 못했어요. 다시 시도해 주세요.',
+      });
+    } finally {
+      if (lifecycle === started) deleting = false;
+    }
+  };
+  const undoRetained = async () => {
+    const deleted = snapshot.deleted;
+    if (disposed || deleting || !deleted || deleted.handle === undefined)
+      return;
+    const started = lifecycle;
+    deleting = true;
+    try {
+      if (deleted.handle?.version != null && !options.restoreSession)
+        throw new Error('Conversation restoration is unavailable.');
+      await options.retention!.undo(deleted.session.id, deleted.handle);
+      if (disposed || lifecycle !== started) return;
+      apply(undoRetainedConversation(snapshot, deleted));
+      if (deleted.handle?.version != null)
+        await restoration.start(deleted.session.id, deleted.handle.id);
+    } catch {
+      if (lifecycle !== started) return;
+      update(snapshot.activeId, {
+        error: '대화를 복원하지 못했어요. 다시 시도해 주세요.',
+        deletionError: '대화를 복원하지 못했어요. 다시 시도해 주세요.',
+      });
+    } finally {
+      if (lifecycle === started) deleting = false;
+    }
+  };
   return {
+    attachExisting: createConversationSessionAttachment({
+      retention: options.retention,
+      restoration,
+      canRestore: Boolean(options.restoreSession),
+      empty,
+      snapshot: () => snapshot,
+      apply,
+      valid: () => !disposed,
+    }),
     subscribe(listener: () => void) {
       listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
+      return () => listeners.delete(listener);
     },
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
     setError: (id: number, error: string) => update(id, { error }),
     select(id: number) {
-      if (!snapshot.sessions.some(session => session.id === id)) return;
-      snapshot = { ...snapshot, activeId: id };
-      emit();
+      if (disposed) return;
+      apply(selectConversation(snapshot, id));
     },
     create() {
-      const session = empty();
-      snapshot = {
-        ...snapshot,
-        activeId: session.id,
-        sessions: [...snapshot.sessions, session],
-      };
-      emit();
+      if (disposed) return;
+      apply(addConversation(snapshot, empty()));
     },
-    // Deleting a conversation never removes its source records. Undo retains a stopped snapshot.
     remove(id: number) {
+      if (disposed) return;
+      if (options.retention) return removeRetained(id);
       const index = snapshot.sessions.findIndex(session => session.id === id);
       if (index < 0) return;
       requests.cancel(id);
-      const session = find(id);
-      const remaining = snapshot.sessions.filter(item => item.id !== id);
-      if (!remaining.length) remaining.push(empty());
-      snapshot = {
-        sessions: remaining,
-        activeId:
-          snapshot.activeId === id ? remaining[0]!.id : snapshot.activeId,
-        deleted: { session, index },
-      };
-      emit();
+      requests.forgetSaves(id);
+      removeLocal(id);
     },
     undoRemove() {
-      if (!snapshot.deleted) return;
-      const { session, index } = snapshot.deleted;
-      const sessions = [...snapshot.sessions];
-      sessions.splice(Math.min(index, sessions.length), 0, session);
-      snapshot = { activeId: session.id, sessions, deleted: null };
+      if (disposed) return;
+      if (options.retention) return undoRetained();
+      apply(undoMemoryConversation(snapshot));
+    },
+    cancel: (id: number) => {
+      if (!disposed) requests.cancel(id);
+    },
+    retrySave,
+    retryRestore: (id: number) =>
+      disposed ? Promise.resolve() : restoration.retry(id),
+    invalidateAll() {
+      if (disposed) return;
+      lifecycle++;
+      requests.dispose();
+      restoration.dispose();
+      options.retention?.invalidate();
+      quarantinedDrafts.clear();
+      deleting = false;
+      const session = empty();
+      snapshot = { activeId: session.id, sessions: [session], deleted: null };
       emit();
     },
-    cancel: requests.cancel,
     // View subscribers never cancel on exit; only the app owner disposes requests.
-    dispose: requests.dispose,
-    send: (id: number, onSend: ConversationSender) => requests.send(id, onSend),
+    dispose() {
+      disposed = true;
+      lifecycle++;
+      requests.dispose();
+      restoration.dispose();
+      options.retention?.invalidate();
+      quarantinedDrafts.clear();
+      if (snapshot.deleted?.handle !== undefined)
+        options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
+    },
+    send: (id: number, onSend: ConversationSender) =>
+      disposed ? Promise.resolve() : requests.send(id, onSend),
   };
 }
 export type ConversationSessions = ReturnType<

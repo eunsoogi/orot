@@ -50,7 +50,7 @@ describe('visit-question workflow result mapping', () => {
           },
           citations: extra ? [used!, unused!] : [used!],
           coverage: aliases.batch.coverage,
-          checkpoint: {} as never,
+          checkpoint: { evidenceReferences: [] } as never,
         },
       });
       expect(result.status).toBe(extra ? 'rejected_output' : 'ready');
@@ -72,7 +72,7 @@ describe('visit-question workflow result mapping', () => {
       result: {
         status: 'invalid_output',
         reason: 'invalid',
-        checkpoint: {} as never,
+        checkpoint: { evidenceReferences: [] } as never,
       },
       aliases: createVisitQuestionEvidenceAliases(prepared.evidence.batch),
       prepared,
@@ -105,7 +105,7 @@ describe('visit-question workflow result mapping', () => {
         },
         citations: [unknownAlias],
         coverage: aliases.batch.coverage,
-        checkpoint: {} as never,
+        checkpoint: { evidenceReferences: [] } as never,
       },
     });
 
@@ -143,7 +143,7 @@ describe('visit-question workflow result mapping', () => {
         },
         citations: [current],
         coverage: aliases.batch.coverage,
-        checkpoint: {} as never,
+        checkpoint: { evidenceReferences: [] } as never,
       },
     });
 

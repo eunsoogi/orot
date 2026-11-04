@@ -55,3 +55,28 @@ test('ranked selection never conceals missing inventory, conflicts, or unknown t
   ).toBe(true);
   expect(hasBlockingCoverage({ ...batch, items: [] }, false, true)).toBe(true);
 });
+
+test('a generated artifact page is usable only by an opted-in task and never conceals unreadable rows', () => {
+  const paged: EvidenceBatch = {
+    ...batch,
+    items: [{ ...batch.items[0], sourceKind: 'generated_artifact' }],
+    coverage: [
+      {
+        ...batch.coverage[0],
+        sourceKind: 'generated_artifact',
+        selectionMethod: 'paged_retrieval',
+        nextCursor: 'page-1',
+      },
+    ],
+  };
+  expect(hasBlockingCoverage(paged)).toBe(true);
+  expect(hasBlockingCoverage(paged, false, false, true)).toBe(false);
+  expect(
+    hasBlockingCoverage(
+      { ...paged, coverage: [{ ...paged.coverage[0], gaps: ['Unreadable artifact'] }] },
+      false,
+      false,
+      true,
+    ),
+  ).toBe(true);
+});
