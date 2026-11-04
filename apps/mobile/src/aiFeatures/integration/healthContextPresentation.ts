@@ -97,7 +97,7 @@ export function presentHealthContext(
       ],
     });
   }
-  for (const medication of report.medications)
+  for (const medication of report.doseHistory ? [] : report.medications)
     result.push({
       title: medication.name,
       rows: [
@@ -125,6 +125,37 @@ export function presentHealthContext(
           label: '해석',
           value: '기록이 없는 날의 복용 여부는 추정하지 않아요.',
         },
+      ],
+    });
+  for (const dose of report.doseHistory?.records ?? [])
+    result.push({
+      title: dose.medicationName ?? '약 이름 확인 불가',
+      rows: [
+        {
+          label: '기록 시각',
+          value: new Date(dose.effectiveAt).toLocaleString('ko-KR', {
+            timeZone: scope.window.timeZone,
+          }),
+        },
+        ...(dose.scheduledAt
+          ? [
+              {
+                label: '예정 시각',
+                value: new Date(dose.scheduledAt).toLocaleString('ko-KR', {
+                  timeZone: scope.window.timeZone,
+                }),
+              },
+            ]
+          : []),
+        { label: '상태', value: dose.observationStatus ?? dose.eventKind },
+        ...(dose.dose
+          ? [
+              {
+                label: '기록된 양',
+                value: `${dose.dose.amount ?? ''} ${dose.dose.unit}`.trim(),
+              },
+            ]
+          : []),
       ],
     });
   if (scope.topic === 'sleep')

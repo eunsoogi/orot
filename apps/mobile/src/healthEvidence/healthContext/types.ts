@@ -11,6 +11,24 @@ export interface HealthContextWindow {
   readonly fromInclusive: string;
   readonly toExclusive: string;
   readonly timeZone: string;
+  readonly doseHistory?: {
+    readonly medicationName?: string;
+    readonly page: number;
+    readonly pageSize: number;
+  };
+}
+
+export interface HealthDoseHistory {
+  readonly records: readonly {
+    readonly medicationName: string | null;
+    readonly effectiveAt: string;
+    readonly eventKind: string;
+    readonly scheduledAt?: string;
+    readonly observationStatus?: string;
+    readonly scheduleType?: string;
+    readonly dose?: { readonly amount?: number; readonly unit: string };
+  }[];
+  readonly hasMore: boolean;
 }
 
 export interface HealthContextDay {
@@ -74,6 +92,7 @@ export interface HealthContextReport {
   readonly days: readonly HealthContextDay[];
   readonly quantities: readonly HealthQuantitySeries[];
   readonly medications: readonly HealthMedicationProfile[];
+  readonly doseHistory?: HealthDoseHistory;
   readonly sleep: readonly HealthSleepDay[];
   readonly symptoms: {
     readonly entryCount: number;
