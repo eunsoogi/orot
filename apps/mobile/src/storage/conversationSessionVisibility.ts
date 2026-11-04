@@ -102,5 +102,19 @@ export function createConversationSessionVisibility(
         );
       });
     },
+    async finalizeHiddenSession(id: string, version: number) {
+      await ensure();
+      await database.transaction(async tx => {
+        const found = await tx.execute(
+          'SELECT id FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
+          [id, version],
+        );
+        if (found.rows.length)
+          await tx.execute(
+            'DELETE FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
+            [id, version],
+          );
+      });
+    },
   };
 }

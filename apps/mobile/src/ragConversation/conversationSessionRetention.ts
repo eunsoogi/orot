@@ -98,14 +98,18 @@ export function createConversationSessionRetention(input: {
     },
     async hide(id: number) {
       const slot = slots.get(id);
-      if (!slot) throw new Error('Conversation is unavailable.');
+      if (!slot) return null;
       slot.hidden = true;
       for (const turn of slot.turns) turn.discardRetry();
       const storage = await input.openStorage();
       const version = await storage.hideSession(slot.id, slot.version);
       return { id: slot.id, version };
     },
-    async undo(id: number, handle: { id: string; version: number | null }) {
+    async undo(
+      id: number,
+      handle: { id: string; version: number | null } | null,
+    ) {
+      if (!handle) return;
       const slot = slots.get(id);
       if (!slot || !slot.hidden || slot.id !== handle.id)
         throw new Error('Conversation is unavailable.');
@@ -116,6 +120,11 @@ export function createConversationSessionRetention(input: {
       const storage = await input.openStorage();
       slot.version = await storage.undoHiddenSession(slot.id, handle.version);
       slot.hidden = false;
+    },
+    async finalize(handle: { id: string; version: number | null } | null) {
+      if (handle?.version == null) return;
+      const storage = await input.openStorage();
+      await storage.finalizeHiddenSession(handle.id, handle.version);
     },
   };
 }
