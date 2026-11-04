@@ -76,5 +76,6 @@ The draft includes a conversation-output store in the existing encrypted
 database, with session and whole-store deletion fences and source-linked
 invalidation. It is not yet connected to the conversation producer, restored
 sessions, or shared discovery. Its SQLite tests do not establish native restart
-or real-model behavior. Session deletion undo, generated-parent lineage, and
-memory-compaction retention need integration before this boundary is complete.
+or real-model behavior. Session deletion undo and generated-parent lineage
+need integration before this boundary is complete. Memory compaction preserves
+outputs when their reviewed source content and metadata remain unchanged.

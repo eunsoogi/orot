@@ -8,6 +8,7 @@ import {
   assertNoSourceReference,
   decodeAgentMemoryRecord,
   insertAgentMemoryRecord,
+  reconcileAgentMemoryRecords,
   listSupersededTranscriptRevisionIds,
   referencesAnySource,
 } from './agentMemoryStorageRecords';
@@ -102,9 +103,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       const currentRecords = records.filter(
         record => !referencesAnySource(record, invalidatedSourceIds),
       );
-      await transaction.execute('DELETE FROM agent_memory_records');
-      for (const record of currentRecords)
-        await insertAgentMemoryRecord(transaction, record);
+      await reconcileAgentMemoryRecords(transaction, currentRecords);
     });
   }
 

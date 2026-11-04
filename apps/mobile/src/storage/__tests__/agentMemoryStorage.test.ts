@@ -55,7 +55,7 @@ class TranscriptMemoryDatabase implements SqlDatabase {
       this.records.clear();
       return { rows: [] };
     }
-    if (query.startsWith('INSERT OR REPLACE INTO agent_memory_records')) {
+    if (query.startsWith('INSERT INTO agent_memory_records')) {
       this.records.set(String(parameters[0]), String(parameters[1]));
       return { rows: [], rowsAffected: 1 };
     }

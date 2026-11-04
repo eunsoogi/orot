@@ -2,6 +2,7 @@ import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
 import { periodRowReferences } from './conversationPeriodRemoval';
+import { memoryContentChangedPredicate } from './memoryContentChange';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {
@@ -50,10 +51,13 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     ['manual_history', 'manual_history_entries'],
     ['reviewed_memory', 'agent_memory_records'],
   ] as const) {
-    // Memory compaction can conservatively invalidate an output even if it later reinserts the row.
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_source_removed_${kind} AFTER DELETE ON ${table} BEGIN
       DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = '${kind}' AND record_id = OLD.id); END`);
   }
+  // Vector or ranking changes leave source content unchanged; text or metadata changes invalidate it permanently.
+  await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_memory_changed AFTER UPDATE ON agent_memory_records
+    WHEN ${memoryContentChangedPredicate()} BEGIN
+    DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END`);
   for (const table of [
     'source_deletion_tombstones',
     'agent_memory_removed_sources',

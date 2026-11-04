@@ -11,6 +11,7 @@ import {
   appendSummaryPeriod,
 } from './symptomSummaryPeriods';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
+import { memoryContentChangedPredicate } from './memoryContentChange';
 
 /** Append-only generated results live in the existing SQLCipher database, never plaintext preferences. */
 export function createSymptomSummaryStorage(
@@ -64,6 +65,9 @@ export function createSymptomSummaryStorage(
       await tx.execute(
         "CREATE TRIGGER IF NOT EXISTS summary_memory_deleted AFTER DELETE ON agent_memory_records BEGIN DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END",
       );
+      await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_memory_changed AFTER UPDATE ON agent_memory_records
+        WHEN ${memoryContentChangedPredicate()} BEGIN
+        DELETE FROM symptom_summary_runs WHERE id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END`);
       // Repair results retained by older versions when a referenced source was already deleted.
       const sourceTables = {
         ...Object.fromEntries(
