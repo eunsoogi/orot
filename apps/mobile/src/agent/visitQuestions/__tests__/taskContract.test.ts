@@ -185,8 +185,9 @@ describe('visit question task responder', () => {
     });
 
     expect(validation).toMatchObject({
-      status: 'valid',
-      value: { status: 'needs_clarification' },
+      status: 'invalid',
+      reason:
+        'Conflicting or absent evidence requires clarification-only questions.',
     });
   });
 
@@ -241,8 +242,9 @@ describe('visit question task responder', () => {
     });
 
     expect(validation).toMatchObject({
-      status: 'valid',
-      value: { status: 'needs_clarification' },
+      status: 'invalid',
+      reason:
+        'Conflicting or absent evidence requires clarification-only questions.',
     });
   });
 });

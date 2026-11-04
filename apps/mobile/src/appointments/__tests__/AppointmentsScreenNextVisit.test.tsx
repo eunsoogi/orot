@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert, StyleSheet } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
+import { appColors } from '../../layout/appColors';
 
 const now = Date.parse('2026-10-20T12:00:00Z');
 
@@ -27,7 +29,10 @@ beforeEach(() => {
   jest.setSystemTime(now);
 });
 
-afterEach(() => jest.useRealTimers());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
 
 test('marks the actual next visit independently of a selected history record', async () => {
   const store = createAppointmentStore([
@@ -57,7 +62,49 @@ test('marks the actual next visit independently of a selected history record', a
   expect(screen.getByTestId('appointment-next-visit-next')).toBeTruthy();
 });
 
+test('keeps appointment editing secondary and cancellation in a separate destructive row', async () => {
+  const store = createAppointmentStore([appointment('current', now + 60_000)]);
+  await render(<AppointmentsScreen repository={store.repository} />);
+
+  // Component styles prove the hierarchy; the native XCTest covers actual hit testing.
+  const edit = await screen.findByTestId('appointment-edit-current');
+  expect(edit.props.accessibilityRole).toBe('button');
+  expect(StyleSheet.flatten(edit.props.style)).toMatchObject({
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    minHeight: 44,
+    minWidth: 44,
+  });
+
+  const cancel = screen.getByTestId('appointment-cancel-current');
+  expect(cancel.props.accessibilityRole).toBe('button');
+  expect(cancel.props.accessibilityLabel).toBe('current 예약 취소');
+  expect(StyleSheet.flatten(cancel.props.style)).toMatchObject({
+    minHeight: 44,
+    paddingHorizontal: 12,
+    width: '100%',
+  });
+  expect(
+    StyleSheet.flatten(screen.getByText('예약 취소').props.style),
+  ).toMatchObject({
+    color: appColors.danger,
+    fontSize: 16,
+    fontWeight: '600',
+  });
+  expect(
+    screen.getByTestId('appointment-action-divider-edit-current'),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('appointment-action-divider-cancel-current'),
+  ).toBeTruthy();
+});
+
 test('moves the next-visit marker after cancellation and keeps details selected', async () => {
+  const cancellationAlert = jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation(() => undefined);
   const store = createAppointmentStore([
     appointment('current', now + 60_000),
     appointment('following', now + 2 * 60_000),
@@ -68,6 +115,31 @@ test('moves the next-visit marker after cancellation and keeps details selected'
   await fireEvent.press(current);
   expect(screen.getByTestId('appointment-next-visit-current')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('appointment-cancel-current'));
+
+  expect(cancellationAlert).toHaveBeenCalledWith(
+    '예약을 취소할까요?',
+    'current 예약을 취소해요. 취소 후에도 예약 내역에서 확인할 수 있어요.',
+    expect.arrayContaining([
+      expect.objectContaining({ text: '예약 유지', style: 'cancel' }),
+      expect.objectContaining({ text: '예약 취소', style: 'destructive' }),
+    ]),
+    { cancelable: false },
+  );
+  expect(screen.getByTestId('appointment-status-current')).toHaveTextContent(
+    '예정',
+  );
+
+  const buttons = cancellationAlert.mock.calls[0]?.[2] ?? [];
+  const keepAppointment = buttons.find(button => button.style === 'cancel');
+  await act(async () => keepAppointment?.onPress?.());
+  expect(screen.getByTestId('appointment-status-current')).toHaveTextContent(
+    '예정',
+  );
+
+  const confirmCancellation = buttons.find(
+    button => button.style === 'destructive',
+  );
+  await act(async () => confirmCancellation?.onPress?.());
 
   expect(
     await screen.findByTestId('appointment-next-visit-following'),

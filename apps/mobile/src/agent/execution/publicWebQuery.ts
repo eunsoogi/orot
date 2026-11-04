@@ -1,15 +1,16 @@
 import type { JsonObject } from '@orot/model-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 
-/** Only these app-owned public concepts qualify for reusable search permission.
- * Free-form searches remain available, but require review for each request. */
+/** App-owned concepts keep automatic public searches free of source text and identifiers. */
 const concepts = {
+  general_health: 'general health',
   blood_pressure: 'blood pressure',
   heart_rate: 'heart rate',
   heart_rhythm: 'heart rhythm',
   physical_activity: 'physical activity',
   walking: 'walking',
   sleep: 'sleep',
+  adult_sleep_duration: 'sleep duration adults',
   medication_adherence: 'medication adherence',
   medication_effects: 'medication effects',
   nutrition: 'nutrition',
@@ -29,14 +30,6 @@ const prefix = 'General public health information about: ';
 const suffix =
   '. Guidelines, associations, possible explanations and limitations.';
 
-// Keep the C0, DEL and C1 query boundary explicit without a control-character regex.
-function hasQueryControlCharacters(value: string): boolean {
-  return [...value].some(character => {
-    const code = character.charCodeAt(0);
-    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
-  });
-}
-
 export const publicWebQuerySchema: JsonObject = {
   type: 'object',
   additionalProperties: false,
@@ -48,20 +41,21 @@ export const publicWebQuerySchema: JsonObject = {
       uniqueItems: true,
       items: { type: 'string', enum: Object.keys(concepts) },
       description:
-        'Prefer public topics: the app constructs the query without record values. Choose topics OR query, never both.',
-    },
-    query: {
-      type: 'string',
-      minLength: 1,
-      maxLength: 240,
-      description:
-        'Optional specific public query when topics are insufficient. Requires explicit per-request review. Exclude identifiers, private measurements, dates, record text and conversation history.',
+        'Choose public topics: the app constructs the query without record values.',
     },
   },
-  anyOf: [{ required: ['topics'] }, { required: ['query'] }],
+  required: ['topics'],
 };
 
 export function parsePublicWebQuery(value: unknown): JsonObject | undefined {
+  const labels = publicMedicalTopicLabels(value);
+  return labels ? { query: prefix + labels.join('; ') + suffix } : undefined;
+}
+
+/** Convert only the closed topic vocabulary to public search terms. */
+export function publicMedicalTopicLabels(
+  value: unknown,
+): readonly string[] | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     return undefined;
   const input = value as Record<string, unknown>;
@@ -80,13 +74,9 @@ export function parsePublicWebQuery(value: unknown): JsonObject | undefined {
     const labels = input.topics.map(
       topic => concepts[topic as keyof typeof concepts],
     );
-    return { query: prefix + labels.join('; ') + suffix };
+    return labels;
   }
-  if (typeof input.query !== 'string') return undefined;
-  const query = input.query.trim();
-  return query && [...query].length <= 240 && !hasQueryControlCharacters(query)
-    ? { query }
-    : undefined;
+  return undefined;
 }
 
 /** Validate the actual outbound bytes, not a model-supplied assertion of privacy.

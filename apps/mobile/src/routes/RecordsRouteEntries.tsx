@@ -15,6 +15,7 @@ interface RecordsRouteEntriesProps {
   readonly medicalDocumentOpening: boolean;
   readonly medicalDocumentDisabled: boolean;
   readonly onImportMedicalDocument: () => void;
+  readonly onImportMedicalPhoto: () => void;
 }
 
 /** Groups capture actions and existing record destinations without adding a new scroll owner. */
@@ -26,6 +27,7 @@ export function RecordsRouteEntries({
   medicalDocumentOpening,
   medicalDocumentDisabled,
   onImportMedicalDocument,
+  onImportMedicalPhoto,
 }: RecordsRouteEntriesProps) {
   return (
     <View style={styles.container}>
@@ -67,6 +69,13 @@ export function RecordsRouteEntries({
             opening={medicalDocumentOpening}
             disabled={medicalDocumentDisabled}
             onPress={onImportMedicalDocument}
+            showDivider
+          />
+          <MedicalDocumentImportAction
+            source="photos"
+            opening={medicalDocumentOpening}
+            disabled={medicalDocumentDisabled}
+            onPress={onImportMedicalPhoto}
             showDivider
           />
           <RecordsLibraryAction

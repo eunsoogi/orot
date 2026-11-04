@@ -21,8 +21,6 @@ export const aiFeaturesKo = {
   'aiFeatures.ragConversation.description':
     '내 기록에서 궁금한 점을 물어보세요.',
   'aiFeatures.ragConversation.action': '대화 시작',
-  'aiFeatures.healthReview.description':
-    '측정·증상 추이와 최근 기록을 함께 확인해요.',
   'aiFeatures.externalEvidence.title': '의학 자료 찾기',
   'aiFeatures.externalEvidence.description': '의학 자료를 찾아보세요.',
   'aiFeatures.externalEvidence.action': '외부 자료 검색하기',

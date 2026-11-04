@@ -19,7 +19,7 @@ const copy: HealthKitImportScreenCopy = {
   sourceSelectionTitle: '출처',
   activityTitle: '진행 상황',
   localOnly: '선택한 기록은 이 기기에 저장됩니다.',
-  readAuthorization: 'HealthKit 읽기 권한 상태는 확인할 수 없습니다.',
+  readAuthorization: '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
   importButton: '선택 항목 가져오기',
   cancelButton: '가져오기 취소',
   featureNames: Object.fromEntries(
@@ -93,7 +93,9 @@ test('requires a selected type and shows HealthKit results from one action', asy
   expect(screen.getByTestId('unified-import-start')).toBeDisabled();
   expect(
     screen.getByTestId('unified-import-read-authorization'),
-  ).toHaveTextContent('HealthKit 읽기 권한 상태는 확인할 수 없습니다.');
+  ).toHaveTextContent(
+    '건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요.',
+  );
   await fireEvent.press(screen.getByTestId('unified-import-toggle-heartRate'));
   await fireEvent.press(screen.getByTestId('unified-import-start'));
 

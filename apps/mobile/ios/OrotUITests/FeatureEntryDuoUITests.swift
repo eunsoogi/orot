@@ -127,7 +127,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         let groups = [
             ["rag-conversation"],
             ["visit-questions", "disease-hypotheses"],
-            ["health-review", "external-evidence"],
+            ["external-evidence"],
         ]
         var previousGroupLastTop: CGFloat?
         for group in groups {
@@ -199,7 +199,6 @@ enum FeatureEntryUITestConditions {
         ("rag-conversation", "기록과 대화"),
         ("visit-questions", "다음 진료 질문"),
         ("disease-hypotheses", "증상 정리"),
-        ("health-review", "최근 건강 변화 검토"),
         ("external-evidence", "의학 자료 찾기"),
     ]
 

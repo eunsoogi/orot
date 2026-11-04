@@ -3,7 +3,7 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
-import { homeMetrics, type HomeMetric } from './metricSelection';
+import type { HomeMetric } from './metricSelection';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
 import {
@@ -12,8 +12,13 @@ import {
   homeMetricValue as value,
 } from './HomeMetricCard';
 import { resolveHomeMetricGridLayout } from './homeMetricLayout';
+import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
+import { HomeRecentHealthChange } from './HomeRecentHealthChange';
 
-/** Displays observed calendar-day aggregates, with gaps and sample semantics visible. */
+/**
+ * Shows calendar-day metrics and sizes cards to the measured grid.
+ * Selection edits remain available when saving fails.
+ */
 export function HomeMetrics() {
   const data = useHomeMetrics();
   const { fontScale } = useWindowDimensions();
@@ -117,42 +122,16 @@ export function HomeMetrics() {
         </View>
       )}
       {draft && (
-        <View style={styles.card}>
-          <Text>{t('home.metricChoose')}</Text>
-          {homeMetrics.map(metric => (
-            <Pressable
-              key={metric}
-              accessibilityRole="checkbox"
-              accessibilityState={{
-                checked: draft.includes(metric),
-                disabled: saving,
-              }}
-              disabled={saving}
-              onPress={() => toggle(metric)}
-            >
-              <Text>
-                {draft.includes(metric) ? '✓ ' : '○ '}
-                {title(metric)}
-              </Text>
-            </Pressable>
-          ))}
-          {saveError && (
-            <Text accessibilityRole="alert">{t('home.metricSaveError')}</Text>
-          )}
-          <AppButton
-            title={t('home.metricSave')}
-            variant="text"
-            disabled={saving || draft.length < 2 || draft.length > 4}
-            busy={saving}
-            onPress={save}
-          />
-          <AppButton
-            title={t('home.metricCancel')}
-            variant="cancel"
-            disabled={saving}
-            onPress={() => setDraft(null)}
-          />
-        </View>
+        <HomeMetricSelectionEditor
+          canSave={draft.length >= 2 && draft.length <= 4}
+          onCancel={() => setDraft(null)}
+          onSave={save}
+          onToggle={toggle}
+          saveError={saveError}
+          saving={saving}
+          selection={draft}
+          title={title}
+        />
       )}
       <Text
         accessibilityRole="header"
@@ -164,18 +143,12 @@ export function HomeMetrics() {
       {data.state === 'ready' &&
         (comparisons.length ? (
           comparisons.map(metric => (
-            <Text key={metric.metric} style={styles.card}>
-              {title(metric.metric)} · {t('home.recordedDayMean')} ·{' '}
-              {metric.comparison!.previousDates[0]}–
-              {metric.comparison!.previousDates.at(-1)}:{' '}
-              {value(metric.comparison!.previous, metric.unit)} (
-              {metric.comparison!.previousCoverage}/7) →{' '}
-              {metric.comparison!.recentDates[0]}–
-              {metric.comparison!.recentDates.at(-1)}:{' '}
-              {value(metric.comparison!.recent, metric.unit)} (
-              {metric.comparison!.recentCoverage}/7) · {metric.source} ·{' '}
-              {metric.timeZone}
-            </Text>
+            <HomeRecentHealthChange
+              key={metric.metric}
+              metric={metric}
+              title={title(metric.metric)}
+              formatValue={value}
+            />
           ))
         ) : (
           <Text>{t('home.noChanges')}</Text>

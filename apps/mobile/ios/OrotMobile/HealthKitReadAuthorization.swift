@@ -41,8 +41,8 @@ enum HealthKitReadAuthorization {
 
         var bridgeMessage: String {
             switch self {
-            case .standardRequestFailed: "HealthKit authorization request failed."
-            case .medicationRequestFailed: "Medication authorization request failed."
+            case .standardRequestFailed: "Health record permission request failed."
+            case .medicationRequestFailed: "Medication permission request failed."
             case .presentationUnavailable: "Medication authorization could not be presented."
             }
         }

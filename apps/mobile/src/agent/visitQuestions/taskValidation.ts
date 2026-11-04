@@ -1,6 +1,15 @@
 import type { JsonValue } from '@orot/model-runtime';
-import { t } from '../../i18n';
 import { hasUnsupportedQuestionFacts } from './questionFactValidation';
+import { isKnownClarification } from './clarificationQuestions';
+import {
+  appointmentDateFromContext,
+  hasUnsafeClinicalAdvice,
+  validateClarificationResponse,
+} from './clarificationResponse';
+export {
+  appointmentDateFromContext,
+  hasUnsafeClinicalAdvice,
+} from './clarificationResponse';
 import {
   asQuestionObject as asObject,
   hasOnlyQuestionKeys as hasOnlyKeys,
@@ -14,58 +23,9 @@ import type {
   VisitQuestionCandidate,
 } from './taskContract';
 
-const REQUESTED_DATE_PATTERNS = [
-  /(?<!\d)(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?(?!\d)/gu,
-  /(?<!\d)(?:19|20)\d{2}\s*년\s*(?:0?[1-9]|1[0-2])\s*월(?:\s*(?:0?[1-9]|[12]\d|3[01])\s*일)?/gu,
-];
-// Cover the distinct Korean imperative endings used by noun and verb action stems.
-const MEDICATION_INSTRUCTION =
-  /(?:약|약물|용량|복용|투약|처방|치료).{0,20}(?:중단|시작|변경|조절|증량|감량|늘리|줄이|바꾸|끊|복용하지|투여하지|먹지)(?:하세요|하십시오|으세요|세요|으십시오|해야 합니다|해야 해요|해야 한다|해야 돼요|하셔야|셔야|으셔야|하시기 바랍니다|하지 마세요|마세요)/u;
-const DIAGNOSTIC_CLAIM =
-  /(?:고혈압|당뇨(?:병)?|고지혈증|심부전|[가-힣]{1,10}(?:병|증|염|암|질환)|진단).{0,16}(?:이므로|이라서|라서|때문에|로 보입니다|로 판단|이라고 할 수|입니다|이에요|일 수 있)/u;
-
 // Shared by validation reporting and the bounded correction prompt.
 export const UNSUPPORTED_QUESTION_FACTS_REASON =
   'A visit question contains an unsupported date or numeric value.';
-
-function clarification(
-  message: string,
-): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
-  // Keep only validated Korean clarification copy on the task-result path.
-  return { status: 'valid', value: { status: 'needs_clarification', message } };
-}
-
-/** Suppresses explicit diagnosis claims and medication or treatment instructions in provider-authored copy. */
-export function hasUnsafeClinicalAdvice(message: string): boolean {
-  return MEDICATION_INSTRUCTION.test(message) || DIAGNOSTIC_CLAIM.test(message);
-}
-
-export function appointmentDateFromContext(
-  context: JsonValue | undefined,
-): string | undefined {
-  const value = asObject(context);
-  return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
-}
-
-function dateFactsInText(text: string): string[] {
-  return REQUESTED_DATE_PATTERNS.flatMap(pattern =>
-    [...text.matchAll(pattern)].map(([date]) => date),
-  );
-}
-
-function supportedClarificationContext(
-  input: VisitQuestionResponderInput,
-): string {
-  // Coverage gaps identify missing target dates, but never authorize measurement values.
-  return [
-    appointmentDateFromContext(input.context),
-    ...input.evidence.coverage.flatMap(coverage =>
-      coverage.gaps.flatMap(dateFactsInText),
-    ),
-  ]
-    .filter((value): value is string => value !== undefined)
-    .join(' ');
-}
 
 /** Validates generated fields and preserves only evidence-safe clarification copy as a task result. */
 export function validateVisitQuestionTaskResult(
@@ -77,46 +37,7 @@ export function validateVisitQuestionTaskResult(
     return { status: 'invalid', reason: 'The response must be an object.' };
 
   if (result.status === 'needs_clarification') {
-    if (!hasOnlyKeys(result, ['status', 'message'])) {
-      return {
-        status: 'invalid',
-        reason: 'The clarification response has extra fields.',
-      };
-    }
-    // Unsafe provider advice remains rejected even when its text is too long or otherwise unusable.
-    if (
-      typeof result.message === 'string' &&
-      hasUnsafeClinicalAdvice(result.message)
-    ) {
-      return {
-        status: 'invalid',
-        reason: 'The clarification contains unsafe clinical advice.',
-      };
-    }
-    const message = readNonEmptyKoreanText(result.message, 400);
-    if (!message) {
-      // Never display unusable provider copy; a string clarification can use a safe app-owned next step.
-      if (typeof result.message === 'string')
-        return clarification(
-          t('visitQuestions.validation.unusableClarification'),
-        );
-      return {
-        status: 'invalid',
-        reason: 'The clarification request is invalid.',
-      };
-    }
-    if (
-      hasUnsupportedQuestionFacts(
-        message,
-        input.evidence.items,
-        supportedClarificationContext(input),
-      )
-    ) {
-      return clarification(
-        t('visitQuestions.validation.unverifiedDateOrValue'),
-      );
-    }
-    return clarification(message);
+    return validateClarificationResponse(result, input);
   }
 
   if (
@@ -128,12 +49,6 @@ export function validateVisitQuestionTaskResult(
       reason: 'The response status is not supported.',
     };
   }
-  if (input.evidence.conflicts.length > 0) {
-    return clarification(t('visitQuestions.validation.conflictingRecords'));
-  }
-  if (input.evidence.items.length === 0) {
-    return clarification(t('visitQuestions.validation.noEvidence'));
-  }
   if (
     !Array.isArray(result.questions) ||
     result.questions.length < 3 ||
@@ -142,6 +57,43 @@ export function validateVisitQuestionTaskResult(
     return {
       status: 'invalid',
       reason: 'A visit requires three to five question candidates.',
+    };
+  }
+  // A batch-wide conflict does not identify which observation is safe to assert.
+  // Until conflicts carry per-item identities, only uncited clarification can use it.
+  if (
+    (input.evidence.conflicts.length > 0 ||
+      input.evidence.items.length === 0) &&
+    result.questions.some(raw => asObject(raw)?.kind !== 'clarification')
+  ) {
+    return {
+      status: 'invalid',
+      reason:
+        'Conflicting or absent evidence requires clarification-only questions.',
+    };
+  }
+
+  if (
+    input.evidence.items.length > 0 &&
+    input.evidence.conflicts.length === 0 &&
+    input.evidence.coverage.some(
+      coverage =>
+        coverage.gaps.length > 0 ||
+        (coverage.truncated &&
+          !(
+            coverage.sourceKind !== 'external_medical' &&
+            coverage.selectionMethod === 'ranked_retrieval'
+          )),
+    ) &&
+    (!result.questions.some(raw => asObject(raw)?.kind === 'clarification') ||
+      !result.questions.some(
+        raw => (asObject(raw)?.kind ?? 'confirmed_fact') === 'confirmed_fact',
+      ))
+  ) {
+    return {
+      status: 'invalid',
+      reason:
+        'Partial evidence requires both supported and clarification questions.',
     };
   }
 
@@ -162,6 +114,7 @@ export function validateVisitQuestionTaskResult(
         'rationale',
         'priority',
         'evidenceIds',
+        'kind',
       ])
     ) {
       return {
@@ -188,9 +141,26 @@ export function validateVisitQuestionTaskResult(
         reason: 'A rationale or priority is invalid.',
       };
     }
+    const kind = question.kind ?? 'confirmed_fact';
+    if (kind !== 'confirmed_fact' && kind !== 'clarification') {
+      return { status: 'invalid', reason: 'A question kind is invalid.' };
+    }
+    // Uncited provider prose cannot establish personal facts. Only app-owned
+    // conditional wording can be generated; human edits are handled at review.
+    if (
+      kind === 'clarification' &&
+      !isKnownClarification(questionText, rationale)
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'An uncited clarification must use app-owned wording.',
+      };
+    }
     if (
       !Array.isArray(question.evidenceIds) ||
-      question.evidenceIds.length < 1 ||
+      (kind === 'clarification'
+        ? question.evidenceIds.length !== 0
+        : question.evidenceIds.length < 1) ||
       question.evidenceIds.length > 3 ||
       question.evidenceIds.some(id => typeof id !== 'string') ||
       new Set(question.evidenceIds).size !== question.evidenceIds.length
@@ -226,6 +196,7 @@ export function validateVisitQuestionTaskResult(
       unsupportedFacts = true;
     }
     questions.push({
+      kind,
       questionText,
       rationale,
       priority: question.priority,

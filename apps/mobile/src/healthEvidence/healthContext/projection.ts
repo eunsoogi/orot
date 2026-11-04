@@ -106,6 +106,7 @@ export function projectHealthContext(
       };
     }),
     medications: report.medications.map(projectHealthMedication),
+    ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
     sleep: {
       semantics:
         'observed_asleep_interval_union_by_calendar_day_not_complete_nights',

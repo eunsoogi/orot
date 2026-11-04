@@ -7,7 +7,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
-    /// Covers the open device without treating its fixed scene as a rotation result.
+    /// Capture freshness thresholds before each open; reopened drafts need focus for keyboard geometry.
     @MainActor
     func testOpenDuoPageActionsPreserveDraftAndSave() throws {
         let app = XCUIApplication()
@@ -21,16 +21,18 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         }
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         try openManualHistory(app)
-        tap(app, "manual-history-add")
         let formOpenedAt = Date().timeIntervalSince1970 * 1000
+        tap(app, "manual-history-add")
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
         let title = UITestConditions.element(app, "manual-history-title-input")
-        XCTAssertTrue(app.keyboards.firstMatch.exists && title.isHittable, app.debugDescription)
-        try NavigationPageActionUITestConditions.assertRailAboveNavigation(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
         tap(app, "manual-history-form-close")
+        let reopenedFormAt = Date().timeIntervalSince1970 * 1000
         tap(app, "manual-history-add")
         XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
         guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
+        XCTAssertTrue(app.keyboards.firstMatch.exists && UITestConditions.element(app, "manual-history-details-input").isHittable, app.debugDescription)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: reopenedFormAt, testCase: self)
         tap(app, "manual-history-date-unknown")
         tap(app, "manual-history-save")
         visible(app, "Synthetic Duo history")
@@ -60,11 +62,9 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
 
         // Reflow the real form while its title remains first responder and the keyboard is visible.
-        let form = UITestConditions.element(app, "manual-history-form")
         let title = UITestConditions.element(app, "manual-history-title-input")
-        XCTAssertTrue(UITestConditions.exists(form), app.debugDescription)
         XCTAssertTrue(app.keyboards.firstMatch.exists, app.debugDescription)
-        try NavigationPageActionUITestConditions.assertRailAboveNavigation(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
+        try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
         let formPortraitSize = app.frame.size
         XCUIDevice.shared.orientation = .landscapeLeft
         waitForOrientation(app, landscape: true, changedFrom: formPortraitSize)

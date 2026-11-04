@@ -19,7 +19,6 @@ import { ManualHistoryRoute } from './ManualHistoryRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
-import { HealthReviewRoute } from '../healthReview/route';
 
 export type { AppNavigationRoute } from './appNavigationRoute';
 
@@ -117,7 +116,6 @@ export function AppRouteContent({
             onOpenDiseaseHypotheses={openDiseaseHypotheses}
             onOpenRagConversation={openRagConversation}
             onOpenExternalEvidence={openExternalEvidence}
-            onOpenHealthReview={() => actions.push('health-review')}
           />
         );
       case 'settings':
@@ -138,9 +136,6 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
-    case 'health-review':
-    case 'health-review-source':
-      return <HealthReviewRoute actions={actions} />;
     case 'appointment-preparation':
       return (
         <AppointmentPreparationRoute

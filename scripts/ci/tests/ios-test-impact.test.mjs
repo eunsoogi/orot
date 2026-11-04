@@ -68,7 +68,6 @@ test('native test files map to the cohort that owns their original assertions', 
       'core-integration',
       'health-observations',
       'health-recovery',
-      'health-review-ui',
       'calendar-consent',
       'calendar-appointments',
       'provider',
@@ -213,7 +212,7 @@ test('domain E2E helpers are focused while shared test drivers keep the full inv
     ]),
   );
   assert.equal(shared.reason, 'shared-test-driver');
-  assert.equal(shared.cohorts.length, 29);
+  assert.equal(shared.cohorts.length, 28);
 });
 
 test('unknown application and shared package changes select all dependent suites', () => {
@@ -221,9 +220,9 @@ test('unknown application and shared package changes select all dependent suites
   const shared = iosTestImpactForPath('packages/model-runtime/src/session.ts');
 
   assert.equal(unknown.reason, 'unknown-application-impact');
-  assert.equal(unknown.cohorts.length, 29);
+  assert.equal(unknown.cohorts.length, 28);
   assert.equal(shared.reason, 'shared-package');
-  assert.equal(shared.cohorts.length, 29);
+  assert.equal(shared.cohorts.length, 28);
 });
 
 test('new or unclassified native and E2E test files fail safe to the full suite', () => {
@@ -234,7 +233,7 @@ test('new or unclassified native and E2E test files fail safe to the full suite'
   ]) {
     const impact = iosTestImpactForPath(path);
 
-    assert.equal(impact.cohorts.length, 29, path);
+    assert.equal(impact.cohorts.length, 28, path);
     assert.ok(impact.reason.startsWith('unknown-'), path);
   }
 });
@@ -243,5 +242,5 @@ test('provider-openai package changes also select the separate OAuth suite', () 
   const impact = iosTestImpactForPath('packages/provider-openai/Sources/OAuth/Session.swift');
 
   assert.equal(impact.oauth, true);
-  assert.equal(impact.cohorts.length, 29);
+  assert.equal(impact.cohorts.length, 28);
 });
