@@ -57,7 +57,7 @@ function priorMessages(
 /** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '5',
+  taskVersion: '6',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
@@ -75,6 +75,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    // Possibility discussions need the same observation/inference boundary as the symptom summary.
+    'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
+    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, unsupported probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
