@@ -1,5 +1,4 @@
 import { t } from '../i18n';
-import { healthReviewText } from '../i18n/healthReview';
 
 /** Keeps route identifiers stable while localizing the primary action and its two follow-up groups. */
 export function getAiFeatureCopy() {
@@ -36,12 +35,6 @@ export function getAiFeatureCopy() {
     review: {
       title: t('aiFeatures.review.title'),
       features: [
-        {
-          id: 'health-review',
-          title: healthReviewText.entry,
-          description: t('aiFeatures.healthReview.description'),
-          action: healthReviewText.entry,
-        },
         {
           id: 'external-evidence',
           title: t('aiFeatures.externalEvidence.title'),

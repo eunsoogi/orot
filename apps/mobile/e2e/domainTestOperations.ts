@@ -32,14 +32,6 @@ export async function runDomainTestOperation(
     case 'encounter-review-persistence':
     case 'encounter-persistence':
       return runEncounterTestOperation(operation, parameters);
-    case 'health-review-persistence': {
-      const { runHealthReviewPersistenceOperation } =
-        await import('./healthReviewPersistenceOperation');
-      return runHealthReviewPersistenceOperation(
-        parameters.mode,
-        parameters.fixtureIdentifier,
-      );
-    }
     case 'standard-adapters': {
       const { runStandardAdaptersProbe } =
         await import('./standardAdaptersProbe');

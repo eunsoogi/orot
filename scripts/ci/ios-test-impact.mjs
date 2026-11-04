@@ -1,4 +1,3 @@
-import { healthReviewTestImpact } from './health-review-test-impact.mjs';
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 import { encounterReviewTestImpact } from './encounter-review-test-impact.mjs';
 import {
@@ -231,8 +230,6 @@ export function iosTestImpactForPath(path) {
   if (typeof path !== 'string' || !path || /[\0\r\n]/.test(path))
     return full('invalid-application-path');
   const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
-  const review = healthReviewTestImpact(normalized);
-  if (review) return impact(review.cohorts, review.reason);
   const encounter = encounterReviewTestImpact(normalized);
   if (encounter) return impact(encounter.cohorts, encounter.reason);
   if (normalized.startsWith('packages/'))

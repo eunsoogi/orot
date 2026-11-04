@@ -99,7 +99,7 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
     const appDelegate = readFileSync('apps/mobile/ios/OrotMobile/AppDelegate.swift', 'utf8');
     assert.match(
       appDelegate,
-      /else if let run = VisitQuestionInputGate\.session\(\) \{\s+window = VisitQuestionInputObservationWindow/,
+      /if let run = VisitQuestionInputGate\.session\(\) \{\s+window = VisitQuestionInputObservationWindow/,
     );
     const questionJourney = readFileSync(
       'apps/mobile/ios/OrotUITests/WindowGeometryUITests.swift',
@@ -136,7 +136,7 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
     const delegate = readFileSync('apps/mobile/ios/OrotMobile/AppDelegate.swift', 'utf8');
     assert.match(
       delegate,
-      /if let launch = HealthReviewObservationWindow.session\(\)[\s\S]+else if let run = EncounterInputGate.session\(\)/,
+      /if let run = VisitQuestionInputGate.session\(\)[\s\S]+else if let run = EncounterInputGate.session\(\)/,
     );
     const runner = readFileSync('apps/mobile/ios/OrotUITests/EncounterReviewUITests.swift', 'utf8');
     assert.match(

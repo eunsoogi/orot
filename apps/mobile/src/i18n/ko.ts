@@ -15,7 +15,6 @@ import { homeOverviewKo } from './homeOverview';
 
 export const ko = {
   ...homeOverviewKo,
-  'healthReview.inferenceDisclosure': '최근 건강 변화 검토를 위해',
   'symptoms.title': '증상 일지',
   'symptoms.description': '직접 기록한 증상과 경과',
   ...probeKo,

@@ -6,8 +6,6 @@ export type AppNavigationRoute =
   | 'saved-recordings'
   | 'symptoms'
   | 'recording-review'
-  | 'health-review'
-  | 'health-review-source'
   | 'unified-import'
   | 'health-records'
   | 'health-records-detail'
