@@ -82,7 +82,11 @@ test('keeps failed output incomplete while preserving history and retrying once'
   expect(failed.draft).toBe('보존할 새 초안');
   expect(failedHistory).toEqual([
     { role: 'user', content: '완료된 질문' },
-    { role: 'assistant', content: '검증된 답변' },
+    {
+      role: 'assistant',
+      content:
+        '이전 AI 답변은 현재 출처를 다시 확인하기 전에는 사용할 수 없어요.',
+    },
   ]);
   expect(failed.messages.map(message => message.content)).toEqual([
     '완료된 질문',

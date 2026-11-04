@@ -16,6 +16,7 @@ import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/de
 import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
 import { historicalArtifactOutcome } from './historicalArtifactAnswer';
 import type { ArtifactContinuation } from './artifactContinuation';
+import { providerHistoryMessage } from './conversationHistoryPayload';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -103,11 +104,13 @@ function selectEvidence(
 function boundedHistory(
   messages: readonly RagConversationMessage[],
 ): readonly RagConversationMessage[] {
-  // Keep old claims available for conversational context without letting them become citations.
-  return messages.slice(-8).map(message => ({
-    role: message.role,
-    content: message.content.slice(0, 2000),
-  }));
+  // Keep user context while excluding prior AI prose until its complete lineage is retained.
+  return messages.slice(-8).map(message =>
+    providerHistoryMessage({
+      role: message.role,
+      content: message.content.slice(0, 2000),
+    }),
+  );
 }
 
 /** Runs local E5 retrieval on a fresh bounded snapshot before every consent-checked model turn. */

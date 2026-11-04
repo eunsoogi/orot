@@ -8,6 +8,7 @@ import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
 import { progressCopy } from './conversationProgress';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { ArtifactContinuation } from './artifactContinuation';
+import { conversationHistoryPayload } from './conversationHistoryPayload';
 
 export type ConversationSender = (
   question: string,
@@ -123,18 +124,7 @@ export function createConversationSessionRequests(
       const question = session.draft.trim();
       if (!question || session.busy) return;
       const copy = getRagConversationCopy();
-      // Keep failed questions as context unless this send is retrying that prompt.
-      const history = session.messages
-        .filter(
-          message =>
-            !message.incomplete &&
-            !(
-              message.failed &&
-              message.role === 'user' &&
-              message.content === question
-            ),
-        )
-        .map(({ role, content }) => ({ role, content }));
+      const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
       controllers.set(id, controller);
       const userMessageId = ++messageId;

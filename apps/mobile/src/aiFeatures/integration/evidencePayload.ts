@@ -6,6 +6,7 @@ import type {
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { RagConversationMessage } from '../../ragConversation/task';
+import { providerHistoryMessage } from '../../ragConversation/conversationHistoryPayload';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { localEvidenceKey } from './evidenceSnapshot';
 import {
@@ -232,13 +233,14 @@ export function boundRagConversationHistory(
   const bounded: RagConversationMessage[] = [];
   for (const message of messages.slice(-8).reverse()) {
     if (remaining === 0) break;
+    const projected = providerHistoryMessage(message);
     const content = utf8Suffix(
-      lastUtf16Units(message.content, 2000),
+      lastUtf16Units(projected.content, 2000),
       remaining,
     );
     if (!content) continue;
     remaining -= utf8ByteLength(content);
-    bounded.push({ role: message.role, content });
+    bounded.push({ role: projected.role, content });
   }
   return bounded.reverse();
 }
