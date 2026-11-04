@@ -4,6 +4,84 @@ import { createConversationArtifactStorage } from '../conversationArtifactStorag
 import { createResearchArtifactStorage } from '../researchArtifactStorage';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 
+test.each(['source_deletion_tombstones', 'agent_memory_removed_sources'])(
+  'a %s marker with the same ID does not remove a generated research parent',
+  async table => {
+    const db = openSqliteTestDatabase(':memory:');
+    try {
+      await runMigrations(db.database);
+      const conversations = createConversationArtifactStorage(db.database);
+      await conversations.createSession(
+        'session',
+        await conversations.currentGeneration(),
+      );
+      const research = createResearchArtifactStorage(db.database);
+      const generation = await research.currentGeneration();
+      const source = {
+        createdAt: '2026-10-05T00:00:00.000Z',
+        originFeature: 'medical_literature',
+        providerId: null,
+        modelId: null,
+        source: {
+          kind: 'publication' as const,
+          title: 'Synthetic',
+          url: 'https://europepmc.org/article/MED/123',
+          status: 'historical_snapshot' as const,
+          retrievedAt: '2026-10-05T00:00:00.000Z',
+        },
+        generatedText: null,
+      };
+      await research.append([source], generation);
+      const revision = fingerprint(await research.read(1));
+      const reference = {
+        sourceKind: 'generated_artifact' as const,
+        sourceId: 'research-1',
+        evidenceId: 'research-1',
+        sourceRevision: revision,
+        evidenceRevision: revision,
+        locator: { kind: 'generated_artifact', type: 'research_publication' },
+        effectiveTime: null,
+        reviewState: 'unknown' as const,
+      };
+      const parent = {
+        kind: 'generated_research' as const,
+        id: 'research-1',
+        revision,
+        reference,
+      };
+      const turn = {
+        id: 'dependent',
+        sessionId: 'session',
+        createdAt: source.createdAt,
+        providerId: 'provider',
+        modelId: 'model',
+        status: 'complete' as const,
+        question: 'question',
+        answer: 'answer',
+        sources: [parent],
+        citations: [reference],
+      };
+      await conversations.append(turn);
+      await research.append(
+        [{ ...source, inputSources: [parent] }],
+        generation,
+      );
+      await db.database.execute(`INSERT INTO ${table} (source_id) VALUES (?)`, [
+        'research-1',
+      ]);
+      expect(await conversations.read('dependent')).not.toBeNull();
+      expect(await research.read(2)).not.toBeNull();
+      await conversations.append({ ...turn, id: 'after-marker' });
+      await research.remove(1);
+      expect(await conversations.read('dependent')).toBeNull();
+      expect(await conversations.read('after-marker')).toBeNull();
+      expect(await research.read(2)).toBeNull();
+    } finally {
+      db.close();
+    }
+  },
+);
+
 test('session removal hides research immediately, fences late writes and permanently removes it on finalize', async () => {
   const db = openSqliteTestDatabase(':memory:');
   try {

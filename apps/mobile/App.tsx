@@ -91,6 +91,10 @@ function App({
     ),
   );
   const ai = useAppAiServices(aiFeatureServiceDependencies);
+  const conversationSessionOptions = useMemo(
+    () => ai.services.conversationSessionOptions(),
+    [ai.services],
+  );
   const calendarSync = useCalendarAutoSync(calendarBridge);
   const [activeTab, setActiveTab] = useState<AppRootTab>('home');
   const [selectedProvider, setSelectedProvider] = useState('');
@@ -135,7 +139,9 @@ function App({
   return (
     <View style={styles.appShell}>
       <RecordingSelectionProvider>
-        <AiFeatureSharedNavigationStateProvider>
+        <AiFeatureSharedNavigationStateProvider
+          conversationSessionOptions={conversationSessionOptions}
+        >
           <NavigationRouteAdapter
             controller={appNavigation}
             // Root tabs share one scroll host; guarded detail routes own their scrollers.

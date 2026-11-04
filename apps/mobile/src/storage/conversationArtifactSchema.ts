@@ -147,7 +147,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
       `DROP TRIGGER IF EXISTS conversation_logical_removal_${table}`,
     );
     await tx.execute(`CREATE TRIGGER conversation_logical_removal_${table} AFTER INSERT ON ${table} BEGIN
-      DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation'));
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research'));
       ${affectedPeriods}
       UPDATE health_context_generation SET mutations = mutations + 1, deletions = deletions + 1 WHERE singleton = 1 AND (${affectedRows}); END`);
   }

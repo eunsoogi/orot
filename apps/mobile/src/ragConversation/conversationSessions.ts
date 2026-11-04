@@ -11,6 +11,7 @@ import type {
 import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
+import { refreshConversationSources } from './conversationSourceRefresh';
 import {
   createEmptyConversation,
   quarantineConversation,
@@ -22,10 +23,7 @@ import {
   undoMemoryConversation,
   undoRetainedConversation,
 } from './conversationSessionTransitions';
-export type {
-  ConversationSender,
-  ConversationSession,
-} from './conversationSessionRequests';
+export type { ConversationSender, ConversationSession };
 let nextSessionOwner = 0;
 /** App-owned memory-only sessions survive route removal without persisting health text. */
 export function createConversationSessions(
@@ -81,19 +79,9 @@ export function createConversationSessions(
   });
   let deleting = false;
   const quarantinedDrafts = new Map<number, string>();
-  const removeLocal = (
-    id: number,
-    handle?: { id: string; version: number | null } | null,
-  ) => {
-    apply(removeConversation(snapshot, id, empty, handle));
-  };
   const removeRetained = async (id: number) => {
-    if (
-      disposed ||
-      deleting ||
-      !snapshot.sessions.some(session => session.id === id)
-    )
-      return;
+    const exists = snapshot.sessions.some(session => session.id === id);
+    if (disposed || deleting || !exists) return;
     if (!quarantinedDrafts.has(id)) quarantinedDrafts.set(id, find(id).draft);
     const started = lifecycle;
     deleting = true;
@@ -117,7 +105,7 @@ export function createConversationSessions(
       quarantinedDrafts.delete(id);
       requests.forgetSaves(id);
       update(id, { ...quarantineConversation(), busy: false });
-      removeLocal(id, handle);
+      apply(removeConversation(snapshot, id, empty, handle));
     } catch {
       if (lifecycle !== started) return;
       let activeId: string | null = null;
@@ -205,7 +193,7 @@ export function createConversationSessions(
       if (index < 0) return;
       requests.cancel(id);
       requests.forgetSaves(id);
-      removeLocal(id);
+      apply(removeConversation(snapshot, id, empty));
     },
     undoRemove() {
       if (disposed) return;
@@ -218,6 +206,17 @@ export function createConversationSessions(
     retrySave,
     retryRestore: (id: number) =>
       disposed ? Promise.resolve() : restoration.retry(id),
+    refreshAfterSourceDeletion() {
+      if (disposed) return;
+      refreshConversationSources({
+        snapshot,
+        options,
+        requests,
+        restoration,
+        update,
+        apply: next => apply({ ...snapshot, deleted: next.deleted }),
+      });
+    },
     invalidateAll() {
       if (disposed) return;
       lifecycle++;

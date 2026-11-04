@@ -7,6 +7,7 @@ import {
 } from '../../storage/secureDatabase';
 import { RecordingDeletionTimingProbe } from '../../recording/recordingDeletionTimingProbe';
 import { removeLocalSourceWithMemory } from '../removeSourceWithMemory';
+import { subscribeLocalSourceDeletion } from '../../storage/localDataClearEvents';
 
 jest.mock('../../rag/localE5RagService', () => ({
   createLocalE5RagService: jest.fn(),
@@ -96,6 +97,18 @@ test('separates derived cleanup from the source database commit', async () => {
     ['list-refresh', 'mark'],
   ]);
   expect(JSON.stringify(probe.snapshot())).not.toContain(sourceId);
+});
+
+test('notifies mounted derived views after a source deletion commits', async () => {
+  const { memory } = setup({ value: 0 });
+  const notified = jest.fn();
+  const unsubscribe = subscribeLocalSourceDeletion(notified);
+  try {
+    await removeLocalSourceWithMemory(sourceId, memory);
+    expect(notified).toHaveBeenCalledTimes(1);
+  } finally {
+    unsubscribe();
+  }
 });
 
 test('closes a failed derived cleanup span without invoking the source commit', async () => {

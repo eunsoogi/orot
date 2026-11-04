@@ -54,8 +54,9 @@ export async function setupResearchInputGuards(tx: SqlExecutor) {
     'agent_memory_removed_sources',
   ]) {
     if (!present.has(table)) continue;
-    await tx.execute(`CREATE TRIGGER IF NOT EXISTS research_${table}_removed AFTER INSERT ON ${table} BEGIN
-      DELETE FROM research_artifacts WHERE id IN (SELECT artifact_id FROM research_artifact_sources WHERE record_id = NEW.source_id); END`);
+    await tx.execute(`DROP TRIGGER IF EXISTS research_${table}_removed`);
+    await tx.execute(`CREATE TRIGGER research_${table}_removed AFTER INSERT ON ${table} BEGIN
+      DELETE FROM research_artifacts WHERE id IN (SELECT artifact_id FROM research_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research')); END`);
   }
   for (const [table, kind] of [
     ['conversation_invalid_summaries', 'generated_summary'],

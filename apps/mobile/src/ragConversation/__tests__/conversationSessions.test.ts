@@ -2,6 +2,29 @@ import { createConversationSessions } from '../conversationSessions';
 import type { RagConversationOutcome } from '../service';
 import type { RagConversationMessage } from '../task';
 
+test('source deletion cancels an in-flight answer and removes cached session text', async () => {
+  const store = createConversationSessions();
+  store.setDraft(1, 'private question');
+  let finish!: (result: RagConversationOutcome) => void;
+  let signal: AbortSignal | undefined;
+  const pending = store.send(1, (_question, _history, current) => {
+    signal = current;
+    return new Promise(resolve => {
+      finish = resolve;
+    });
+  });
+  store.refreshAfterSourceDeletion();
+  expect(signal?.aborted).toBe(true);
+  expect(store.getSnapshot().sessions[0]?.messages).toEqual([]);
+  expect(store.getSnapshot().sessions[0]?.title).not.toContain(
+    'private question',
+  );
+  finish({ status: 'answer', answer: 'late private answer', citations: [] });
+  await pending;
+  expect(store.getSnapshot().sessions[0]?.messages).toEqual([]);
+  store.dispose();
+});
+
 test('keeps pending answers and histories with their originating session when switching', async () => {
   const store = createConversationSessions();
   const first = store.getSnapshot().activeId;
