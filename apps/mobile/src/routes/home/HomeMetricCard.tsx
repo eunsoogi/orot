@@ -71,9 +71,7 @@ export function HomeMetricCard({
         </View>
         <Text style={styles.cardTitle}>{homeMetricTitle(metric.metric)}</Text>
       </View>
-      <Text style={styles.number}>
-        {latestValue}
-      </Text>
+      <Text style={styles.number}>{latestValue}</Text>
       <Text style={styles.detail}>
         {metric.latest.date} · {statistic}
       </Text>

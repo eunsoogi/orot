@@ -59,8 +59,11 @@ test.each([
     const summary = screen.getByTestId(`home-metric-${metric}`);
     expect(summary.props.accessibilityLabel).toContain(statistic);
     expect(summary.props.accessibilityLabel).toContain(`${formattedValue}.`);
-    if (rawUnit) expect(summary.props.accessibilityLabel).not.toContain(rawUnit);
-    expect(summary.props.accessibilityLabel).not.toContain('Synthetic Watch App');
+    if (rawUnit)
+      expect(summary.props.accessibilityLabel).not.toContain(rawUnit);
+    expect(summary.props.accessibilityLabel).not.toContain(
+      'Synthetic Watch App',
+    );
     expect(summary.props.accessibilityLabel).not.toContain('Asia/Seoul');
     expect(screen.getByText(formattedValue)).toBeTruthy();
     expect(
@@ -112,9 +115,13 @@ test('formats recent comparison units without exposing projection provenance', a
   const recentChange = screen.getByTestId('home-recent-change-steps');
   expect(recentChange).toHaveTextContent(/1,000걸음/u);
   expect(recentChange).toHaveTextContent(/1,234걸음/u);
-  expect(recentChange.props.accessibilityLabel).not.toContain('Synthetic Watch App');
+  expect(recentChange.props.accessibilityLabel).not.toContain(
+    'Synthetic Watch App',
+  );
   expect(recentChange.props.accessibilityLabel).not.toContain('Asia/Seoul');
-  expect(recentChange).not.toHaveTextContent(/Synthetic Watch App|Asia\/Seoul|count/u);
+  expect(recentChange).not.toHaveTextContent(
+    /Synthetic Watch App|Asia\/Seoul|count/u,
+  );
   expect(projection).toMatchObject({
     unit: 'count',
     source: 'Synthetic Watch App',

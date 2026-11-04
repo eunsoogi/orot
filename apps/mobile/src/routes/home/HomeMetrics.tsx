@@ -6,10 +6,7 @@ import { t } from '../../i18n';
 import type { HomeMetric } from './metricSelection';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
-import {
-  HomeMetricCard,
-  homeMetricTitle as title,
-} from './HomeMetricCard';
+import { HomeMetricCard, homeMetricTitle as title } from './HomeMetricCard';
 import { resolveHomeMetricGridLayout } from './homeMetricLayout';
 import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
 import { HomeRecentHealthChange } from './HomeRecentHealthChange';
