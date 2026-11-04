@@ -75,6 +75,9 @@ test('keeps seven-day periods, values and unequal recorded-day counts distinct',
   const heartRateLabel = screen.getByTestId('home-recent-change-heartRate')
     .props.accessibilityLabel;
   expect(heartRateLabel.match(/기록된 날: 7일\/7일/gu)).toHaveLength(2);
+  expect(sleepLabel).not.toContain('Watch');
+  expect(sleepLabel).not.toContain('Asia/Seoul');
+  expect(screen.queryByText(/Watch|Asia\/Seoul/u)).toBeNull();
 });
 
 test('includes the longest Korean metric title in its accessible label', async () => {
