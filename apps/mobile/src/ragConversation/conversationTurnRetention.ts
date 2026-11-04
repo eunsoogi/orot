@@ -14,6 +14,7 @@ export function createConversationTurnRetention(input: {
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
+  readonly sessionVersion?: number;
 }) {
   let pending: ConversationArtifact | undefined;
   let writing = false;
@@ -22,7 +23,7 @@ export function createConversationTurnRetention(input: {
       throw new Error('The conversation output is already being saved.');
     writing = true;
     try {
-      await input.storage.append(value, signal);
+      await input.storage.append(value, signal, input.sessionVersion ?? 0);
       if (pending === value) pending = undefined;
     } catch (error) {
       // Cancellation is not a retryable failed write; successful commit resolves instead.

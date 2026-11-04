@@ -2,7 +2,10 @@ import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
 import { periodRowReferences } from './conversationPeriodRemoval';
-import { memoryContentChangedPredicate } from './memoryContentChange';
+import {
+  jsonValueChangedPredicate,
+  memoryContentChangedPredicate,
+} from './memoryContentChange';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {
@@ -16,6 +19,17 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifact_sessions (id TEXT PRIMARY KEY NOT NULL, generation INTEGER NOT NULL)',
   );
+  const columns = await tx.execute(
+    'PRAGMA table_info(conversation_artifact_sessions)',
+  );
+  if (!columns.rows.some(row => row.name === 'hidden'))
+    await tx.execute(
+      'ALTER TABLE conversation_artifact_sessions ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',
+    );
+  if (!columns.rows.some(row => row.name === 'version'))
+    await tx.execute(
+      'ALTER TABLE conversation_artifact_sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+    );
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifact_removed_sessions (id TEXT PRIMARY KEY NOT NULL)',
   );
@@ -45,6 +59,9 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     DELETE FROM conversation_artifact_periods WHERE artifact_id = OLD.id; END`);
   for (const [kind, { table }] of Object.entries(STORAGE_TABLES)) {
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_source_removed_${kind} AFTER DELETE ON ${table} BEGIN
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = '${kind}' AND record_id = OLD.id); END`);
+    await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_source_changed_${kind} AFTER UPDATE ON ${table}
+      WHEN OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')} BEGIN
       DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = '${kind}' AND record_id = OLD.id); END`);
   }
   for (const [kind, table] of [
@@ -80,6 +97,11 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   }
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const next = guard.replaceAll('OLD.', 'NEW.');
+    await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_period_added_${table} AFTER INSERT ON ${table} BEGIN
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE ${next}); END`);
+    await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_period_changed_${table} AFTER UPDATE ON ${table}
+      WHEN OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')} BEGIN
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE (${guard}) OR (${next})); END`);
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_period_removed_${table} AFTER DELETE ON ${table} BEGIN
       DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE ${guard}); END`);
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_period_moved_${table} AFTER UPDATE ON ${table} BEGIN

@@ -67,7 +67,7 @@ export function createConversationArtifactDiscovery(input: {
       const before = cursor(next);
       await input.storage.currentGeneration();
       const result = await input.database.execute(
-        'SELECT rowid AS scan_key, id FROM conversation_artifacts WHERE (? IS NULL OR rowid < ?) ORDER BY rowid DESC LIMIT ?',
+        'SELECT a.rowid AS scan_key, a.id FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE (? IS NULL OR a.rowid < ?) ORDER BY a.rowid DESC LIMIT ?',
         [before, before, limit + 1],
       );
       const rows = result.rows.slice(0, limit);

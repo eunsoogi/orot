@@ -18,7 +18,7 @@ export async function listConversationArtifactPage(
   )
     throw new RangeError('Invalid conversation page.');
   const result = await database.execute(
-    'SELECT id, created_at FROM conversation_artifacts WHERE session_id = ? AND (? IS NULL OR created_at < ? OR (created_at = ? AND id < ?)) ORDER BY created_at DESC, id DESC LIMIT ?',
+    'SELECT a.id, a.created_at FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE a.session_id = ? AND (? IS NULL OR a.created_at < ? OR (a.created_at = ? AND a.id < ?)) ORDER BY a.created_at DESC, a.id DESC LIMIT ?',
     [
       sessionId,
       cursor?.createdAt ?? null,

@@ -13,6 +13,7 @@ import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
 import { listConversationArtifactPage } from './conversationArtifactPages';
+import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
 
 async function generation(tx: SqlExecutor): Promise<number> {
@@ -63,6 +64,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationSessionVisibility(database, ensure),
     async currentGeneration() {
       await ensure();
       return generation(database);
@@ -79,11 +81,27 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         );
         if (removed.rows.length)
           throw new Error('Conversation session was removed.');
+        // A retry after an uncertain commit may reuse only the original active lease.
+        const existing = await tx.execute(
+          'SELECT generation, hidden, version FROM conversation_artifact_sessions WHERE id = ?',
+          [id],
+        );
+        if (existing.rows.length) {
+          const row = existing.rows[0]!;
+          if (
+            row.generation !== expectedGeneration ||
+            row.hidden !== 0 ||
+            row.version !== 0
+          )
+            throw new Error('Conversation session was removed.');
+          return;
+        }
         await tx.execute(
           'INSERT INTO conversation_artifact_sessions (id, generation) VALUES (?, ?)',
           [id, expectedGeneration],
         );
       });
+      return 0;
     },
     async deleteSession(id: string) {
       await ensure();
@@ -99,7 +117,11 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         );
       });
     },
-    async append(value: ConversationArtifact, signal?: AbortSignal) {
+    async append(
+      value: ConversationArtifact,
+      signal?: AbortSignal,
+      expectedSessionVersion = 0,
+    ) {
       await ensure();
       const serialized = JSON.stringify(value);
       const decoded = decodeConversationArtifact(serialized);
@@ -108,12 +130,13 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       await database.transaction(async tx => {
         assertConversationNotCancelled(signal);
         const sessions = await tx.execute(
-          'SELECT generation FROM conversation_artifact_sessions WHERE id = ?',
+          'SELECT generation, version FROM conversation_artifact_sessions WHERE id = ? AND hidden = 0',
           [decoded.sessionId],
         );
         if (
           !sessions.rows.length ||
-          sessions.rows[0]?.generation !== (await generation(tx))
+          sessions.rows[0]?.generation !== (await generation(tx)) ||
+          sessions.rows[0]?.version !== expectedSessionVersion
         )
           throw new Error('Conversation session was removed.');
         await assertNotRemoved(tx, decoded);
@@ -171,7 +194,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       let output: ConversationArtifact | null = null;
       await database.transaction(async tx => {
         const row = await tx.execute(
-          'SELECT id, session_id, created_at, result_json FROM conversation_artifacts WHERE id = ?',
+          'SELECT a.id, a.session_id, a.created_at, a.result_json FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE a.id = ?',
           [id],
         );
         const value = decodeConversationArtifact(row.rows[0]?.result_json);
