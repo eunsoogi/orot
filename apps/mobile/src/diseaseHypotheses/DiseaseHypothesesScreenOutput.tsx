@@ -9,7 +9,7 @@ import { getDiseaseHypothesisCopy } from './copy';
 import { readableHypothesis } from './readableHypothesis';
 import { styles } from './DiseaseHypothesesScreen.styles';
 import type { DiseaseGenerationState } from './useDiseaseHypothesisGeneration';
-import { OMITTED_SUMMARY_CITATION_NOTE } from './summaryPartialCitations';
+import { OMITTED_SUMMARY_CONTENT_NOTE } from './summaryPartialValidation';
 
 /** Presents the active generation state and validated evidence in the secondary screen panel. */
 export function DiseaseHypothesesScreenOutput({
@@ -79,7 +79,7 @@ export function DiseaseHypothesesScreenOutput({
           </Text>
           {state.value.omittedUnsupportedContent === true ? (
             <Text testID="symptom-summary-omitted-content">
-              {OMITTED_SUMMARY_CITATION_NOTE}
+              {OMITTED_SUMMARY_CONTENT_NOTE}
             </Text>
           ) : null}
           {state.value.hypotheses

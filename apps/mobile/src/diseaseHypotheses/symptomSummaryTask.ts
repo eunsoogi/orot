@@ -29,10 +29,10 @@ import {
   summaryFactIssue,
 } from './summaryFactValidation';
 import {
-  discardUncitedSummarySections,
-  noteOmittedSummaryCitations,
+  discardUnsupportedSummarySections,
+  noteOmittedSummaryContent,
   preparePartialSummaryUncertainty,
-} from './summaryPartialCitations';
+} from './summaryPartialValidation';
 import { summaryCorrection } from './summaryCorrection';
 
 /** A separately selected factual summary never retries or disguises a refused disease assessment. */
@@ -127,7 +127,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         );
         return { status: 'invalid', reason: SUMMARY_UNCERTAINTY_REASON };
       }
-      const partial = discardUncitedSummarySections(
+      const partial = discardUnsupportedSummarySections(
         normalizeSummarySections(prepared.sections, input),
         input,
       );
@@ -228,7 +228,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         return covered;
       }
       if (partial.omitted || prepared.omitted)
-        return noteOmittedSummaryCitations(covered.value);
+        return noteOmittedSummaryContent(covered.value);
       return {
         ...covered,
         value: { ...covered.value, presentation: 'symptom_summary' },

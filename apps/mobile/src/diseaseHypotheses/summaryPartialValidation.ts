@@ -34,8 +34,8 @@ export function preparePartialSummaryUncertainty(
     : prepared;
 }
 
-/** Drop whole sections with invalid citations or locally detectable factual errors without repairing them. */
-export function discardUncitedSummarySections(
+/** Drop whole sections with invalid citations, definitive claims, or locally detectable factual errors without repairing them. */
+export function discardUnsupportedSummarySections(
   sections: JsonValue | undefined,
   input: TaskResponderInput,
 ) {
@@ -58,7 +58,7 @@ export function discardUncitedSummarySections(
         },
       },
     );
-    if (failure === 'citations') {
+    if (failure === 'citations' || failure === 'certainty') {
       omitted = true;
       return false;
     }
@@ -90,11 +90,11 @@ export function discardUncitedSummarySections(
     : { sections, omitted: false };
 }
 
-export const OMITTED_SUMMARY_CITATION_NOTE =
+export const OMITTED_SUMMARY_CONTENT_NOTE =
   '일부 내용은 근거를 확인할 수 없어 제외했어요.';
 
 /** Keep prior limitations intact and disclose that some generated content was omitted. */
-export function noteOmittedSummaryCitations(
+export function noteOmittedSummaryContent(
   analysis: DiseaseHypothesisAnalysis,
 ): TaskResultValidation<DiseaseHypothesisAnalysis> {
   return {
