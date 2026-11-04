@@ -7,10 +7,7 @@ import {
 import type { Appointment } from '@orot/storage';
 import App from '../App';
 import { createAppointmentStore } from './appointmentStore';
-import {
-  homeJournal,
-  savedHomeQuestions as mockSavedHomeQuestions,
-} from './homeOverviewFixtures';
+import { savedHomeQuestions as mockSavedHomeQuestions } from './homeOverviewFixtures';
 import { defaultVisitQuestionRouteOperations as defaults } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import {
@@ -107,7 +104,6 @@ export async function renderHomeGenerator(
     <App
       loadAppointments={async () => store.repository}
       loadRecordings={async () => []}
-      loadSymptoms={async () => homeJournal([])}
       aiFeatureServiceDependencies={{
         selectedAi: {
           selectionStore: {

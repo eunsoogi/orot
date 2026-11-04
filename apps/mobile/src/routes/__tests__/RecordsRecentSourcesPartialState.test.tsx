@@ -41,13 +41,11 @@ function routeProps(
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
-    onOpenSymptoms: jest.fn(),
     onOpenSavedRecordings: jest.fn(),
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
     documentImportService: documentImportService([]),
-    loadSymptoms: async () => ({ list: async () => [] }),
     ...overrides,
   };
 }
@@ -89,51 +87,4 @@ test('retains loaded documents while recordings load', async () => {
   expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
   expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
   expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
-});
-
-test('retains loaded documents when symptom loading fails', async () => {
-  const loadSymptoms = jest
-    .fn()
-    .mockRejectedValue(new Error('Local symptom read failed.'));
-  await render(
-    <RecordsRoute
-      {...routeProps({
-        loadSymptoms,
-        documentImportService: documentImportService([
-          medicalDocument('document-ready-3'),
-        ]),
-      })}
-    />,
-  );
-
-  expect(await screen.findByTestId('medical-document-source-0')).toBeTruthy();
-  expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
-  expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
-  expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
-    '증상 기록을 불러오지 못했어요.',
-  );
-});
-
-test('shows loading and source-specific failure while retaining loaded documents', async () => {
-  await render(
-    <RecordsRoute
-      {...routeProps({
-        recordingState: 'failed',
-        documentImportService: documentImportService([
-          medicalDocument('document-ready-4'),
-        ]),
-        loadSymptoms: async () => ({
-          list: () => new Promise<never>(() => {}),
-        }),
-      })}
-    />,
-  );
-
-  expect(await screen.findByTestId('medical-document-source-0')).toBeTruthy();
-  expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
-  expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
-  expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
-  expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
-    '녹음 목록을 불러오지 못했어요.',
-  );
 });

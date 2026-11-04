@@ -105,7 +105,13 @@ export class LocalLexicalRetriever extends BaseRetriever<EvidenceChunkMetadata> 
       this.signal,
     );
     abortIfNeeded(this.signal);
-    const byId = new Map(searchable.map(chunk => [chunk.id, chunk]));
+    // A source can be deleted while the temporary full-text query is running.
+    const retained = await eligibleLexicalEvidence(
+      searchable,
+      this.input.removalReader,
+    );
+    abortIfNeeded(this.signal);
+    const byId = new Map(retained.map(chunk => [chunk.id, chunk]));
     const documents: Document<EvidenceChunkMetadata>[] = [];
     // Treat store matches as references only: stale, duplicate or out-of-page
     // IDs cannot introduce excluded evidence or exceed the bounded result budget.

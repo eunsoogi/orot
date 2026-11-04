@@ -53,6 +53,23 @@ export function evidenceIdentities(chunk: EvidenceChunk): string[] {
   ];
 }
 
+/** Retain only source identities whose kind is known from the evidence metadata. */
+export function evidenceReferences(
+  chunk: EvidenceChunk,
+): { kind: string; id: string }[] {
+  const metadata = chunk.metadata;
+  return [
+    { kind: metadata.recordType, id: metadata.evidenceId },
+    ...(metadata.evidenceLocator.kind !== 'structured_record' &&
+    metadata.sourceRecordIds.includes(metadata.sourceId)
+      ? [{ kind: 'source_record', id: metadata.sourceId }]
+      : []),
+    ...(metadata.externalSourceSystem === 'healthkit'
+      ? metadata.sourceRecordIds.map(id => ({ kind: 'healthkit_sample', id }))
+      : []),
+  ];
+}
+
 /** Match the hybrid retriever's durable fences and missing-source rules before scoring. */
 export async function eligibleVectorChunks(
   chunks: readonly EvidenceChunk[],
@@ -78,9 +95,24 @@ export async function eligibleVectorChunks(
   );
   const sources = new Set(removed.sourceRecordIds);
   const ids = new Set(removed.chunkIds);
+  const typedRemoved =
+    (await storage.findRemovedTypedEvidence?.(
+      chunks.map(chunk => ({
+        kind: chunk.metadata.recordType,
+        id: chunk.metadata.evidenceId,
+      })),
+    )) ?? [];
+  const typed = new Set(
+    typedRemoved.map(reference =>
+      JSON.stringify([reference.kind, reference.id]),
+    ),
+  );
   return chunks.filter(
     chunk =>
       !ids.has(chunk.id) &&
+      !typed.has(
+        JSON.stringify([chunk.metadata.recordType, chunk.metadata.evidenceId]),
+      ) &&
       !evidenceIdentities(chunk).some(id => sources.has(id)),
   );
 }

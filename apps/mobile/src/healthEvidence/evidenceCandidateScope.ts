@@ -19,6 +19,8 @@ export interface EvidenceCandidateScope {
 export function currentEvidenceCondition(kind: RecordKind): string {
   const notStale = `NOT EXISTS (SELECT 1 FROM transcript_artifact_staleness stale
     WHERE stale.artifact_kind = '${kind}' AND stale.artifact_id = r.id)`;
+  if (kind === 'symptom_entry')
+    return `${notStale} AND NOT EXISTS (SELECT 1 FROM legacy_symptom_deleted deleted WHERE deleted.id = r.id)`;
   if (kind !== 'transcript_segment') return notStale;
   return `${notStale} AND NOT EXISTS (SELECT 1 FROM transcript_segments newer
     WHERE json_extract(newer.payload_json, '$.transcriptId') = json_extract(r.payload_json, '$.transcriptId')
