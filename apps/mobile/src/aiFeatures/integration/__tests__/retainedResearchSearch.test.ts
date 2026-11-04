@@ -71,7 +71,7 @@ test('discovers retained publication titles through their saved summary and conv
         recordId: '123',
         originalUrl: 'https://europepmc.org/article/MED/123',
         retrievedAt: '2026-10-05T00:00:00.000Z',
-      abstract: 'Unlicensed synthetic abstract must not be retained',
+        abstract: 'Unlicensed synthetic abstract must not be retained',
       },
       effectiveTime: null,
       reviewState: 'unknown' as const,

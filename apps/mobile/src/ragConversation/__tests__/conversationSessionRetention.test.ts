@@ -171,8 +171,12 @@ test('clearing data prevents an in-flight session attachment from restoring an o
     await storage.createSession('durable', await storage.currentGeneration());
     let release!: () => void;
     let observed!: () => void;
-    const gate = new Promise<void>(resolve => { release = resolve; });
-    const read = new Promise<void>(resolve => { observed = resolve; });
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const read = new Promise<void>(resolve => {
+      observed = resolve;
+    });
     const sessions = createConversationSessionRetention({
       openStorage: async () => ({
         ...storage,

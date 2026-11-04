@@ -180,8 +180,12 @@ export function createVisitQuestionSourceService(
             )
               return { status: 'unavailable' };
             const result = generatedConversation
-              ? await (await data.conversationArtifactDiscovery!(registry)).read(reference.sourceId, signal)
-              : await (await data.summaryArtifactDiscovery!(registry)).read(reference.sourceId, signal);
+              ? await (
+                  await data.conversationArtifactDiscovery!(registry)
+                ).read(reference.sourceId, signal)
+              : await (
+                  await data.summaryArtifactDiscovery!(registry)
+                ).read(reference.sourceId, signal);
             if (!result) return { status: 'missing' };
             if (
               result.metadata.revision !== reference.sourceRevision ||
