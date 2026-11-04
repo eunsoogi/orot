@@ -6,6 +6,7 @@ import {
   workflowOptionsFor,
 } from '../taskTestSupport';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import { symptomSummaryTaskForProvider } from '../partitionedSymptomSummaryTask';
 
 const input = { request: '저장된 기록 요약', evidence };
 const supported = hypothesis({
@@ -165,11 +166,16 @@ test('keeps full-length limitations and separately marks omitted content', () =>
 test('retains supported facts from a grouped source when another section from that source is excluded', () => {
   const content =
     'health_overview: {"topic":"measurements","records":[{"kind":"health_observation","concept":"step_count","value":{"kind":"quantity","amount":1234,"unit":"count"}},{"kind":"health_observation","concept":"heart_rate","value":{"kind":"quantity","amount":76,"unit":"count/min"}}]}';
-  const result = symptomSummaryTask.validateResult(
+  const result = symptomSummaryTaskForProvider(
+    'synthetic-cloud',
+  ).validateResult(
     {
-      sections: [
-        { ...supported, summary: '걸음 수는 1234회 기록됐어요.' },
-        { ...supported, summary: '심박수는 76회/분이에요.' },
+      recordSelections: [
+        {
+          sourceId: reference.evidenceId,
+          rows: ['r1', { row: 'r0', value: '1234회' }],
+          limitationCodes: ['subset_only'],
+        },
       ],
     } as never,
     { ...input, evidence: { ...evidence, items: [{ ...reference, content }] } },
@@ -178,6 +184,9 @@ test('retains supported facts from a grouped source when another section from th
   if (result.status !== 'valid') return;
   expect(result.value.hypotheses).toHaveLength(1);
   expect(result.value.hypotheses[0]!.summary).toContain('76');
+  expect(result.value.hypotheses[0]!.summary).not.toContain('1234회');
+  expect(result.value.hypotheses[0]!.uncertainty).toBe(supported.uncertainty);
+  expect(result.value.hypotheses[0]!.supportingEvidence).toEqual([reference]);
   expect(result.value.omittedUnsupportedContent).toBe(true);
 });
 

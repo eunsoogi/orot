@@ -7,10 +7,12 @@ import {
 import type { TaskResponderInput } from '@orot/agent-runtime';
 
 test('only the on-device provider uses source-group generation', () => {
-  expect(symptomSummaryTaskForProvider(APPLE_PROVIDER_ID)).toBe(
-    partitionedSymptomSummaryTask,
-  );
-  expect(symptomSummaryTaskForProvider('openai')).toBe(symptomSummaryTask);
+  const apple = symptomSummaryTaskForProvider(APPLE_PROVIDER_ID);
+  const cloud = symptomSummaryTaskForProvider('openai');
+  expect(apple.finalResultPartition?.by).toBe('source_kind');
+  expect(cloud.finalResultPartition).toBeUndefined();
+  expect(apple.systemPrompt).toBe(partitionedSymptomSummaryTask.systemPrompt);
+  expect(cloud.systemPrompt).toBe(symptomSummaryTask.systemPrompt);
 });
 
 test('merges every validated section unchanged and deduplicates coverage notes without inventing prose', () => {
