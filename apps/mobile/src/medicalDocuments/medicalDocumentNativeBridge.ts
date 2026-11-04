@@ -24,6 +24,7 @@ export interface StagedMedicalDocument {
   readonly displayName: string;
   readonly contentHash: `sha256:${string}`;
   readonly sections: readonly MedicalDocumentTextSection[];
+  readonly previewData?: string;
 }
 
 export type MedicalDocumentImportErrorCode =
@@ -59,6 +60,7 @@ export interface MedicalDocumentFileDeletion {
 
 interface MedicalDocumentNativeModule {
   pickMedicalDocument(): Promise<StagedMedicalDocument | null>;
+  pickMedicalDocumentPhoto(): Promise<StagedMedicalDocument | null>;
   discardMedicalDocument(sourceId: string): Promise<void>;
   ensureMedicalDocumentOriginal(
     retainedSourceId: string,
@@ -138,13 +140,17 @@ async function callNative<T>(
 }
 
 export const medicalDocumentNativeBridge = {
-  pick: () => {
+  pick: (source: 'files' | 'photos' = 'files') => {
     const generation = currentMedicalDocumentGeneration();
     return serializeFileOperation(async () => {
       if (!canUseMedicalDocumentGeneration(generation)) {
         throw new MedicalDocumentImportError('IMPORT_FAILED');
       }
-      const document = await callNative(module => module.pickMedicalDocument());
+      const document = await callNative(module =>
+        source === 'photos'
+          ? module.pickMedicalDocumentPhoto()
+          : module.pickMedicalDocument(),
+      );
       if (document) trackStagedMedicalDocument(document.id);
       return document;
     });

@@ -10,9 +10,7 @@ export type E2EEntryRoute =
   | 'safe-area'
   | 'safe-area-blood-pressure'
   // Opts into the real app and visit-question route with synthetic operations.
-  | 'ai-feature-visit-questions'
-  // Opts into the real symptom route with a session-only save-failure fixture.
-  | 'symptom-journal-save-recovery';
+  | 'ai-feature-visit-questions';
 
 export function selectEntryRoute(
   settings: Record<string, unknown>,

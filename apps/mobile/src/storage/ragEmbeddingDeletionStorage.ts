@@ -1,6 +1,7 @@
 import type { LocalEmbeddingWrite } from '@orot/rag';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { SqlExecutor } from '@orot/storage';
+import { deletedSymptomIds } from './agentMemorySymptomQuarantine';
 
 const EMBEDDINGS_TABLE = 'rag_embeddings';
 const EMBEDDING_MODELS_TABLE = 'rag_embedding_models';
@@ -58,6 +59,21 @@ export async function assertRagEvidenceNotRemoved(
   executor: SqlExecutor,
   entries: readonly LocalEmbeddingWrite[],
 ): Promise<void> {
+  const deletedSymptoms = await deletedSymptomIds(executor);
+  for (const entry of entries) {
+    for (const id of entry.sourceRecordIds) {
+      if (!deletedSymptoms.has(id)) continue;
+      const refs =
+        entry.sourceReferences?.filter(reference => reference.id === id) ?? [];
+      // Untyped legacy writes are ambiguous; typed records of other kinds remain independent.
+      if (
+        !refs.length ||
+        refs.some(reference => reference.kind === 'symptom_entry')
+      ) {
+        throw new Error('Removed symptom evidence cannot be indexed again.');
+      }
+    }
+  }
   const sourceRecordIds = [
     ...new Set(entries.flatMap(entry => entry.sourceRecordIds)),
   ];

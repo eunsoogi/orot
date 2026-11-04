@@ -1,6 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import AppointmentsScreen from '../src/appointments/AppointmentsScreen';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
+
+/** Invokes the destructive choice so cancellation error handling follows confirmation. */
+function confirmAppointmentCancellation(alert: jest.SpyInstance) {
+  const buttons =
+    (alert.mock.calls[alert.mock.calls.length - 1]?.[2] as
+      | Array<{
+          style?: 'default' | 'cancel' | 'destructive';
+          onPress?: (value?: string) => void;
+        }>
+      | undefined) ?? [];
+  buttons.find(button => button.style === 'destructive')?.onPress?.();
+}
 
 test('opens editing without the list above the form and restores the list on cancel', async () => {
   const store = createAppointmentStore();
@@ -108,9 +121,16 @@ test('localizes appointment save and cancel failures without changing status enu
   await fireEvent.press(screen.getByTestId('appointment-save'));
   await screen.findByTestId('appointment-status-manual-1');
   store.cancel.mockRejectedValueOnce(new Error('write unavailable'));
+  const cancellationAlert = jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation(() => undefined);
   await fireEvent.press(screen.getByTestId('appointment-cancel-manual-1'));
+  expect(cancellationAlert).toHaveBeenCalledTimes(1);
+  expect(store.cancel).not.toHaveBeenCalled();
+  await act(async () => confirmAppointmentCancellation(cancellationAlert));
   expect(await screen.findByTestId('appointment-error')).toHaveTextContent(
     '예약을 취소하지 못했어요. 다시 시도해 주세요.',
   );
+  expect(store.cancel).toHaveBeenCalledTimes(1);
   expect(store.getAppointments()[0]?.status).toBe('scheduled');
 });

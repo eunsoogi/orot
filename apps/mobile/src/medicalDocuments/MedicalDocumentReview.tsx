@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import type { StagedMedicalDocument } from './medicalDocumentNativeBridge';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -71,6 +71,11 @@ export function MedicalDocumentReview({
       >
         {t('medicalDocument.review.description')}
       </Text>
+      {document.previewData ? (
+        <Text style={styles.description}>
+          {t('medicalDocument.review.photoReselect')}
+        </Text>
+      ) : null}
       {message ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -127,6 +132,15 @@ export function MedicalDocumentReviewPreview({
         style={[styles.preview, styles.previewContent]}
         testID="medical-document-review-content"
       >
+        {document.previewData ? (
+          <Image
+            accessibilityLabel={t('medicalDocument.review.originalPhoto')}
+            source={{ uri: document.previewData }}
+            resizeMode="contain"
+            style={styles.originalPhoto}
+            testID="medical-document-review-original-photo"
+          />
+        ) : null}
         {document.sections.map((section, index) => (
           <View
             key={section.id}
@@ -187,6 +201,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   previewContent: { gap: 16, padding: 16 },
+  originalPhoto: { width: '100%', height: 320 },
   section: { gap: 8 },
   page: { color: appColors.secondary, fontSize: 13, fontWeight: '600' },
   text: { color: appColors.text, fontSize: 16, lineHeight: 24 },

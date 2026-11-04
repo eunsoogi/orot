@@ -20,7 +20,6 @@ import type { ProviderSelectionStore } from '../src/providers/selection/types';
 import type { SelectedAiResolverOptions } from '../src/aiFeatures/integration/provider';
 import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
 import {
-  homeOverviewJournal,
   homeOverviewRecordings,
   seedHomeOverviewHealth,
 } from './homeOverviewFixture';
@@ -162,9 +161,6 @@ function MedicalAppointmentNavigationProbeEntry() {
       aiFeatureServiceDependencies={aiFeatureServiceDependencies}
       calendarBridge={calendarBridge}
       loadAppointments={async () => appointmentRepository}
-      loadSymptoms={
-        homeAppointments.length ? async () => homeOverviewJournal : undefined
-      }
       loadRecordings={
         homeAppointments.length ? async () => homeOverviewRecordings : undefined
       }

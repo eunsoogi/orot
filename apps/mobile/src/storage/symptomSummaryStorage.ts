@@ -4,6 +4,10 @@ import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
+  assertSummarySourceAvailable,
+  visibleSummary,
+} from './symptomSummaryQuarantine';
+import {
   setupSummaryPeriods,
   assertSummaryPeriodCurrent,
   appendSummaryPeriod,
@@ -36,6 +40,9 @@ export function createSymptomSummaryStorage(
         'CREATE INDEX IF NOT EXISTS symptom_summary_source_identity ON symptom_summary_sources (record_kind, record_id)',
       );
       await setupSummaryPeriods(tx);
+      await tx.execute(
+        'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
+      );
       // Delete derived health text when a cited row is deleted, including direct repository deletion.
       for (const [kind, { table }] of Object.entries(STORAGE_TABLES)) {
         await tx.execute(
@@ -87,6 +94,12 @@ export function createSymptomSummaryStorage(
             const serializedSource = current.rows[0]?.source_json;
             if (typeof serializedSource !== 'string')
               throw new Error('A cited source was removed before saving.');
+            await assertSummarySourceAvailable(
+              tx,
+              record.kind,
+              record.id,
+              serializedSource,
+            );
             const parsed = JSON.parse(serializedSource);
             const revision = fingerprint(
               memory ? { text: parsed.text, meta: parsed.meta } : parsed,
@@ -122,7 +135,7 @@ export function createSymptomSummaryStorage(
       await ensure();
       // A stable cursor and fixed page size bound history reads independently of total saved runs.
       const rows = await database.execute(
-        'SELECT id, created_at, model_name FROM symptom_summary_runs WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT 10',
+        `SELECT r.id, r.created_at, r.model_name FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
         [before ?? null, before ?? null],
       );
       return rows.rows.flatMap(row =>
@@ -142,7 +155,7 @@ export function createSymptomSummaryStorage(
     async read(id) {
       await ensure();
       const result = await database.execute(
-        'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
+        `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
         [id],
       );
       return decodeSavedSymptomSummary(result.rows[0]?.result_json);

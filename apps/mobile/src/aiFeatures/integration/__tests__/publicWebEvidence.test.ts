@@ -28,14 +28,25 @@ test('requests separate query-only consent and invokes exactly the selected prov
         sourceKinds: ['external_medical'],
         sourceIds: ['public-web'],
       },
-      payload: { messages: [{ role: 'user', content: 'Public concept' }] },
+      payload: {
+        messages: [
+          {
+            role: 'user',
+            content:
+              'General public health information about: sleep. Guidelines, associations, possible explanations and limitations.',
+          },
+        ],
+      },
       signal: run.controller.signal,
     }),
   );
   expect(run.search).toHaveBeenCalledTimes(1);
   expect(run.search).toHaveBeenCalledWith(
-    { query: 'Public concept' },
-    { signal: run.controller.signal },
+    {
+      query:
+        'General public health information about: sleep. Guidelines, associations, possible explanations and limitations.',
+    },
+    { signal: expect.anything() },
   );
   if ('status' in result) throw new Error('Expected a public batch');
   expect(result.items).toHaveLength(1);
@@ -80,6 +91,40 @@ test('rechecks cancellation after consent rather than dispatching a late approva
   expect(await web.tool.search(run.request)).toEqual({
     status: 'consent_required',
   });
+  expect(run.search).not.toHaveBeenCalled();
+});
+
+test('terminates a stalled provider request and cancels its signal', async () => {
+  jest.useFakeTimers();
+  try {
+    const run = publicEvidenceFixture();
+    run.search.mockImplementation(() => new Promise(() => {}));
+    const result = createPublicWebEvidence(run)!.tool.search(run.request);
+    await Promise.resolve();
+    await Promise.resolve();
+    const signal = run.search.mock.calls[0]![1]!.signal!;
+    const rejected = result.then(
+      () => false,
+      () => true,
+    );
+    await jest.advanceTimersByTimeAsync(30_000);
+    expect(await rejected).toBe(true);
+    expect(signal.aborted).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('never sends a free-form query containing personal source text even when consent is granted', async () => {
+  const run = publicEvidenceFixture();
+  const web = createPublicWebEvidence(run)!;
+  await expect(
+    web.tool.search({
+      ...run.request,
+      input: { query: '김테스트 2026-10-20 혈압 170/100' },
+    }),
+  ).rejects.toThrow();
+  expect(run.authorize).not.toHaveBeenCalled();
   expect(run.search).not.toHaveBeenCalled();
 });
 

@@ -3,6 +3,8 @@
 @interface RCT_EXTERN_MODULE (MedicalDocumentImportModule, NSObject)
 RCT_EXTERN_METHOD(pickMedicalDocument : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(pickMedicalDocumentPhoto : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(discardMedicalDocument : (NSString *)sourceID resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(ensureMedicalDocumentOriginal : (NSString *)retainedSourceID stagedSourceID : (
