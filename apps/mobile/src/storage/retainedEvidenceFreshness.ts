@@ -13,10 +13,11 @@ export async function assertRetainedEvidenceCurrent(
   tx: SqlExecutor,
   sources: readonly SavedSummarySource[],
   manualHistory: ManualHistoryRepository,
+  requireGeneration = true,
 ) {
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
-      await assertSummaryPeriodCurrent(tx, source);
+      await assertSummaryPeriodCurrent(tx, source, requireGeneration);
       continue;
     }
     for (const record of source.records) {

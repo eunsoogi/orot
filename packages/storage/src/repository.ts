@@ -154,6 +154,18 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     async deleteAllLocalData(withinDeletionTransaction) {
       let deleted: DeletedLocalDataReferences = { sourceRecordIds: [] };
       await database.transaction(async (transaction) => {
+        // Fence conversations begun before this wipe, even when no source records exist.
+        const conversationStore = await transaction.execute(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+          ['conversation_artifact_generation'],
+        );
+        if (conversationStore.rows.length) {
+          await transaction.execute(
+            'UPDATE conversation_artifact_generation SET generation = generation + 1 WHERE singleton = 1',
+          );
+          await transaction.execute('DELETE FROM conversation_artifact_sessions');
+          await transaction.execute('DELETE FROM conversation_artifacts');
+        }
         const sources = await listStoredRecords(transaction, 'source_record');
         const sourceRecordIds = sources.map((source) => source.id);
         const localRecordIds = await readAllLocalDeletionReferences(transaction);

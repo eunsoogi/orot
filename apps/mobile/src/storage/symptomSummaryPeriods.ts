@@ -30,12 +30,14 @@ export async function setupSummaryPeriods(tx: SqlExecutor) {
 export async function assertSummaryPeriodCurrent(
   tx: SqlExecutor,
   source: SavedPeriodSummarySource,
+  requireGeneration = true,
 ) {
   const report = await readHealthContextReport(tx, source.scope.window, [
     source.scope.topic,
   ]);
   if (
-    report.deletionGeneration !== source.deletionGeneration ||
+    (requireGeneration &&
+      report.deletionGeneration !== source.deletionGeneration) ||
     healthContextRevision(source.scope, report) !== source.revision
   )
     throw new Error('The cited health period changed before saving.');

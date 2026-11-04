@@ -71,3 +71,10 @@ all evidence supplied to the model, including uncited inputs, and preserve
 parent artifact dependencies when following an artifact's source. Citation
 lists alone cannot establish that lineage. Writes also need deletion fencing
 and an observable retry path before saved turns can be exposed to other features.
+
+The draft includes a conversation-output store in the existing encrypted
+database, with session and whole-store deletion fences and source-linked
+invalidation. It is not yet connected to the conversation producer, restored
+sessions, or shared discovery. Its SQLite tests do not establish native restart
+or real-model behavior. Session deletion undo, generated-parent lineage, and
+memory-compaction retention need integration before this boundary is complete.
