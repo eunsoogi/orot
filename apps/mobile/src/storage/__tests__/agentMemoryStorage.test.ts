@@ -32,6 +32,12 @@ class TranscriptMemoryDatabase implements SqlDatabase {
 
   private async run(query: string, parameters: SqlValue[]): Promise<SqlResult> {
     if (query.startsWith('CREATE TABLE')) return { rows: [] };
+    if (
+      query.startsWith(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN",
+      )
+    )
+      return { rows: [] };
     // The migrated database has the deletion fence, but these transcript fixtures have no deleted symptoms.
     if (
       query ===

@@ -11,9 +11,14 @@ import { generatedSummaryDescendants } from './generatedArtifactDescendants';
 import { setupResearchArtifactGuards } from './researchArtifactGuards';
 import { completeSummaryDeletion } from './summaryDeletionPolicy';
 import { setupResearchInputGuards } from './researchInputGuards';
+import {
+  ensureTypedDeletionMarkers,
+  markerMatchesArtifactSource,
+} from './typedDeletionMarkers';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {
+  await ensureTypedDeletionMarkers(tx);
   await ensureHealthContextGeneration(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifact_generation (singleton INTEGER PRIMARY KEY CHECK (singleton = 1), generation INTEGER NOT NULL)',
@@ -104,6 +109,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS agent_memory_removed_sources (source_id TEXT PRIMARY KEY NOT NULL)',
   );
+  await ensureTypedDeletionMarkers(tx);
   await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN
     INSERT OR IGNORE INTO conversation_artifact_removed_sessions (id) VALUES (OLD.id);
     DELETE FROM conversation_artifacts WHERE session_id = OLD.id; END`);
@@ -133,21 +139,30 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     'agent_memory_removed_sources',
   ]) {
     const guards = healthPeriodDeletionGuards();
-    const referencesMarker = periodRowReferences('NEW.source_id');
+    const kinds: Record<string, string> = {
+      health_observations: 'health_observation',
+      medication_definitions: 'medication_definition',
+      medication_assertions: 'medication_assertion',
+      dose_events: 'dose_event',
+      symptom_entries: 'symptom_entry',
+    };
     const affectedRows = Object.keys(guards)
-      .map(name => `EXISTS (SELECT 1 FROM ${name} h WHERE ${referencesMarker})`)
+      .map(
+        name =>
+          `EXISTS (SELECT 1 FROM ${name} h WHERE ${periodRowReferences('NEW.source_id', table, kinds[name])})`,
+      )
       .join(' OR ');
     const affectedPeriods = Object.entries(guards)
       .map(
         ([name, guard]) =>
-          `DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE EXISTS (SELECT 1 FROM ${name} h WHERE ${referencesMarker} AND (${guard.replaceAll('OLD.', 'h.')})));`,
+          `DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE EXISTS (SELECT 1 FROM ${name} h WHERE ${periodRowReferences('NEW.source_id', table, kinds[name])} AND (${guard.replaceAll('OLD.', 'h.')})));`,
       )
       .join('\n');
     await tx.execute(
       `DROP TRIGGER IF EXISTS conversation_logical_removal_${table}`,
     );
     await tx.execute(`CREATE TRIGGER conversation_logical_removal_${table} AFTER INSERT ON ${table} BEGIN
-      DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation'));
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research') AND ${markerMatchesArtifactSource(table, 'NEW.source_id', 'conversation_artifact_sources', 'identity')});
       ${affectedPeriods}
       UPDATE health_context_generation SET mutations = mutations + 1, deletions = deletions + 1 WHERE singleton = 1 AND (${affectedRows}); END`);
   }

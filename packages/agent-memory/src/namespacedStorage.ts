@@ -40,7 +40,7 @@ export function namespacedStorage(
     listRemovedSourceIds: () => storage.listRemovedSourceIds(),
     listInvalidatedSourceIds: () => storage.listInvalidatedSourceIds(),
     listQuarantineRevision: storage.listQuarantineRevision?.bind(storage),
-    markSourceRemoved: (sourceId) => storage.markSourceRemoved(sourceId),
+    markSourceRemoved: (sourceId, kinds) => storage.markSourceRemoved(sourceId, kinds),
     beginBatch: () => storage.beginBatch(),
     commitBatch: () => storage.commitBatch(),
     rollbackBatch: () => storage.rollbackBatch(),

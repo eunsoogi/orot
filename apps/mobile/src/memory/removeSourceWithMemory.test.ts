@@ -137,6 +137,7 @@ describe('removeLocalSourceWithMemory', () => {
       'synthetic-source',
       expect.any(Function),
       ['synthetic-source', 'transcript:0:r1', 'evidence-span'],
+      undefined,
     );
     expect(deleteSource).toHaveBeenCalledWith(
       'synthetic-source',

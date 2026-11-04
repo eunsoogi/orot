@@ -6,7 +6,6 @@ import { writeMemory } from './memoryWrites';
 import { readMemoryById, readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
-
 export class LocalAgentMemory implements AgentMemoryService {
   private engine: Memory | null = null;
   private tail: Promise<void> = Promise.resolve();
@@ -14,7 +13,6 @@ export class LocalAgentMemory implements AgentMemoryService {
   private removedSourceIds = new Set<string>();
   private invalidatedSourceIds = new Set<string>();
   private quarantineRevision = '';
-
   constructor(
     private readonly embedder: Embedder,
     private readonly storage: AgentMemoryStorageAdapter,
@@ -146,6 +144,7 @@ export class LocalAgentMemory implements AgentMemoryService {
     sourceId: string,
     deleteSourceRecord: () => Promise<boolean>,
     dependentReferenceIds: readonly string[] = [],
+    typedReferences?: readonly { id: string; kind: string }[],
   ): Promise<AgentMemorySourceRemovalResult> {
     return this.enqueue(async () => {
       const normalizedId = sourceId.trim();
@@ -167,7 +166,15 @@ export class LocalAgentMemory implements AgentMemoryService {
         let forgotten = 0;
         for (const id of ids) if (await engine.forget(id)) forgotten += 1;
         // Checkpoints may cite the memory row itself, its source, or a cascaded transcript identity.
-        for (const referenceId of deletionFences) await this.storage.markSourceRemoved(referenceId);
+        for (const referenceId of deletionFences) {
+          const kinds = typedReferences
+            ?.filter((reference) => reference.id === referenceId)
+            .map((reference) => reference.kind);
+          await this.storage.markSourceRemoved(
+            referenceId,
+            kinds?.length && !ids.includes(referenceId) ? kinds : undefined,
+          );
+        }
         return forgotten;
       });
       for (const referenceId of deletionFences) this.removedSourceIds.add(referenceId);

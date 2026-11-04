@@ -8,6 +8,7 @@ import {
   openLocalStorage,
 } from '../storage/secureDatabase';
 import type { RecordingDeletionTimingProbe } from '../recording/recordingDeletionTiming';
+import { notifyLocalSourceDeleted } from '../storage/localDataClearEvents';
 import {
   beginRecordingDeletionTiming,
   endRecordingDeletionTiming,
@@ -55,24 +56,31 @@ export async function removeLocalSourceWithMemory(
     const rag = deletionRag(database);
     await rag.prepare();
     // Capture cascade roots before SQL removal so transcript-only memory references are deleted too.
-    const deletionReferences =
-      await repository.listSourceDeletionReferences(normalizedSourceId);
-    const result = await memory.removeSource(
-      normalizedSourceId,
-      () => {
-        // End derived cleanup before the source transaction so the two timings do not overlap.
-        endDerivedCleanup('success');
-        return withRecordingDeletionTiming(
-          timingProbe,
-          'database-delete-commit',
-          () =>
-            repository.sourceRecords.delete(normalizedSourceId, transaction =>
-              rag.deleteChunks([], [normalizedSourceId], transaction),
-            ),
-        );
-      },
-      deletionReferences,
-    );
+    const typedReferences =
+      await repository.listTypedSourceDeletionReferences?.(normalizedSourceId);
+    const deletionReferences = typedReferences
+      ? [...new Set(typedReferences.map(reference => reference.id))].sort()
+      : await repository.listSourceDeletionReferences(normalizedSourceId);
+    // Memory invalidation commits before source removal; refresh even if the latter fails.
+    const result = await memory
+      .removeSource(
+        normalizedSourceId,
+        () => {
+          // End derived cleanup before the source transaction so the two timings do not overlap.
+          endDerivedCleanup('success');
+          return withRecordingDeletionTiming(
+            timingProbe,
+            'database-delete-commit',
+            () =>
+              repository.sourceRecords.delete(normalizedSourceId, transaction =>
+                rag.deleteChunks([], [normalizedSourceId], transaction),
+              ),
+          );
+        },
+        deletionReferences,
+        typedReferences,
+      )
+      .finally(notifyLocalSourceDeleted);
     endDerivedCleanup('success');
     return result;
   } catch (error) {

@@ -1,3 +1,4 @@
+import { commitAgentMemoryWrites } from './agentMemoryStorageWrites';
 import type { SqlDatabase } from '@orot/storage';
 import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
 import {
@@ -7,14 +8,13 @@ import {
   symptomQuarantineRevision,
 } from './agentMemorySymptomQuarantine';
 import { compactAgentMemory } from './agentMemoryCompaction';
+import { ensureTypedDeletionMarkers } from './typedDeletionMarkers';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
 } from '@orot/agent-memory';
 import {
-  assertNoSourceReference,
   decodeAgentMemoryRecord,
-  insertAgentMemoryRecord,
   listSupersededTranscriptRevisionIds,
   referencesAnySource,
 } from './agentMemoryStorageRecords';
@@ -22,6 +22,7 @@ import {
 interface PendingBatch {
   readonly writes: Map<string, PersistedMemoryRecord | null>;
   readonly removedSourceIds: Set<string>;
+  readonly removedKinds: Map<string, readonly string[] | undefined>;
 }
 
 /** Persists only Rememori records inside the app's existing SQLCipher database. */
@@ -123,26 +124,49 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   listQuarantineRevision = () => symptomQuarantineRevision(this.database);
-  async markSourceRemoved(sourceId: string): Promise<void> {
+  async markSourceRemoved(
+    sourceId: string,
+    kinds?: readonly string[],
+  ): Promise<void> {
     const normalizedId = sourceId.trim();
     if (!normalizedId) throw new Error('A source identifier is required.');
     if (this.pending) {
       this.pending.removedSourceIds.add(normalizedId);
+      const prior = this.pending.removedKinds.get(normalizedId);
+      const seen = this.pending.removedKinds.has(normalizedId);
+      this.pending.removedKinds.set(
+        normalizedId,
+        !kinds || (seen && !prior)
+          ? undefined
+          : [...new Set([...(prior ?? []), ...kinds])],
+      );
       return;
     }
-    await this.executeWrites(new Map(), new Set([normalizedId]));
+    await this.executeWrites(
+      new Map(),
+      new Set([normalizedId]),
+      new Map([[normalizedId, kinds]]),
+    );
   }
 
   beginBatch(): void {
     if (this.pending)
       throw new Error('An agent-memory write batch is already open.');
-    this.pending = { writes: new Map(), removedSourceIds: new Set() };
+    this.pending = {
+      writes: new Map(),
+      removedSourceIds: new Set(),
+      removedKinds: new Map(),
+    };
   }
 
   async commitBatch(): Promise<void> {
     if (!this.pending) throw new Error('No agent-memory write batch is open.');
     const batch = this.pending;
-    await this.executeWrites(batch.writes, batch.removedSourceIds);
+    await this.executeWrites(
+      batch.writes,
+      batch.removedSourceIds,
+      batch.removedKinds,
+    );
     this.pending = null;
   }
 
@@ -164,6 +188,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
           await this.database.execute(
             'CREATE TABLE IF NOT EXISTS agent_memory_removed_sources (source_id TEXT PRIMARY KEY NOT NULL)',
           );
+          await ensureTypedDeletionMarkers(this.database);
         })
         .catch(error => {
           this.tableReady = null;
@@ -176,75 +201,14 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   private async executeWrites(
     writes: Map<string, PersistedMemoryRecord | null>,
     removedSourceIdsToAdd: Set<string>,
+    removedKinds = new Map<string, readonly string[] | undefined>(),
   ): Promise<void> {
     await this.ensureTable();
-    await this.database.transaction(async transaction => {
-      const removedResult = await transaction.execute(
-        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
-      );
-      const removedSourceIds = new Set(
-        removedResult.rows.flatMap(row =>
-          typeof row.source_id === 'string' ? [row.source_id] : [],
-        ),
-      );
-      for (const sourceId of removedSourceIdsToAdd)
-        removedSourceIds.add(sourceId);
-      const invalidatedSourceIds =
-        await listSupersededTranscriptRevisionIds(transaction);
-      const removedSymptoms = await deletedSymptomIds(transaction);
-      for (const record of writes.values()) {
-        if (record) {
-          if (referencesDeletedSymptom(record, removedSymptoms))
-            throw new Error('Memory cannot reference a deleted symptom.');
-          assertNoSourceReference(
-            record,
-            removedSourceIds,
-            'Memory cannot reference a source being or already removed.',
-          );
-          assertNoSourceReference(
-            record,
-            invalidatedSourceIds,
-            'Memory cannot reference a superseded transcript revision.',
-          );
-        }
-      }
-      if (removedSourceIdsToAdd.size > 0 || invalidatedSourceIds.size > 0) {
-        const records = await transaction.execute(
-          'SELECT id, record_json FROM agent_memory_records ORDER BY id',
-        );
-        for (const row of records.rows) {
-          const record = decodeAgentMemoryRecord(row.record_json);
-          // A separately requested source deletion still owns its existing hard-delete boundary.
-          if (
-            referencesDeletedSymptom(record, removedSymptoms) &&
-            !referencesAnySource(record, removedSourceIdsToAdd)
-          )
-            continue;
-          if (
-            referencesAnySource(record, removedSourceIds) ||
-            referencesAnySource(record, invalidatedSourceIds)
-          ) {
-            await transaction.execute(
-              'DELETE FROM agent_memory_records WHERE id = ?',
-              [record.id],
-            );
-          }
-        }
-      }
-      for (const [id, record] of writes) {
-        if (record) await insertAgentMemoryRecord(transaction, record);
-        else
-          await transaction.execute(
-            'DELETE FROM agent_memory_records WHERE id = ?',
-            [id],
-          );
-      }
-      for (const sourceId of removedSourceIdsToAdd) {
-        await transaction.execute(
-          'INSERT OR IGNORE INTO agent_memory_removed_sources (source_id) VALUES (?)',
-          [sourceId],
-        );
-      }
-    });
+    await commitAgentMemoryWrites(
+      this.database,
+      writes,
+      removedSourceIdsToAdd,
+      removedKinds,
+    );
   }
 }
