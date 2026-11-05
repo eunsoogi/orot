@@ -1,7 +1,7 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppRegistry, StyleSheet, View } from 'react-native';
+import { AppRegistry, NativeModules, StyleSheet, View } from 'react-native';
 import { name as appName } from '../app.json';
 import { AppButton } from '../src/layout/AppButton';
 import { AppText } from '../src/layout/AppText';
@@ -18,7 +18,10 @@ import type { SymptomSummaryHistory } from '../src/diseaseHypotheses/savedSummar
 import { ExternalMedicalEvidenceScreen } from '../src/externalMedicalEvidence/ExternalMedicalEvidenceScreen';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
-import { openSyntheticSummaryFixture } from './summaryVisualFixtures';
+import {
+  openSyntheticSummaryFixture,
+  retainedDiseaseVisualResult,
+} from './summaryVisualFixtures';
 import {
   syntheticLiteratureService,
   syntheticPublication,
@@ -37,6 +40,12 @@ const leaveState = {
   }),
 };
 const styles = StyleSheet.create({ picker: { padding: 24, gap: 12 } });
+const launchSettings =
+  NativeModules.SettingsManager?.settings ??
+  NativeModules.SettingsManager?.getConstants?.().settings ??
+  {};
+const retainedDiseaseEnabled =
+  launchSettings.OROT_DUO_RETAINED_ANALYSIS === 'synthetic';
 
 /** Explicit Simulator-only entry: durable summary storage is real; all result and search content is synthetic. */
 function SummaryVisualProbe() {
@@ -188,10 +197,14 @@ function Routes({ services }: { services: Services }) {
             summaryHistory={history}
             restoredSummary={restored}
             onOpenHistory={() => navigation.push('history')}
-            onGenerate={async () => ({
-              status: 'incomplete_inventory',
-              reason: 'unavailable',
-            })}
+            onGenerate={async () =>
+              retainedDiseaseEnabled
+                ? retainedDiseaseVisualResult()
+                : {
+                    status: 'incomplete_inventory',
+                    reason: 'unavailable',
+                  }
+            }
             onSummarize={summarize}
             onOpenSource={value => {
               setReference(value);

@@ -60,7 +60,6 @@ test('shows the insufficient-evidence response from the integrated RAG route', a
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '기록 질문',
@@ -98,7 +97,6 @@ test('routes a new-session composer change to its active draft and preserves the
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   const input = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(input, 'synthetic prior draft');
   expect(input.props.value).toBe('synthetic prior draft');

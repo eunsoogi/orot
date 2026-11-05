@@ -21,6 +21,7 @@ import { DiseaseHypothesesScreenOutput } from './DiseaseHypothesesScreenOutput';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface DiseaseHypothesesScreenProps {
+  readonly readOnly?: boolean;
   readonly onOpenHistory?: () => void;
   readonly restoredSummary?: DiseaseHypothesisAnalysis;
   readonly summaryHistory?: SymptomSummaryHistory;
@@ -39,6 +40,7 @@ interface DiseaseHypothesesScreenProps {
 
 /** Presents validated summaries and route-owned work in one page flow. */
 export function DiseaseHypothesesScreen({
+  readOnly = false,
   onOpenHistory,
   restoredSummary,
   summaryHistory,
@@ -78,7 +80,7 @@ export function DiseaseHypothesesScreen({
           },
         ]
       : []),
-    ...(onSummarize
+    ...(!readOnly && onSummarize
       ? [
           {
             id: 'generate-summary',
@@ -92,16 +94,20 @@ export function DiseaseHypothesesScreen({
           },
         ]
       : []),
-    {
-      id: 'generate-hypotheses',
-      label: assessmentLabel,
-      accessibilityLabel: assessmentLabel,
-      testID: 'disease-hypotheses-generate',
-      systemImageName: 'sparkles',
-      disabled: busy,
-      busy,
-      onPress: () => generate(),
-    },
+    ...(!readOnly
+      ? [
+          {
+            id: 'generate-hypotheses',
+            label: assessmentLabel,
+            accessibilityLabel: assessmentLabel,
+            testID: 'disease-hypotheses-generate',
+            systemImageName: 'sparkles',
+            disabled: busy,
+            busy,
+            onPress: () => generate(),
+          },
+        ]
+      : []),
     ...(summaryHistory && onOpenHistory
       ? [
           {
@@ -170,7 +176,7 @@ export function DiseaseHypothesesScreen({
             <Text>
               {onSummarize ? copy.summaryExplanation : copy.explanation}
             </Text>
-            {!hasDock && onSummarize ? (
+            {!readOnly && !hasDock && onSummarize ? (
               <Button
                 variant="neutral"
                 disabled={state.status === 'loading'}
@@ -186,7 +192,7 @@ export function DiseaseHypothesesScreen({
                 }
               />
             ) : null}
-            {!hasDock ? (
+            {!readOnly && !hasDock ? (
               <Button
                 variant={onSummarize ? 'neutral' : 'primary'}
                 disabled={state.status === 'loading'}
