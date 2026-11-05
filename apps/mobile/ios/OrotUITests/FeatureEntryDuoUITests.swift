@@ -149,6 +149,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCTAssertEqual(rootFrames.count, 1)
         let nativeBar = try decodeRect(try XCTUnwrap(rootFrames.first?["frame"]))
         let contextBar = try decodeRect(contextFields["navigationFrame"])
+        XCTAssertEqual(contextFields["navigationSide"] as? String, "right")
         let available = try decodeRect(frame["availableContentFrame"])
         let navigation = try decodeRect(frame["navigationFrame"])
         XCTAssertTrue(context.payload.matches(publicUIKit), "Native context must match current UIKit window and reservations")
