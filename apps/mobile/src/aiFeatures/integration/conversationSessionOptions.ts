@@ -9,11 +9,18 @@ export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
 }): ConversationSessionOptions {
+  let recovered: Promise<void> | undefined;
   const openStorage = async () => {
     const data = await input.loadLocalData();
     if (!data.openConversationArtifactStorage)
       throw new Error('Conversation storage is unavailable.');
-    return data.openConversationArtifactStorage();
+    const storage = await data.openConversationArtifactStorage();
+    // Recovery happens before beginTurn can dispatch a new tool, never during a live restoration.
+    await (recovered ??= storage.recoverInterruptedToolEvents().catch(error => {
+      recovered = undefined;
+      throw error;
+    }));
+    return storage;
   };
   return {
     retention: createConversationSessionRetention({
@@ -44,12 +51,40 @@ export function createConversationSessionOptions(input: {
       } while (cursor && !signal.aborted);
       if (signal.aborted)
         throw new Error('Conversation restoration was cancelled.');
-      return turns.reverse().map(turn => ({
+      const storage = await openStorage();
+      const toolTurns = await storage.readToolTurns(sessionId);
+      const restored = turns.reverse().map(turn => ({
         question: turn.question,
         answer: turn.answer,
         citations: turn.citations,
         completion: turn.status,
+        toolMessageId: turn.id,
+        toolEvents:
+          toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
+            ?.toolEvents ?? [],
       }));
+      // Interrupted tool-only turns have no validated prose, but remain visible and never running.
+      for (const turn of toolTurns)
+        if (!restored.some(item => item.toolMessageId === turn.messageId))
+          restored.push({
+            question: '',
+            answer: '',
+            citations: [],
+            completion: 'partial',
+            toolMessageId: turn.messageId,
+            toolEvents: turn.toolEvents,
+          });
+      const times = new Map([
+        ...turns.map(turn => [turn.id, turn.createdAt] as const),
+        ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
+      ]);
+      return restored.sort(
+        (a, b) =>
+          times
+            .get(a.toolMessageId)!
+            .localeCompare(times.get(b.toolMessageId)!) ||
+          a.toolMessageId.localeCompare(b.toolMessageId),
+      );
     },
   };
 }

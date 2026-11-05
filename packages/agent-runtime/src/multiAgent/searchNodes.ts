@@ -2,7 +2,14 @@ import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coverageP
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { canceled, completeState, reportProgress, stop } from './runtimeContext';
+import {
+  canceled,
+  completeState,
+  reportProgress,
+  stop,
+  emitToolEvent,
+  finishToolEvent,
+} from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -29,6 +36,17 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
+    context.activeToolEvent = {
+      version: 1,
+      operationRunId: state.operationRunId,
+      callId: state.pendingOperation.operationKey,
+      toolName: tool.id,
+      order: state.toolCalls,
+      status: 'started',
+      inputSummary: { sourceKind: tool.sourceKind },
+      sources: [],
+    };
+    emitToolEvent(context, context.activeToolEvent);
     reportProgress(context, {
       type: 'evidence_search',
       status: 'started',
@@ -139,6 +157,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       // The full batch is already checked and remains in currentEvidence; the ToolMessage carries only its call identity and result.
       context.pendingNativeToolCallId = undefined;
+      finishToolEvent(context, 'completed', next);
       context.currentEvidence = combined;
       return {
         phase: 'revised_response' as const,
@@ -147,6 +166,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       };
     }
     if (hasDuplicate || (next.length === 0 && !options.task.allowIncompleteEvidenceResearch)) {
+      finishToolEvent(context, 'completed', next);
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The search did not add new evidence at a newer source revision.',
@@ -161,6 +181,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
+    finishToolEvent(context, 'completed', next);
     if (
       !options.task.allowIncompleteEvidenceResearch &&
       hasBlockingCoverage(

@@ -49,6 +49,16 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE INDEX IF NOT EXISTS conversation_artifacts_order ON conversation_artifacts (session_id, created_at DESC, id DESC)',
   );
+  // Calls may precede a validated answer; keep them session-owned across interrupted turns.
+  await tx.execute(
+    'CREATE TABLE IF NOT EXISTS conversation_tool_events (session_id TEXT NOT NULL, message_id TEXT NOT NULL, created_at TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
+  );
+  await tx.execute(
+    'CREATE TRIGGER IF NOT EXISTS conversation_tool_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_tool_events WHERE session_id = OLD.id; END',
+  );
+  await tx.execute(
+    'CREATE TRIGGER IF NOT EXISTS conversation_tool_artifact_removed AFTER DELETE ON conversation_artifacts BEGIN DELETE FROM conversation_tool_events WHERE session_id = OLD.session_id AND message_id = OLD.id; END',
+  );
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifact_sources (artifact_id TEXT NOT NULL, record_kind TEXT NOT NULL, record_id TEXT NOT NULL, PRIMARY KEY (artifact_id, record_kind, record_id))',
   );

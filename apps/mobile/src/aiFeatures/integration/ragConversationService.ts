@@ -18,6 +18,7 @@ import { readConversationAvailability } from './readConversationAvailability';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { createResearchInputTracker } from './researchInputTracker';
+import { observeConversationTool } from '../../ragConversation/observeConversationTool';
 import { retainLiteratureResults } from './researchRetention';
 import {
   budgetAfterPublicSearch,
@@ -97,7 +98,10 @@ export function createRagConversationService({
       });
       const runId = createOperationRunId?.() ?? operationRunId();
       const publicSearch = await runDefaultPublicSearch({
-        tool: external.publicWebTool,
+        tool: observeConversationTool(
+          external.publicWebTool,
+          observer?.onToolEvent,
+        ),
         operationRunId: runId,
         request: normalizedQuestion,
         signal,
@@ -169,6 +173,7 @@ export function createRagConversationService({
         },
         {
           onProgress: observer?.onProgress,
+          onToolEvent: observer?.onToolEvent,
           onTaskStreamEvent: observer?.onTaskStreamEvent,
           signal,
         },

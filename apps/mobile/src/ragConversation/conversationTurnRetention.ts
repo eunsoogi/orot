@@ -14,7 +14,13 @@ export function createConversationTurnRetention(input: {
   readonly storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
     'append'
-  >;
+  > &
+    Partial<
+      Pick<
+        ReturnType<typeof createConversationArtifactStorage>,
+        'appendToolEvent'
+      >
+    >;
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
@@ -61,6 +67,20 @@ export function createConversationTurnRetention(input: {
     return value;
   };
   return {
+    toolMessageId: input.turnId,
+    recordToolEvent(
+      event: import('@orot/agent-runtime').ConversationToolEvent,
+    ) {
+      if (!input.storage.appendToolEvent)
+        return Promise.reject(new Error('Tool event storage is unavailable.'));
+      return input.storage.appendToolEvent({
+        sessionId: input.sessionId,
+        messageId: input.turnId,
+        createdAt: input.createdAt,
+        sessionVersion: input.sessionVersion ?? 0,
+        event,
+      });
+    },
     async save(candidate: ConversationRetentionCandidate, signal: AbortSignal) {
       if (pending || preparation)
         throw new Error('A previous save is still awaiting retry.');
