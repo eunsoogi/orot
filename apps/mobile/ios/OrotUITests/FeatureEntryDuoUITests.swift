@@ -1,6 +1,6 @@
 import XCTest
 
-/// Confirms all five AI entries stay reachable in the Duo lane at large text and in both appearances.
+/// Confirms the default conversation stays usable in the Duo lane at large text and in both appearances.
 final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -39,19 +39,15 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             testCase: self,
             captureOriginal: { originalAppearance = $0 },
         )
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        FeatureEntryUITestConditions.assertAccessibleLabels(in: app)
-
-        let visitQuestions = node(app, "ai-feature-visit-questions")
-        FormUITestConditions.reveal(visitQuestions, in: app, scrollID: "ai-features-screen")
-        visitQuestions.tap()
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try assertConversationFitsContentLane(app)
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        try assertConversationFitsContentLane(app)
 
         let originalFrame = app.frame
-        try assertActionsFitContentLane(app)
-
         XCUIDevice.shared.orientation = .landscapeLeft
         let changedFrame = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in
@@ -62,20 +58,8 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             object: nil,
         )
         XCTAssertEqual(UITestConditions.wait(for: [changedFrame]), .completed, "The active window must report the new orientation")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
-        try assertActionsFitContentLane(app)
-
-        let externalEvidence = node(app, "ai-feature-external-evidence")
-        FormUITestConditions.reveal(externalEvidence, in: app, scrollID: "ai-features-screen")
-        externalEvidence.tap()
-        XCTAssertTrue(UITestConditions.exists(node(app, "external-medical-evidence-screen")))
-        XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-search")))
-        try assertLiteraturePanelsFitContentLane(app)
-        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
-        XCTAssertFalse(node(app, "external-evidence-loading").exists)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
-        try assertActionsFitContentLane(app)
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        try assertConversationFitsContentLane(app)
 
         _ = try AppearanceUITestConditions.select(
             true,
@@ -87,104 +71,48 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
                 }
             },
         )
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
-        try assertActionsFitContentLane(app)
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        try assertConversationFitsContentLane(app)
     }
 
+    /// Measures the actual conversation lane and rail targets in each observed window state.
     @MainActor
-    private func assertActionsFitContentLane(_ app: XCUIApplication) throws {
+    private func assertConversationFitsContentLane(_ app: XCUIApplication) throws {
         let viewport = node(app, "navigation-content-region")
-        // The React marker owns events; UIKit's toolbar owns the rendered rail frame.
         let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
-        guard UITestConditions.exists(viewport), !viewport.frame.isEmpty,
-              UITestConditions.exists(node(app, "navigation-right-rail")),
-              UITestConditions.exists(rail), !rail.frame.isEmpty
-        else {
-            XCTFail("Duo content-lane geometry is unavailable; this run cannot prove entry placement.")
-            return
-        }
-
-        let screen = node(app, "ai-features-screen")
-        let columns = node(app, "ai-feature-columns")
-        for element in [screen, columns] {
+        let screen = node(app, "rag-conversation-screen")
+        let input = node(app, "rag-conversation-input")
+        for element in [viewport, rail, screen, input] {
             XCTAssertTrue(UITestConditions.exists(element), app.debugDescription)
             XCTAssertFalse(element.frame.isEmpty, element.debugDescription)
         }
-
+        XCTAssertTrue(UITestConditions.exists(node(app, "navigation-right-rail")))
         XCTAssertLessThanOrEqual(viewport.frame.maxX, rail.frame.minX + 0.5, app.debugDescription)
-        // The screen must receive the full shell lane before its own readable fallback is considered.
-        // A scene-owned single region is roughly half the Duo lane and fails this ratio check.
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
+        XCTAssertGreaterThanOrEqual(input.frame.minX, viewport.frame.minX - 0.5)
+        XCTAssertLessThanOrEqual(input.frame.maxX, viewport.frame.maxX + 0.5)
+        XCTAssertTrue(input.isHittable, input.debugDescription)
+        XCTAssertFalse(input.frame.intersects(rail.frame), input.debugDescription)
 
-        XCTAssertEqual(app.scrollViews.matching(identifier: "ai-features-screen").count, 1)
-        for id in ["preparation", "review"] {
-            let heading = node(app, "ai-feature-group-\(id)-heading")
-            XCTAssertTrue(UITestConditions.exists(heading), app.debugDescription)
-            XCTAssertFalse(heading.frame.isEmpty, heading.debugDescription)
+        let history = node(app, "rag-conversation-sessions-toggle")
+        let newSession = node(app, "rag-conversation-new-session")
+        // Context actions have their own native toolbar alongside the root-tab toolbar.
+        let pageToolbar = node(app, "navigation-page-action-toolbar")
+        XCTAssertTrue(UITestConditions.exists(pageToolbar), app.debugDescription)
+        XCTAssertFalse(pageToolbar.frame.isEmpty, pageToolbar.debugDescription)
+        for (action, label) in [(history, "대화 목록"), (newSession, "새 대화")] {
+            XCTAssertTrue(UITestConditions.exists(action) && action.isHittable, app.debugDescription)
+            XCTAssertTrue(action.label.contains(label), action.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            XCTAssertTrue(pageToolbar.frame.insetBy(dx: -1, dy: -1).contains(action.frame), action.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.maxX - 0.5)
         }
-
-        // Card order is meaningful; equal card spacing applies only within each named group.
-        let groups = [
-            ["rag-conversation"],
-            ["visit-questions", "disease-hypotheses"],
-            ["external-evidence"],
-        ]
-        var previousGroupLastTop: CGFloat?
-        for group in groups {
-            var previousBottom: CGFloat?
-            for id in group {
-                let action = node(app, "ai-feature-\(id)")
-                XCTAssertTrue(UITestConditions.exists(action), app.debugDescription)
-                FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen")
-                XCTAssertTrue(action.isHittable, action.debugDescription)
-                XCTAssertGreaterThanOrEqual(action.frame.height, 44)
-                let relativeTop = action.frame.minY - columns.frame.minY
-                if let previousGroupLastTop {
-                    XCTAssertGreaterThan(relativeTop, previousGroupLastTop)
-                }
-                if let previousBottom {
-                    XCTAssertEqual(relativeTop - previousBottom, 16, accuracy: 1, "Entries within a group share the same point gap")
-                }
-                previousBottom = action.frame.maxY - columns.frame.minY
-                previousGroupLastTop = relativeTop
-                XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.minX - 0.5)
-                XCTAssertLessThanOrEqual(action.frame.maxX, viewport.frame.maxX + 0.5)
-                XCTAssertFalse(action.frame.intersects(rail.frame), action.debugDescription)
-            }
-        }
-    }
-
-    /// Search and result guidance share one measured lane and one vertical scroll owner.
-    @MainActor
-    private func assertLiteraturePanelsFitContentLane(_ app: XCUIApplication) throws {
-        let viewport = node(app, "navigation-content-region")
-        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
-        let columns = node(app, "external-medical-evidence-columns")
-        let primary = node(app, "external-medical-evidence-columns-primary")
-        // Missing measured product geometry must fail instead of silently skipping the page.
-        guard UITestConditions.exists(viewport), !viewport.frame.isEmpty,
-              UITestConditions.exists(rail), !rail.frame.isEmpty
-        else {
-            XCTFail("Medical-literature content geometry is unavailable in this window.")
-            return
-        }
-
-        XCTAssertFalse(node(app, "external-medical-evidence-columns-secondary").exists)
-        for panel in [columns, primary] {
-            XCTAssertTrue(UITestConditions.exists(panel), app.debugDescription)
-            XCTAssertFalse(panel.frame.isEmpty, panel.debugDescription)
-        }
-
-        for panel in [primary] {
-            XCTAssertGreaterThanOrEqual(panel.frame.minX, columns.frame.minX - 0.5)
-            XCTAssertLessThanOrEqual(panel.frame.maxX, columns.frame.maxX + 0.5)
-            XCTAssertGreaterThanOrEqual(panel.frame.minX, viewport.frame.minX - 0.5)
-            XCTAssertLessThanOrEqual(panel.frame.maxX, viewport.frame.maxX + 0.5)
-            XCTAssertFalse(panel.frame.intersects(rail.frame), panel.debugDescription)
-        }
-
-        XCTAssertEqual(node(app, "external-medical-evidence-screen").scrollViews.count, 1)
-        XCTAssertFalse(node(app, "external-evidence-result-panel").exists)
+        XCTAssertLessThan(history.frame.minY, newSession.frame.minY, "Duo keeps history before new conversation")
+        XCTAssertFalse(history.frame.intersects(newSession.frame))
+        XCTAssertFalse(node(app, "ai-features-screen").exists)
+        XCTAssertFalse(node(app, "external-evidence-search").exists)
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
     }
 
     @MainActor
