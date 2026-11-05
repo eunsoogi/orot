@@ -90,15 +90,18 @@ export function createSymptomSummaryPersistence(input: {
         const id = `${createdAt}-${runId}`;
         await (
           await store()
-        ).append({
-          id,
-          createdAt,
-          providerId: selected.provider.id,
-          modelId: selected.modelId,
-          modelName: selected.option.displayName,
-          inputLineage: 'complete',
-          ...captured,
-        });
+        ).append(
+          {
+            id,
+            createdAt,
+            providerId: selected.provider.id,
+            modelId: selected.modelId,
+            modelName: selected.option.displayName,
+            inputLineage: 'complete',
+            ...captured,
+          },
+          signal,
+        );
         retry = undefined;
         return {
           ...outcome,

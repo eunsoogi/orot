@@ -74,7 +74,7 @@ export interface SymptomSummaryHistory {
   retrySave?(): Promise<DiseaseHypothesisAnalysis | null>;
 }
 export interface SymptomSummaryStorage {
-  append(value: SavedSymptomSummary): Promise<void>;
+  append(value: SavedSymptomSummary, signal?: AbortSignal): Promise<void>;
   list(before?: string): Promise<readonly SavedSummaryListItem[]>;
   read(id: string): Promise<SavedSymptomSummary | null>;
   /** Read content and its irreversible source-change marker from one snapshot. */
