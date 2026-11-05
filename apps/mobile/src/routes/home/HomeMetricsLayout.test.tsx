@@ -174,14 +174,12 @@ test.each([
 ] as const)(
   'uses responsive layout at %ipt body width and %f font scale (%s expected)',
   async (bodyWidth, fontScale, direction) => {
-    jest
-      .spyOn(require('react-native'), 'useWindowDimensions')
-      .mockReturnValue({
-        width: 390,
-        height: 800,
-        scale: 3,
-        fontScale,
-      });
+    jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({
+      width: 390,
+      height: 800,
+      scale: 3,
+      fontScale,
+    });
     mocked.mockReturnValue({
       selection: ['sleep', 'heartRate'],
       metrics: {
@@ -205,12 +203,8 @@ test.each([
     );
     expect(comparison).toHaveTextContent(/420분/u);
     expect(comparison).toHaveTextContent(/450분/u);
-    expect(comparison.props.accessibilityLabel).toContain(
-      '기록된 날: 3일/7일',
-    );
-    expect(comparison.props.accessibilityLabel).toContain(
-      '기록된 날: 4일/7일',
-    );
+    expect(comparison.props.accessibilityLabel).toContain('기록된 날: 3일/7일');
+    expect(comparison.props.accessibilityLabel).toContain('기록된 날: 4일/7일');
     if (direction === 'row') {
       expect(screen.getAllByText('이전 7일')).toHaveLength(2);
       expect(screen.getByText('· 3일 기록')).toBeTruthy();

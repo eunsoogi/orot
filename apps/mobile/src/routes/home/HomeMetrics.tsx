@@ -58,7 +58,10 @@ export function HomeMetrics() {
     data.selection.length,
     fontScale,
   );
-  const recentChangeLayout = resolveHomeRecentChangeLayout(gridWidth, fontScale);
+  const recentChangeLayout = resolveHomeRecentChangeLayout(
+    gridWidth,
+    fontScale,
+  );
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
