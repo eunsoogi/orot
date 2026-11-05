@@ -76,6 +76,13 @@ export function sourceDeletionDependencyPredicate(
       )`,
     );
   }
+  if (kind === 'visit_question_record') {
+    dependencies.push(`EXISTS (
+      SELECT 1 FROM visit_questions AS parent_question
+      WHERE parent_question.id = json_extract(${table}.payload_json, '$.questionId')
+      AND ${sourceDeletionDependencyPredicate('visit_question', 'parent_question', sourceIdExpression)}
+    )`);
+  }
   return `(${dependencies.join(' OR ')})`;
 }
 
@@ -121,9 +128,11 @@ export async function listTypedSourceDeletionReferences(
     const predicate = sourceDeletionDependencyPredicate(kind, table, '?');
     const rows = await executor.execute(
       `SELECT ${table}.id FROM ${table} WHERE ${predicate}`,
-      kind === 'visit_question' || kind === 'visit_brief'
-        ? [sourceId, sourceId, sourceId]
-        : [sourceId, sourceId],
+      kind === 'visit_question_record'
+        ? [sourceId, sourceId, sourceId, sourceId, sourceId]
+        : kind === 'visit_question' || kind === 'visit_brief'
+          ? [sourceId, sourceId, sourceId]
+          : [sourceId, sourceId],
     );
     for (const row of rows.rows) add(kind, row.id);
   }

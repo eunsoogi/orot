@@ -12,6 +12,7 @@ export const VisitQuestionRecordSchema = RecordMetadataSchema.safeExtend({
   appointmentId: RecordIdSchema,
   questionId: RecordIdSchema,
   questionText: z.string().trim().min(1),
+  questionRevision: RecordIdSchema,
   revision: z.number().int().positive(),
   sourceMethod: z.enum(['manual_confirmed', 'ai_generated']),
   editOrigin: z.enum(['manual_confirmation', 'ai_analysis', 'user_edit']),
@@ -30,6 +31,7 @@ export const VisitQuestionRecordSchema = RecordMetadataSchema.safeExtend({
       (record.provenance.origin !== 'user_reported' || record.editOrigin === 'ai_analysis')) ||
     record.automaticSource?.appointmentId !== (automatic ? record.appointmentId : undefined) ||
     (automatic && record.automaticSource?.result.questionId !== record.questionId) ||
+    (automatic && record.automaticSource?.questionRevision !== record.questionRevision) ||
     (automatic && record.reviewState.status === 'reviewed')
   )
     context.addIssue({

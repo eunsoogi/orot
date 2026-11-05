@@ -173,6 +173,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
         ),
     });
     expect(statements.filter((sql) => /^\s*DROP\b/i.test(sql))).toEqual([
+      'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
       'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
     ]);
     expect(statements.some((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))).toBe(false);

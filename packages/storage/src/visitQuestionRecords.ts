@@ -51,6 +51,8 @@ export function createVisitQuestionRecordRepository(
         const id = officialVisitRecordId(input.appointmentId, question.id);
         const previous = await readStoredRecord(sql, 'visit_question_record', id);
         if (previous) {
+          if (previous.questionRevision !== input.expectedQuestionRevision)
+            throw new Error('The prepared question changed after confirmation.');
           if (previous.answer !== input.answer)
             throw new Error('The official answer changed; use a versioned edit.');
           saved = previous;
@@ -62,6 +64,7 @@ export function createVisitQuestionRecordRepository(
           appointmentId: input.appointmentId,
           questionId: question.id,
           questionText: question.questionText,
+          questionRevision: input.expectedQuestionRevision,
           revision: 1,
           sourceMethod: 'manual_confirmed',
           editOrigin: 'manual_confirmation',
@@ -121,6 +124,7 @@ export function createVisitQuestionRecordRepository(
               appointmentId: result.appointmentId,
               questionId: question.questionId,
               questionText: prepared.questionText,
+              questionRevision: prepared.revision,
               revision: (previous?.revision ?? 0) + 1,
               sourceMethod: 'ai_generated',
               editOrigin: 'ai_analysis',
@@ -154,7 +158,7 @@ export function createVisitQuestionRecordRepository(
         );
         if (!previous || previous.revision !== input.expectedRevision)
           throw new Error('The official answer changed before editing.');
-        if (previous.answer === input.answer) {
+        if (previous.answer === input.answer && previous.editOrigin !== 'ai_analysis') {
           saved = previous;
           return;
         }
