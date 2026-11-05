@@ -8,6 +8,8 @@ jest.mock('../../aiFeatures/integration/provider', () => ({
   resolveSelectedAiProvider: jest.fn(),
 }));
 
+beforeEach(() => jest.clearAllMocks());
+
 it('passes only the latest transcript revision and selected model to extraction', async () => {
   const input = recapInput();
   const corrected = createTranscriptCorrection(
@@ -75,3 +77,71 @@ it('reports missing visit binding without resolving or invoking a model', async 
   ).toEqual({ status: 'not_linked' });
   expect(resolveSelected).not.toHaveBeenCalled();
 });
+
+it.each(['selection-required', 'unavailable'] as const)(
+  'returns no_questions before model selection when the selection would be %s',
+  async status => {
+    const input = { ...recapInput(), questions: [] };
+    const resolveSelected = jest.fn(async () => ({ status }));
+    const completion = createRecapCompletion({
+      loadInput: async () => input,
+      loadCurrent: async () => input,
+      consent: { authorize: async () => 'authorized' },
+      resolveSelected,
+      onOutcome: async () => undefined,
+    });
+    expect(
+      await completion(
+        input.recordingSourceId,
+        input.segments,
+        new AbortController().signal,
+      ),
+    ).toEqual({ status: 'no_questions' });
+    expect(resolveSelected).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['load', 'selection'] as const)(
+  'returns cancellation while %s is pending and ignores its late failure',
+  async stage => {
+    const input = recapInput();
+    let rejectPending!: (error: Error) => void;
+    const pending = new Promise<never>((_, reject) => {
+      rejectPending = reject;
+    });
+    let markStarted!: () => void;
+    const started = new Promise<void>(resolve => {
+      markStarted = resolve;
+    });
+    const wait = () => {
+      markStarted();
+      return pending;
+    };
+    const resolveSelected = jest.fn(wait);
+    const onOutcome = jest.fn(async () => undefined);
+    const completion = createRecapCompletion({
+      loadInput: stage === 'load' ? wait : async () => input,
+      loadCurrent: async () => input,
+      consent: { authorize: async () => 'authorized' },
+      resolveSelected,
+      onOutcome,
+    });
+    const controller = new AbortController();
+    const result = completion(
+      input.recordingSourceId,
+      input.segments,
+      controller.signal,
+    );
+    await started;
+    controller.abort();
+    expect(await result).toEqual({ status: 'cancelled' });
+    rejectPending(new Error('late failure'));
+    await Promise.resolve();
+    expect(onOutcome).toHaveBeenCalledTimes(1);
+    expect(onOutcome).toHaveBeenCalledWith(
+      { status: 'cancelled' },
+      controller.signal,
+    );
+    expect(extractTranscriptRecap).not.toHaveBeenCalled();
+  },
+);

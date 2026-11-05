@@ -29,6 +29,39 @@ export interface RecapCompletionPorts {
   ) => Promise<void>;
 }
 
+/** Stop waiting when cancelled while still observing late rejections from preparation. */
+function observePreparation<T>(work: () => Promise<T>, signal: AbortSignal) {
+  return new Promise<{ cancelled: true } | { cancelled: false; value: T }>(
+    (resolve, reject) => {
+      if (signal.aborted) return resolve({ cancelled: true });
+      const abort = () => resolve({ cancelled: true });
+      signal.addEventListener('abort', abort, { once: true });
+      Promise.resolve()
+        .then(() => {
+          if (signal.aborted) return;
+          return work().then(
+            value => {
+              signal.removeEventListener('abort', abort);
+              resolve(
+                signal.aborted
+                  ? { cancelled: true }
+                  : { cancelled: false, value },
+              );
+            },
+            error => {
+              signal.removeEventListener('abort', abort);
+              reject(error);
+            },
+          );
+        })
+        .catch(error => {
+          signal.removeEventListener('abort', abort);
+          reject(error);
+        });
+    },
+  );
+}
+
 /** Compose this with transcription completion after the visit association is known. Failures remain explicit outcomes. */
 export function createRecapCompletion(ports: RecapCompletionPorts) {
   return async (
@@ -37,32 +70,48 @@ export function createRecapCompletion(ports: RecapCompletionPorts) {
     signal: AbortSignal,
   ) => {
     let outcome: RecapCompletionOutcome;
-    const input = await ports.loadInput(
-      sourceId,
-      latestRecapTranscript(sourceId, segments),
+    const loaded = await observePreparation(
+      () =>
+        ports.loadInput(sourceId, latestRecapTranscript(sourceId, segments)),
+      signal,
     );
-    if (signal.aborted) outcome = { status: 'cancelled' };
-    else if (!input) outcome = { status: 'not_linked' };
+    if (loaded.cancelled || signal.aborted) outcome = { status: 'cancelled' };
+    else if (!loaded.value) outcome = { status: 'not_linked' };
     else {
-      const selected = await (
-        ports.resolveSelected ?? resolveSelectedAiProvider
-      )();
-      if (selected.status === 'selection-required')
+      const parsed = RecapInputSchema.safeParse(loaded.value);
+      const selected =
+        !parsed.success ||
+        parsed.data.recordingSourceId !== sourceId ||
+        !parsed.data.questions.length
+          ? null
+          : await observePreparation(
+              ports.resolveSelected ?? resolveSelectedAiProvider,
+              signal,
+            );
+      if (signal.aborted || selected?.cancelled)
+        outcome = { status: 'cancelled' };
+      else if (!parsed.success || parsed.data.recordingSourceId !== sourceId)
+        outcome = { status: 'invalid_input' };
+      else if (!parsed.data.questions.length)
+        outcome = { status: 'no_questions' };
+      else if (!selected || selected.cancelled)
+        outcome = { status: 'cancelled' };
+      else if (selected.value.status === 'selection-required')
         outcome = { status: 'selection_required' };
-      else if (selected.status !== 'ready')
+      else if (selected.value.status !== 'ready')
         outcome = { status: 'unavailable', errorCode: 'provider_unavailable' };
       else
         outcome = await extractTranscriptRecap({
-          input,
-          provider: selected.provider,
+          input: parsed.data,
+          provider: selected.value.provider,
           consent: ports.consent,
           signal,
           execution: {
             operationRunId: `recap:${sourceId}`,
-            providerId: selected.provider.id,
-            modelId: selected.modelId,
-            recipient: selected.recipient,
-            remoteProcessing: selected.remoteProcessing,
+            providerId: selected.value.provider.id,
+            modelId: selected.value.modelId,
+            recipient: selected.value.recipient,
+            remoteProcessing: selected.value.remoteProcessing,
             allowedScope: {
               sourceKinds: ['personal_record'],
               sourceIds: [sourceId],
