@@ -14,6 +14,8 @@ export type EvidenceSourceDocument =
       readonly sourceKind: 'health_context_period';
       readonly scope: HealthContextScope;
       readonly report: HealthContextReport;
+      /** The original tool filter is intentionally not retained. */
+      readonly filterRedacted?: boolean;
     }
   | {
       readonly sourceKind: 'personal_record';

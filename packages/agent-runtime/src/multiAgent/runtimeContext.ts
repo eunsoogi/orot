@@ -1,4 +1,5 @@
 import type { JsonObject, ProviderErrorCode } from '@orot/model-runtime';
+import { projectConversationToolEvent } from './toolEvents';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -39,6 +40,8 @@ export interface RuntimeContext<TResult> {
   readonly signal: AbortSignal;
   readonly timedOut: () => boolean;
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
+  activeToolEvent?: import('./toolEvents').ConversationToolEvent;
+  readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   currentEvidence: EvidenceBatch;
   /** Keeps the active source category so stop/cancel can close an in-flight search safely. */
@@ -92,6 +95,7 @@ export function stop<TResult>(
 ): void {
   context.outcome = { status, reason };
   finishActiveEvidenceSearch(context, 'failed');
+  finishToolEvent(context, 'failed');
 }
 
 export function canceled<TResult>(
@@ -104,6 +108,7 @@ export function canceled<TResult>(
     ? { status: 'budget_exceeded', reason: 'The run exceeded its time limit.' }
     : { status: 'cancelled', providerStop };
   finishActiveEvidenceSearch(context, timedOut ? 'failed' : 'cancelled');
+  finishToolEvent(context, timedOut ? 'failed' : 'cancelled');
 }
 
 /** Search nodes report success directly; this closes only an active search on an early exit. */
@@ -122,4 +127,35 @@ export function completeState() {
 
 export function operationKey(kind: 'model' | 'tool', number: number): string {
   return `${kind}-${number}`;
+}
+
+/** Close exactly the active call, omitting private error detail and output. */
+export function finishToolEvent<TResult>(
+  context: RuntimeContext<TResult>,
+  status: 'completed' | 'failed' | 'cancelled',
+  sources: readonly import('./toolEvents').ToolSourceReference[] = [],
+) {
+  const event = context.activeToolEvent;
+  if (!event) return;
+  context.activeToolEvent = undefined;
+  emitToolEvent(context, {
+    ...event,
+    status,
+    sources,
+    ...(status === 'completed' ? { resultSummary: { referenceCount: sources.length } } : {}),
+  });
+}
+
+/** Display observers cannot change provider, consent or search success. */
+export function emitToolEvent<TResult>(
+  context: RuntimeContext<TResult>,
+  event: import('./toolEvents').ConversationToolEvent,
+) {
+  const safe = projectConversationToolEvent(event);
+  if (!safe) return;
+  try {
+    context.onToolEvent?.(safe);
+  } catch {
+    /* Execution remains independent of presentation. */
+  }
 }

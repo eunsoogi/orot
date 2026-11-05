@@ -3,6 +3,12 @@ import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { ReviewState } from '@orot/domain';
 import type { ChunkRecordType, EvidenceChunk } from '@orot/rag';
 import { fingerprint } from './evidenceUtils';
+import { ToolReferenceIndex } from './toolReferenceIndex';
+import {
+  stable,
+  stableEvidenceReference as stableReference,
+} from './stableEvidenceReference';
+import { resolveConversationToolSource } from './resolveConversationToolSource';
 import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
 export type {
   EvidenceSourceDocument,
@@ -40,35 +46,12 @@ function validationContext(): EvidenceValidationContext {
   };
 }
 
-function stable(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map(key => `${JSON.stringify(key)}:${stable(record[key])}`)
-    .join(',')}}`;
-}
-
-function stableReference(reference: EvidenceReference): string {
-  return stable({
-    sourceKind: reference.sourceKind,
-    sourceId: reference.sourceId,
-    sourceRevision: reference.sourceRevision,
-    evidenceId: reference.evidenceId,
-    evidenceRevision: reference.evidenceRevision,
-    locator: reference.locator,
-    effectiveTime: reference.effectiveTime,
-    ...(reference.unit === undefined ? {} : { unit: reference.unit }),
-    reviewState: reference.reviewState,
-  });
-}
-
 /** Keeps raw local identifiers behind a turn-local citation that can be revalidated before use. */
 export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
   private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
+  readonly toolReferences = new ToolReferenceIndex();
   private readonly identifiers = new LocalEvidenceIdentifiers();
 
   /** Resolves a provider scope locally before any database candidates are selected. */
@@ -108,6 +91,7 @@ export class LocalEvidenceReferenceRegistry {
       validate: input.validate,
       readSource: input.readSource,
     });
+    this.toolReferences.add(reference);
     return { ...reference, content: this.redactText(input.content) };
   }
 
@@ -191,6 +175,22 @@ export class LocalEvidenceReferenceRegistry {
   resolve(reference: EvidenceReference): EvidenceReference | undefined {
     const entry = this.entries.get(stableReference(reference));
     return entry ? { ...entry.original } : undefined;
+  }
+
+  /** Rehydrate a live projected alias before validating its durable source. */
+  resolveToolReference(
+    reference: import('@orot/agent-runtime').ToolSourceReference,
+  ) {
+    return this.toolReferences.find(reference);
+  }
+
+  /** Resolve only after rechecking the saved call and research source at click time. */
+  async resolveToolSource(
+    reference: import('@orot/agent-runtime').ToolSourceReference,
+    signal: AbortSignal,
+    scope?: import('./toolReferenceIndex').ToolCallScope,
+  ) {
+    return resolveConversationToolSource(this, reference, signal, scope);
   }
 
   /** Reads a clicked citation only while its saved row and derived chunk still match. */

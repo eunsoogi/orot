@@ -19,6 +19,8 @@ export interface ConversationSessionOptions {
       answer: string;
       citations: readonly EvidenceReference[];
       completion?: 'complete' | 'partial';
+      toolMessageId?: string;
+      toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
     }[]
   >;
 }
@@ -61,6 +63,8 @@ export interface ConversationSession {
     id: number;
     content: string;
     activity: string;
+    toolMessageId?: string;
+    toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   } | null;
   readonly busy: boolean;
   readonly error: string;
