@@ -147,8 +147,9 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(root.frame.height, observed.frame.height, accuracy: 0.5)
         XCTAssertGreaterThan(observed.top, 0)
         XCTAssertGreaterThanOrEqual(scroll.frame.minY - root.frame.minY, observed.top)
-        let title = app.staticTexts["저장된 진료 질문"]
+        let title = app.staticTexts["saved-visit-questions-title"]
         XCTAssertTrue(title.exists && !title.frame.isEmpty)
+        XCTAssertEqual(title.label, "저장된 진료 질문")
         XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back").control
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-home").control

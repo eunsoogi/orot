@@ -34,7 +34,10 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
       testID="saved-visit-questions-screen"
     >
       <View style={styles.container}>
-        <Text accessibilityRole="header">저장된 진료 질문</Text>
+        {/* The stable heading identity distinguishes this native element from its nested text node. */}
+        <Text accessibilityRole="header" testID="saved-visit-questions-title">
+          저장된 진료 질문
+        </Text>
         <AppointmentSection
           appointment={route.appointment}
           onRefresh={route.refreshAppointment}

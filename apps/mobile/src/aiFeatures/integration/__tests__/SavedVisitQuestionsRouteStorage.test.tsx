@@ -106,6 +106,9 @@ test('shows a stored visit question and opens its revalidated source without gen
         }}
       />,
     );
+    expect(
+      screen.getByRole('header', { name: '저장된 진료 질문' }),
+    ).toHaveTextContent('저장된 진료 질문');
     expect(await screen.findByText('이전 대화를 확인할까요?')).toBeTruthy();
     expect(screen.queryByTestId('next-visit-generate')).toBeNull();
     expect(screen.queryByTestId('next-visit-saved-edit')).toBeNull();
