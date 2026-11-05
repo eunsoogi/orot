@@ -95,3 +95,21 @@ test('includes the longest Korean metric title in its accessible label', async (
     screen.getByTestId('home-recent-change-steps').props.accessibilityLabel,
   ).toContain('기록된 걸음 샘플 합계');
 });
+
+test('keeps an unavailable comparison absent instead of inventing zero values', async () => {
+  const metric = {
+    ...comparisonMetric('sleep', 420, 450, 3, 4),
+    comparison: null,
+  };
+
+  await render(
+    <HomeRecentHealthChange
+      metric={metric}
+      title="기록된 수면"
+      formatValue={formatValue}
+    />,
+  );
+
+  expect(screen.queryByTestId('home-recent-change-sleep')).toBeNull();
+  expect(screen.queryByText(/420|450|0 min/u)).toBeNull();
+});

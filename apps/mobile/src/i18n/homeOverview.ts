@@ -26,6 +26,7 @@ export const homeOverviewKo = {
   'home.comparisonPreviousPeriod': '이전 7일',
   'home.comparisonRecentPeriod': '최근 7일',
   'home.comparisonCoverage': '기록된 날: {count}일/{total}일',
+  'home.comparisonRowCoverage': '· {count}일 기록',
   'home.partialToday': '오늘 진행 중',
   'home.recentChanges': '최근 달라진 점',
   'home.noChanges': '비교할 기록이 충분하지 않아요.',
