@@ -24,6 +24,9 @@ function captureConversationSends() {
     .mockImplementation((...args) => ({
       ...create(...args),
       sendRagMessage: send,
+      // The visit entry now uses its own operation while retaining the same session contract.
+      prepareVisitQuestionTurn: ({ question, context, signal, observer }) =>
+        send(question, [], signal, observer, context),
       // These route/session assertions do not claim encrypted database persistence.
       conversationSessionOptions: () => ({}),
     }));

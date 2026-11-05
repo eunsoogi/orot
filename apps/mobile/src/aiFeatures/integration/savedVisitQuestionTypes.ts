@@ -1,6 +1,7 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
 
 export interface RestoredVisitQuestion {
+  readonly identity: { readonly id: string; readonly expectedRevision: string };
   readonly kind?: 'confirmed_fact' | 'clarification';
   readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;

@@ -29,18 +29,21 @@ export const source: NextVisitEvidenceReference = {
 
 export const questions: readonly NextVisitQuestion[] = [
   {
+    identity: { id: 'fixture-1', expectedRevision: 'revision-1' },
     questionText: '최근 증상 변화를 어떻게 정리할까요?',
     rationale: '기록된 변화의 시점을 의료진과 확인합니다.',
     priority: 'routine',
     citations: [source],
   },
   {
+    identity: { id: 'fixture-2', expectedRevision: 'revision-2' },
     questionText: '복용 시간 변화를 어떻게 설명할까요?',
     rationale: '기록에 적힌 복용 시간의 의미를 확인합니다.',
     priority: 'routine',
     citations: [source],
   },
   {
+    identity: { id: 'fixture-3', expectedRevision: 'revision-3' },
     questionText: '추가로 확인할 기록이 있을까요?',
     rationale: '현재 근거에서 빠진 내용이 있는지 확인합니다.',
     priority: 'routine',

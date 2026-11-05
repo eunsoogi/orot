@@ -7,7 +7,7 @@ import { t } from '../i18n';
 
 export type AiWorkflowObserver = Pick<
   MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent'
+  'onProgress' | 'onTaskStreamEvent' | 'onToolEvent'
 >;
 
 /** Converts typed runtime phases to safe copy without showing search terms or evidence text. */

@@ -11,6 +11,7 @@ export interface ConversationRetentionCandidate {
   readonly status?: 'complete' | 'partial';
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations: readonly EvidenceReference[];
+  readonly visitQuestions?: import('./conversationVisitQuestionReference').ConversationVisitQuestionReference;
 }
 
 /** Retrying source capture revalidates the original answer without rerunning the model. */

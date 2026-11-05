@@ -12,7 +12,10 @@ import { openLocalE5RagService } from '../../rag/localE5RagService';
 import { openLocalRecordQueryService } from '../localRecordQuery';
 import { prepareVisitQuestionContext } from './evidenceService';
 import { loadSecureDatabaseModule } from './secureDatabaseLoader';
-import type { VisitQuestionCandidate } from './taskContract';
+import type {
+  SavedQuestionRevision,
+  VisitQuestionCandidate,
+} from './taskContract';
 import { saveReviewedVisitQuestions } from './persistence';
 import type {
   ProviderSelection,
@@ -36,6 +39,7 @@ let localMemoryEmbedder: LocalE5EmbeddingProvider | null = null;
  */
 export async function prepareUpcomingVisitQuestionContext(input: {
   readonly now: string;
+  readonly appointmentId?: string;
   readonly maxEvidenceItems: number;
   readonly signal?: AbortSignal;
   readonly validateGeneratedArtifact?: (
@@ -89,11 +93,15 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   if (prepared.status !== 'ready') return prepared;
   return {
     ...prepared,
-    saveReviewedQuestions(questions: readonly VisitQuestionCandidate[]) {
+    saveReviewedQuestions(
+      questions: readonly VisitQuestionCandidate[],
+      expectedSavedQuestions: readonly SavedQuestionRevision[],
+    ) {
       return saveReviewedVisitQuestions({
         appointmentId: prepared.appointment.id,
         expectedAppointmentRevision: prepared.appointmentRevision,
         questions,
+        expectedSavedQuestions,
         evidence: prepared.evidence,
         repository,
         memory,
@@ -138,8 +146,11 @@ export async function generateUpcomingVisitQuestionRecommendations(input: {
   if (result.status !== 'ready') return result;
   return {
     ...result,
-    saveReviewedQuestions(questions: readonly VisitQuestionCandidate[]) {
-      return prepared.saveReviewedQuestions(questions);
+    saveReviewedQuestions(
+      questions: readonly VisitQuestionCandidate[],
+      expectedSavedQuestions: readonly SavedQuestionRevision[],
+    ) {
+      return prepared.saveReviewedQuestions(questions, expectedSavedQuestions);
     },
   };
 }

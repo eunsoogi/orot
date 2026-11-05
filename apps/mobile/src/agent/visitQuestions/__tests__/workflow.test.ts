@@ -30,7 +30,12 @@ describe('visit-question shared workflow', () => {
     );
     const onProgress = jest.fn();
     const onTaskStreamEvent = jest.fn();
-    const observer: AiWorkflowObserver = { onProgress, onTaskStreamEvent };
+    const onToolEvent = jest.fn();
+    const observer: AiWorkflowObserver = {
+      onProgress,
+      onTaskStreamEvent,
+      onToolEvent,
+    };
 
     const result = await runVisitQuestionWorkflow({
       prepared,
@@ -64,6 +69,16 @@ describe('visit-question shared workflow', () => {
     expect(requests).toHaveLength(2);
     expect(onProgress).toHaveBeenCalled();
     expect(onTaskStreamEvent).toHaveBeenCalledWith({ type: 'started' });
+    expect(onToolEvent.mock.calls.map(([event]) => event.status)).toEqual([
+      'started',
+      'completed',
+    ]);
+    expect(onToolEvent.mock.calls[0]?.[0].callId).toBe(
+      onToolEvent.mock.calls[1]?.[0].callId,
+    );
+    expect(JSON.stringify(onToolEvent.mock.calls)).not.toContain(
+      '최근 검사 결과',
+    );
     expect(confirmConsent).toHaveBeenCalledTimes(2);
     expect(
       new Set(consentRequests.map(request => JSON.stringify(request.payload)))

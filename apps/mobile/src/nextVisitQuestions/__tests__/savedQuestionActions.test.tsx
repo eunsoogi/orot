@@ -84,6 +84,10 @@ test('edits saved questions through one page action even while the provider is u
     appointment,
     [{ ...questions[0], priority: 'important' }, ...questions.slice(1)],
     ['incomplete_coverage', 'conflicting_records'],
+    questions.map(question => ({
+      id: question.identity!.id,
+      revision: question.identity!.expectedRevision,
+    })),
   );
   expect(props.onGenerate).not.toHaveBeenCalled();
 });
