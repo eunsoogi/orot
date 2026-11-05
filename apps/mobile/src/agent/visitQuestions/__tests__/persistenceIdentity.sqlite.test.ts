@@ -149,9 +149,31 @@ test('rejects stale, duplicate and foreign identities without changing either vi
           baseline[1]!,
         ],
       },
-      { questions: [valid, valid], expectedSavedQuestions: baseline },
+      {
+        questions: [valid, { ...valid, questionText: second.questionText }],
+        expectedSavedQuestions: baseline,
+      },
       {
         questions: [{ ...valid, identity: { id: foreign.id } }],
+        expectedSavedQuestions: baseline,
+      },
+      {
+        questions: [{ ...valid, identity: { id: ` ${foreign.id} ` } }],
+        expectedSavedQuestions: baseline,
+      },
+      {
+        questions: [{ ...valid, identity: { id: ' question-a ' } }],
+        expectedSavedQuestions: baseline,
+      },
+      {
+        questions: [
+          { ...valid, identity: { id: 'new-id' } },
+          {
+            ...valid,
+            questionText: second.questionText,
+            identity: { id: ' new-id ' },
+          },
+        ],
         expectedSavedQuestions: baseline,
       },
       { questions: [], expectedSavedQuestions: baseline },
@@ -200,7 +222,7 @@ test('rejects stale, duplicate and foreign identities without changing either vi
     await expect(
       saveReviewedVisitQuestions({
         ...base,
-        questions: [reviewed(second, saved.questions[1]!), valid],
+        questions: [reviewed(second, saved.questions[1]!)],
         expectedSavedQuestions: baseline,
       }),
     ).rejects.toThrow('injected failure');
