@@ -85,7 +85,7 @@ export async function restoreConversationToolTurns(
                   evidenceId: bound.evidenceId,
                   evidenceRevision: bound.evidenceRevision,
                 };
-                registry.bindToolResearch(projected, bound);
+                registry.toolReferences.bindResearch(projected, bound);
                 return projected;
               }
               const dependency = lineage.sources[index++];
