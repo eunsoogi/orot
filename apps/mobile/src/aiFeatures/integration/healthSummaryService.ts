@@ -16,6 +16,7 @@ import { bindSummaryWindow } from './summaryWindowTool';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { executionOptions } from './featureServiceExecution';
 import { stableJson } from './evidenceUtils';
+import { observeConversationTool } from '../../ragConversation/observeConversationTool';
 
 /** One operation owns its retry closure and its original provider, period and result. */
 export function createHealthSummaryService(input: {
@@ -65,7 +66,7 @@ export function createHealthSummaryService(input: {
       operationRunId: runId,
       consent: input.consent,
       registry: input.registry,
-      tools: [bound.tool],
+      tools: [observeConversationTool(bound.tool, observer?.onToolEvent)!],
       consentPurpose: 'symptom_summary',
     });
     const original = symptomSummaryTaskForProvider(selected.provider.id);

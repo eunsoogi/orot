@@ -16,7 +16,7 @@ import {
 } from './symptomSummarySources';
 import { fingerprint } from './evidenceUtils';
 
-async function defaultStorage() {
+export async function openSummaryStorage() {
   const { openLocalAgentMemoryDatabase } =
     await import('../../storage/secureDatabase');
   const { createSymptomSummaryStorage } =
@@ -33,7 +33,7 @@ export function createSymptomSummaryPersistence(input: {
   let opening: Promise<SymptomSummaryStorage> | undefined;
   let retry: (() => Promise<DiseaseHypothesisAnalysis | null>) | undefined;
   const store = () =>
-    (opening ??= (input.storage ?? defaultStorage)().catch(error => {
+    (opening ??= (input.storage ?? openSummaryStorage)().catch(error => {
       opening = undefined;
       throw error;
     }));

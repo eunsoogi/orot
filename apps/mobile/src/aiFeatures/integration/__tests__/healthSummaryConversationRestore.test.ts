@@ -7,6 +7,8 @@ import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { restoreConversationArtifact } from '../restoreConversationArtifact';
 import { restoreHealthSummary } from '../restoreHealthSummary';
 import { localData } from '../featureServiceFixtures';
+import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';
+import { createConversationSessionOptions } from '../conversationSessionOptions';
 
 test('reopens a conversation reference through the authoritative summary and never revives deleted content', async () => {
   const f = await healthContextFixture();
@@ -49,6 +51,38 @@ test('reopens a conversation reference through the authoritative summary and nev
     expect(
       (await registry.readSource(source!, new AbortController().signal)).status,
     ).toBe('available');
+    const restoredData = {
+      ...data,
+      openConversationArtifactStorage: async () => storage,
+      conversationArtifactDiscovery: async (
+        fresh: LocalEvidenceReferenceRegistry,
+      ) =>
+        createConversationArtifactDiscovery({
+          database: f.database,
+          storage,
+          registry: fresh,
+          data,
+        }),
+    };
+    const options = createConversationSessionOptions({
+      loadLocalData: async () => restoredData,
+      registry,
+      restoreHealthSummary: ref =>
+        restoreHealthSummary({
+          reference: ref,
+          storage: f.storage,
+          registry,
+          data,
+        }),
+    });
+    const turns = await options.restoreSession!(
+      'session',
+      new AbortController().signal,
+    );
+    expect(turns[0]?.healthSummary?.analysis.savedSummary).toMatchObject({
+      status: 'saved',
+      id: f.saved.id,
+    });
     await f.repository.delete('health_observation', 'inside');
     expect(
       await restoreHealthSummary({

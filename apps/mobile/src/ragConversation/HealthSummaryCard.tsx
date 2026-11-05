@@ -11,11 +11,13 @@ export function HealthSummaryCard({
   onOpenSource,
   onLinkError,
   onRetry,
+  showCitations = true,
 }: {
   result: HealthSummaryResult;
   onOpenSource: (reference: EvidenceReference) => void;
   onLinkError: () => void;
   onRetry?: () => void;
+  showCitations?: boolean;
 }) {
   const { window } = result.reference;
   const saved = result.analysis.savedSummary;
@@ -36,14 +38,16 @@ export function HealthSummaryCard({
           {section.missingData.map((missing, item) => (
             <AppText key={item}>{missing}</AppText>
           ))}
-          <ConversationSources
-            references={[
-              ...section.supportingEvidence,
-              ...section.contraryEvidence,
-            ]}
-            onOpenSource={onOpenSource}
-            onLinkError={onLinkError}
-          />
+          {showCitations ? (
+            <ConversationSources
+              references={[
+                ...section.supportingEvidence,
+                ...section.contraryEvidence,
+              ]}
+              onOpenSource={onOpenSource}
+              onLinkError={onLinkError}
+            />
+          ) : null}
         </View>
       ))}
       <AppText>

@@ -89,8 +89,12 @@ test('preserves submitted text and period, and isolates retries between operatio
     );
     const task = runner.mock.calls[0]?.[4];
     expect(task?.systemPrompt).toContain('Do not infer the');
-    expect(task?.systemPrompt).toContain('Do not search for public medical context.');
-    expect(task?.systemPrompt).not.toContain('use the public medical literature tool');
+    expect(task?.systemPrompt).toContain(
+      'Do not search for public medical context.',
+    );
+    expect(task?.systemPrompt).not.toContain(
+      'use the public medical literature tool',
+    );
     expect(task?.systemPrompt).not.toContain('with days=30');
     expect(first?.result.reference).toEqual({
       summaryId: '2026-10-06T00:00:00Z-run-1',

@@ -36,3 +36,50 @@ test.each([true, false])(
     store.dispose();
   },
 );
+
+test('cancelling a new summary keeps the previous saved summary visible', async () => {
+  const store = createConversationSessions();
+  const healthSummary = {
+    reference: {
+      summaryId: 'old',
+      window: {
+        fromInclusive: '2026-10-01T00:00:00Z',
+        toExclusive: '2026-10-05T00:00:00Z',
+        timeZone: 'UTC',
+      },
+    },
+    analysis: {
+      hypotheses: [],
+      savedSummary: {
+        status: 'saved' as const,
+        id: 'old',
+        createdAt: '2026-10-05T00:00:00Z',
+        modelName: 'Model',
+      },
+    },
+  };
+  store.setDraft(1, '첫 요약');
+  await store.send(1, async () => ({
+    status: 'answer',
+    answer: '이전 요약',
+    citations: [],
+    healthSummary,
+  }));
+  store.setDraft(1, '새 요약');
+  let finish!: () => void;
+  const pending = store.send(1, async () => {
+    await new Promise<void>(resolve => {
+      finish = resolve;
+    });
+    return { status: 'failure', kind: 'cancelled' };
+  });
+  store.cancel(1);
+  finish();
+  await pending;
+  expect(
+    store
+      .getSnapshot()
+      .sessions[0]!.messages.some(message => message.content === '이전 요약'),
+  ).toBe(true);
+  store.dispose();
+});
