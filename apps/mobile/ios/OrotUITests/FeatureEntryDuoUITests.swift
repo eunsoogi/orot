@@ -120,22 +120,3 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         UITestConditions.element(app, id)
     }
 }
-
-/// Native accessibility combines each title and description into one card label.
-enum FeatureEntryUITestConditions {
-    private static let entries = [
-        ("rag-conversation", "기록과 대화"),
-        ("visit-questions", "다음 진료 질문"),
-        ("disease-hypotheses", "증상 정리"),
-        ("external-evidence", "의학 자료 찾기"),
-    ]
-
-    @MainActor
-    static func assertAccessibleLabels(in app: XCUIApplication) {
-        for (identifier, title) in entries {
-            let card = app.buttons.matching(identifier: "ai-feature-\(identifier)").firstMatch
-            XCTAssertTrue(card.exists, app.debugDescription)
-            XCTAssertTrue(card.label.hasPrefix(title), card.debugDescription)
-        }
-    }
-}
