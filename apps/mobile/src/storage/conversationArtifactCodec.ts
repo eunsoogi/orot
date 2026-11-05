@@ -3,6 +3,10 @@ import type { ConversationArtifactSource } from '../ragConversation/conversation
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
+import {
+  parseHealthSummaryReference,
+  type HealthSummaryReference,
+} from '../ragConversation/healthSummary';
 
 export interface ConversationArtifact {
   readonly id: string;
@@ -15,6 +19,7 @@ export interface ConversationArtifact {
   readonly answer: string;
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations?: readonly EvidenceReference[];
+  readonly healthSummary?: HealthSummaryReference;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -142,6 +147,11 @@ export function decodeConversationArtifact(
           return null;
       }
     }
+    if (
+      value.healthSummary !== undefined &&
+      !parseHealthSummaryReference(value.healthSummary)
+    )
+      return null;
     const sources = value.sources as Record<string, unknown>[];
     if (
       value.citations !== undefined &&
