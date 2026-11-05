@@ -35,6 +35,8 @@ export function createConversationSessionOptions(input: {
         : null;
       if (!discovery)
         throw new Error('Conversation restoration is unavailable.');
+      const version = await discovery.activeSessionVersion(sessionId);
+      if (version === null) throw new Error('Conversation is unavailable.');
       const turns: Awaited<
         ReturnType<typeof discovery.readSession>
       >['items'][number][] = [];
@@ -46,6 +48,8 @@ export function createConversationSessionOptions(input: {
           ...(cursor ? { cursor } : {}),
           signal,
         });
+        if (page.unavailableCount)
+          throw new Error('Conversation content is unavailable.');
         turns.push(...page.items);
         cursor = page.nextCursor ?? undefined;
       } while (cursor && !signal.aborted);
@@ -53,6 +57,11 @@ export function createConversationSessionOptions(input: {
         throw new Error('Conversation restoration was cancelled.');
       const storage = await openStorage();
       const toolTurns = await storage.readToolTurns(sessionId);
+      // Content and tool events must not outlive a session deletion or source change during restoration.
+      if (
+        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+      )
+        throw new Error('Conversation content changed during restoration.');
       const restored = turns.reverse().map(turn => ({
         question: turn.question,
         answer: turn.answer,
