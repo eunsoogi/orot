@@ -28,7 +28,10 @@ export function createConversationTurnActivity(input: {
     toolMessageId,
   });
   const observe = (event: ConversationToolEvent) => {
-    events = mergeConversationToolEvents(events, event);
+    const next = mergeConversationToolEvents(events, event);
+    // Replayed or reordered events must not repeat source capture or overwrite the terminal record.
+    if (next === events) return;
+    events = next;
     // Every write is serialized, including cancellation after the visible request has ended.
     if (input.retained)
       writing = writing

@@ -18,13 +18,19 @@ export function createConversationTurnRetention(input: {
     Partial<
       Pick<
         ReturnType<typeof createConversationArtifactStorage>,
-        'appendToolEvent'
+        'appendToolEvent' | 'discardToolEvent'
       >
     >;
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
   readonly sessionVersion?: number;
+  readonly captureToolSources?: (
+    event: import('@orot/agent-runtime').ConversationToolEvent,
+  ) => Promise<{
+    event: import('@orot/agent-runtime').ConversationToolEvent;
+    dependencies: readonly import('./conversationArtifactSources').ConversationArtifactSource[];
+  }>;
 }) {
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
@@ -68,18 +74,41 @@ export function createConversationTurnRetention(input: {
   };
   return {
     toolMessageId: input.turnId,
-    recordToolEvent(
+    async recordToolEvent(
       event: import('@orot/agent-runtime').ConversationToolEvent,
     ) {
       if (!input.storage.appendToolEvent)
         return Promise.reject(new Error('Tool event storage is unavailable.'));
-      return input.storage.appendToolEvent({
-        sessionId: input.sessionId,
-        messageId: input.turnId,
-        createdAt: input.createdAt,
-        sessionVersion: input.sessionVersion ?? 0,
-        event,
-      });
+      let captured;
+      const discard = () =>
+        input.storage.discardToolEvent?.({
+          sessionId: input.sessionId,
+          messageId: input.turnId,
+          sessionVersion: input.sessionVersion ?? 0,
+          operationRunId: event.operationRunId,
+          callId: event.callId,
+        });
+      try {
+        captured = input.captureToolSources
+          ? await input.captureToolSources(event)
+          : { event, dependencies: [] };
+      } catch (error) {
+        // Drop the incomplete record rather than misreporting the real tool outcome.
+        await discard();
+        throw error;
+      }
+      try {
+        await input.storage.appendToolEvent({
+          sessionId: input.sessionId,
+          messageId: input.turnId,
+          createdAt: input.createdAt,
+          sessionVersion: input.sessionVersion ?? 0,
+          ...captured,
+        });
+      } catch (error) {
+        if (error instanceof RetainedSourceInvalidError) await discard();
+        throw error;
+      }
     },
     async save(candidate: ConversationRetentionCandidate, signal: AbortSignal) {
       if (pending || preparation)

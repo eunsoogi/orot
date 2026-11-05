@@ -48,7 +48,7 @@ test('real SQLite close/reopen retains ordered parallel calls, retries and inter
         resultSummary: { referenceCount: 1 },
         sources: [
           {
-            sourceKind: 'personal_record',
+            sourceKind: 'external_medical',
             sourceId: 'source',
             sourceRevision: '1',
             evidenceId: 'span',
@@ -109,6 +109,15 @@ test('separate conversation and message identities are fenced, projected and rem
     });
     await expect(
       storage.appendToolEvent({ ...input, messageId: 'wrong-message', event }),
+    ).rejects.toThrow('different message');
+    await expect(
+      storage.discardToolEvent({
+        sessionId: input.sessionId,
+        messageId: 'wrong-message',
+        sessionVersion: input.sessionVersion,
+        operationRunId: event.operationRunId,
+        callId: event.callId,
+      }),
     ).rejects.toThrow('different message');
     const rows = await connection.database.execute(
       'SELECT event_json FROM conversation_tool_events',

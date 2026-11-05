@@ -1,6 +1,6 @@
 import type { ConversationToolEvent } from '@orot/agent-runtime';
 
-/** Synthetic contract fixtures for restoration and collapsed-tool renderer consumers. */
+/** Local references are registry aliases, reissued after source validation on restoration. */
 export const conversationToolEventFixtures: readonly ConversationToolEvent[] = [
   {
     version: 1,
@@ -14,10 +14,10 @@ export const conversationToolEventFixtures: readonly ConversationToolEvent[] = [
     sources: [
       {
         sourceKind: 'personal_record',
-        sourceId: 'synthetic-record',
-        sourceRevision: '1',
-        evidenceId: 'synthetic-span',
-        evidenceRevision: '1',
+        sourceId: 's1',
+        sourceRevision: 'sr1',
+        evidenceId: 'e1',
+        evidenceRevision: 'er1',
       },
     ],
   },

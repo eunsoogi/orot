@@ -11,6 +11,7 @@ import { generatedSummaryDescendants } from './generatedArtifactDescendants';
 import { setupResearchArtifactGuards } from './researchArtifactGuards';
 import { completeSummaryDeletion } from './summaryDeletionPolicy';
 import { setupResearchInputGuards } from './researchInputGuards';
+import { setupConversationToolGuards } from './conversationToolGuards';
 import {
   ensureTypedDeletionMarkers,
   markerMatchesArtifactSource,
@@ -54,7 +55,20 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     'CREATE TABLE IF NOT EXISTS conversation_tool_events (session_id TEXT NOT NULL, message_id TEXT NOT NULL, created_at TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
   );
   await tx.execute(
-    'CREATE TRIGGER IF NOT EXISTS conversation_tool_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_tool_events WHERE session_id = OLD.id; END',
+    'CREATE TABLE IF NOT EXISTS conversation_tool_lineage (session_id TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, sources_json TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
+  );
+  await tx.execute(
+    'CREATE TABLE IF NOT EXISTS conversation_tool_removed_calls (session_id TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
+  );
+  await tx.execute(
+    'CREATE TRIGGER IF NOT EXISTS conversation_tool_call_removed AFTER DELETE ON conversation_tool_events BEGIN INSERT OR IGNORE INTO conversation_tool_removed_calls VALUES (OLD.session_id, OLD.run_id, OLD.call_id); END',
+  );
+  await tx.execute(
+    'CREATE TRIGGER IF NOT EXISTS conversation_tool_lineage_removed AFTER DELETE ON conversation_tool_events BEGIN DELETE FROM conversation_tool_lineage WHERE session_id = OLD.session_id AND run_id = OLD.run_id AND call_id = OLD.call_id; END',
+  );
+  await tx.execute('DROP TRIGGER IF EXISTS conversation_tool_session_removed');
+  await tx.execute(
+    'CREATE TRIGGER conversation_tool_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_tool_events WHERE session_id = OLD.id; DELETE FROM conversation_tool_removed_calls WHERE session_id = OLD.id; END',
   );
   await tx.execute(
     'CREATE TRIGGER IF NOT EXISTS conversation_tool_artifact_removed AFTER DELETE ON conversation_artifacts BEGIN DELETE FROM conversation_tool_events WHERE session_id = OLD.session_id AND message_id = OLD.id; END',
@@ -220,6 +234,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     WHEN OLD.id IS NOT NEW.id OR OLD.session_id IS NOT NEW.session_id OR OLD.created_at IS NOT NEW.created_at OR OLD.result_json IS NOT NEW.result_json BEGIN
     DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (${generatedSummaryDescendants('generated_conversation')}); END`);
   await setupVisitQuestionGeneratedSourceGuards(tx);
+  await setupConversationToolGuards(tx);
   await setupResearchArtifactGuards(tx);
   await setupResearchInputGuards(tx);
 }

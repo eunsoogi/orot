@@ -3,6 +3,7 @@ import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { ReviewState } from '@orot/domain';
 import type { ChunkRecordType, EvidenceChunk } from '@orot/rag';
 import { fingerprint } from './evidenceUtils';
+import { ToolReferenceIndex } from './toolReferenceIndex';
 import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
 export type {
   EvidenceSourceDocument,
@@ -69,6 +70,7 @@ export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
   private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
+  private readonly toolReferences = new ToolReferenceIndex();
   private readonly identifiers = new LocalEvidenceIdentifiers();
 
   /** Resolves a provider scope locally before any database candidates are selected. */
@@ -108,6 +110,7 @@ export class LocalEvidenceReferenceRegistry {
       validate: input.validate,
       readSource: input.readSource,
     });
+    this.toolReferences.add(reference);
     return { ...reference, content: this.redactText(input.content) };
   }
 
@@ -191,6 +194,13 @@ export class LocalEvidenceReferenceRegistry {
   resolve(reference: EvidenceReference): EvidenceReference | undefined {
     const entry = this.entries.get(stableReference(reference));
     return entry ? { ...entry.original } : undefined;
+  }
+
+  /** Rehydrate a live projected alias before validating its durable source. */
+  resolveToolReference(
+    reference: import('@orot/agent-runtime').ToolSourceReference,
+  ) {
+    return this.toolReferences.find(reference);
   }
 
   /** Reads a clicked citation only while its saved row and derived chunk still match. */

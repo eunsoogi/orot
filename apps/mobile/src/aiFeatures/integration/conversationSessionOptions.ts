@@ -3,6 +3,9 @@ import type { ConversationSessionOptions } from '../../ragConversation/conversat
 import { operationRunId } from './featureRunIdentity';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
+import { captureConversationToolSources } from './captureConversationToolSources';
+import { restoreConversationToolTurns } from './restoreConversationToolTurns';
+import { fingerprint } from './evidenceUtils';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -27,6 +30,8 @@ export function createConversationSessionOptions(input: {
       openStorage,
       createId: operationRunId,
       now: () => new Date().toISOString(),
+      captureToolSources: event =>
+        captureConversationToolSources(event, input.registry),
     }),
     restoreSession: async (sessionId, signal) => {
       const data = await input.loadLocalData();
@@ -56,10 +61,25 @@ export function createConversationSessionOptions(input: {
       if (signal.aborted)
         throw new Error('Conversation restoration was cancelled.');
       const storage = await openStorage();
-      const toolTurns = await storage.readToolTurns(sessionId);
+      const savedToolTurns = await storage.readToolTurns(sessionId, version);
+      const toolTurns = await restoreConversationToolTurns(
+        savedToolTurns,
+        input.registry,
+        data,
+        signal,
+        sessionId,
+        storage,
+      );
       // Content and tool events must not outlive a session deletion or source change during restoration.
       if (
-        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+        !(await discovery.revalidateSession(
+          sessionId,
+          version,
+          turns,
+          signal,
+        )) ||
+        fingerprint(await storage.readToolTurns(sessionId, version)) !==
+          fingerprint(savedToolTurns)
       )
         throw new Error('Conversation content changed during restoration.');
       const restored = turns.reverse().map(turn => ({
