@@ -139,3 +139,41 @@ test('separate conversation and message identities are fenced, projected and rem
     connection.close();
   }
 });
+
+test('a late tool callback cannot recreate events for a deleted conversation turn', async () => {
+  const connection = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(connection.database);
+    const storage = createConversationArtifactStorage(connection.database);
+    await storage.createSession(
+      'conversation',
+      await storage.currentGeneration(),
+    );
+    await storage.appendToolEvent({ ...input, event });
+    await storage.append({
+      id: input.messageId,
+      sessionId: input.sessionId,
+      createdAt,
+      providerId: 'provider',
+      modelId: 'model',
+      status: 'complete',
+      question: 'question',
+      answer: 'answer',
+      sources: [],
+    });
+    await connection.database.execute(
+      'DELETE FROM conversation_artifacts WHERE id = ?',
+      [input.messageId],
+    );
+    expect(await storage.readToolTurns(input.sessionId)).toEqual([]);
+    await expect(
+      storage.appendToolEvent({
+        ...input,
+        event: { ...event, status: 'completed' },
+      }),
+    ).rejects.toThrow();
+    expect(await storage.readToolTurns(input.sessionId)).toEqual([]);
+  } finally {
+    connection.close();
+  }
+});

@@ -38,9 +38,10 @@ export function createConversationToolEventStorage(
         throw new Error('Invalid conversation tool identity.');
       await ensure();
       await database.transaction(async tx => {
+        // A late callback must not recreate events after a retained turn was removed.
         const session = await tx.execute(
-          'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
-          [input.sessionId, input.sessionVersion],
+          'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ? AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = ?)',
+          [input.sessionId, input.sessionVersion, input.messageId],
         );
         if (!session.rows.length)
           throw new Error('Conversation is unavailable.');
