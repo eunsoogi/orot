@@ -21,19 +21,13 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        let feature = node(app, "ai-feature-disease-hypotheses")
-        XCTAssertTrue(UITestConditions.exists(feature) && feature.isHittable)
-        feature.tap()
-        NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["disease-hypotheses-screen"], name: "disease-entry-content-boundary", testCase: self)
-        // The existing fixture seeds only reserved synthetic IDs and returns fixed output without an external model call.
-        let generate = node(app, "disease-hypotheses-generate")
-        XCTAssertTrue(generate.exists && generate.isHittable)
-        generate.tap()
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-entry-content-boundary", testCase: self)
+        // The opt-in fixture reads reserved synthetic rows and returns a fixed answer without model dispatch.
+        submitSourceQuestion(app)
         let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
         XCTAssertTrue(UITestConditions.exists(citation) && citation.isHittable)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["disease-hypotheses-screen"], name: "disease-result-content-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-result-content-boundary", testCase: self)
         citation.tap()
         NavigationUITestConditions.route(app, markers: ["ai-feature-source-detail"])
         XCTAssertTrue(app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."].exists)
@@ -45,9 +39,9 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.staticTexts["합성 저장 기록"].exists)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["ai-feature-source-detail"], name: "evidence-source-selection-boundary", testCase: self)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertTrue(citation.exists && citation.isHittable)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["disease-hypotheses-screen"], name: "disease-source-return-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-source-return-boundary", testCase: self)
     }
 
     @MainActor
@@ -65,13 +59,8 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         }
 
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        let feature = node(app, "ai-feature-disease-hypotheses")
-        FormUITestConditions.reveal(feature, in: app, scrollID: "ai-features-screen")
-        feature.tap()
-        NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
-
-        node(app, "disease-hypotheses-generate").tap()
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        submitSourceQuestion(app)
         let citation = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "원문 근거 열기"),
         ).firstMatch
@@ -106,8 +95,19 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.staticTexts["합성 저장 기록"].exists)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertTrue(UITestConditions.exists(citation), app.debugDescription)
+    }
+
+    @MainActor
+    private func submitSourceQuestion(_ app: XCUIApplication) {
+        let input = node(app, "rag-conversation-input")
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        input.tap()
+        input.typeText("source")
+        let send = node(app, "rag-conversation-send")
+        XCTAssertTrue(send.exists && send.isHittable)
+        send.tap()
     }
 
     @MainActor
