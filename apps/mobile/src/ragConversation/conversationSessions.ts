@@ -12,6 +12,7 @@ import { createConversationSessionRestoreState } from './conversationSessionRest
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
+import { createConversationListeners } from './conversationListeners';
 import {
   createEmptyConversation,
   quarantineConversation,
@@ -37,10 +38,10 @@ export function createConversationSessions(
     sessions: [empty()] as readonly ConversationSession[],
     deleted: null as DeletedConversation | null,
   };
-  const listeners = new Set<() => void>();
+  const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
-  const emit = () => listeners.forEach(listener => listener());
+  const emit = listeners.emit;
   const apply = (next: ConversationSnapshot | null) => {
     if (next) {
       snapshot = next;
@@ -171,10 +172,7 @@ export function createConversationSessions(
       apply,
       valid: () => !disposed,
     }),
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
     setError: (id: number, error: string) => update(id, { error }),
@@ -242,6 +240,9 @@ export function createConversationSessions(
     },
     send: (id: number, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend),
+    // This local identity scopes source access to the selected retained conversation.
+    toolSourceSessionId: (id: number) =>
+      options.retention?.activeIdentity(id) ?? null,
   };
 }
 export type ConversationSessions = ReturnType<

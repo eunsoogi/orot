@@ -7,7 +7,7 @@ import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import type { EvidenceSourceDocument } from './evidenceRegistry';
 import type { ManualHistoryEvidence } from '@orot/domain';
-import { presentHealthContext } from './healthContextPresentation';
+import { presentHealthContextDocument } from './healthContextPresentation';
 import { presentResearchSource } from './researchSourcePresentation';
 import {
   evidenceRecordHero,
@@ -169,7 +169,7 @@ export function presentEvidenceSource(
   document: EvidenceSourceDocument,
 ): readonly EvidenceSourceDetailSection[] {
   if (document.sourceKind === 'health_context_period')
-    return presentHealthContext(document.scope, document.report);
+    return presentHealthContextDocument(document);
   if (document.sourceKind === 'reviewed_memory') {
     return [
       {

@@ -1,4 +1,4 @@
-import { canceled, completeState, operationKey, stop } from './runtimeContext';
+import { canceled, completeState, emitToolEvent, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canReserveToolModelCall } from './evidenceToolModelBudget';
@@ -67,7 +67,24 @@ export async function invokePreparedEvidenceSearch<TResult>(
     // Preserve the domain receiver even when a service implements methods on its prototype.
     parseInput: (value) => tool.parseInput(value),
     search: async (request, runtime) => {
-      const outcome = await tool.search(request, runtime);
+      let dispatched: ReturnType<typeof tool.search>;
+      try {
+        dispatched = tool.search(request, runtime);
+      } finally {
+        // Emit only after entering the domain tool, including a synchronous dispatch error.
+        context.activeToolEvent = {
+          version: 1,
+          operationRunId: state.operationRunId,
+          callId: pending.operationKey,
+          toolName: tool.id,
+          order: state.toolCalls,
+          status: 'started',
+          inputSummary: { sourceKind: tool.sourceKind },
+          sources: [],
+        };
+        emitToolEvent(context, context.activeToolEvent);
+      }
+      const outcome = await dispatched;
       if ('status' in outcome) return outcome;
       // Optional undefined fields are absent in JSON. Retain insertion order for
       // existing range/reference comparisons and checkpoint restoration after validation.
