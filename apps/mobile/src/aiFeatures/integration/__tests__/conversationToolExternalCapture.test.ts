@@ -121,6 +121,31 @@ test('actual public search adapters bind their returned identities to exact reta
         sourceKind: 'external_medical',
         sourceId: index === 0 ? 'public-web' : 'europe-pmc',
       });
+      const changedSource = {
+        ...result.items[0]!,
+        evidenceId: 'conflicting-replay',
+      };
+      const replay = { ...captured.event, sources: [changedSource] };
+      await conversations.appendToolEvent({
+        sessionId: 'session',
+        messageId: `message-${index}`,
+        createdAt: '2026-11-06T00:00:00.000Z',
+        sessionVersion: 0,
+        event: replay,
+      });
+      await bindLiveConversationToolSources(
+        replay,
+        'session',
+        conversations,
+        data,
+        registry,
+      );
+      expect(
+        await registry.resolveToolSource(changedSource, run.controller.signal, {
+          ...event,
+          sessionId: 'session',
+        }),
+      ).toBeUndefined();
       await conversations.discardToolEvent({
         sessionId: 'session',
         messageId: `message-${index}`,
