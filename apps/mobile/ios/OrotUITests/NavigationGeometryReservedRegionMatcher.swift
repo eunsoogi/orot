@@ -82,10 +82,19 @@ enum NavigationGeometryReservedRegionMatcher {
         let safe = GeometryRect(x: window.x + insets.left, y: window.y + insets.top,
                                 width: window.width - insets.left - insets.right,
                                 height: window.height - insets.top - insets.bottom)
-        return side == "right" && safe.width > 0 && safe.height > 0
-            && rectMatches(viewport, safe) && rectMatches(viewport, available)
-            && usable.count == 1 && rectMatches(viewport, usable[0])
-            && rectMatches(bar, navigation)
+        // The native root bar reserves its measured width plus the two design gutters,
+        // unless UIKit already reserves a wider side inset. Consume that edge only once.
+        let railGutter = 12.0
+        let contentRight = min(safe.x + safe.width, window.x + window.width - max(insets.right, bar.width + 2 * railGutter))
+        let expected = GeometryRect(x: safe.x, y: safe.y, width: contentRight - safe.x, height: safe.height)
+        let contained = usable.contains { region in
+            viewport.x >= region.x - 0.5 && viewport.y >= region.y - 0.5
+                && viewport.x + viewport.width <= region.x + region.width + 0.5
+                && viewport.y + viewport.height <= region.y + region.height + 0.5
+        }
+        return side == "right" && expected.width > 0 && expected.height > 0
+            && rectMatches(viewport, expected) && rectMatches(viewport, available)
+            && contained && rectMatches(bar, navigation)
     }
 
     /// Allows half-point floating rounding while preserving the measured frame contract.
