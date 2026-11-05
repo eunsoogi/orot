@@ -27,6 +27,11 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
       status: 'complete' as const,
       question: 'question',
       answer: 'answer',
+      entryIntent: 'possibilities' as const,
+      priorDialogue: [
+        { question: 'earlier report', answer: 'follow-up question' },
+      ],
+      priorUserReports: ['earlier report'],
       sources: [],
     };
     await storage.append(value);
@@ -48,6 +53,17 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
     await expect(storage.append(value)).rejects.toThrow();
     await expect(storage.createSession('late', epoch)).rejects.toThrow();
     expect(await storage.currentGeneration()).toBe(epoch + 1);
+    connection.close();
+    connection = openSqliteTestDatabase(path);
+    storage = createConversationArtifactStorage(connection.database);
+    expect(await storage.read('turn')).toBeNull();
+    expect(
+      (
+        await connection.database.execute(
+          'SELECT result_json FROM conversation_artifacts',
+        )
+      ).rows,
+    ).toEqual([]);
   } finally {
     connection.close();
     rmSync(directory, { recursive: true, force: true });

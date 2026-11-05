@@ -15,6 +15,10 @@ export function createConversationRetentionBridge(input: {
   readonly question: string;
   readonly providerId: string;
   readonly modelId: string;
+  readonly entryIntent?: 'possibilities';
+  readonly priorDialogue?: readonly { question: string; answer: string }[];
+  readonly priorUserReports?: readonly string[];
+  readonly priorDialogueOmitted?: true;
   readonly signal: AbortSignal;
 }) {
   let references: readonly EvidenceReference[] | undefined;
@@ -84,6 +88,16 @@ export function createConversationRetentionBridge(input: {
             : {}),
           providerId: input.providerId,
           modelId: input.modelId,
+          ...(input.entryIntent ? { entryIntent: input.entryIntent } : {}),
+          ...(input.priorDialogue?.length
+            ? { priorDialogue: input.priorDialogue }
+            : {}),
+          ...(input.priorUserReports?.length
+            ? { priorUserReports: input.priorUserReports }
+            : {}),
+          ...(input.priorDialogueOmitted
+            ? { priorDialogueOmitted: true as const }
+            : {}),
           sources: captured.sources,
           citations,
         };

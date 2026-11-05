@@ -17,6 +17,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly incomplete?: boolean;
   readonly completion?: 'complete' | 'partial';
   readonly toolMessageId?: string;
+  /** Only committed turns may be used as durable conversation history. */
+  readonly retainedTurnId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   /** Failed prompts stay visible when the user has already drafted a different question. */
   readonly failed?: boolean;

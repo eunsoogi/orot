@@ -1,8 +1,12 @@
 import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
-import { conversationHistoryPayload } from './conversationHistoryPayload';
+import {
+  conversationHistoryPayload,
+  retainedHistoryTurns,
+} from './conversationHistoryPayload';
 import type { createConversationSessionRetention } from './conversationSessionRetention';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
+import { conversationOutcomeText } from './conversationOutcomeText';
 import {
   retainPartial as retainFailedPartial,
   restoreFailedPrompt,
@@ -26,7 +30,7 @@ export function createConversationSessionRequests(
   retention?: ReturnType<typeof createConversationSessionRetention>,
 ) {
   let messageId = 0;
-  const saveRecovery = createConversationRequestSaveRecovery(update);
+  const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
   const activities = new Map<
@@ -159,6 +163,7 @@ export function createConversationSessionRequests(
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
           conversationScope: conversationScope(id),
+          retainedHistory: retainedHistoryTurns(session.messages, question),
           ...(retention?.activeLease(id)
             ? { retentionSession: retention.activeLease(id)! }
             : {}),
@@ -189,12 +194,6 @@ export function createConversationSessionRequests(
           );
           return;
         }
-        const content =
-          outcome.status === 'answer'
-            ? outcome.answer
-            : outcome.status === 'no_evidence'
-              ? copy.noEvidence
-              : copy.insufficient;
         update(id, {
           pendingMessage: null,
           messages: [
@@ -203,8 +202,11 @@ export function createConversationSessionRequests(
               // Reuse the streamed bubble only after the workflow validates its final answer.
               id: outcome.status === 'answer' ? responseId : ++messageId,
               role: 'assistant',
-              content,
+              content: conversationOutcomeText(outcome),
               ...activity.metadata(),
+              ...(request.committed && retained
+                ? { retainedTurnId: retained.toolMessageId }
+                : {}),
               ...(outcome.status === 'answer'
                 ? {
                     citations: outcome.citations,

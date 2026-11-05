@@ -211,7 +211,15 @@ export function ConversationScreen({
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
                 store.send(id, (question, history, signal, observer) => {
-                  const context = conversationEntryForSession(store, id);
+                  const selected = conversationEntryForSession(store, id);
+                  const context =
+                    session.entryIntent === 'possibilities' &&
+                    (!selected || selected.intent === 'conversation')
+                      ? {
+                          intent: 'possibilities' as const,
+                          entryKey: 'restored',
+                        }
+                      : selected;
                   return context
                     ? onSend(question, history, signal, observer, context)
                     : onSend(question, history, signal, observer);

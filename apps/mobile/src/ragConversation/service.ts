@@ -42,6 +42,12 @@ export interface RagConversationRunOptions {
   readonly entryIntent?: ConversationIntent;
   readonly targetVisitEvidence?: EvidenceItem;
   readonly previousMessages: readonly RagConversationMessage[];
+  /** Locally revalidated prior turns; assistant text is dialogue context, not medical evidence. */
+  readonly validatedPriorTurns?: readonly {
+    question: string;
+    answer: string;
+  }[];
+  readonly priorDialogueOmitted?: boolean;
   readonly loadCurrentEvidence: (
     question: string,
     signal: AbortSignal,
@@ -128,10 +134,18 @@ export async function runRagConversationTurn(
       {
         ...options.workflow,
         request: question,
-        context: (options.entryIntent
+        context: (options.entryIntent ||
+        options.validatedPriorTurns?.length ||
+        options.priorDialogueOmitted
           ? {
               history: boundedHistory(options.previousMessages),
-              intent: options.entryIntent,
+              ...(options.entryIntent ? { intent: options.entryIntent } : {}),
+              ...(options.validatedPriorTurns?.length
+                ? { priorDialogue: options.validatedPriorTurns }
+                : {}),
+              ...(options.priorDialogueOmitted
+                ? { priorDialogueOmitted: true }
+                : {}),
               ...(options.targetVisitEvidence
                 ? { targetEvidenceId: options.targetVisitEvidence.evidenceId }
                 : {}),

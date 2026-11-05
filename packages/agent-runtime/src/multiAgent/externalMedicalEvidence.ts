@@ -136,6 +136,10 @@ function normalizePublication(value: EuropePmcAdapterPublication): EvidenceItem 
     effectiveTime: publicationDate,
     reviewState: 'unknown',
     content: [
+      // These limits describe the fields retrieved in this search, not the publication's availability or status.
+      `Access: ${abstract ? 'title, bibliography and abstract' : 'title and bibliography only'}`,
+      'Full text: not retrieved',
+      'Publication and retraction status: not checked by this adapter',
       `Title: ${title}`,
       `Authors: ${authors ?? 'unavailable'}`,
       `Journal: ${journal ?? 'unavailable'}`,

@@ -1,5 +1,11 @@
 import { createManualHistoryRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import {
+  join,
+  mkdtempSync,
+  rmSync,
+  tmpdir,
+} from '../../../../../../packages/storage/__tests__/sourceEvidenceTestSupport';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStorage';
 import { createConversationSessionRetention } from '../../../ragConversation/conversationSessionRetention';
@@ -20,7 +26,9 @@ import {
 } from '../featureServiceFixtures';
 
 test('retains and reopens a conversation referencing a summary, then removes it with the source', async () => {
-  const connection = openSqliteTestDatabase(':memory:');
+  const directory = mkdtempSync(join(tmpdir(), 'orot-conversation-source-'));
+  const path = join(directory, 'records.sqlite');
+  let connection = openSqliteTestDatabase(path);
   try {
     await runMigrations(connection.database);
     const history = createManualHistoryRepository(connection.database);
@@ -124,14 +132,32 @@ test('retains and reopens a conversation referencing a summary, then removes it 
       ragRunner: runner,
     });
     let sequence = 0;
+    let failFirstWrite = true;
     const retention = createConversationSessionRetention({
-      openStorage: async () => storage,
+      openStorage: async () => ({
+        ...storage,
+        async append(...args) {
+          if (failFirstWrite) {
+            failFirstWrite = false;
+            throw new Error('Synthetic write failure');
+          }
+          return storage.append(...args);
+        },
+      }),
       createId: () => `id-${++sequence}`,
       now: () => '2026-10-05T00:00:00.000Z',
     });
     const sessions = createConversationSessions({ retention });
     sessions.setDraft(1, 'Find previous summary');
     await sessions.send(1, services.sendRagMessage);
+    expect(await storage.read('id-2')).toBeNull();
+    await sessions.retrySave(1);
+    expect(
+      sessions
+        .getSnapshot()
+        .sessions[0]?.messages.find(message => message.role === 'assistant')
+        ?.retainedTurnId,
+    ).toBe('id-2');
     expect((await storage.read('id-2'))?.answer).toContain(
       'Historical summary',
     );
@@ -145,8 +171,23 @@ test('retains and reopens a conversation referencing a summary, then removes it 
       registry: new LocalEvidenceReferenceRegistry(),
     }).read('id-2');
     expect(reopened?.sources[0]?.sourceKind).toBe('generated_artifact');
+    sessions.setDraft(1, 'Could this have changed?');
+    await sessions.send(1, services.sendRagMessage);
+    expect(
+      jest.mocked(runner).mock.calls[1]?.[0].validatedPriorTurns?.[0]?.question,
+    ).toContain('Find previous');
+    const followup = await storage.read('id-3');
+    expect(followup?.priorDialogue?.[0]?.question).toContain('Find previous');
+    expect(followup?.sources).toHaveLength(1);
     await history.delete(entry.id);
     expect(await storage.read('id-2')).toBeNull();
+    expect(await storage.read('id-3')).toBeNull();
+    const callsBeforeDeletedHistory = jest.mocked(runner).mock.calls.length;
+    sessions.setDraft(1, 'Continue the discussion');
+    await sessions.send(1, services.sendRagMessage);
+    expect(jest.mocked(runner).mock.calls).toHaveLength(
+      callsBeforeDeletedHistory,
+    );
     expect(
       (
         await connection.database.execute(
@@ -156,7 +197,15 @@ test('retains and reopens a conversation referencing a summary, then removes it 
       ).rows,
     ).toEqual([]);
     sessions.dispose();
+    connection.close();
+    connection = openSqliteTestDatabase(path);
+    const reopenedStorage = createConversationArtifactStorage(
+      connection.database,
+    );
+    expect(await reopenedStorage.read('id-2')).toBeNull();
+    expect(await reopenedStorage.read('id-3')).toBeNull();
   } finally {
     connection.close();
+    rmSync(directory, { recursive: true, force: true });
   }
 });
