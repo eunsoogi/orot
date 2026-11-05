@@ -4,18 +4,11 @@ import {
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
-import type {
-  AppointmentRepository,
-  HealthObservationPageLoader,
-} from '@orot/storage';
-import type { HealthObservation } from '@orot/domain';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
-import type { CalendarBridge } from './src/calendar/types';
 import { useCalendarAutoSync } from './src/calendar/useCalendarAutoSync';
 import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
-import type { RecordingSourceRecord } from './src/recording/recordingTypes';
 import { AiFeatureSharedNavigationStateProvider } from './src/aiFeatures/integration/AiFeatureSharedNavigationState';
 import {
   AppAiFeatureScene,
@@ -24,8 +17,6 @@ import {
 } from './src/routes/AppAiFeatureScene';
 import { renderVisitQuestionsRoute } from './src/routes/HomeVisitQuestionsRoute';
 import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
-import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
-import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import {
   createNavigationController,
   NavigationRouteAdapter,
@@ -34,6 +25,7 @@ import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
 import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
+import type { AppProps } from './src/routes/AppEntryProps';
 import { useAppHomeData } from './src/routes/useAppHomeData';
 import { useHomeActivity } from './src/routes/useHomeActivity';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
@@ -42,25 +34,7 @@ import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncL
 import { listLocalHealthObservationPage } from './src/healthkit/healthObservationLibrary';
 import { healthObservationFixturePages } from './src/healthkit/healthObservationFixturePages';
 import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
-import type { HealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
-import type { MedicalDocumentImportService } from './src/medicalDocuments/medicalDocumentImportService';
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
-
-interface AppProps {
-  loadAppointments?: () => Promise<AppointmentRepository>;
-  loadRecordings?: () => Promise<readonly RecordingSourceRecord[]>;
-  calendarBridge?: CalendarBridge;
-  /** Keeps older blood-pressure fixtures working while the library uses one shared reader. */
-  loadBloodPressureObservations?: () => Promise<readonly HealthObservation[]>;
-  loadHealthObservations?: () => Promise<readonly HealthObservation[]>;
-  loadHealthObservationPage?: HealthObservationPageLoader;
-  loadHealthRecordMedications?: HealthRecordsMedicationLoader;
-  aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
-  /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
-  renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
-  /** Allows the dedicated picker probe to isolate storage while retaining app navigation. */
-  documentImportService?: MedicalDocumentImportService;
-}
 
 function App({
   loadAppointments = defaultReminderAppointmentLoader,
