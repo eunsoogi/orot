@@ -130,3 +130,17 @@ export {
   TranscriptEvidenceSegmentSchema,
 } from './transcripts';
 export type { TranscriptAudioRange, TranscriptEvidenceSegment } from './transcripts';
+export {
+  RecapInputSchema,
+  RecapEvidenceSchema,
+  RecapQuestionResultSchema,
+  RecapResultSchema,
+} from './recap';
+export type { RecapInput, RecapEvidence, RecapQuestionResult, RecapResult } from './recap';
+export {
+  isRecapResultCurrent,
+  RecapBindingSchema,
+  RecapPreparedQuestionSchema,
+  RecapSourceSchema,
+} from './recap';
+export { RecapModelOutputSchema, recapModelJsonSchema } from './recapModel';
