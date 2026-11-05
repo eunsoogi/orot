@@ -135,5 +135,16 @@ test('a late Home A answer stays in its conversation when a separate Home B entr
     { nativeEvent: { id: 1 } },
   );
   expect(await screen.findByText('A에게만 속한 늦은 답변')).toBeTruthy();
+  // Restoring A from history must not send the currently visible B route's identity.
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'A에 관해 다시 질문',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+  expect(send.mock.calls[1]?.[4]).toMatchObject({
+    intent: 'visit-questions',
+    appointmentId: a.id,
+  });
   expect(generate).not.toHaveBeenCalled();
 });
