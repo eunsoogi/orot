@@ -74,8 +74,8 @@ test('retains official answer history on preparation updates and removes it on e
       ],
       expectedSavedQuestions: snapshot(saved.questions),
     });
-    expect(duplicate.questions).toEqual(saved.questions);
     expect(await official.history(confirmed.id)).toEqual(expectedHistory);
+    expect(duplicate.questions).toEqual(saved.questions);
     expect(await readVisitQuestionRevision(opened.database, questionId)).toBe(
       revision,
     );
