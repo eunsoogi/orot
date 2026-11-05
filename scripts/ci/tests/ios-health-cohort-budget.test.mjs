@@ -27,6 +27,9 @@ const documentJourneys = [
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerGestureDismissalRestoresInteraction',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerRecoversAfterBackgroundAndForeground',
 ];
 const context = { sourceSha: 'a'.repeat(40), runId: '123', attempt: '1' };
 
@@ -45,7 +48,7 @@ function report(cohort) {
 }
 
 test('Health cohorts retain their four cases while both import profiles cover documents', () => {
-  // The three picker journeys belong to both broad profiles; focused Health cohorts remain Health-only.
+  // The six picker journeys belong to both broad profiles; focused Health cohorts remain Health-only.
   assert.deepEqual(iosTestInventory('health-import'), [...original, ...documentJourneys]);
   assert.deepEqual(
     iosTestInventory('fixtures', 'calendar').filter((identifier) =>

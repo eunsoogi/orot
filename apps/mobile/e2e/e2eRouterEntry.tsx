@@ -33,6 +33,10 @@ switch (selectEntryRoute(launchSettings)) {
     // Run the production Records route so the UI test must choose through UIKit's document picker.
     require('./medicalDocumentImportProbeEntry');
     break;
+  case 'medical-document-picker-recovery':
+    // This separate probe isolates storage while retaining the native system picker.
+    require('./medicalDocumentPickerRecoveryProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;

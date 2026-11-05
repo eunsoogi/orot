@@ -43,6 +43,7 @@ import { listLocalHealthObservationPage } from './src/healthkit/healthObservatio
 import { healthObservationFixturePages } from './src/healthkit/healthObservationFixturePages';
 import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
 import type { HealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
+import type { MedicalDocumentImportService } from './src/medicalDocuments/medicalDocumentImportService';
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 
 interface AppProps {
@@ -57,6 +58,8 @@ interface AppProps {
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
   /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
   renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
+  /** Allows the dedicated picker probe to isolate storage while retaining app navigation. */
+  documentImportService?: MedicalDocumentImportService;
 }
 
 function App({
@@ -69,6 +72,7 @@ function App({
   loadHealthRecordMedications,
   aiFeatureServiceDependencies,
   renderVisitQuestions,
+  documentImportService,
 }: AppProps) {
   const readHealthPage = useMemo(() => {
     if (loadHealthObservationPage) return loadHealthObservationPage;
@@ -194,6 +198,7 @@ function App({
               ) : (
                 <AppRouteContent
                   {...homeData}
+                  documentImportService={documentImportService}
                   loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
                   actions={actions}
                   activeTab={activeTab}
