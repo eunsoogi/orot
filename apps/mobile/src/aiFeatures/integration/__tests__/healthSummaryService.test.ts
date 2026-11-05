@@ -112,3 +112,60 @@ test('preserves submitted text and period, and isolates retries between operatio
     f.close();
   }
 });
+
+test('rejects a completed result whose admitted evidence belongs to another period', async () => {
+  const f = await healthContextFixture();
+  try {
+    const runner: typeof runDiseaseHypothesisAnalysis = async options => {
+      const batch = await options.tools[0]!.search({
+        operationRunId: 'run',
+        operationKey: 'read',
+        input: { days: 7, topics: ['sleep'] },
+        allowedScope: { sourceKinds: ['personal_record'] },
+        resultLimit: 8,
+        maxPayloadBytes: 20480,
+        signal: new AbortController().signal,
+      });
+      if ('status' in batch || !batch.items.length)
+        throw new Error('Expected evidence');
+      return {
+        status: 'workflow',
+        result: {
+          status: 'result',
+          value: f.saved.analysis,
+          checkpoint: { evidenceReferences: [f.item] },
+        },
+      } as never;
+    };
+    const selectedAi = async () =>
+      requireSelectedAi(
+        await resolveSelectedAiProvider({
+          selectionStore: selectionStore({
+            providerId: apple.provider.id,
+            modelId: apple.modelId,
+          }),
+          loadAppleOption: async () => apple,
+        }),
+      );
+    const service = createHealthSummaryService({
+      selectedAi,
+      loadData: async () => ({
+        ...localData([]).data,
+        readHealthContext: f.read,
+      }),
+      registry: f.registry,
+      consent,
+      runner,
+      storage: async () => f.storage,
+      createRunId: () => 'run',
+      now: () => '2026-10-10T00:00:00Z',
+      timeZone: () => 'UTC',
+    });
+    await expect(
+      service({ question: '최근 일주일 요약' }, new AbortController().signal),
+    ).rejects.toThrow('does not match');
+    expect(await f.storage.list()).toHaveLength(0);
+  } finally {
+    f.close();
+  }
+});
