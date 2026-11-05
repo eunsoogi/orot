@@ -149,6 +149,7 @@ test('a separate research snapshot is discoverable, readable and invalidates dep
     };
     await saveReviewedVisitQuestions({
       appointmentId: appointment.id,
+      expectedSavedQuestions: [],
       expectedAppointmentRevision: localEvidenceFingerprint(appointment),
       questions: [{ ...candidate, citations: [evidence] }],
       evidence: {
@@ -177,7 +178,7 @@ test('a separate research snapshot is discoverable, readable and invalidates dep
       revalidateEvidence: async () => true,
     });
     expect(
-      await records.get('visit_question', 'visit-question:appointment-1:1'),
+      await records.get('visit_question', 'synthetic-question-1'),
     ).not.toBeNull();
     await research.remove(1);
     expect(await registry.readSource(result.items[0]!, signal)).toEqual({
@@ -186,7 +187,7 @@ test('a separate research snapshot is discoverable, readable and invalidates dep
     expect(await conversations.read('child-turn')).toBeNull();
     expect(await summaries.read('child-summary')).toBeNull();
     expect(
-      await records.get('visit_question', 'visit-question:appointment-1:1'),
+      await records.get('visit_question', 'synthetic-question-1'),
     ).toBeNull();
   } finally {
     db.close();

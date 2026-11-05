@@ -21,6 +21,9 @@ interface QuestionPersistenceInputs<
   readonly contextKeys: MutableRefObject<CommittedContextKeys>;
   readonly draftQuestions: readonly NextVisitQuestion<TReference>[];
   readonly caveats: readonly EvidenceCaveat[];
+  readonly savedBaseline: MutableRefObject<
+    readonly { readonly id: string; readonly revision: string }[] | null
+  >;
   readonly onSaveReviewedQuestions: NextVisitQuestionsScreenProps<TReference>['onSaveReviewedQuestions'];
   readonly setPhase: Dispatch<SetStateAction<QuestionGenerationPhase>>;
   readonly setDraftQuestions: Dispatch<
@@ -41,6 +44,7 @@ export function useQuestionPersistence<
     contextKeys,
     draftQuestions,
     caveats,
+    savedBaseline,
     onSaveReviewedQuestions,
     setPhase,
     setDraftQuestions,
@@ -58,7 +62,11 @@ export function useQuestionPersistence<
   }, [appointmentKey, invalidate]);
 
   const save = useCallback(async () => {
-    if (appointment.status !== 'ready' || !isValidReview(draftQuestions)) {
+    if (
+      appointment.status !== 'ready' ||
+      !isValidReview(draftQuestions) ||
+      !savedBaseline.current
+    ) {
       setSaveMessage(copy.review.empty);
       return;
     }
@@ -77,6 +85,7 @@ export function useQuestionPersistence<
         appointment.appointment,
         copyQuestions(draftQuestions),
         [...caveats],
+        savedBaseline.current,
       );
       if (!isCurrentSave()) return;
       setSavedOverride({
@@ -101,6 +110,7 @@ export function useQuestionPersistence<
     appointment,
     appointmentKey,
     caveats,
+    savedBaseline,
     contextKeys,
     draftQuestions,
     onSaveReviewedQuestions,

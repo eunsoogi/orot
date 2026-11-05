@@ -69,6 +69,7 @@ test('visit questions discover and save a research parent through the production
         appointment: prepared.appointment,
         questions: [{ ...candidate, citations: [source] }],
         caveats: [],
+        expectedSavedQuestions: [],
         resolveSource: services.resolveSource,
         validateGeneratedArtifact: (reference, currentSignal) =>
           generated.validate([reference], currentSignal),
@@ -97,6 +98,7 @@ test('visit questions discover and save a research parent through the production
             saveReviewedQuestions: (questions: readonly (typeof candidate)[]) =>
               saveReviewedVisitQuestions({
                 appointmentId: prepared.appointment.id,
+                expectedSavedQuestions: [],
                 expectedAppointmentRevision: localEvidenceFingerprint(
                   prepared.appointment,
                 ),
@@ -111,7 +113,7 @@ test('visit questions discover and save a research parent through the production
       }),
     );
     expect(result.questions).toHaveLength(1);
-    const questionId = `visit-question:${prepared.appointment.id}:1`;
+    const questionId = 'synthetic-question-1';
     expect(await records.get('visit_question', questionId)).toMatchObject({
       generatedArtifactSources: [
         expect.objectContaining({

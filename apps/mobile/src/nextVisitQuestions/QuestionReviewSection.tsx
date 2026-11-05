@@ -57,7 +57,7 @@ export function QuestionReviewSection<
             count={questions.length}
             editable
             index={index}
-            key={`draft-${index}`}
+            key={question.identity?.id ?? `draft-${index}`}
             onMove={offset => onMove(index, offset)}
             onOpenSource={onOpenSource}
             onRemove={() => onRemove(index)}

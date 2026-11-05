@@ -10,6 +10,10 @@ export function savedHomeQuestions(
     caveats: [],
     restorationNotice: '',
     questions: texts.map((questionText, position) => ({
+      identity: {
+        id: `synthetic-${position}`,
+        expectedRevision: 'fixture-revision',
+      },
       questionText,
       position,
       rationale: '합성 질문',

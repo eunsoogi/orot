@@ -1,4 +1,8 @@
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import {
+  freshCitation,
+  generatedArtifactSource,
+} from './visitQuestionsRouteEvidence';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { Appointment } from '@orot/domain';
 import {
@@ -9,7 +13,6 @@ import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
 } from '../../agent/visitQuestions/taskContract';
-import type { VisitQuestionEvidenceMetadata } from '../../agent/visitQuestions/evidence';
 import type {
   EvidenceCaveat,
   NextVisitQuestion,
@@ -20,6 +23,10 @@ export interface VisitQuestionRouteSaveInput {
   readonly appointment: Appointment;
   readonly questions: readonly NextVisitQuestion<VisitQuestionEvidenceItem>[];
   readonly caveats: readonly EvidenceCaveat[];
+  readonly expectedSavedQuestions: readonly {
+    readonly id: string;
+    readonly revision: string;
+  }[];
   readonly resolveSource: (
     reference: EvidenceReference,
   ) => EvidenceReference | undefined;
@@ -41,54 +48,6 @@ type VisitQuestionContextModule = Pick<
   'prepareUpcomingVisitQuestionContext'
 >;
 type VisitQuestionContextLoader = () => Promise<VisitQuestionContextModule>;
-
-function generatedArtifactSource(
-  citation: VisitQuestionEvidenceItem,
-): NonNullable<VisitQuestionEvidenceMetadata['generatedArtifactSource']> {
-  const locator = citation.locator;
-  const type =
-    typeof locator === 'object' && locator !== null && !Array.isArray(locator)
-      ? (locator as Readonly<Record<string, unknown>>).type
-      : undefined;
-  if (
-    citation.sourceKind !== 'generated_artifact' ||
-    (type !== 'symptom_summary' &&
-      type !== 'disease_possibilities' &&
-      type !== 'conversation_turn' &&
-      type !== 'research_publication' &&
-      type !== 'research_web_explanation') ||
-    citation.sourceId !== citation.evidenceId ||
-    citation.sourceRevision !== citation.evidenceRevision
-  )
-    throw new Error('The generated artifact parent is incomplete or invalid.');
-  return {
-    kind:
-      type === 'research_publication' || type === 'research_web_explanation'
-        ? 'generated_research'
-        : type === 'conversation_turn'
-          ? 'generated_conversation'
-          : 'generated_summary',
-    type,
-    id: citation.sourceId,
-    revision: citation.sourceRevision,
-  };
-}
-
-function freshCitation(
-  items: readonly VisitQuestionEvidenceItem[],
-  citation: VisitQuestionEvidenceItem,
-  resolved: EvidenceReference | undefined,
-) {
-  return items.find(item =>
-    resolved
-      ? item.sourceKind === resolved.sourceKind &&
-        item.sourceId === resolved.sourceId &&
-        item.sourceRevision === resolved.sourceRevision &&
-        item.evidenceId === resolved.evidenceId &&
-        item.evidenceRevision === resolved.evidenceRevision
-      : visitQuestionCitationKey(item) === visitQuestionCitationKey(citation),
-  );
-}
 
 export async function saveVisitQuestionRoute(
   input: VisitQuestionRouteSaveInput,
@@ -218,6 +177,7 @@ export async function saveVisitQuestionRoute(
       citations.push(current);
     }
     reviewed.push({
+      ...(question.identity ? { identity: question.identity } : {}),
       ...(question.kind ? { kind: question.kind } : {}),
       ...(question.legacySource ? { legacySource: question.legacySource } : {}),
       questionText: question.questionText,
@@ -228,19 +188,26 @@ export async function saveVisitQuestionRoute(
     });
   }
 
-  const saved = await context.saveReviewedQuestions(reviewed);
+  const saved = await context.saveReviewedQuestions(
+    reviewed,
+    input.expectedSavedQuestions,
+  );
   return {
-    questions: reviewed.map((question, index) =>
-      question.legacySource
+    questions: reviewed.map((question, index) => ({
+      ...question,
+      identity: {
+        id: saved.questions[index]!.id,
+        expectedRevision: localEvidenceFingerprint(saved.questions[index]),
+      },
+      ...(question.legacySource
         ? {
-            ...question,
             legacySource: {
               id: saved.questions[index]!.id,
               revision: localEvidenceFingerprint(saved.questions[index]),
             },
           }
-        : question,
-    ),
+        : {}),
+    })),
     caveats: input.caveats,
     memoryStatus: saved.memoryStatus,
     validateSource: async (reference, signal) =>
