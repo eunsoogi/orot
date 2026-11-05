@@ -50,12 +50,14 @@ export const homeMetricStyles = StyleSheet.create({
   comparisonIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexBasis: 78,
-    flexShrink: 1,
+    flexBasis: 140,
+    flexShrink: 0,
     minWidth: 48,
-    maxWidth: 78,
+    maxWidth: 140,
     gap: 6,
   },
+  // A separate heading must not inherit the narrow inline identity width.
+  comparisonIdentityFull: { flexBasis: 'auto', maxWidth: '100%', minWidth: 0 },
   comparisonDivider: {
     alignSelf: 'stretch',
     width: StyleSheet.hairlineWidth,

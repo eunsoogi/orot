@@ -3,7 +3,7 @@ export const homeMetricGridGap = 8;
 const minimumMetricCardWidth = 160;
 const minimumRecentChangeRowWidth = 280;
 
-export type HomeRecentChangeLayout = 'row' | 'column';
+export type HomeRecentChangeLayout = 'row' | 'header' | 'column';
 
 export interface HomeMetricGridLayout {
   readonly columns: 1 | 2;
@@ -38,7 +38,8 @@ export function resolveHomeRecentChangeLayout(
 ): HomeRecentChangeLayout {
   if (measuredWidth <= 0) return 'row';
 
-  return measuredWidth >= minimumRecentChangeRowWidth * Math.max(1, fontScale)
-    ? 'row'
-    : 'column';
+  if (fontScale > 1.15 || measuredWidth < minimumRecentChangeRowWidth)
+    return 'column';
+  // Reserve a full heading when the identity and both values cannot share a row.
+  return measuredWidth >= 430 ? 'row' : 'header';
 }

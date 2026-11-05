@@ -168,12 +168,13 @@ test('reflows measured card widths on resize and large text changes', async () =
 });
 
 test.each([
-  [288, 1, 'row'],
-  [260, 1, 'column'],
-  [288, 1.25, 'column'],
+  [500, 1, 'row', 'wide'],
+  [321, 1, 'column', 'header'],
+  [260, 1, 'column', 'stacked'],
+  [321, 1.25, 'column', 'stacked'],
 ] as const)(
   'uses responsive layout at %ipt body width and %f font scale (%s expected)',
-  async (bodyWidth, fontScale, direction) => {
+  async (bodyWidth, fontScale, direction, mode) => {
     jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({
       width: 390,
       height: 800,
@@ -205,7 +206,14 @@ test.each([
     expect(comparison).toHaveTextContent(/450분/u);
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 3일/7일');
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 4일/7일');
-    if (direction === 'row') {
+    const identity = StyleSheet.flatten(
+      screen.getByTestId('home-recent-change-identity-sleep').props.style,
+    );
+    expect(identity.maxWidth).toBe(mode === 'wide' ? 140 : '100%');
+    expect(
+      Boolean(screen.queryByTestId('home-recent-change-periods-sleep')),
+    ).toBe(mode !== 'stacked');
+    if (mode !== 'stacked') {
       expect(screen.getAllByText('이전 7일')).toHaveLength(2);
       expect(screen.getByText('· 3일 기록')).toBeTruthy();
       expect(screen.getAllByText('최근 7일')).toHaveLength(2);

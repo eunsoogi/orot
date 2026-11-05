@@ -85,13 +85,19 @@ export function HomeRecentHealthChange({
       ]}
       testID={`home-recent-change-${metric.metric}`}
     >
-      <View style={styles.comparisonIdentity}>
+      <View
+        style={[
+          styles.comparisonIdentity,
+          layout !== 'row' && styles.comparisonIdentityFull,
+        ]}
+        testID={`home-recent-change-identity-${metric.metric}`}
+      >
         <AppSymbol name={symbol} size={18} color={appColors.secondary} />
         <Text style={styles.comparisonTitle}>{title}</Text>
       </View>
-      {layout === 'row' ? (
+      {layout !== 'column' ? (
         <>
-          <View style={styles.comparisonDivider} />
+          {layout === 'row' ? <View style={styles.comparisonDivider} /> : null}
           <View
             style={styles.comparisonPeriods}
             testID={`home-recent-change-periods-${metric.metric}`}
