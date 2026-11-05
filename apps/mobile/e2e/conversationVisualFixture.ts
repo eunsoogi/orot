@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import type { ConversationToolEvent } from '@orot/agent-runtime';
 import { conversationToolEventFixtures } from '../src/ragConversation/testSupport/conversationToolEventFixtures';
 import type { ConversationScreen } from '../src/ragConversation/ConversationScreen';
 import { evidenceVisualReference } from './evidenceVisualFixtures';
@@ -6,13 +7,53 @@ import { evidenceVisualReference } from './evidenceVisualFixtures';
 export const syntheticConversationAnswer =
   '합성 기록에는 복약, 활동과 수면 정보가 함께 있어요. 실제 증상의 원인을 확정한 답변은 아니에요.';
 
-const syntheticToolEvents = conversationToolEventFixtures
-  .slice(0, 2)
-  .map(event => ({
-    ...event,
-    operationRunId: 'conversation-visual-tool-events',
+const completedToolEvent = conversationToolEventFixtures[0]!;
+const failedToolEvent = conversationToolEventFixtures[1]!;
+const interruptedToolEvent = conversationToolEventFixtures[2]!;
+const syntheticToolRunId = 'conversation-visual-tool-events';
+
+/** Keep every rendered state synthetic while preserving retry identity across two runs. */
+const syntheticToolEvents: readonly ConversationToolEvent[] = [
+  {
+    version: 1,
+    operationRunId: syntheticToolRunId,
+    callId: 'tool-running',
+    toolName: completedToolEvent.toolName,
+    order: 1,
+    status: 'started',
+    inputSummary: completedToolEvent.inputSummary,
     sources: [],
-  }));
+  },
+  {
+    ...completedToolEvent,
+    operationRunId: syntheticToolRunId,
+    callId: 'tool-1',
+    order: 2,
+    resultSummary: { referenceCount: 0 },
+    sources: [],
+  },
+  {
+    ...failedToolEvent,
+    operationRunId: syntheticToolRunId,
+    callId: 'tool-2',
+    order: 3,
+    sources: [],
+  },
+  {
+    ...failedToolEvent,
+    operationRunId: syntheticToolRunId,
+    callId: 'tool-cancelled',
+    order: 4,
+    status: 'cancelled',
+    sources: [],
+  },
+  {
+    ...interruptedToolEvent,
+    operationRunId: 'conversation-visual-tool-retry',
+    callId: 'tool-1',
+    sources: [],
+  },
+];
 
 /** Explicit local UI fixture: no storage, retrieval engine, network or model is invoked. */
 export const sendSyntheticConversation: ComponentProps<
