@@ -97,6 +97,39 @@ test('tool failure closes its own call without retaining error details', async (
   expect(JSON.stringify(events)).not.toContain('private error token');
 });
 
+test('input rejected at the dispatch adapter produces no actual tool event', async () => {
+  const f = standardSearchFixture(false);
+  const events: ConversationToolEvent[] = [];
+  let parses = 0;
+  const tool = {
+    ...f.tool,
+    parseInput(input: unknown) {
+      if (++parses > 1) throw new Error('rejected');
+      return f.tool.parseInput(input);
+    },
+  };
+  await runMultiAgentWorkflow(
+    { ...f.options, tools: [tool] },
+    { config: f.config, onToolEvent: (value) => events.push(value) },
+  );
+  expect(f.searchDomain).not.toHaveBeenCalled();
+  expect(events).toEqual([]);
+});
+
+test('a request cancelled before dispatch produces no actual tool event', async () => {
+  const f = standardSearchFixture(false);
+  const controller = new AbortController();
+  controller.abort();
+  const events: ConversationToolEvent[] = [];
+  await runMultiAgentWorkflow(f.options, {
+    config: f.config,
+    signal: controller.signal,
+    onToolEvent: (value) => events.push(value),
+  });
+  expect(f.searchDomain).not.toHaveBeenCalled();
+  expect(events).toEqual([]);
+});
+
 test('cancellation closes a started call and observer exceptions do not alter execution', async () => {
   const f = standardSearchFixture(false);
   const controller = new AbortController();
@@ -110,6 +143,7 @@ test('cancellation closes a started call and observer exceptions do not alter ex
     },
   });
   expect(outcome.status).toBe('cancelled');
+  expect(f.searchDomain).toHaveBeenCalledTimes(1);
   expect(events.map((e) => e.status)).toEqual(['started', 'cancelled']);
   const valid = standardSearchFixture(false);
   expect(

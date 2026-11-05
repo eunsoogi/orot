@@ -2,14 +2,7 @@ import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coverageP
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import {
-  canceled,
-  completeState,
-  reportProgress,
-  stop,
-  emitToolEvent,
-  finishToolEvent,
-} from './runtimeContext';
+import { canceled, completeState, reportProgress, stop, finishToolEvent } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -36,17 +29,6 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
-    context.activeToolEvent = {
-      version: 1,
-      operationRunId: state.operationRunId,
-      callId: state.pendingOperation.operationKey,
-      toolName: tool.id,
-      order: state.toolCalls,
-      status: 'started',
-      inputSummary: { sourceKind: tool.sourceKind },
-      sources: [],
-    };
-    emitToolEvent(context, context.activeToolEvent);
     reportProgress(context, {
       type: 'evidence_search',
       status: 'started',

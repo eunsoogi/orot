@@ -91,13 +91,39 @@ test('restored tool references resolve to the same source as the retained citati
       },
       oldRegistry,
     );
+    const dependency = captured.dependencies[0]!;
+    if (!('records' in dependency))
+      throw new Error('Expected a record source.');
     await storage.appendToolEvent({
       sessionId: 'session',
       messageId: 'turn',
       createdAt,
       sessionVersion: 0,
       ...captured,
+      dependencies: [
+        {
+          ...dependency,
+          privateExtra: 'SECRET_DEPENDENCY',
+          reference: {
+            ...dependency.reference,
+            hidden: 'SECRET_REFERENCE',
+          } as typeof dependency.reference,
+          records: dependency.records.map(item => ({
+            ...item,
+            content: 'SECRET_RECORD',
+          })),
+        } as typeof dependency,
+      ],
     });
+    expect(
+      JSON.stringify(
+        (
+          await connection.database.execute(
+            'SELECT sources_json FROM conversation_tool_lineage',
+          )
+        ).rows,
+      ),
+    ).not.toMatch(/SECRET_/);
     await storage.append({
       id: 'turn',
       sessionId: 'session',

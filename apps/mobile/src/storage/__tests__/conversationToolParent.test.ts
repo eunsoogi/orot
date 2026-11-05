@@ -60,9 +60,28 @@ test('removing a generated conversation parent deletes an unfinished tool result
         resultSummary: { referenceCount: 1 },
         sources: [projected],
       },
-      dependencies: [source],
+      dependencies: [
+        {
+          ...source,
+          privateExtra: 'SECRET_RAW_OUTPUT',
+          reference: {
+            ...source.reference,
+            hiddenReasoning: 'SECRET_RAW_REASONING',
+            locator: { ...source.reference.locator, query: 'SECRET_RAW_QUERY' },
+          },
+        },
+      ],
     };
     await storage.appendToolEvent(input);
+    expect(
+      JSON.stringify(
+        (
+          await connection.database.execute(
+            'SELECT sources_json FROM conversation_tool_lineage',
+          )
+        ).rows,
+      ),
+    ).not.toMatch(/SECRET_RAW_/);
     await storage.deleteSession('parent');
     expect(await storage.readToolTurns('child')).toEqual([]);
     await expect(storage.appendToolEvent(input)).rejects.toThrow();

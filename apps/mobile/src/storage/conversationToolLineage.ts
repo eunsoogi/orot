@@ -3,6 +3,11 @@ import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
+import {
+  isGeneratedConversationSource,
+  isGeneratedResearchSource,
+  isGeneratedSummarySource,
+} from '../ragConversation/conversationArtifactSources';
 
 /** Decode the existing source contract without persisting a synthetic conversation artifact. */
 export function decodeToolLineage(
@@ -41,7 +46,59 @@ export function decodeToolLineage(
     })
   )
     throw new Error('Tool source lineage does not match its event.');
-  return artifact;
+  const sources = artifact.sources.map(source => {
+    const ref = source.reference;
+    const projected = {
+      sourceKind: ref.sourceKind,
+      sourceId: ref.sourceId,
+      sourceRevision: ref.sourceRevision,
+      evidenceId: ref.evidenceId,
+      evidenceRevision: ref.evidenceRevision,
+      effectiveTime: null,
+      reviewState: 'unknown' as const,
+    };
+    if (isPeriodSummarySource(source)) {
+      if (source.scope.window.doseHistory?.medicationName !== undefined)
+        throw new Error(
+          'Filtered medication tool sources cannot be retained safely.',
+        );
+      return {
+        kind: source.kind,
+        scope: source.scope,
+        revision: source.revision,
+        deletionGeneration: source.deletionGeneration,
+        reference: {
+          ...projected,
+          locator: JSON.parse(JSON.stringify(source.scope)),
+        },
+      };
+    }
+    if (
+      isGeneratedConversationSource(source) ||
+      isGeneratedResearchSource(source) ||
+      isGeneratedSummarySource(source)
+    ) {
+      const locator = ref.locator as { type: string };
+      return {
+        kind: source.kind,
+        id: source.id,
+        revision: source.revision,
+        reference: {
+          ...projected,
+          locator: { kind: 'generated_artifact', type: locator.type },
+        },
+      };
+    }
+    return {
+      reference: { ...projected, locator: null },
+      records: source.records.map(record => ({
+        kind: record.kind,
+        id: record.id,
+        revision: record.revision,
+      })),
+    };
+  });
+  return { ...artifact, sources };
 }
 
 export type ToolLineage = readonly ConversationArtifactSource[];

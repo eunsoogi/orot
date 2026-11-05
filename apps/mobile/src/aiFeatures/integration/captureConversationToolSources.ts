@@ -28,6 +28,14 @@ export async function captureConversationToolSources(
     );
     const dependency = captured.sources[0];
     if (!dependency) throw new Error('Tool source is unavailable.');
+    // The model-supplied filter is private input and cannot enter the durable lineage.
+    if (
+      isPeriodSummarySource(dependency) &&
+      dependency.scope.window.doseHistory?.medicationName !== undefined
+    )
+      throw new Error(
+        'Filtered medication tool sources cannot be retained safely.',
+      );
     const ref = dependency.reference;
     const projected = {
       sourceKind: ref.sourceKind,

@@ -18,9 +18,7 @@ export function createConversationSessionRetention(input: {
   openStorage: () => Promise<Storage>;
   createId: () => string;
   now: () => string;
-  captureToolSources?: (
-    event: ConversationToolEvent,
-  ) => Promise<{
+  captureToolSources?: (event: ConversationToolEvent) => Promise<{
     event: ConversationToolEvent;
     dependencies: readonly ConversationArtifactSource[];
   }>;
