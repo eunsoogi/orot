@@ -15,6 +15,8 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + AppearanceUITestConditions.observationArguments
+        // Compare the real UIKit window with the committed content and rail measurements.
+        app.launchArguments += ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
         app.launch()
         var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
@@ -86,7 +88,15 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(element), app.debugDescription)
             XCTAssertFalse(element.frame.isEmpty, element.debugDescription)
         }
-        XCTAssertTrue(UITestConditions.exists(node(app, "navigation-right-rail")))
+        let ai = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").control
+        XCTAssertTrue(rail.isHittable && ai.exists && ai.isHittable && ai.isSelected)
+        XCTAssertGreaterThanOrEqual(ai.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(ai.frame.height, 44)
+        XCTAssertTrue(rail.frame.insetBy(dx: -1, dy: -1).contains(ai.frame))
+        let activeBars = app.descendants(matching: .any).matching(identifier: "navigation-root-tabs-glass-backdrop")
+            .allElementsBoundByIndex.filter { $0.exists && $0.isHittable && $0.frame.insetBy(dx: -1, dy: -1).contains(ai.frame) }
+        XCTAssertEqual(activeBars.count, 1, "The selected AI control must belong to one active root bar")
+        try assertRightRailGeometry(app, viewport: viewport.frame, bar: rail.frame)
         XCTAssertLessThanOrEqual(viewport.frame.maxX, rail.frame.minX + 0.5, app.debugDescription)
         XCTAssertGreaterThanOrEqual(screen.frame.width, viewport.frame.width * 0.75, screen.debugDescription)
         XCTAssertGreaterThanOrEqual(input.frame.minX, viewport.frame.minX - 0.5)
@@ -113,6 +123,51 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+    }
+
+    /// Compares the visible lane and native toolbar with independently sampled UIKit geometry.
+    @MainActor
+    private func assertRightRailGeometry(_ app: XCUIApplication, viewport: CGRect, bar: CGRect) throws {
+        typealias Matcher = NavigationGeometryReservedRegionMatcher
+        let report = try XCTUnwrap(NavigationUITestConditions.observationSnapshot(
+            app, testCase: self, attachmentName: "duo-entry-native-geometry",
+        ))
+        let reference = try XCTUnwrap(report["windowGeometry"] as? [String: Any])
+        let lifecycle = try XCTUnwrap(report["lifecycle"] as? [[String: Any]])
+        let native = try XCTUnwrap(lifecycle.last { $0["event"] as? String == "window-geometry-context" })
+        let shared = try XCTUnwrap(lifecycle.last { $0["event"] as? String == "navigation-content-frame" })
+        let contextJSON = try XCTUnwrap(native["normalizedSnapshot"] as? String)
+        let frameJSON = try XCTUnwrap(shared["frame"] as? String)
+        let context = try JSONDecoder().decode(NavigationWindowGeometryUITestConditions.GeometrySnapshot.self, from: Data(contextJSON.utf8))
+        let publicUIKit = try JSONDecoder().decode(Matcher.GeometryPayload.self, from: JSONSerialization.data(withJSONObject: reference))
+        let frame = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(frameJSON.utf8)) as? [String: Any])
+        let contextFields = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contextJSON.utf8)) as? [String: Any])
+        let controls = try XCTUnwrap(reference["navigationControls"] as? [String: Any])
+        XCTAssertEqual(controls["truncated"] as? Bool, false)
+        let frames = try XCTUnwrap(controls["frames"] as? [[String: Any]])
+        let rootFrames = frames.filter { $0["identifier"] as? String == "navigation-root-tabs-glass-backdrop" }
+        XCTAssertEqual(rootFrames.count, 1)
+        let nativeBar = try decodeRect(try XCTUnwrap(rootFrames.first?["frame"]))
+        let contextBar = try decodeRect(contextFields["navigationFrame"])
+        let available = try decodeRect(frame["availableContentFrame"])
+        let navigation = try decodeRect(frame["navigationFrame"])
+        XCTAssertTrue(context.payload.matches(publicUIKit), "Native context must match current UIKit window and reservations")
+        XCTAssertTrue(Matcher.rectMatches(geometryRect(bar), nativeBar) && Matcher.rectMatches(geometryRect(bar), contextBar),
+                      "The accessibility bar must match UIKit and context navigation frames")
+        XCTAssertTrue(Matcher.rightRailMatches(
+            window: publicUIKit.windowBounds, insets: publicUIKit.safeAreaInsets, usable: context.usableRegions,
+            viewport: geometryRect(viewport), available: available, bar: geometryRect(bar),
+            navigation: navigation, side: frame["side"] as? String ?? ""
+        ), "The right rail and content lane must match their UIKit-backed geometry")
+    }
+
+    private func decodeRect(_ object: Any?) throws -> NavigationGeometryReservedRegionMatcher.GeometryRect {
+        try JSONDecoder().decode(NavigationGeometryReservedRegionMatcher.GeometryRect.self,
+                                 from: JSONSerialization.data(withJSONObject: XCTUnwrap(object)))
+    }
+
+    private func geometryRect(_ frame: CGRect) -> NavigationGeometryReservedRegionMatcher.GeometryRect {
+        .init(x: frame.minX, y: frame.minY, width: frame.width, height: frame.height)
     }
 
     @MainActor

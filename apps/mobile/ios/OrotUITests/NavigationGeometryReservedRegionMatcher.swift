@@ -74,6 +74,20 @@ enum NavigationGeometryReservedRegionMatcher {
         }
     }
 
+    /// Binds the measured rail and available lane to UIKit's safe area and committed usable region.
+    static func rightRailMatches(window: GeometryRect, insets: GeometryInsets, usable: [GeometryRect],
+                                 viewport: GeometryRect, available: GeometryRect, bar: GeometryRect,
+                                 navigation: GeometryRect, side: String) -> Bool
+    {
+        let safe = GeometryRect(x: window.x + insets.left, y: window.y + insets.top,
+                                width: window.width - insets.left - insets.right,
+                                height: window.height - insets.top - insets.bottom)
+        return side == "right" && safe.width > 0 && safe.height > 0
+            && rectMatches(viewport, safe) && rectMatches(viewport, available)
+            && usable.count == 1 && rectMatches(viewport, usable[0])
+            && rectMatches(bar, navigation)
+    }
+
     /// Allows half-point floating rounding while preserving the measured frame contract.
     static func rectMatches(_ first: GeometryRect, _ second: GeometryRect) -> Bool {
         abs(first.x - second.x) <= 0.5 && abs(first.y - second.y) <= 0.5
