@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useInferenceConsent } from '../../../agent/execution/useInferenceConsent';
 import { Button } from 'react-native';
 import { NavigationRouteAdapter } from '../../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../../navigation/navigationController';
@@ -24,10 +25,7 @@ export function RetainedVisitModuleHarness({
   const [controller] = useState(() =>
     createNavigationController<AiFeatureRouteName>('app-home'),
   );
-  const consent = useMemo(
-    () => ({ authorize: async () => 'authorized' as const }),
-    [],
-  );
+  const { consent, disclosureSheet } = useInferenceConsent();
   const services = useMemo(
     () => createAiFeatureServices(consent, dependencies),
     [consent, dependencies],
@@ -73,6 +71,7 @@ export function RetainedVisitModuleHarness({
           )
         }
       </NavigationRouteAdapter>
+      {disclosureSheet}
     </AiFeatureSharedNavigationStateProvider>
   );
 }

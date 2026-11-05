@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import { FeatureEntryScreen } from '../../aiFeatures/FeatureEntryScreen';
+import { Button, Dimensions, StyleSheet, View } from 'react-native';
 import { AiFeatureFlowScreen } from '../../aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServices } from '../../aiFeatures/integration/featureServices';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
@@ -9,7 +8,7 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import type { DiseaseHypothesisRunOutcome } from '../task';
+import type { DiseaseHypothesisAnalysis } from '../types';
 
 const noop = () => undefined;
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -124,30 +123,25 @@ const source = {
   reviewState: 'reviewed' as const,
 };
 
-function result(title: string): DiseaseHypothesisRunOutcome {
-  return {
-    status: 'workflow',
-    result: {
-      status: 'result',
-      value: {
-        presentation: 'symptom_summary',
-        hypotheses: [
-          {
-            title,
-            summary: 'Synthetic route result.',
-            supportingEvidence: [source],
-            contraryEvidence: [],
-            uncertainty: 'Synthetic evidence only.',
-            missingData: [],
-          },
-        ],
-      },
-      citations: [source],
-      coverage: [],
-      checkpoint: {} as never,
+const restored: DiseaseHypothesisAnalysis = {
+  presentation: 'symptom_summary',
+  savedSummary: {
+    status: 'saved',
+    id: 'saved-summary',
+    createdAt: '2035-01-01T00:00:00Z',
+    modelName: 'Synthetic',
+  },
+  hypotheses: [
+    {
+      title: 'Synthetic symptom summary',
+      summary: 'Synthetic route result.',
+      supportingEvidence: [source],
+      contraryEvidence: [],
+      uncertainty: 'Synthetic evidence only.',
+      missingData: [],
     },
-  };
-}
+  ],
+};
 
 beforeEach(() => {
   routeController = undefined;
@@ -160,11 +154,11 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('uses both native regions through the production AI route and retains actions when narrow', async () => {
+test('restores saved analysis and source across expanded and narrow production routes', async () => {
   const controller = createNavigationController<AppNavigationRoute>('home');
   routeController = controller;
-  const summary = jest.fn(async () => result('Synthetic symptom summary'));
-  const assessment = jest.fn(async () => result('Synthetic assessment result'));
+  const summary = jest.fn();
+  const assessment = jest.fn();
   const onOpenSource = jest.fn();
   const services = {
     summarizeSymptoms: summary,
@@ -180,14 +174,15 @@ test('uses both native regions through the production AI route and retains actio
     >
       {actions =>
         actions.route.name === 'home' ? (
-          <FeatureEntryScreen
-            onOpenDiseaseHypotheses={() => actions.push('disease-hypotheses')}
-            onOpenRagConversation={noop}
-            onOpenExternalEvidence={noop}
+          <Button
+            title="Open saved analysis"
+            testID="open-saved-analysis"
+            onPress={() => actions.push('saved-analysis')}
           />
-        ) : actions.route.name === 'disease-hypotheses' ? (
+        ) : actions.route.name === 'saved-analysis' ? (
           <AiFeatureFlowScreen
-            route="disease-hypotheses"
+            route="saved-analysis"
+            restoredSummary={restored}
             navigationRouteKey={actions.route.key}
             onFeatureNavigationStateChange={noop}
             onRouteStateChange={noop}
@@ -208,9 +203,8 @@ test('uses both native regions through the production AI route and retains actio
     </NavigationRouteAdapter>,
   );
 
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
+  await fireEvent.press(screen.getByTestId('open-saved-analysis'));
   const routeKey = controller.getSnapshot().currentRoute.key;
-  await fireEvent.press(screen.getByTestId('symptom-summary-generate'));
   expect(await screen.findByText('Synthetic symptom summary')).toBeTruthy();
 
   activeGeometry = geometry(1280, true);
@@ -224,8 +218,8 @@ test('uses both native regions through the production AI route and retains actio
   expect(
     screen.getByTestId('disease-hypotheses-columns-secondary'),
   ).toBeTruthy();
-  expect(screen.getByTestId('symptom-summary-generate')).toBeTruthy();
-  expect(screen.getByTestId('disease-hypotheses-generate')).toBeTruthy();
+  expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
+  expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
   expect(onOpenSource).toHaveBeenCalledWith(source);
 
@@ -236,11 +230,14 @@ test('uses both native regions through the production AI route and retains actio
   });
   expect(columnsAxis()).toBe('column');
   expect(screen.getByText('Synthetic symptom summary')).toBeTruthy();
-  expect(screen.getByTestId('symptom-summary-generate')).toBeTruthy();
-  expect(screen.getByTestId('disease-hypotheses-generate')).toBeTruthy();
+  expect(
+    screen.getByTestId('disease-hypotheses-columns-secondary'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
+  expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
+  expect(onOpenSource).toHaveBeenCalledTimes(2);
 
-  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
-  expect(await screen.findByText('Synthetic assessment result')).toBeTruthy();
-  expect(summary).toHaveBeenCalledTimes(1);
-  expect(assessment).toHaveBeenCalledTimes(1);
+  expect(summary).not.toHaveBeenCalled();
+  expect(assessment).not.toHaveBeenCalled();
 });

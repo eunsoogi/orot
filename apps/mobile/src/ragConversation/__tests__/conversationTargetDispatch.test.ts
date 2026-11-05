@@ -16,12 +16,10 @@ test('dispatches the selected alias and intent independently of the edited reque
     content: 'appointment: {"status":"scheduled"}',
   };
   const consent = { authorize: jest.fn() };
-  jest
-    .mocked(runMultiAgentWorkflow)
-    .mockResolvedValue({
-      status: 'needs_clarification',
-      message: 'No current evidence is available.',
-    } as never);
+  jest.mocked(runMultiAgentWorkflow).mockResolvedValue({
+    status: 'needs_clarification',
+    message: 'No current evidence is available.',
+  } as never);
   await runRagConversationTurn({
     question: '수정한 요청',
     entryIntent: 'visit-questions',
