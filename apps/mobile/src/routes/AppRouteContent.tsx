@@ -24,6 +24,7 @@ export type { AppNavigationRoute } from './appNavigationRoute';
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
+  documentImportService,
   loadSavedVisitQuestions,
   actions,
   activeTab,
@@ -87,6 +88,7 @@ export function AppRouteContent({
       case 'records':
         return (
           <RecordsRoute
+            documentImportService={documentImportService}
             recordings={recordings}
             recordingState={recordingState}
             onRetryRecordings={() => refreshRecordings()}

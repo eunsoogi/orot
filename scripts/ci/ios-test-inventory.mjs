@@ -44,6 +44,8 @@ export const healthImportTests = [
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerGestureDismissalRestoresInteraction',
 ];
 export const localModelTests = [
   'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation',
@@ -124,6 +126,8 @@ export const fixtureTests = [
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerGestureDismissalRestoresInteraction',
 ];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
