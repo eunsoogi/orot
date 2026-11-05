@@ -29,6 +29,7 @@ precondition(check(lane, lane, [lane], bar, "right"))
 precondition(!check(wrongLane, wrongLane, [lane], bar, "right"))
 precondition(!check(lane, wrongLane, [lane], bar, "right"))
 precondition(!check(lane, lane, [narrowUsable], bar, "right"))
+precondition(!check(lane, lane, [wrongLane], bar, "right"))
 precondition(!check(lane, lane, [lane], wrongBar, "right"))
 precondition(!check(lane, lane, [lane], bar, "bottom"))
 // Rotated UIKit has no right safe inset; the measured rail still needs its design gutters.

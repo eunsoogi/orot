@@ -87,6 +87,11 @@ enum NavigationGeometryReservedRegionMatcher {
         let railGutter = 12.0
         let contentRight = min(safe.x + safe.width, window.x + window.width - max(insets.right, bar.width + 2 * railGutter))
         let expected = GeometryRect(x: safe.x, y: safe.y, width: contentRight - safe.x, height: safe.height)
+        let regionsWithinSafeArea = usable.allSatisfy { region in
+            region.x >= safe.x - 0.5 && region.y >= safe.y - 0.5
+                && region.x + region.width <= safe.x + safe.width + 0.5
+                && region.y + region.height <= safe.y + safe.height + 0.5
+        }
         let contained = usable.contains { region in
             viewport.x >= region.x - 0.5 && viewport.y >= region.y - 0.5
                 && viewport.x + viewport.width <= region.x + region.width + 0.5
@@ -94,7 +99,7 @@ enum NavigationGeometryReservedRegionMatcher {
         }
         return side == "right" && expected.width > 0 && expected.height > 0
             && rectMatches(viewport, expected) && rectMatches(viewport, available)
-            && contained && rectMatches(bar, navigation)
+            && regionsWithinSafeArea && contained && rectMatches(bar, navigation)
     }
 
     /// Allows half-point floating rounding while preserving the measured frame contract.
