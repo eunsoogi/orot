@@ -13,6 +13,21 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         launch(app, fixture: "text-pdf", largeText: true)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        let page = recordsPage(app)
+        let fileAction = recordsImportBodyAction(app)
+        // VoiceOver uses a button's native accessibility label as its name.
+        XCTAssertEqual(fileAction.label, "파일에서 의료 문서 가져오기")
+        XCTAssertGreaterThan(fileAction.frame.height, 70, "Accessibility text must wrap within the file action.")
+        XCTAssertTrue(fileAction.isHittable && page.frame.contains(fileAction.frame), app.debugDescription)
+        capture(app, "medical-document-import-file-action-accessibility-xxxl")
+
+        let photoAction = recordsImportPhotoBodyAction(app)
+        XCTAssertEqual(photoAction.label, "사진에서 의료 문서 가져오기")
+        XCTAssertGreaterThan(photoAction.frame.height, 70, "Accessibility text must wrap within the photo action.")
+        XCTAssertTrue(photoAction.isHittable && page.frame.contains(photoAction.frame), app.debugDescription)
+        capture(app, "medical-document-import-photo-action-accessibility-xxxl")
+
+        // The fixture only chooses UIDocumentPicker's starting directory; file selection stays native.
         tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
 
@@ -27,7 +42,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.text(node(app, "medical-document-review-text-1")).contains("Synthetic medical document page two"))
         XCTAssertTrue(node(app, "medical-document-save").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-cancel").exists, app.debugDescription)
-        let page = recordsPage(app)
+        let reviewPage = recordsPage(app)
         let reviewPanel = node(app, "records-document-review-layout-primary")
         let previewPanel = node(app, "records-document-review-layout-secondary")
         XCTAssertTrue(reviewPanel.exists && previewPanel.exists, app.debugDescription)
@@ -35,16 +50,16 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertEqual(reviewPanel.frame.minX, previewPanel.frame.minX, accuracy: 1, app.debugDescription)
         XCTAssertEqual(reviewPanel.frame.width, previewPanel.frame.width, accuracy: 1, app.debugDescription)
         let lastPage = node(app, "medical-document-review-text-11")
-        FormUITestConditions.reveal(lastPage, in: app, scroll: page)
-        XCTAssertTrue(lastPage.isHittable && page.frame.contains(lastPage.frame), app.debugDescription)
+        FormUITestConditions.reveal(lastPage, in: app, scroll: reviewPage)
+        XCTAssertTrue(lastPage.isHittable && reviewPage.frame.contains(lastPage.frame), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(lastPage).contains("Synthetic medical document page 12"))
-        XCTAssertLessThan(node(app, "medical-document-review-title").frame.minY, page.frame.minY)
+        XCTAssertLessThan(node(app, "medical-document-review-title").frame.minY, reviewPage.frame.minY)
         let save = node(app, "medical-document-save")
-        FormUITestConditions.reveal(save, in: app, scroll: page)
-        XCTAssertTrue(save.isHittable && page.frame.contains(save.frame), app.debugDescription)
+        FormUITestConditions.reveal(save, in: app, scroll: reviewPage)
+        XCTAssertTrue(save.isHittable && reviewPage.frame.contains(save.frame), app.debugDescription)
         let cancel = node(app, "medical-document-cancel")
-        FormUITestConditions.reveal(cancel, in: app, scroll: page)
-        XCTAssertTrue(cancel.isHittable && page.frame.contains(cancel.frame), app.debugDescription)
+        FormUITestConditions.reveal(cancel, in: app, scroll: reviewPage)
+        XCTAssertTrue(cancel.isHittable && reviewPage.frame.contains(cancel.frame), app.debugDescription)
         capture(app, "medical-document-review-before-save")
 
         tap(app, "medical-document-save")
@@ -67,6 +82,13 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         assertSavedSource(app)
         capture(app, "medical-document-source-after-relaunch")
+        tap(app, "medical-document-source-back")
+        recordsImportPhotoBodyAction(app).tap()
+        XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
+        capture(app, "medical-document-photo-picker")
+        let photoPickerCancel = app.buttons["Cancel"]
+        XCTAssertTrue(photoPickerCancel.waitForAppearance(), app.debugDescription)
+        photoPickerCancel.tap()
     }
 
     @MainActor
@@ -139,10 +161,20 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         file.tap()
     }
 
-    /// Verifies the import control belongs to Records' scroll area rather than the navigation rail.
+    @MainActor
+    private func recordsImportPhotoBodyAction(_ app: XCUIApplication) -> XCUIElement {
+        recordsImportAction(app, identifier: "records-import-medical-photo")
+    }
+
+    /// Verifies an import control belongs to Records' scroll area rather than the navigation rail.
     @MainActor
     private func recordsImportBodyAction(_ app: XCUIApplication) -> XCUIElement {
-        let matches = app.buttons.matching(identifier: "records-import-medical-document")
+        recordsImportAction(app, identifier: "records-import-medical-document")
+    }
+
+    @MainActor
+    private func recordsImportAction(_ app: XCUIApplication, identifier: String) -> XCUIElement {
+        let matches = app.buttons.matching(identifier: identifier)
         let action = matches.firstMatch
         XCTAssertTrue(action.waitForAppearance(), app.debugDescription)
         XCTAssertEqual(matches.count, 1, app.debugDescription)
