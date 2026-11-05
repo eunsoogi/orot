@@ -7,7 +7,10 @@ import type { HomeMetric } from './metricSelection';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
 import { HomeMetricCard, homeMetricTitle as title } from './HomeMetricCard';
-import { resolveHomeMetricGridLayout } from './homeMetricLayout';
+import {
+  resolveHomeMetricGridLayout,
+  resolveHomeRecentChangeLayout,
+} from './homeMetricLayout';
 import { HomeMetricSelectionEditor } from './HomeMetricSelectionEditor';
 import { HomeRecentHealthChange } from './HomeRecentHealthChange';
 import { formatHomeMetricValue } from './metricFormatting';
@@ -55,6 +58,7 @@ export function HomeMetrics() {
     data.selection.length,
     fontScale,
   );
+  const recentChangeLayout = resolveHomeRecentChangeLayout(gridWidth, fontScale);
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
@@ -144,6 +148,7 @@ export function HomeMetrics() {
               key={metric.metric}
               metric={metric}
               title={title(metric.metric)}
+              layout={recentChangeLayout}
               formatValue={(amount, unit) =>
                 formatHomeMetricValue(metric.metric, amount, unit)
               }

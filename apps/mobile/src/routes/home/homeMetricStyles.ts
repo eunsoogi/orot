@@ -38,8 +38,42 @@ export const homeMetricStyles = StyleSheet.create({
     padding: 14,
     gap: 6,
   },
-  // Stack periods at full width so larger system text can wrap without shrinking either sample.
   recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
+  recentChangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentChangeStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  comparisonIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexBasis: 78,
+    flexShrink: 1,
+    minWidth: 48,
+    maxWidth: 78,
+    gap: 6,
+  },
+  comparisonDivider: {
+    alignSelf: 'stretch',
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: appColors.border,
+  },
+  comparisonPeriods: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  comparisonPeriodsStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
+    // Preserve full-width values and dates when space or scaled text is constrained.
+  },
   comparisonTitle: {
     color: appColors.text,
     fontSize: 16,
@@ -48,10 +82,11 @@ export const homeMetricStyles = StyleSheet.create({
   },
   comparisonStatistic: { color: appColors.secondary, flexShrink: 1 },
   comparisonPeriod: {
-    alignSelf: 'stretch',
-    maxWidth: '100%',
+    flex: 1,
+    minWidth: 0,
     gap: 2,
   },
+  comparisonPeriodStacked: { alignItems: 'flex-start' },
   comparisonPeriodLabel: {
     color: appColors.text,
     fontWeight: '600',
@@ -63,6 +98,28 @@ export const homeMetricStyles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     flexShrink: 1,
+  },
+  comparisonSummary: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 2,
+    flexShrink: 1,
+  },
+  comparisonSummaryLabel: {
+    color: appColors.secondary,
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  comparisonSummaryCoverage: {
+    color: appColors.secondary,
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  comparisonArrow: {
+    color: appColors.secondary,
+    fontSize: 20,
+    flexShrink: 0,
   },
   comparisonCoverage: { color: appColors.secondary, flexShrink: 1 },
   comparisonMetadata: { color: appColors.secondary, flexShrink: 1 },

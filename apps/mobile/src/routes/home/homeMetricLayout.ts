@@ -1,6 +1,9 @@
 export const homeMetricGridGap = 8;
 
 const minimumMetricCardWidth = 160;
+const minimumRecentChangeRowWidth = 280;
+
+export type HomeRecentChangeLayout = 'row' | 'column';
 
 export interface HomeMetricGridLayout {
   readonly columns: 1 | 2;
@@ -26,4 +29,16 @@ export function resolveHomeMetricGridLayout(
     columns,
     cardWidth: (measuredWidth - homeMetricGridGap * (columns - 1)) / columns,
   };
+}
+
+/** Keeps previous and recent values together until the measured width or text scale needs stacking. */
+export function resolveHomeRecentChangeLayout(
+  measuredWidth: number,
+  fontScale: number,
+): HomeRecentChangeLayout {
+  if (measuredWidth <= 0) return 'row';
+
+  return measuredWidth >= minimumRecentChangeRowWidth * Math.max(1, fontScale)
+    ? 'row'
+    : 'column';
 }
