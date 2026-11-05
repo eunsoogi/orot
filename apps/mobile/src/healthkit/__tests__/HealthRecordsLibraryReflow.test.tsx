@@ -25,12 +25,14 @@ test('keeps the selected type and loaded series when the library panels reflow',
       const measured = bounds.get(this.props.testID ?? '');
       if (measured) callback(measured.x, 0, measured.width, 700);
     });
+  // Keep the synthetic record inside the library card's moving one-month filter.
+  const recentObservationTimestamp = new Date().toISOString();
   const loadObservations = jest.fn(async () => ({
     records: [
       healthObservation(
         'reflow-heart-rate',
         'heart_rate',
-        '2026-10-05T10:00:00.000Z',
+        recentObservationTimestamp,
       ),
     ],
     nextCursor: null,
