@@ -67,6 +67,7 @@ test('retains official answer history on preparation updates and removes it on e
     const expectedHistory = [confirmed, edited];
     const duplicate = await saveReviewedVisitQuestions({
       ...base,
+      now: '2026-10-08T04:00:00.000Z',
       questions: [
         review(a, saved.questions[0]!),
         review(b, saved.questions[1]!),
