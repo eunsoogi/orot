@@ -145,6 +145,7 @@ export function isRecapResultCurrent(result: RecapResult, current: RecapInput): 
       result.preparedQuestions.length ||
     new Set(result.questions.map((question) => question.questionId)).size !==
       result.preparedQuestions.length ||
+    result.questions.length !== result.preparedQuestions.length ||
     !result.questions.every((question) =>
       result.preparedQuestions.some((prepared) => prepared.id === question.questionId),
     ) ||
@@ -167,21 +168,28 @@ export function isRecapResultCurrent(result: RecapResult, current: RecapInput): 
           source.audioRange.endMs === segment.audioRange.endMs,
       ),
     ) &&
-    result.questions.every((question) =>
-      [
-        ...question.questionEvidence,
-        ...question.answers.flatMap((answer) => answer.evidence),
-      ].every((evidence) => {
-        const segment = current.segments.find((item) => item.id === evidence.segmentId);
-        return (
-          segment &&
-          segment.transcriptId === evidence.transcriptId &&
-          segment.revision === evidence.revision &&
-          segment.text.slice(evidence.startOffset, evidence.endOffset) === evidence.quote &&
-          evidence.audioRange.startMs === segment.audioRange.startMs &&
-          evidence.audioRange.endMs === segment.audioRange.endMs
-        );
-      }),
+    result.questions.every(
+      (question) =>
+        question.answers.every(
+          (answer) =>
+            answer.quotation === answer.evidence.map((evidence) => evidence.quote).join('\n'),
+        ) &&
+        [
+          ...question.questionEvidence,
+          ...question.answers.flatMap((answer) => answer.evidence),
+        ].every((evidence) => {
+          const segment = current.segments.find((item) => item.id === evidence.segmentId);
+          return (
+            segment &&
+            segment.transcriptId === evidence.transcriptId &&
+            segment.revision === evidence.revision &&
+            evidence.startOffset < segment.text.length &&
+            evidence.endOffset <= segment.text.length &&
+            segment.text.slice(evidence.startOffset, evidence.endOffset) === evidence.quote &&
+            evidence.audioRange.startMs === segment.audioRange.startMs &&
+            evidence.audioRange.endMs === segment.audioRange.endMs
+          );
+        }),
     ) &&
     result.preparedQuestions.every((question) =>
       current.questions.some(

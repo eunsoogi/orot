@@ -71,4 +71,51 @@ describe('Recap source and visit contracts', () => {
     ).toBe(false);
     expect(RecapQuestionResultSchema.parse(recapResult().questions[0]).status).toBe('not_found');
   });
+
+  it('rejects duplicate question results even when their set matches the prepared IDs', () => {
+    const input = recapInput();
+    const result = recapResult(input);
+    expect(
+      isRecapResultCurrent(
+        { ...result, questions: [...result.questions, result.questions[0]] },
+        input,
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects altered answer quotations and offsets that JavaScript slice would clamp', () => {
+    const input = recapInput();
+    const result = recapResult(input);
+    const segment = input.segments[0];
+    const evidence = {
+      segmentId: segment.id,
+      transcriptId: segment.transcriptId,
+      revision: 1,
+      startOffset: 0,
+      endOffset: segment.text.length,
+      quote: segment.text,
+      audioRange: segment.audioRange,
+    };
+    result.questions[0] = {
+      questionId: 'question-1',
+      status: 'evidence_found',
+      questionEvidence: [evidence],
+      answers: [
+        {
+          quotation: segment.text,
+          summary: '합성 답변 요약',
+          speaker: 'unknown',
+          inferredRole: 'uncertain',
+          speakerUncertainty: '발화자 미확인',
+          evidence: [evidence],
+        },
+      ],
+    };
+    expect(isRecapResultCurrent(result, input)).toBe(true);
+    const changed = structuredClone(result);
+    changed.questions[0].answers[0].quotation = '원문에 없는 답변';
+    expect(isRecapResultCurrent(changed, input)).toBe(false);
+    evidence.endOffset = segment.text.length + 10;
+    expect(isRecapResultCurrent(result, input)).toBe(false);
+  });
 });
