@@ -122,15 +122,15 @@ export function resolveNavigationRootLayout(
     laneWidth,
     edgeInset: centeredInset,
   } = navigationSideLane(geometry, side);
-  // The two measured Duo states share this edge reservation; other indicator shapes remain unmeasured.
+  // The indicator reservation may change height; its active top-edge overlap identifies the same side lane.
   const measuredEdgeReservation = geometry.reservedRegions.some(
     region =>
       region.kind === 'occlusion' &&
       region.isActive &&
-      region.frame.x === windowRight - laneWidth &&
-      region.frame.y === window.y &&
-      region.frame.width === laneWidth &&
-      (region.frame.height === 124 || region.frame.height === 174),
+      region.frame.x <= windowRight - laneWidth + 0.5 &&
+      region.frame.x + region.frame.width >= windowRight - 0.5 &&
+      region.frame.y <= window.y &&
+      region.frame.y + region.frame.height > window.y,
   );
   const measuredLane =
     side === 'right' &&
