@@ -80,13 +80,15 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         NavigationWindowGeometryUITestConditions.assertGeometry(sourceGeometry)
         let sourceContent = UITestConditions.element(app, "ai-feature-source-content")
         XCTAssertTrue(UITestConditions.exists(sourceContent), app.debugDescription)
-        // The persisted fixture places the excerpt after its saved source record.
-        let excerptSection = UITestConditions.element(app, "ai-feature-source-section-1")
-        XCTAssertTrue(excerptSection.exists && excerptSection.isHittable, app.debugDescription)
-        XCTAssertEqual(excerptSection.label, "원문 발췌 2", app.debugDescription)
-        excerptSection.tap()
+        // The citation opens on the excerpt; the next tab holds its saved source record.
         let originalExcerpt = app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."]
         XCTAssertTrue(originalExcerpt.exists, app.debugDescription)
+        let sourceSection = UITestConditions.element(app, "ai-feature-source-section-1")
+        XCTAssertTrue(sourceSection.exists && sourceSection.isHittable, app.debugDescription)
+        XCTAssertEqual(sourceSection.label, "저장된 출처 2", app.debugDescription)
+        sourceSection.tap()
+        XCTAssertTrue(sourceSection.isSelected)
+        XCTAssertTrue(app.staticTexts["합성 저장 기록"].exists, app.debugDescription)
         let contextualFrame = try NavigationGeometryUITestConditions.captureBoundary(
             app, navigationID: "navigation-back", name: "source-content-and-rail", testCase: self,
         )
