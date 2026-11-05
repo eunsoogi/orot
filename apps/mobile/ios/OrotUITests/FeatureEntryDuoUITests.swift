@@ -147,7 +147,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         let frames = try XCTUnwrap(controls["frames"] as? [[String: Any]])
         let rootFrames = frames.filter { $0["identifier"] as? String == "navigation-root-tabs-glass-backdrop" }
         XCTAssertEqual(rootFrames.count, 1)
-        let nativeBar = try decodeRect(try XCTUnwrap(rootFrames.first?["frame"]))
+        let nativeBar = try decodeRect(XCTUnwrap(rootFrames.first?["frame"]))
         let contextBar = try decodeRect(contextFields["navigationFrame"])
         XCTAssertEqual(contextFields["navigationSide"] as? String, "right")
         let available = try decodeRect(frame["availableContentFrame"])
@@ -158,7 +158,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(Matcher.rightRailMatches(
             window: publicUIKit.windowBounds, insets: publicUIKit.safeAreaInsets, usable: context.usableRegions,
             viewport: geometryRect(viewport), available: available, bar: geometryRect(bar),
-            navigation: navigation, side: frame["side"] as? String ?? ""
+            navigation: navigation, side: frame["side"] as? String ?? "",
         ), "The right rail and content lane must match their UIKit-backed geometry")
     }
 
