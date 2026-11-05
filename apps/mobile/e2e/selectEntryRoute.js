@@ -12,6 +12,7 @@ function selectEntryRoute(settings) {
       probe !== 'medical-appointment-classification' &&
       probe !== 'medical-appointment-app-navigation' &&
       probe !== 'medical-document-import' &&
+      probe !== 'medical-document-picker-recovery' &&
       probe !== 'graph' &&
       probe !== 'checkpoint' &&
       probe !== 'safe-area' &&

@@ -5,6 +5,7 @@ export type E2EEntryRoute =
   | 'medical-appointment-classification'
   | 'medical-appointment-app-navigation'
   | 'medical-document-import'
+  | 'medical-document-picker-recovery'
   | 'graph'
   | 'checkpoint'
   | 'safe-area'
