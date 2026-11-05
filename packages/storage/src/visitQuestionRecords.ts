@@ -72,7 +72,13 @@ export function createVisitQuestionRecordRepository(
           effectiveAt: timestamp,
           recordedAt: timestamp,
           ingestedAt: timestamp,
-          provenance: { origin: 'user_reported', sourceRecordIds: [] },
+          // Preserve the question's original dependencies even if preparation is later edited.
+          provenance: {
+            origin: 'user_reported',
+            sourceRecordIds: [
+              ...new Set([...question.provenance.sourceRecordIds, ...question.evidenceSpanIds]),
+            ],
+          },
           reviewState: { status: 'unreviewed' },
         });
       });
@@ -96,6 +102,8 @@ export function createVisitQuestionRecordRepository(
             result.recordingSourceId,
           );
           const previous = await readStoredRecord(sql, 'visit_question_record', id);
+          const storedQuestion = await readStoredRecord(sql, 'visit_question', question.questionId);
+          if (!storedQuestion) throw new Error('The prepared question no longer exists.');
           const automaticSource = {
             recordingSourceId: result.recordingSourceId,
             appointmentId: result.appointmentId,
@@ -137,8 +145,14 @@ export function createVisitQuestionRecordRepository(
               provenance: {
                 origin: 'derived',
                 sourceRecordIds: [
-                  result.recordingSourceId,
-                  ...result.sources.map((source) => source.segmentId),
+                  ...new Set([
+                    result.recordingSourceId,
+                    ...result.sources.map((source) => source.segmentId),
+                    ...storedQuestion.provenance.sourceRecordIds,
+                    ...storedQuestion.evidenceSpanIds,
+                    // Older immutable history remains dependent on its original sources.
+                    ...(previous?.provenance.sourceRecordIds ?? []),
+                  ]),
                 ],
               },
               reviewState: { status: 'unreviewed' },

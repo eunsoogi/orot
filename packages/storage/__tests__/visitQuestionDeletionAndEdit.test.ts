@@ -113,3 +113,56 @@ test('manual confirmation rejects a newer question revision instead of returning
     x.close();
   }
 });
+
+test('keeps original question evidence dependencies after the prepared question changes', async () => {
+  const x = await setupAutomatic();
+  try {
+    const doc = sourceRecord('original-question-document', 'sha256:' + 'b'.repeat(64));
+    await x.records.sourceRecords.create(doc);
+    const span = await x.records.evidenceSpans.create(
+      evidenceSpan('original-question-evidence', doc.id, {
+        kind: 'text_range',
+        startOffset: 0,
+        endOffset: 4,
+      }),
+    );
+    const question = (await x.records.get('visit_question', x.result.questions[0].questionId))!;
+    await x.records.put('visit_question', { ...question, evidenceSpanIds: [span.id] });
+    const manual = await x.official.saveManual({
+      appointmentId: x.result.appointmentId,
+      questionId: question.id,
+      expectedQuestionRevision: 'v1:2',
+      answer: null,
+    });
+    const result = structuredClone(x.result);
+    result.preparedQuestions[0].revision = 'v1:2';
+    const [automatic] = await x.official.saveAutomatic(result, {
+      loadCurrentInput: x.loadCurrentInput,
+    });
+    expect(manual.provenance.sourceRecordIds).toContain(span.id);
+    expect(automatic.provenance.sourceRecordIds).toContain(span.id);
+    await x.records.put('visit_question', question);
+    result.preparedQuestions[0].revision = 'v1:3';
+    const [reanalyzed] = await x.official.saveAutomatic(result, {
+      loadCurrentInput: x.loadCurrentInput,
+    });
+    expect(reanalyzed.revision).toBe(2);
+    expect(reanalyzed.provenance.sourceRecordIds).toContain(span.id);
+    expect(await x.records.listTypedSourceDeletionReferences(doc.id)).toEqual(
+      expect.arrayContaining([
+        { kind: 'visit_question_record', id: manual.id },
+        { kind: 'visit_question_record', id: automatic.id },
+      ]),
+    );
+    await x.records.sourceRecords.delete(doc.id);
+    expect(await x.records.get('visit_question', question.id)).not.toBeNull();
+    expect(await x.official.listForAppointment(x.result.appointmentId)).toEqual([]);
+    expect(await x.official.history(manual.id)).toEqual([]);
+    expect(await x.official.history(automatic.id)).toEqual([]);
+    expect(await x.records.listDeletedSourceReferenceIds([manual.id, automatic.id])).toEqual(
+      [manual.id, automatic.id].sort(),
+    );
+  } finally {
+    x.close();
+  }
+});
