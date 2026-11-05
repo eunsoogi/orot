@@ -84,6 +84,8 @@ test('preserves submitted text and period, and isolates retries between operatio
       { question: '두 번째 요약 요청', window },
       new AbortController().signal,
     );
+    if ('failure' in first || 'failure' in second)
+      throw new Error('Expected summaries');
     expect(runner.mock.calls[0]?.[0].request).toBe(
       '내가 편집한 건강 요약 요청',
     );

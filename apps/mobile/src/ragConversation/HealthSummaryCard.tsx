@@ -4,6 +4,8 @@ import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { ConversationSources } from './ConversationSources';
 import type { HealthSummaryResult } from './healthSummary';
+import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
+import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 
 /** Show only the validated sections and their original source links. */
 export function HealthSummaryCard({
@@ -28,6 +30,29 @@ export function HealthSummaryCard({
         {window.fromInclusive} 이상 · {window.toExclusive} 미만 (
         {window.timeZone})
       </AppText>
+      {result.analysis.omittedUnsupportedContent ? (
+        <AppText accessibilityRole="alert">
+          {OMITTED_SUMMARY_CONTENT_NOTE}
+        </AppText>
+      ) : null}
+      {result.analysis.incompleteEvidence ? (
+        <AppText accessibilityRole="alert">
+          {INCOMPLETE_SUMMARY_EVIDENCE_NOTE}
+        </AppText>
+      ) : null}
+      {saved?.status === 'saved'
+        ? saved.contentReviewIssues?.map(issue => (
+            <AppText key={issue} accessibilityRole="alert">
+              {issue === 'prescription'
+                ? '이 요약의 처방 여부 표현은 다시 확인이 필요해요. 약의 일정 등록만으로 처방 여부를 알 수는 없어요.'
+                : issue === 'sleep_count'
+                  ? '이 요약의 수면 횟수 표현은 다시 확인이 필요해요. 수면 단계 값은 횟수가 아니에요.'
+                  : issue === 'sleep_duration'
+                    ? '이 요약의 수면 구간 길이는 원문과 맞지 않을 수 있어요. 원문의 시작·종료 시각을 확인해 주세요.'
+                    : '이 요약의 걸음 수 단위는 다시 확인이 필요해요. 걸음 수를 횟수로 읽지 않도록 원문을 확인해 주세요.'}
+            </AppText>
+          ))
+        : null}
       {result.analysis.hypotheses.map((section, index) => (
         <View key={index} style={styles.section}>
           <AppText style={styles.title}>{section.title}</AppText>

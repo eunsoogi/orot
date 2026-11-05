@@ -16,7 +16,10 @@ import { bindSummaryWindow } from './summaryWindowTool';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { executionOptions } from './featureServiceExecution';
 import { stableJson } from './evidenceUtils';
-import { observeConversationTool } from '../../ragConversation/observeConversationTool';
+import {
+  failureFromWorkflow,
+  type RagConversationOutcome,
+} from '../../ragConversation/outcome';
 
 /** One operation owns its retry closure and its original provider, period and result. */
 export function createHealthSummaryService(input: {
@@ -34,12 +37,15 @@ export function createHealthSummaryService(input: {
     request: HealthSummaryRequest,
     signal: AbortSignal,
     observer?: RagConversationObserver,
-  ): Promise<{
-    result: HealthSummaryResult;
-    retry: () => Promise<HealthSummaryResult | null>;
-    providerId: string;
-    modelId: string;
-  } | null> => {
+  ): Promise<
+    | {
+        result: HealthSummaryResult;
+        retry: () => Promise<HealthSummaryResult | null>;
+        providerId: string;
+        modelId: string;
+      }
+    | { failure: RagConversationOutcome }
+  > => {
     const createdAt = input.now?.() ?? new Date().toISOString();
     const timeZone =
       input.timeZone?.() ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -54,10 +60,39 @@ export function createHealthSummaryService(input: {
     )
       throw new Error('Invalid health summary request.');
     const selected = await input.selectedAi();
-    const data = await input.loadData();
-    if (!data.readHealthContext || signal.aborted) return null;
+    let data: AiFeatureLocalData;
+    try {
+      data = await input.loadData();
+    } catch {
+      return {
+        failure: {
+          status: 'failure',
+          kind: signal.aborted ? 'cancelled' : 'retrieval_failed',
+        },
+      };
+    }
+    if (!data.readHealthContext || signal.aborted)
+      return {
+        failure: {
+          status: 'failure',
+          kind: signal.aborted ? 'cancelled' : 'retrieval_failed',
+        },
+      };
+    let retrievalFailed = false;
+    const read = data.readHealthContext;
     const bound = bindSummaryWindow(
-      createHealthContextTool(data.readHealthContext, input.registry, 'rag'),
+      createHealthContextTool(
+        async (...args) => {
+          try {
+            return await read(...args);
+          } catch (error) {
+            if (!args[2]?.aborted) retrievalFailed = true;
+            throw error;
+          }
+        },
+        input.registry,
+        'rag',
+      ),
       { window: explicitWindow, endAt: createdAt, timeZone },
     );
     const runId = input.createRunId();
@@ -66,7 +101,7 @@ export function createHealthSummaryService(input: {
       operationRunId: runId,
       consent: input.consent,
       registry: input.registry,
-      tools: [observeConversationTool(bound.tool, observer?.onToolEvent)!],
+      tools: [bound.tool],
       consentPurpose: 'symptom_summary',
     });
     const original = symptomSummaryTaskForProvider(selected.provider.id);
@@ -96,8 +131,20 @@ export function createHealthSummaryService(input: {
       ref => input.registry.resolve(ref),
       task,
     );
-    if (outcome.status !== 'workflow' || outcome.result.status !== 'result')
-      return null;
+    if (outcome.status !== 'workflow')
+      return { failure: { status: 'failure', kind: 'retrieval_failed' } };
+    if (outcome.result.status !== 'result') {
+      const failure = failureFromWorkflow(outcome.result);
+      return {
+        failure:
+          retrievalFailed &&
+          (failure.status === 'no_evidence' ||
+            failure.status === 'insufficient' ||
+            (failure.status === 'failure' && failure.kind === 'unavailable'))
+            ? { status: 'failure', kind: 'retrieval_failed' }
+            : failure,
+      };
+    }
     const window = bound.admittedWindow();
     const refs = outcome.result.checkpoint.evidenceReferences;
     if (
@@ -145,7 +192,7 @@ export function createHealthSummaryService(input: {
       observer?.onSummarySaveSettled?.(committed);
     }
     if (saved.status !== 'workflow' || saved.result.status !== 'result')
-      return null;
+      return { failure: { status: 'failure', kind: 'unavailable' } };
     return {
       result: { reference, analysis: saved.result.value },
       providerId: selected.provider.id,
