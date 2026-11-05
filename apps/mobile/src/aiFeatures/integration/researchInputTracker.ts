@@ -15,17 +15,21 @@ export function createResearchInputTracker(
   data?: AiFeatureLocalData,
 ) {
   const inputs = new Map<string, EvidenceReference>();
-  const retained = new Set<string>();
+  const retained = new Map<string, EvidenceReference>();
   let incomplete = false;
   return {
-    async recordResearch(ids: readonly number[], signal: AbortSignal) {
+    async recordResearch(
+      ids: readonly number[],
+      signal: AbortSignal,
+      toolReferences?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+    ) {
       if (!ids.length) return;
       const discovery = await data?.researchArtifactDiscovery?.();
       if (!discovery || !data || signal.aborted) {
         incomplete = true;
         return;
       }
-      for (const id of ids) {
+      for (const [index, id] of ids.entries()) {
         const detail = await discovery.read(`research-${id}`, signal);
         if (!detail) {
           incomplete = true;
@@ -33,7 +37,12 @@ export function createResearchInputTracker(
         }
         const meta = detail.metadata;
         const key = stableJson([meta.id, meta.revision]);
-        if (retained.has(key)) continue;
+        const existing = retained.get(key);
+        if (existing) {
+          const toolReference = toolReferences?.[index];
+          if (toolReference) registry.bindToolResearch(toolReference, existing);
+          continue;
+        }
         const readSource = (current: AbortSignal) =>
           readResearchSource(data, registry, meta.id, meta.revision, current);
         const alias = registry.add({
@@ -53,8 +62,10 @@ export function createResearchInputTracker(
             (await readSource(current)).status === 'available',
         });
         const reference = referenceOnly(alias);
+        const toolReference = toolReferences?.[index];
+        if (toolReference) registry.bindToolResearch(toolReference, reference);
         inputs.set(stableJson(reference), reference);
-        retained.add(key);
+        retained.set(key, reference);
       }
     },
     wrap(tools: readonly EvidenceSearchTool[]): EvidenceSearchTool[] {

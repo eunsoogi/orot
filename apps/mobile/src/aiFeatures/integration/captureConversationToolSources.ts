@@ -21,6 +21,29 @@ export async function captureConversationToolSources(
   const references: ToolSourceReference[] = [];
   for (const source of event.sources) {
     if (source.sourceKind === 'external_medical') {
+      const alias = registry.toolResearch(source);
+      if (!alias) {
+        // Legacy or unretained research remains visible but cannot be opened as a saved source.
+        references.push(source);
+        continue;
+      }
+      const captured = await captureConversationSources(
+        [alias],
+        registry,
+        new AbortController().signal,
+      );
+      const research = captured.sources[0];
+      if (
+        !research ||
+        !('kind' in research) ||
+        research.kind !== 'generated_research'
+      )
+        throw new Error('Tool research source is unavailable.');
+      dependencies.push({
+        kind: 'external_research',
+        reference: source,
+        research,
+      });
       references.push(source);
       continue;
     }

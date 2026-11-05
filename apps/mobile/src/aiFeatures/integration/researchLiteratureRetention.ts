@@ -19,7 +19,11 @@ export function retainLiteratureResults(
   loadData: () => Promise<AiFeatureLocalData>,
   originFeature = 'medical_literature',
   session?: ResearchSessionLease,
-  onRetained?: (ids: readonly number[], signal: AbortSignal) => Promise<void>,
+  onRetained?: (
+    ids: readonly number[],
+    signal: AbortSignal,
+    references?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+  ) => Promise<void>,
   model?: { readonly providerId: string; readonly modelId: string },
 ): EuropePmcMedicalEvidenceService {
   let pending: {
@@ -53,6 +57,7 @@ export function retainLiteratureResults(
           await onRetained?.(
             ids,
             options.signal ?? new AbortController().signal,
+            literatureToolReferences(pending.snapshots),
           );
         } catch (error) {
           if (
@@ -119,6 +124,7 @@ export function retainLiteratureResults(
           await onRetained?.(
             ids,
             options.signal ?? new AbortController().signal,
+            literatureToolReferences(snapshots),
           );
         } catch (error) {
           if (
@@ -143,4 +149,22 @@ export function retainLiteratureResults(
       return result;
     },
   };
+}
+
+/** Match the adapter's public identities to the exact saved publication rows. */
+function literatureToolReferences(snapshots: readonly ResearchArtifactInput[]) {
+  return snapshots.map(snapshot => {
+    if (snapshot.source.kind !== 'publication')
+      throw new Error('Invalid publication snapshot.');
+    const parts = snapshot.source.url.split('/');
+    return {
+      sourceKind: 'external_medical' as const,
+      sourceId: 'europe-pmc',
+      sourceRevision: `retrieved:${snapshot.createdAt}`,
+      evidenceId: `${parts[4]}:${parts[5]}`,
+      evidenceRevision: snapshot.source.updatedDate
+        ? `updated:${snapshot.source.updatedDate}`
+        : `retrieved:${snapshot.createdAt}`,
+    };
+  });
 }

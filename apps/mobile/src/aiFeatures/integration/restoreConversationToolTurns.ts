@@ -7,6 +7,11 @@ import type { createConversationArtifactStorage } from '../../storage/conversati
 import { bindConversationToolSource } from './bindConversationToolSource';
 import { restoreFilteredToolSource } from './restoreFilteredToolSource';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import {
+  isExternalToolResearch,
+  sameToolSource,
+} from '../../storage/conversationToolExternalSource';
+import { restoreResearchSource } from './restoreResearchSource';
 
 /** Reissue local aliases after validating each persisted tool source, never exposing durable IDs. */
 export async function restoreConversationToolTurns(
@@ -38,7 +43,7 @@ export async function restoreConversationToolTurns(
                 !(
                   'kind' in source &&
                   source.kind === 'filtered_medication_period'
-                ),
+                ) && !isExternalToolResearch(source),
             ),
             registry,
             data,
@@ -46,34 +51,70 @@ export async function restoreConversationToolTurns(
           if (restored.sourceChanged || signal.aborted)
             throw new Error('Tool source changed.');
           let index = 0;
-          const sources = event.sources.map(source => {
-            if (source.sourceKind === 'external_medical') return source;
-            const dependency = lineage.sources[index++];
-            const alias =
-              dependency &&
-              'kind' in dependency &&
-              dependency.kind === 'filtered_medication_period'
-                ? restoreFilteredToolSource(dependency, registry, storage)
-                : dependency &&
-                  restored.mapping.get(stableJson(dependency.reference));
-            if (!alias) throw new Error('Tool source is unavailable.');
-            const bound = bindConversationToolSource({
-              alias,
-              sessionId,
-              runId: event.operationRunId,
-              callId: event.callId,
-              snapshot: { event, lineage },
-              storage,
-              registry,
-            });
-            return {
-              sourceKind: bound.sourceKind,
-              sourceId: bound.sourceId,
-              sourceRevision: bound.sourceRevision,
-              evidenceId: bound.evidenceId,
-              evidenceRevision: bound.evidenceRevision,
-            };
-          });
+          const sources = await Promise.all(
+            event.sources.map(async source => {
+              if (source.sourceKind === 'external_medical') {
+                const dependency = lineage.sources[index];
+                if (
+                  !isExternalToolResearch(dependency) ||
+                  !sameToolSource(source, dependency.reference)
+                )
+                  return source;
+                index += 1;
+                const restoredResearch = await restoreResearchSource(
+                  dependency.research,
+                  registry,
+                  data,
+                  signal,
+                );
+                if (!restoredResearch)
+                  throw new Error('Tool research source is unavailable.');
+                const bound = bindConversationToolSource({
+                  alias: restoredResearch.reference,
+                  sessionId,
+                  runId: event.operationRunId,
+                  callId: event.callId,
+                  snapshot: { event, lineage },
+                  storage,
+                  registry,
+                });
+                const projected = {
+                  sourceKind: 'external_medical' as const,
+                  sourceId: bound.sourceId,
+                  sourceRevision: bound.sourceRevision,
+                  evidenceId: bound.evidenceId,
+                  evidenceRevision: bound.evidenceRevision,
+                };
+                registry.bindToolResearch(projected, bound);
+                return projected;
+              }
+              const dependency = lineage.sources[index++];
+              const alias =
+                dependency &&
+                'kind' in dependency &&
+                dependency.kind === 'filtered_medication_period'
+                  ? restoreFilteredToolSource(dependency, registry, storage)
+                  : dependency &&
+                    restored.mapping.get(stableJson(dependency.reference));
+              if (!alias) throw new Error('Tool source is unavailable.');
+              const bound = bindConversationToolSource({
+                alias,
+                sessionId,
+                runId: event.operationRunId,
+                callId: event.callId,
+                snapshot: { event, lineage },
+                storage,
+                registry,
+              });
+              return {
+                sourceKind: bound.sourceKind,
+                sourceId: bound.sourceId,
+                sourceRevision: bound.sourceRevision,
+                evidenceId: bound.evidenceId,
+                evidenceRevision: bound.evidenceRevision,
+              };
+            }),
+          );
           return { ...event, sources };
         }),
       ),
