@@ -24,7 +24,12 @@ export function validateQuestionIdentities(
   const seen = new Set<string>();
   for (const question of questions) {
     const identity = question.identity;
-    if (!identity?.id.trim() || seen.has(identity.id))
+    // Domain parsing trims IDs; reject aliases before ownership checks and writes.
+    if (
+      !identity?.id ||
+      identity.id !== identity.id.trim() ||
+      seen.has(identity.id)
+    )
       throw new Error('Each reviewed question needs a unique identity.');
     seen.add(identity.id);
     const existing = all.get(identity.id);
