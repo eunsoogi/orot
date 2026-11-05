@@ -133,6 +133,7 @@ export function retainPublicWebResults(
               generatedText: item.content,
               inputSources,
               requestKey: stableJson([
+                ...(session ? [session.id] : []),
                 request.operationRunId,
                 request.operationKey,
                 index,
