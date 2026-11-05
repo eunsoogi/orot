@@ -41,6 +41,7 @@ export function ConversationScreen({
   resolveToolSource,
   prepareVisitQuestions,
   renderVisitQuestions,
+  discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
@@ -209,6 +210,8 @@ export function ConversationScreen({
                 <ManualVisitTargetPanels
                   store={store}
                   sessionId={id}
+                  durableSessionId={toolSourceSessionId}
+                  discover={discoverManualVisits}
                   messages={messages}
                   session={session}
                   compact={composerLayout.compact}

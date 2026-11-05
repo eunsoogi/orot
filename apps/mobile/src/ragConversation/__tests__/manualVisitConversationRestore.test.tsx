@@ -10,6 +10,7 @@ import {
   runMigrations,
   readVisitQuestionRevision,
 } from '@orot/storage';
+import { AppointmentSchema } from '@orot/domain';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   join,
@@ -27,12 +28,15 @@ import {
 } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import { saveReviewedVisitQuestions } from '../../agent/visitQuestions/persistence';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
-import { localData } from '../../aiFeatures/integration/featureServiceFixtures';
+import { manualVisitRestoreData } from '../testSupport/manualVisitRestoreData';
 import { prepareConversationVisitRetention } from '../../aiFeatures/integration/prepareConversationVisitRetention';
 import { createVisitQuestionSourceService } from '../../aiFeatures/integration/visitQuestionSourceRegistration';
 import { restoreConversationArtifact } from '../../aiFeatures/integration/restoreConversationArtifact';
 import { restoreConversationVisitQuestions } from '../../aiFeatures/integration/restoreConversationVisitQuestions';
+import { createConversationArtifactDiscovery } from '../../aiFeatures/integration/conversationArtifactDiscovery';
+import { selectedVisitQuery } from '../../agent/visitQuestions/selectedVisitQuery';
 import { loadSavedVisitQuestionState } from '../../aiFeatures/integration/savedVisitQuestions';
 import { createInlineVisitReview } from '../../nextVisitQuestions/inlineVisitReview';
 import { ConversationScreen } from '../ConversationScreen';
@@ -68,29 +72,7 @@ test('restores a source-validated visit and its official answer after reopening 
     let storage = createConversationArtifactStorage(connection.database);
     await storage.createSession('saved', await storage.currentGeneration());
     const registry = new LocalEvidenceReferenceRegistry();
-    const data = {
-      ...localData([]).data,
-      repository: {
-        readRecord: async (
-          kind: Parameters<typeof records.get>[0],
-          id: string,
-        ) => records.get(kind, id),
-        querySource: async () => ({
-          status: 'available',
-          complete: true,
-          records: [
-            {
-              kind: 'source_record',
-              record: (await records.get('source_record', sourceRecord.id))!,
-            },
-            {
-              kind: 'evidence_span',
-              record: (await records.get('evidence_span', evidenceSpan.id))!,
-            },
-          ],
-        }),
-      } as never,
-    };
+    const data = manualVisitRestoreData(() => records);
     const register = createVisitQuestionSourceService(
       registry,
       async () => data,
@@ -155,6 +137,12 @@ test('restores a source-validated visit and its official answer after reopening 
       createManualVisitRecords(connection.database),
     );
     const freshRegistry = new LocalEvidenceReferenceRegistry();
+    const discovery = createConversationArtifactDiscovery({
+      database: connection.database,
+      storage,
+      registry: freshRegistry,
+      data,
+    });
     const makeOptions = () => ({
       retention: createConversationSessionRetention({
         openStorage: async () => storage,
@@ -177,8 +165,19 @@ test('restores a source-validated visit and its official answer after reopening 
           candidates: restored.visitQuestions.candidates,
           registry: freshRegistry,
           signal: new AbortController().signal,
-          loadAppointment: async () =>
-            records.get('appointment', appointment.id),
+          loadAppointment: async (_now, appointmentId) => {
+            const query = selectedVisitQuery(
+              {} as never,
+              records,
+              appointmentId,
+            );
+            const selection = await query.queryNextConfirmedCalendarAppointment(
+              '2030-01-01T00:00:00.000Z',
+            );
+            return selection.appointment
+              ? AppointmentSchema.parse(selection.appointment)
+              : null;
+          },
           loadSaved: appointmentId =>
             loadSavedVisitQuestionState({
               appointmentId,
@@ -187,13 +186,13 @@ test('restores a source-validated visit and its official answer after reopening 
               registry: freshRegistry,
             }),
         });
-        if (!visitQuestions) throw new Error('Visit is unavailable');
+        expect(visitQuestions).toBeNull();
         return [
           {
             question: restored.question,
             answer: restored.answer,
             citations: restored.citations ?? [],
-            visitQuestions,
+            visitQuestionsUnavailable: true,
           },
         ];
       },
@@ -210,6 +209,7 @@ test('restores a source-validated visit and its official answer after reopening 
           onBack={jest.fn()}
           onOpenSource={jest.fn()}
           onSend={jest.fn()}
+          {...({ discoverManualVisits: async () => discovery } as object)}
         />
       </ConversationSessionsProvider>,
     );
@@ -233,6 +233,13 @@ test('restores a source-validated visit and its official answer after reopening 
         await createManualVisitRecords(connection.database).load(appointment.id)
       )[0].records[0].answer,
     ).toBe('재열기 후 수정');
+    await act(async () => {
+      await records.sourceRecords.delete(sourceRecord.id);
+      notifyLocalSourceDeleted();
+    });
+    await waitFor(() =>
+      expect(screen.queryByText('재열기 후 수정')).toBeNull(),
+    );
     view.unmount();
   } finally {
     connection.close();

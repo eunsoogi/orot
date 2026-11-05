@@ -5,6 +5,8 @@ import type { ConversationSessions } from './conversationSessions';
 import type { ConversationSession } from './conversationSessionTypes';
 import { AppText as Text } from '../layout/AppText';
 import { styles } from './ConversationScreen.styles';
+import { RetainedManualVisitTargets } from './RetainedManualVisitTargets';
+import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
 
 /** Each restored panel follows an explicitly source-validated visit, never date inference. */
 export function ManualVisitTargetPanels({
@@ -14,6 +16,8 @@ export function ManualVisitTargetPanels({
   session,
   compact,
   disclaimer,
+  discover,
+  durableSessionId,
 }: {
   readonly store: ConversationSessions;
   readonly sessionId: number;
@@ -21,6 +25,8 @@ export function ManualVisitTargetPanels({
   readonly session: ConversationSession;
   readonly compact: boolean;
   readonly disclaimer: string;
+  readonly discover?: AiFeatureServices['conversationArtifacts'];
+  readonly durableSessionId?: string | null;
 }) {
   const targets = new Map<string, string>();
   const available =
@@ -42,10 +48,21 @@ export function ManualVisitTargetPanels({
     <>
       {[...targets].map(([appointmentId, revision]) => (
         <ManualVisitRecords
-          key={appointmentId + ':' + revision}
+          key={sessionId + ':' + appointmentId + ':' + revision}
           appointmentId={appointmentId}
         />
       ))}
+      {available &&
+      durableSessionId &&
+      discover &&
+      messages.some(message => message.visitQuestionsUnavailable) ? (
+        <RetainedManualVisitTargets
+          key={durableSessionId}
+          sessionId={durableSessionId}
+          discover={discover}
+          excluded={JSON.stringify([...targets.keys()])}
+        />
+      ) : null}
       {compact ? <Text style={styles.disclaimer}>{disclaimer}</Text> : null}
     </>
   );
