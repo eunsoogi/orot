@@ -22,6 +22,13 @@ enum HomeMetricGeometryConditions {
               let recentHeading = frames[identifiers[4]], let recentContent = frames[identifiers[5]],
               let first = frames[identifiers[6]], let second = frames[identifiers[7]] else { return }
 
+        let largeText = app.launchArguments.contains("UICTContentSizeCategoryAccessibilityXXXL")
+        XCTAssertGreaterThanOrEqual(overviewHeading.height, 44, "Health overview heading target")
+        XCTAssertGreaterThanOrEqual(recentHeading.height, 44, "Recent changes heading target")
+        // At the default text size, matching section headings should occupy the same 44pt target.
+        if !largeText {
+            XCTAssertEqual(overviewHeading.height, recentHeading.height, accuracy: 1)
+        }
         let overviewGap = grid.minY - overviewHeading.maxY
         let recentGap = recentContent.minY - recentHeading.maxY
         XCTAssertEqual(overviewGap, 12, accuracy: 1)
@@ -33,7 +40,6 @@ enum HomeMetricGeometryConditions {
         XCTAssertGreaterThanOrEqual(second.minX, grid.minX - 1)
         XCTAssertLessThanOrEqual(second.maxX, grid.maxX + 1)
 
-        let largeText = app.launchArguments.contains("UICTContentSizeCategoryAccessibilityXXXL")
         let sameRow = abs(first.minY - second.minY) <= 1
         // These separated native observations test readable outcomes, not the exact JS breakpoint.
         if grid.width <= 500 || largeText {
