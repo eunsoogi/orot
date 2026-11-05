@@ -165,10 +165,26 @@ test('uses expanded reserved frames without applying their included margins agai
     expect.objectContaining({
       placement: 'right',
       railTopInset: 192,
-      railRightInset: 18,
+      railRightInset: 143 / 6,
       contentWidth: 867,
     }),
   );
+});
+
+test('does not shift for an inactive or vertically detached edge occlusion', () => {
+  const indicator = openGeometry.reservedRegions[2]!;
+  for (const changed of [
+    { ...indicator, isActive: false },
+    { ...indicator, frame: { ...indicator.frame, y: 20 } },
+    { ...indicator, frame: { ...indicator.frame, x: 900, width: 51 } },
+  ]) {
+    expect(
+      layout({
+        ...openGeometry,
+        reservedRegions: [openGeometry.reservedRegions[0]!, changed],
+      }),
+    ).toEqual(expect.objectContaining({ railRightInset: 18 }));
+  }
 });
 
 test('does not reserve the rail again inside an already contracted content viewport', () => {
