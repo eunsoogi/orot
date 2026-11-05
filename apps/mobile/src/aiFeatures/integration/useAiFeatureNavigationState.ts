@@ -78,16 +78,16 @@ export function useAiFeatureRouteLeaveState(
   }, [navigation, route.key, route.name, statesByRouteKey]);
 }
 
-/** Gives the intentionally read-only entry route an explicit clean owner. */
+/** Read-only history and saved results have no pending edits to guard. */
 export function useAiFeatureStatelessRouteLeaveState(
   navigation: NavigationRouteActions<AiFeatureRouteName>,
 ) {
   const route = navigation.route;
   useLayoutEffect(() => {
     if (
-      route.name !== 'entry' &&
       route.name !== 'conversation-history' &&
-      route.name !== 'summary-history'
+      route.name !== 'summary-history' &&
+      route.name !== 'saved-visit-questions'
     )
       return;
     return navigation.registerLeaveState({
@@ -105,11 +105,19 @@ export function useAiFeatureStatelessRouteLeaveState(
 function isStatefulFeatureRoute(
   route: AiFeatureRouteName,
 ): route is
+  | 'saved-analysis'
+  | 'entry'
+  | 'health-summary'
+  | 'visit-questions'
   | 'disease-hypotheses'
   | 'rag-conversation'
   | 'external-evidence'
   | 'source-detail' {
   return (
+    route === 'entry' ||
+    route === 'health-summary' ||
+    route === 'visit-questions' ||
+    route === 'saved-analysis' ||
     route === 'disease-hypotheses' ||
     route === 'rag-conversation' ||
     route === 'external-evidence' ||

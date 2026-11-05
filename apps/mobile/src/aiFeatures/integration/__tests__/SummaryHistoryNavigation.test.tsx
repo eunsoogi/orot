@@ -136,7 +136,7 @@ test('keeps history in a measured region and restores saved content and provenan
     summarizeSymptoms: generate,
   } as unknown as AiFeatureServices);
   await render(
-    <AiFeatureRoute initialRoute="disease-hypotheses" onBack={jest.fn()} />,
+    <AiFeatureRoute initialRoute="saved-analysis" onBack={jest.fn()} />,
   );
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const duoGeometry = geometry(1400, 900, true);

@@ -17,23 +17,22 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('retains a RAG draft through Back and reentry without confirmation', async () => {
+test('retains a RAG draft through history and Back without confirmation', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const view = await render(<AiFeatureRoute onBack={jest.fn()} />);
 
-  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
   const input = view.getByTestId('rag-conversation-input');
   await fireEvent.changeText(
     input,
     '다음 진료에서 확인할 내용을 정리하고 싶어요.',
   );
-  await fireEvent.press(view.getByTestId('navigation-back'));
+  await fireEvent.press(view.getByTestId('rag-conversation-sessions-toggle'));
 
   await waitFor(() =>
-    expect(view.queryByTestId('rag-conversation-screen')).toBeNull(),
+    expect(view.getByTestId('conversation-history-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
-  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
+  await fireEvent.press(view.getByTestId('navigation-back'));
 
   expect(view.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 진료에서 확인할 내용을 정리하고 싶어요.',
@@ -41,7 +40,7 @@ test('retains a RAG draft through Back and reentry without confirmation', async 
   expect(view.getByTestId('rag-conversation-screen')).toBeTruthy();
 });
 
-test('finishes a RAG turn while absent and shows it once on reentry', async () => {
+test('finishes a RAG turn while history is active and shows it once on Back', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const source = localData([memoryRecord(1)]);
   let finish!: (outcome: RagConversationOutcome) => void;
@@ -74,7 +73,6 @@ test('finishes a RAG turn while absent and shows it once on reentry', async () =
     />,
   );
 
-  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
     view.getByTestId('rag-conversation-input'),
     '저장된 기록을 확인해 주세요.',
@@ -83,14 +81,14 @@ test('finishes a RAG turn while absent and shows it once on reentry', async () =
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
   expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
 
-  await fireEvent.press(view.getByTestId('navigation-back'));
+  await fireEvent.press(view.getByTestId('rag-conversation-sessions-toggle'));
   await waitFor(() =>
-    expect(view.getByTestId('ai-features-screen')).toBeTruthy(),
+    expect(view.getByTestId('conversation-history-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(runnerSignal?.aborted).toBe(false);
 
-  // Completion belongs to the session even when no route subscribes to it.
+  // Completion belongs to the app-owned session while the history destination is active.
   await act(async () => {
     finish({
       status: 'answer',
@@ -98,7 +96,7 @@ test('finishes a RAG turn while absent and shows it once on reentry', async () =
       citations: [],
     });
   });
-  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
+  await fireEvent.press(view.getByTestId('navigation-back'));
   expect(view.getAllByText(/늦게 완료된 답변/)).toHaveLength(1);
   expect(view.getByText(/공개 웹검색을 사용할 수 없어/)).toBeTruthy();
   expect(ragRunner).toHaveBeenCalledTimes(1);

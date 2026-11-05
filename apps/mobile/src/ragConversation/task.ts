@@ -10,6 +10,7 @@ import type {
 } from '@orot/agent-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { hasUnsupportedClinicalClaim } from './clinicalClaimValidation';
+import { conversationEntryContext } from './conversationEntryContext';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -45,6 +46,7 @@ function appointmentState(content: string): string | undefined {
 function priorMessages(
   context: JsonValue | undefined,
 ): readonly RagConversationMessage[] {
+  if (isObject(context)) context = context.history as JsonValue | undefined;
   if (!Array.isArray(context)) return [];
   return context.slice(-8).flatMap(message => {
     if (
@@ -80,6 +82,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     // Possibility discussions need the same observation/inference boundary as the symptom summary.
     'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
@@ -152,6 +155,10 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         role: 'user',
         content: JSON.stringify({
           question: input.request,
+          entryContext: conversationEntryContext(
+            input.context,
+            input.evidence.items,
+          ),
           displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           answerRequirements:
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',

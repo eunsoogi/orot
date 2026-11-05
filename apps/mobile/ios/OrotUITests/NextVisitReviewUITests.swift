@@ -101,12 +101,12 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
     @MainActor
     private func verifyKeyboardSavePosition(expectsRightRail: Bool) throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        // The removed editor is retained here only as a synthetic screen; keyboard and navigation remain native.
+        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { app.terminate() }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        tap(app, "ai-feature-visit-questions")
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-probe-boundary")))
+        tap(app, "next-visit-probe-close-tools")
         NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
@@ -117,9 +117,11 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         }
         XCTAssertFalse(node(app, "next-visit-questions-back").exists)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-appointment-time")))
-        XCTAssertEqual(node(app, "next-visit-provider-select").label, "AI 선택 또는 변경, 합성 UI 검사 제공자")
+        XCTAssertEqual(node(app, "next-visit-provider-select").label, "AI 선택 또는 변경, 합성 제공자")
         try reveal(app, "next-visit-generate")
         tap(app, "next-visit-generate")
+        tap(app, "next-visit-probe-tools")
+        tap(app, "next-visit-probe-complete-generation")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-review-save")))
         try NavigationUITestConditions.scrollToBottom(app, "next-visit-questions-scroll")
         let input = node(app, "next-visit-question-text-2")
@@ -155,7 +157,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         UITestConditions.value(node(app, "next-visit-save-message"), equals: "검토한 질문을 이 예약에 저장했어요.")
         capture(app, "visit-questions-after-save")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        NavigationUITestConditions.route(app, markers: ["next-visit-probe-home"])
     }
 
     @MainActor

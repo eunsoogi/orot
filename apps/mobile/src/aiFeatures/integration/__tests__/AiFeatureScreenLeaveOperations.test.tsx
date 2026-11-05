@@ -1,8 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import type { AlertButton } from 'react-native';
-import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
-import type { DiseaseHypothesisRunOutcome } from '../../../diseaseHypotheses/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import type { RagConversationOutcome } from '../../../ragConversation/service';
 import type { EuropePmcMedicalEvidenceService } from '../../../externalMedicalEvidence/europePmc';
@@ -14,9 +11,6 @@ import {
 } from '../featureServiceFixtures';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import type { AiFeatureServiceDependencies } from '../featureServices';
-import { navigationText } from '../../../i18n/navigation';
-import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
-import { pressPageAction } from '../testSupport/pressPageAction';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -49,95 +43,63 @@ test('retains a running RAG turn on leave and aborts only through its stop contr
     />,
   );
 
-  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
     route.getByTestId('rag-conversation-input'),
     '다음 진료에서 물어볼 내용을 정리해 주세요.',
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('navigation-back'));
+  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
   await waitFor(() =>
-    expect(route.queryByTestId('rag-conversation-screen')).toBeNull(),
+    expect(route.getByTestId('conversation-history-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
-  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
+  await fireEvent.press(route.getByTestId('navigation-back'));
   expect(route.getByTestId('rag-conversation-progress')).toBeTruthy();
   await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
 });
 
-test('aborts disease analysis after confirmed leave and ignores its late result', async () => {
+test('retains a possibilities request on leave and ignores its late result after Stop', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let signal: AbortSignal | undefined;
-  let finish!: (outcome: DiseaseHypothesisRunOutcome) => void;
-  const diseaseRunner = jest.fn(
+  let finish!: (outcome: RagConversationOutcome) => void;
+  const ragRunner = jest.fn(
     (
-      _options: Parameters<typeof runDiseaseHypothesisAnalysis>[0],
-      _inventory: Parameters<typeof runDiseaseHypothesisAnalysis>[1],
-      invocation?: Parameters<typeof runDiseaseHypothesisAnalysis>[2],
+      _options: Parameters<typeof runRagConversationTurn>[0],
+      invocation?: Parameters<typeof runRagConversationTurn>[1],
     ) => {
       signal = invocation?.signal;
-      return new Promise<DiseaseHypothesisRunOutcome>(resolve => {
+      return new Promise<RagConversationOutcome>(resolve => {
         finish = resolve;
       });
     },
-  ) as unknown as typeof runDiseaseHypothesisAnalysis;
+  ) as unknown as typeof runRagConversationTurn;
   const route = await render(
     <AiFeatureRoute
+      initialRoute="disease-hypotheses"
       onBack={jest.fn()}
-      serviceDependencies={routeDependencies({ diseaseRunner })}
+      serviceDependencies={routeDependencies({ ragRunner })}
     />,
   );
-
-  await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
-  await pressPageAction(
-    route.queryByTestId('navigation-page-action-overflow'),
-    getDiseaseHypothesisCopy().generate,
-  );
+  await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(
-    navigationText.leaveOngoingOperation.title,
-  );
-  await pressAlertButton(alert, 0);
+  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
+  expect(route.getByTestId('conversation-history-screen')).toBeTruthy();
+  expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
   await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  expect(alert.mock.calls[1]?.[0]).toBe(
-    navigationText.leaveOngoingOperation.title,
-  );
-  await pressAlertButton(alert, 1);
-  await waitFor(() =>
-    expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull(),
-  );
-  expect(route.queryByTestId('disease-hypotheses-cancel')).toBeNull();
+  await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
   await act(async () =>
     finish({
-      status: 'workflow',
-      result: {
-        status: 'result',
-        value: {
-          hypotheses: [
-            {
-              title: '검토할 가능성',
-              summary: '저장된 기록 일부와 맞아요.',
-              supportingEvidence: [],
-              contraryEvidence: [],
-              uncertainty: '자료가 제한적이에요.',
-              missingData: ['진료 기록'],
-            },
-          ],
-        },
-        citations: [],
-        coverage: [],
-        checkpoint: {} as never,
-      },
+      status: 'answer',
+      answer: '취소 후 늦게 도착한 가능성',
+      citations: [],
     }),
   );
+  expect(route.queryByText('취소 후 늦게 도착한 가능성')).toBeNull();
   expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull();
 });
 
@@ -180,20 +142,19 @@ test('retains a RAG external search on leave and ignores results after explicit 
     />,
   );
 
-  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
     route.getByTestId('rag-conversation-input'),
     '수면과 혈압 연구',
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('navigation-back'));
+  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
   await waitFor(() =>
-    expect(route.queryByTestId('rag-conversation-screen')).toBeNull(),
+    expect(route.getByTestId('conversation-history-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
-  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
+  await fireEvent.press(route.getByTestId('navigation-back'));
   await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
   await act(async () => finish({ status: 'empty' }));
@@ -217,15 +178,4 @@ function routeDependencies(
     loadLocalData: async () => data,
     ...overrides,
   };
-}
-
-/** Uses the real Alert callback to resume the shared route guard. */
-async function pressAlertButton(alert: jest.SpyInstance, index: number) {
-  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
-  const press = buttons?.[index]?.onPress;
-  if (!press) throw new Error(`Alert button ${index} was not registered.`);
-  await act(async () => {
-    press();
-    await Promise.resolve();
-  });
 }

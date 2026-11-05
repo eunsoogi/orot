@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { createNextVisitQuestionsTheme } from '../src/aiFeatures/integration/nextVisitQuestionsRoutePresentation';
 import { NextVisitProbeShell } from './nextVisitProbeShell';
 import type { Appointment } from '@orot/domain';
@@ -65,6 +65,23 @@ export function NextVisitQuestionsProbe() {
   const [adapterStatus, setAdapterStatus] = useState('synthetic-ready');
   const [screenRevision, setScreenRevision] = useState(0);
   const generationResolver = useRef<(() => void) | null>(null);
+  const [keyboardFrame, setKeyboardFrame] = useState<{
+    screenY: number;
+    height: number;
+  } | null>(null);
+  useEffect(() => {
+    // The real UIKit keyboard event bounds the synthetic editor's save action.
+    const shown = Keyboard.addListener('keyboardDidShow', event =>
+      setKeyboardFrame(event.endCoordinates),
+    );
+    const hidden = Keyboard.addListener('keyboardDidHide', () =>
+      setKeyboardFrame(null),
+    );
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
 
   const onGenerate: Props['onGenerate'] = async (
     _appointment,
@@ -114,39 +131,65 @@ export function NextVisitQuestionsProbe() {
       onComplete={() => generationResolver.current?.()}
       onReload={() => setScreenRevision(revision => revision + 1)}
     >
-      {onRouteStateChange => (
-        <NextVisitQuestionsScreen
-          // Preserve only the synthetic adapter state while rechecking screen rehydration.
-          key={screenRevision}
-          appointment={{ status: 'ready', appointment }}
-          provider={{
-            status: 'available',
-            selection: {
-              providerId: 'synthetic-provider',
-              modelId: 'fixture-model',
-            },
-            displayName: '합성 제공자',
-            privacyBoundary: 'on-device',
-          }}
-          savedQuestions={{
-            status: 'ready',
-            appointmentId: appointment.id,
-            questions: savedQuestions,
-            caveats: savedCaveats,
-          }}
-          onOpenProviderSelection={() =>
-            setAdapterStatus('synthetic-selection')
-          }
-          onRefreshAppointment={() =>
-            setAdapterStatus('synthetic-calendar-refresh')
-          }
-          onRetrySavedQuestions={() => setAdapterStatus('synthetic-reload')}
-          onGenerate={onGenerate}
-          onSaveReviewedQuestions={onSaveReviewedQuestions}
-          theme={theme}
-          onRouteStateChange={onRouteStateChange}
-        />
+      {(onRouteStateChange, routeKey) => (
+        <>
+          <NextVisitQuestionsScreen
+            // Preserve only the synthetic adapter state while rechecking screen rehydration.
+            key={screenRevision}
+            navigationRouteKey={routeKey}
+            appointment={{ status: 'ready', appointment }}
+            provider={{
+              status: 'available',
+              selection: {
+                providerId: 'synthetic-provider',
+                modelId: 'fixture-model',
+              },
+              displayName: '합성 제공자',
+              privacyBoundary: 'on-device',
+            }}
+            savedQuestions={{
+              status: 'ready',
+              appointmentId: appointment.id,
+              questions: savedQuestions,
+              caveats: savedCaveats,
+            }}
+            onOpenProviderSelection={() =>
+              setAdapterStatus('synthetic-selection')
+            }
+            onRefreshAppointment={() =>
+              setAdapterStatus('synthetic-calendar-refresh')
+            }
+            onRetrySavedQuestions={() => setAdapterStatus('synthetic-reload')}
+            onGenerate={onGenerate}
+            onSaveReviewedQuestions={onSaveReviewedQuestions}
+            theme={theme}
+            onRouteStateChange={onRouteStateChange}
+          />
+          <View pointerEvents="none" style={styles.keyboardMarker}>
+            <Text
+              accessible
+              accessibilityLabel={
+                keyboardFrame
+                  ? `keyboard-visible:${keyboardFrame.screenY}:${keyboardFrame.height}`
+                  : 'keyboard-hidden'
+              }
+              style={styles.keyboardMarkerText}
+              testID={
+                keyboardFrame
+                  ? 'ai-feature-visit-questions-keyboard-visible'
+                  : 'ai-feature-visit-questions-keyboard-hidden'
+              }
+            >
+              Keyboard
+            </Text>
+          </View>
+        </>
       )}
     </NextVisitProbeShell>
   );
 }
+
+const styles = StyleSheet.create({
+  keyboardMarker: { position: 'absolute', left: 0, top: 0 },
+  keyboardMarkerText: { fontSize: 1 },
+});

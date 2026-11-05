@@ -1,3 +1,4 @@
+import { SavedVisitQuestionsRoute } from './SavedVisitQuestionsRoute';
 import { View, useColorScheme } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { useMemo } from 'react';
@@ -15,6 +16,11 @@ export type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.typ
 
 /** The visible route subscribes to retained work and supplies current navigation callbacks. */
 export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
+  if (props.readOnly) return <SavedVisitQuestionsRoute {...props} />;
+  return <EditableRoute {...props} />;
+}
+
+function EditableRoute(props: NextVisitQuestionsRouteProps) {
   const session = useNextVisitQuestionsSession(props);
   if (!session) return <StandaloneRoute {...props} />;
   return session.snapshot ? (

@@ -6,16 +6,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { ComponentRef } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import type { ComponentRef, ReactNode } from 'react';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import type { HostInstance, ViewStyle } from 'react-native';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
-import { appColors } from '../layout/appColors';
+import { styles } from './ConversationHistoryLayout.styles';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import {
   useNavigationContentInset,
@@ -29,6 +24,7 @@ import type { ConversationHistoryRow } from './ConversationHistoryScreen';
 /** Measures this screen's usable parent so Duo panels honor the actual native regions. */
 export function ConversationHistoryLayout({
   deleted,
+  header,
   onBack,
   onCreateSession,
   onDeleteSession,
@@ -38,6 +34,7 @@ export function ConversationHistoryLayout({
   selectedSession,
 }: {
   readonly deleted: boolean;
+  readonly header?: ReactNode;
   readonly onBack: () => void;
   readonly onCreateSession: () => void;
   readonly onDeleteSession: (id: number) => void;
@@ -209,6 +206,7 @@ export function ConversationHistoryLayout({
           style={styles.measurementHost}
           testID="conversation-history-measurement-host"
         >
+          {header}
           <View
             style={[styles.layout, layoutStyle]}
             testID="conversation-history-layout"
@@ -240,11 +238,3 @@ export function ConversationHistoryLayout({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, minWidth: 0, backgroundColor: appColors.background },
-  pageContent: { flexGrow: 1 },
-  measurementHost: { flexGrow: 1, minWidth: 0, minHeight: 0 },
-  layout: { flexGrow: 1, minWidth: 0, minHeight: 0 },
-  panel: { flexDirection: 'column' },
-});
