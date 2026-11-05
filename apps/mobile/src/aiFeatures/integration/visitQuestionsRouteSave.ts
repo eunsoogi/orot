@@ -59,6 +59,7 @@ export async function saveVisitQuestionRoute(
   const generatedAliases = new Map<string, VisitQuestionEvidenceItem>();
   const context = await prepareUpcomingVisitQuestionContext({
     now: new Date().toISOString(),
+    appointmentId: input.appointment.id,
     maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems,
     validateGeneratedArtifact: async citation => {
       const controller = new AbortController();

@@ -9,6 +9,8 @@ type RestoredTurn = {
   readonly completion?: 'complete' | 'partial';
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+  readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+  readonly visitQuestionsUnavailable?: boolean;
 };
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
@@ -46,6 +48,8 @@ export function createConversationSessionRestoreState(input: {
           citations: turn.citations,
           toolMessageId: turn.toolMessageId,
           toolEvents: turn.toolEvents,
+          visitQuestions: turn.visitQuestions,
+          visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
           ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },
