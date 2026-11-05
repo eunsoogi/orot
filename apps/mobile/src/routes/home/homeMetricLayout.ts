@@ -1,6 +1,8 @@
 export const homeMetricGridGap = 8;
 
-const minimumMetricCardWidth = 160;
+// Keep the existing 320pt readable-column floor instead of treating a compact chart as a full card.
+// The measured grid already excludes the shell's reserved rail and Home's content gutters.
+const minimumMetricCardWidth = 320;
 const minimumRecentChangeRowWidth = 280;
 
 export type HomeRecentChangeLayout = 'row' | 'header' | 'column';
@@ -10,7 +12,7 @@ export interface HomeMetricGridLayout {
   readonly cardWidth: number | '100%';
 }
 
-/** Keeps seven day labels readable by adding a second card only when both scaled cards fit. */
+/** Adds a second full metric card only when both readable, text-scaled columns fit. */
 export function resolveHomeMetricGridLayout(
   measuredWidth: number,
   metricCount: number,
