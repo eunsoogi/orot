@@ -31,23 +31,22 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let inputObservation = ProcessInfo.processInfo.environment["OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION"] == "1"
             ? EncounterInputObservation()
             : nil
-        var launchArguments = [
+        if let inputObservation {
+            try observeRetainedVisitInput(app, inputObservation: inputObservation)
+        }
+        let launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
             "-OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE", "synthetic",
             "-OROT_TEST_UI_GEOMETRY", "YES",
             "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
-        // Share one run ID across runner brackets and UIKit snapshots only for an explicit diagnostic run.
-        if let inputObservation {
-            launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", inputObservation.run.uuidString]
-        }
         app.launchArguments = launchArguments
         app.launch()
         defer { app.terminate() }
 
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
         // The selected tab and visible screen marker identify this screen-owned root without a scene adaptive event.
         let rootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
         XCTAssertTrue(rootTab.control.isSelected)
@@ -57,47 +56,28 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let rootFrame = try NavigationGeometryUITestConditions.captureBoundary(
             app, navigationID: "navigation-tab-ai", name: "ai-root-content-and-rail", testCase: self,
         )
-        NavigationWindowGeometryUITestConditions.tap(app, "ai-feature-visit-questions")
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
-        let questionGeometry = try waitForGeometry(app)
-        let questionLayout = try XCTUnwrap(questionGeometry.adaptive)
-        let questionRoute = questionGeometry.routeKey
-        XCTAssertNotEqual(questionRoute, rootRouteKey, "Pushing the questions screen must change the active route")
-        XCTAssertEqual(questionLayout.routeKey, questionRoute, "Adaptive geometry must belong to the active questions route")
-        XCTAssertEqual(questionLayout.columns, 1, "The visit questions screen keeps its current single-column layout")
-        NavigationWindowGeometryUITestConditions.assertGeometry(questionGeometry)
-        let generate = UITestConditions.element(app, "next-visit-generate")
-        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
-        XCTAssertTrue(generate.exists && generate.isHittable)
-        guard generate.exists, generate.isHittable else { return }
-        generate.tap()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-review-save")))
-
-        let question = FormUITestConditions.multilineInput(app, identifier: "next-visit-question-text-0")
-        let draft = "합성 초안 유지"
-        XCTAssertTrue(FormUITestConditions.replace(
-            question,
-            with: draft,
-            in: app,
-            scrollID: "next-visit-questions-scroll",
-            observeInput: inputObservation.map { observation in
-                { phase in observation.captureUIKit(phase, app: app, testCase: self) }
-            },
-            useNativeSelectAllMenu: true,
-        ))
-
-        let source = UITestConditions.element(app, "next-visit-source-0-0")
-        FormUITestConditions.reveal(
-            source,
-            in: app,
-            scrollID: "next-visit-questions-scroll",
-            avoiding: question,
-        )
+        let question = UITestConditions.element(app, "rag-conversation-input")
+        XCTAssertTrue(UITestConditions.exists(question) && question.isHittable)
+        question.tap()
+        question.typeText("source")
+        NavigationWindowGeometryUITestConditions.tap(app, "rag-conversation-send")
+        let source = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(source))
+        let draft = "draft retained"
+        question.tap()
+        question.typeText(draft)
+        XCTAssertEqual(question.value as? String, draft)
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
         // The opt-in saved fixture exercises the integrated source route without user records.
         let sourceDetail = UITestConditions.element(app, "ai-feature-source-detail")
         XCTAssertTrue(UITestConditions.exists(sourceDetail))
+        let sourceGeometry = try waitForGeometry(app)
+        let sourceLayout = try XCTUnwrap(sourceGeometry.adaptive)
+        XCTAssertNotEqual(sourceGeometry.routeKey, rootRouteKey, "Opening the source must change the active route")
+        XCTAssertEqual(sourceLayout.routeKey, sourceGeometry.routeKey, "Adaptive geometry must belong to the active source route")
+        XCTAssertEqual(sourceLayout.columns, 1, "The source screen keeps its current single-column layout")
+        NavigationWindowGeometryUITestConditions.assertGeometry(sourceGeometry)
         let sourceContent = UITestConditions.element(app, "ai-feature-source-content")
         XCTAssertTrue(UITestConditions.exists(sourceContent), app.debugDescription)
         // The persisted fixture places the excerpt after its saved source record.
@@ -107,44 +87,46 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         excerptSection.tap()
         let originalExcerpt = app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."]
         XCTAssertTrue(originalExcerpt.exists, app.debugDescription)
+        let contextualFrame = try NavigationGeometryUITestConditions.captureBoundary(
+            app, navigationID: "navigation-back", name: "source-content-and-rail", testCase: self,
+        )
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         // Preserve the synthetic route observation before waiting, so a stale or missing event is distinguishable.
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "question-after-source-return")
-        let restoredQuestion = try waitForGeometry(app, routeKey: questionRoute)
+        let restoredQuestion = try waitForGeometry(app, routeKey: rootRouteKey)
         NavigationWindowGeometryUITestConditions.assertGeometry(restoredQuestion)
 
         if verifyAdaptiveReflow {
             // The Duo run follows UIKit orientation events without synthesizing geometry.
             defer { XCUIDevice.shared.orientation = .portrait }
-            let before = try waitForGeometry(app, routeKey: questionRoute)
+            let before = try waitForGeometry(app, routeKey: rootRouteKey)
             let beforeLayout = try XCTUnwrap(before.adaptive)
             XCUIDevice.shared.orientation = .landscapeLeft
             let landscape = try waitForGeometry(
                 app, widthDifferentFrom: before.publicUIKit.windowBounds.width,
-                routeWidthDifferentFrom: beforeLayout.width, routeKey: questionRoute,
+                routeWidthDifferentFrom: beforeLayout.width, routeKey: rootRouteKey,
             )
             let landscapeLayout = try XCTUnwrap(landscape.adaptive)
-            XCTAssertTrue(landscapeLayout.routeKey == questionRoute && landscapeLayout.columns == 1 && (question.value as? String) == draft)
+            XCTAssertTrue(landscapeLayout.routeKey == rootRouteKey && landscapeLayout.columns == 1 && (question.value as? String) == draft)
             XCUIDevice.shared.orientation = .portrait
             let portrait = try waitForGeometry(
                 app, widthDifferentFrom: landscape.publicUIKit.windowBounds.width,
-                routeWidthDifferentFrom: landscapeLayout.width, routeKey: questionRoute,
+                routeWidthDifferentFrom: landscapeLayout.width, routeKey: rootRouteKey,
             )
             let portraitLayout = try XCTUnwrap(portrait.adaptive)
-            XCTAssertTrue(portraitLayout.routeKey == questionRoute && portraitLayout.columns == 1 && (question.value as? String) == draft)
+            XCTAssertTrue(portraitLayout.routeKey == rootRouteKey && portraitLayout.columns == 1 && (question.value as? String) == draft)
         }
 
-        let finalQuestion = try waitForGeometry(app, routeKey: questionRoute)
+        let finalQuestion = try waitForGeometry(app, routeKey: rootRouteKey)
         NavigationWindowGeometryUITestConditions.assertGeometry(finalQuestion)
-        let contextualFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-back", name: "question-content-and-rail", testCase: self,
+        let conversationFrame = try NavigationGeometryUITestConditions.captureBoundary(
+            app, navigationID: "navigation-tab-ai", name: "question-content-and-rail", testCase: self,
         )
-        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame])
+        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame, conversationFrame])
         try NavigationWindowGeometryUITestConditions.verifyObservedSplit(app, testCase: self)
         XCTAssertTrue((question.value as? String) == draft, "The edited question must survive the source-detail route")
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         let returnedRootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
         XCTAssertTrue(returnedRootTab.control.isSelected)
         let returnedRoot = try waitForGeometry(app, routeKey: rootRouteKey, requiresAdaptiveLayout: false)
@@ -152,7 +134,29 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let returnedRootFrame = try NavigationGeometryUITestConditions.captureBoundary(
             app, navigationID: "navigation-tab-ai", name: "returned-ai-root-content-and-rail", testCase: self,
         )
-        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame, returnedRootFrame])
+        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame, conversationFrame, returnedRootFrame])
+    }
+
+    /// The optional diagnostic retains the real question editor and its original UIKit observer in a separate process.
+    @MainActor
+    private func observeRetainedVisitInput(_ app: XCUIApplication, inputObservation: EncounterInputObservation?) throws {
+        var launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE", "synthetic", "-OROT_TEST_RETAINED_VISIT_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        if let inputObservation {
+            launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", inputObservation.run.uuidString]
+        }
+        app.launchArguments = launchArguments
+        app.launch()
+        defer { app.terminate() }
+        NavigationWindowGeometryUITestConditions.tap(app, "next-visit-probe-close-tools")
+        let generate = UITestConditions.element(app, "next-visit-generate")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
+        generate.tap()
+        NavigationWindowGeometryUITestConditions.tap(app, "next-visit-probe-tools")
+        NavigationWindowGeometryUITestConditions.tap(app, "next-visit-probe-complete-generation")
+        let question = FormUITestConditions.multilineInput(app, identifier: "next-visit-question-text-0")
+        XCTAssertTrue(FormUITestConditions.replace(question, with: "합성 초안 유지", in: app, scrollID: "next-visit-questions-scroll", observeInput: inputObservation.map { observation in
+            { phase in observation.captureUIKit(phase, app: app, testCase: self) }
+        }, useNativeSelectAllMenu: true))
     }
 
     @MainActor

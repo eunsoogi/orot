@@ -5,11 +5,26 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { NextVisitQuestionsProbe } from '../e2e/nextVisitQuestionsProbe';
+import { retainedVisitObservationEnabled } from '../e2e/retainedVisitObservation';
 
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
+
+test('the retained observation screen requires its explicit launch flag', () => {
+  expect(retainedVisitObservationEnabled({})).toBe(false);
+  expect(
+    retainedVisitObservationEnabled({
+      OROT_TEST_RETAINED_VISIT_OBSERVATION: 'NO',
+    }),
+  ).toBe(false);
+  expect(
+    retainedVisitObservationEnabled({
+      OROT_TEST_RETAINED_VISIT_OBSERVATION: 'YES',
+    }),
+  ).toBe(true);
+});
 
 test('the retained native probe opens the editor, completes generation and saves the reviewed draft', async () => {
   await render(<NextVisitQuestionsProbe />);

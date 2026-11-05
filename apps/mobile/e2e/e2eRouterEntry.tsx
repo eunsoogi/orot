@@ -1,6 +1,7 @@
 import 'react-native-get-random-values';
 import { NativeModules } from 'react-native';
 import { selectEntryRoute } from './selectEntryRoute';
+import { retainedVisitObservationEnabled } from './retainedVisitObservation';
 
 const settingsManager = (
   NativeModules as unknown as {
@@ -50,7 +51,9 @@ switch (selectEntryRoute(launchSettings)) {
     require('./storageProbeEntry');
     break;
   case 'ai-feature-visit-questions':
-    // Keep the production App navigation and inject synthetic operations only for the UI proof.
-    require('./aiFeatureVisitQuestionsProbeEntry');
+    // The diagnostic opt-in mounts the retained editor under the existing UIKit observation gate.
+    if (retainedVisitObservationEnabled(launchSettings))
+      require('./nextVisitQuestionsProbeEntry');
+    else require('./aiFeatureVisitQuestionsProbeEntry');
     break;
 }

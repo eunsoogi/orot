@@ -71,7 +71,7 @@ if (route === 'test-host') {
   require('./openaiProviderProbeEntry');
 } else if (route === 'next-visit-questions') {
   require('./nextVisitQuestionsProbeEntry');
-} else if (!registerCapabilityTestEntry(route)) {
+} else if (!registerCapabilityTestEntry(route, settings)) {
   require('./e2eRouterEntry');
 }
 
