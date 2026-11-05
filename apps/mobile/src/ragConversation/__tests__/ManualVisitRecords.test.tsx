@@ -11,6 +11,7 @@ import type {
 } from '../manualVisitRecordService';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { act } from '@testing-library/react-native';
+import { manualVisitAiRecord } from '../testSupport/manualVisitAiFixture';
 
 const item = {
   question: { id: 'question-1', questionText: '언제 복용하나요?' },
@@ -111,16 +112,7 @@ test.each(['not_found', 'indeterminate'] as const)(
   async status => {
     const saved = {
       ...item,
-      records: [
-        {
-          id: 'ai-1',
-          revision: 1,
-          sourceMethod: 'ai_generated',
-          editOrigin: 'ai_analysis',
-          answer: null,
-          automaticSource: { result: { status, answers: [] } },
-        },
-      ],
+      records: [manualVisitAiRecord(status)],
     } as unknown as ManualVisitQuestion;
     const service = {
       load: jest.fn().mockResolvedValue([saved]),
@@ -166,7 +158,7 @@ test('shows the confirmed question wording when the prepared question changes', 
     <ManualVisitRecords appointmentId="visit-1" open={async () => service} />,
   );
   await screen.findByText('기존 답변');
-  expect(screen.getByText('기존 질문')).toBeTruthy();
+  expect(screen.getByText('확인 당시 질문: 기존 질문')).toBeTruthy();
 });
 
 test('clears deleted source content and revalidates the visible list', async () => {
@@ -190,4 +182,29 @@ test('clears deleted source content and revalidates the visible list', async () 
     expect(screen.queryByText('언제 복용하나요?')).toBeNull(),
   );
   expect(load).toHaveBeenCalledTimes(2);
+});
+
+test('does not restore a late pre-deletion read after the source is removed', async () => {
+  let finish!: (value: ManualVisitQuestion[]) => void;
+  const pending = new Promise<ManualVisitQuestion[]>(resolve => {
+    finish = resolve;
+  });
+  const load = jest.fn().mockReturnValueOnce(pending).mockResolvedValueOnce([]);
+  const service = {
+    load,
+    saveManual: jest.fn(),
+    edit: jest.fn(),
+  } as unknown as Service;
+  await render(
+    <ManualVisitRecords appointmentId="visit-1" open={async () => service} />,
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    notifyLocalSourceDeleted();
+  });
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  await act(async () => {
+    finish([item]);
+  });
+  expect(screen.queryByText('언제 복용하나요?')).toBeNull();
 });

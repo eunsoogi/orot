@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
-import { ManualVisitRecords } from './ManualVisitRecords';
+import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -206,21 +206,14 @@ export function ConversationScreen({
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
-                <>
-                  {conversationEntryForSession(store, id)?.appointmentId ? (
-                    <ManualVisitRecords
-                      key={
-                        conversationEntryForSession(store, id)!.appointmentId
-                      }
-                      appointmentId={
-                        conversationEntryForSession(store, id)!.appointmentId!
-                      }
-                    />
-                  ) : null}
-                  {composerLayout.compact ? (
-                    <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-                  ) : null}
-                </>
+                <ManualVisitTargetPanels
+                  store={store}
+                  sessionId={id}
+                  messages={messages}
+                  session={session}
+                  compact={composerLayout.compact}
+                  disclaimer={copy.disclaimer}
+                />
               }
             />
             <ConversationComposer

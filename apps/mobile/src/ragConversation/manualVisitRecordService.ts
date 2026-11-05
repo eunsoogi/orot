@@ -19,6 +19,12 @@ export function createManualVisitRecords(database: SqlDatabase) {
     async load(appointmentId: string): Promise<ManualVisitQuestion[]> {
       let questions: Array<{ question: VisitQuestion; revision: string }> = [];
       await database.transaction(async sql => {
+        const appointment = await sql.execute(
+          'SELECT id FROM appointments WHERE id = ?',
+          [appointmentId],
+        );
+        if (!appointment.rows.length)
+          throw new Error('The selected appointment is unavailable.');
         const rows = await sql.execute(
           "SELECT payload_json FROM visit_questions WHERE json_extract(payload_json, '$.appointmentId') = ? ORDER BY json_extract(payload_json, '$.position'), id",
           [appointmentId],

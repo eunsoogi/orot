@@ -122,7 +122,7 @@ export function ManualVisitRecords({
           {item.records.map(record => (
             <View key={record.id}>
               {record.questionText !== item.question.questionText && (
-                <Text>{record.questionText}</Text>
+                <Text>확인 당시 질문: {record.questionText}</Text>
               )}
               <Text>
                 {record.sourceMethod === 'manual_confirmed'
