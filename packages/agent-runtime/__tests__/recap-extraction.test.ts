@@ -96,6 +96,24 @@ describe('selected-provider transcript Recap extraction', () => {
     ).toBeDefined();
   });
 
+  it('applies the output token budget only when the selected provider supports it', async () => {
+    const { options, generate } = extractionFixture();
+    options.provider = {
+      ...options.provider,
+      capabilities: { ...options.provider.capabilities, requestControls: ['maxOutputTokens'] },
+    };
+    expect(await extractTranscriptRecap(options)).toMatchObject({ status: 'result' });
+    expect(generate.mock.calls[0][0].maxOutputTokens).toBe(
+      options.execution.budget.maxOutputTokens,
+    );
+    options.provider = {
+      ...options.provider,
+      capabilities: { ...options.provider.capabilities, requestControls: [] },
+    };
+    expect(await extractTranscriptRecap(options)).toMatchObject({ status: 'result' });
+    expect(generate.mock.calls[1][0].maxOutputTokens).toBeUndefined();
+  });
+
   it('returns no_questions without dispatch and rejects foreign visits before model use', async () => {
     const { options, generate } = extractionFixture();
     expect(

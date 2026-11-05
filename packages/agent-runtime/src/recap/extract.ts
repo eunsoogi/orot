@@ -97,6 +97,10 @@ export async function extractTranscriptRecap(
     if (!(await current())) return { status: signal.aborted ? 'cancelled' : 'stale_source' };
     const chunk = chunks[chunkIndex];
     const request: LanguageModelRequest = {
+      // Providers that do not expose this control retain their own output limit.
+      ...(provider.capabilities.requestControls?.includes('maxOutputTokens')
+        ? { maxOutputTokens: execution.budget.maxOutputTokens }
+        : {}),
       messages: [
         { role: 'system', content: instructions },
         {
