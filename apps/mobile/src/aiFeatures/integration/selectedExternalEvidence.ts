@@ -30,6 +30,8 @@ export function createSelectedExternalEvidence(input: {
   readonly onResearchRetained?: (
     ids: readonly number[],
     signal: AbortSignal,
+    references?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+    scope?: import('./toolReferenceIndex').RunCallIdentity,
   ) => Promise<void>;
 }) {
   const literature = createExternalConversationEvidence(

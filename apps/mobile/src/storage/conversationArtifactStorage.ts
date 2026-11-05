@@ -20,6 +20,8 @@ import {
   isGeneratedResearchSource,
 } from '../ragConversation/conversationArtifactSources';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
+import { createConversationToolEventStorage } from './conversationToolEventStorage';
+import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
 
 async function generation(tx: SqlExecutor): Promise<number> {
   const result = await tx.execute(
@@ -44,6 +46,8 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationToolEventStorage(database, ensure),
+    ...createFilteredToolPeriodStorage(database, ensure),
     ...createConversationSessionVisibility(database, ensure),
     ...createConversationArtifactReader(database, ensure),
     async currentGeneration() {

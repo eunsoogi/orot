@@ -126,6 +126,9 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
     },
     activeSessionVersion: async (id: string) => sessions.get(id) ?? null,
     append: async () => undefined,
+    appendToolEvent: async () => undefined,
+    recoverInterruptedToolEvents: async () => undefined,
+    readToolTurns: async () => [],
     hideSession: async (id: string) => {
       sessions.delete(id);
       return 1;
