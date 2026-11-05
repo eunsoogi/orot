@@ -122,13 +122,15 @@ export function resolveNavigationRootLayout(
     laneWidth,
     edgeInset: centeredInset,
   } = navigationSideLane(geometry, side);
-  // The indicator reservation may change height; its active top-edge overlap identifies the same side lane.
+  // Inspect the selected edge in window coordinates without expanding the content reservation.
+  const laneStart = side === 'left' ? window.x : windowRight - laneWidth;
+  const laneEnd = laneStart + laneWidth;
   const measuredEdgeReservation = geometry.reservedRegions.some(
     region =>
       region.kind === 'occlusion' &&
       region.isActive &&
-      region.frame.x <= windowRight - laneWidth + 0.5 &&
-      region.frame.x + region.frame.width >= windowRight - 0.5 &&
+      region.frame.x <= laneStart + 0.5 &&
+      region.frame.x + region.frame.width >= laneEnd - 0.5 &&
       region.frame.y <= window.y &&
       region.frame.y + region.frame.height > window.y,
   );
@@ -141,7 +143,26 @@ export function resolveNavigationRootLayout(
     width === 48 &&
     laneWidth === 84 &&
     measuredEdgeReservation;
-  const railRightInset = centeredInset + (measuredLane ? 35 / 6 : 0);
+  // The user requested the same outer spacing on the observed left Split layout.
+  const leftSplit =
+    side === 'left' &&
+    geometry.hasHinge === true &&
+    geometry.safeAreaInsets.left === 0 &&
+    geometry.safeAreaInsets.right === 0 &&
+    divisions.length === 1 &&
+    divisions.some(
+      ({ frame, isActive }) =>
+        !isActive &&
+        frame.height > frame.width &&
+        frame.x > window.x + window.width / 2 &&
+        Math.abs(frame.y - window.y) <= 0.5 &&
+        Math.abs(frame.y + frame.height - windowBottom) <= 0.5 &&
+        Math.abs(frame.x + frame.width - windowRight) <= 0.5,
+    ) &&
+    width === 48 &&
+    centeredInset >= 35 / 6;
+  const railRightInset =
+    centeredInset + (measuredLane || leftSplit ? 35 / 6 : 0);
   const railLeft =
     side === 'right'
       ? windowRight - laneWidth + railRightInset
