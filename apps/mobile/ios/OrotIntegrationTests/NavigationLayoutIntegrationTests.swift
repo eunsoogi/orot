@@ -115,7 +115,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
             ("home", ["welcome-title"]),
             ("records", ["records-title"]),
             ("schedule", ["calendar-title", "schedule-retry"]),
-            ("ai", ["ai-features-screen"]),
+            ("ai", ["rag-conversation-screen"]),
             ("settings", ["settings-title"]),
         ]
         for (tab, markers) in routes {

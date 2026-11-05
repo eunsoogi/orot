@@ -32,7 +32,7 @@ jest.mock('../../../providers/selection/options', () => {
   };
 });
 
-test('routes all entry actions through the integration and returns from visit questions', async () => {
+test('preserves saved-question source, draft and provider state through retained overlays', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const reference: EvidenceItem = {
     sourceKind: 'personal_record',
@@ -86,7 +86,10 @@ test('routes all entry actions through the integration and returns from visit qu
   expect(StyleSheet.flatten(screenContent.props.style)).toMatchObject({
     flex: 1,
   });
-  await fireEvent.press(screen.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(
+    screen.getByTestId('conversation-saved-visit-questions'),
+  );
   expect(screen.getByTestId('visit-question-route')).toBeTruthy();
   expect(renderVisitQuestions).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -162,23 +165,11 @@ test('routes all entry actions through the integration and returns from visit qu
   await fireEvent.press(screen.getByTestId('visit-question-back'));
   expect(alert).not.toHaveBeenCalled();
   await waitFor(() =>
-    expect(screen.getByTestId('ai-features-screen')).toBeTruthy(),
+    expect(screen.getByTestId('conversation-history-screen')).toBeTruthy(),
   );
-
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-
-  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-
-  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
-  expect(screen.getByTestId('external-medical-evidence-screen')).toBeTruthy();
-  expect(screen.queryByTestId('external-evidence-loading')).toBeNull();
-  expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('ai-features-screen')).toBeTruthy();
+  expect(screen.queryByTestId('external-evidence-search')).toBeNull();
 });
 
 /** Models saved selection so the flow can resolve the committed choice again. */

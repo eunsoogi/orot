@@ -109,6 +109,8 @@ test('routes Photos selection separately and returns to both actions after cance
   );
   await fireEvent.press(screen.getByTestId('records-import-medical-photo'));
   expect(service.selectDocument).toHaveBeenCalledWith('photos');
+  expect(service.saveDocument).not.toHaveBeenCalled();
+  expect(service.discardDocument).not.toHaveBeenCalled();
   expect(screen.getByTestId('records-import-medical-document')).toBeEnabled();
   expect(screen.getByTestId('records-import-medical-photo')).toBeEnabled();
 });

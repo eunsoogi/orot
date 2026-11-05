@@ -7,6 +7,12 @@ import {
 import type { Appointment } from '@orot/storage';
 import App from '../App';
 import { createAppointmentStore } from './appointmentStore';
+import {
+  AppointmentReminderProvider,
+  createAppointmentReminderRuntime,
+} from '../src/appointmentReminders/AppointmentReminderContext';
+import { RetainedVisitModuleHarness } from '../src/aiFeatures/integration/testSupport/RetainedVisitModuleHarness';
+import { renderVisitQuestionsRoute } from '../src/routes/HomeVisitQuestionsRoute';
 import { savedHomeQuestions as mockSavedHomeQuestions } from './homeOverviewFixtures';
 import { defaultVisitQuestionRouteOperations as defaults } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
@@ -45,6 +51,7 @@ export function futureHomeVisit(id: string): Appointment {
 export async function renderHomeGenerator(
   visits = [futureHomeVisit('Home A')],
   consent = false,
+  retainedModule = false,
 ) {
   mockSaved.clear();
   const store = createAppointmentStore(visits);
@@ -100,30 +107,54 @@ export async function renderHomeGenerator(
       validateSource: async () => true,
     };
   });
+  const selectedAi = {
+    selectionStore: {
+      load: async () => ({
+        providerId: option.provider.id,
+        modelId: option.modelId,
+      }),
+      save: async () => {},
+      clear: async () => {},
+    },
+    loadAppleOption: async () => option,
+  };
+  const runtime = createAppointmentReminderRuntime(
+    async () => store.repository,
+  );
   await render(
-    <App
-      loadAppointments={async () => store.repository}
-      loadRecordings={async () => []}
-      aiFeatureServiceDependencies={{
-        selectedAi: {
-          selectionStore: {
-            load: async () => ({
-              providerId: option.provider.id,
-              modelId: option.modelId,
-            }),
-            save: async () => {},
-            clear: async () => {},
-          },
-          loadAppleOption: async () => option,
-        },
-      }}
-    />,
+    retainedModule ? (
+      <AppointmentReminderProvider runtime={runtime}>
+        <RetainedVisitModuleHarness
+          dependencies={{ selectedAi }}
+          renderModule={input => {
+            if (input.navigationRouteKey && visits[0])
+              runtime.homePreparationTargets.set(
+                input.navigationRouteKey,
+                visits[0].id,
+              );
+            return renderVisitQuestionsRoute({ ...input, readOnly: false });
+          }}
+        />
+      </AppointmentReminderProvider>
+    ) : (
+      <App
+        loadAppointments={async () => store.repository}
+        loadRecordings={async () => []}
+        aiFeatureServiceDependencies={{
+          selectedAi,
+        }}
+      />
+    ),
   );
   return { store, query, generate, save };
 }
 
-export async function enterHomeGenerator() {
-  await fireEvent.press(await screen.findByTestId('home-prepare-visit'));
+export async function enterHomeGenerator(retainedModule = false) {
+  await fireEvent.press(
+    await screen.findByTestId(
+      retainedModule ? 'retained-visit-module-open' : 'home-prepare-visit',
+    ),
+  );
   await waitFor(() =>
     expect(screen.getByTestId('next-visit-generate')).toBeEnabled(),
   );
