@@ -7,6 +7,10 @@ type RestoredTurn = {
   readonly answer: string;
   readonly citations: readonly EvidenceReference[];
   readonly completion?: 'complete' | 'partial';
+  readonly toolMessageId?: string;
+  readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+  readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+  readonly visitQuestionsUnavailable?: boolean;
 };
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
@@ -28,12 +32,25 @@ export function createConversationSessionRestoreState(input: {
       const turns = await input.read(entry.durableId, controller.signal);
       if (sessions.get(id) !== entry || controller.signal.aborted) return;
       const messages = turns.flatMap((turn, index) => [
-        { id: -(2 * index + 1), role: 'user' as const, content: turn.question },
+        ...(turn.question
+          ? [
+              {
+                id: -(2 * index + 1),
+                role: 'user' as const,
+                content: turn.question,
+              },
+            ]
+          : []),
         {
           id: -(2 * index + 2),
           role: 'assistant' as const,
           content: turn.answer,
           citations: turn.citations,
+          toolMessageId: turn.toolMessageId,
+          toolEvents: turn.toolEvents,
+          visitQuestions: turn.visitQuestions,
+          visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
+          ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },
       ]);

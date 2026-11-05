@@ -7,6 +7,7 @@ import {
 import { Linking } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { ConversationMessage } from '../ConversationMessage';
+import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 
 const reference: EvidenceReference = {
   sourceKind: 'external_medical',
@@ -42,6 +43,49 @@ test.each([
     expect(screen.queryByTestId('rag-conversation-sources')).toBeNull();
   },
 );
+
+test('keeps tool calls collapsed by default and expands each call independently', async () => {
+  const [first, second] = conversationToolEventFixtures;
+  if (!first || !second) throw new Error('Expected two tool event fixtures.');
+  await render(
+    <ConversationMessage
+      message={{
+        id: 1,
+        role: 'assistant',
+        content: '답변',
+        toolEvents: [first, second],
+      }}
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+    />,
+  );
+
+  const firstToggle = screen.getByTestId(
+    `rag-tool-event-${first.operationRunId}-${first.callId}-toggle`,
+  );
+  const secondToggle = screen.getByTestId(
+    `rag-tool-event-${second.operationRunId}-${second.callId}-toggle`,
+  );
+  const firstDetailsId = `rag-tool-event-${first.operationRunId}-${first.callId}-details`;
+  const secondDetailsId = `rag-tool-event-${second.operationRunId}-${second.callId}-details`;
+
+  expect(firstToggle.props.accessibilityState.expanded).toBe(false);
+  expect(secondToggle.props.accessibilityState.expanded).toBe(false);
+  expect(screen.queryByTestId(firstDetailsId)).toBeNull();
+  expect(screen.queryByTestId(secondDetailsId)).toBeNull();
+
+  await fireEvent.press(firstToggle);
+  expect(firstToggle.props.accessibilityState.expanded).toBe(true);
+  expect(secondToggle.props.accessibilityState.expanded).toBe(false);
+  expect(screen.getByTestId(firstDetailsId)).toBeTruthy();
+  expect(screen.queryByTestId(secondDetailsId)).toBeNull();
+
+  await fireEvent.press(secondToggle);
+  expect(firstToggle.props.accessibilityState.expanded).toBe(true);
+  expect(secondToggle.props.accessibilityState.expanded).toBe(true);
+  expect(screen.getByTestId(firstDetailsId)).toBeTruthy();
+  expect(screen.getByTestId(secondDetailsId)).toBeTruthy();
+});
 
 test('shows publication provenance and opens only its validated canonical article link', async () => {
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);

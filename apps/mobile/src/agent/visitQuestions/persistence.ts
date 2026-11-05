@@ -6,7 +6,13 @@ import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
+  SavedQuestionRevision,
 } from './taskContract';
+import {
+  sameQuestionContent,
+  validateQuestionIdentities,
+} from './persistenceIdentity';
+import { VisitQuestionCreateSchema } from '@orot/domain';
 import {
   assertCurrentVisitQuestionRecord,
   assertReviewedVisitQuestions,
@@ -24,6 +30,7 @@ export interface SaveReviewedVisitQuestionsInput {
   readonly appointmentId: string;
   readonly expectedAppointmentRevision: string;
   readonly questions: readonly VisitQuestionCandidate[];
+  readonly expectedSavedQuestions: readonly SavedQuestionRevision[];
   readonly evidence: VisitQuestionEvidenceCollection;
   readonly repository: RecordRepository;
   readonly memory?: Pick<AgentMemoryService, 'remember'>;
@@ -100,6 +107,12 @@ export async function saveReviewedVisitQuestions(
     }
 
     const previous = await writer.list('visit_question');
+    const existing = validateQuestionIdentities(
+      previous,
+      input.appointmentId,
+      input.expectedSavedQuestions,
+      input.questions,
+    );
     const legacyRecords = new Map<string, (typeof previous)[number]>();
     for (const question of input.questions) {
       const reference = question.legacySource;
@@ -132,12 +145,6 @@ export async function saveReviewedVisitQuestions(
       // Preserve historical provenance; a legacy reference never certifies its source as current.
       legacyRecords.set(reference.id, original);
     }
-    for (const question of previous) {
-      if (question.appointmentId === input.appointmentId) {
-        await writer.delete('visit_question', question.id);
-      }
-    }
-
     const reviewed = input.questions.map((question, index) =>
       createReviewedVisitQuestionRecord({
         appointment,
@@ -151,7 +158,29 @@ export async function saveReviewedVisitQuestions(
           : {}),
       }),
     );
-    for (const question of reviewed) {
+    const retained = new Set(reviewed.map(question => question.id));
+    for (const question of previous) {
+      if (
+        question.appointmentId === input.appointmentId &&
+        !retained.has(question.id)
+      )
+        await writer.delete('visit_question', question.id);
+    }
+    for (let index = 0; index < reviewed.length; index += 1) {
+      const question = reviewed[index]!;
+      const prior = existing.get(question.id);
+      if (prior && sameQuestionContent(prior, question)) {
+        reviewed[index] = VisitQuestionCreateSchema.parse(prior);
+        continue;
+      }
+      if (prior?.healthContextSources?.length) {
+        if (!sql)
+          throw new Error('Atomic health-period storage is unavailable.');
+        await sql.execute(
+          'DELETE FROM visit_question_periods WHERE question_id = ?',
+          [question.id],
+        );
+      }
       await writer.put('visit_question', question);
       for (const source of question.healthContextSources ?? []) {
         if (!sql)

@@ -33,13 +33,21 @@ export function isAppAiRoute(
 /** Only AI destinations enter the feature router; Back/Home retain the app controller. */
 export function AppAiFeatureScene({
   actions,
+  defaultConversation = false,
   ...props
 }: Omit<AiFeatureFlowProps, 'navigation' | 'onOpenArticle'> & {
+  readonly defaultConversation?: boolean;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
 }) {
-  if (!isAppAiRoute(actions.route.name)) return null;
-  // The feature router can only push its declared subset of the app's route union.
-  const navigation = actions as NavigationRouteActions<AiFeatureRouteName>;
+  // Stable identity prevents the root scene from continuously replacing its leave-state owner.
+  const navigation = useMemo(
+    () =>
+      (defaultConversation
+        ? { ...actions, route: { ...actions.route, name: 'rag-conversation' } }
+        : actions) as NavigationRouteActions<AiFeatureRouteName>,
+    [actions, defaultConversation],
+  );
+  if (!defaultConversation && !isAppAiRoute(actions.route.name)) return null;
   return (
     <AiFeatureFlow
       {...props}

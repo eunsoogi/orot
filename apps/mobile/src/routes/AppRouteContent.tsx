@@ -16,7 +16,6 @@ import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
 import { HealthRecordsRoute } from './HealthRecordsRoute';
 import { ManualHistoryRoute } from './ManualHistoryRoute';
-import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
 
@@ -24,6 +23,7 @@ export type { AppNavigationRoute } from './appNavigationRoute';
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
+  documentImportService,
   loadSavedVisitQuestions,
   actions,
   activeTab,
@@ -43,10 +43,6 @@ export function AppRouteContent({
   serviceDependencies,
   onProviderSelectionCommitted,
   openProviderSettings,
-  openVisitQuestions,
-  openDiseaseHypotheses,
-  openRagConversation,
-  openExternalEvidence,
   openRecording,
   loadHealthObservations,
   loadHealthRecordMedications,
@@ -87,6 +83,7 @@ export function AppRouteContent({
       case 'records':
         return (
           <RecordsRoute
+            documentImportService={documentImportService}
             recordings={recordings}
             recordingState={recordingState}
             onRetryRecordings={() => refreshRecordings()}
@@ -110,14 +107,8 @@ export function AppRouteContent({
           />
         );
       case 'ai':
-        return (
-          <FeatureEntryScreen
-            onOpenVisitQuestions={openVisitQuestions}
-            onOpenDiseaseHypotheses={openDiseaseHypotheses}
-            onOpenRagConversation={openRagConversation}
-            onOpenExternalEvidence={openExternalEvidence}
-          />
-        );
+        // AppAiFeatureScene owns the root AI conversation and its app-lifetime sessions.
+        return null;
       case 'settings':
         // Share the persisted selection and account services used by provider settings.
         return (

@@ -1,6 +1,5 @@
 import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
-import { progressCopy } from './conversationProgress';
-import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
+import { createConversationTurnActivity } from './conversationTurnActivity';
 import { conversationHistoryPayload } from './conversationHistoryPayload';
 import type { createConversationSessionRetention } from './conversationSessionRetention';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
@@ -30,6 +29,10 @@ export function createConversationSessionRequests(
   const saveRecovery = createConversationRequestSaveRecovery(update);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
+  const activities = new Map<
+    number,
+    ReturnType<typeof createConversationTurnActivity>
+  >();
 
   const retainPartial = (id: number, activity: string, retainEmpty = false) =>
     retainFailedPartial(
@@ -47,6 +50,7 @@ export function createConversationSessionRequests(
     if (!controller) return;
     const turn = pendingTurns.get(id);
     controller.abort();
+    activities.get(id)?.finish('cancelled');
     // A database commit may already have won; wait for that write's outcome.
     if (turn?.saving && !settled) return;
     controllers.delete(id);
@@ -71,6 +75,7 @@ export function createConversationSessionRequests(
     abandon(id: number) {
       saveRecovery.suspend(id);
       controllers.get(id)?.abort();
+      activities.get(id)?.finish('cancelled');
       controllers.delete(id);
       pendingTurns.delete(id);
       update(id, {
@@ -82,6 +87,7 @@ export function createConversationSessionRequests(
     dispose() {
       saveRecovery.dispose();
       controllers.forEach(controller => controller.abort());
+      activities.forEach(activity => activity.finish('cancelled'));
       controllers.clear();
       pendingTurns.clear();
     },
@@ -132,11 +138,22 @@ export function createConversationSessionRequests(
       });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
+      let activity:
+        ReturnType<typeof createConversationTurnActivity> | undefined;
       try {
         const retained = retention
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
+        activity = createConversationTurnActivity({
+          id,
+          responseId,
+          find,
+          update,
+          current,
+          retained,
+        });
+        activities.set(id, activity);
         const outcome = await onSend(question, history, controller.signal, {
           ...(retained
             ? saveRecovery.observer(id, retained, request, current)
@@ -149,30 +166,7 @@ export function createConversationSessionRequests(
           onArtifactContinuation(value) {
             if (current()) update(id, { artifactContinuation: value });
           },
-          onProgress(event) {
-            if (current())
-              update(id, {
-                pendingMessage: {
-                  id: responseId,
-                  content: find(id).pendingMessage?.content ?? '',
-                  activity: progressCopy(event, copy),
-                },
-              });
-          },
-          onTaskStreamEvent(event) {
-            if (current())
-              update(id, {
-                pendingMessage: {
-                  id: responseId,
-                  content: applyWorkflowStreamEvent(
-                    find(id).pendingMessage?.content ?? '',
-                    event,
-                  ),
-                  // Stream text updates independently of the latest typed activity phase.
-                  activity: find(id).pendingMessage?.activity ?? copy.loading,
-                },
-              });
-          },
+          ...activity.observer,
         });
         if (
           !current() &&
@@ -210,10 +204,12 @@ export function createConversationSessionRequests(
               id: outcome.status === 'answer' ? responseId : ++messageId,
               role: 'assistant',
               content,
+              ...activity.metadata(),
               ...(outcome.status === 'answer'
                 ? {
                     citations: outcome.citations,
                     completion: outcome.completion,
+                    visitQuestions: outcome.visitQuestions,
                   }
                 : {}),
             },
@@ -232,6 +228,9 @@ export function createConversationSessionRequests(
           );
         }
       } finally {
+        activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
+        await activity?.flush();
+        if (activities.get(id) === activity) activities.delete(id);
         if (controllers.get(id) === controller) {
           if (controller.signal.aborted && !request.committed) {
             cancel(id, true);

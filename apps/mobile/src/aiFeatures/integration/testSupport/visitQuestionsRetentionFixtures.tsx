@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import App from '../../../../App';
+import { RetainedVisitModuleHarness } from './RetainedVisitModuleHarness';
 import {
   apple,
   localData,
@@ -7,7 +7,6 @@ import {
   selectionStore,
 } from '../featureServiceFixtures';
 import { NextVisitQuestionsRoute } from '../NextVisitQuestionsRoute';
-import { AiFeatureRoute } from '../AiFeatureRoute';
 import type { AiFeatureServiceDependencies } from '../featureServices';
 import type {
   VisitQuestionRouteGeneration,
@@ -85,7 +84,6 @@ export function createOperations(
 
 export async function renderIntegratedRoute(
   operations: VisitQuestionRouteOperations,
-  app = false,
 ) {
   const data = localData([memoryRecord(1)]).data;
   const serviceDependencies: AiFeatureServiceDependencies = {
@@ -100,6 +98,7 @@ export async function renderIntegratedRoute(
   ) => (
     <NextVisitQuestionsRoute
       {...input}
+      readOnly={false}
       loadSavedVisitQuestions={async appointmentId => ({
         status: 'ready' as const,
         appointmentId,
@@ -111,26 +110,17 @@ export async function renderIntegratedRoute(
     />
   );
   const route = await render(
-    app ? (
-      <App
-        renderVisitQuestions={renderVisitQuestions}
-        aiFeatureServiceDependencies={serviceDependencies}
-      />
-    ) : (
-      <AiFeatureRoute
-        onBack={jest.fn()}
-        renderVisitQuestions={renderVisitQuestions}
-        serviceDependencies={serviceDependencies}
-      />
-    ),
+    <RetainedVisitModuleHarness
+      dependencies={serviceDependencies}
+      renderModule={renderVisitQuestions}
+    />,
   );
-  if (app) await fireEvent.press(route.getByTestId('navigation-tab-ai'));
   return route;
 }
 export async function startGeneration(
   route: Awaited<ReturnType<typeof render>>,
 ) {
-  await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(route.getByTestId('retained-visit-module-open'));
   await waitFor(() => expect(route.getByText('합성 예약')).toBeTruthy());
   await waitFor(() =>
     expect(route.getByTestId('next-visit-provider-select')).toHaveTextContent(

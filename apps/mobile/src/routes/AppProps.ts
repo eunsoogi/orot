@@ -20,9 +20,11 @@ import type {
   ProviderSelectionOption,
 } from '../providers/selection';
 import type { AppNavigationRoute } from './appNavigationRoute';
+import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
 
 /** Shared route input contract is separate from rendering so adding a destination does not grow the shell. */
 export interface AppRouteContentProps {
+  readonly documentImportService?: MedicalDocumentImportService;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;

@@ -1,8 +1,6 @@
+import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
-import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
-import { getAiFeatureIntegrationCopy } from './copy';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { ReactElement } from 'react';
@@ -11,18 +9,21 @@ import type {
   EvidenceReference,
   OutboundProcessingRequest,
 } from '@orot/agent-runtime';
-import { FeatureEntryScreen } from '../FeatureEntryScreen';
 import { DiseaseHypothesesScreen } from '../../diseaseHypotheses/DiseaseHypothesesScreen';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import { ConversationHistoryScreen } from '../../ragConversation/ConversationHistoryScreen';
-import { ExternalMedicalEvidenceScreen } from '../../externalMedicalEvidence/ExternalMedicalEvidenceScreen';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import type { AiFeatureServices } from './featureServices';
 import type { SelectedAiResolution } from './provider';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
+import { useColorScheme } from 'react-native';
+import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
+import { ConversationVisitQuestionCard } from './ConversationVisitQuestionCard';
+import { defaultVisitQuestionRouteOperations } from './visitQuestionsRouteOperations';
 
 export interface VisitQuestionsRenderInput {
+  readonly readOnly?: boolean;
   readonly navigationRouteKey?: string;
   readonly onBack: () => void;
   readonly onOpenProviderSelection: () => void;
@@ -50,6 +51,8 @@ export interface VisitQuestionsRouteState {
 
 export interface AiFeatureFlowScreenProps {
   readonly articleOpenError?: boolean;
+  readonly onOpenSavedAnalysis?: () => void;
+  readonly onOpenSavedVisitQuestions?: () => void;
   readonly onOpenSummaryHistory?: () => void;
   readonly onRestoreSummary?: (value: DiseaseHypothesisAnalysis) => void;
   readonly restoredSummary?: DiseaseHypothesisAnalysis;
@@ -79,7 +82,8 @@ export interface AiFeatureFlowScreenProps {
 
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
-  articleOpenError,
+  onOpenSavedAnalysis,
+  onOpenSavedVisitQuestions,
   onOpenSummaryHistory,
   onRestoreSummary,
   restoredSummary,
@@ -89,10 +93,6 @@ export function AiFeatureFlowScreen({
   renderVisitQuestions,
   onRouteStateChange,
   onBack,
-  onOpenVisitQuestions,
-  onOpenDiseaseHypotheses,
-  onOpenRagConversation,
-  onOpenExternalEvidence,
   onOpenProviderSelection,
   onOpenConversationHistory,
   onOpenSource,
@@ -100,9 +100,7 @@ export function AiFeatureFlowScreen({
   confirmConsent,
   selectedAiRevision,
   services,
-  onOpenArticle,
 }: AiFeatureFlowScreenProps) {
-  const navigationInset = useNavigationContentInset();
   const providerSelection = (
     <AiProviderSelectorRow
       embedded
@@ -111,33 +109,62 @@ export function AiFeatureFlowScreen({
       revision={selectedAiRevision}
     />
   );
-  const entryScreen = (
-    <AdaptiveColumns
-      routeKey={navigationRouteKey}
-      primary={
-        <ScrollView
-          contentContainerStyle={[styles.entry, navigationInset]}
-          testID="ai-feature-entry-page"
-        >
-          {providerSelection}
-          <FeatureEntryScreen
-            embedded
-            onOpenVisitQuestions={onOpenVisitQuestions}
-            onOpenDiseaseHypotheses={onOpenDiseaseHypotheses}
-            onOpenRagConversation={onOpenRagConversation}
-            onOpenExternalEvidence={onOpenExternalEvidence}
-          />
-        </ScrollView>
+  const intent = conversationIntentForRoute(route);
+  const reminderRuntime = useAppointmentReminderRuntime();
+  const colorScheme = useColorScheme();
+  // Navigation prepares a request; only an explicit Send can start inference or consent.
+  const conversation = (
+    <ConversationScreen
+      entryContext={{
+        intent: intent ?? 'conversation',
+        entryKey: navigationRouteKey ?? route,
+        appointmentId: reminderRuntime?.homePreparationTargets.get(
+          navigationRouteKey ?? '',
+        ),
+      }}
+      providerSelection={providerSelection}
+      navigationRouteKey={navigationRouteKey}
+      onNavigationStateChange={onFeatureNavigationStateChange}
+      onBack={onBack}
+      onOpenHistory={onOpenConversationHistory}
+      onSend={services.sendRagMessage}
+      onOpenSource={onOpenSource}
+      resolveToolSource={services.resolveToolSource}
+      discoverManualVisits={services.conversationArtifacts}
+      prepareVisitQuestions={
+        services.prepareVisitQuestionTurn
+          ? (question, _history, signal, observer, context) =>
+              services.prepareVisitQuestionTurn!({
+                question,
+                context,
+                signal: signal ?? new AbortController().signal,
+                observer,
+                resolveSelectedAi,
+                confirmConsent,
+              })
+          : undefined
       }
+      renderVisitQuestions={(message, sessionId, store, onRegenerate) => (
+        <ConversationVisitQuestionCard
+          message={message}
+          sessionId={sessionId}
+          store={store}
+          operations={defaultVisitQuestionRouteOperations}
+          services={services}
+          onOpenSource={onOpenSource}
+          theme={createNextVisitQuestionsTheme(colorScheme === 'dark')}
+          onRegenerate={onRegenerate}
+        />
+      )}
     />
   );
+  if (intent !== null) return conversation;
 
   switch (route) {
-    case 'entry':
-      return entryScreen;
-    case 'visit-questions':
+    case 'saved-visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({
+            readOnly: true,
             navigationRouteKey,
             onBack,
             onOpenProviderSelection,
@@ -151,10 +178,11 @@ export function AiFeatureFlowScreen({
             selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,
           })
-        : entryScreen;
-    case 'disease-hypotheses':
+        : conversation;
+    case 'saved-analysis':
       return (
         <DiseaseHypothesesScreen
+          readOnly
           onOpenHistory={onOpenSummaryHistory}
           restoredSummary={restoredSummary}
           summaryHistory={services.summaryHistory}
@@ -168,20 +196,14 @@ export function AiFeatureFlowScreen({
           onOpenSource={onOpenSource}
         />
       );
-    case 'rag-conversation':
+    case 'conversation-history':
       return (
-        <ConversationScreen
-          providerSelection={providerSelection}
-          navigationRouteKey={navigationRouteKey}
-          onNavigationStateChange={onFeatureNavigationStateChange}
+        <ConversationHistoryScreen
           onBack={onBack}
-          onOpenHistory={onOpenConversationHistory}
-          onSend={services.sendRagMessage}
-          onOpenSource={onOpenSource}
+          onOpenSavedAnalysis={onOpenSavedAnalysis}
+          onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
         />
       );
-    case 'conversation-history':
-      return <ConversationHistoryScreen onBack={onBack} />;
     case 'summary-history':
       return services.summaryHistory && onRestoreSummary ? (
         <SummaryHistoryScreen
@@ -189,35 +211,9 @@ export function AiFeatureFlowScreen({
           onRestore={onRestoreSummary}
         />
       ) : (
-        entryScreen
+        conversation
       );
-    case 'external-evidence':
-      return (
-        <ExternalMedicalEvidenceScreen
-          providerSelection={
-            <>
-              {providerSelection}
-              {articleOpenError ? (
-                <Text
-                  accessibilityRole="alert"
-                  testID="external-article-open-error"
-                >
-                  {getAiFeatureIntegrationCopy().articleOpenError}
-                </Text>
-              ) : null}
-            </>
-          }
-          navigationRouteKey={navigationRouteKey}
-          onNavigationStateChange={onFeatureNavigationStateChange}
-          onBack={onBack}
-          service={services.externalEvidence}
-          onOpenArticle={onOpenArticle}
-        />
-      );
+    default:
+      return conversation;
   }
 }
-
-// The selector and feature list share the same page instead of competing for height.
-const styles = StyleSheet.create({
-  entry: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, gap: 18 },
-});

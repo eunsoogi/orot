@@ -105,6 +105,12 @@ export function AiFeatureFlow({
           >
             <AiFeatureFlowScreen
               route={screenRoute}
+              onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
+              onOpenSavedVisitQuestions={
+                renderVisitQuestions
+                  ? () => pushFeatureRoute('saved-visit-questions')
+                  : undefined
+              }
               articleOpenError={articleOpenError}
               navigationRouteKey={screenRouteKey ?? undefined}
               onFeatureNavigationStateChange={reportFeatureNavigationState}

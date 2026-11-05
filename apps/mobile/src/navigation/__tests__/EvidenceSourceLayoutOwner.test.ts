@@ -8,9 +8,9 @@ function ownerFor(routeName: string) {
     : appContentLayoutOwner;
 }
 
-// Source detail measures its panels against the full usable lane.
-test.each(['source-detail'])(
-  '%s owns its measured source panels across the usable route lane',
+// Source, restored analysis and legacy conversation entries measure their own usable lane.
+test.each(['source-detail', 'saved-analysis', 'entry', 'health-summary'])(
+  '%s owns its measured panels across the usable route lane',
   routeName => {
     expect(ownerFor(routeName)).toBe('screen');
   },

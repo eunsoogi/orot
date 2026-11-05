@@ -13,11 +13,6 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-// App lifetime is part of this regression; unrelated native startup work is not.
-jest.mock('../../../backup/backupSupport', () => ({
-  prepareBackupSupport: jest.fn(async () => 'ready'),
-}));
-
 jest.mock('../../../providers/selection/options', () => {
   const actual = jest.requireActual('../../../providers/selection/options');
   return {
@@ -54,7 +49,7 @@ test('invalidates a retained review when the same appointment changes while away
       title: '변경된 합성 예약',
     },
   });
-  await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(route.getByTestId('retained-visit-module-open'));
   await waitFor(() => expect(route.getByText('변경된 합성 예약')).toBeTruthy());
   expect(route.queryByTestId('next-visit-question-text-0')).toBeNull();
 });
@@ -94,7 +89,7 @@ test('completes an explicit save while absent without saving twice on reentry', 
       validateSource: async () => true,
     });
   });
-  await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(route.getByTestId('retained-visit-module-open'));
   await waitFor(() =>
     expect(route.getByText('혈압 변화를 확인하는 합성 질문')).toBeTruthy(),
   );
@@ -112,7 +107,7 @@ test('keeps visit-question generation alive when leaving and returning', async (
       finish = resolve;
     });
   });
-  const route = await renderIntegratedRoute(operations, true);
+  const route = await renderIntegratedRoute(operations);
   await startGeneration(route);
   await waitFor(() => expect(operations.generate).toHaveBeenCalledTimes(1));
 
@@ -127,7 +122,7 @@ test('keeps visit-question generation alive when leaving and returning', async (
   await act(async () => {
     finish(readyQuestions());
   });
-  await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(route.getByTestId('retained-visit-module-open'));
   await waitFor(() =>
     expect(route.getByTestId('next-visit-question-text-0')).toHaveDisplayValue(
       '혈압 변화를 확인하는 합성 질문',
@@ -165,7 +160,7 @@ test('keeps an edited visit-question review draft through leave and reentry', as
     expect(route.queryByTestId('next-visit-questions-scroll')).toBeNull(),
   );
   expect(alert).not.toHaveBeenCalled();
-  await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+  await fireEvent.press(route.getByTestId('retained-visit-module-open'));
 
   await waitFor(() =>
     expect(route.getByTestId('next-visit-question-text-0')).toHaveDisplayValue(

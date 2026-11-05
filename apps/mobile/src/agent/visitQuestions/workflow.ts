@@ -5,6 +5,7 @@ import type {
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,
   EvidenceSearchTool,
+  EvidenceItem,
 } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../workflowActivity';
 import { createExecutionConsentRegistry } from '../execution/consentRegistry';
@@ -20,6 +21,9 @@ import { createVisitQuestionEvidenceSearchTools } from './evidenceTools';
 import type { VisitQuestionContextResult } from './evidenceService';
 import { createVisitQuestionTaskResponder } from './taskContract';
 import type { VisitQuestionTaskResult } from './taskContract';
+import type { VisitQuestionEvidenceItem } from './taskContract';
+import { createVisitToolEventMapper } from './workflowToolEvents';
+import { createQuestionIdentity } from '../../nextVisitQuestions/questionIdentity';
 import { mapVisitQuestionWorkflowResult } from './workflowResults';
 import {
   providerDiagnostic,
@@ -29,11 +33,11 @@ import {
 
 type ReadyContext = Extract<VisitQuestionContextResult, { status: 'ready' }>;
 
-let nextOperationId = 0;
-
 /** Runs visit preparation through the shared handoff; consent precedes each remote payload. */
 export async function runVisitQuestionWorkflow(input: {
   readonly prepared: ReadyContext;
+  /** Use the actual conversation turn when supplied by the caller. */
+  readonly request?: string;
   readonly generatedTools?: readonly EvidenceSearchTool[];
   readonly selection: ProviderSelection | null;
   readonly providerOptions: readonly ProviderSelectionOption[];
@@ -43,6 +47,10 @@ export async function runVisitQuestionWorkflow(input: {
   ) => Promise<boolean>;
   readonly signal?: AbortSignal;
   readonly observer?: AiWorkflowObserver;
+  readonly registerToolSource?: (
+    reference: VisitQuestionEvidenceItem,
+    validate: (signal: AbortSignal) => Promise<boolean>,
+  ) => EvidenceItem;
   /** An earlier public search uses one slot from the same bounded operation. */
   readonly reservedPublicSearchCall?: boolean;
 }) {
@@ -109,6 +117,13 @@ export async function runVisitQuestionWorkflow(input: {
   const aliases = createVisitQuestionEvidenceAliases(
     input.prepared.evidence.batch,
   );
+  const mapToolEvent = input.registerToolSource
+    ? createVisitToolEventMapper({
+        aliases,
+        register: input.registerToolSource,
+        revalidate: references => input.prepared.revalidateEvidence(references),
+      })
+    : undefined;
   const tools = createVisitQuestionEvidenceSearchTools({
     aliases,
     searchEvidence: (query, maxEvidenceItems, sourceKind, signal, runtime) =>
@@ -124,8 +139,8 @@ export async function runVisitQuestionWorkflow(input: {
     healthContextTool: input.prepared.healthContextTool,
     generatedTools: input.generatedTools,
   });
-  nextOperationId += 1;
-  const operationRunId = `visit-question-${nextOperationId}`;
+  // Durable tool events need a fresh identity even after the app process restarts.
+  const operationRunId = createQuestionIdentity();
   const consent = createExecutionConsentRegistry(
     input.confirmConsent ?? (async () => false),
   );
@@ -163,6 +178,7 @@ export async function runVisitQuestionWorkflow(input: {
     },
     provider: resolution.provider,
     request:
+      input.request ??
       '다음 외래 진료에서 확인할 질문을 현재 기록 근거와 함께 준비해 주세요.',
     context: input.prepared.appointmentContext,
     task: createVisitQuestionTaskResponder(),
@@ -193,6 +209,14 @@ export async function runVisitQuestionWorkflow(input: {
         : {}),
       ...(input.observer?.onTaskStreamEvent
         ? { onTaskStreamEvent: input.observer.onTaskStreamEvent }
+        : {}),
+      ...(input.observer?.onToolEvent
+        ? {
+            onToolEvent: event =>
+              input.observer?.onToolEvent?.(
+                mapToolEvent ? mapToolEvent(event) : event,
+              ),
+          }
         : {}),
     });
     reportWorkflowOutcome(

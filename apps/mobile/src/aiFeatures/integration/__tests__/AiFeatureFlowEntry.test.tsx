@@ -1,24 +1,12 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react-native';
-import type { ExecutionConsentPort } from '@orot/agent-runtime';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import * as inferenceConsent from '../../../agent/execution/useInferenceConsent';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { localData } from '../featureServiceFixtures';
-import { publications } from '../../../externalMedicalEvidence/testSupport/literatureLayoutFixtures';
-
-/** Covers entry-only screens and article-launch errors through the production route. */
 
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-
 jest.mock('../../../providers/selection/options', () => {
   const actual = jest.requireActual('../../../providers/selection/options');
   return {
@@ -28,107 +16,76 @@ jest.mock('../../../providers/selection/options', () => {
     ),
   };
 });
-
 afterEach(() => jest.restoreAllMocks());
 
-test('exposes provider selection from the feature entry', async () => {
-  await render(
-    <AiFeatureRoute
-      onBack={jest.fn()}
-      renderVisitQuestions={() => <Text>질문 화면</Text>}
-      onOpenArticle={jest.fn()}
-    />,
-  );
-
-  const page = screen.getByTestId('ai-feature-entry-page');
-  const embeddedEntry = within(page).getByTestId('ai-features-screen');
-  expect(
-    embeddedEntry.queryAll(node => node.type === 'RCTScrollView'),
-  ).toHaveLength(0);
-  expect(within(page).getByTestId('ai-feature-select-provider')).toBeTruthy();
-  expect(within(page).getByTestId('ai-feature-rag-conversation')).toBeTruthy();
+/** The provider remains reachable directly; the retired dashboard adds no extra scroll host. */
+test('exposes provider selection from the default conversation', async () => {
+  await render(<AiFeatureRoute onBack={jest.fn()} />);
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.queryByTestId('ai-feature-entry-page')).toBeNull();
   expect(screen.getAllByTestId('ai-feature-select-provider')).toHaveLength(1);
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
-  );
+  expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
 });
 
-test('keeps next-visit questions explicitly unavailable until its screen is supplied', async () => {
-  await render(<AiFeatureRoute onBack={jest.fn()} />);
-
-  expect(screen.getByTestId('visit-questions-unavailable')).toHaveTextContent(
-    '현재 진료 질문을 준비할 수 없어요.',
+test('visit-question legacy links prepare conversation without requiring the retired generator', async () => {
+  await render(
+    <AiFeatureRoute initialRoute="visit-questions" onBack={jest.fn()} />,
   );
-  expect(screen.getByTestId('ai-feature-visit-questions')).toBeDisabled();
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+    'value',
+    expect.stringContaining('다음 진료'),
+  );
+  expect(screen.queryByTestId('visit-questions-unavailable')).toBeNull();
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(screen.queryByTestId('conversation-saved-visit-questions')).toBeNull();
 });
 
-test('opens the existing literature route without consent until Search is pressed', async () => {
+/** Search is tool-owned; navigation must neither authorize transmission nor fetch articles. */
+test('old literature links enter conversation without performing a public search', async () => {
   const search = jest.fn();
   const authorize = jest.fn(async () => 'renewal_required' as const);
-  const consent: ExecutionConsentPort = { authorize };
-  jest.spyOn(inferenceConsent, 'useInferenceConsent').mockReturnValue({
-    consent,
-    disclosureSheet: null,
-  });
-  await render(
-    <AiFeatureRoute
-      onBack={jest.fn()}
-      serviceDependencies={{ externalEvidence: { search } }}
-    />,
-  );
-  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
-  expect(screen.getByTestId('external-medical-evidence-screen')).toBeTruthy();
-  expect(screen.getByTestId('external-evidence-search')).toBeTruthy();
-  expect(authorize).not.toHaveBeenCalled();
-  expect(search).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
-  expect(
-    screen.getByText('필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.'),
-  ).toBeTruthy();
-  expect(search).not.toHaveBeenCalled();
-});
-
-test('keeps an article-open failure inside the literature page', async () => {
-  const authorize = jest.fn(async () => 'authorized' as const);
-  jest.spyOn(inferenceConsent, 'useInferenceConsent').mockReturnValue({
-    consent: { authorize },
-    disclosureSheet: null,
-  });
-  const open = jest.fn(async () => {
-    throw new Error('unavailable');
-  });
+  jest
+    .spyOn(inferenceConsent, 'useInferenceConsent')
+    .mockReturnValue({ consent: { authorize }, disclosureSheet: null });
   await render(
     <AiFeatureRoute
       initialRoute="external-evidence"
       onBack={jest.fn()}
-      onOpenArticle={open}
-      serviceDependencies={{
-        loadLocalData: async () => localData([]).data,
-        externalEvidence: {
-          search: jest.fn(async () => ({
-            status: 'available' as const,
-            publications,
-          })),
-        },
-      }}
+      serviceDependencies={{ externalEvidence: { search } }}
     />,
   );
-  await fireEvent.changeText(
-    screen.getByTestId('external-evidence-query'),
-    'sleep',
-  );
-  await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('external-evidence-open-selected-source'),
-  );
-  expect(open).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.queryByTestId('external-medical-evidence-screen')).toBeNull();
+  expect(screen.queryByTestId('external-evidence-search')).toBeNull();
   expect(
-    within(screen.getByTestId('external-medical-evidence-screen')).getByTestId(
-      'external-article-open-error',
-    ),
+    screen.getByText('필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.'),
   ).toBeTruthy();
+  expect(search).not.toHaveBeenCalled();
+  expect(authorize).not.toHaveBeenCalled();
+});
+
+/** Existing saved-output navigation survives independently of new conversational feature implementations. */
+test('opens the saved-question reader with an explicit read-only contract', async () => {
+  const renderSaved = jest.fn(() => (
+    <Text testID="saved-question-reader">저장된 질문</Text>
+  ));
+  await render(
+    <AiFeatureRoute onBack={jest.fn()} renderVisitQuestions={renderSaved} />,
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(
+    screen.getByTestId('conversation-saved-visit-questions'),
+  );
+  expect(screen.getByTestId('saved-question-reader')).toBeTruthy();
+  expect(renderSaved).toHaveBeenCalledWith(
+    expect.objectContaining({
+      readOnly: true,
+      loadSavedVisitQuestions: expect.any(Function),
+      onOpenSource: expect.any(Function),
+    }),
+  );
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.getByTestId('conversation-history-screen')).toBeTruthy();
 });

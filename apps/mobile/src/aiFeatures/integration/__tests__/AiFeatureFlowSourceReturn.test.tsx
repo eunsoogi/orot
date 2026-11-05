@@ -1,8 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
-import { pressPageAction } from '../testSupport/pressPageAction';
-import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { referenceOnly } from '../testSupport/personalEvidenceTestSupport';
 import {
@@ -61,7 +58,6 @@ test('preserves the conversation and answer after opening and returning from its
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '첫 질문',
@@ -80,43 +76,24 @@ test('preserves the conversation and answer after opening and returning from its
   expect(screen.getByText(/근거를 확인한 대화 답변/)).toBeTruthy();
 });
 
-test('preserves generated hypotheses after opening and returning from their citation', async () => {
+test('preserves a possibilities conversation after opening and returning from its citation', async () => {
   const source = localData([memoryRecord(1)]);
-  const diseaseRunner = jest.fn(
-    async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
-      const item = (await searchFixtureEvidence(options.tools)).items[0];
-      if (!item)
-        return {
-          status: 'incomplete_inventory',
-          reason: 'unavailable',
-        } as const;
-      const reference = referenceOnly(item);
+  const ragRunner = jest.fn(
+    async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      const item = (await searchFixtureEvidence(options.workflow.tools))
+        .items[0];
+      if (!item) return { status: 'no_evidence' as const };
       return {
-        status: 'workflow',
-        result: {
-          status: 'result',
-          value: {
-            hypotheses: [
-              {
-                title: '검토할 가설',
-                summary: '저장된 근거가 뒷받침하는 가능성입니다.',
-                supportingEvidence: [reference],
-                contraryEvidence: [],
-                uncertainty: '추가 확인이 필요합니다.',
-                missingData: ['최근 측정값'],
-              },
-            ],
-          },
-          citations: [reference],
-        },
-      } as never;
+        status: 'answer' as const,
+        answer: '검토할 가능성이 있지만 추가 확인이 필요합니다.',
+        citations: [referenceOnly(item)],
+      };
     },
-  ) as unknown as typeof runDiseaseHypothesisAnalysis;
-
+  ) as unknown as typeof runRagConversationTurn;
   await render(
     <AiFeatureRoute
+      initialRoute="disease-hypotheses"
       onBack={jest.fn()}
-      onOpenArticle={jest.fn()}
       serviceDependencies={{
         selectedAi: {
           selectionStore: selectionStore({
@@ -126,23 +103,18 @@ test('preserves generated hypotheses after opening and returning from their cita
           loadAppleOption: async () => apple,
         },
         loadLocalData: async () => source.data,
-        diseaseRunner,
+        ragRunner,
       }}
     />,
   );
-
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  await pressPageAction(
-    screen.queryByTestId('navigation-page-action-overflow'),
-    getDiseaseHypothesisCopy().generate,
-  );
-  expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  expect(await screen.findByText(/검토할 가능성이 있지만/)).toBeTruthy();
   await fireEvent.press(
     screen.getByRole('button', { name: /^원문 근거 열기 · 검토한 메모/ }),
   );
   expect(await screen.findByTestId('ai-feature-source-detail')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-
-  expect(screen.getByTestId('disease-hypotheses-results')).toBeTruthy();
-  expect(screen.getByText('검토할 가설')).toBeTruthy();
+  expect(screen.getByText(/검토할 가능성이 있지만/)).toBeTruthy();
+  expect(ragRunner).toHaveBeenCalledTimes(1);
+  expect(screen.queryByTestId('disease-hypotheses-screen')).toBeNull();
 });
