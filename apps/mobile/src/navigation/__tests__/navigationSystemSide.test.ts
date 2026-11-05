@@ -67,9 +67,37 @@ test('places the observed left split rail opposite its edge-clipped division', (
     reservedLeftWidth: 72,
     reservedRightWidth: 0,
     contentWidth: 397,
+    railRightInset: 107 / 6,
   });
   expect(resolveNavigationContentFrame(geometry, layout)).toMatchObject({
     side: 'left',
     availableContentFrame: { x: 72, y: 0, width: 397, height: 635 },
+  });
+  if (layout.placement !== 'right') throw new Error('Expected a side rail');
+  const innerGap = 72 - layout.railRightInset - 48;
+  expect(layout.railRightInset - 12).toBeCloseTo(12 - innerGap);
+  expect(innerGap).toBeGreaterThan(0);
+});
+
+test('preserves the left Split reservation with a top occlusion', () => {
+  const geometry = createNavigationGeometrySnapshot({
+    ...leftSplitGeometry,
+    reservedRegions: [
+      ...leftSplitGeometry.reservedRegions,
+      {
+        id: 'left-top',
+        kind: 'occlusion',
+        isActive: true,
+        frame: { x: 0, y: 0, width: 72, height: 120 },
+        margins: { top: 0, left: 0, right: 0, bottom: 0 },
+      },
+    ],
+  });
+  expect(resolveNavigationRootLayout(geometry)).toMatchObject({
+    placement: 'right',
+    railSide: 'left',
+    reservedLeftWidth: 72,
+    contentWidth: 397,
+    railRightInset: 107 / 6,
   });
 });

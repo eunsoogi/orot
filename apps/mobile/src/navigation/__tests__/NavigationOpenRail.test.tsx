@@ -158,7 +158,7 @@ test('requests the observed left edge from the native surface and returns to the
     StyleSheet.flatten(
       screen.getByTestId('navigation-right-rail-host').props.style,
     ),
-  ).toEqual(expect.objectContaining({ left: 0, width: 60 }));
+  ).toEqual(expect.objectContaining({ left: 0, width: 48 + 107 / 6 }));
   expect(screen.getByTestId('draft').props.children).toBe('edited');
   await rerender(<Fixture geometry={openGeometry} />);
   expect(
