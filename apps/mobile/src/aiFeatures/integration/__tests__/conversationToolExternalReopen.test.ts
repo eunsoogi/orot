@@ -15,7 +15,7 @@ import { createResearchInputTracker } from '../researchInputTracker';
 import { captureConversationToolSources } from '../captureConversationToolSources';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
-import { expectUnavailableConversationToolSource } from './conversationToolSourceFailureAssertion';
+import { expectUnavailableConversationToolSource } from '../testSupport/conversationToolSourceFailureAssertion';
 
 const at = '2026-11-06T00:00:00.000Z';
 const externalWeb = {
