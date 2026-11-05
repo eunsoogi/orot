@@ -7,6 +7,7 @@ import { fingerprint } from './evidenceUtils';
 export function bindConversationToolSource(input: {
   alias: EvidenceReference;
   sessionId: string;
+  messageId: string;
   runId: string;
   callId: string;
   snapshot: unknown;
@@ -22,6 +23,7 @@ export function bindConversationToolSource(input: {
   const current = async () => {
     const turns = await input.storage.readToolTurns(input.sessionId);
     for (const turn of turns) {
+      if (turn.messageId !== input.messageId) continue;
       const event = turn.toolEvents.find(
         value =>
           value.operationRunId === input.runId && value.callId === input.callId,

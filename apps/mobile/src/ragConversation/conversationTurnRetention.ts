@@ -27,6 +27,7 @@ export function createConversationTurnRetention(input: {
   readonly sessionVersion?: number;
   readonly captureToolSources?: (
     event: import('@orot/agent-runtime').ConversationToolEvent,
+    sessionId: string,
   ) => Promise<{
     event: import('@orot/agent-runtime').ConversationToolEvent;
     dependencies: import('../storage/conversationToolLineage').ToolLineage;
@@ -94,7 +95,7 @@ export function createConversationTurnRetention(input: {
         });
       try {
         captured = input.captureToolSources
-          ? await input.captureToolSources(event)
+          ? await input.captureToolSources(event, input.sessionId)
           : { event, dependencies: [] };
       } catch (error) {
         // Drop the incomplete record rather than misreporting the real tool outcome.

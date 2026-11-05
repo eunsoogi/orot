@@ -30,7 +30,7 @@ export function retainPublicWebResults(
     ids: readonly number[],
     signal: AbortSignal,
     references?: readonly import('@orot/agent-runtime').ToolSourceReference[],
-    scope?: import('./toolReferenceIndex').ToolCallScope,
+    scope?: import('./toolReferenceIndex').RunCallIdentity,
   ) => Promise<void>,
 ): EvidenceSearchTool {
   const pending = new Map<

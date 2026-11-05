@@ -76,7 +76,11 @@ export function createRagConversationService({
       const selected = await withProviderStage('rag', 'selection', selectedAi);
       stage = 'data';
       const data = await withProviderStage('rag', 'data', loadLocalData);
-      const researchInputs = createResearchInputTracker(registry, data);
+      const researchInputs = createResearchInputTracker(
+        registry,
+        data,
+        observer?.retentionSession?.id,
+      );
       const external = createSelectedExternalEvidence({
         selected,
         consent,

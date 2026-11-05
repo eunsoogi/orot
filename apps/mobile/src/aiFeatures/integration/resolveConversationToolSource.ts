@@ -9,8 +9,9 @@ export async function resolveConversationToolSource(
   scope?: import('./toolReferenceIndex').ToolCallScope,
 ) {
   const alias =
-    registry.toolReferences.findResearch(reference, scope, true) ??
-    registry.resolveToolReference(reference);
+    reference.sourceKind === 'external_medical'
+      ? scope && registry.toolReferences.findResearch(reference, scope, true)
+      : registry.resolveToolReference(reference);
   if (!alias) return undefined;
   const read = await registry.readSource(alias, signal);
   if (read.status !== 'available') return undefined;

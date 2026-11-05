@@ -200,9 +200,7 @@ export function createConversationSessions(
       if (options.retention) return undoRetained();
       apply(undoMemoryConversation(snapshot));
     },
-    cancel: (id: number) => {
-      if (!disposed) requests.cancel(id);
-    },
+    cancel: (id: number) => (disposed ? undefined : requests.cancel(id)),
     retrySave,
     retryRestore: (id: number) =>
       disposed ? Promise.resolve() : restoration.retry(id),
@@ -242,6 +240,9 @@ export function createConversationSessions(
     },
     send: (id: number, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend),
+    // This local identity scopes source access to the selected retained conversation.
+    toolSourceSessionId: (id: number) =>
+      options.retention?.activeIdentity(id) ?? null,
   };
 }
 export type ConversationSessions = ReturnType<

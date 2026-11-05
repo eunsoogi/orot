@@ -29,7 +29,7 @@ test('actual public search adapters bind their returned identities to exact reta
         createResearchArtifactDiscovery(research),
     };
     const registry = new LocalEvidenceReferenceRegistry();
-    const tracker = createResearchInputTracker(registry, data);
+    const tracker = createResearchInputTracker(registry, data, 'session');
     const run = publicEvidenceFixture();
     const publication = {
       provider: 'Europe PMC' as const,
@@ -94,6 +94,7 @@ test('actual public search adapters bind their returned identities to exact reta
         event,
         registry,
         conversations,
+        'session',
       );
       expect(captured.dependencies).toHaveLength(1);
       await conversations.appendToolEvent({
@@ -114,7 +115,7 @@ test('actual public search adapters bind their returned identities to exact reta
         await registry.resolveToolSource(
           result.items[0]!,
           run.controller.signal,
-          event,
+          { ...event, sessionId: 'session' },
         ),
       ).toMatchObject({
         sourceKind: 'external_medical',
@@ -131,7 +132,7 @@ test('actual public search adapters bind their returned identities to exact reta
         await registry.resolveToolSource(
           result.items[0]!,
           run.controller.signal,
-          event,
+          { ...event, sessionId: 'session' },
         ),
       ).toBeUndefined();
     }

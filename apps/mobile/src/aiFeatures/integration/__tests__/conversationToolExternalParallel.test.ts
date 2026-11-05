@@ -25,7 +25,7 @@ test('parallel calls with the same public identity retain their own source and d
         createResearchArtifactDiscovery(research),
     };
     const registry = new LocalEvidenceReferenceRegistry();
-    const tracker = createResearchInputTracker(registry, data);
+    const tracker = createResearchInputTracker(registry, data, 'session');
     const at = '2026-11-06T00:00:00.000Z';
     const source = {
       sourceKind: 'external_medical' as const,
@@ -82,19 +82,17 @@ test('parallel calls with the same public identity retain their own source and d
     const turn = await retention.beginTurn(1, new AbortController().signal);
     for (const [index, event] of events.entries()) {
       expect(
-        await registry.resolveToolSource(
-          source,
-          new AbortController().signal,
-          event,
-        ),
+        await registry.resolveToolSource(source, new AbortController().signal, {
+          ...event,
+          sessionId: 'session',
+        }),
       ).toBeUndefined();
       await turn.recordToolEvent(event);
       expect(
-        await registry.resolveToolSource(
-          source,
-          new AbortController().signal,
-          events[index],
-        ),
+        await registry.resolveToolSource(source, new AbortController().signal, {
+          ...events[index]!,
+          sessionId: 'session',
+        }),
       ).toMatchObject({
         locator: { sources: [{ url: `https://example.org/${index}` }] },
       });
@@ -107,18 +105,16 @@ test('parallel calls with the same public identity retain their own source and d
       callId: 'call-0',
     });
     expect(
-      await registry.resolveToolSource(
-        source,
-        new AbortController().signal,
-        events[0],
-      ),
+      await registry.resolveToolSource(source, new AbortController().signal, {
+        ...events[0]!,
+        sessionId: 'session',
+      }),
     ).toBeUndefined();
     expect(
-      await registry.resolveToolSource(
-        source,
-        new AbortController().signal,
-        events[1],
-      ),
+      await registry.resolveToolSource(source, new AbortController().signal, {
+        ...events[1]!,
+        sessionId: 'session',
+      }),
     ).toMatchObject({
       locator: { sources: [{ url: 'https://example.org/1' }] },
     });

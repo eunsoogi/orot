@@ -89,7 +89,7 @@ test.each([
         researchArtifactDiscovery: async () =>
           createResearchArtifactDiscovery(research),
       };
-      const tracker = createResearchInputTracker(registry, data);
+      const tracker = createResearchInputTracker(registry, data, 'session');
       await tracker.recordResearch(
         [id!],
         new AbortController().signal,
@@ -110,6 +110,7 @@ test.each([
         event,
         registry,
         storage,
+        'session',
       );
       await storage.appendToolEvent({
         sessionId: 'session',
@@ -158,7 +159,11 @@ test.each([
       );
       const source = turn!.toolEvents![0]!.sources[0]!;
       expect(
-        await fresh.resolveToolSource(source, new AbortController().signal),
+        await fresh.resolveToolSource(source, new AbortController().signal, {
+          operationRunId: 'run',
+          callId: 'call',
+          sessionId: 'session',
+        }),
       ).toMatchObject(
         kind === 'web'
           ? {
@@ -191,7 +196,11 @@ test.each([
           ],
         );
       expect(
-        await fresh.resolveToolSource(source, new AbortController().signal),
+        await fresh.resolveToolSource(source, new AbortController().signal, {
+          operationRunId: 'run',
+          callId: 'call',
+          sessionId: 'session',
+        }),
       ).toBeUndefined();
     } finally {
       connection.close();

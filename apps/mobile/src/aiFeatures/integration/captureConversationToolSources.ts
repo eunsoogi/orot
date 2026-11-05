@@ -16,12 +16,15 @@ export async function captureConversationToolSources(
     ReturnType<typeof createConversationArtifactStorage>,
     'captureFilteredToolPeriod'
   >,
+  sessionId?: string,
 ) {
   const dependencies: ToolLineage[number][] = [];
   const references: ToolSourceReference[] = [];
   for (const source of event.sources) {
     if (source.sourceKind === 'external_medical') {
-      const alias = registry.toolReferences.findResearch(source, event);
+      const alias = sessionId
+        ? registry.toolReferences.findResearch(source, { ...event, sessionId })
+        : undefined;
       if (!alias) {
         // Legacy or unretained research remains visible but cannot be opened as a saved source.
         references.push(source);

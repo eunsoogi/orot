@@ -31,11 +31,12 @@ export function createConversationSessionOptions(input: {
       openStorage,
       createId: operationRunId,
       now: () => new Date().toISOString(),
-      captureToolSources: async event =>
+      captureToolSources: async (event, sessionId) =>
         captureConversationToolSources(
           event,
           input.registry,
           await openStorage(),
+          sessionId,
         ),
       onToolEventStored: async (event, sessionId) => {
         if (

@@ -3,6 +3,7 @@ import type { createConversationArtifactStorage } from '../../storage/conversati
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
+import { sameToolSource } from '../../storage/conversationToolExternalSource';
 
 /** Only publish live links after the call and its lineage have been durably saved. */
 export async function bindLiveConversationToolSources(
@@ -42,10 +43,18 @@ export async function bindLiveConversationToolSources(
     storage,
   );
   const sources = restored?.toolEvents[0]?.sources ?? [];
+  const saved = turn.toolEvents[0];
   for (const [index, source] of event.sources.entries()) {
     if (source.sourceKind !== 'external_medical') continue;
+    if (
+      !saved?.sources[index] ||
+      !sameToolSource(source, saved.sources[index]!)
+    )
+      continue;
+    const scope = { ...event, sessionId };
     const alias =
-      sources[index] && registry.toolReferences.findResearch(sources[index]!);
-    if (alias) registry.toolReferences.bindResearch(source, alias, event, true);
+      sources[index] &&
+      registry.toolReferences.findResearch(sources[index]!, scope, true);
+    if (alias) registry.toolReferences.bindResearch(source, alias, scope, true);
   }
 }

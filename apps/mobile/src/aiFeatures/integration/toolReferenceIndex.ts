@@ -3,10 +3,11 @@ import type {
   ToolSourceReference,
 } from '@orot/agent-runtime';
 
-export type ToolCallScope = {
+export type RunCallIdentity = {
   readonly operationRunId: string;
   readonly callId: string;
 };
+export type ToolCallScope = RunCallIdentity & { readonly sessionId: string };
 
 /** Projected tool references can recover only aliases issued by this live registry. */
 export class ToolReferenceIndex {
@@ -27,6 +28,15 @@ export class ToolReferenceIndex {
     ]);
   }
 
+  private scopedKey(value: ToolSourceReference, scope: ToolCallScope) {
+    return JSON.stringify([
+      scope.sessionId,
+      scope.operationRunId,
+      scope.callId,
+      this.key(value),
+    ]);
+  }
+
   add(value: EvidenceReference) {
     this.references.set(this.key(value), value);
   }
@@ -40,19 +50,15 @@ export class ToolReferenceIndex {
   bindResearch(
     value: ToolSourceReference,
     alias: EvidenceReference,
-    scope?: ToolCallScope,
+    scope: ToolCallScope,
     replace = false,
   ) {
-    const key = JSON.stringify([
-      scope?.operationRunId ?? null,
-      scope?.callId ?? null,
-      this.key(value),
-    ]);
+    const key = this.scopedKey(value, scope);
     if (replace) {
       this.research.set(key, alias);
       return;
     }
-    const entries = scope ? this.pendingResearch : this.research;
+    const entries = this.pendingResearch;
     const previous = entries.get(key);
     if (previous === null) return;
     entries.set(
@@ -63,18 +69,10 @@ export class ToolReferenceIndex {
 
   findResearch(
     value: ToolSourceReference,
-    scope?: ToolCallScope,
+    scope: ToolCallScope,
     ready = false,
   ): EvidenceReference | undefined {
-    const entries = scope && !ready ? this.pendingResearch : this.research;
-    return (
-      entries.get(
-        JSON.stringify([
-          scope?.operationRunId ?? null,
-          scope?.callId ?? null,
-          this.key(value),
-        ]),
-      ) ?? undefined
-    );
+    const entries = ready ? this.research : this.pendingResearch;
+    return entries.get(this.scopedKey(value, scope)) ?? undefined;
   }
 }

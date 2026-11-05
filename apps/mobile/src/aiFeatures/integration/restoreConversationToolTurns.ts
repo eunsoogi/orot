@@ -72,6 +72,7 @@ export async function restoreConversationToolTurns(
                 const bound = bindConversationToolSource({
                   alias: restoredResearch.reference,
                   sessionId,
+                  messageId: turn.messageId,
                   runId: event.operationRunId,
                   callId: event.callId,
                   snapshot: { event, lineage },
@@ -85,7 +86,12 @@ export async function restoreConversationToolTurns(
                   evidenceId: bound.evidenceId,
                   evidenceRevision: bound.evidenceRevision,
                 };
-                registry.toolReferences.bindResearch(projected, bound);
+                registry.toolReferences.bindResearch(
+                  projected,
+                  bound,
+                  { ...event, sessionId },
+                  true,
+                );
                 return projected;
               }
               const dependency = lineage.sources[index++];
@@ -100,6 +106,7 @@ export async function restoreConversationToolTurns(
               const bound = bindConversationToolSource({
                 alias,
                 sessionId,
+                messageId: turn.messageId,
                 runId: event.operationRunId,
                 callId: event.callId,
                 snapshot: { event, lineage },
