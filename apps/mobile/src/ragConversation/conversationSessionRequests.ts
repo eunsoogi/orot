@@ -30,7 +30,7 @@ export function createConversationSessionRequests(
   retention?: ReturnType<typeof createConversationSessionRetention>,
 ) {
   let messageId = 0;
-  const saveRecovery = createConversationRequestSaveRecovery(update);
+  const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
   const activities = new Map<

@@ -8,6 +8,7 @@ type Turn = ReturnType<typeof createConversationTurnRetention>;
 /** Keep failed writes until explicitly retried or their owning conversation is removed. */
 export function createConversationRequestSaveRecovery(
   update: (id: number, change: Partial<ConversationSession>) => void,
+  find: (id: number) => ConversationSession | undefined,
 ) {
   const pending = new Map<number, Turn[]>();
   const retrying = new Map<number, AbortController>();
@@ -72,7 +73,18 @@ export function createConversationRequestSaveRecovery(
         const index = turns.indexOf(turn);
         if (index >= 0) turns.splice(index, 1);
         if (!turns.length) pending.delete(id);
+        const session = find(id);
         update(id, {
+          // Bind the committed retry to the existing bubble without changing its content.
+          ...(session && !session.quarantined
+            ? {
+                messages: session.messages.map(message =>
+                  message.toolMessageId === turn.toolMessageId
+                    ? { ...message, retainedTurnId: turn.toolMessageId }
+                    : message,
+                ),
+              }
+            : {}),
           unsavedCount: turns.length,
           error: turns.length ? '저장하지 못한 답변이 남아 있어요.' : '',
         });

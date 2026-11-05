@@ -132,14 +132,32 @@ test('retains and reopens a conversation referencing a summary, then removes it 
       ragRunner: runner,
     });
     let sequence = 0;
+    let failFirstWrite = true;
     const retention = createConversationSessionRetention({
-      openStorage: async () => storage,
+      openStorage: async () => ({
+        ...storage,
+        async append(...args) {
+          if (failFirstWrite) {
+            failFirstWrite = false;
+            throw new Error('Synthetic write failure');
+          }
+          return storage.append(...args);
+        },
+      }),
       createId: () => `id-${++sequence}`,
       now: () => '2026-10-05T00:00:00.000Z',
     });
     const sessions = createConversationSessions({ retention });
     sessions.setDraft(1, 'Find previous summary');
     await sessions.send(1, services.sendRagMessage);
+    expect(await storage.read('id-2')).toBeNull();
+    await sessions.retrySave(1);
+    expect(
+      sessions
+        .getSnapshot()
+        .sessions[0]?.messages.find(message => message.role === 'assistant')
+        ?.retainedTurnId,
+    ).toBe('id-2');
     expect((await storage.read('id-2'))?.answer).toContain(
       'Historical summary',
     );
@@ -155,6 +173,9 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     expect(reopened?.sources[0]?.sourceKind).toBe('generated_artifact');
     sessions.setDraft(1, 'Could this have changed?');
     await sessions.send(1, services.sendRagMessage);
+    expect(
+      jest.mocked(runner).mock.calls[1]?.[0].validatedPriorTurns?.[0]?.question,
+    ).toContain('Find previous');
     const followup = await storage.read('id-3');
     expect(followup?.priorDialogue?.[0]?.question).toContain('Find previous');
     expect(followup?.sources).toHaveLength(1);
