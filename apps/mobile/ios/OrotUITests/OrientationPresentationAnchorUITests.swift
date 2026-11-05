@@ -28,22 +28,18 @@ final class OrientationPresentationAnchorUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(portrait.width, 0)
         XCTAssertGreaterThan(portrait.height, portrait.width)
 
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        tap(app, "ai-feature-visit-questions")
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
-        let generate = UITestConditions.element(app, "next-visit-generate")
-        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
-        XCTAssertTrue(generate.exists && generate.isHittable)
-        guard generate.exists, generate.isHittable else { return }
-        generate.tap()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "next-visit-review-save")))
-
-        let question = FormUITestConditions.multilineInput(app, identifier: "next-visit-question-text-0")
-        let draft = "합성 초안 유지"
-        XCTAssertTrue(FormUITestConditions.replace(question, with: draft, in: app, scrollID: "next-visit-questions-scroll"))
-
-        let source = UITestConditions.element(app, "next-visit-source-0-0")
-        FormUITestConditions.reveal(source, in: app, scrollID: "next-visit-questions-scroll", avoiding: question)
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        let question = UITestConditions.element(app, "rag-conversation-input")
+        XCTAssertTrue(UITestConditions.exists(question) && question.isHittable)
+        question.tap()
+        question.typeText("source")
+        tap(app, "rag-conversation-send")
+        let source = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(source))
+        // A new draft belongs to the conversation while its cited source is open.
+        let draft = "draft retained"
+        question.tap()
+        question.typeText(draft)
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
         // The opt-in saved fixture exercises the integrated source route without user records.
@@ -71,10 +67,10 @@ final class OrientationPresentationAnchorUITests: OrotFailFastTestCase {
         add(screenshot)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["next-visit-questions-scroll"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertEqual(question.value as? String, draft, "The edited question must survive a real window-size transition")
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        let selectedTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
+        XCTAssertTrue(selectedTab.control.isSelected)
     }
 
     @MainActor
