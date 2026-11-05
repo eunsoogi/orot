@@ -27,6 +27,13 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(photoAction.isHittable && page.frame.contains(photoAction.frame), app.debugDescription)
         capture(app, "medical-document-import-photo-action-accessibility-xxxl")
 
+        recordsImportPhotoBodyAction(app).tap()
+        XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
+        capture(app, "medical-document-photo-picker")
+        let photoPickerCancel = app.buttons["Cancel"]
+        XCTAssertTrue(photoPickerCancel.waitForAppearance(), app.debugDescription)
+        photoPickerCancel.tap()
+
         // The fixture only chooses UIDocumentPicker's starting directory; file selection stays native.
         tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentTextFixture.pdf")
@@ -82,13 +89,6 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         assertSavedSource(app)
         capture(app, "medical-document-source-after-relaunch")
-        tap(app, "medical-document-source-back")
-        recordsImportPhotoBodyAction(app).tap()
-        XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
-        capture(app, "medical-document-photo-picker")
-        let photoPickerCancel = app.buttons["Cancel"]
-        XCTAssertTrue(photoPickerCancel.waitForAppearance(), app.debugDescription)
-        photoPickerCancel.tap()
     }
 
     @MainActor
