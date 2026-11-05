@@ -152,6 +152,11 @@ test('reflows measured card widths on resize and large text changes', async () =
   });
   expect(cardWidth('sleep')).toBe(348);
 
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 648, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(320);
+
   dimensions.mockReturnValue({
     width: 390,
     height: 800,
@@ -159,12 +164,20 @@ test('reflows measured card widths on resize and large text changes', async () =
     fontScale: 1.25,
   });
   await rerender(<HomeMetrics />);
-  expect(cardWidth('sleep')).toBe(348);
+  expect(cardWidth('sleep')).toBe(648);
 
   await fireEvent(metricGrid(), 'layout', {
     nativeEvent: { layout: { width: 600, height: 600, x: 0, y: 0 } },
   });
   expect(cardWidth('sleep')).toBe(600);
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 808, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(400);
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 440, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(440);
 });
 
 test.each([

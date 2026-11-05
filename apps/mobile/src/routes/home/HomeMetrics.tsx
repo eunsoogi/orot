@@ -149,22 +149,24 @@ export function HomeMetrics() {
             {t('home.recentChanges')}
           </Text>
         </View>
-        {data.state === 'ready' &&
-          (comparisons.length ? (
-            comparisons.map(metric => (
-              <HomeRecentHealthChange
-                key={metric.metric}
-                metric={metric}
-                title={title(metric.metric)}
-                layout={recentChangeLayout}
-                formatValue={(amount, unit) =>
-                  formatHomeMetricValue(metric.metric, amount, unit)
-                }
-              />
-            ))
-          ) : (
-            <Text>{t('home.noChanges')}</Text>
-          ))}
+        <View style={styles.section} testID="home-recent-changes-content">
+          {data.state === 'ready' &&
+            (comparisons.length ? (
+              comparisons.map(metric => (
+                <HomeRecentHealthChange
+                  key={metric.metric}
+                  metric={metric}
+                  title={title(metric.metric)}
+                  layout={recentChangeLayout}
+                  formatValue={(amount, unit) =>
+                    formatHomeMetricValue(metric.metric, amount, unit)
+                  }
+                />
+              ))
+            ) : (
+              <Text>{t('home.noChanges')}</Text>
+            ))}
+        </View>
       </View>
     </View>
   );
