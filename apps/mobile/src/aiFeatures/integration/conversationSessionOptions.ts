@@ -105,6 +105,7 @@ export function createConversationSessionOptions(input: {
         answer: turn.answer,
         citations: turn.citations,
         completion: turn.status,
+        ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
         toolMessageId: turn.id,
         toolEvents:
           toolTurns.find(toolTurn => toolTurn.messageId === turn.id)

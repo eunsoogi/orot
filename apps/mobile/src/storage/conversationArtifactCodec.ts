@@ -10,6 +10,9 @@ export interface ConversationArtifact {
   readonly createdAt: string;
   readonly providerId: string;
   readonly modelId: string;
+  readonly entryIntent?: 'possibilities';
+  readonly priorDialogue?: readonly { question: string; answer: string }[];
+  readonly priorUserReports?: readonly string[];
   readonly status: 'complete' | 'partial';
   readonly question: string;
   readonly answer: string;
@@ -46,6 +49,25 @@ export function decodeConversationArtifact(
       !Number.isFinite(Date.parse(value.createdAt as string)) ||
       new Date(value.createdAt as string).toISOString() !== value.createdAt ||
       (value.status !== 'complete' && value.status !== 'partial') ||
+      (value.entryIntent !== undefined &&
+        value.entryIntent !== 'possibilities') ||
+      (value.priorDialogue !== undefined &&
+        (!Array.isArray(value.priorDialogue) ||
+          value.priorDialogue.length > 4 ||
+          value.priorDialogue.some(
+            turn =>
+              !object(turn) ||
+              typeof turn.question !== 'string' ||
+              turn.question.length > 1000 ||
+              typeof turn.answer !== 'string' ||
+              turn.answer.length > 1000,
+          ))) ||
+      (value.priorUserReports !== undefined &&
+        (!Array.isArray(value.priorUserReports) ||
+          value.priorUserReports.length > 8 ||
+          value.priorUserReports.some(
+            report => typeof report !== 'string' || report.length > 2000,
+          ))) ||
       !Array.isArray(value.sources) ||
       value.sources.length > 24
     )

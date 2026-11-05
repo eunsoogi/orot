@@ -67,3 +67,47 @@ test('keeps selected-target turns behind consent and passes the alias to the tas
   expect(JSON.stringify(request.messages)).toContain('visit-questions');
   expect(JSON.stringify(request.messages)).toContain('수정한 질문');
 });
+
+test('sends a validated follow-up context only after model consent', async () => {
+  const f = fixture();
+  const options = {
+    ...f.options,
+    question: '지난주부터 시작됐어요',
+    entryIntent: 'possibilities' as const,
+    previousMessages: [{ role: 'user' as const, content: '피로가 있어요' }],
+    validatedPriorTurns: [
+      { question: '피로가 있어요', answer: '언제부터 시작됐나요?' },
+    ],
+    workflow: {
+      ...f.options.workflow,
+      execution: {
+        ...f.options.workflow.execution,
+        remoteProcessing: true,
+        recipient: 'remote',
+        consentScope: {
+          purpose: 'record_conversation' as const,
+          dataCategories: ['health_records' as const],
+          policyVersion: 'test',
+        },
+      },
+    },
+  };
+  f.authorize.mockResolvedValueOnce('denied' as never);
+  expect(await runRagConversationTurn(options)).toMatchObject({
+    status: 'failure',
+    kind: 'consent_required',
+  });
+  expect(f.generate).not.toHaveBeenCalled();
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: { answerKind: 'grounded', answer: '추가 확인이 필요해요.' },
+      citations: ['synthetic-evidence'],
+    }),
+  );
+  expect((await runRagConversationTurn(options)).status).toBe('answer');
+  const messages = JSON.stringify(f.generate.mock.calls[0]![0].messages);
+  expect(messages).toContain('언제부터 시작됐나요?');
+  expect(messages).toContain('지난주부터 시작됐어요');
+  expect(messages).toContain('possibilities');
+});

@@ -15,6 +15,13 @@ test('provides synthetic supporting and contrary records with the limits for a p
   };
   const input = {
     request: '피로의 가능한 원인을 설명해 주세요.',
+    context: {
+      intent: 'possibilities',
+      priorDialogue: [
+        { question: '피로를 살펴봐 주세요', answer: '언제부터 시작됐나요?' },
+      ],
+      history: [{ role: 'user', content: '지난주부터 시작됐어요' }],
+    },
     evidence: {
       items: [
         { ...reference, evidenceId: 'symptom', content: '피로를 보고함' },
@@ -33,6 +40,8 @@ test('provides synthetic supporting and contrary records with the limits for a p
   if (message.role !== 'user' || typeof message.content !== 'string')
     throw new Error('Expected a user message');
   const body = JSON.parse(message.content);
+  expect(body.priorDialogue[0].answer).toBe('언제부터 시작됐나요?');
+  expect(body.previousConversation[0].content).toBe('지난주부터 시작됐어요');
   expect(body.evidence).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -53,12 +62,17 @@ test('provides synthetic supporting and contrary records with the limits for a p
     'supporting and contradictory evidence',
   );
   expect(ragConversationTask.systemPrompt).toContain(
+    'historical AI text only to understand follow-up questions',
+  );
+  expect(ragConversationTask.systemPrompt).toContain(
     'registered medication alone does not establish',
   );
   expect(ragConversationTask.systemPrompt).toContain(
     'instead of a blanket refusal',
   );
-  expect(ragConversationTask.systemPrompt).toContain('unsupported probability');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'numeric disease probability',
+  );
 });
 
 test('rejects a definite diagnosis from medication evidence while allowing a tentative explanation', () => {

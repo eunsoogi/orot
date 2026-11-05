@@ -101,6 +101,7 @@ export async function restoreConversationArtifact(input: {
     createdAt: saved.createdAt,
     providerId: saved.providerId,
     modelId: saved.modelId,
+    ...(saved.entryIntent ? { entryIntent: saved.entryIntent } : {}),
     status: saved.status,
     question: saved.question,
     answer: saved.answer,

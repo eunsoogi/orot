@@ -11,6 +11,7 @@ import type {
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { hasUnsupportedClinicalClaim } from './clinicalClaimValidation';
 import { conversationEntryContext } from './conversationEntryContext';
+import { priorDialogue } from './priorDialogue';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -86,7 +87,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     // Possibility discussions need the same observation/inference boundary as the symptom summary.
     'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
-    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, unsupported probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
+    // A user's follow-up is a report in this conversation, not a verified record or AI finding.
+    "Use the user's previous answers and current message as attributed, unverified reports when exploring possibilities. Prior dialogue includes historical AI text only to understand follow-up questions; it is not medical evidence. Keep reports separate from cited records and historical AI output. Preserve conflicting reports and identify what remains unknown. For a possibilities discussion, clearly separate observed or reported facts, tentative possibilities to discuss at a visit, and missing information. " +
+    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, a numeric disease probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
@@ -167,6 +170,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
           temporalRequirements:
             'scheduled/rescheduled means planned, completed means finished, and cancelled means cancelled. An event title or consultation intention does not establish ongoing or completed care. Resolve relative times against the source record time, not today.',
           previousConversation: priorMessages(input.context),
+          priorDialogue: priorDialogue(input.context),
           // The runtime restores full references locally; generation needs content and citation IDs only.
           evidence: input.evidence.items.map(item => ({
             evidenceId: item.evidenceId,

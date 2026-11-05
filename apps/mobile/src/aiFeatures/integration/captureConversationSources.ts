@@ -3,6 +3,7 @@ import type { ConversationArtifactSource } from '../../ragConversation/conversat
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureEvidenceSources } from './captureEvidenceSources';
 import { RetainedSourceInvalidError } from './retainedSourceError';
+import { stableJson } from './evidenceUtils';
 
 /** Capture generated parents as generated artifacts, never as clinical facts. */
 export async function captureConversationSources(
@@ -70,5 +71,11 @@ export async function captureConversationSources(
     mapping.set(key, original);
   }
   if (signal.aborted) throw new Error('Saving was cancelled.');
-  return { mapping, sources };
+  // Multiple dialogue turns can share the same original input; retain it once.
+  return {
+    mapping,
+    sources: [
+      ...new Map(sources.map(source => [stableJson(source), source])).values(),
+    ],
+  };
 }
