@@ -113,6 +113,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
     'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
+    'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
     'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
     'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
