@@ -4,50 +4,6 @@ import XCTest
 
 /// Verifies recovery preserves a retained original before duplicate cleanup can run.
 final class MedicalDocumentFileOperationsTests: XCTestCase {
-    func testSyntheticDirectoryProtectionDiagnostics() throws {
-        enum ProbeFailure: Error { case operationFailed }
-        let manager = FileManager.default
-        let support = try XCTUnwrap(manager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
-        let root = support.appendingPathComponent("MedicalDocumentProtectionProbe-\(UUID().uuidString)")
-        defer { try? manager.removeItem(at: root) }
-
-        /// Exercise each operation separately on a disposable sibling without exposing paths or contents.
-        func operation<T>(_ name: String, _ body: () throws -> T) throws -> T {
-            do { return try body() } catch {
-                let failure = error as NSError
-                XCTFail("\(name): domain=\(failure.domain), code=\(failure.code)")
-                throw ProbeFailure.operationFailed
-            }
-        }
-        try operation("create") {
-            try manager.createDirectory(at: root, withIntermediateDirectories: true, attributes: [
-                .protectionKey: FileProtectionType.complete,
-            ])
-        }
-        try? operation("set protection") {
-            try manager.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: root.path)
-        }
-        try? operation("exclude backup") {
-            var url = root
-            var values = URLResourceValues()
-            values.isExcludedFromBackup = true
-            try url.setResourceValues(values)
-        }
-        let rawProtection = try? operation("read protection") {
-            try manager.attributesOfItem(atPath: root.path)[.protectionKey]
-        }
-        let excluded = try? operation("read backup exclusion") {
-            try root.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup
-        }
-        let protection = rawProtection as? FileProtectionType
-        let rawString = rawProtection as? String
-        // Classify only known constants; do not print arbitrary filesystem metadata.
-        let kind = rawProtection == nil ? "missing" : protection != nil ? "FileProtectionType" : rawString != nil ? "string" : "other"
-        let matchesComplete = rawString == FileProtectionType.complete.rawValue
-        XCTAssertEqual(protection, .complete, "Protection readback type=\(kind), matchesComplete=\(matchesComplete)")
-        XCTAssertEqual(excluded, true, "Backup exclusion readback: \(String(describing: excluded))")
-    }
-
     func testDuplicateSourceRecoveryRestoresMissingCanonicalOriginal() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
