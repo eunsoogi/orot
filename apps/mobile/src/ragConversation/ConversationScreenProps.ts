@@ -8,6 +8,8 @@ import type {
   RagConversationObserver,
   RagConversationOutcome,
 } from './service';
+import type { DisplayMessage } from './ConversationMessage';
+import type { ConversationSessions } from './conversationSessions';
 
 /** Public screen inputs keep the transcript, source actions, and composer on their existing owners. */
 export interface ConversationScreenProps {
@@ -26,4 +28,13 @@ export interface ConversationScreenProps {
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly resolveToolSource?: ResolveConversationToolSource;
+  readonly prepareVisitQuestions?: NonNullable<
+    ConversationScreenProps['onSend']
+  >;
+  readonly renderVisitQuestions?: (
+    message: DisplayMessage,
+    sessionId: number,
+    store: ConversationSessions,
+    onRegenerate: () => void,
+  ) => ReactNode;
 }

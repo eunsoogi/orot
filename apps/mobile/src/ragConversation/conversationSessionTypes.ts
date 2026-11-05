@@ -21,6 +21,8 @@ export interface ConversationSessionOptions {
       completion?: 'complete' | 'partial';
       toolMessageId?: string;
       toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+      visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+      visitQuestionsUnavailable?: boolean;
     }[]
   >;
 }

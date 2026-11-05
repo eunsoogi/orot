@@ -39,6 +39,7 @@ let localMemoryEmbedder: LocalE5EmbeddingProvider | null = null;
  */
 export async function prepareUpcomingVisitQuestionContext(input: {
   readonly now: string;
+  readonly appointmentId?: string;
   readonly maxEvidenceItems: number;
   readonly signal?: AbortSignal;
   readonly validateGeneratedArtifact?: (

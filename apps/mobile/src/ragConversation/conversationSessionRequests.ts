@@ -209,6 +209,7 @@ export function createConversationSessionRequests(
                 ? {
                     citations: outcome.citations,
                     completion: outcome.completion,
+                    visitQuestions: outcome.visitQuestions,
                   }
                 : {}),
             },

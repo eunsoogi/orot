@@ -23,11 +23,10 @@ import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/use
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
-import {
-  conversationEntryForSession,
-  useConversationEntryIntent,
-} from './useConversationEntryIntent';
+import { useConversationEntryIntent } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
+import { sendConversationMessage } from './conversationVisitDispatch';
+import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -40,6 +39,8 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
   resolveToolSource,
+  prepareVisitQuestions,
+  renderVisitQuestions,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
@@ -189,6 +190,19 @@ export function ConversationScreen({
               }}
               onOpenSource={onOpenSource}
               resolveToolSource={resolveToolSource}
+              renderVisitQuestions={
+                renderVisitQuestions
+                  ? message =>
+                      renderVisitQuestions(message, id, store, () =>
+                        regenerateVisitQuestions({
+                          store,
+                          sessionId: id,
+                          message,
+                          prepare: prepareVisitQuestions,
+                        }),
+                      )
+                  : undefined
+              }
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
@@ -223,12 +237,12 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, (question, history, signal, observer) => {
-                  const context = conversationEntryForSession(store, id);
-                  return context
-                    ? onSend(question, history, signal, observer, context)
-                    : onSend(question, history, signal, observer);
-                });
+                sendConversationMessage(
+                  store,
+                  id,
+                  onSend,
+                  prepareVisitQuestions,
+                ).catch(() => {});
               }}
               onCancel={cancel}
             />
