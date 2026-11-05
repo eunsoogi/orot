@@ -51,7 +51,7 @@ export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
   private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
-  private readonly toolReferences = new ToolReferenceIndex();
+  readonly toolReferences = new ToolReferenceIndex();
   private readonly identifiers = new LocalEvidenceIdentifiers();
 
   /** Resolves a provider scope locally before any database candidates are selected. */
@@ -184,24 +184,13 @@ export class LocalEvidenceReferenceRegistry {
     return this.toolReferences.find(reference);
   }
 
-  /** Bind an external result identity to the retained, revision-checked research row. */
-  bindToolResearch(
-    reference: import('@orot/agent-runtime').ToolSourceReference,
-    alias: EvidenceReference,
-  ) {
-    this.toolReferences.bindResearch(reference, alias);
-  }
-
-  toolResearch(reference: import('@orot/agent-runtime').ToolSourceReference) {
-    return this.toolReferences.findResearch(reference);
-  }
-
   /** Resolve only after rechecking the saved call and research source at click time. */
   async resolveToolSource(
     reference: import('@orot/agent-runtime').ToolSourceReference,
     signal: AbortSignal,
+    scope?: import('./toolReferenceIndex').ToolCallScope,
   ) {
-    return resolveConversationToolSource(this, reference, signal);
+    return resolveConversationToolSource(this, reference, signal, scope);
   }
 
   /** Reads a clicked citation only while its saved row and derived chunk still match. */

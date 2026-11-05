@@ -6,9 +6,10 @@ export async function resolveConversationToolSource(
   registry: LocalEvidenceReferenceRegistry,
   reference: ToolSourceReference,
   signal: AbortSignal,
+  scope?: import('./toolReferenceIndex').ToolCallScope,
 ) {
   const alias =
-    registry.toolResearch(reference) ??
+    registry.toolReferences.findResearch(reference, scope, true) ??
     registry.resolveToolReference(reference);
   if (!alias) return undefined;
   const read = await registry.readSource(alias, signal);

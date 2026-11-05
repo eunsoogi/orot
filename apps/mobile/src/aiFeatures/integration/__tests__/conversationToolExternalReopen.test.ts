@@ -90,9 +90,12 @@ test.each([
           createResearchArtifactDiscovery(research),
       };
       const tracker = createResearchInputTracker(registry, data);
-      await tracker.recordResearch([id!], new AbortController().signal, [
-        external,
-      ]);
+      await tracker.recordResearch(
+        [id!],
+        new AbortController().signal,
+        [external],
+        { operationRunId: 'run', callId: 'call' },
+      );
       const event = {
         version: 1 as const,
         operationRunId: 'run',

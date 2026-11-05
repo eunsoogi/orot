@@ -21,7 +21,7 @@ export async function captureConversationToolSources(
   const references: ToolSourceReference[] = [];
   for (const source of event.sources) {
     if (source.sourceKind === 'external_medical') {
-      const alias = registry.toolResearch(source);
+      const alias = registry.toolReferences.findResearch(source, event);
       if (!alias) {
         // Legacy or unretained research remains visible but cannot be opened as a saved source.
         references.push(source);

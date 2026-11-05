@@ -22,6 +22,7 @@ export function createResearchInputTracker(
       ids: readonly number[],
       signal: AbortSignal,
       toolReferences?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+      scope?: import('./toolReferenceIndex').ToolCallScope,
     ) {
       if (!ids.length) return;
       const discovery = await data?.researchArtifactDiscovery?.();
@@ -40,7 +41,12 @@ export function createResearchInputTracker(
         const existing = retained.get(key);
         if (existing) {
           const toolReference = toolReferences?.[index];
-          if (toolReference) registry.bindToolResearch(toolReference, existing);
+          if (toolReference && scope)
+            registry.toolReferences.bindResearch(
+              toolReference,
+              existing,
+              scope,
+            );
           continue;
         }
         const readSource = (current: AbortSignal) =>
@@ -63,7 +69,8 @@ export function createResearchInputTracker(
         });
         const reference = referenceOnly(alias);
         const toolReference = toolReferences?.[index];
-        if (toolReference) registry.bindToolResearch(toolReference, reference);
+        if (toolReference && scope)
+          registry.toolReferences.bindResearch(toolReference, reference, scope);
         inputs.set(stableJson(reference), reference);
         retained.set(key, reference);
       }

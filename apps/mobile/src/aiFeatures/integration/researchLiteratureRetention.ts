@@ -23,6 +23,7 @@ export function retainLiteratureResults(
     ids: readonly number[],
     signal: AbortSignal,
     references?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+    scope?: import('./toolReferenceIndex').ToolCallScope,
   ) => Promise<void>,
   model?: { readonly providerId: string; readonly modelId: string },
 ): EuropePmcMedicalEvidenceService {
@@ -58,6 +59,7 @@ export function retainLiteratureResults(
             ids,
             options.signal ?? new AbortController().signal,
             literatureToolReferences(pending.snapshots),
+            options.toolCall,
           );
         } catch (error) {
           if (
@@ -125,6 +127,7 @@ export function retainLiteratureResults(
             ids,
             options.signal ?? new AbortController().signal,
             literatureToolReferences(snapshots),
+            options.toolCall,
           );
         } catch (error) {
           if (

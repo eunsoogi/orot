@@ -7,6 +7,7 @@ import { createSelectedExternalEvidence } from '../selectedExternalEvidence';
 import { retainLiteratureResults } from '../researchRetention';
 import { createResearchInputTracker } from '../researchInputTracker';
 import { captureConversationToolSources } from '../captureConversationToolSources';
+import { bindLiveConversationToolSources } from '../bindLiveConversationToolSources';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
@@ -81,8 +82,8 @@ test('actual public search adapters bind their returned identities to exact reta
     for (const [index, result] of [webResult, paperResult].entries()) {
       const event = {
         version: 1 as const,
-        operationRunId: 'run',
-        callId: `call-${index}`,
+        operationRunId: run.request.operationRunId,
+        callId: index === 0 ? run.request.operationKey : 'paper',
         toolName: 'search',
         order: index,
         status: 'completed' as const,
@@ -95,15 +96,44 @@ test('actual public search adapters bind their returned identities to exact reta
         conversations,
       );
       expect(captured.dependencies).toHaveLength(1);
+      await conversations.appendToolEvent({
+        sessionId: 'session',
+        messageId: `message-${index}`,
+        createdAt: '2026-11-06T00:00:00.000Z',
+        sessionVersion: 0,
+        ...captured,
+      });
+      await bindLiveConversationToolSources(
+        captured.event,
+        'session',
+        conversations,
+        data,
+        registry,
+      );
       expect(
         await registry.resolveToolSource(
           result.items[0]!,
           run.controller.signal,
+          event,
         ),
       ).toMatchObject({
         sourceKind: 'external_medical',
         sourceId: index === 0 ? 'public-web' : 'europe-pmc',
       });
+      await conversations.discardToolEvent({
+        sessionId: 'session',
+        messageId: `message-${index}`,
+        sessionVersion: 0,
+        operationRunId: event.operationRunId,
+        callId: event.callId,
+      });
+      expect(
+        await registry.resolveToolSource(
+          result.items[0]!,
+          run.controller.signal,
+          event,
+        ),
+      ).toBeUndefined();
     }
   } finally {
     db.close();

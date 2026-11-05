@@ -55,6 +55,7 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
   resolveToolSource(
     reference: import('@orot/agent-runtime').ToolSourceReference,
     signal: AbortSignal,
+    scope?: import('./toolReferenceIndex').ToolCallScope,
   ): Promise<EvidenceReference | undefined>;
   readSource(
     reference: EvidenceReference,

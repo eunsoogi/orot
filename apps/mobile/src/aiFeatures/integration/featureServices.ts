@@ -241,8 +241,8 @@ export function createAiFeatureServices(
     summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),
     sendRagMessage,
     resolveSource: reference => registry.resolve(reference),
-    resolveToolSource: (reference, signal) =>
-      registry.resolveToolSource(reference, signal),
+    resolveToolSource: (reference, signal, scope) =>
+      registry.resolveToolSource(reference, signal, scope),
     readSource: (reference, signal) => registry.readSource(reference, signal),
   };
 }

@@ -31,6 +31,10 @@ export function createConversationTurnRetention(input: {
     event: import('@orot/agent-runtime').ConversationToolEvent;
     dependencies: import('../storage/conversationToolLineage').ToolLineage;
   }>;
+  readonly onToolEventStored?: (
+    event: import('@orot/agent-runtime').ConversationToolEvent,
+    sessionId: string,
+  ) => Promise<void>;
 }) {
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
@@ -105,6 +109,8 @@ export function createConversationTurnRetention(input: {
           sessionVersion: input.sessionVersion ?? 0,
           ...captured,
         });
+        if (input.onToolEventStored)
+          await input.onToolEventStored(captured.event, input.sessionId);
       } catch (error) {
         if (error instanceof RetainedSourceInvalidError) await discard();
         throw error;

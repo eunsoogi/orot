@@ -37,7 +37,11 @@ export type EuropePmcAdapterSearchResult =
 export interface EuropePmcEvidenceServicePort {
   search(
     query: string,
-    options: { readonly externalQueryConsented: boolean; readonly signal?: AbortSignal },
+    options: {
+      readonly externalQueryConsented: boolean;
+      readonly signal?: AbortSignal;
+      readonly toolCall?: { readonly operationRunId: string; readonly callId: string };
+    },
   ): Promise<EuropePmcAdapterSearchResult>;
 }
 
@@ -230,6 +234,7 @@ export function createEuropePmcEvidenceSearchTool(options: {
       const result = await options.service.search(query, {
         externalQueryConsented: true,
         signal: request.signal,
+        toolCall: { operationRunId: request.operationRunId, callId: request.operationKey },
       });
       if (result.status === 'consent_required') return { status: 'consent_required' };
       if (result.status === 'unavailable') {

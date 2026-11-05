@@ -30,6 +30,7 @@ export function retainPublicWebResults(
     ids: readonly number[],
     signal: AbortSignal,
     references?: readonly import('@orot/agent-runtime').ToolSourceReference[],
+    scope?: import('./toolReferenceIndex').ToolCallScope,
   ) => Promise<void>,
 ): EvidenceSearchTool {
   const pending = new Map<
@@ -70,7 +71,10 @@ export function retainPublicWebResults(
             request.signal,
             session,
           );
-          await onRetained?.(ids, request.signal, prior.result.items);
+          await onRetained?.(ids, request.signal, prior.result.items, {
+            operationRunId: request.operationRunId,
+            callId: request.operationKey,
+          });
         } catch (error) {
           if (
             request.signal.aborted ||
@@ -145,7 +149,10 @@ export function retainPublicWebResults(
             request.signal,
             session,
           );
-          await onRetained?.(ids, request.signal, result.items);
+          await onRetained?.(ids, request.signal, result.items, {
+            operationRunId: request.operationRunId,
+            callId: request.operationKey,
+          });
         } catch (error) {
           if (
             !request.signal.aborted &&

@@ -6,6 +6,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationToolSources } from './captureConversationToolSources';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
 import { fingerprint } from './evidenceUtils';
+import { bindLiveConversationToolSources } from './bindLiveConversationToolSources';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -36,6 +37,18 @@ export function createConversationSessionOptions(input: {
           input.registry,
           await openStorage(),
         ),
+      onToolEventStored: async (event, sessionId) => {
+        if (
+          event.sources.some(source => source.sourceKind === 'external_medical')
+        )
+          await bindLiveConversationToolSources(
+            event,
+            sessionId,
+            await openStorage(),
+            await input.loadLocalData(),
+            input.registry,
+          );
+      },
     }),
     restoreSession: async (sessionId, signal) => {
       const data = await input.loadLocalData();

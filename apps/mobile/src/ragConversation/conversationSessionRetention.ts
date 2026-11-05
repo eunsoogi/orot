@@ -22,6 +22,10 @@ export function createConversationSessionRetention(input: {
     event: ConversationToolEvent;
     dependencies: ToolLineage;
   }>;
+  onToolEventStored?: (
+    event: ConversationToolEvent,
+    sessionId: string,
+  ) => Promise<void>;
 }) {
   const slots = new Map<number, Slot>();
   let lifecycle = 0;
@@ -135,6 +139,7 @@ export function createConversationSessionRetention(input: {
         createdAt: input.now(),
         sessionVersion: version,
         captureToolSources: input.captureToolSources,
+        onToolEventStored: input.onToolEventStored,
       });
       current.turns.add(turn);
       return turn;
