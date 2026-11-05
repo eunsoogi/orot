@@ -14,6 +14,7 @@ enum NavigationMeasuredReservation {
         return height > width && x > window.midX && abs(y - window.minY) <= 0.5 &&
             abs(y + height - window.maxY) <= 0.5 && abs(x + width - window.maxX) <= 0.5
     }
+
     static func matches(_ shared: [String: Any], window: CGRect, available: CGRect) -> Bool {
         guard abs(window.maxX - available.maxX - 84) < 0.5,
               let regions = shared["reservedRegions"] as? [[String: Any]] else { return false }
