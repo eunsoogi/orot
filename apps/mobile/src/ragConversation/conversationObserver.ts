@@ -8,7 +8,7 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent'
+  'onProgress' | 'onTaskStreamEvent' | 'onToolEvent'
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };

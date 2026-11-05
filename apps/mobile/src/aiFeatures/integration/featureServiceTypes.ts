@@ -53,6 +53,12 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
     entryContext?: ConversationEntryContext,
   ): Promise<RagConversationOutcome>;
   resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
+  /** Revalidate a tool source before passing its reference to a source opener. */
+  resolveToolSource(
+    reference: import('@orot/agent-runtime').ToolSourceReference,
+    signal: AbortSignal,
+    scope?: import('./toolReferenceIndex').ToolCallScope,
+  ): Promise<EvidenceReference | undefined>;
   readSource(
     reference: EvidenceReference,
     signal: AbortSignal,

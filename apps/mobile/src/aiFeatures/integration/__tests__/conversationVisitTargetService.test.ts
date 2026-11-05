@@ -47,9 +47,24 @@ test('passes the intended current visit as revalidated evidence and never substi
       repository: createLocalHealthEvidenceRepository(connection.database),
     };
     let observed: Parameters<typeof runRagConversationTurn>[0] | undefined;
+    const toolEvent = {
+      version: 1 as const,
+      operationRunId: 'run',
+      callId: 'call',
+      toolName: 'memory',
+      order: 1,
+      status: 'completed' as const,
+      inputSummary: { sourceKind: 'reviewed_memory' as const },
+      sources: [],
+    };
+    const onToolEvent = jest.fn();
     const runner = jest.fn(
-      async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      async (
+        options: Parameters<typeof runRagConversationTurn>[0],
+        observer: Parameters<typeof runRagConversationTurn>[1],
+      ) => {
         observed = options;
+        observer?.onToolEvent?.(toolEvent);
         return { status: 'insufficient' as const };
       },
     ) as unknown as typeof runRagConversationTurn;
@@ -73,9 +88,10 @@ test('passes the intended current visit as revalidated evidence and never substi
       '수정한 진료 요청',
       [],
       undefined,
-      undefined,
+      { onToolEvent, retentionSession: { id: 'session', version: 0 } },
       context,
     );
+    expect(onToolEvent).toHaveBeenCalledWith(toolEvent);
     expect(observed?.entryIntent).toBe('visit-questions');
     const item = observed?.targetVisitEvidence;
     expect(item?.content).toContain('선택된 진료');

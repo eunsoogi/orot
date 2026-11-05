@@ -2,6 +2,21 @@ import type { HealthContextReport } from '../../healthEvidence/healthContext/typ
 import { projectHealthContext } from '../../healthEvidence/healthContext/projection';
 import type { HealthContextScope } from '../../healthEvidence/healthContext/scope';
 import type { EvidenceSourceDetailSection } from './evidenceSourcePresentation';
+import type { EvidenceSourceDocument } from './evidenceSourceDocument';
+
+/** Keep the privacy label with the restored period source. */
+export function presentHealthContextDocument(
+  document: Extract<
+    EvidenceSourceDocument,
+    { sourceKind: 'health_context_period' }
+  >,
+) {
+  return presentHealthContext(
+    document.scope,
+    document.report,
+    document.filterRedacted,
+  );
+}
 
 const labels: Readonly<Record<string, string>> = {
   'blood pressure systolic': '수축기 혈압',
@@ -24,6 +39,7 @@ const stages: Readonly<Record<string, string>> = {
 export function presentHealthContext(
   scope: HealthContextScope,
   report: HealthContextReport,
+  filterRedacted = false,
 ): readonly EvidenceSourceDetailSection[] {
   const projected = projectHealthContext(report);
   const result: EvidenceSourceDetailSection[] = [
@@ -35,6 +51,14 @@ export function presentHealthContext(
           value: `${report.days[0]?.date} ~ ${report.days.at(-1)?.date}`,
         },
         { label: '시간대', value: scope.window.timeZone },
+        ...(filterRedacted
+          ? [
+              {
+                label: '검색 조건',
+                value: '개인정보 보호를 위해 보관하지 않았어요.',
+              },
+            ]
+          : []),
         ...(projected.partialDates.length
           ? [
               {

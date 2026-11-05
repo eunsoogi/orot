@@ -22,7 +22,8 @@ export async function listConversationSessionPage(
     `SELECT s.id, s.version, MAX(a.created_at) AS updated_at
      FROM conversation_artifact_sessions s
      JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
-     JOIN conversation_artifacts a ON a.session_id = s.id
+     JOIN (SELECT session_id, created_at FROM conversation_artifacts
+       UNION ALL SELECT session_id, created_at FROM conversation_tool_events) a ON a.session_id = s.id
      WHERE s.hidden = 0 AND typeof(s.id) = 'text' AND length(s.id) > 0
        AND typeof(s.version) = 'integer' AND s.version BETWEEN 0 AND 9007199254740991
        AND a.created_at = strftime('%Y-%m-%dT%H:%M:%fZ', julianday(a.created_at))
