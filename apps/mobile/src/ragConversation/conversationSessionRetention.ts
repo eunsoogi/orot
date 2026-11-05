@@ -1,7 +1,7 @@
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { createConversationTurnRetention } from './conversationTurnRetention';
 import type { ConversationToolEvent } from '@orot/agent-runtime';
-import type { ConversationArtifactSource } from './conversationArtifactSources';
+import type { ToolLineage } from '../storage/conversationToolLineage';
 
 type Storage = ReturnType<typeof createConversationArtifactStorage>;
 type Turn = ReturnType<typeof createConversationTurnRetention>;
@@ -20,7 +20,7 @@ export function createConversationSessionRetention(input: {
   now: () => string;
   captureToolSources?: (event: ConversationToolEvent) => Promise<{
     event: ConversationToolEvent;
-    dependencies: readonly ConversationArtifactSource[];
+    dependencies: ToolLineage;
   }>;
 }) {
   const slots = new Map<number, Slot>();

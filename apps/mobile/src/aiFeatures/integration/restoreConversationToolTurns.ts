@@ -5,6 +5,8 @@ import { restoreRetainedSources } from './restoreRetainedSources';
 import { stableJson } from './evidenceUtils';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { bindConversationToolSource } from './bindConversationToolSource';
+import { restoreFilteredToolSource } from './restoreFilteredToolSource';
+import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
 
 /** Reissue local aliases after validating each persisted tool source, never exposing durable IDs. */
 export async function restoreConversationToolTurns(
@@ -15,7 +17,7 @@ export async function restoreConversationToolTurns(
   sessionId: string,
   storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
-    'readToolTurns'
+    'readToolTurns' | 'readFilteredToolPeriod'
   >,
 ) {
   return Promise.all(
@@ -31,7 +33,13 @@ export async function restoreConversationToolTurns(
           if (!lineage || signal.aborted)
             throw new Error('Tool source is unavailable.');
           const restored = await restoreRetainedSources(
-            lineage.sources,
+            lineage.sources.filter(
+              (source): source is ConversationArtifactSource =>
+                !(
+                  'kind' in source &&
+                  source.kind === 'filtered_medication_period'
+                ),
+            ),
             registry,
             data,
           );
@@ -43,7 +51,11 @@ export async function restoreConversationToolTurns(
             const dependency = lineage.sources[index++];
             const alias =
               dependency &&
-              restored.mapping.get(stableJson(dependency.reference));
+              'kind' in dependency &&
+              dependency.kind === 'filtered_medication_period'
+                ? restoreFilteredToolSource(dependency, registry, storage)
+                : dependency &&
+                  restored.mapping.get(stableJson(dependency.reference));
             if (!alias) throw new Error('Tool source is unavailable.');
             const bound = bindConversationToolSource({
               alias,

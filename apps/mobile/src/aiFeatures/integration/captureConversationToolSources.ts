@@ -2,7 +2,8 @@ import type {
   ConversationToolEvent,
   ToolSourceReference,
 } from '@orot/agent-runtime';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ToolLineage } from '../../storage/conversationToolLineage';
+import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { captureConversationSources } from './captureConversationSources';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -11,8 +12,12 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 export async function captureConversationToolSources(
   event: ConversationToolEvent,
   registry: LocalEvidenceReferenceRegistry,
+  storage?: Pick<
+    ReturnType<typeof createConversationArtifactStorage>,
+    'captureFilteredToolPeriod'
+  >,
 ) {
-  const dependencies: ConversationArtifactSource[] = [];
+  const dependencies: ToolLineage[number][] = [];
   const references: ToolSourceReference[] = [];
   for (const source of event.sources) {
     if (source.sourceKind === 'external_medical') {
@@ -28,14 +33,37 @@ export async function captureConversationToolSources(
     );
     const dependency = captured.sources[0];
     if (!dependency) throw new Error('Tool source is unavailable.');
-    // The model-supplied filter is private input and cannot enter the durable lineage.
+    // Resolve the private filter to a data-owned identity; never serialize its text.
     if (
       isPeriodSummarySource(dependency) &&
       dependency.scope.window.doseHistory?.medicationName !== undefined
-    )
-      throw new Error(
-        'Filtered medication tool sources cannot be retained safely.',
+    ) {
+      const document = await registry.readSource(
+        alias,
+        new AbortController().signal,
       );
+      if (
+        !storage ||
+        document.status !== 'available' ||
+        document.document.sourceKind !== 'health_context_period'
+      )
+        throw new Error('Filtered tool source is unavailable.');
+      const saved = await storage.captureFilteredToolPeriod(
+        dependency.reference,
+        document.document.scope,
+        document.document.report,
+      );
+      const ref = saved.reference;
+      references.push({
+        sourceKind: ref.sourceKind,
+        sourceId: ref.sourceId,
+        sourceRevision: ref.sourceRevision,
+        evidenceId: ref.evidenceId,
+        evidenceRevision: ref.evidenceRevision,
+      });
+      dependencies.push(saved);
+      continue;
+    }
     const ref = dependency.reference;
     const projected = {
       sourceKind: ref.sourceKind,

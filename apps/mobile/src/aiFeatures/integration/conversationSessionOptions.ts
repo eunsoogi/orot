@@ -30,8 +30,12 @@ export function createConversationSessionOptions(input: {
       openStorage,
       createId: operationRunId,
       now: () => new Date().toISOString(),
-      captureToolSources: event =>
-        captureConversationToolSources(event, input.registry),
+      captureToolSources: async event =>
+        captureConversationToolSources(
+          event,
+          input.registry,
+          await openStorage(),
+        ),
     }),
     restoreSession: async (sessionId, signal) => {
       const data = await input.loadLocalData();

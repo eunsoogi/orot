@@ -29,7 +29,7 @@ export function createConversationTurnRetention(input: {
     event: import('@orot/agent-runtime').ConversationToolEvent,
   ) => Promise<{
     event: import('@orot/agent-runtime').ConversationToolEvent;
-    dependencies: readonly import('./conversationArtifactSources').ConversationArtifactSource[];
+    dependencies: import('../storage/conversationToolLineage').ToolLineage;
   }>;
 }) {
   let pending: ConversationArtifact | undefined;

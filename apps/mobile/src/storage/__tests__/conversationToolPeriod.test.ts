@@ -142,7 +142,7 @@ test('a model-supplied medication filter never enters tool lineage storage', asy
     };
     await expect(
       captureConversationToolSources(event, f.registry),
-    ).rejects.toThrow('cannot be retained safely');
+    ).rejects.toThrow('Filtered tool source is unavailable');
     const captured = await captureConversationSources(
       [item],
       f.registry,

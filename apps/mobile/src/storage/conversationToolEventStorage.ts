@@ -4,8 +4,8 @@ import {
   projectConversationToolEvent,
   type ConversationToolEvent,
 } from '@orot/agent-runtime';
-import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import {
+  assertToolLineage,
   decodeToolLineage,
   indexToolLineage,
   type ToolLineage,
@@ -119,7 +119,7 @@ export function createConversationToolEventStorage(
         const merged = mergeConversationToolEvents(old ? [old] : [], event)[0]!;
         // Validate the exact source revisions under the same lease as the event write.
         if (!old || (old.status === 'started' && event.status !== 'started'))
-          await assertConversationArtifactCurrent(tx, database, lineage, true);
+          await assertToolLineage(tx, database, lineage, true);
         await tx.execute(
           'INSERT INTO conversation_tool_events (session_id, message_id, created_at, run_id, call_id, event_json) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (session_id, run_id, call_id) DO UPDATE SET event_json = excluded.event_json',
           [
@@ -198,7 +198,7 @@ export function createConversationToolEventStorage(
               createdAt: String(row.created_at),
             },
           );
-          await assertConversationArtifactCurrent(tx, database, lineage, false);
+          await assertToolLineage(tx, database, lineage, false);
           const messageId = String(row.message_id);
           const prior = turns.get(messageId);
           turns.set(messageId, {
