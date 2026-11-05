@@ -18,6 +18,8 @@ const categoryKeyByRecordKind = {
   dose_event: 'ragConversation.availability.category.doseEvent',
   appointment: 'ragConversation.availability.category.appointment',
   visit_question: 'ragConversation.availability.category.visitQuestion',
+  visit_question_record:
+    'ragConversation.availability.category.visitQuestionRecord',
   visit_brief: 'ragConversation.availability.category.visitBrief',
   transcript_segment: 'ragConversation.availability.category.transcriptSegment',
 } as const satisfies Record<RecordKind, TranslationKey>;

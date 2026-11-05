@@ -11,6 +11,13 @@ export type { DatabaseFileState, RandomByteSource, SecureKeyStore } from './key'
 export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
+export { createVisitQuestionRecordRepository } from './visitQuestionRecords';
+export { readVisitQuestionRevision } from './visitQuestionRecordValidation';
+export type {
+  VisitQuestionRecordRepository,
+  ManualVisitQuestionRecordInput,
+  AutomaticVisitQuestionRecordOptions,
+} from './visitQuestionRecordContracts';
 export type { RecordRepository, RecordWriter } from './repository';
 export { createLocalRecordQueryRepository } from './localQueries';
 export {
