@@ -6,6 +6,7 @@ import {
 } from '../providers/diagnostics';
 import type {
   EvidenceBatch,
+  EvidenceItem,
   EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
@@ -26,6 +27,8 @@ import type {
 } from './task';
 import { failureFromWorkflow } from './outcome';
 import type { RagConversationOutcome } from './outcome';
+import type { ConversationIntent } from '../aiFeatures/integration/conversationIntent';
+import { includeConversationTarget } from './conversationTargetEvidence';
 
 export type {
   RagConversationFailureKind,
@@ -36,6 +39,8 @@ export type { RagConversationObserver } from './conversationObserver';
 
 export interface RagConversationRunOptions {
   readonly question: string;
+  readonly entryIntent?: ConversationIntent;
+  readonly targetVisitEvidence?: EvidenceItem;
   readonly previousMessages: readonly RagConversationMessage[];
   readonly loadCurrentEvidence: (
     question: string,
@@ -94,7 +99,7 @@ export async function runRagConversationTurn(
       : [];
     providerDiagnostic('rag', 'data', 'completed');
     const localEvidence = selectEvidence(snapshot.batch, hits);
-    const initialEvidence = options.publicEvidence
+    const combinedEvidence = options.publicEvidence
       ? {
           items: [...localEvidence.items, ...options.publicEvidence.items],
           coverage: [
@@ -107,6 +112,14 @@ export async function runRagConversationTurn(
           ],
         }
       : localEvidence;
+    // The selected visit is pinned before ranking can choose an unrelated appointment.
+    const initialEvidence = options.targetVisitEvidence
+      ? includeConversationTarget(
+          combinedEvidence,
+          options.targetVisitEvidence,
+          options.workflow.execution.budget.maxEvidenceItems,
+        )
+      : combinedEvidence;
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';
@@ -115,9 +128,17 @@ export async function runRagConversationTurn(
       {
         ...options.workflow,
         request: question,
-        context: boundedHistory(
-          options.previousMessages,
-        ) as unknown as import('@orot/model-runtime').JsonValue,
+        context: (options.entryIntent
+          ? {
+              history: boundedHistory(options.previousMessages),
+              intent: options.entryIntent,
+              ...(options.targetVisitEvidence
+                ? { targetEvidenceId: options.targetVisitEvidence.evidenceId }
+                : {}),
+            }
+          : boundedHistory(
+              options.previousMessages,
+            )) as unknown as import('@orot/model-runtime').JsonValue,
         task: ragConversationTask,
         initialEvidence,
         revalidateEvidence: (references, signal) =>
