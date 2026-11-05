@@ -71,6 +71,45 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testPhotoPickerRecoversAfterBackgroundAndForeground() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        launch(app)
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        let photoAction = node(app, "records-import-medical-photo")
+        tap(app, "records-import-medical-photo")
+        let cancel = waitForPhotoPicker(app, photoAction, name: "medical-photo-picker-before-background")
+
+        // The OS may retain or dismiss its picker while the app is inactive; either path must recover.
+        XCUIDevice.shared.press(.home)
+        let background = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                app.state == .runningBackground || app.state == .runningBackgroundSuspended
+            },
+            object: nil,
+        )
+        let backgroundResult = XCTWaiter.wait(for: [background], timeout: 5)
+        XCTAssertEqual(backgroundResult, .completed, app.debugDescription)
+        guard backgroundResult == .completed else { throw NSError(domain: "MedicalDocumentPickerRecovery", code: 2) }
+        app.activate()
+        if cancel.exists {
+            cancel.tap()
+        }
+        try assertImportActionsReady(app)
+        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tap(app, "records-import-medical-photo")
+        let reopenedCancel = waitForPhotoPicker(app, photoAction, name: "medical-photo-picker-after-foreground")
+        reopenedCancel.tap()
+        try assertImportActionsReady(app)
+        tapRecordsImportBodyAction(app)
+        let filePickerCancel = app.buttons.matching(NSPredicate(format: "label == %@", "Cancel")).firstMatch
+        XCTAssertTrue(filePickerCancel.waitForExistence(timeout: 5), app.debugDescription)
+        filePickerCancel.tap()
+        try assertImportActionsReady(app)
+    }
+
+    @MainActor
     private func waitForPhotoPicker(_ app: XCUIApplication, _ action: XCUIElement, name: String) -> XCUIElement {
         // The waiting label proves JS entered selection; the system Cancel button proves UIKit presented PHPicker.
         let waiting = XCTNSPredicateExpectation(
