@@ -26,17 +26,17 @@ export function HealthSummaryCard({
   return (
     <View style={styles.card} testID="health-summary-card">
       <AppText style={styles.title}>건강 기록 요약</AppText>
-      <AppText>
+      <AppText testID="health-summary-period">
         {window.fromInclusive} 이상 · {window.toExclusive} 미만 (
         {window.timeZone})
       </AppText>
       {result.analysis.omittedUnsupportedContent ? (
-        <AppText accessibilityRole="alert">
+        <AppText accessibilityRole="alert" testID="health-summary-omitted">
           {OMITTED_SUMMARY_CONTENT_NOTE}
         </AppText>
       ) : null}
       {result.analysis.incompleteEvidence ? (
-        <AppText accessibilityRole="alert">
+        <AppText accessibilityRole="alert" testID="health-summary-incomplete">
           {INCOMPLETE_SUMMARY_EVIDENCE_NOTE}
         </AppText>
       ) : null}
@@ -75,7 +75,7 @@ export function HealthSummaryCard({
           ) : null}
         </View>
       ))}
-      <AppText>
+      <AppText testID="health-summary-save-status">
         {saved?.status === 'saved'
           ? saved.sourceChanged
             ? '원본이 변경된 이전 요약'
@@ -89,6 +89,7 @@ export function HealthSummaryCard({
       {saved && saved.status !== 'saved' && onRetry ? (
         <Pressable
           accessibilityRole="button"
+          testID="health-summary-retry"
           onPress={onRetry}
           style={styles.retry}
         >
