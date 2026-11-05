@@ -1,14 +1,27 @@
 import type { ComponentProps } from 'react';
+import { conversationToolEventFixtures } from '../src/ragConversation/testSupport/conversationToolEventFixtures';
 import type { ConversationScreen } from '../src/ragConversation/ConversationScreen';
 import { evidenceVisualReference } from './evidenceVisualFixtures';
 
 export const syntheticConversationAnswer =
   '합성 기록에는 복약, 활동과 수면 정보가 함께 있어요. 실제 증상의 원인을 확정한 답변은 아니에요.';
 
+const syntheticToolEvents = conversationToolEventFixtures
+  .slice(0, 2)
+  .map(event => ({
+    ...event,
+    operationRunId: 'conversation-visual-tool-events',
+    sources: [],
+  }));
+
 /** Explicit local UI fixture: no storage, retrieval engine, network or model is invoked. */
 export const sendSyntheticConversation: ComponentProps<
   typeof ConversationScreen
 >['onSend'] = async (question, _history, signal, observer) => {
+  if (question === 'tool-events-probe') {
+    // Exercise the production observer with summary-only events; this path never calls a model or persistence layer.
+    for (const event of syntheticToolEvents) observer?.onToolEvent?.(event);
+  }
   if (question.includes('failure')) return { status: 'unavailable' };
   observer?.onTaskStreamEvent?.({ type: 'started' });
   observer?.onTaskStreamEvent?.({
