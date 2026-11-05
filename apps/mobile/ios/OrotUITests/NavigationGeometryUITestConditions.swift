@@ -226,7 +226,7 @@ enum NavigationGeometryUITestConditions {
     static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
         let roots = [("home", ["welcome-title"]), ("records", ["records-title"]),
-                     ("schedule", ["calendar-title", "schedule-retry"]), ("ai", ["ai-features-screen"]),
+                     ("schedule", ["calendar-title", "schedule-retry"]), ("ai", ["rag-conversation-screen"]),
                      ("settings", ["settings-title"])]
         var homeFrame: CGRect?
         for (tab, markers) in roots {

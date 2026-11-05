@@ -158,9 +158,11 @@ function App({
           >
             {/* Settings and AI use the same account services and persisted selection. */}
             {actions =>
-              isAppAiRoute(actions.route.name) ? (
+              isAppAiRoute(actions.route.name) ||
+              (actions.route.name === 'home' && activeTab === 'ai') ? (
                 <AppAiFeatureScene
                   actions={actions}
+                  defaultConversation={actions.route.name === 'home'}
                   consent={ai.consent}
                   services={ai.services}
                   renderVisitQuestions={

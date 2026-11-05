@@ -29,7 +29,14 @@ import { useNavigationOcclusion } from '../navigation/useNavigationContentInset'
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
 
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
+import {
+  conversationEntryForSession,
+  useConversationEntryIntent,
+} from './useConversationEntryIntent';
+
 interface ConversationScreenProps {
+  readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
@@ -40,12 +47,14 @@ interface ConversationScreenProps {
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
     observer?: RagConversationObserver,
+    entryContext?: ConversationEntryContext,
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
+  entryContext,
   navigationRouteKey,
   providerSelection,
   onNavigationStateChange,
@@ -65,6 +74,7 @@ export function ConversationScreen({
     fontScale,
   );
   const store = useConversationSessions();
+  useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
@@ -219,7 +229,12 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, onSend);
+                store.send(id, (question, history, signal, observer) => {
+                  const context = conversationEntryForSession(store, id);
+                  return context
+                    ? onSend(question, history, signal, observer, context)
+                    : onSend(question, history, signal, observer);
+                });
               }}
               onCancel={cancel}
             />
