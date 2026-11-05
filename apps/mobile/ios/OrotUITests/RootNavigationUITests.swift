@@ -122,11 +122,14 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // This React Native text header has a native StaticText trait; use its typed XCTest query on startup.
         let welcomeTitle = app.staticTexts.matching(identifier: "welcome-title").firstMatch
         XCTAssertTrue(UITestConditions.exists(welcomeTitle))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        let action = UITestConditions.element(app, "ai-feature-visit-questions")
-        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
+        let action = UITestConditions.element(app, "conversation-saved-visit-questions")
+        FormUITestConditions.reveal(action, in: app, scrollID: "conversation-history-page", towardTop: true)
+        XCTAssertTrue(action.isHittable, action.debugDescription)
         action.tap()
-        let scroll = UITestConditions.element(app, "next-visit-questions-scroll")
+        let scroll = UITestConditions.element(app, "saved-visit-questions-screen")
         XCTAssertTrue(UITestConditions.exists(scroll))
         let observed = try NavigationUITestConditions.safeArea(app, testCase: self)
         let roots = app.descendants(matching: .any).matching(identifier: "navigation-keyboard-avoiding-root").allElementsBoundByIndex
@@ -138,7 +141,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(root.frame.height, observed.frame.height, accuracy: 0.5)
         XCTAssertGreaterThan(observed.top, 0)
         XCTAssertGreaterThanOrEqual(scroll.frame.minY - root.frame.minY, observed.top)
-        let title = UITestConditions.element(app, "next-visit-title")
+        let title = app.staticTexts["저장된 진료 질문"]
         XCTAssertTrue(title.exists && !title.frame.isEmpty)
         XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back").control
@@ -158,7 +161,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // Send the intended completion path near the far edge; existing route assertions still decide success.
         edgeBack(scroll, in: app, fraction: 0.98, velocity: .fast)
         captureNavigationObservation(app, "after-full-edge-back")
-        let ai = UITestConditions.element(app, "ai-features-screen")
+        let ai = UITestConditions.element(app, "conversation-history-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
         let returnResult = UITestConditions.wait(for: [returned])
         // Preserve the failed ordering too: XCTest's assertion exception can bypass Swift defer.
@@ -166,7 +169,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(returnResult, .completed, app.debugDescription)
         captureNavigationObservation(app, "after-returned-route")
         capture(app, "edge-back-completed")
-        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        FormUITestConditions.reveal(action, in: app, scrollID: "conversation-history-page", towardTop: true)
         action.tap()
         XCTAssertTrue(UITestConditions.exists(scroll))
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
