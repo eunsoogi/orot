@@ -18,6 +18,7 @@ export function createConversationRetentionBridge(input: {
   readonly entryIntent?: 'possibilities';
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
+  readonly priorDialogueOmitted?: true;
   readonly signal: AbortSignal;
 }) {
   let references: readonly EvidenceReference[] | undefined;
@@ -93,6 +94,9 @@ export function createConversationRetentionBridge(input: {
             : {}),
           ...(input.priorUserReports?.length
             ? { priorUserReports: input.priorUserReports }
+            : {}),
+          ...(input.priorDialogueOmitted
+            ? { priorDialogueOmitted: true as const }
             : {}),
           sources: captured.sources,
           citations,

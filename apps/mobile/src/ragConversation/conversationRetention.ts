@@ -12,6 +12,7 @@ export interface ConversationRetentionCandidate {
   /** Bounded dialogue context is stored with the same protected turn. */
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
+  readonly priorDialogueOmitted?: true;
   /** Set only for a validated partial result, never an uncommitted stream fragment. */
   readonly status?: 'complete' | 'partial';
   readonly sources: readonly ConversationArtifactSource[];

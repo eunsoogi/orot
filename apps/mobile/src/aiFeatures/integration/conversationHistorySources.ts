@@ -4,13 +4,49 @@ import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { boundRagConversationHistory } from './evidencePayload';
+import { stableJson } from './evidenceUtils';
+import { CONVERSATION_SOURCE_LIMIT } from '../../storage/conversationArtifactCodec';
+import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
+
+/** Reserve space for this turn's evidence before admitting previous AI text. */
+export function selectDialogueBySourceBudget<
+  T extends { readonly sources: readonly EvidenceReference[] },
+>(
+  turns: readonly T[],
+  registry: Pick<LocalEvidenceReferenceRegistry, 'resolve'>,
+) {
+  const keys = new Set<string>();
+  const admitted: T[] = [];
+  const limit =
+    CONVERSATION_SOURCE_LIMIT - RAG_CONVERSATION_BUDGET.maxEvidenceItems;
+  for (const turn of turns) {
+    const next = new Set(keys);
+    for (const source of turn.sources)
+      next.add(stableJson(registry.resolve(source) ?? source));
+    if (next.size > limit) continue;
+    admitted.push(turn);
+    for (const key of next) keys.add(key);
+  }
+  return {
+    admitted,
+    omittedTurns: turns.filter(turn => !admitted.includes(turn)),
+    omitted: admitted.length !== turns.length,
+  };
+}
 
 /** Snapshot exactly the bounded, redacted user reports sent to the model. */
 export function prepareConversationHistory(
   history: readonly RagConversationMessage[],
   registry: LocalEvidenceReferenceRegistry,
+  excludedQuestions: readonly string[] = [],
 ) {
-  const messages = boundRagConversationHistory(history).map(message => ({
+  const excluded = new Set(excludedQuestions);
+  const eligible = history
+    .slice(-8)
+    .filter(
+      message => message.role !== 'user' || !excluded.has(message.content),
+    );
+  const messages = boundRagConversationHistory(eligible).map(message => ({
     ...message,
     content: registry.redactText(message.content),
   }));
@@ -33,10 +69,30 @@ export function conversationHistoryIsCurrent(
   );
 }
 
+/** Prepare the same bounded reports for model dispatch and durable retention. */
+export async function loadConversationHistory(
+  input: Parameters<typeof conversationHistorySources>[0] & {
+    readonly messages: readonly RagConversationMessage[];
+  },
+) {
+  const sources = await conversationHistorySources(input);
+  return {
+    ...sources,
+    ...prepareConversationHistory(
+      input.messages,
+      input.registry,
+      sources.excludedQuestions,
+    ),
+  };
+}
+
 /** Bind retained user reports to their validated conversation turns, never to prior AI claims. */
 export async function conversationHistorySources(input: {
-  readonly history: readonly RagConversationMessage[];
   readonly session?: { readonly id: string; readonly version: number };
+  readonly retainedHistory?: readonly {
+    readonly id: string;
+    readonly question: string;
+  }[];
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly signal: AbortSignal;
@@ -44,21 +100,24 @@ export async function conversationHistorySources(input: {
   references: readonly EvidenceReference[];
   sources: readonly EvidenceReference[];
   priorTurns: readonly { question: string; answer: string }[];
+  omitted: boolean;
+  excludedQuestions: readonly string[];
 }> {
-  const questions = input.history
-    .slice(-8)
-    .filter(message => message.role === 'user')
-    .map(message => message.content)
-    .reverse();
+  const expected = (input.retainedHistory ?? []).slice().reverse();
   const session = input.session;
-  if (!questions.length || !session)
-    return { references: [], sources: [], priorTurns: [] };
+  if (!expected.length || !session)
+    return {
+      references: [],
+      sources: [],
+      priorTurns: [],
+      omitted: false,
+      excludedQuestions: [],
+    };
   const discovery = await input.data.conversationArtifactDiscovery?.(
     input.registry,
   );
-  // A store without discovery can still retain the user's reports, but cannot
-  // supply an independently validated prior assistant response.
-  if (!discovery) return { references: [], sources: [], priorTurns: [] };
+  // An identified retained turn must be revalidated before its text is sent.
+  if (!discovery) throw new Error('Conversation history is unavailable.');
   const turns: Awaited<
     ReturnType<typeof discovery.readSession>
   >['items'][number][] = [];
@@ -73,18 +132,21 @@ export async function conversationHistorySources(input: {
       throw new Error('Conversation history is unavailable.');
     turns.push(...page.items);
     cursor = page.nextCursor ?? undefined;
-  } while (turns.length < questions.length && cursor && !input.signal.aborted);
-  // A local-only response or failed save can leave a user report without a
-  // durable assistant turn. Keep the report, but never invent its prior answer.
-  const selected = questions.flatMap(question => {
-    const matches = turns.filter(turn => turn.question === question);
-    return matches.length === 1 &&
-      questions.filter(item => item === question).length === 1
-      ? matches
-      : [];
+  } while (
+    expected.some(item => !turns.some(turn => turn.id === item.id)) &&
+    cursor &&
+    !input.signal.aborted
+  );
+  const selected = expected.flatMap(item => {
+    const turn = turns.find(
+      candidate =>
+        candidate.id === item.id && candidate.question === item.question,
+    );
+    return turn ? [turn] : [];
   });
   if (
     input.signal.aborted ||
+    selected.length !== expected.length ||
     (await discovery.activeSessionVersion(session.id)) !== session.version ||
     !(await discovery.revalidateSession(
       session.id,
@@ -137,7 +199,14 @@ export async function conversationHistorySources(input: {
     );
   });
   // The retained answer supplies the question being answered, not medical evidence.
-  const priorTurns = selected
+  const bounded = selectDialogueBySourceBudget(selected, input.registry);
+  const excludedQuestions = bounded.omittedTurns.map(turn => turn.question);
+  const excluded = new Set(excludedQuestions);
+  // Equal reports cannot be separated safely once one turn is omitted.
+  const admitted = bounded.admitted.filter(
+    turn => !excluded.has(turn.question),
+  );
+  const priorTurns = admitted
     .slice()
     .reverse()
     .map(turn => ({
@@ -146,6 +215,12 @@ export async function conversationHistorySources(input: {
     }));
   // Flatten source dependencies: nesting every earlier turn would exhaust the
   // storage ancestry limit in ordinary long conversations.
-  const sources = selected.flatMap(turn => turn.sources);
-  return { references, sources, priorTurns };
+  const sources = admitted.flatMap(turn => turn.sources);
+  return {
+    references,
+    sources,
+    priorTurns,
+    omitted: bounded.omitted,
+    excludedQuestions,
+  };
 }

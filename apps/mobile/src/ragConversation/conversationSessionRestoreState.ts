@@ -46,6 +46,9 @@ export function createConversationSessionRestoreState(input: {
           content: turn.answer,
           citations: turn.citations,
           toolMessageId: turn.toolMessageId,
+          ...(turn.question && turn.toolMessageId
+            ? { retainedTurnId: turn.toolMessageId }
+            : {}),
           toolEvents: turn.toolEvents,
           ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),

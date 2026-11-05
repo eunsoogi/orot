@@ -4,6 +4,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
+export const CONVERSATION_SOURCE_LIMIT = 24;
+
 export interface ConversationArtifact {
   readonly id: string;
   readonly sessionId: string;
@@ -13,6 +15,7 @@ export interface ConversationArtifact {
   readonly entryIntent?: 'possibilities';
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
+  readonly priorDialogueOmitted?: true;
   readonly status: 'complete' | 'partial';
   readonly question: string;
   readonly answer: string;
@@ -68,8 +71,10 @@ export function decodeConversationArtifact(
           value.priorUserReports.some(
             report => typeof report !== 'string' || report.length > 2000,
           ))) ||
+      (value.priorDialogueOmitted !== undefined &&
+        value.priorDialogueOmitted !== true) ||
       !Array.isArray(value.sources) ||
-      value.sources.length > 24
+      value.sources.length > CONVERSATION_SOURCE_LIMIT
     )
       return null;
     for (const source of value.sources) {

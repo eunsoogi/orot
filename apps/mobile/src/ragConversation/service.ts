@@ -47,6 +47,7 @@ export interface RagConversationRunOptions {
     question: string;
     answer: string;
   }[];
+  readonly priorDialogueOmitted?: boolean;
   readonly loadCurrentEvidence: (
     question: string,
     signal: AbortSignal,
@@ -133,12 +134,17 @@ export async function runRagConversationTurn(
       {
         ...options.workflow,
         request: question,
-        context: (options.entryIntent || options.validatedPriorTurns?.length
+        context: (options.entryIntent ||
+        options.validatedPriorTurns?.length ||
+        options.priorDialogueOmitted
           ? {
               history: boundedHistory(options.previousMessages),
               ...(options.entryIntent ? { intent: options.entryIntent } : {}),
               ...(options.validatedPriorTurns?.length
                 ? { priorDialogue: options.validatedPriorTurns }
+                : {}),
+              ...(options.priorDialogueOmitted
+                ? { priorDialogueOmitted: true }
                 : {}),
               ...(options.targetVisitEvidence
                 ? { targetEvidenceId: options.targetVisitEvidence.evidenceId }

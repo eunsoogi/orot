@@ -161,6 +161,12 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     await history.delete(entry.id);
     expect(await storage.read('id-2')).toBeNull();
     expect(await storage.read('id-3')).toBeNull();
+    const callsBeforeDeletedHistory = jest.mocked(runner).mock.calls.length;
+    sessions.setDraft(1, 'Continue the discussion');
+    await sessions.send(1, services.sendRagMessage);
+    expect(jest.mocked(runner).mock.calls).toHaveLength(
+      callsBeforeDeletedHistory,
+    );
     expect(
       (
         await connection.database.execute(

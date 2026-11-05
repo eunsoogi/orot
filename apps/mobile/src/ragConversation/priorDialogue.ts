@@ -7,20 +7,18 @@ export function priorDialogue(context: JsonValue | undefined) {
   const turns = (context as { readonly [key: string]: JsonValue })
     .priorDialogue;
   if (!Array.isArray(turns)) return [];
-  return turns
-    .slice(-4)
-    .flatMap(turn =>
-      turn &&
-      typeof turn === 'object' &&
-      !Array.isArray(turn) &&
-      typeof turn.question === 'string' &&
-      typeof turn.answer === 'string'
-        ? [
-            {
-              question: turn.question.slice(0, 1000),
-              answer: turn.answer.slice(0, 1000),
-            },
-          ]
-        : [],
-    );
+  return turns.slice(-4).flatMap(turn =>
+    turn &&
+    typeof turn === 'object' &&
+    !Array.isArray(turn) &&
+    typeof turn.question === 'string' &&
+    typeof turn.answer === 'string'
+      ? [
+          {
+            question: turn.question.slice(0, 1000),
+            answer: turn.answer.slice(0, 1000),
+          },
+        ]
+      : [],
+  );
 }

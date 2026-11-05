@@ -24,8 +24,7 @@ import { resolveConversationEntryTarget } from './conversationVisitTarget';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
 import {
   conversationHistoryIsCurrent,
-  conversationHistorySources,
-  prepareConversationHistory,
+  loadConversationHistory,
 } from './conversationHistorySources';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
 
@@ -87,18 +86,16 @@ export function createRagConversationService({
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
       // User follow-ups may influence an answer, so retain their validated turn lineage.
-      const history = await conversationHistorySources({
-        history: previousMessages,
+      const history = await loadConversationHistory({
+        messages: previousMessages,
         session: observer?.retentionSession,
+        retainedHistory: observer?.retainedHistory,
         data,
         registry,
         signal,
       });
-      const historySources = history.references;
-      const boundedHistory = prepareConversationHistory(
-        previousMessages,
-        registry,
-      );
+      const historyIsCurrent = () =>
+        conversationHistoryIsCurrent(registry, history.references, signal);
       const researchInputs = createResearchInputTracker(
         registry,
         data,
@@ -161,7 +158,8 @@ export function createRagConversationService({
           ? { entryIntent: 'possibilities' as const }
           : {}),
         priorDialogue: history.priorTurns,
-        priorUserReports: boundedHistory.reports,
+        priorUserReports: history.reports,
+        ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
         signal,
       });
       const execution = executionOptions({
@@ -174,17 +172,16 @@ export function createRagConversationService({
         external,
       });
       stage = 'workflow';
-      if (
-        !(await conversationHistoryIsCurrent(registry, historySources, signal))
-      )
+      if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
         {
           question: normalizedQuestion,
           entryIntent: entryContext?.intent,
           targetVisitEvidence: target.evidence,
-          previousMessages: boundedHistory.messages,
+          previousMessages: history.messages,
           validatedPriorTurns: history.priorTurns,
+          priorDialogueOmitted: history.omitted,
           onValidatedEvidence: references =>
             retention.onValidatedEvidence([...references, ...history.sources]),
           loadCurrentEvidence: async () => ({
@@ -215,16 +212,14 @@ export function createRagConversationService({
           onProgress: observer?.onProgress,
           onToolEvent: observer?.onToolEvent,
           // A changed history must not leak a draft before its lineage is rechecked.
-          onTaskStreamEvent: historySources.length
+          onTaskStreamEvent: history.references.length
             ? undefined
             : observer?.onTaskStreamEvent,
           signal,
         },
       );
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
-      if (
-        !(await conversationHistoryIsCurrent(registry, historySources, signal))
-      )
+      if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
       const continuation = generated.choose(outcome);
       observer?.onArtifactContinuation?.(continuation);

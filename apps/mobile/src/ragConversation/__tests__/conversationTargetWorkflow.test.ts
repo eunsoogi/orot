@@ -78,6 +78,7 @@ test('sends a validated follow-up context only after model consent', async () =>
     validatedPriorTurns: [
       { question: '피로가 있어요', answer: '언제부터 시작됐나요?' },
     ],
+    priorDialogueOmitted: true,
     workflow: {
       ...f.options.workflow,
       execution: {
@@ -110,4 +111,5 @@ test('sends a validated follow-up context only after model consent', async () =>
   expect(messages).toContain('언제부터 시작됐나요?');
   expect(messages).toContain('지난주부터 시작됐어요');
   expect(messages).toContain('possibilities');
+  expect(messages).toContain('priorDialogueOmitted');
 });

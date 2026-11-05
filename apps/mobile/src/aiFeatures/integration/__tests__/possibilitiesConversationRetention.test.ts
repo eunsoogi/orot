@@ -118,12 +118,23 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
     expect(restored.every(turn => turn.entryIntent === 'possibilities')).toBe(
       true,
     );
+    for (let index = 0; index < 2; index++) {
+      sessions.setDraft(1, '네');
+      await sessions.send(1, send);
+    }
+    sessions.setDraft(1, '아니요');
+    await sessions.send(1, send);
+    expect(
+      requests
+        .at(-1)
+        ?.validatedPriorTurns?.filter(turn => turn.question === '네'),
+    ).toHaveLength(2);
     // A long chat must not accumulate an unbounded recursive parent chain.
     for (let index = 0; index < 16; index++) {
       sessions.setDraft(1, `추가 답변 ${index}`);
       await sessions.send(1, send);
     }
-    expect((await storage.list(sessionId)).items).toHaveLength(18);
+    expect((await storage.list(sessionId)).items).toHaveLength(21);
     invalidateSession = sessionId;
     sessions.setDraft(1, '다른 기록과 비교해 주세요');
     await sessions.send(1, send);
@@ -131,7 +142,7 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
       sessions
         .getSnapshot()
         .sessions[0]?.messages.filter(message => message.role === 'assistant'),
-    ).toHaveLength(18);
+    ).toHaveLength(21);
     expect(await storage.read(followup!.id)).toBeNull();
     sessions.dispose();
     connection.close();
