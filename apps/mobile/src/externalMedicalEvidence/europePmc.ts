@@ -40,6 +40,10 @@ export interface EuropePmcMedicalEvidenceService {
     options: {
       readonly externalQueryConsented: boolean;
       readonly signal?: AbortSignal;
+      readonly toolCall?: {
+        readonly operationRunId: string;
+        readonly callId: string;
+      };
     },
   ): Promise<EuropePmcSearchResult>;
 }

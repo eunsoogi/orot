@@ -14,11 +14,28 @@ export function createConversationTurnRetention(input: {
   readonly storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
     'append'
-  >;
+  > &
+    Partial<
+      Pick<
+        ReturnType<typeof createConversationArtifactStorage>,
+        'appendToolEvent' | 'discardToolEvent'
+      >
+    >;
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
   readonly sessionVersion?: number;
+  readonly captureToolSources?: (
+    event: import('@orot/agent-runtime').ConversationToolEvent,
+    sessionId: string,
+  ) => Promise<{
+    event: import('@orot/agent-runtime').ConversationToolEvent;
+    dependencies: import('../storage/conversationToolLineage').ToolLineage;
+  }>;
+  readonly onToolEventStored?: (
+    event: import('@orot/agent-runtime').ConversationToolEvent,
+    sessionId: string,
+  ) => Promise<void>;
 }) {
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
@@ -61,6 +78,45 @@ export function createConversationTurnRetention(input: {
     return value;
   };
   return {
+    toolMessageId: input.turnId,
+    async recordToolEvent(
+      event: import('@orot/agent-runtime').ConversationToolEvent,
+    ) {
+      if (!input.storage.appendToolEvent)
+        return Promise.reject(new Error('Tool event storage is unavailable.'));
+      let captured;
+      const discard = () =>
+        input.storage.discardToolEvent?.({
+          sessionId: input.sessionId,
+          messageId: input.turnId,
+          sessionVersion: input.sessionVersion ?? 0,
+          operationRunId: event.operationRunId,
+          callId: event.callId,
+        });
+      try {
+        captured = input.captureToolSources
+          ? await input.captureToolSources(event, input.sessionId)
+          : { event, dependencies: [] };
+      } catch (error) {
+        // Drop the incomplete record rather than misreporting the real tool outcome.
+        await discard();
+        throw error;
+      }
+      try {
+        await input.storage.appendToolEvent({
+          sessionId: input.sessionId,
+          messageId: input.turnId,
+          createdAt: input.createdAt,
+          sessionVersion: input.sessionVersion ?? 0,
+          ...captured,
+        });
+        if (input.onToolEventStored)
+          await input.onToolEventStored(captured.event, input.sessionId);
+      } catch (error) {
+        if (error instanceof RetainedSourceInvalidError) await discard();
+        throw error;
+      }
+    },
     async save(candidate: ConversationRetentionCandidate, signal: AbortSignal) {
       if (pending || preparation)
         throw new Error('A previous save is still awaiting retry.');
