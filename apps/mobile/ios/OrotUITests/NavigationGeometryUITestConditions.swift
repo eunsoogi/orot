@@ -198,8 +198,8 @@ enum NavigationGeometryUITestConditions {
     }
 
     /// Measure child viewports independently; scrollable content may extend vertically but never into the rail.
-    static func captureChildBoundary(_ app: XCUIApplication, viewportIDs: [String], name: String, testCase: XCTestCase) throws {
-        try captureBoundary(app, navigationID: "navigation-back", name: name, testCase: testCase)
+    static func captureChildBoundary(_ app: XCUIApplication, viewportIDs: [String], name: String, testCase: XCTestCase, navigationID: String = "navigation-back") throws {
+        try captureBoundary(app, navigationID: navigationID, name: name, testCase: testCase)
         let available = UITestConditions.element(app, "navigation-content-region").frame
         var frames = ["available": available]
         for identifier in viewportIDs {
