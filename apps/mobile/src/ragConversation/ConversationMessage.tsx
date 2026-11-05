@@ -3,6 +3,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { ConversationSources } from './ConversationSources';
+import { ConversationToolEvents } from './ConversationToolEvents';
+import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
 import type { RagConversationMessage } from './task';
@@ -27,12 +29,16 @@ export function ConversationMessage({
   onLinkError,
   showCitations = true,
   compact = false,
+  toolSourceSessionId,
+  resolveToolSource,
 }: {
   readonly message: DisplayMessage;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
   readonly showCitations?: boolean;
   readonly compact?: boolean;
+  readonly toolSourceSessionId?: string | null;
+  readonly resolveToolSource?: ResolveConversationToolSource;
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
@@ -87,6 +93,18 @@ export function ConversationMessage({
           </Text>
         ) : null}
         {activityBeforeText ? activity : null}
+        {!user && message.toolEvents?.length ? (
+          <ConversationToolEvents
+            allowSourceActions={showCitations}
+            durableMessageId={message.toolMessageId}
+            events={message.toolEvents}
+            messageId={message.toolMessageId ?? String(message.id)}
+            onLinkError={onLinkError}
+            onOpenSource={onOpenSource}
+            resolveToolSource={resolveToolSource}
+            sessionId={toolSourceSessionId}
+          />
+        ) : null}
         {message.content ? (
           <MessageText
             selectable
