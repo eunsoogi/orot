@@ -47,14 +47,15 @@ test('retains official answer history on preparation updates and removes it on e
       questions: [a, b],
       expectedSavedQuestions: [],
     });
+    const questionId = saved.questions[0]!.id;
     const revision = await readVisitQuestionRevision(
       opened.database,
-      'question-a',
+      questionId,
     );
     expect(revision).toBe('v1:1');
     const confirmed = await official.saveManual({
       appointmentId: appointment.id,
-      questionId: 'question-a',
+      questionId,
       expectedQuestionRevision: revision!,
       answer: '원래 답변',
     });
@@ -73,10 +74,10 @@ test('retains official answer history on preparation updates and removes it on e
       expectedSavedQuestions: snapshot(saved.questions),
     });
     expect(duplicate.questions).toEqual(saved.questions);
-    expect(await readVisitQuestionRevision(opened.database, 'question-a')).toBe(
+    expect(await official.history(confirmed.id)).toEqual(expectedHistory);
+    expect(await readVisitQuestionRevision(opened.database, questionId)).toBe(
       revision,
     );
-    expect(await official.history(confirmed.id)).toEqual(expectedHistory);
     const reordered = await saveReviewedVisitQuestions({
       ...base,
       questions: [
@@ -98,11 +99,35 @@ test('retains official answer history on preparation updates and removes it on e
       ],
       expectedSavedQuestions: snapshot(reordered.questions),
     });
-    expect(await readVisitQuestionRevision(opened.database, 'question-a')).toBe(
+    expect(await readVisitQuestionRevision(opened.database, questionId)).toBe(
       'v1:3',
     );
     expect(await official.listForAppointment(appointment.id)).toEqual([edited]);
     expect(await official.history(confirmed.id)).toEqual(expectedHistory);
+    await opened.database.execute(
+      "CREATE TRIGGER fail_prepared_write BEFORE UPDATE ON visit_questions WHEN NEW.id = 'question-b' BEGIN SELECT RAISE(ABORT, 'injected failure'); END",
+    );
+    await expect(
+      saveReviewedVisitQuestions({
+        ...base,
+        questions: [
+          {
+            ...review(b, amended.questions[0]!),
+            questionText: '이 기록을 진료에서 어떤 방식으로 설명할까요?',
+          },
+        ],
+        expectedSavedQuestions: snapshot(amended.questions),
+      }),
+    ).rejects.toThrow('injected failure');
+    expect(await records.get('visit_question', questionId)).toEqual(
+      amended.questions[1],
+    );
+    expect(
+      await records.get('visit_question', amended.questions[0]!.id),
+    ).toEqual(amended.questions[0]);
+    expect(await official.listForAppointment(appointment.id)).toEqual([edited]);
+    expect(await official.history(confirmed.id)).toEqual(expectedHistory);
+    await opened.database.execute('DROP TRIGGER fail_prepared_write');
     await saveReviewedVisitQuestions({
       ...base,
       questions: [review(b, amended.questions[0]!)],
