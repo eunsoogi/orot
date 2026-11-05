@@ -208,8 +208,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         else {
             return nil
         }
+        // A retained route may not publish again on Back; use its own latest measurement, including inactive records.
         let adaptive: (routeKey: String, width: Double, columns: Int)? = lifecycle.last {
-            $0["event"] as? String == "adaptive-columns-layout"
+            $0["event"] as? String == "adaptive-columns-layout" && $0["routeKey"] as? String == currentRouteKey
         }.flatMap { event in
             guard event["active"] as? Bool == true, let routeKey = event["routeKey"] as? String,
                   let width = (event["width"] as? String).flatMap(Double.init),
