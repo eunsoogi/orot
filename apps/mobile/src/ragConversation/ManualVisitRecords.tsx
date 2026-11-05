@@ -3,6 +3,10 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { appColors } from '../layout/appColors';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 import { openManualVisitRecords } from './manualVisitRecordService';
 import type {
   ManualVisitQuestion,
@@ -30,7 +34,24 @@ export function ManualVisitRecords({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
+  const contentVersion = useRef(0);
   const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const invalidate = () => {
+      contentVersion.current += 1;
+      setItems([]);
+      setEditing(null);
+      setAnswer('');
+      setError('');
+      setReload(value => value + 1);
+    };
+    const clear = subscribeLocalDataClear(invalidate);
+    const source = subscribeLocalSourceDeletion(invalidate);
+    return () => {
+      clear();
+      source();
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     setItems([]);
@@ -57,6 +78,7 @@ export function ManualVisitRecords({
     const item = items.find(value => value.question.id === editing.questionId);
     if (!item) return;
     saving.current = true;
+    const version = contentVersion.current;
     setBusy(true);
     setError('');
     try {
@@ -74,11 +96,14 @@ export function ManualVisitRecords({
           expectedQuestionRevision: item.revision,
           answer: value,
         });
-      setItems(await service.load(appointmentId));
+      const loaded = await service.load(appointmentId);
+      if (contentVersion.current !== version) return;
+      setItems(loaded);
       setEditing(null);
       setAnswer('');
     } catch {
-      setError('저장 결과를 확인하지 못했어요. 다시 불러와 확인해 주세요.');
+      if (contentVersion.current === version)
+        setError('저장 결과를 확인하지 못했어요. 다시 불러와 확인해 주세요.');
     } finally {
       saving.current = false;
       setBusy(false);
@@ -96,15 +121,35 @@ export function ManualVisitRecords({
           <Text>{item.question.questionText}</Text>
           {item.records.map(record => (
             <View key={record.id}>
+              {record.questionText !== item.question.questionText && (
+                <Text>{record.questionText}</Text>
+              )}
               <Text>
                 {record.sourceMethod === 'manual_confirmed'
                   ? '직접 확인'
-                  : '녹음에서 찾은 내용'}
+                  : '녹음 분석 결과'}
               </Text>
+              {record.editOrigin === 'user_edit' ? (
+                <Text>사용자가 수정한 답변</Text>
+              ) : null}
+              {record.sourceMethod === 'ai_generated' && (
+                <Text>
+                  {record.automaticSource?.result.status === 'not_found'
+                    ? '이 전사에서 질문 근거를 찾지 못했어요.'
+                    : record.automaticSource?.result.status === 'indeterminate'
+                      ? '질문 여부가 불확실해요.'
+                      : '이 전사에서 질문 근거를 찾았어요.'}
+                </Text>
+              )}
               {record.sourceMethod === 'ai_generated' &&
                 record.editOrigin === 'ai_analysis' &&
                 record.automaticSource?.result.answers.map((result, index) => (
-                  <Text key={index}>{result.summary}</Text>
+                  <View key={index}>
+                    <Text>{result.summary}</Text>
+                    <Text>
+                      화자는 확인되지 않았어요. {result.speakerUncertainty}
+                    </Text>
+                  </View>
                 ))}
               {record.sourceMethod === 'manual_confirmed' ||
               record.editOrigin === 'user_edit' ? (
