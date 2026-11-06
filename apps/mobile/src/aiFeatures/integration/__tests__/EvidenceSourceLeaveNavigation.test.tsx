@@ -1,7 +1,8 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
-import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
+import { runRagConversationTurn } from '../../../ragConversation/service';
+import { referenceOnly } from '../testSupport/personalEvidenceTestSupport';
 import {
   apple,
   localData,
@@ -10,8 +11,6 @@ import {
   searchFixtureEvidence,
 } from '../featureServiceFixtures';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
-import { pressPageAction } from '../testSupport/pressPageAction';
 import type { AiFeatureServiceDependencies } from '../featureServices';
 
 jest.mock(
@@ -37,48 +36,33 @@ test('leaves a read-only citation without confirmation and ignores its late rere
   );
   source.data.memoryStorage.listRecords =
     listRecords as typeof source.data.memoryStorage.listRecords;
-  const diseaseRunner = jest.fn(
-    async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
-      const reference = (await searchFixtureEvidence(options.tools)).items[0];
+  const ragRunner = jest.fn(
+    async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      const reference = (await searchFixtureEvidence(options.workflow.tools))
+        .items[0];
       if (!reference) throw new Error('Expected the local memory citation.');
       return {
-        status: 'workflow' as const,
-        result: {
-          status: 'result' as const,
-          value: {
-            hypotheses: [
-              {
-                title: '검토할 가능성',
-                summary: '검토가 필요한 내용이에요.',
-                supportingEvidence: [reference],
-                contraryEvidence: [],
-                uncertainty: '자료가 제한적이에요.',
-                missingData: ['진료 기록'],
-              },
-            ],
-          },
-          citations: [reference],
-          coverage: [],
-          checkpoint: {} as never,
-        },
+        status: 'answer' as const,
+        answer: '검토가 필요한 내용이에요.',
+        citations: [referenceOnly(reference)],
       };
     },
-  ) as unknown as typeof runDiseaseHypothesisAnalysis;
+  ) as unknown as typeof runRagConversationTurn;
   const route = await render(
     <AiFeatureRoute
       onBack={jest.fn()}
       serviceDependencies={routeDependencies({
-        diseaseRunner,
+        ragRunner,
         loadLocalData: async () => source.data,
       })}
     />,
   );
 
-  await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
-  await pressPageAction(
-    route.queryByTestId('navigation-page-action-overflow'),
-    getDiseaseHypothesisCopy().generate,
+  await fireEvent.changeText(
+    route.getByTestId('rag-conversation-input'),
+    '기록을 확인해 주세요.',
   );
+  await fireEvent.press(route.getByTestId('rag-conversation-send'));
   const openSource = await route.findByLabelText(/원문 근거 열기/);
   const earlierReads = listRecords.mock.calls.length;
   blockViewerRead = true;
@@ -95,7 +79,7 @@ test('leaves a read-only citation without confirmation and ignores its late rere
   await act(async () => finishRead([record]));
   expect(alert).not.toHaveBeenCalled();
   expect(route.queryByTestId('ai-feature-source-detail')).toBeNull();
-  expect(route.getByTestId('disease-hypotheses-results')).toBeTruthy();
+  expect(route.getByText(/검토가 필요한 내용이에요./)).toBeTruthy();
 });
 
 function routeDependencies(

@@ -19,6 +19,7 @@ import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration
 import type { ProviderSelectionStore } from '../src/providers/selection/types';
 import type { SelectedAiResolverOptions } from '../src/aiFeatures/integration/provider';
 import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
+import { homeConversationVisitFixture } from './homeConversationVisitFixture';
 import {
   homeOverviewRecordings,
   seedHomeOverviewHealth,
@@ -28,10 +29,14 @@ const settingsManager = NativeModules?.SettingsManager;
 const launchSettings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 // Capture the fixture origin once, so Home refreshes do not postpone its end boundary.
-const homeAppointments = homeAppointmentTimingFixture(
-  launchSettings.OROT_HOME_APPOINTMENT_TIMING,
-  Date.now(),
-);
+const fixtureNow = Date.now();
+const homeAppointments =
+  launchSettings.OROT_HOME_CONVERSATION_VISIT === 'YES'
+    ? homeConversationVisitFixture('YES', fixtureNow)
+    : homeAppointmentTimingFixture(
+        launchSettings.OROT_HOME_APPOINTMENT_TIMING,
+        fixtureNow,
+      );
 
 const appointmentRepository = createNavigationProbeRepository(homeAppointments);
 

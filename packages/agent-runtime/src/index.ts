@@ -76,6 +76,12 @@ export type {
 } from './multiAgent/contracts';
 export type { EvidenceSearchRuntime } from './multiAgent/evidenceContracts';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './multiAgent/contracts';
+export type {
+  ConversationToolEvent,
+  ConversationToolStatus,
+  ToolSourceReference,
+} from './multiAgent/toolEvents';
+export { projectConversationToolEvent, mergeConversationToolEvents } from './multiAgent/toolEvents';
 
 export type {
   LocalAppointmentQueryResult,

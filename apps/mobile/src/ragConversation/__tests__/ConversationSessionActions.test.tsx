@@ -15,6 +15,7 @@ import type { ConversationSessions } from '../conversationSessions';
 import { getRagConversationCopy } from '../copy';
 import type { RagConversationOutcome } from '../service';
 import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
+import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import {
   NavigationPrimaryActionContext,
   useNavigationPrimaryActionHost,
@@ -57,47 +58,6 @@ test('uses circular glass actions and opens a separate history destination', asy
   expect(screen.queryByTestId('rag-conversation-sessions')).toBeNull();
 });
 
-test('keeps session controls in the accessible header on ordinary iPhone navigation', async () => {
-  const onOpenHistory = jest.fn();
-  function Fixture() {
-    const { host, actions } = useNavigationPrimaryActionHost('conversation');
-    return (
-      <NavigationPrimaryActionContext.Provider value={host}>
-        <ConversationScreen
-          navigationRouteKey="conversation"
-          onBack={jest.fn()}
-          onOpenHistory={onOpenHistory}
-          onOpenSource={jest.fn()}
-          onSend={jest.fn()}
-        />
-        <View>
-          {actions.map(action => (
-            <Button
-              key={action.id}
-              title={action.label}
-              testID={`dock-${action.id}`}
-              onPress={action.onPress}
-            />
-          ))}
-        </View>
-      </NavigationPrimaryActionContext.Provider>
-    );
-  }
-
-  await render(<Fixture />);
-  const copy = getRagConversationCopy();
-  expect(screen.queryByTestId('dock-conversation-history')).toBeNull();
-  expect(screen.queryByTestId('dock-new-conversation')).toBeNull();
-  expect(screen.getByLabelText(copy.sessions)).toBeTruthy();
-  expect(screen.getByLabelText(copy.newConversation)).toBeTruthy();
-
-  await fireEvent(screen.getByTestId('rag-conversation-input'), 'focus');
-  await fireEvent.press(screen.getByLabelText(copy.sessions));
-  await fireEvent.press(screen.getByLabelText(copy.newConversation));
-  expect(onOpenHistory).toHaveBeenCalledTimes(1);
-  expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
-});
-
 test('registers history and new-session actions on a Duo rail without interrupting generation', async () => {
   let store: ConversationSessions | null = null;
   let requestSignal: AbortSignal | undefined;
@@ -129,36 +89,51 @@ test('registers history and new-session actions on a Duo rail without interrupti
   function Fixture() {
     const { host, actions } = useNavigationPrimaryActionHost('conversation');
     return (
-      <ConversationSessionsProvider>
-        <StoreObserver />
-        <NavigationOcclusionContext.Provider value={duoRailOcclusion}>
-          <NavigationPrimaryActionContext.Provider value={host}>
-            <ConversationScreen
-              navigationRouteKey="conversation"
-              onBack={jest.fn()}
-              onOpenHistory={onOpenHistory}
-              onOpenSource={jest.fn()}
-              onSend={send}
-            />
-            <View>
-              {actions.map(action => (
-                <Button
-                  key={action.id}
-                  title={action.label}
-                  accessibilityLabel={action.accessibilityLabel}
-                  disabled={action.disabled}
-                  testID={`dock-${action.id}`}
-                  onPress={() => action.onPress()}
-                />
-              ))}
-            </View>
-          </NavigationPrimaryActionContext.Provider>
-        </NavigationOcclusionContext.Provider>
-      </ConversationSessionsProvider>
+      <NavigationGeometryProvider>
+        <ConversationSessionsProvider>
+          <StoreObserver />
+          <NavigationOcclusionContext.Provider value={duoRailOcclusion}>
+            <NavigationPrimaryActionContext.Provider value={host}>
+              <ConversationScreen
+                navigationRouteKey="conversation"
+                onBack={jest.fn()}
+                onOpenHistory={onOpenHistory}
+                onOpenSource={jest.fn()}
+                onSend={send}
+              />
+              <View>
+                {actions.map(action => (
+                  <Button
+                    key={action.id}
+                    title={action.label}
+                    accessibilityLabel={action.accessibilityLabel}
+                    disabled={action.disabled}
+                    testID={`dock-${action.id}`}
+                    onPress={() => action.onPress()}
+                  />
+                ))}
+              </View>
+            </NavigationPrimaryActionContext.Provider>
+          </NavigationOcclusionContext.Provider>
+        </ConversationSessionsProvider>
+      </NavigationGeometryProvider>
     );
   }
 
   await render(<Fixture />);
+  await fireEvent(
+    screen.getByTestId('navigation-window-geometry-sensor'),
+    'geometryChange',
+    {
+      nativeEvent: {
+        windowBounds: { x: 0, y: 0, width: 800, height: 800 },
+        safeAreaInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+        reservedRegionsSupported: true,
+        hasHinge: true,
+        reservedRegions: [],
+      },
+    },
+  );
   await waitFor(() =>
     expect(screen.getByTestId('dock-conversation-history')).toBeTruthy(),
   );

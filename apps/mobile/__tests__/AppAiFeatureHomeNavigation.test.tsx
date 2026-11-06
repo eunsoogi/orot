@@ -1,13 +1,11 @@
-import { useEffect } from 'react';
 import {
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { AccessibilityInfo, Text } from 'react-native';
+import { AccessibilityInfo } from 'react-native';
 import App from '../App';
-import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -24,85 +22,46 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-const aiFeatureRoutes = [
-  ['ai-feature-visit-questions', 'home-visit-questions-screen'],
-  ['ai-feature-disease-hypotheses', 'disease-hypotheses-screen'],
-  ['ai-feature-rag-conversation', 'rag-conversation-screen'],
-  ['ai-feature-external-evidence', 'external-medical-evidence-screen'],
-] as const;
-
 afterEach(() => jest.restoreAllMocks());
 
-function VisitQuestionsHomeRouteProbe({
-  onRouteStateChange,
-}: VisitQuestionsRenderInput) {
-  useEffect(() => {
-    // The injected route reports a clean state so guarded Back matches the real screen contract.
-    onRouteStateChange({
-      hasUnsavedChanges: false,
-      isSaving: false,
-      isGenerating: false,
-      revision: 0,
-    });
-  }, [onRouteStateChange]);
-
-  return <Text testID="home-visit-questions-screen">다음 진료 질문 화면</Text>;
-}
-
-test('shows four explained AI actions and returns from each owner route', async () => {
+test('opens conversation immediately and returns from provider and history without losing its draft', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
-  // Keep App and its shared navigator mounted to verify one-tap home routing.
-  await render(
-    <App
-      renderVisitQuestions={input => (
-        <VisitQuestionsHomeRouteProbe {...input} />
-      )}
-    />,
-  );
+  await render(<App />);
 
   await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
-  expect(screen.getByText('다음 진료 질문')).toBeTruthy();
-  expect(screen.getByText('증상 정리')).toBeTruthy();
-  expect(screen.getByText('기록과 대화')).toBeTruthy();
-  expect(screen.getByText('의학 자료 찾기')).toBeTruthy();
-  expect(screen.getByText('궁금한 점을 미리 정리해요.')).toBeTruthy();
-  expect(screen.getByText('증상과 경과를 차분히 정리해요.')).toBeTruthy();
-  expect(screen.getByText('내 기록에서 궁금한 점을 물어보세요.')).toBeTruthy();
-  expect(screen.getByText('의학 자료를 찾아보세요.')).toBeTruthy();
-  expect(screen.queryByTestId('open-ai-features')).toBeNull();
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.queryByTestId('ai-features-screen')).toBeNull();
   expect(screen.queryByTestId('ai-feature-health-review')).toBeNull();
-
-  for (const [actionId, routeId] of aiFeatureRoutes) {
-    await fireEvent.press(screen.getByTestId(actionId));
-    expect(await screen.findByTestId(routeId)).toBeTruthy();
-    if (actionId === 'ai-feature-visit-questions') {
-      expect(screen.getByTestId('navigation-route-scene-route-2')).toBeTruthy();
-      expect(
-        screen.queryByTestId('navigation-route-columns-route-2'),
-      ).toBeNull();
-    }
-    if (routeId === 'rag-conversation-screen') {
-      expect(screen.getByTestId('ai-feature-select-provider')).toBeTruthy();
-      expect(
-        screen.getByText(
-          '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
-        ),
-      ).toBeTruthy();
-      expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
-    }
-    if (routeId === 'external-medical-evidence-screen') {
-      expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
-      expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
-      expect(screen.queryByTestId('external-evidence-loading')).toBeNull();
-    }
-    await fireEvent.press(screen.getByTestId('navigation-back'));
-    await waitFor(() =>
-      expect(screen.getByTestId('ai-features-screen')).toBeTruthy(),
-    );
-  }
+  expect(screen.queryByTestId('external-evidence-search')).toBeNull();
+  expect(
+    screen.getByText('필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    '계속할 대화 초안',
+  );
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
+    '계속할 대화 초안',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-analysis')).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-visit-questions')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await waitFor(() =>
+    expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
+      '계속할 대화 초안',
+    ),
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-new-session'));
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
 }, 30_000);
 
 test('keeps recording under Records when leaving an AI route', async () => {
@@ -110,17 +69,12 @@ test('keeps recording under Records when leaving an AI route', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
-  await render(
-    <App
-      renderVisitQuestions={input => (
-        <VisitQuestionsHomeRouteProbe {...input} />
-      )}
-    />,
-  );
+  await render(<App />);
 
   await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  expect(await screen.findByTestId('disease-hypotheses-screen')).toBeTruthy();
+  expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
 
   expect(screen.queryByTestId('navigation-recording')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-home'));

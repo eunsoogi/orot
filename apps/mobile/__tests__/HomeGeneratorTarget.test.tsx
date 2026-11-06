@@ -9,9 +9,9 @@ import { nextVisitQuestionsCopy as copy } from '../src/nextVisitQuestions/copy';
 
 afterEach(() => jest.restoreAllMocks());
 
-test('Home A reaches the editor, obtains real disclosure consent and saves its reviewed questions', async () => {
-  const { generate, save } = await renderHomeGenerator(undefined, true);
-  await enterHomeGenerator();
+test('the retained Home A editor obtains real disclosure consent and saves its reviewed questions', async () => {
+  const { generate, save } = await renderHomeGenerator(undefined, true, true);
+  await enterHomeGenerator(true);
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
   expect(await screen.findByTestId('inference-disclosure-sheet')).toBeTruthy();
   expect(save).not.toHaveBeenCalled();
@@ -28,10 +28,16 @@ test('Home A reaches the editor, obtains real disclosure consent and saves its r
 });
 
 test('an entry lookup changing from displayed A to future B never exposes B or allows generation', async () => {
-  const { store, query, generate, save } = await renderHomeGenerator();
+  const { store, query, generate, save } = await renderHomeGenerator(
+    undefined,
+    false,
+    true,
+  );
   await store.repository.cancel('Home A');
   query.mockResolvedValue(futureHomeVisit('Calendar B'));
-  await fireEvent.press(await screen.findByTestId('home-prepare-visit'));
+  await fireEvent.press(
+    await screen.findByTestId('retained-visit-module-open'),
+  );
   expect(await screen.findByText(copy.appointment.none)).toBeTruthy();
   expect(screen.queryByText('Calendar B')).toBeNull();
   expect(generate).not.toHaveBeenCalled();
@@ -39,8 +45,12 @@ test('an entry lookup changing from displayed A to future B never exposes B or a
 });
 
 test('a target change immediately before generation is rejected before model or consent work', async () => {
-  const { store, query, generate } = await renderHomeGenerator();
-  await enterHomeGenerator();
+  const { store, query, generate } = await renderHomeGenerator(
+    undefined,
+    false,
+    true,
+  );
+  await enterHomeGenerator(true);
   await store.repository.cancel('Home A');
   query.mockResolvedValue(futureHomeVisit('Calendar B'));
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
@@ -50,8 +60,8 @@ test('a target change immediately before generation is rejected before model or 
 });
 
 test('reviewed A cannot be saved after the current query changes to B', async () => {
-  const { query, save } = await renderHomeGenerator();
-  await enterHomeGenerator();
+  const { query, save } = await renderHomeGenerator(undefined, false, true);
+  await enterHomeGenerator(true);
   await generateHomeDraft();
   query.mockResolvedValue(futureHomeVisit('Calendar B'));
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));

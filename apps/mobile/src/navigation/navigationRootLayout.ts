@@ -4,6 +4,10 @@ import {
   type NavigationGeometrySnapshot,
 } from './navigationGeometry';
 import { resolveNavigationSystemSide } from './navigationSystemSide';
+import {
+  hasNavigationDuoGeometry,
+  navigationDuoDivisions,
+} from './navigationDuoGeometry';
 
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
@@ -98,24 +102,13 @@ export function navigationSideLane(
 export function resolveNavigationRootLayout(
   geometry: NavigationGeometrySnapshot | null,
 ): NavigationRootLayout {
-  if (!geometry?.reservedRegionsSupported) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+  if (!geometry || !hasNavigationDuoGeometry(geometry))
+    return BOTTOM_NAVIGATION_ROOT_LAYOUT;
   const window = geometry.windowBounds;
   const viewport = geometry.viewportBounds ?? window;
   const windowRight = window.x + window.width;
   const windowBottom = window.y + window.height;
-  const divisions = geometry.reservedRegions.filter(
-    region =>
-      region.kind === 'division' &&
-      region.frame.width > 0 &&
-      region.frame.height > 0 &&
-      region.frame.x < windowRight &&
-      region.frame.x + region.frame.width > window.x &&
-      region.frame.y < windowBottom &&
-      region.frame.y + region.frame.height > window.y,
-  );
-  // OS support and window width do not identify a Duo. A real hinge remains present when closed.
-  if (!(geometry.hasHinge ?? divisions.length > 0))
-    return BOTTOM_NAVIGATION_ROOT_LAYOUT;
+  const divisions = navigationDuoDivisions(geometry);
   const side = resolveNavigationSystemSide(geometry, divisions);
   const {
     width,

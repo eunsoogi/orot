@@ -21,7 +21,7 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-test('shows the AI feature actions on the AI tab', async () => {
+test('opens conversation directly on the AI tab with the app-owned session store', async () => {
   const createSessions = jest.spyOn(sessions, 'createConversationSessions');
   await render(<App />);
 
@@ -33,9 +33,14 @@ test('shows the AI feature actions on the AI tab', async () => {
   );
 
   await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
-  expect(screen.getByTestId('ai-features-screen')).toBeTruthy();
-  expect(screen.getByText('다음 진료 질문')).toBeTruthy();
-  expect(screen.getByTestId('ai-feature-visit-questions')).toBeEnabled();
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
+  expect(screen.getByTestId('ai-feature-select-provider')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-new-session')).toBeTruthy();
+  expect(screen.queryByTestId('ai-features-screen')).toBeNull();
+  expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
+  expect(screen.queryByTestId('external-evidence-search')).toBeNull();
   expect(screen.queryByTestId('get-started')).toBeNull();
   expect(screen.queryByTestId('open-ai-features')).toBeNull();
   createSessions.mockRestore();

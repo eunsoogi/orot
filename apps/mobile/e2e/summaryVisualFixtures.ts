@@ -1,5 +1,8 @@
 import { createRecordRepository } from '@orot/storage';
-import type { DiseaseHypothesisAnalysis } from '../src/diseaseHypotheses/types';
+import type {
+  DiseaseHypothesisAnalysis,
+  DiseaseHypothesisRunOutcome,
+} from '../src/diseaseHypotheses/types';
 import type {
   SavedSymptomSummary,
   SymptomSummaryHistory,
@@ -45,6 +48,21 @@ export const syntheticSummary: DiseaseHypothesisAnalysis = {
     missingData: [],
   })),
 };
+
+/** Retains the removed possibilities screen's visual assertions without a provider call. */
+export function retainedDiseaseVisualResult(): DiseaseHypothesisRunOutcome {
+  const first = syntheticSummary.hypotheses[0]!;
+  return {
+    status: 'workflow',
+    result: {
+      status: 'result',
+      value: { hypotheses: [{ ...first, title: '합성 가능성 평가' }] },
+      citations: first.supportingEvidence,
+      coverage: [],
+      checkpoint: {} as never,
+    },
+  };
+}
 const saved: SavedSymptomSummary = {
   id: 'synthetic-summary-appearance',
   createdAt: '2035-01-01T00:00:00Z',

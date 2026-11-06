@@ -65,6 +65,10 @@ test('disables the Records body import action while the picker is opening', asyn
     />,
   );
 
+  expect(screen.getByText('파일에서 의료 문서 가져오기')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: '파일에서 의료 문서 가져오기' }),
+  ).toBeEnabled();
   // Hold the native picker result pending to observe the disabled body action.
   const selectionPress = fireEvent.press(
     screen.getByTestId('records-import-medical-document'),
@@ -76,6 +80,7 @@ test('disables the Records body import action while the picker is opening', asyn
     ).toBeDisabled();
   });
   expect(service.selectDocument).toHaveBeenCalledTimes(1);
+  expect(service.selectDocument).toHaveBeenCalledWith('files');
 
   await act(async () => {
     finishSelection(null);
@@ -107,8 +112,13 @@ test('routes Photos selection separately and returns to both actions after cance
       documentImportService={service}
     />,
   );
-  await fireEvent.press(screen.getByTestId('records-import-medical-photo'));
+  expect(screen.getByText('사진에서 의료 문서 가져오기')).toBeTruthy();
+  await fireEvent.press(
+    screen.getByRole('button', { name: '사진에서 의료 문서 가져오기' }),
+  );
   expect(service.selectDocument).toHaveBeenCalledWith('photos');
+  expect(service.saveDocument).not.toHaveBeenCalled();
+  expect(service.discardDocument).not.toHaveBeenCalled();
   expect(screen.getByTestId('records-import-medical-document')).toBeEnabled();
   expect(screen.getByTestId('records-import-medical-photo')).toBeEnabled();
 });

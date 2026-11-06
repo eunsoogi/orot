@@ -218,6 +218,8 @@ export interface MultiAgentInvocation {
   readonly signal?: AbortSignal;
   /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
+  /** Content-free actual tool lifecycle, excluding reasoning and unrestricted payloads. */
+  readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
   /** Receives task-projected display text only; structured output and citations stay private. */
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
 }

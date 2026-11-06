@@ -25,3 +25,12 @@ test('routes the medical document journey through the production App', () => {
   assert.ok(router.includes("require('./medicalDocumentImportProbeEntry')"));
   assert.match(probeEntry, /return <App \/>;/u);
 });
+
+test('selects the isolated picker recovery entry only when requested', () => {
+  assert.equal(
+    selectEntryRoute({ OROT_E2E_PROBE: 'medical-document-picker-recovery' }),
+    'medical-document-picker-recovery',
+  );
+  assert.equal(selectEntryRoute({}), 'storage');
+  assert.ok(router.includes("require('./medicalDocumentPickerRecoveryProbeEntry')"));
+});

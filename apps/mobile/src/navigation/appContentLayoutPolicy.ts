@@ -23,7 +23,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // The saved library owns a measured list and summary that share that usable geometry.
   // Sync status measures its status and recovery panels against the actual usable regions.
   // Health data settings pairs category choices with sync and permission status panels.
-  // Disease hypotheses keeps its summary actions and evidence on the screen's full usable lane.
+  // Saved analysis and every conversation entry measure their own content inside the full usable lane.
   // Source detail measures its selector and saved-content panels against native usable regions.
   return route.name === 'settings-provider' ||
     route.name === 'settings-accounts' ||
@@ -42,6 +42,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'external-evidence' ||
     // Conversation history measures its list and selected preview as one screen-owned layout.
     route.name === 'conversation-history' ||
+    route.name === 'entry' ||
+    route.name === 'health-summary' ||
     // The conversation page chooses a native usable region for its single scroll owner.
     route.name === 'rag-conversation' ||
     route.name === 'recording' ||
@@ -50,6 +52,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-privacy' ||
     route.name === 'settings-sync-status' ||
     route.name === 'disease-hypotheses' ||
+    route.name === 'saved-analysis' ||
     route.name === 'source-detail' ||
     (route.name === 'home' &&
       (rootTabs?.activeTab === 'home' ||

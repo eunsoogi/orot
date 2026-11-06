@@ -22,6 +22,7 @@ export function NextVisitProbeShell({
   readonly onReload: () => void;
   readonly children: (
     onState: (state: NextVisitQuestionsRouteState) => void,
+    routeKey: string,
   ) => ReactNode;
 }) {
   const controller = useMemo(() => {
@@ -58,9 +59,10 @@ export function NextVisitProbeShell({
       {actions => (
         <>
           {actions.route.name === 'questions' ? (
-            children(onState)
+            children(onState, actions.route.key)
           ) : (
             <AppButton
+              testID="next-visit-probe-home"
               title={t('probe.nextVisit.open')}
               onPress={() => actions.push('questions')}
             />

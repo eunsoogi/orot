@@ -7,6 +7,13 @@ final class NavigationWindowRailHost: UIView {
     private weak var owner: UIView?
 
     func mount(for owner: UIView, availableHeight: CGFloat, side: String = "right", width: CGFloat? = nil) -> UIView? {
+        #if OROT_TESTS
+            var observationReason = "missing-window-or-size"
+            var observationRoot: UIView?
+            var observationController: UIViewController?
+            var observationTarget: CGRect?
+            defer { NavigationRailMountTestObservation.mount(owner: owner, portal: self, controller: observationController, root: observationRoot, target: observationTarget, reason: observationReason) }
+        #endif
         guard let window = owner.window, availableHeight > 0, owner.bounds.width > 0 else {
             removeFromSuperview()
             return nil
@@ -15,20 +22,38 @@ final class NavigationWindowRailHost: UIView {
         while responder != nil, !(responder is UIViewController) {
             responder = responder?.next
         }
-        guard let controller = responder as? UIViewController else { return nil }
+        guard let controller = responder as? UIViewController else {
+            #if OROT_TESTS
+                observationReason = "missing-controller"
+            #endif
+            return nil
+        }
         let root = controller.view!
+        #if OROT_TESTS
+            observationRoot = root
+            observationController = controller
+        #endif
         // Do not inherit a former bottom bar's width while React is changing the surface props.
         let laneWidth = width ?? owner.bounds.width
         let windowFrame = CGRect(x: side == "left" ? window.bounds.minX : window.bounds.maxX - laneWidth, y: window.bounds.minY,
                                  width: laneWidth, height: min(availableHeight, window.bounds.height))
         let target = root.convert(windowFrame, from: window)
+        #if OROT_TESTS
+            observationTarget = target
+            observationReason = "target-outside-root"
+        #endif
         // A contracted controller is not a window host. Never move controls past
         // its touch ancestry merely because an overflow frame could be drawn.
         guard root.bounds.contains(target) else { return nil }
         if superview !== root {
             var branch = owner
             while branch.superview !== root {
-                guard let parent = branch.superview else { return nil }
+                guard let parent = branch.superview else {
+                    #if OROT_TESTS
+                        observationReason = "owner-outside-root"
+                    #endif
+                    return nil
+                }
                 branch = parent
             }
             root.insertSubview(self, aboveSubview: branch)
@@ -36,11 +61,19 @@ final class NavigationWindowRailHost: UIView {
         self.owner = owner
         frame = target
         isHidden = !ownerIsVisible
+        #if OROT_TESTS
+            observationReason = "mounted"
+        #endif
         return self
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        #if OROT_TESTS
+            if let owner = owner as? NavigationGlassSurfaceView {
+                NavigationRailMountTestObservation.layout(owner: owner, portal: self)
+            }
+        #endif
         (owner as? NavigationGlassSurfaceView)?.publishNavigationGeometry(from: self)
     }
 

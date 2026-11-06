@@ -19,7 +19,7 @@ extension RootNavigationUITests {
         ]
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
         tap(app, "ai-feature-select-provider")
         NavigationUITestConditions.route(app, markers: ["provider-selection-screen"])
         try verifyProviderSelectionLayout(app)
@@ -36,7 +36,7 @@ extension RootNavigationUITests {
         capture(app, "provider-selection-duo-landscape")
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").control.isSelected)
     }
 

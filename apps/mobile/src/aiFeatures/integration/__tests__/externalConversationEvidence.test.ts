@@ -55,6 +55,7 @@ test('denial sends nothing and approved references are confined to their exact t
   expect(search).toHaveBeenCalledWith('sleep', {
     externalQueryConsented: true,
     signal: request.signal,
+    toolCall: { operationRunId: 'turn-1', callId: 'tool-1' },
   });
   expect(run.validates(reference)).toBe(true);
   expect(run.validates({ ...reference, evidenceRevision: 'forged' })).toBe(
