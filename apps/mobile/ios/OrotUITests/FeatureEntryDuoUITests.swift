@@ -9,6 +9,10 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
 
     @MainActor
     func testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange() throws {
+        if ProcessInfo.processInfo.environment["OROT_TEST_EXTERNAL_DUO_OBSERVATION"] == "1" {
+            try FeatureEntryDuoActionConditions.observeExternalTransition(testCase: self)
+            return
+        }
         let app = XCUIApplication()
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "ai-feature-visit-questions",
@@ -17,6 +21,9 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         ] + AppearanceUITestConditions.observationArguments
         // Compare the real UIKit window with the committed content and rail measurements.
         app.launchArguments += ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_MENU_DIAGNOSTIC"] == "1" {
+            app.launchArguments += ["-OROT_TEST_MENU_PRESENTATION", "YES"]
+        }
         app.launch()
         var originalAppearance: AppearanceUITestConditions.Snapshot?
         defer {
@@ -104,25 +111,69 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(input.isHittable, input.debugDescription)
         XCTAssertFalse(input.frame.intersects(rail.frame), input.debugDescription)
 
-        let history = node(app, "rag-conversation-sessions-toggle")
-        let newSession = node(app, "rag-conversation-new-session")
         // Context actions have their own native toolbar alongside the root-tab toolbar.
         let pageToolbar = node(app, "navigation-page-action-toolbar")
         XCTAssertTrue(UITestConditions.exists(pageToolbar), app.debugDescription)
         XCTAssertFalse(pageToolbar.frame.isEmpty, pageToolbar.debugDescription)
-        for (action, label) in [(history, "대화 목록"), (newSession, "새 대화")] {
-            XCTAssertTrue(UITestConditions.exists(action) && action.isHittable, app.debugDescription)
-            XCTAssertTrue(action.label.contains(label), action.debugDescription)
-            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
-            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
-            XCTAssertTrue(pageToolbar.frame.insetBy(dx: -1, dy: -1).contains(action.frame), action.debugDescription)
-            XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.frame.maxX - 0.5)
-        }
-        XCTAssertLessThan(history.frame.minY, newSession.frame.minY, "Duo keeps history before new conversation")
-        XCTAssertFalse(history.frame.intersects(newSession.frame))
+        try FeatureEntryDuoActionConditions.verify(app, toolbar: pageToolbar, viewport: viewport.frame)
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+    }
+
+    /// Exercises both page actions in portrait without treating an unchanged window as a rotation pass.
+    @MainActor
+    func testPortraitConversationActionsOpenHistoryAndStartNewSession() throws {
+        if ProcessInfo.processInfo.environment["OROT_TEST_OPEN_DUO_FUNCTIONAL"] == "1" {
+            try FeatureEntryDuoActionConditions.verifyOpenConversation(testCase: self)
+            return
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertGreaterThan(app.frame.height, app.frame.width, "The portrait journey requires an observed portrait window")
+        try assertConversationFitsContentLane(app)
+        let input = node(app, "rag-conversation-input")
+        XCTAssertTrue(input.isHittable)
+        input.tap()
+        input.typeText("history selection")
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_KEYBOARD_DIAGNOSTIC"] == "1" {
+            // Capture the real keyboard and controls before entering an action query that may have no target.
+            let ids = ["navigation-tab-home", "navigation-home", "navigation-tab-ai", "navigation-page-action-overflow", "rag-conversation-sessions-toggle", "rag-conversation-new-session"]
+            let states = ids.map { id in
+                let matches = app.descendants(matching: .any).matching(identifier: id)
+                let item = matches.firstMatch
+                return "\(id): count=\(matches.count), exists=\(item.exists), enabled=\(item.exists && item.isEnabled), hittable=\(item.exists && item.isHittable), frame=\(item.exists ? String(describing: item.frame) : "missing")"
+            }.joined(separator: "\n")
+            let keyboard = app.keyboards.firstMatch
+            let attachment = XCTAttachment(string: "\(states)\nkeyboardExists=\(keyboard.exists), keyboardFrame=\(keyboard.exists ? String(describing: keyboard.frame) : "missing"), appFrame=\(app.frame)")
+            attachment.name = "duo-keyboard-navigation-state"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "duo-keyboard-navigation-hierarchy"
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "duo-keyboard-navigation"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "duo-keyboard-navigation-allocation")
+            throw XCTSkip("Keyboard allocation diagnostic captured before feature actions")
+        }
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        XCTAssertEqual(input.value as? String, "history selection")
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
+        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+        let newValue = try XCTUnwrap(input.value as? String, "The new composer must expose its value")
+        XCTAssertFalse(newValue.contains("history selection"), "A new session must not retain the previous draft")
     }
 
     /// Compares the visible lane and native toolbar with independently sampled UIKit geometry.
