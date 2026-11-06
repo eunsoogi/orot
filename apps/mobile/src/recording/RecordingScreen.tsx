@@ -20,6 +20,7 @@ import { useAutomaticRecordingTranscription } from './useAutomaticRecordingTrans
 import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions';
 import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
 import { RecordingDeletionTimingContext } from './recordingDeletionTiming';
+import { bindSelectedVisit } from './bindSelectedVisit';
 
 interface RecordingScreenProps {
   onBack: () => void;
@@ -54,6 +55,7 @@ export default function RecordingScreen({
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
   const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(
     () => getPendingRecordingRetry(service),
   );
@@ -151,6 +153,7 @@ export default function RecordingScreen({
       setConsentAcknowledged(false);
       try {
         await service.saveSource(result);
+        if (selectedVisit) await bindSelectedVisit(result.id, selectedVisit);
         clearPendingRecordingRetry(service);
         setSourceSaved(true);
         automaticTranscription.start(result.id);
@@ -172,6 +175,8 @@ export default function RecordingScreen({
     setError('');
     try {
       await service.saveSource(lastRecording);
+      if (selectedVisit)
+        await bindSelectedVisit(lastRecording.id, selectedVisit);
       clearPendingRecordingRetry(service);
       setSourceSaved(true);
       automaticTranscription.start(lastRecording.id);
@@ -203,6 +208,8 @@ export default function RecordingScreen({
       value={recordingDeletionTimingProbe ?? null}
     >
       <RecordingControls
+        selectedVisit={selectedVisit}
+        onSelectVisit={setSelectedVisit}
         onOpenSavedRecordings={onOpenSavedRecordings}
         onBack={onBack}
         stateReady={stateReady}

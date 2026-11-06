@@ -9,8 +9,9 @@ import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 import { createManualHistoryTable } from './manualHistoryMigrations';
 import { createVisitQuestionRecordTables } from './visitQuestionRecordMigrations';
+import { createRecapBindingTables } from './recapBinding';
 
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -226,6 +227,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
       await createVisitQuestionRecordTables(transaction);
       await createSourceDeletionIntegrity(transaction);
     }
-    await transaction.execute('PRAGMA user_version = 13');
+    if (currentVersion < 14) await createRecapBindingTables(transaction);
+    await transaction.execute('PRAGMA user_version = 14');
   });
 }

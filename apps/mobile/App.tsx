@@ -6,6 +6,7 @@ import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/Appo
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
+import { useRecapRecovery } from './src/transcription/useRecapRecovery';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import { useCalendarAutoSync } from './src/calendar/useCalendarAutoSync';
 import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
@@ -69,6 +70,7 @@ function App({
     ),
   );
   const ai = useAppAiServices(aiFeatureServiceDependencies);
+  useRecapRecovery(ai.consent);
   const conversationSessionOptions = useMemo(
     () => ai.services.conversationSessionOptions(),
     [ai.services],

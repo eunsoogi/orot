@@ -77,6 +77,44 @@ describe('transcript evidence service', () => {
     expect(onTranscribed).toHaveBeenCalledWith(source.id, [original], signal);
   });
 
+  it('keeps a persisted transcript successful when Recap processing fails', async () => {
+    const { repository } = makeRepository([original]);
+    const service = createTranscriptEvidenceService({
+      loadRepository: async () => repository,
+      onTranscribed: async () => {
+        throw new Error('Recap storage unavailable');
+      },
+    });
+    await expect(service.transcribe(source.id)).resolves.toEqual([original]);
+  });
+
+  it('does not hold transcript completion while Recap analysis is pending', async () => {
+    const { repository } = makeRepository([original]);
+    let release!: () => void;
+    let started!: () => void;
+    const began = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    const pending = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const service = createTranscriptEvidenceService({
+      loadRepository: async () => repository,
+      onTranscribed: () => {
+        started();
+        return pending;
+      },
+    });
+    const outcome = service.transcribe(source.id);
+    await began;
+    const result = await Promise.race([
+      outcome,
+      new Promise(resolve => setTimeout(() => resolve('pending'), 0)),
+    ]);
+    release();
+    expect(result).toEqual([original]);
+  });
+
   it('forwards caller cancellation to the provider for a saved recording', async () => {
     const { repository } = makeRepository();
     const controller = new AbortController();

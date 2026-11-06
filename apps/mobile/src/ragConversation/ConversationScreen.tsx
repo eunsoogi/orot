@@ -26,6 +26,7 @@ import { useConversationEntryIntent } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
+import { ConversationSavedRecaps } from './ConversationSavedRecaps';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -205,9 +206,16 @@ export function ConversationScreen({
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
-                composerLayout.compact ? (
-                  <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-                ) : null
+                <>
+                  {entryContext?.appointmentId ? (
+                    <ConversationSavedRecaps
+                      appointmentId={entryContext.appointmentId}
+                    />
+                  ) : null}
+                  {composerLayout.compact ? (
+                    <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+                  ) : null}
+                </>
               }
             />
             <ConversationComposer

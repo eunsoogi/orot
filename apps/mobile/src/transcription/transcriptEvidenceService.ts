@@ -6,6 +6,7 @@ import { appleOnDeviceSpeechTranscriptionProvider } from './index';
 import type { AppleOnDeviceSpeechProvider } from './provider';
 import { TranscriptRecognitionError } from './TranscriptRecognitionError';
 import { transcriptAudioRange } from './transcriptAudioRange';
+import { completeProductionRecap } from './productionRecapCompletion';
 
 type RepositoryLoader = () => Promise<RecordRepository>;
 type TranscriptionProvider = Pick<
@@ -151,13 +152,18 @@ export function createTranscriptEvidenceService(
     const active = activeTranscriptions.get(recordingSourceId);
     if (active) return active;
     const pending = transcribeRecording(recordingSourceId, signal).then(
-      async segments => {
+      segments => {
         if (signal?.aborted) throw new Error('Transcription was canceled.');
-        await options.onTranscribed?.(
-          recordingSourceId,
-          segments,
-          signal ?? new AbortController().signal,
-        );
+        // The transcript is already committed; Recap runs independently and recovery retries failures.
+        Promise.resolve()
+          .then(() =>
+            options.onTranscribed?.(
+              recordingSourceId,
+              segments,
+              signal ?? new AbortController().signal,
+            ),
+          )
+          .catch(() => {});
         return segments;
       },
     );
@@ -234,4 +240,7 @@ export function createTranscriptEvidenceService(
   };
 }
 
-export const transcriptEvidenceService = createTranscriptEvidenceService();
+/** The singleton outlives the recording screen. Remote processing waits for a foreground consent surface. */
+export const transcriptEvidenceService = createTranscriptEvidenceService({
+  onTranscribed: completeProductionRecap,
+});
