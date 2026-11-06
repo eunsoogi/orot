@@ -21,6 +21,8 @@ import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions
 import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
 import { RecordingDeletionTimingContext } from './recordingDeletionTiming';
 import { bindSelectedVisit } from './bindSelectedVisit';
+import { useRecordingVisitSelection } from './useRecordingVisitSelection';
+import { initialRecordingSnapshot } from './initialRecordingSnapshot';
 
 interface RecordingScreenProps {
   onBack: () => void;
@@ -34,13 +36,6 @@ interface RecordingScreenProps {
   recordingDeletionTimingProbe?: RecordingDeletionTimingProbe;
 }
 
-const initialSnapshot: RecordingSnapshot = {
-  status: 'idle',
-  id: null,
-  durationMs: 0,
-  consentAcknowledged: false,
-};
-
 export default function RecordingScreen({
   onBack,
   onOpenSavedRecordings,
@@ -50,12 +45,11 @@ export default function RecordingScreen({
   recordingLibraryService = defaultRecordingLibraryService,
   recordingDeletionTimingProbe,
 }: RecordingScreenProps) {
-  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [snapshot, setSnapshot] = useState(initialRecordingSnapshot);
   const [stateReady, setStateReady] = useState(false);
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
   const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(
     () => getPendingRecordingRetry(service),
   );
@@ -64,6 +58,14 @@ export default function RecordingScreen({
   );
   const automaticTranscription =
     useAutomaticRecordingTranscription(transcriptService);
+  const { selectedVisit, selectVisit } = useRecordingVisitSelection({
+    recordingId: lastRecording?.id ?? null,
+    sourceSaved,
+    setBusy,
+    setError,
+    start: automaticTranscription.start,
+    cancel: automaticTranscription.cancel,
+  });
   const probeActions = useRecordingScreenProbeActions();
 
   useEffect(() => {
@@ -199,7 +201,7 @@ export default function RecordingScreen({
     clearPendingRecordingRetry(service);
     setLastRecording(null);
     setSourceSaved(false);
-    setSnapshot(initialSnapshot);
+    setSnapshot(initialRecordingSnapshot);
     setConsentAcknowledged(false);
   }
 
@@ -209,7 +211,7 @@ export default function RecordingScreen({
     >
       <RecordingControls
         selectedVisit={selectedVisit}
-        onSelectVisit={setSelectedVisit}
+        onSelectVisit={selectVisit}
         onOpenSavedRecordings={onOpenSavedRecordings}
         onBack={onBack}
         stateReady={stateReady}

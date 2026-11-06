@@ -3,6 +3,33 @@ import { View } from 'react-native';
 import type { Appointment } from '@orot/domain';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
+import type { RecordingStatus } from './recordingTypes';
+
+export function OptionalRecordingVisitPicker({
+  selected,
+  onSelect,
+  busy,
+  status,
+}: {
+  selected: string | null;
+  onSelect?: (id: string | null) => void;
+  busy: boolean;
+  status: RecordingStatus;
+}) {
+  if (!onSelect) return null;
+  return (
+    <RecordingVisitPicker
+      selected={selected}
+      onSelect={onSelect}
+      disabled={
+        busy ||
+        status === 'recording' ||
+        status === 'paused' ||
+        status === 'interrupted'
+      }
+    />
+  );
+}
 
 /** A visit is selected explicitly; a date or transcript never chooses one automatically. */
 export function RecordingVisitPicker({

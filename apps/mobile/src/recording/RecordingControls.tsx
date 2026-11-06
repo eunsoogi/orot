@@ -24,7 +24,7 @@ import RecordingGuidancePanel from './RecordingGuidancePanel';
 import RecordingScreenHeader from './RecordingScreenHeader';
 import RecordingTranscriptionFeedback from './RecordingTranscriptionFeedback';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
-import { RecordingVisitPicker } from './RecordingVisitPicker';
+import { OptionalRecordingVisitPicker } from './RecordingVisitPicker';
 
 interface RecordingControlsProps {
   selectedVisit?: string | null;
@@ -148,18 +148,12 @@ export default function RecordingControls({
         stateReady={stateReady}
         status={status}
       />
-      {onSelectVisit ? (
-        <RecordingVisitPicker
-          selected={selectedVisit ?? null}
-          onSelect={onSelectVisit}
-          disabled={
-            controlsBusy ||
-            status === 'recording' ||
-            status === 'paused' ||
-            status === 'interrupted'
-          }
-        />
-      ) : null}
+      <OptionalRecordingVisitPicker
+        selected={selectedVisit ?? null}
+        onSelect={onSelectVisit}
+        busy={controlsBusy}
+        status={status}
+      />
       {/* Keep capture and consent together in the page without restarting their state. */}
       <AdaptiveColumns
         primary={

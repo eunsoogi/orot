@@ -9,7 +9,10 @@ import {
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { recordingService } from '../recording/recordingService';
-import { subscribeRecapUpdates } from '../transcription/recapUpdates';
+import {
+  requestRecapRetry,
+  subscribeRecapUpdates,
+} from '../transcription/recapUpdates';
 
 /** A conversation may reopen only results for its explicitly selected visit. */
 async function openDatabase(): Promise<SqlDatabase> {
@@ -94,6 +97,16 @@ export function ConversationSavedRecaps({
                 : '진료 요약을 완료하지 못했어요.'}
         </AppText>
       ))}
+      {statuses.some(
+        status =>
+          !['pending', 'analyzing', 'saving', 'no_questions'].includes(status),
+      ) ? (
+        <AppButton
+          title="진료 요약 다시 시도"
+          variant="secondary"
+          onPress={() => requestRecapRetry(appointmentId)}
+        />
+      ) : null}
       {results.map(result => (
         <View key={result.recordingSourceId}>
           <AppText accessibilityRole="header">자동 저장된 진료 요약</AppText>

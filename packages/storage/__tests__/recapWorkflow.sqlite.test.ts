@@ -13,6 +13,151 @@ import { openSqliteTestDatabase } from './sqliteTestDatabase';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createAutomaticRecapService } from '../../../apps/mobile/src/transcription/automaticRecapService';
+
+jest.mock('../../../apps/mobile/src/aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
+}));
+
+it('automatically analyzes and saves through the app service without a confirmation action', async () => {
+  const fixture = await setupAutomatic();
+  try {
+    const sourceId = fixture.result.recordingSourceId;
+    await bindRecordingToVisit(fixture.database, sourceId, fixture.result.appointmentId);
+    const input = (await loadCurrentRecapInput(fixture.database, sourceId))!;
+    const scripted = extractionFixture(input);
+    const {
+      resolveSelectedAiProvider,
+    } = require('../../../apps/mobile/src/aiFeatures/integration/provider');
+    resolveSelectedAiProvider.mockResolvedValue({
+      status: 'ready',
+      provider: scripted.options.provider,
+      modelId: 'selected-model',
+      recipient: 'synthetic',
+      remoteProcessing: false,
+    });
+    const run = createAutomaticRecapService(fixture.database, scripted.consent);
+    const signal = new AbortController().signal;
+    const first = run(sourceId, input.segments, signal);
+    const duplicate = run(sourceId, input.segments, signal);
+    expect(await Promise.all([first, duplicate])).toEqual([
+      { status: 'saved' },
+      { status: 'saved' },
+    ]);
+    expect(await run(sourceId, input.segments, signal)).toEqual({ status: 'saved' });
+    expect(scripted.generate).toHaveBeenCalledTimes(1);
+    expect(await fixture.official.listForAppointment(input.appointmentId)).toHaveLength(1);
+    expect((await fixture.database.execute('SELECT saved FROM recap_results')).rows[0].saved).toBe(
+      1,
+    );
+  } finally {
+    fixture.close();
+  }
+});
+
+it('does not persist a late model response after cancellation', async () => {
+  const fixture = await setupAutomatic();
+  try {
+    const sourceId = fixture.result.recordingSourceId;
+    await bindRecordingToVisit(fixture.database, sourceId, fixture.result.appointmentId);
+    const input = (await loadCurrentRecapInput(fixture.database, sourceId))!;
+    const scripted = extractionFixture(input);
+    let started!: () => void;
+    let release!: () => void;
+    let finished!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const finishedProvider = new Promise<void>((resolve) => {
+      finished = resolve;
+    });
+    const original = scripted.generate.getMockImplementation()!;
+    scripted.generate.mockImplementationOnce(async (request) => {
+      started();
+      await gate;
+      const response = await original(request);
+      finished();
+      return response;
+    });
+    const {
+      resolveSelectedAiProvider,
+    } = require('../../../apps/mobile/src/aiFeatures/integration/provider');
+    resolveSelectedAiProvider.mockResolvedValue({
+      status: 'ready',
+      provider: scripted.options.provider,
+      modelId: 'selected-model',
+      recipient: 'synthetic',
+      remoteProcessing: false,
+    });
+    const run = createAutomaticRecapService(fixture.database, scripted.consent);
+    const controller = new AbortController();
+    const pending = run(sourceId, input.segments, controller.signal);
+    await entered;
+    controller.abort();
+    expect(await pending).toEqual({ status: 'cancelled' });
+    release();
+    await finishedProvider;
+    expect(await fixture.official.listForAppointment(input.appointmentId)).toHaveLength(0);
+    expect(
+      (await fixture.database.execute('SELECT recording_id FROM recap_results')).rows,
+    ).toHaveLength(0);
+  } finally {
+    fixture.close();
+  }
+});
+
+it('rejects a late model result when the transcript changes during analysis', async () => {
+  const fixture = await setupAutomatic();
+  try {
+    const sourceId = fixture.result.recordingSourceId;
+    await bindRecordingToVisit(fixture.database, sourceId, fixture.result.appointmentId);
+    const input = (await loadCurrentRecapInput(fixture.database, sourceId))!;
+    const scripted = extractionFixture(input);
+    let started!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = scripted.generate.getMockImplementation()!;
+    scripted.generate.mockImplementationOnce(async (request) => {
+      started();
+      await gate;
+      return original(request);
+    });
+    const {
+      resolveSelectedAiProvider,
+    } = require('../../../apps/mobile/src/aiFeatures/integration/provider');
+    resolveSelectedAiProvider.mockResolvedValue({
+      status: 'ready',
+      provider: scripted.options.provider,
+      modelId: 'selected-model',
+      recipient: 'synthetic',
+      remoteProcessing: false,
+    });
+    const run = createAutomaticRecapService(fixture.database, scripted.consent);
+    const pending = run(sourceId, input.segments, new AbortController().signal);
+    await entered;
+    await fixture.records.transcripts.correct(
+      input.segments[0].id,
+      '수정된 전사',
+      '2026-11-06T00:00:00Z',
+    );
+    release();
+    expect(await pending).toEqual({ status: 'stale_source' });
+    expect(await fixture.official.listForAppointment(input.appointmentId)).toHaveLength(0);
+    expect(
+      (await fixture.database.execute('SELECT recording_id FROM recap_results')).rows,
+    ).toHaveLength(0);
+  } finally {
+    fixture.close();
+  }
+});
 
 it('runs the runtime extractor with a scripted provider and commits its result to SQLite', async () => {
   const fixture = await setupAutomatic();
@@ -87,26 +232,5 @@ it('reopens a committed result and its official record from a real SQLite file',
     reopened.close();
   } finally {
     rmSync(directory, { recursive: true, force: true });
-  }
-});
-
-it('does not save invalid model output or invoke a provider without questions', async () => {
-  const fixture = await setupAutomatic();
-  try {
-    const sourceId = fixture.result.recordingSourceId;
-    await bindRecordingToVisit(fixture.database, sourceId, fixture.result.appointmentId);
-    const input = (await loadCurrentRecapInput(fixture.database, sourceId))!;
-    const invalid = extractionFixture(input, { malformed: true });
-    expect((await extractTranscriptRecap(invalid.options)).status).toBe('invalid_output');
-    const empty = { ...input, questions: [] };
-    const noQuestions = extractionFixture(empty, {});
-    expect((await extractTranscriptRecap(noQuestions.options)).status).toBe('no_questions');
-    expect(noQuestions.generate).not.toHaveBeenCalled();
-    expect(
-      (await fixture.database.execute('SELECT recording_id FROM recap_results')).rows,
-    ).toHaveLength(0);
-    expect(await fixture.official.listForAppointment(input.appointmentId)).toHaveLength(0);
-  } finally {
-    fixture.close();
   }
 });

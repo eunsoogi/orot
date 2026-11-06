@@ -1,5 +1,6 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { subscribeRecapRetry } from '../../transcription/recapUpdates';
 import { ConversationSavedRecaps } from '../ConversationSavedRecaps';
 import {
   recapInput,
@@ -13,6 +14,30 @@ jest.mock('@orot/storage', () => ({
     listForAppointment: async () => [],
   })),
 }));
+
+it('requests a retry only for the displayed visit', async () => {
+  const listener = jest.fn();
+  const unsubscribe = subscribeRecapRetry(listener);
+  const loadDatabase = async () => ({
+    execute: async (query: string) => ({
+      rows: query.includes('work_status')
+        ? [{ work_status: 'save_failed' }]
+        : [],
+    }),
+    transaction: async () => {},
+  });
+  await act(async () => {
+    render(
+      <ConversationSavedRecaps
+        appointmentId="visit-a"
+        loadDatabase={loadDatabase}
+      />,
+    );
+  });
+  await fireEvent.press(screen.getByText('진료 요약 다시 시도'));
+  expect(listener).toHaveBeenCalledWith('visit-a');
+  unsubscribe();
+});
 
 it('does not display a result belonging to another visit', async () => {
   const { readCurrentRecapResult } = require('@orot/storage');

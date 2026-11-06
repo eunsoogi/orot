@@ -55,6 +55,15 @@ export async function readRecapBinding(sql: SqlExecutor, recordingId: string) {
   };
 }
 
+/** Explicit unlink invalidates the association without reusing its version. */
+export async function unbindRecordingFromVisit(database: SqlDatabase, recordingId: string) {
+  // Increment the fence so a late analysis cannot revive the removed association.
+  await database.execute(
+    "UPDATE recap_bindings SET appointment_id = NULL, version = version + 1, work_status = 'not_linked' WHERE recording_id = ? AND appointment_id IS NOT NULL",
+    [RecordIdSchema.parse(recordingId)],
+  );
+}
+
 /** Explicit visit selection creates the binding; repeated selection is idempotent. */
 export async function bindRecordingToVisit(
   database: SqlDatabase,
