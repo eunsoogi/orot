@@ -7,6 +7,9 @@ enum FeatureEntryDuoActionConditions {
     static func verifyOpenConversation(testCase: XCTestCase) throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE", "synthetic", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_SOURCE_BACK_OBSERVATION"] == "1" {
+            app.launchArguments += ["-OROT_TEST_DUO_RAIL_MOUNT_OBSERVATION", "YES"]
+        }
         app.launch()
         defer { app.terminate() }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
@@ -77,8 +80,14 @@ enum FeatureEntryDuoActionConditions {
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertEqual(input.value as? String, "open duo draft")
         XCTAssertTrue(source.exists && source.isHittable)
+        let sourceBaseline = try FeatureEntryDuoActionConditions.sourceTransitionBaseline(app, testCase: testCase)
         source.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "ai-feature-source-detail")))
+        try FeatureEntryDuoActionConditions.waitForSourceTransition(app, baseline: sourceBaseline, testCase: testCase)
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_SOURCE_BACK_OBSERVATION"] == "1" {
+            try FeatureEntryDuoActionConditions.captureSourceBack(app, baseline: sourceBaseline, testCase: testCase)
+            throw XCTSkip("Source Back observation captured before functional return")
+        }
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertEqual(input.value as? String, "open duo draft")

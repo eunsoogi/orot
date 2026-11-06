@@ -56,8 +56,12 @@
 		C51F1E2476A74D00882BCFE1 /* ContextualConversationKeyboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51F1E2476A74D00882BCFE2 /* ContextualConversationKeyboardUITests.swift */; };
 		17B4A2C9F3E04EDAB3FEA001 /* ProductionRagConversationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B4A2C9F3E04EDAB3FEA002 /* ProductionRagConversationUITests.swift */; };
 		A27415DB31F6D1B47C931A01 /* RecordsHubUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A27415DB31F6D1B47C931A02 /* RecordsHubUITests.swift */; };
+		44AE7DEE1C024118B5650CFF /* RecordingCaptureUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FB7859A5B114A41A2437D19 /* RecordingCaptureUITestConditions.swift */; };
 		B27800000000000000000001 /* RecordingDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27800000000000000000002 /* RecordingDuoUITests.swift */; };
 		F94600000000000000000003 /* FeatureEntryDuoActionConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */; };
+		F94600000000000000000009 /* NavigationCurrentRouteObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */; };
+		F9460000000000000000000B /* FoldedMenuDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000C /* FoldedMenuDiagnostic.swift */; };
+		F9460000000000000000000D /* NavigationOverflowSheetUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */; };
 		F94600000000000000000005 /* FeatureEntryDuoActionVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */; };
 		6E086CE21AE9090BE1F11E1E /* FeatureEntryDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */; };
 		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
@@ -98,6 +102,7 @@
 		F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000002 /* MenuPresentationTestObservation.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */; };
+		F94600000000000000000007 /* NavigationRailMountTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000008 /* NavigationRailMountTestObservation.swift */; };
 		A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000004 /* ConversationHitTestObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
@@ -370,6 +375,7 @@
 		C51F1E2476A74D00882BCFE2 /* ContextualConversationKeyboardUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextualConversationKeyboardUITests.swift; sourceTree = "<group>"; };
 		17B4A2C9F3E04EDAB3FEA002 /* ProductionRagConversationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProductionRagConversationUITests.swift; sourceTree = "<group>"; };
 		A27415DB31F6D1B47C931A02 /* RecordsHubUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordsHubUITests.swift; sourceTree = "<group>"; };
+		9FB7859A5B114A41A2437D19 /* RecordingCaptureUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingCaptureUITestConditions.swift; sourceTree = "<group>"; };
 		B27800000000000000000002 /* RecordingDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingDuoUITests.swift; sourceTree = "<group>"; };
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -408,6 +414,7 @@
 		F94600000000000000000002 /* MenuPresentationTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MenuPresentationTestObservation.swift; path = OrotMobile/MenuPresentationTestObservation.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
 		058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationControlGeometryObservation.swift; path = OrotMobile/NavigationControlGeometryObservation.swift; sourceTree = "<group>"; };
+		F94600000000000000000008 /* NavigationRailMountTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRailMountTestObservation.swift; path = OrotMobile/NavigationRailMountTestObservation.swift; sourceTree = "<group>"; };
 		A49300000000000000000004 /* ConversationHitTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationHitTestObservation.swift; path = OrotMobile/ConversationHitTestObservation.swift; sourceTree = "<group>"; };
 		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
@@ -422,6 +429,9 @@
 		F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsPrivacyDuoUITests.swift; sourceTree = "<group>"; };
 		D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSyncStatusDuoUITests.swift; sourceTree = "<group>"; };
 		F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoActionConditions.swift; sourceTree = "<group>"; };
+		F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationCurrentRouteObservation.swift; sourceTree = "<group>"; };
+		F9460000000000000000000C /* FoldedMenuDiagnostic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoldedMenuDiagnostic.swift; sourceTree = "<group>"; };
+		F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationOverflowSheetUITestConditions.swift; sourceTree = "<group>"; };
 		F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoActionVerification.swift; sourceTree = "<group>"; };
 		B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoUITests.swift; sourceTree = "<group>"; };
 		B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrientationPresentationAnchorUITests.swift; sourceTree = "<group>"; };
@@ -723,6 +733,7 @@
 				F94600000000000000000002 /* MenuPresentationTestObservation.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
 				058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */,
+				F94600000000000000000008 /* NavigationRailMountTestObservation.swift */,
 				A49300000000000000000004 /* ConversationHitTestObservation.swift */,
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
 				C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */,
@@ -894,12 +905,16 @@
 				F753B608C8562A6590AEA483 /* SettingsPrivacyDuoUITests.swift */,
 				D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */,
 				F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */,
+				F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */,
+				F9460000000000000000000C /* FoldedMenuDiagnostic.swift */,
+				F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */,
 				F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */,
 				B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */,
 				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
 				C51F1E2476A74D00882BCFE2 /* ContextualConversationKeyboardUITests.swift */,
 				17B4A2C9F3E04EDAB3FEA002 /* ProductionRagConversationUITests.swift */,
 				A27415DB31F6D1B47C931A02 /* RecordsHubUITests.swift */,
+				9FB7859A5B114A41A2437D19 /* RecordingCaptureUITestConditions.swift */,
 				B27800000000000000000002 /* RecordingDuoUITests.swift */,
 				F26700000000000000000004 /* WindowGeometryUITests.swift */,
 				193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */,
@@ -1236,6 +1251,7 @@
 				F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
 				758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */,
+				F94600000000000000000007 /* NavigationRailMountTestObservation.swift in Sources */,
 				A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */,
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
 				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
@@ -1386,12 +1402,16 @@
 				DD0E1503C5F659EDCF21AC66 /* SettingsPrivacyDuoUITests.swift in Sources */,
 				D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */,
 				F94600000000000000000003 /* FeatureEntryDuoActionConditions.swift in Sources */,
+				F94600000000000000000009 /* NavigationCurrentRouteObservation.swift in Sources */,
+				F9460000000000000000000B /* FoldedMenuDiagnostic.swift in Sources */,
+				F9460000000000000000000D /* NavigationOverflowSheetUITestConditions.swift in Sources */,
 				F94600000000000000000005 /* FeatureEntryDuoActionVerification.swift in Sources */,
 				6E086CE21AE9090BE1F11E1E /* FeatureEntryDuoUITests.swift in Sources */,
 				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,
 				C51F1E2476A74D00882BCFE1 /* ContextualConversationKeyboardUITests.swift in Sources */,
 				17B4A2C9F3E04EDAB3FEA001 /* ProductionRagConversationUITests.swift in Sources */,
 				A27415DB31F6D1B47C931A01 /* RecordsHubUITests.swift in Sources */,
+				44AE7DEE1C024118B5650CFF /* RecordingCaptureUITestConditions.swift in Sources */,
 				B27800000000000000000001 /* RecordingDuoUITests.swift in Sources */,
 				A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */,
 				DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */,

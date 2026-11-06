@@ -20,6 +20,7 @@ export function MedicalDocumentImportAction({
   showDivider = false,
   source = 'files',
 }: MedicalDocumentImportActionProps) {
+  // Keep the source-specific name stable when the picker status description changes.
   const label = t(
     source === 'photos'
       ? 'medicalDocument.import.photos'
@@ -54,6 +55,7 @@ export function MedicalDocumentImportAction({
   );
   return (
     <Pressable
+      accessibilityLabel={label}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
