@@ -3,7 +3,6 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
-import type { ReactNode } from 'react';
 import { AppSymbol } from '../layout/AppSymbol';
 import { ConversationComposer } from './ConversationComposer';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
@@ -17,41 +16,17 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
+import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
-import type { RagConversationMessage } from './task';
-import type { RagConversationOutcome } from './service';
-import type { RagConversationObserver } from './service';
-import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
-import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
+import { useConversationSessionActions } from './useConversationSessionActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
-
-import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
-import {
-  conversationEntryForSession,
-  useConversationEntryIntent,
-} from './useConversationEntryIntent';
-
-interface ConversationScreenProps {
-  readonly entryContext?: ConversationEntryContext;
-  readonly providerSelection?: ReactNode;
-  readonly navigationRouteKey?: string;
-  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
-  readonly onBack: () => void;
-  readonly onOpenHistory?: () => void;
-  readonly onSend: (
-    question: string,
-    previousMessages: readonly RagConversationMessage[],
-    signal?: AbortSignal,
-    observer?: RagConversationObserver,
-    entryContext?: ConversationEntryContext,
-  ) => Promise<RagConversationOutcome>;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-}
+import { useConversationEntryIntent } from './useConversationEntryIntent';
+import type { ConversationScreenProps } from './ConversationScreenProps';
+import { sendConversationMessage } from './conversationVisitDispatch';
+import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -63,12 +38,15 @@ export function ConversationScreen({
   onOpenHistory,
   onSend,
   onOpenSource,
+  resolveToolSource,
+  prepareVisitQuestions,
+  renderVisitQuestions,
+  discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
   const { fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
-  const actionPlacement = useNavigationActionPlacement();
   const composerLayout = conversationComposerLayout(
     contentHeight,
     occlusion.scrollContentInsets.bottom,
@@ -81,38 +59,14 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  // The shell places Back before this group; preserve history before new session within the page actions.
-  const hasDockActions = useNavigationRouteActions(
-    actionPlacement === 'contextual'
-      ? [
-          {
-            id: 'conversation-history',
-            label: copy.sessions,
-            accessibilityLabel: copy.sessions,
-            testID: 'rag-conversation-sessions-toggle',
-            systemImageName: 'clock.arrow.circlepath',
-            disabled: !onOpenHistory,
-            onPress: () => onOpenHistory?.(),
-          },
-          {
-            id: 'conversation-new-session',
-            label: copy.newConversation,
-            accessibilityLabel: copy.newConversation,
-            testID: 'rag-conversation-new-session',
-            systemImageName: 'plus',
-            onPress: () => {
-              store.create();
-            },
-          },
-        ]
-      : [],
+  // Source validation uses the retained identity, not the session's view-only numeric ID.
+  const toolSourceSessionId = store.toolSourceSessionId(id);
+  const showSessionActionsInHeader = useConversationSessionActions(
+    onOpenHistory,
+    () => {
+      store.create();
+    },
   );
-  // Standalone or unobserved geometry keeps the iPhone header until a navigation host owns the actions.
-  const showSessionActionsInHeader =
-    actionPlacement !== 'contextual' || !hasDockActions;
-  const cancel = () => store.cancel(id);
-  const onLinkError = () =>
-    store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
   // App-owned sessions keep drafts and requests alive when this route is removed.
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -210,11 +164,35 @@ export function ConversationScreen({
                 store.retryRestore(id);
               }}
               onOpenSource={onOpenSource}
-              onLinkError={onLinkError}
+              resolveToolSource={resolveToolSource}
+              renderVisitQuestions={
+                renderVisitQuestions
+                  ? message =>
+                      renderVisitQuestions(message, id, store, () =>
+                        regenerateVisitQuestions({
+                          store,
+                          sessionId: id,
+                          message,
+                          prepare: prepareVisitQuestions,
+                        }),
+                      )
+                  : undefined
+              }
+              toolSourceSessionId={toolSourceSessionId}
+              onLinkError={() =>
+                store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.')
+              }
               footer={
-                composerLayout.compact ? (
-                  <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-                ) : null
+                <ManualVisitTargetPanels
+                  store={store}
+                  sessionId={id}
+                  durableSessionId={toolSourceSessionId}
+                  discover={discoverManualVisits}
+                  messages={messages}
+                  session={session}
+                  compact={composerLayout.compact}
+                  disclaimer={copy.disclaimer}
+                />
               }
             />
             <ConversationComposer
@@ -231,14 +209,14 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, (question, history, signal, observer) => {
-                  const context = conversationEntryForSession(store, id);
-                  return context
-                    ? onSend(question, history, signal, observer, context)
-                    : onSend(question, history, signal, observer);
-                });
+                sendConversationMessage(
+                  store,
+                  id,
+                  onSend,
+                  prepareVisitQuestions,
+                ).catch(() => {});
               }}
-              onCancel={cancel}
+              onCancel={() => store.cancel(id)}
             />
           </View>
         }

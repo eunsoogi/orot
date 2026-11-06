@@ -20,6 +20,11 @@ export interface NextVisitEvidenceReference {
 export interface NextVisitQuestion<
   TReference extends NextVisitEvidenceReference = NextVisitEvidenceReference,
 > {
+  /** Retained through review; a restored row carries its expected saved revision. */
+  readonly identity?: {
+    readonly id: string;
+    readonly expectedRevision?: string;
+  };
   /** Legacy questions omit kind and retain their source-backed semantics. */
   readonly kind?: 'confirmed_fact' | 'clarification';
   /** Binds a source-free legacy review to its unchanged saved record. */
@@ -210,6 +215,10 @@ export interface NextVisitQuestionsScreenProps<
     appointment: Appointment,
     questions: readonly NextVisitQuestion<TReference>[],
     caveats: readonly EvidenceCaveat[],
+    expectedSavedQuestions: readonly {
+      readonly id: string;
+      readonly revision: string;
+    }[],
   ) => Promise<SaveReviewedQuestionsResult<TReference>>;
   readonly onOpenSource?: (reference: TReference) => void;
   /** Publishes committed draft state so the route can guard back navigation. */

@@ -1,4 +1,7 @@
 export { STORAGE_TABLES, isRecordKind, parseRecord } from './contracts';
+export { bindRecordingToVisit, readRecapBinding, unbindRecordingFromVisit } from './recapBinding';
+export { loadCurrentRecapInput } from './recapInput';
+export { cacheRecapResult, markRecapSaved, readCurrentRecapResult } from './recapResults';
 export type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
 export { CURRENT_SCHEMA_VERSION, runMigrations } from './migrations';
 export {
@@ -11,6 +14,13 @@ export type { DatabaseFileState, RandomByteSource, SecureKeyStore } from './key'
 export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
+export { createVisitQuestionRecordRepository } from './visitQuestionRecords';
+export { readVisitQuestionRevision } from './visitQuestionRecordValidation';
+export type {
+  VisitQuestionRecordRepository,
+  ManualVisitQuestionRecordInput,
+  AutomaticVisitQuestionRecordOptions,
+} from './visitQuestionRecordContracts';
 export type { RecordRepository, RecordWriter } from './repository';
 export { createLocalRecordQueryRepository } from './localQueries';
 export {

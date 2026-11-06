@@ -5,6 +5,8 @@ import { recordingService } from '../recording/recordingService';
 import { appleOnDeviceSpeechTranscriptionProvider } from './index';
 import type { AppleOnDeviceSpeechProvider } from './provider';
 import { TranscriptRecognitionError } from './TranscriptRecognitionError';
+import { transcriptAudioRange } from './transcriptAudioRange';
+import { completeProductionRecap } from './productionRecapCompletion';
 
 type RepositoryLoader = () => Promise<RecordRepository>;
 type TranscriptionProvider = Pick<
@@ -38,34 +40,18 @@ async function loadLocalRepository(): Promise<RecordRepository> {
   return openLocalStorage();
 }
 
-function audioRange(
-  startSeconds: number,
-  endSeconds: number,
-  durationMs: number,
-) {
-  // Floor the start and ceil the end so millisecond storage does not clip Apple's fractional-second range.
-  const range = {
-    startMs: Math.floor(startSeconds * 1000),
-    endMs: Math.ceil(endSeconds * 1000),
-  };
-  if (
-    range.startMs < 0 ||
-    range.endMs <= range.startMs ||
-    range.endMs > durationMs
-  ) {
-    throw new Error(
-      'The native transcript range does not fit its saved recording.',
-    );
-  }
-  return range;
-}
-
 export function createTranscriptEvidenceService(
   options: {
     loadRepository?: RepositoryLoader;
     provider?: TranscriptionProvider;
     playRange?: RangePlayer;
     now?: () => Date;
+    /** Recap composition is injected by the visit-association owner; speech never guesses a visit or approves content. */
+    onTranscribed?: (
+      sourceId: string,
+      segments: readonly TranscriptEvidenceSegment[],
+      signal: AbortSignal,
+    ) => Promise<unknown>;
   } = {},
 ): TranscriptEvidenceService {
   const loadRepository = options.loadRepository ?? loadLocalRepository;
@@ -116,7 +102,7 @@ export function createTranscriptEvidenceService(
     }
     const recordedAt = now().toISOString();
     const segments = recognizedSegments.map((segment, segmentOrdinal) => {
-      const audio = audioRange(
+      const audio = transcriptAudioRange(
         segment.startSeconds,
         segment.endSeconds,
         result.value.recordingDurationMs,
@@ -165,7 +151,22 @@ export function createTranscriptEvidenceService(
     }
     const active = activeTranscriptions.get(recordingSourceId);
     if (active) return active;
-    const pending = transcribeRecording(recordingSourceId, signal);
+    const pending = transcribeRecording(recordingSourceId, signal).then(
+      segments => {
+        if (signal?.aborted) throw new Error('Transcription was canceled.');
+        // The transcript is already committed; Recap runs independently and recovery retries failures.
+        Promise.resolve()
+          .then(() =>
+            options.onTranscribed?.(
+              recordingSourceId,
+              segments,
+              signal ?? new AbortController().signal,
+            ),
+          )
+          .catch(() => {});
+        return segments;
+      },
+    );
     activeTranscriptions.set(recordingSourceId, pending);
     const clear = () => {
       if (activeTranscriptions.get(recordingSourceId) === pending) {
@@ -239,4 +240,7 @@ export function createTranscriptEvidenceService(
   };
 }
 
-export const transcriptEvidenceService = createTranscriptEvidenceService();
+/** The singleton outlives the recording screen. Remote processing waits for a foreground consent surface. */
+export const transcriptEvidenceService = createTranscriptEvidenceService({
+  onTranscribed: completeProductionRecap,
+});

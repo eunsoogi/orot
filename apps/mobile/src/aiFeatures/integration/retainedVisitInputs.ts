@@ -19,8 +19,11 @@ export function retainedVisitInputs(
     loadSavedVisitQuestions: appointmentId =>
       read().loadSavedVisitQuestions(appointmentId),
     operations: {
-      loadAppointment: now =>
-        (read().operations?.loadAppointment ?? defaults.loadAppointment)(now),
+      loadAppointment: (now, appointmentId) =>
+        (read().operations?.loadAppointment ?? defaults.loadAppointment)(
+          now,
+          appointmentId,
+        ),
       generate: input =>
         (read().operations?.generate ?? defaults.generate)(input),
       save: input => (read().operations?.save ?? defaults.save)(input),

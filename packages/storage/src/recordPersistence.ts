@@ -2,6 +2,16 @@ import { parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlExecutor } from './sql';
 
+/** Specialized repositories enforce append-only transcripts and official answer edit/version rules. */
+export function assertWritableRecordKind(kind: RecordKind): void {
+  if (kind === 'transcript_segment') {
+    throw new Error('Transcript revisions must be appended through the transcript repository.');
+  }
+  if (kind === 'visit_question_record') {
+    throw new Error('Official visit records must be saved through their specialized repository.');
+  }
+}
+
 export function decodeStoredRecord<K extends RecordKind>(kind: K, payload: unknown): RecordMap[K] {
   if (typeof payload !== 'string') throw new Error('A stored record is invalid.');
   try {

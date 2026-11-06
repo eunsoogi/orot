@@ -79,6 +79,8 @@ export type {
   VisitBrief,
 } from './visits';
 export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
+export { VisitQuestionRecordSchema } from './visitQuestionRecords';
+export type { VisitQuestionRecord } from './visitQuestionRecords';
 export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
 export {
@@ -130,3 +132,17 @@ export {
   TranscriptEvidenceSegmentSchema,
 } from './transcripts';
 export type { TranscriptAudioRange, TranscriptEvidenceSegment } from './transcripts';
+export {
+  RecapInputSchema,
+  RecapEvidenceSchema,
+  RecapQuestionResultSchema,
+  RecapResultSchema,
+} from './recap';
+export type { RecapInput, RecapEvidence, RecapQuestionResult, RecapResult } from './recap';
+export {
+  isRecapResultCurrent,
+  RecapBindingSchema,
+  RecapPreparedQuestionSchema,
+  RecapSourceSchema,
+} from './recap';
+export { RecapModelOutputSchema, recapModelJsonSchema } from './recapModel';

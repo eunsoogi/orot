@@ -55,6 +55,7 @@ function reviewedMemoryEvidence() {
 test('restores a producer-saved reviewed-memory question without inventing a span citation', async () => {
   const memory = reviewedMemoryEvidence();
   const candidate: VisitQuestionCandidate = {
+    identity: { id: 'visit-question:appointment-1:1' },
     questionText: '이전 진료에서 검사 날짜를 먼저 확인하면 좋을까요?',
     rationale: '이전에 정리한 내용을 의료진과 함께 확인할 수 있어요.',
     priority: 'routine',
@@ -72,6 +73,7 @@ test('restores a producer-saved reviewed-memory question without inventing a spa
 
   await saveReviewedVisitQuestions({
     appointmentId: appointment.id,
+    expectedSavedQuestions: [],
     expectedAppointmentRevision: localEvidenceFingerprint(appointment),
     questions: [candidate],
     evidence,
@@ -102,6 +104,14 @@ test('restores a producer-saved reviewed-memory question without inventing a spa
     status: 'ready',
     questions: [
       {
+        identity: {
+          id: parsed.id,
+          expectedRevision: localEvidenceFingerprint(parsed),
+        },
+        legacySource: {
+          id: parsed.id,
+          revision: localEvidenceFingerprint(parsed),
+        },
         questionText: candidate.questionText,
         citations: [],
       },
