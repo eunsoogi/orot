@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
+import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -41,6 +42,7 @@ export function ConversationScreen({
   resolveToolSource,
   prepareVisitQuestions,
   renderVisitQuestions,
+  discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
@@ -212,9 +214,16 @@ export function ConversationScreen({
                       appointmentId={entryContext.appointmentId}
                     />
                   ) : null}
-                  {composerLayout.compact ? (
-                    <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
-                  ) : null}
+                  <ManualVisitTargetPanels
+                    store={store}
+                    sessionId={id}
+                    durableSessionId={toolSourceSessionId}
+                    discover={discoverManualVisits}
+                    messages={messages}
+                    session={session}
+                    compact={composerLayout.compact}
+                    disclaimer={copy.disclaimer}
+                  />
                 </>
               }
             />
