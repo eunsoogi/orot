@@ -65,6 +65,9 @@
                                              "accessibilityFrameInScreen": NavigationGeometryTestObservation.finiteRect(axScreen),
                                              "accessibilityFrameInWindow": NavigationGeometryTestObservation.finiteRect(axWindow),
                                              "frameInScene": NavigationGeometryTestObservation.finiteRect(sceneFrame)]
+                if NavigationRailMountTestObservation.enabled {
+                    record["mountObservationControlID"] = NavigationRailMountTestObservation.identity(control)
+                }
                 if id == "symptom-form-cancel", control.window === window {
                     // Observe the same public activation point without sending a touch or reading patient content.
                     let point = window.convert(control.accessibilityActivationPoint, from: nil as UIWindow?)

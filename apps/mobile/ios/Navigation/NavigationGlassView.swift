@@ -121,6 +121,9 @@ final class NavigationGlassSurfaceView: UIView {
         }
         super.layoutSubviews()
         NavigationPageMetrics.publish(pageMetricsRequest, width: bounds.width, traits: traitCollection, lastKey: &lastPageMetricsKey, emit: onPageMetrics)
+        #if OROT_TESTS
+            NavigationRailMountTestObservation.layout(owner: self, portal: windowRailHost)
+        #endif
         publishNavigationGeometry(from: self)
     }
 
