@@ -124,6 +124,7 @@ export function AiFeatureFlowScreen({
       onOpenHistory={onOpenConversationHistory}
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
+      resolveToolSource={services.resolveToolSource}
     />
   );
   if (intent !== null) return conversation;

@@ -3,7 +3,6 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
-import type { ReactNode } from 'react';
 import { AppSymbol } from '../layout/AppSymbol';
 import { ConversationComposer } from './ConversationComposer';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
@@ -18,40 +17,17 @@ import {
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { navigationText } from '../i18n/navigation';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
-import type { RagConversationMessage } from './task';
-import type { RagConversationOutcome } from './service';
-import type { RagConversationObserver } from './service';
-import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
-
-import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import {
   conversationEntryForSession,
   useConversationEntryIntent,
 } from './useConversationEntryIntent';
-
-interface ConversationScreenProps {
-  readonly entryContext?: ConversationEntryContext;
-  readonly providerSelection?: ReactNode;
-  readonly navigationRouteKey?: string;
-  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
-  readonly onBack: () => void;
-  readonly onOpenHistory?: () => void;
-  readonly onSend: (
-    question: string,
-    previousMessages: readonly RagConversationMessage[],
-    signal?: AbortSignal,
-    observer?: RagConversationObserver,
-    entryContext?: ConversationEntryContext,
-  ) => Promise<RagConversationOutcome>;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-}
+import type { ConversationScreenProps } from './ConversationScreenProps';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -63,6 +39,7 @@ export function ConversationScreen({
   onOpenHistory,
   onSend,
   onOpenSource,
+  resolveToolSource,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
@@ -81,6 +58,8 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  // Source validation uses the retained identity, not the session's view-only numeric ID.
+  const toolSourceSessionId = store.toolSourceSessionId(id);
   // The shell places Back before this group; preserve history before new session within the page actions.
   const hasDockActions = useNavigationRouteActions(
     actionPlacement === 'contextual'
@@ -210,6 +189,8 @@ export function ConversationScreen({
                 store.retryRestore(id);
               }}
               onOpenSource={onOpenSource}
+              resolveToolSource={resolveToolSource}
+              toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
                 composerLayout.compact ? (
