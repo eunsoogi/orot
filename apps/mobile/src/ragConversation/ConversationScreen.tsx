@@ -27,9 +27,17 @@ import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/u
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
 
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
+import {
+  conversationEntryForSession,
+  useConversationEntryIntent,
+} from './useConversationEntryIntent';
+
 interface ConversationScreenProps {
+  readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
@@ -40,12 +48,14 @@ interface ConversationScreenProps {
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
     observer?: RagConversationObserver,
+    entryContext?: ConversationEntryContext,
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
+  entryContext,
   navigationRouteKey,
   providerSelection,
   onNavigationStateChange,
@@ -58,13 +68,14 @@ export function ConversationScreen({
   const [contentHeight, setContentHeight] = useState(0);
   const { fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
-  const hasRightRail = occlusion.placement === 'right';
+  const actionPlacement = useNavigationActionPlacement();
   const composerLayout = conversationComposerLayout(
     contentHeight,
     occlusion.scrollContentInsets.bottom,
     fontScale,
   );
   const store = useConversationSessions();
+  useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
@@ -72,7 +83,7 @@ export function ConversationScreen({
   const { id, draft, messages, pendingMessage, busy, error } = session;
   // The shell places Back before this group; preserve history before new session within the page actions.
   const hasDockActions = useNavigationRouteActions(
-    hasRightRail
+    actionPlacement === 'contextual'
       ? [
           {
             id: 'conversation-history',
@@ -96,8 +107,9 @@ export function ConversationScreen({
         ]
       : [],
   );
-  // The bottom layout keeps the existing title-row actions used on iPhone.
-  const showSessionActionsInHeader = !hasRightRail || !hasDockActions;
+  // Standalone or unobserved geometry keeps the iPhone header until a navigation host owns the actions.
+  const showSessionActionsInHeader =
+    actionPlacement !== 'contextual' || !hasDockActions;
   const cancel = () => store.cancel(id);
   const onLinkError = () =>
     store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
@@ -219,7 +231,12 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, onSend);
+                store.send(id, (question, history, signal, observer) => {
+                  const context = conversationEntryForSession(store, id);
+                  return context
+                    ? onSend(question, history, signal, observer, context)
+                    : onSend(question, history, signal, observer);
+                });
               }}
               onCancel={cancel}
             />

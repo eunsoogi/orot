@@ -102,6 +102,52 @@ final class EncounterInputObservation {
     import XCTest
 
     @MainActor extension EncounterInputObservation {
+        /// Retain the live keyboard, controls and native navigation receipt before evaluating their placement.
+        static func captureSaveNavigationState(_ app: XCUIApplication, input: XCUIElement, testCase: XCTestCase) {
+            let ids = ["next-visit-review-save", "navigation-back", "navigation-home", "navigation-toolbar", "navigation-page-action-toolbar", "navigation-content-region"]
+            let states = ids.map { id in
+                let matches = app.descendants(matching: .any).matching(identifier: id)
+                let item = matches.firstMatch
+                return "\(id): count=\(matches.count), exists=\(item.exists), hittable=\(item.exists && item.isHittable), frame=\(item.exists ? String(describing: item.frame) : "missing")"
+            }.joined(separator: "\n")
+            let keyboard = app.keyboards.firstMatch
+            let state = "app=\(app.frame), input=\(input.frame), inputHittable=\(input.isHittable), keyboardExists=\(keyboard.exists), keyboard=\(keyboard.exists ? String(describing: keyboard.frame) : "missing")\n\(states)"
+            let attachment = XCTAttachment(string: state)
+            attachment.name = "retained-save-navigation-state"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "retained-save-navigation-hierarchy"
+            hierarchy.lifetime = .keepAlways
+            testCase.add(hierarchy)
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "retained-save-navigation-screen"
+            screenshot.lifetime = .keepAlways
+            testCase.add(screenshot)
+            _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "retained-save-navigation-native")
+        }
+
+        /// Capture the same input and its live UIKit observer without changing focus or adding taps.
+        static func captureThirdQuestionState(_ app: XCUIApplication, input: XCUIElement, revealed: CGRect?, phase: String, testCase: XCTestCase) {
+            let marker = app.descendants(matching: .any).matching(identifier: "visit-question-input-observation")
+            let value = marker.count == 1 ? marker.firstMatch.value as? String : nil
+            let keyboard = app.keyboards.firstMatch
+            let event = UITestConditions.element(app, "ai-feature-visit-questions-keyboard-visible")
+            let state = "phase=\(phase), revealed=\(String(describing: revealed)), exists=\(input.exists), enabled=\(input.isEnabled), hittable=\(input.isHittable), frame=\(input.frame), keyboardExists=\(keyboard.exists), keyboardFrame=\(keyboard.exists ? String(describing: keyboard.frame) : "missing"), keyboardEvent=\(event.exists ? event.label : "missing"), markerCount=\(marker.count), native=\(value ?? "unavailable")"
+            let attachment = XCTAttachment(string: state)
+            attachment.name = "third-question-focus-\(phase)"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "third-question-hierarchy-\(phase)"
+            hierarchy.lifetime = .keepAlways
+            testCase.add(hierarchy)
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "third-question-screen-\(phase)"
+            screenshot.lifetime = .keepAlways
+            testCase.add(screenshot)
+        }
+
         private struct CapturedUIKitObservation: Encodable {
             let run: UUID
             let runner: Record?

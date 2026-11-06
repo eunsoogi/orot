@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from './conversationIntent';
 import type {
   EvidenceReference,
   EvidenceSearchTool,
@@ -49,6 +50,7 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
     observer?: RagConversationObserver,
+    entryContext?: ConversationEntryContext,
   ): Promise<RagConversationOutcome>;
   resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
   /** Revalidate a tool source before passing its reference to a source opener. */

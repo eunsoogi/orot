@@ -98,6 +98,14 @@ export function navigationBottomPlan({
     allPages.includes(index),
   );
   if (!visiblePages.length && allPages.length) visiblePages.push(0);
+  // On a root row, More can retain ordinary page actions when the selected tab
+  // and a direct page action cannot both fit; explicit primary actions stay direct.
+  if (
+    root &&
+    primaryPageIndices.length === 0 &&
+    !geometry(visibleNavigation, visiblePages, true).fits
+  )
+    visiblePages.length = 0;
   if (!geometry(visibleNavigation, visiblePages, true).fits) return null;
   const candidates = [
     ...allNavigation

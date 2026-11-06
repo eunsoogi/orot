@@ -4,7 +4,7 @@
     /// Opt-in scalar-only samples correlate known dock controls to their owning window and coordinate spaces.
     enum NavigationControlGeometryObservation {
         private static let identifiers: Set<String> = [
-            "manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "navigation-back", "navigation-home", "symptom-form-cancel",
+            "manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "navigation-back", "navigation-home", "symptom-form-cancel", "next-visit-review-save",
         ]
 
         @MainActor static func snapshot(identity: (NSObject) -> String) -> [String: Any] {
@@ -65,13 +65,20 @@
                                              "accessibilityFrameInScreen": NavigationGeometryTestObservation.finiteRect(axScreen),
                                              "accessibilityFrameInWindow": NavigationGeometryTestObservation.finiteRect(axWindow),
                                              "frameInScene": NavigationGeometryTestObservation.finiteRect(sceneFrame)]
-                if id == "symptom-form-cancel", control.window === window {
+                if NavigationRailMountTestObservation.enabled {
+                    record["mountObservationControlID"] = NavigationRailMountTestObservation.identity(control)
+                }
+                if id == "symptom-form-cancel" || (id == "navigation-page-action-overflow" && UserDefaults.standard.string(forKey: "OROT_TEST_MENU_PRESENTATION") == "YES"), control.window === window {
                     // Observe the same public activation point without sending a touch or reading patient content.
                     let point = window.convert(control.accessibilityActivationPoint, from: nil as UIWindow?)
                     if point.x.isFinite, point.y.isFinite {
                         let hit = window.hitTest(point, with: nil)
                         record["activationInWindow"] = ["x": point.x, "y": point.y]
                         record["hitRole"] = hit === control ? "control" : hit?.isDescendant(of: control) == true ? "descendant" : hit == nil ? "none" : "other"
+                        if id == "navigation-page-action-overflow", let hit {
+                            record["hitID"] = identity(hit)
+                            record["hitClass"] = String(describing: type(of: hit))
+                        }
                     } else {
                         record["hitRole"] = "unavailable"
                     }
@@ -104,7 +111,7 @@
             if windowCount > 1 || counts.values.contains(where: { $0 > 1 }) {
                 return "ambiguous"
             }
-            let pageCount = ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"].reduce(0) { $0 + (counts[$1] ?? 0) }
+            let pageCount = ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "next-visit-review-save"].reduce(0) { $0 + (counts[$1] ?? 0) }
             guard windowCount == 1, !truncated, allValid, counts["navigation-home"] == 1, counts["navigation-back"] == 1, pageCount > 0 else { return "unavailable" }
             return "available"
         }
