@@ -103,6 +103,14 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         // The removed editor is retained here only as a synthetic screen; keyboard and navigation remain native.
         app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        let diagnostic = ProcessInfo.processInfo.environment["OROT_TEST_THIRD_QUESTION_DIAGNOSTIC"] == "1"
+        if diagnostic {
+            app.launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", UUID().uuidString, "-OROT_TEST_VISIT_QUESTION_TARGET", "third"]
+        }
+        let saveDiagnostic = ProcessInfo.processInfo.environment["OROT_TEST_RETAINED_SAVE_DIAGNOSTIC"] == "1"
+        if saveDiagnostic || expectsRightRail {
+            app.launchArguments += ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES"]
+        }
         app.launch()
         defer { app.terminate() }
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-probe-boundary")))
@@ -125,8 +133,22 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-review-save")))
         try NavigationUITestConditions.scrollToBottom(app, "next-visit-questions-scroll")
         let input = node(app, "next-visit-question-text-2")
-        FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll")
-        input.tap()
+        let revealed = try XCTUnwrap(FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll"))
+        let currentFrame = input.frame
+        let appFrame = app.frame
+        let scrollFrame = node(app, "next-visit-questions-scroll").frame
+        let viewport = try XCTUnwrap(FormScrollGeometry.current(application: appFrame, scroll: scrollFrame, keyboard: nil, input: nil, referenceSize: nil))
+        XCTAssertEqual(currentFrame, revealed, "Tap only the same measured field that was revealed")
+        XCTAssertTrue(input.exists && input.isHittable && viewport.contains(currentFrame) && viewport.viewport.contains(currentFrame), app.debugDescription)
+        if diagnostic {
+            EncounterInputObservation.captureThirdQuestionState(app, input: input, revealed: revealed, phase: "before-tap", testCase: self)
+        }
+        // XCTest's default activation point landed just outside this measured field; use its actual visible center.
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: currentFrame.midX - appFrame.minX, dy: currentFrame.midY - appFrame.minY)).tap()
+        if diagnostic {
+            EncounterInputObservation.captureThirdQuestionState(app, input: input, revealed: revealed, phase: "after-tap", testCase: self)
+            throw XCTSkip("Third-question focus diagnostic captured before keyboard and save assertions")
+        }
         XCTAssertTrue(UITestConditions.exists(app.keyboards.firstMatch))
         let marker = node(app, "ai-feature-visit-questions-keyboard-visible")
         XCTAssertTrue(UITestConditions.exists(marker))
@@ -146,8 +168,12 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let save = node(app, "next-visit-review-save")
         _ = try XCTUnwrap(FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "Save must be reachable while editing with the keyboard visible")
+        if saveDiagnostic {
+            EncounterInputObservation.captureSaveNavigationState(app, input: input, testCase: self)
+            throw XCTSkip("Keyboard and save navigation diagnostic captured before feature assertions")
+        }
         if expectsRightRail {
-            XCTAssertLessThan(save.frame.maxX, back.toolbar.frame.minX)
+            try NavigationGeometryUITestConditions.assertKeyboardSavePlacement(app, save: save, keyboardTop: keyboardTop, testCase: self)
         }
         XCTAssertTrue(save.exists && save.isHittable)
         guard save.exists, save.isHittable, app.keyboards.firstMatch.exists else { return }

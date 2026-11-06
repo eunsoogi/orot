@@ -86,6 +86,11 @@ enum NavigationGlassButton {
         }
         button.addAction(UIAction(title: action.label) { _ in
             // Dispatch follows the immutable action ID captured when the control is created.
+            #if OROT_TESTS
+                if action.testID == "navigation-page-action-overflow", UserDefaults.standard.string(forKey: "OROT_TEST_MENU_PRESENTATION") == "YES" {
+                    TestLifecycleObservation.record("menu-native-dispatch", fields: ["actionID": action.id])
+                }
+            #endif
             onAction(action.id)
         }, for: .touchUpInside)
 

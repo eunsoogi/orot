@@ -72,10 +72,9 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
       'apps/mobile/ios/OrotMobile/VisitQuestionInputObservationWindow.swift',
       'utf8',
     );
-    assert.match(
-      questionWindow,
-      /current\.accessibilityIdentifier == "next-visit-question-text-0"/,
-    );
+    assert.match(questionWindow, /"next-visit-question-text-0"/);
+    assert.match(questionWindow, /"next-visit-question-text-2"/);
+    assert.match(questionWindow, /current\.accessibilityIdentifier == target/);
     assert.match(questionWindow, /private weak var identifiedInput: UITextView\?/);
     assert.match(questionWindow, /input\?\.text\.utf16\.count/);
     assert.match(questionWindow, /input\?\.selectedRange/);

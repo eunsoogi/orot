@@ -34,16 +34,23 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
     borderRadius: 12,
+    flexShrink: 0,
     height: 40,
     justifyContent: 'center',
     width: 40,
   },
-  // Measure unconstrained inner content so both peers can grow or shrink together.
-  captureContent: { alignSelf: 'stretch', gap: 10 },
+  // Keep capture consistent with the library rows while letting scaled text grow vertically.
+  captureContent: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    gap: 10,
+  },
   captureActionTitle: {
     color: appColors.text,
     fontSize: 16,
     fontWeight: '700',
+    flexShrink: 1,
     lineHeight: 21,
     minWidth: 0,
   },
