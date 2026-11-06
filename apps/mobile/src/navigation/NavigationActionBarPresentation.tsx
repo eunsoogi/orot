@@ -22,6 +22,7 @@ import { useBottomNavigationRow } from './useBottomNavigationRow';
 import { useBottomActionMenu } from './useBottomActionMenu';
 import { NavigationBarHost } from './NavigationBarHost';
 import { navigationRailPresentation } from './navigationRailPresentation';
+import { useNavigationAllocationObservation } from './useNavigationAllocationObservation';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 interface NavigationActionBarPresentationProps {
@@ -99,6 +100,16 @@ export function NavigationActionBarPresentation({
     enabled: managedBottom,
     hasRootTabs,
     availableWidthOverride,
+  });
+  useNavigationAllocationObservation({
+    layout,
+    keyboardHeight,
+    keyboardVisible,
+    hasRootTabs,
+    pageCount: taskActions.length,
+    pageLayout,
+    isRightRail,
+    bottomStatus: row.status,
   });
   const showMore = useBottomActionMenu({
     routeKey,

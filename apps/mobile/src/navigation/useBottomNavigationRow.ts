@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useNavigationContentFrame } from './navigationContentFrame';
 import type {
@@ -10,6 +10,7 @@ import {
   pageActionDescriptor,
 } from './navigationActionDescriptor';
 import { navigationWrappedPlan } from './navigationWrappedPlan';
+import { observeNavigationTest } from './navigationTestObservation';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 /** One native measurement covers navigation, page actions, and the More target. */
@@ -164,6 +165,24 @@ export function useBottomNavigationRow({
         ...(overflow ? [activeMetrics!.heights.at(-1)!] : []),
       ]
     : [];
+  const diagnostic = JSON.stringify({
+    enabled,
+    availableWidth,
+    fontScale,
+    navigationCount: actions.length,
+    pageCount: taskActions.length,
+    naturalWidths: metrics?.widths ?? null,
+    naturalHeights: metrics?.heights ?? null,
+    baselineWidths: metrics?.baselineWidths ?? null,
+    constrainedWidths: constrained?.widths ?? null,
+    constrainedHeights: constrained?.heights ?? null,
+    ready,
+    wrapped: allocation?.wrapped ?? null,
+    plan: plan ?? null,
+  });
+  useEffect(() => {
+    observeNavigationTest('bottom-navigation-allocation', { diagnostic });
+  }, [diagnostic]);
   return {
     status: !enabled
       ? ('disabled' as const)
