@@ -98,6 +98,7 @@ export const fixtureTests = [
   'OrotUITests/KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
   'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
   'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
+  'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
   'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
   'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
   'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',

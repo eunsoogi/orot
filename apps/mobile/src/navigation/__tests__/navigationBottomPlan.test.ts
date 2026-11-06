@@ -1,4 +1,5 @@
 import { navigationBottomPlan } from '../navigationBottomPlan';
+import { navigationWrappedPlan } from '../navigationWrappedPlan';
 import type { NavigationGlassAction } from '../NavigationGlassSurface';
 
 const root = ['home', 'records', 'schedule', 'ai', 'settings'].map(
@@ -114,6 +115,44 @@ test('reports insufficient space when all explicitly primary actions cannot fit'
       pageWidths: [88, 88],
       moreWidth: 52,
       primaryPageIndices: [0, 1],
+    }),
+  ).toBeNull();
+});
+
+test('keeps selected root and More reachable when measured large-text page actions cannot fit directly', () => {
+  const allocation = navigationWrappedPlan(
+    {
+      width: 382,
+      navigation: root.map((action, index) => ({
+        ...action,
+        selected: index === 3,
+      })),
+      navigationWidths: [44, 74, 74, 44, 74],
+      pageWidths: [190, 151],
+      moreWidth: 115,
+    },
+    [true, true],
+    [88, 88],
+    44,
+  );
+  const plan = allocation?.plan;
+  expect(plan).not.toBeNull();
+  expect(plan?.navigationIndices).toContain(3);
+  expect(plan?.pageIndices).toEqual([]);
+  expect(plan?.overflowPages).toEqual([0, 1]);
+  expect(plan?.overflowNavigation).toContain(0);
+  expect(plan!.navWidth).toBeLessThanOrEqual(382 - 16);
+});
+
+test('does not move an explicitly primary root action into More', () => {
+  expect(
+    navigationBottomPlan({
+      width: 382,
+      navigation: root,
+      navigationWidths: [44, 74, 74, 44, 74],
+      pageWidths: [190, 151],
+      moreWidth: 115,
+      primaryPageIndices: [0],
     }),
   ).toBeNull();
 });

@@ -9,10 +9,11 @@ export const questionCohorts = {
   },
   'questions-conversation': {
     ...questionFixture,
-    // Keep the composer/appearance journey intact with its own preparation and artifact budget.
+    // Keep native conversation journeys together with their own preparation and artifact budget.
     cases: [
       'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
+      'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
     ],
   },
   'questions-accessibility': {

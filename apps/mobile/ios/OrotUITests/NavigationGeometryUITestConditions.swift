@@ -113,7 +113,7 @@ enum NavigationGeometryUITestConditions {
         try NavigationUITestConditions.panelSnapshot(app, frames: ["content": initialContentFrame, "navigation": initialNavigationFrame], testCase: testCase)
         let initial = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "boundary-before-comparison")
         if requireCurrentNavigation {
-            assertCurrentNavigation(initial, content: initialContentFrame, navigation: initialNavigationFrame)
+            assertCurrentNavigation(initial, content: initialContentFrame, navigation: initialNavigationFrame, root: navigationID.hasPrefix("navigation-tab-"))
         }
         if let lifecycle = initial?["lifecycle"] as? [[String: Any]],
            let event = lifecycle.last(where: { $0["event"] as? String == "navigation-content-frame" }),
@@ -171,7 +171,7 @@ enum NavigationGeometryUITestConditions {
     }
 
     /// After the keyboard and actual controls settle, compare numbers instead of waiting for a missing event.
-    private static func assertCurrentNavigation(_ report: [String: Any]?, content: CGRect, navigation: CGRect) {
+    private static func assertCurrentNavigation(_ report: [String: Any]?, content: CGRect, navigation: CGRect, root: Bool) {
         guard let reference = report?["windowGeometry"] as? [String: Any],
               let controls = reference["navigationControls"] as? [String: Any],
               controls["truncated"] as? Bool == false,
@@ -182,7 +182,8 @@ enum NavigationGeometryUITestConditions {
               let shared = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
               let available = rect(shared["availableContentFrame"]), let reported = rect(shared["navigationFrame"])
         else { return XCTFail("Current native and shared frame observations must be available") }
-        let candidates = frames.filter { $0["identifier"] as? String == "navigation-toolbar" }
+        let identifier = root ? "navigation-root-tabs-glass-backdrop" : "navigation-toolbar"
+        let candidates = frames.filter { $0["identifier"] as? String == identifier }
         XCTAssertEqual(candidates.count, 1, "The active contextual toolbar must be unambiguous")
         guard let native = candidates.first.flatMap({ rect($0["frame"]) }) else { return }
         XCTAssertTrue(sameWindow(native, navigation), "UIKit \(native) and XCUI \(navigation) must identify the same settled controls")
