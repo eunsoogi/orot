@@ -80,12 +80,11 @@ enum FeatureEntryDuoActionConditions {
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertEqual(input.value as? String, "open duo draft")
         XCTAssertTrue(source.exists && source.isHittable)
-        let sourceBaseline = ProcessInfo.processInfo.environment["OROT_TEST_DUO_SOURCE_BACK_OBSERVATION"] == "1"
-            ? try FeatureEntryDuoActionConditions.sourceTransitionBaseline(app, testCase: testCase) : nil
+        let sourceBaseline = try FeatureEntryDuoActionConditions.sourceTransitionBaseline(app, testCase: testCase)
         source.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "ai-feature-source-detail")))
-        if let sourceBaseline {
-            try FeatureEntryDuoActionConditions.waitForSourceTransition(app, baseline: sourceBaseline, testCase: testCase)
+        try FeatureEntryDuoActionConditions.waitForSourceTransition(app, baseline: sourceBaseline, testCase: testCase)
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_SOURCE_BACK_OBSERVATION"] == "1" {
             try FeatureEntryDuoActionConditions.captureSourceBack(app, baseline: sourceBaseline, testCase: testCase)
             throw XCTSkip("Source Back observation captured before functional return")
         }

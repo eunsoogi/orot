@@ -11,16 +11,41 @@ extension FeatureEntryDuoActionConditions {
     /// Keep the current stack and its window identity before the source tap.
     static func sourceTransitionBaseline(_ app: XCUIApplication, testCase: XCTestCase) throws -> SourceBaseline {
         let marker = UITestConditions.element(app, "navigation-test-observation")
+        let markerStart = Date().timeIntervalSince1970 * 1000
         let raw = marker.exists ? UITestConditions.text(marker) : "unavailable"
+        let markerEnd = Date().timeIntervalSince1970 * 1000
+        let markerAttachment = XCTAttachment(string: "startMs=\(markerStart) endMs=\(markerEnd)\n\(raw)")
+        markerAttachment.name = "duo-source-baseline-native"
+        markerAttachment.lifetime = .keepAlways
+        testCase.add(markerAttachment)
+        let snapshotStart = Date().timeIntervalSince1970 * 1000
         let tree = try app.snapshot()
-        let attachment = XCTAttachment(string: "readAtMs=\(Date().timeIntervalSince1970 * 1000)\n\(raw)\n\(tree.debugDescription)")
-        attachment.name = "duo-source-baseline"
+        let snapshotEnd = Date().timeIntervalSince1970 * 1000
+        let attachment = XCTAttachment(string: "startMs=\(snapshotStart) endMs=\(snapshotEnd)\n\(snapshotEvidence(tree))")
+        attachment.name = "duo-source-baseline-snapshot"
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
+        let liveStart = Date().timeIntervalSince1970 * 1000
+        let liveHierarchy = app.debugDescription
+        let liveEnd = Date().timeIntervalSince1970 * 1000
+        let liveAttachment = XCTAttachment(string: "startMs=\(liveStart) endMs=\(liveEnd)\n\(liveHierarchy)")
+        liveAttachment.name = "duo-source-baseline-live-hierarchy"
+        liveAttachment.lifetime = .keepAlways
+        testCase.add(liveAttachment)
         let report = try XCTUnwrap((try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any])
         let sample = try XCTUnwrap(NavigationCurrentRouteObservation.sample(report))
         try assertMarkerWindow(tree, markerID: "rag-conversation-screen", report: report)
         return SourceBaseline(sample: sample, tappedAtMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// Record public snapshot fields separately from any later live accessibility query.
+    private static func snapshotEvidence(_ node: XCUIElementSnapshot, path: String = "0", parent: String = "none", window: String = "none") -> String {
+        let ancestor = node.elementType == .window ? path : window
+        let frame = node.frame
+        let current = "path=\(path) parent=\(parent) windowAncestor=\(window) type=\(node.elementType.rawValue) id=\(node.identifier) x=\(frame.minX) y=\(frame.minY) width=\(frame.width) height=\(frame.height)"
+        return ([current] + node.children.enumerated().map { index, child in
+            snapshotEvidence(child, path: "\(path).\(index)", parent: path, window: ancestor)
+        }).joined(separator: "\n")
     }
 
     /// Require the same live stack and a post-tap transition for its current source route.
