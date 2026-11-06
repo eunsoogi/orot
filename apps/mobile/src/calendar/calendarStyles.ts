@@ -119,6 +119,8 @@ export const calendarStyles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 24,
     justifyContent: 'center',
+    // Keep the visible circle compact when its parent cell stretches; the Pressable target stays separate.
+    maxHeight: 44,
     maxWidth: 44,
     width: '100%',
   },
