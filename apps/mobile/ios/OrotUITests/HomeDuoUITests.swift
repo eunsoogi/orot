@@ -188,17 +188,11 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             throw error
         }
         XCTAssertTrue(navigation.control.isSelected)
-        for identifier in ["home-metric-sleep", "home-metric-heartRate"] {
-            let card = UITestConditions.element(app, identifier)
-            XCTAssertTrue(card.waitForAppearance())
-            // Metric cards have no activation handler; XCTest attempts to reveal the selected element.
-            card.tap()
-            XCTAssertTrue(card.exists && card.isHittable, identifier)
-            HomeMetricGeometryConditions.captureCard(card, in: app, testCase: self)
-            if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
-                XCTAssertLessThanOrEqual(card.frame.maxX, navigation.toolbar.frame.minX + 1, identifier)
-            }
-        }
+        let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
+        XCTAssertTrue(homeScroll.waitForAppearance())
+        HomeMetricScrollUITestConditions.revealAndCaptureCards(
+            in: app, homeScroll: homeScroll, navigation: navigation, testCase: self,
+        )
         XCTAssertTrue(navigation.control.isSelected)
         HomeMetricGeometryConditions.verify(app, testCase: self)
         var previousY: CGFloat = -1
@@ -225,13 +219,9 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             if identifier == "home-metrics-edit" {
                 XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
                 XCTAssertTrue(action.exists && action.isHittable, identifier)
-                let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
-                XCTAssertTrue(homeScroll.waitForAppearance())
                 for metric in ["sleep", "heartRate", "bodyMass", "steps"] {
-                    let captureLandscapeSleepScroll = UITestConditions.shouldCaptureHomeScrollDiagnosticPair(for: metric)
-                    UITestConditions.toggleCheckboxAndAssertState(
+                    HomeMetricScrollUITestConditions.toggleCheckboxAndAssertState(
                         app, identifier: "home-metric-selection-\(metric)", in: homeScroll,
-                        captureScrollDiagnosticPair: captureLandscapeSleepScroll,
                     )
                 }
                 UITestConditions.scrollToAndTap(UITestConditions.element(app, "home-metric-selection-cancel"), in: homeScroll)

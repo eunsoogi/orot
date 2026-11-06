@@ -51,10 +51,38 @@ enum FormScrollGeometryRegression {
         XCTAssertEqual(translated.start.dx, 187.5)
         XCTAssertEqual(translated.start.dy, 512.5)
         try verifyPagedListTraversal()
+        try verifyHomeMetricMeasuredDrag()
         try verifyContainedOccludedTargetDirection()
         try verifyFocusedEditorReservation()
         try verifyClippedFocusedExtent()
         try verifyPostEditSaveGesture()
+    }
+
+    private static func verifyHomeMetricMeasuredDrag() throws {
+        let application = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let route = CGRect(x: 0, y: 62, width: 402, height: 778)
+        let navigation = CGRect(x: 25, y: 766, width: 353, height: 84)
+        let viewport = try XCTUnwrap(HomeMetricScrollGeometry.unobscuredViewport(
+            application: application, window: application, route: route, scroll: route,
+            navigationOcclusion: navigation,
+        ))
+        XCTAssertEqual(viewport, CGRect(x: 0, y: 62, width: 402, height: 704))
+        let geometry = try XCTUnwrap(FormScrollGeometry(application: application, scroll: viewport, keyboard: nil))
+        let target = CGRect(x: 20, y: 739.333333, width: 362, height: 619.666667)
+        XCTAssertFalse(HomeMetricScrollGeometry.contains(target, in: geometry.viewport))
+        XCTAssertFalse(
+            HomeMetricScrollGeometry.contains(CGRect(x: 50, y: 80, width: 362, height: 40), in: geometry.viewport),
+        )
+        let corridor = try XCTUnwrap(geometry.horizontalPosition(outside: target))
+        let drag = try XCTUnwrap(geometry.gesture(target: target, towardTop: false, horizontalPosition: corridor))
+
+        XCTAssertEqual(drag.start.dy - drag.end.dy, geometry.viewport.height * 0.45, accuracy: 0.0001)
+        for point in [drag.start, drag.end] {
+            let absolute = CGPoint(x: point.dx + application.minX, y: point.dy + application.minY)
+            XCTAssertTrue(geometry.viewport.contains(absolute))
+            XCTAssertFalse(navigation.contains(absolute))
+            XCTAssertFalse((target.minX ... target.maxX).contains(absolute.x))
+        }
     }
 
     private static func verifyPostEditSaveGesture() throws {

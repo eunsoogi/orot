@@ -89,10 +89,9 @@ enum UITestConditions {
         identifier: String,
         in container: XCUIElement,
         minimumHitHeight: CGFloat = 44,
-        captureScrollDiagnosticPair: Bool = false,
     ) {
         let checkbox = element(app, identifier)
-        scrollTo(checkbox, in: container, captureScrollDiagnosticPair: captureScrollDiagnosticPair)
+        scrollTo(checkbox, in: container)
         toggleCheckboxAndAssertState(checkbox, minimumHitHeight: minimumHitHeight)
     }
 
@@ -117,40 +116,15 @@ enum UITestConditions {
         return snapshot.label
     }
 
-    /// Opts the Home journey into a bounded diagnostic only for its landscape sleep row.
-    static func shouldCaptureHomeScrollDiagnosticPair(for metric: String) -> Bool {
-        ProcessInfo.processInfo.environment["OROT_HOME_SCROLL_DIAGNOSTIC_PAIR"] == "1" &&
-            metric == "sleep" && XCUIDevice.shared.orientation == .landscapeLeft
-    }
-
-    /// Scroll the caller-owned viewport; a caller may capture one bounded Home diagnostic pair.
+    /// Keep ordinary scroll callers on XCTest's existing swipe behavior.
     static func scrollTo(
         _ element: XCUIElement,
         in container: XCUIElement,
         searchTowardTop: Bool = false,
-        captureScrollDiagnosticPair: Bool = false,
     ) {
         for _ in 0 ..< 8 {
             let targetExists = element.exists
             if targetExists, element.isHittable {
-                return
-            }
-
-            if captureScrollDiagnosticPair {
-                func nextDirection(targetExists: Bool) -> String {
-                    (targetExists ? element.frame.midY < container.frame.midY : searchTowardTop) ? "down" : "up"
-                }
-                let firstDirection = nextDirection(targetExists: targetExists)
-                performHomeScrollDiagnosticSwipe(firstDirection, element: element, in: container, phase: "first")
-                if element.exists, element.isHittable {
-                    return
-                }
-                let secondDirection = nextDirection(targetExists: element.exists)
-                performHomeScrollDiagnosticSwipe(secondDirection, element: element, in: container, phase: "second")
-                XCTAssertTrue(
-                    element.exists && element.isHittable,
-                    "Home scroll diagnostic did not reveal \(element.identifier) after two swipes: \(element.debugDescription)",
-                )
                 return
             }
 
@@ -162,54 +136,6 @@ enum UITestConditions {
             }
         }
         XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
-    }
-
-    /// Records the selected reveal direction and actual viewport, content and target geometry around one swipe.
-    private static func performHomeScrollDiagnosticSwipe(
-        _ direction: String,
-        element: XCUIElement,
-        in container: XCUIElement,
-        phase: String,
-    ) {
-        logHomeScrollDiagnostic(element, in: container, phase: "\(phase)-start", direction: direction)
-        let startedAtMs = Date().timeIntervalSince1970 * 1000
-        if direction == "down" {
-            container.swipeDown()
-        } else {
-            container.swipeUp()
-        }
-        let endedAtMs = Date().timeIntervalSince1970 * 1000
-        logHomeScrollDiagnostic(element, in: container, phase: "\(phase)-end", direction: direction)
-        print("OROT_HOME_SCROLL_GESTURE direction=\(direction) startedAtMs=\(startedAtMs) endedAtMs=\(endedAtMs)")
-    }
-
-    private static func logHomeScrollDiagnostic(
-        _ element: XCUIElement,
-        in container: XCUIElement,
-        phase: String,
-        direction: String,
-    ) {
-        let scrollView = container.scrollViews.firstMatch
-        let editor = container.descendants(matching: .any)
-            .matching(identifier: "home-metric-selection-editor")
-            .firstMatch
-        let viewport = scrollView.exists ? scrollView.frame : .zero
-        let editorFrame = editor.exists ? String(describing: editor.frame) : "unavailable"
-        let targetExists = element.exists
-        let targetHittable = targetExists && element.isHittable
-        let targetFrame = targetExists ? String(describing: element.frame) : "unavailable"
-        let targetLabel = targetExists ? element.label : "unavailable"
-        let targetValue = targetExists ? String(describing: element.value) : "unavailable"
-        print(
-            "OROT_HOME_SCROLL_DIAGNOSTIC phase=\(phase) nextDirection=\(direction) " +
-                "observedAtMs=\(Date().timeIntervalSince1970 * 1000) " +
-                "orientation=\(XCUIDevice.shared.orientation.rawValue) " +
-                "containerID=\(container.identifier) container=\(container.frame) " +
-                "scrollViewType=\(scrollView.elementType) viewportExists=\(scrollView.exists) viewport=\(viewport) " +
-                "contentID=home-metric-selection-editor contentExists=\(editor.exists) contentFrame=\(editorFrame) " +
-                "targetExists=\(targetExists) targetHittable=\(targetHittable) " +
-                "target=\(targetFrame) targetLabel=\(targetLabel) targetValue=\(targetValue)",
-        )
     }
 }
 
