@@ -11,7 +11,7 @@ export function useVisitQuestionsLeaveGuard(
   stateRevision: number,
 ) {
   useLayoutEffect(() => {
-    if (navigation.route.name !== 'visit-questions') return;
+    if (navigation.route.name !== 'saved-visit-questions') return;
 
     return navigation.registerLeaveState({
       readState: () => {

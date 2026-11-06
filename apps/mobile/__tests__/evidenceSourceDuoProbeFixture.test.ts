@@ -185,4 +185,20 @@ test('source runner preserves the real local evidence registry alias', async () 
   expect(source.document.records.map(record => record.record.id)).toContain(
     evidenceSourceDuoFixtureRecords.excerpt.id,
   );
+  const conversationRunner =
+    createEvidenceSourceDuoServiceDependencies(undefined).ragRunner;
+  expect(conversationRunner).toBeDefined();
+  const admitted = jest.fn();
+  const conversation = await conversationRunner!({
+    workflow: {
+      execution: { operationRunId: 'conversation-source-test' },
+      tools: [tool],
+    },
+    onValidatedEvidence: admitted,
+  } as never);
+  expect(conversation).toMatchObject({
+    status: 'answer',
+    citations: [citation],
+  });
+  expect(admitted).toHaveBeenCalledWith([citation]);
 });

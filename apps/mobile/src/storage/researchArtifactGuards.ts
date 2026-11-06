@@ -4,7 +4,7 @@ import { completeSummaryDeletion } from './summaryDeletionPolicy';
 /** Install guards whenever either parent or descendant catalog opens, in the same database transaction. */
 export async function setupResearchArtifactGuards(tx: SqlExecutor) {
   const tables = await tx.execute(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('research_artifacts', 'research_artifact_sources', 'research_artifact_periods', 'symptom_summary_sources', 'symptom_summary_runs', 'conversation_artifact_sources', 'conversation_artifacts', 'conversation_artifact_sessions', 'visit_questions', 'agent_memory_removed_sources')",
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('research_artifacts', 'research_artifact_sources', 'research_artifact_periods', 'symptom_summary_sources', 'symptom_summary_runs', 'conversation_artifact_sources', 'conversation_artifacts', 'conversation_artifact_sessions', 'conversation_tool_dependencies', 'conversation_tool_events', 'visit_questions', 'agent_memory_removed_sources')",
   );
   const present = new Set(tables.rows.map(row => row.name));
   if (!present.has('research_artifacts')) return;
@@ -56,6 +56,7 @@ export async function setupResearchArtifactGuards(tx: SqlExecutor) {
       DELETE FROM research_artifact_affected WHERE root_id = OLD.id;
       INSERT INTO research_artifact_affected (root_id, kind, id)
         WITH RECURSIVE descendants(kind, id) AS (SELECT 'generated_research', 'research-' || OLD.id ${edges}) SELECT OLD.id, kind, id FROM descendants;
+      ${present.has('conversation_tool_dependencies') && present.has('conversation_tool_events') ? 'DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM conversation_tool_dependencies t JOIN research_artifact_affected a ON a.kind = t.record_kind AND a.id = t.record_id AND a.root_id = OLD.id WHERE t.session_id = conversation_tool_events.session_id AND t.run_id = conversation_tool_events.run_id AND t.call_id = conversation_tool_events.call_id);' : ''}
       ${questions}
       ${present.has('symptom_summary_runs') ? `DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT id FROM research_artifact_affected WHERE root_id = OLD.id AND kind = 'generated_summary');` : ''}
       ${present.has('conversation_artifacts') ? "DELETE FROM conversation_artifacts WHERE id IN (SELECT id FROM research_artifact_affected WHERE root_id = OLD.id AND kind = 'generated_conversation');" : ''}

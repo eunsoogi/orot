@@ -14,7 +14,7 @@ export function retainPartial(
   update(id, {
     pendingMessage: null,
     messages:
-      content || retainEmpty
+      content || retainEmpty || session.pendingMessage?.toolEvents?.length
         ? [
             ...session.messages,
             {
@@ -23,6 +23,8 @@ export function retainPartial(
               content,
               activity,
               incomplete: true,
+              toolMessageId: session.pendingMessage?.toolMessageId,
+              toolEvents: session.pendingMessage?.toolEvents,
             },
           ]
         : session.messages,

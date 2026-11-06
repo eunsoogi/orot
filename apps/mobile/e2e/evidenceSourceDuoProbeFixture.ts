@@ -1,4 +1,3 @@
-import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { EvidenceSpan, SourceRecord } from '@orot/domain';
 import { chunkEvidenceSpan } from '@orot/rag';
 import type { EvidenceChunk } from '@orot/rag';
@@ -9,6 +8,10 @@ import type { AiFeatureLocalData } from '../src/aiFeatures/integration/localData
 import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/taskContract';
 import { localEvidenceFingerprint } from '../src/agent/visitQuestions/evidence';
 import { fingerprint } from '../src/aiFeatures/integration/evidenceUtils';
+import {
+  referenceOnly,
+  runEvidenceSourceDuoConversation,
+} from './evidenceSourceDuoConversationRunner';
 
 const SOURCE_RECORD_ID = 'synthetic-evidence-source-duo-record';
 const EVIDENCE_SPAN_ID = 'synthetic-evidence-source-duo-excerpt';
@@ -106,6 +109,7 @@ export function createEvidenceSourceDuoServiceDependencies(
       readWithStatus: async () => null,
     }),
     diseaseRunner: runEvidenceSourceDuoDisease,
+    ragRunner: runEvidenceSourceDuoConversation,
   };
 }
 
@@ -233,17 +237,3 @@ const runEvidenceSourceDuoDisease: NonNullable<
     },
   } as never;
 };
-
-function referenceOnly(item: EvidenceItem): EvidenceReference {
-  return {
-    sourceKind: item.sourceKind,
-    sourceId: item.sourceId,
-    sourceRevision: item.sourceRevision,
-    evidenceId: item.evidenceId,
-    evidenceRevision: item.evidenceRevision,
-    locator: item.locator,
-    effectiveTime: item.effectiveTime,
-    ...(item.unit === undefined ? {} : { unit: item.unit }),
-    reviewState: item.reviewState,
-  };
-}

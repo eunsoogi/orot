@@ -4,33 +4,122 @@ import PhotosUI
 import UniformTypeIdentifiers
 import Vision
 
-/// Reads only the photo explicitly selected in the system picker; no library access is requested.
-final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate {
-    private let fileStore = MedicalDocumentFileStore()
-    private var completion: ((Result<[String: Any]?, Error>) -> Void)?
+/// Serializes one picker request and rejects late callbacks from retired requests.
+/// UIKit callbacks run on the main queue; provider results return there before changing state.
+final class MedicalDocumentPhotoPickerCompletion {
+    typealias Outcome = Result<[String: Any]?, Error>
+    private final class Request {
+        let id = UUID()
+        let callback: (Outcome) -> Void
+        var processing = false
+        var dismissed = false
+        var outcome: Outcome?
+
+        init(callback: @escaping (Outcome) -> Void) {
+            self.callback = callback
+        }
+    }
+
+    private var active: Request?
     var isActive: Bool {
-        completion != nil
+        active != nil
+    }
+
+    func start(_ callback: @escaping (Outcome) -> Void) -> UUID? {
+        guard active == nil else { return nil }
+        let request = Request(callback: callback)
+        active = request
+        return request.id
+    }
+
+    func beginSelection(_ id: UUID) -> Bool {
+        guard let request = active, request.id == id, !request.processing else { return false }
+        request.processing = true
+        return true
+    }
+
+    func interactiveDismiss(_ id: UUID) {
+        guard let request = active, request.id == id, !request.processing else { return }
+        finish(request, .success(nil))
+    }
+
+    func presentationFailed(_ id: UUID, error: Error) {
+        guard let request = active, request.id == id, !request.processing else { return }
+        finish(request, .failure(error))
+    }
+
+    func dismissed(_ id: UUID) {
+        guard let request = active, request.id == id, request.processing else { return }
+        request.dismissed = true
+        finishWhenReady(request)
+    }
+
+    func resolved(_ id: UUID, _ outcome: Outcome) {
+        guard let request = active, request.id == id, request.processing, request.outcome == nil else { return }
+        request.outcome = outcome
+        finishWhenReady(request)
+    }
+
+    private func finishWhenReady(_ request: Request) {
+        guard request.dismissed, let outcome = request.outcome else { return }
+        finish(request, outcome)
+    }
+
+    private func finish(_ request: Request, _ outcome: Outcome) {
+        // Clear ownership before invoking JS so a new request cannot be retired by this callback.
+        guard active === request else { return }
+        active = nil
+        request.callback(outcome)
+    }
+}
+
+/// Reads only the photo explicitly selected in the system picker; no library access is requested.
+final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate, UIAdaptivePresentationControllerDelegate {
+    private let fileStore = MedicalDocumentFileStore()
+    private let requests = MedicalDocumentPhotoPickerCompletion()
+    private var activePicker: PHPickerViewController?
+    private var activeID: UUID?
+    var isActive: Bool {
+        requests.isActive
     }
 
     func present(from presenter: UIViewController, completion: @escaping (Result<[String: Any]?, Error>) -> Void) {
-        self.completion = completion
+        guard let id = requests.start({ [weak self] result in
+            self?.activePicker = nil
+            self?.activeID = nil
+            completion(result)
+        }) else {
+            completion(.failure(MedicalDocumentExtractionFailure.unsupportedDocument))
+            return
+        }
         var configuration = PHPickerConfiguration()
         configuration.filter = .images
         configuration.selectionLimit = 1
         configuration.preferredAssetRepresentationMode = .current
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
+        activePicker = picker
+        activeID = id
         presenter.present(picker, animated: true) {
             if picker.presentingViewController !== presenter {
-                self.finish(.failure(MedicalDocumentExtractionFailure.unsupportedDocument))
+                self.requests.presentationFailed(id, error: MedicalDocumentExtractionFailure.unsupportedDocument)
             }
         }
+        // UIKit reports completed interactive dismissals separately from explicit picker results.
+        picker.presentationController?.delegate = self
+    }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        guard let picker = activePicker, presentationController.presentedViewController === picker,
+              let id = activeID else { return }
+        requests.interactiveDismiss(id)
     }
 
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        picker.dismiss(animated: true)
+        guard picker === activePicker, let id = activeID, requests.beginSelection(id) else { return }
+        picker.dismiss(animated: true) { self.requests.dismissed(id) }
         guard let result = results.first else {
-            finish(.success(nil))
+            requests.resolved(id, .success(nil))
             return
         }
         // The provider URL is temporary and valid only during its callback; never retain it.
@@ -43,9 +132,9 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
                 guard let url else { throw CocoaError(.fileReadUnknown) }
                 let data = try Data(contentsOf: url)
                 let document = try extractAndStore(data)
-                DispatchQueue.main.async { self.finish(.success(document)) }
+                DispatchQueue.main.async { self.requests.resolved(id, .success(document)) }
             } catch {
-                DispatchQueue.main.async { self?.finish(.failure(error)) }
+                DispatchQueue.main.async { self?.requests.resolved(id, .failure(error)) }
             }
         }
     }
@@ -86,11 +175,5 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
             "sections": [["id": UUID().uuidString.lowercased(), "text": text,
                           "startOffset": 0, "endOffset": text.utf16.count]],
         ]
-    }
-
-    private func finish(_ result: Result<[String: Any]?, Error>) {
-        let callback = completion
-        completion = nil
-        callback?(result)
     }
 }

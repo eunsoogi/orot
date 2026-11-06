@@ -1,7 +1,11 @@
 import type { TestRoute } from './testRoute';
+import { retainedVisitObservationEnabled } from './retainedVisitObservation';
 
 /** A single test bundle retains each capability's original probe without rebuilding between scenarios. */
-export function registerCapabilityTestEntry(route: TestRoute): boolean {
+export function registerCapabilityTestEntry(
+  route: TestRoute,
+  settings: Readonly<Record<string, unknown>> = {},
+): boolean {
   switch (route) {
     case 'backup':
       require('./backupProbeEntry');
@@ -43,7 +47,10 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
       require('./safeAreaProbeEntry');
       break;
     case 'ai-feature-visit-questions':
-      require('./aiFeatureVisitQuestionsProbeEntry');
+      // Keep the observer bound to the real retained editor only for this opt-in scenario.
+      if (retainedVisitObservationEnabled(settings))
+        require('./nextVisitQuestionsProbeEntry');
+      else require('./aiFeatureVisitQuestionsProbeEntry');
       break;
     case 'evidence-visual':
       require('./evidenceVisualProbeEntry');

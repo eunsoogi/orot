@@ -1,39 +1,28 @@
-import { useEffect } from 'react';
 import {
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { AccessibilityInfo, Text } from 'react-native';
+import { AccessibilityInfo } from 'react-native';
 import App from '../App';
-import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 
-const mockFeatureEntryMount = jest.fn();
-const mockFeatureEntryUnmount = jest.fn();
+const mockConversationMount = jest.fn();
+const mockConversationUnmount = jest.fn();
 
-jest.mock('../src/aiFeatures/FeatureEntryScreen', () => {
+jest.mock('../src/ragConversation/ConversationScreen', () => {
   const React = require('react') as typeof import('react');
-  const { Pressable: NativePressable, Text: NativeText } =
-    require('react-native') as typeof import('react-native');
+  const actual = jest.requireActual(
+    '../src/ragConversation/ConversationScreen',
+  );
   return {
-    FeatureEntryScreen: ({
-      onOpenVisitQuestions,
-    }: {
-      onOpenVisitQuestions: () => void;
-    }) => {
+    ...actual,
+    ConversationScreen: (props: Record<string, unknown>) => {
       React.useEffect(() => {
-        mockFeatureEntryMount();
-        return () => mockFeatureEntryUnmount();
+        mockConversationMount();
+        return () => mockConversationUnmount();
       }, []);
-      return (
-        <NativePressable
-          onPress={onOpenVisitQuestions}
-          testID="open-feature-route"
-        >
-          <NativeText>Open feature</NativeText>
-        </NativePressable>
-      );
+      return React.createElement(actual.ConversationScreen, props);
     },
   };
 });
@@ -53,46 +42,37 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-function VisitQuestionsProbe({
-  onRouteStateChange,
-}: VisitQuestionsRenderInput) {
-  useEffect(() => {
-    onRouteStateChange({
-      hasUnsavedChanges: false,
-      isSaving: false,
-      isGenerating: false,
-      revision: 0,
-    });
-  }, [onRouteStateChange]);
-  return <Text testID="feature-route-probe">Feature route</Text>;
-}
-
 beforeEach(() => {
-  mockFeatureEntryMount.mockClear();
-  mockFeatureEntryUnmount.mockClear();
+  mockConversationMount.mockClear();
+  mockConversationUnmount.mockClear();
 });
 afterEach(() => jest.restoreAllMocks());
 
-test('keeps the app screen mounted underneath a guarded AI route', async () => {
+test('keeps the conversation mounted underneath history and restores its draft', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
-  await render(
-    <App renderVisitQuestions={input => <VisitQuestionsProbe {...input} />} />,
-  );
+  await render(<App />);
   await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
-  await waitFor(() => expect(mockFeatureEntryMount).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockConversationMount).toHaveBeenCalledTimes(1));
 
-  await fireEvent.press(screen.getByTestId('open-feature-route'));
-  expect(await screen.findByTestId('feature-route-probe')).toBeTruthy();
-  // AI entry must push over the retained source in the same native stack.
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    '보존할 초안',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
+  // History must push over the retained conversation in the same native stack.
   expect(screen.queryByTestId('ai-feature-overlay')).toBeNull();
-  expect(mockFeatureEntryUnmount).not.toHaveBeenCalled();
+  expect(mockConversationUnmount).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
-    expect(screen.getByTestId('open-feature-route')).toBeVisible(),
+    expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+      'value',
+      '보존할 초안',
+    ),
   );
-  expect(mockFeatureEntryMount).toHaveBeenCalledTimes(1);
-  expect(mockFeatureEntryUnmount).not.toHaveBeenCalled();
+  expect(mockConversationMount).toHaveBeenCalledTimes(1);
+  expect(mockConversationUnmount).not.toHaveBeenCalled();
 });

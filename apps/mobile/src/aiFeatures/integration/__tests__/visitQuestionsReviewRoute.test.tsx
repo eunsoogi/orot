@@ -13,9 +13,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-jest.mock('../../../backup/backupSupport', () => ({
-  prepareBackupSupport: jest.fn(async () => 'ready'),
-}));
 jest.mock('../../../providers/selection/options', () => {
   const actual = jest.requireActual('../../../providers/selection/options');
   return {
