@@ -37,4 +37,27 @@ export const RecapModelOutputSchema = z.strictObject({
     .max(5),
 });
 
-export const recapModelJsonSchema = z.toJSONSchema(RecapModelOutputSchema);
+// Apple guided generation cannot express scalar length or numeric bounds; the full
+// Zod schema and source checks still enforce them after every model response.
+function guidedSchema(value: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (
+      ['$schema', 'minLength', 'maxLength', 'minimum', 'maximum', 'exclusiveMinimum'].includes(key)
+    )
+      continue;
+    if (key === 'const') result.enum = [item];
+    else if (key === 'properties')
+      result.properties = Object.fromEntries(
+        Object.entries(item as Record<string, Record<string, unknown>>).map(([name, child]) => [
+          name,
+          guidedSchema(child),
+        ]),
+      );
+    else if (key === 'items') result.items = guidedSchema(item as Record<string, unknown>);
+    else result[key] = item;
+  }
+  return result;
+}
+
+export const recapModelJsonSchema = guidedSchema(z.toJSONSchema(RecapModelOutputSchema));
