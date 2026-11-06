@@ -23,8 +23,10 @@ enum HomeMetricGeometryConditions {
               let first = frames[identifiers[6]], let second = frames[identifiers[7]] else { return }
 
         let largeText = app.launchArguments.contains("UICTContentSizeCategoryAccessibilityXXXL")
-        XCTAssertGreaterThanOrEqual(overviewHeading.height, 44, "Health overview heading target")
-        XCTAssertGreaterThanOrEqual(recentHeading.height, 44, "Recent changes heading target")
+        // UIKit frame conversion can report nominal layout targets a few floating-point ULPs below their boundary.
+        let geometryTolerance: CGFloat = 0.001
+        XCTAssertGreaterThanOrEqual(overviewHeading.height, 44 - geometryTolerance, "Health overview heading target")
+        XCTAssertGreaterThanOrEqual(recentHeading.height, 44 - geometryTolerance, "Recent changes heading target")
         // At the default text size, matching section headings should occupy the same 44pt target.
         if !largeText {
             XCTAssertEqual(overviewHeading.height, recentHeading.height, accuracy: 1)
@@ -41,18 +43,22 @@ enum HomeMetricGeometryConditions {
         XCTAssertLessThanOrEqual(second.maxX, grid.maxX + 1)
 
         let sameRow = abs(first.minY - second.minY) <= 1
-        // These separated native observations test readable outcomes, not the exact JS breakpoint.
-        if grid.width <= 500 || largeText {
+        // Two 320pt cards plus their 8pt gap need 648pt at default text size.
+        let shouldUseTwoColumns = !largeText && grid.width >= 648 - geometryTolerance
+        if shouldUseTwoColumns {
+            XCTAssertTrue(sameRow, "Wide usable content should show two metric columns")
+            XCTAssertEqual(first.width, second.width, accuracy: 1)
+            XCTAssertGreaterThanOrEqual(first.width, 320 - geometryTolerance)
+            XCTAssertGreaterThanOrEqual(second.width, 320 - geometryTolerance)
+            XCTAssertEqual(second.minX - first.maxX, 8, accuracy: 1)
+        } else {
             XCTAssertFalse(sameRow, "Narrow or accessibility text must keep full-width cards")
             XCTAssertEqual(first.width, grid.width, accuracy: 1)
             XCTAssertEqual(second.width, grid.width, accuracy: 1)
             XCTAssertGreaterThanOrEqual(second.minY - first.maxY, 7)
-        } else if grid.width >= 800 {
-            XCTAssertTrue(sameRow, "Wide usable content should show two metric columns")
-            XCTAssertEqual(first.width, second.width, accuracy: 1)
-            XCTAssertEqual(second.minX - first.maxX, 8, accuracy: 1)
         }
-        let geometry = frames.mapValues { NSStringFromCGRect($0) }
+        // Keep measured frames readable in the result attachment when a native threshold fails.
+        let geometry = frames.mapValues { NSCoder.string(for: $0) }
         if let data = try? JSONSerialization.data(withJSONObject: geometry, options: [.sortedKeys]),
            let json = String(data: data, encoding: .utf8)
         {

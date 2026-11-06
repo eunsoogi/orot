@@ -228,7 +228,11 @@ final class HomeDuoUITests: OrotFailFastTestCase {
                 let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
                 XCTAssertTrue(homeScroll.waitForAppearance())
                 for metric in ["sleep", "heartRate", "bodyMass", "steps"] {
-                    UITestConditions.toggleCheckboxAndAssertState(app, identifier: "home-metric-selection-\(metric)", in: homeScroll)
+                    let captureLandscapeSleepScroll = UITestConditions.shouldCaptureHomeScrollDiagnosticPair(for: metric)
+                    UITestConditions.toggleCheckboxAndAssertState(
+                        app, identifier: "home-metric-selection-\(metric)", in: homeScroll,
+                        captureScrollDiagnosticPair: captureLandscapeSleepScroll,
+                    )
                 }
                 UITestConditions.scrollToAndTap(UITestConditions.element(app, "home-metric-selection-cancel"), in: homeScroll)
             } else {
