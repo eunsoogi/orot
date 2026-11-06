@@ -59,6 +59,8 @@
 		B27800000000000000000001 /* RecordingDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27800000000000000000002 /* RecordingDuoUITests.swift */; };
 		F94600000000000000000003 /* FeatureEntryDuoActionConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */; };
 		F94600000000000000000009 /* NavigationCurrentRouteObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */; };
+		F9460000000000000000000B /* FoldedMenuDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000C /* FoldedMenuDiagnostic.swift */; };
+		F9460000000000000000000D /* NavigationOverflowSheetUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */; };
 		F94600000000000000000005 /* FeatureEntryDuoActionVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */; };
 		6E086CE21AE9090BE1F11E1E /* FeatureEntryDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */; };
 		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
@@ -425,6 +427,8 @@
 		D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSyncStatusDuoUITests.swift; sourceTree = "<group>"; };
 		F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoActionConditions.swift; sourceTree = "<group>"; };
 		F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationCurrentRouteObservation.swift; sourceTree = "<group>"; };
+		F9460000000000000000000C /* FoldedMenuDiagnostic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoldedMenuDiagnostic.swift; sourceTree = "<group>"; };
+		F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationOverflowSheetUITestConditions.swift; sourceTree = "<group>"; };
 		F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoActionVerification.swift; sourceTree = "<group>"; };
 		B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureEntryDuoUITests.swift; sourceTree = "<group>"; };
 		B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrientationPresentationAnchorUITests.swift; sourceTree = "<group>"; };
@@ -898,6 +902,8 @@
 				D29500000000000000000002 /* SettingsSyncStatusDuoUITests.swift */,
 				F94600000000000000000004 /* FeatureEntryDuoActionConditions.swift */,
 				F9460000000000000000000A /* NavigationCurrentRouteObservation.swift */,
+				F9460000000000000000000C /* FoldedMenuDiagnostic.swift */,
+				F9460000000000000000000E /* NavigationOverflowSheetUITestConditions.swift */,
 				F94600000000000000000006 /* FeatureEntryDuoActionVerification.swift */,
 				B9203C47FAC102CD55F8FFED /* FeatureEntryDuoUITests.swift */,
 				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
@@ -1391,6 +1397,8 @@
 				D29500000000000000000001 /* SettingsSyncStatusDuoUITests.swift in Sources */,
 				F94600000000000000000003 /* FeatureEntryDuoActionConditions.swift in Sources */,
 				F94600000000000000000009 /* NavigationCurrentRouteObservation.swift in Sources */,
+				F9460000000000000000000B /* FoldedMenuDiagnostic.swift in Sources */,
+				F9460000000000000000000D /* NavigationOverflowSheetUITestConditions.swift in Sources */,
 				F94600000000000000000005 /* FeatureEntryDuoActionVerification.swift in Sources */,
 				6E086CE21AE9090BE1F11E1E /* FeatureEntryDuoUITests.swift in Sources */,
 				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,

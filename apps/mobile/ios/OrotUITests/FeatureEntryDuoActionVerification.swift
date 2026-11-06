@@ -39,7 +39,7 @@ extension FeatureEntryDuoActionConditions {
     }
 
     /// Record public snapshot fields separately from any later live accessibility query.
-    private static func snapshotEvidence(_ node: XCUIElementSnapshot, path: String = "0", parent: String = "none", window: String = "none") -> String {
+    static func snapshotEvidence(_ node: XCUIElementSnapshot, path: String = "0", parent: String = "none", window: String = "none") -> String {
         let ancestor = node.elementType == .window ? path : window
         let frame = node.frame
         let current = "path=\(path) parent=\(parent) windowAncestor=\(window) type=\(node.elementType.rawValue) id=\(node.identifier) x=\(frame.minX) y=\(frame.minY) width=\(frame.width) height=\(frame.height)"

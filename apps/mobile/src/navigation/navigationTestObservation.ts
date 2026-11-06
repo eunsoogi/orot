@@ -87,3 +87,19 @@ export function observeNavigationTest(
     // A diagnostic must never alter the route's permission or transition result.
   }
 }
+
+/** Record only structural guard reasons, never action labels or content. */
+export function observePageMenuAttempt(
+  routeKey: string,
+  state: { routeKey: string; disabled: boolean },
+  alive: boolean,
+) {
+  const reason = !alive
+    ? 'unmounted'
+    : state.routeKey !== routeKey
+      ? 'route-changed'
+      : state.disabled
+        ? 'disabled'
+        : 'allowed';
+  observeNavigationTest('menu-handler', { routeKey, reason });
+}

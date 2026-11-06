@@ -68,13 +68,17 @@
                 if NavigationRailMountTestObservation.enabled {
                     record["mountObservationControlID"] = NavigationRailMountTestObservation.identity(control)
                 }
-                if id == "symptom-form-cancel", control.window === window {
+                if id == "symptom-form-cancel" || (id == "navigation-page-action-overflow" && UserDefaults.standard.string(forKey: "OROT_TEST_MENU_PRESENTATION") == "YES"), control.window === window {
                     // Observe the same public activation point without sending a touch or reading patient content.
                     let point = window.convert(control.accessibilityActivationPoint, from: nil as UIWindow?)
                     if point.x.isFinite, point.y.isFinite {
                         let hit = window.hitTest(point, with: nil)
                         record["activationInWindow"] = ["x": point.x, "y": point.y]
                         record["hitRole"] = hit === control ? "control" : hit?.isDescendant(of: control) == true ? "descendant" : hit == nil ? "none" : "other"
+                        if id == "navigation-page-action-overflow", let hit {
+                            record["hitID"] = identity(hit)
+                            record["hitClass"] = String(describing: type(of: hit))
+                        }
                     } else {
                         record["hitRole"] = "unavailable"
                     }
