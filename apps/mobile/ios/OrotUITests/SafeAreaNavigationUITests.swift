@@ -40,6 +40,7 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         let imported = node(app, "records-open-health-library")
         XCTAssertTrue(imported.exists && imported.isHittable)
         try inset(app, "records-open-health-library", bottom: true, top: false)
+        try bottomSnapshot(app, scrollID: "navigation-route-scroll", contentID: "records-open-health-library", navigationID: "navigation-tab-records")
         XCTAssertFalse(node(app, "records-open-common-observations").exists)
         XCTAssertFalse(node(app, "records-open-blood-pressure").exists)
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
@@ -55,6 +56,7 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         let action = node(app, "health-data-save")
         XCTAssertTrue(action.exists && action.isHittable && action.isEnabled)
         try inset(app, "health-data-save", bottom: true, top: false)
+        try bottomSnapshot(app, scrollID: "health-data-scroll", contentID: "health-data-save")
     }
 
     @MainActor
@@ -142,7 +144,24 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
             XCTAssertLessThanOrEqual(last.frame.maxX, contentViewport.frame.maxX + 0.5)
         }
         try inset(app, "health-record-row-11", bottom: true, top: false)
+        try bottomSnapshot(app, scrollID: "health-records-detail-scroll", contentID: "health-record-row-11")
         capture(app, "synthetic-blood-pressure-library-final-row-safe-area")
+    }
+
+    /// Correlate the final row with its real scroll viewport and native bar before attributing extra space to an inset owner.
+    @MainActor
+    private func bottomSnapshot(_ app: XCUIApplication, scrollID: String, contentID: String,
+                                navigationID: String = "navigation-back") throws
+    {
+        let content = node(app, contentID)
+        let navigation = try NavigationUITestConditions.navigationAction(app, navigationID)
+        try NavigationUITestConditions.panelSnapshot(app, frames: [
+            "root": rootFrame(app, containing: content.frame),
+            "contentRegion": node(app, "navigation-content-region").frame,
+            "scrollViewport": node(app, scrollID).frame,
+            "finalContent": content.frame,
+            "navigation": navigation.toolbar.frame,
+        ], testCase: self)
     }
 
     @MainActor

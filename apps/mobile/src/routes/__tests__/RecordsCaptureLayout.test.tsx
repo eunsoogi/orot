@@ -30,6 +30,21 @@ test.each([1, 1.5, 3.571])(
       />,
     );
     expect(screen.queryByTestId('symptoms-open')).toBeNull();
+    // This protects the row contract; actual wrapping and hit targets need native geometry.
+    expect(screen.getByTestId('recording-capture-content')).toHaveStyle({
+      flexDirection: 'row',
+      alignItems: 'center',
+    });
+    expect(screen.getByText('새 상담 녹음')).toHaveStyle({ flexShrink: 1 });
+    expect(screen.getByText('새 상담 녹음').props).toEqual(
+      expect.not.objectContaining({ allowFontScaling: false }),
+    );
+    expect(
+      screen.getByText('새 상담 녹음').props.numberOfLines,
+    ).toBeUndefined();
+    expect(
+      screen.getByText('새 상담 녹음').props.maxFontSizeMultiplier,
+    ).toBeUndefined();
     await fireEvent.press(screen.getByRole('button', { name: '새 상담 녹음' }));
     expect(onOpenRecording).toHaveBeenCalledTimes(1);
   },

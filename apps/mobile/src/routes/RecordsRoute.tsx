@@ -12,6 +12,7 @@ import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocument
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
+import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
 import { LegacySymptomData } from './LegacySymptomData';
 
@@ -148,7 +149,8 @@ const styles = StyleSheet.create({
     gap: hubSpacing.item,
     paddingHorizontal: hubSpacing.horizontal,
     paddingTop: hubSpacing.top,
-    paddingBottom: hubSpacing.bottom,
+    // The route scroller already supplies the shared readable gap above navigation.
+    paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
   },
   primaryPanel: { minWidth: 0, gap: hubSpacing.item },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
