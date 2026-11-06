@@ -56,7 +56,9 @@ enum FeatureEntryDuoActionConditions {
             _ = try XCTUnwrap(division["isActive"] as? Bool)
             _ = try rect(division["frame"])
             let margins = try XCTUnwrap(division["margins"] as? [String: Double])
-            for edge in ["top", "right", "bottom", "left"] { XCTAssertTrue(try XCTUnwrap(margins[edge]).isFinite) }
+            for edge in ["top", "right", "bottom", "left"] {
+                XCTAssertTrue(try XCTUnwrap(margins[edge]).isFinite)
+            }
         }
         let activeDivisions = try divisions.filter { $0["isActive"] as? Bool == true }.map { try rect($0["frame"]) }
         for id in ["navigation-tab-home", "rag-conversation-input"] {
@@ -65,7 +67,9 @@ enum FeatureEntryDuoActionConditions {
             XCTAssertGreaterThanOrEqual(target.frame.width, 44)
             XCTAssertGreaterThanOrEqual(target.frame.height, 44)
             // UIKit's reserved frame already includes its reported margins.
-            for frame in activeDivisions { XCTAssertFalse(target.frame.intersects(frame), app.debugDescription) }
+            for frame in activeDivisions {
+                XCTAssertFalse(target.frame.intersects(frame), app.debugDescription)
+            }
         }
         try openAction(app, id: "rag-conversation-sessions-toggle", label: "대화 목록", window: axWindow.frame, divisions: activeDivisions)
         NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
@@ -89,7 +93,9 @@ enum FeatureEntryDuoActionConditions {
             let windows = ancestors.filter { $0.elementType == .window }
             matches.append((node, windows))
         }
-        for child in node.children { matches += snapshotWindows(child, ancestors: ancestors + [node]) }
+        for child in node.children {
+            matches += snapshotWindows(child, ancestors: ancestors + [node])
+        }
         return matches
     }
 
@@ -101,21 +107,29 @@ enum FeatureEntryDuoActionConditions {
         let visible = button.frame.intersection(window)
         XCTAssertGreaterThanOrEqual(visible.width, 44)
         XCTAssertGreaterThanOrEqual(visible.height, 44)
-        for division in divisions { XCTAssertFalse(button.frame.intersects(division)) }
+        for division in divisions {
+            XCTAssertFalse(button.frame.intersects(division))
+        }
         let target = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
-        if !direct.exists { XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", label)).count, 1) }
+        if !direct.exists {
+            XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", label)).count, 1)
+        }
         XCTAssertTrue(target.exists && target.isHittable && target.isEnabled)
         let targetVisible = target.frame.intersection(window)
         XCTAssertGreaterThanOrEqual(targetVisible.width, 44)
         XCTAssertGreaterThanOrEqual(targetVisible.height, 44)
-        for division in divisions { XCTAssertFalse(targetVisible.intersects(division)) }
+        for division in divisions {
+            XCTAssertFalse(targetVisible.intersects(division))
+        }
         target.tap()
     }
 
     private static func rect(_ value: Any?) throws -> CGRect {
         let data = try XCTUnwrap(value as? [String: Double])
-        for key in ["x", "y", "width", "height"] { XCTAssertTrue(try XCTUnwrap(data[key]).isFinite) }
-        return CGRect(x: try XCTUnwrap(data["x"]), y: try XCTUnwrap(data["y"]), width: try XCTUnwrap(data["width"]), height: try XCTUnwrap(data["height"]))
+        for key in ["x", "y", "width", "height"] {
+            XCTAssertTrue(try XCTUnwrap(data[key]).isFinite)
+        }
+        return try CGRect(x: XCTUnwrap(data["x"]), y: XCTUnwrap(data["y"]), width: XCTUnwrap(data["width"]), height: XCTUnwrap(data["height"]))
     }
 
     private static func assertRect(_ value: Any?, equals actual: CGRect) throws {
@@ -152,7 +166,7 @@ enum FeatureEntryDuoActionConditions {
         let observer = try XCTUnwrap(baseline["observerID"] as? String)
         let baselineData = try JSONSerialization.data(withJSONObject: baseline, options: [.sortedKeys])
         print("OROT_EXTERNAL_DUO_BASELINE \(String(decoding: baselineData, as: UTF8.self))")
-        print("OROT_EXTERNAL_DUO_AX input=\(input.frame) screen=\(UITestConditions.element(app, "rag-conversation-screen").frame) toolbar=\(try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar.frame)")
+        try print("OROT_EXTERNAL_DUO_AX input=\(input.frame) screen=\(UITestConditions.element(app, "rag-conversation-screen").frame) toolbar=\(NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar.frame)")
         print("OROT_EXTERNAL_DUO_READY atMs=\(Date().timeIntervalSince1970 * 1000) window=\(initialWindow) scene=\(initialScene) frame=\(app.frame)")
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard let report = currentSnapshot(app), let key = try? geometryKey(report) else { return false }
@@ -181,7 +195,9 @@ enum FeatureEntryDuoActionConditions {
         let geometry = try XCTUnwrap(report["windowGeometry"] as? [String: Any])
         let keys = ["windowBounds", "safeAreaInsets", "reservedRegions", "sceneOrientation"]
         var selected: [String: Any] = [:]
-        for key in keys { selected[key] = try XCTUnwrap(geometry[key]) }
+        for key in keys {
+            selected[key] = try XCTUnwrap(geometry[key])
+        }
         return try JSONSerialization.data(withJSONObject: selected, options: [.sortedKeys])
     }
 
@@ -195,50 +211,5 @@ enum FeatureEntryDuoActionConditions {
         hierarchy.lifetime = .keepAlways
         testCase.add(hierarchy)
         return try XCTUnwrap(NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: name + "-native"))
-    }
-
-    static func verify(_ app: XCUIApplication, toolbar: XCUIElement, viewport: CGRect) throws {
-        let history = UITestConditions.element(app, "rag-conversation-sessions-toggle")
-        let newSession = UITestConditions.element(app, "rag-conversation-new-session")
-        if history.exists, newSession.exists {
-            XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "rag-conversation-sessions-toggle").count, 1)
-            XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "rag-conversation-new-session").count, 1)
-            for (action, label) in [(history, "대화 목록"), (newSession, "새 대화")] {
-                XCTAssertTrue(action.isHittable && action.isEnabled && action.label.contains(label), app.debugDescription)
-                XCTAssertGreaterThanOrEqual(action.frame.width, 44)
-                XCTAssertGreaterThanOrEqual(action.frame.height, 44)
-                XCTAssertTrue(toolbar.frame.insetBy(dx: -1, dy: -1).contains(action.frame))
-                XCTAssertGreaterThanOrEqual(action.frame.minX, viewport.maxX - 0.5)
-            }
-            XCTAssertLessThan(history.frame.minY, newSession.frame.minY)
-            XCTAssertFalse(history.frame.intersects(newSession.frame))
-            return
-        }
-        // The shared dock uses the system sheet when the toolbar cannot fit both actions.
-        let more = app.buttons["navigation-page-action-overflow"]
-        XCTAssertEqual(app.buttons.matching(identifier: "navigation-page-action-overflow").count, 1)
-        XCTAssertTrue(more.exists && more.isHittable && more.isEnabled, app.debugDescription)
-        XCTAssertGreaterThanOrEqual(more.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(more.frame.height, 44)
-        XCTAssertTrue(toolbar.frame.insetBy(dx: -1, dy: -1).contains(more.frame))
-        XCTAssertGreaterThanOrEqual(more.frame.minX, viewport.maxX - 0.5)
-        more.tap()
-        let sheet = app.sheets.firstMatch
-        XCTAssertTrue(sheet.exists, app.debugDescription)
-        let items = ["대화 목록", "새 대화", "동작 메뉴 닫기"].map { label -> XCUIElement in
-            let matches = app.buttons.matching(NSPredicate(format: "label == %@", label))
-            XCTAssertEqual(matches.count, 1, app.debugDescription)
-            let item = matches.firstMatch
-            XCTAssertTrue(item.exists && item.isHittable && item.isEnabled, app.debugDescription)
-            XCTAssertTrue(sheet.frame.insetBy(dx: -1, dy: -1).contains(item.frame))
-            let visible = item.frame.intersection(app.frame)
-            XCTAssertGreaterThanOrEqual(visible.width, 44)
-            XCTAssertGreaterThanOrEqual(visible.height, 44)
-            return item
-        }
-        XCTAssertLessThan(items[0].frame.minY, items[1].frame.minY)
-        XCTAssertFalse(items[0].frame.intersects(items[1].frame))
-        items[2].tap()
-        XCTAssertFalse(sheet.exists, "Closing the action sheet must return to the conversation")
     }
 }

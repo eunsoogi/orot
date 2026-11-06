@@ -66,10 +66,10 @@ extension NavigationGeometryUITestConditions {
         let shared = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(frameText.utf8)) as? [String: Any])
         XCTAssertEqual(shared["side"] as? String, state.side)
         let published = try XCTUnwrap(shared["navigationFrame"] as? [String: Double])
-        XCTAssertEqual(CGFloat(try XCTUnwrap(published["x"])), back.toolbar.frame.minX, accuracy: 0.5)
-        XCTAssertEqual(CGFloat(try XCTUnwrap(published["y"])), back.toolbar.frame.minY, accuracy: 0.5)
-        XCTAssertEqual(CGFloat(try XCTUnwrap(published["width"])), back.toolbar.frame.width, accuracy: 0.5)
-        XCTAssertEqual(CGFloat(try XCTUnwrap(published["height"])), back.toolbar.frame.height, accuracy: 0.5)
+        XCTAssertEqual(try CGFloat(XCTUnwrap(published["x"])), back.toolbar.frame.minX, accuracy: 0.5)
+        XCTAssertEqual(try CGFloat(XCTUnwrap(published["y"])), back.toolbar.frame.minY, accuracy: 0.5)
+        XCTAssertEqual(try CGFloat(XCTUnwrap(published["width"])), back.toolbar.frame.width, accuracy: 0.5)
+        XCTAssertEqual(try CGFloat(XCTUnwrap(published["height"])), back.toolbar.frame.height, accuracy: 0.5)
         let geometry = try XCTUnwrap(report["windowGeometry"] as? [String: Any])
         let dock = try XCTUnwrap(geometry["dockControls"] as? [String: Any])
         XCTAssertEqual(dock["status"] as? String, "available")
@@ -85,10 +85,10 @@ extension NavigationGeometryUITestConditions {
             XCTAssertEqual(control["hostRole"] as? String, target.identifier == "next-visit-review-save" ? "page" : "navigation")
             for key in ["nativeFrameInWindow", "accessibilityFrameInScreen"] {
                 let frame = try XCTUnwrap(control[key] as? [String: Double])
-                XCTAssertEqual(CGFloat(try XCTUnwrap(frame["x"])), target.frame.minX, accuracy: 0.5)
-                XCTAssertEqual(CGFloat(try XCTUnwrap(frame["y"])), target.frame.minY, accuracy: 0.5)
-                XCTAssertEqual(CGFloat(try XCTUnwrap(frame["width"])), target.frame.width, accuracy: 0.5)
-                XCTAssertEqual(CGFloat(try XCTUnwrap(frame["height"])), target.frame.height, accuracy: 0.5)
+                XCTAssertEqual(try CGFloat(XCTUnwrap(frame["x"])), target.frame.minX, accuracy: 0.5)
+                XCTAssertEqual(try CGFloat(XCTUnwrap(frame["y"])), target.frame.minY, accuracy: 0.5)
+                XCTAssertEqual(try CGFloat(XCTUnwrap(frame["width"])), target.frame.width, accuracy: 0.5)
+                XCTAssertEqual(try CGFloat(XCTUnwrap(frame["height"])), target.frame.height, accuracy: 0.5)
             }
         }
     }
