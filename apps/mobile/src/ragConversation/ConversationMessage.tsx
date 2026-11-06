@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
+import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
@@ -18,6 +19,10 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly completion?: 'complete' | 'partial';
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+  readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
+  readonly retryHealthSummary?: () => Promise<
+    import('./healthSummary').HealthSummaryResult | null
+  >;
   /** Failed prompts stay visible when the user has already drafted a different question. */
   readonly failed?: boolean;
 }
@@ -113,6 +118,23 @@ export function ConversationMessage({
           >
             {message.content}
           </MessageText>
+        ) : null}
+        {message.healthSummary ? (
+          <HealthSummaryCard
+            result={message.healthSummary}
+            showCitations={showCitations}
+            onOpenSource={onOpenSource}
+            onLinkError={onLinkError}
+            onRetry={
+              message.retryHealthSummary
+                ? () => {
+                    message.retryHealthSummary?.().catch(onLinkError);
+                  }
+                : undefined
+            }
+          />
+        ) : message.healthSummary === null ? (
+          <Text>저장된 요약을 확인할 수 없어요.</Text>
         ) : null}
         {!activityBeforeText ? activity : null}
         {showCitations ? (

@@ -19,6 +19,18 @@ export function conversationEntryForSession(
   return sessionEntries.get(store)?.get(id);
 }
 
+/** A summary entry starts one operation; later turns remain ordinary conversation. */
+export function consumeConversationEntryForSession(
+  store: ConversationSessions,
+  id: number,
+) {
+  const entries = sessionEntries.get(store);
+  const context = entries?.get(id);
+  if (context?.intent === 'health-summary')
+    entries?.set(id, { ...context, intent: 'conversation' });
+  return context;
+}
+
 /** Applies an entry once without replacing drafts or restarting work after overlay return. */
 export function useConversationEntryIntent(
   store: ConversationSessions,

@@ -9,6 +9,7 @@ type RestoredTurn = {
   readonly completion?: 'complete' | 'partial';
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+  readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
 };
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
@@ -46,6 +47,9 @@ export function createConversationSessionRestoreState(input: {
           citations: turn.citations,
           toolMessageId: turn.toolMessageId,
           toolEvents: turn.toolEvents,
+          ...(turn.healthSummary !== undefined
+            ? { healthSummary: turn.healthSummary }
+            : {}),
           ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },

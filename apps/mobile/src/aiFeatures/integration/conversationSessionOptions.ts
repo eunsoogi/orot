@@ -12,6 +12,11 @@ import { bindLiveConversationToolSources } from './bindLiveConversationToolSourc
 export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly restoreHealthSummary?: (
+    reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
+  ) => Promise<
+    import('../../ragConversation/healthSummary').HealthSummaryResult | null
+  >;
 }): ConversationSessionOptions {
   let recovered: Promise<void> | undefined;
   const openStorage = async () => {
@@ -100,16 +105,30 @@ export function createConversationSessionOptions(input: {
           fingerprint(savedToolTurns)
       )
         throw new Error('Conversation content changed during restoration.');
-      const restored = turns.reverse().map(turn => ({
-        question: turn.question,
-        answer: turn.answer,
-        citations: turn.citations,
-        completion: turn.status,
-        toolMessageId: turn.id,
-        toolEvents:
-          toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
-            ?.toolEvents ?? [],
-      }));
+      const restored = await Promise.all(
+        turns.reverse().map(async turn => ({
+          question: turn.question,
+          answer: turn.answer,
+          citations: turn.citations,
+          completion: turn.status,
+          ...(turn.healthSummary
+            ? {
+                healthSummary:
+                  (await input.restoreHealthSummary?.(turn.healthSummary)) ??
+                  null,
+              }
+            : {}),
+          toolMessageId: turn.id,
+          toolEvents:
+            toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
+              ?.toolEvents ?? [],
+        })),
+      );
+      // Summary restoration can overlap source or conversation deletion; recheck the durable turns.
+      if (
+        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+      )
+        throw new Error('Conversation content changed during restoration.');
       // Interrupted tool-only turns have no validated prose, but remain visible and never running.
       for (const turn of toolTurns)
         if (!restored.some(item => item.toolMessageId === turn.messageId))

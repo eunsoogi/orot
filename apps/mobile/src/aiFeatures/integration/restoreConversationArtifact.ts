@@ -104,6 +104,7 @@ export async function restoreConversationArtifact(input: {
     status: saved.status,
     question: saved.question,
     answer: saved.answer,
+    ...(saved.healthSummary ? { healthSummary: saved.healthSummary } : {}),
     revision: fingerprint(saved),
     sources: bound,
     citations: citations as NonNullable<(typeof citations)[number]>[],

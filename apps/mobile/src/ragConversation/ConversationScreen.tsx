@@ -24,7 +24,7 @@ import { useNavigationRouteActions } from '../navigation/useNavigationRouteActio
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
 import {
-  conversationEntryForSession,
+  consumeConversationEntryForSession,
   useConversationEntryIntent,
 } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
@@ -213,7 +213,7 @@ export function ConversationScreen({
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
                 store.send(id, (question, history, signal, observer) => {
-                  const context = conversationEntryForSession(store, id);
+                  const context = consumeConversationEntryForSession(store, id);
                   return context
                     ? onSend(question, history, signal, observer, context)
                     : onSend(question, history, signal, observer);

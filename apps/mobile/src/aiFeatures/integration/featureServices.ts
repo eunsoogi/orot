@@ -20,7 +20,7 @@ import { createVisitQuestionSourceService } from './visitQuestionSourceRegistrat
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { createRagConversationService } from './ragConversationService';
-import { createConversationSessionOptions } from './conversationSessionOptions';
+import { createConversationSummaryIntegration } from './conversationSummaryIntegration';
 import { conversationGeneratedTools } from './conversationGeneratedTools';
 import { retainLiteratureResults } from './researchRetention';
 import { createResearchInputTracker } from './researchInputTracker';
@@ -209,12 +209,15 @@ export function createAiFeatureServices(
         owns: reference => Boolean(registry.resolve(reference)),
       };
     },
-    conversationSessionOptions() {
-      return createConversationSessionOptions({
-        loadLocalData: privateLocalData,
-        registry,
-      });
-    },
+    ...createConversationSummaryIntegration({
+      consent,
+      dependencies,
+      loadData: privateLocalData,
+      selectedAi,
+      registry,
+      diseaseRunner,
+      sendRagMessage,
+    }),
     async conversationArtifacts() {
       const data = await privateLocalData();
       return data.conversationArtifactDiscovery
@@ -239,7 +242,6 @@ export function createAiFeatureServices(
     generateDiseaseHypotheses: (signal, observer) =>
       analyze(false, signal, observer),
     summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),
-    sendRagMessage,
     resolveSource: reference => registry.resolve(reference),
     resolveToolSource: (reference, signal, scope) =>
       registry.resolveToolSource(reference, signal, scope),
