@@ -23,7 +23,8 @@ export function validateReferenceChunk(
   return input.questions.map((question) => {
     const result = output.questions.find((item) => item.questionId === question.id);
     if (!result) throw new Error('Missing Recap question.');
-    const prior = previous.find((item) => item.questionId === question.id)?.questionEvidence ?? [];
+    const previousQuestion = previous.find((item) => item.questionId === question.id);
+    const prior = previousQuestion?.questionEvidence ?? [];
     const priorUnits = allUnits.filter((unit) =>
       prior.some(
         (evidence) =>
@@ -37,14 +38,41 @@ export function validateReferenceChunk(
     const questionUnits = [
       ...new Map([...units, ...priorUnits].map((unit) => [unit.ref, unit])).values(),
     ];
+    const questionEvidence = result.questionRefs.map((ref) =>
+      resolveRecapUnit(input, questionUnits, ref),
+    );
+    // Recombination also cannot turn an earlier answer span into later question evidence.
+    if (
+      questionEvidence.some((questionSpan) =>
+        (previousQuestion?.answers ?? []).some((answer) =>
+          answer.evidence.some(
+            (answerSpan) =>
+              answerSpan.segmentId === questionSpan.segmentId &&
+              answerSpan.startOffset < questionSpan.endOffset &&
+              questionSpan.startOffset < answerSpan.endOffset,
+          ),
+        ),
+      )
+    )
+      throw new Error('Question and answer evidence overlap.');
     return RecapQuestionResultSchema.parse({
       questionId: result.questionId,
       status: result.status,
-      questionEvidence: result.questionRefs.map((ref) =>
-        resolveRecapUnit(input, questionUnits, ref),
-      ),
+      questionEvidence,
       answers: result.answers.map((answer) => {
         const evidence = answer.refs.map((ref) => resolveRecapUnit(input, units, ref));
+        // A single text span cannot independently establish both question and answer.
+        if (
+          evidence.some((answerSpan) =>
+            [...questionEvidence, ...prior].some(
+              (questionSpan) =>
+                answerSpan.segmentId === questionSpan.segmentId &&
+                answerSpan.startOffset < questionSpan.endOffset &&
+                questionSpan.startOffset < answerSpan.endOffset,
+            ),
+          )
+        )
+          throw new Error('Question and answer evidence overlap.');
         return {
           quotation: evidence.map((item) => item.quote).join('\n'),
           summary: answer.summary,

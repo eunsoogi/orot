@@ -29,6 +29,22 @@ it('resolves cited units and rejects foreign references and identities', () => {
   expect(result[0].answers[0].quotation).toBe(units[1].text);
   expect(result[0].answers[0].speaker).toBe('unknown');
   expect(() =>
+    validateReferenceChunk(
+      {
+        ...wire,
+        questions: [
+          {
+            ...wire.questions[0],
+            answers: [{ ...wire.questions[0].answers[0], refs: [units[0].ref] }],
+          },
+        ],
+      },
+      input,
+      units,
+      0,
+    ),
+  ).toThrow();
+  expect(() =>
     validateReferenceChunk({ ...wire, appointmentId: 'foreign' }, input, units, 0),
   ).toThrow();
   expect(() =>
@@ -85,4 +101,39 @@ it('allows prior evidence only for the same question and never as a new answer',
     ],
   };
   expect(() => validateReferenceChunk(bad, input, [units[1]], 1, prior, units)).toThrow();
+  const overlappingChunk = {
+    ...wire,
+    questions: [
+      {
+        ...wire.questions[0],
+        questionRefs: [units[1].ref],
+        answers: [{ ...wire.questions[0].answers[0], refs: [units[0].ref] }],
+      },
+    ],
+  };
+  expect(() => validateReferenceChunk(overlappingChunk, input, units, 1, prior, units)).toThrow(
+    'Question and answer evidence overlap.',
+  );
+  const previousWithAnswer = [
+    {
+      ...prior[0],
+      answers: [
+        {
+          quotation: units[1].text,
+          summary: '응답',
+          speaker: 'unknown' as const,
+          inferredRole: 'uncertain' as const,
+          speakerUncertainty: '확인 불가',
+          evidence: [resolveRecapUnit(input, units, units[1].ref)],
+        },
+      ],
+    },
+  ];
+  const laterQuestion = {
+    ...wire,
+    questions: [{ ...wire.questions[0], questionRefs: [units[1].ref], answers: [] }],
+  };
+  expect(() =>
+    validateReferenceChunk(laterQuestion, input, units, 1, previousWithAnswer, units),
+  ).toThrow('Question and answer evidence overlap.');
 });
