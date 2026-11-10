@@ -13,10 +13,13 @@ it('resolves cited units and rejects foreign references and identities', () => {
       {
         questionId: 'question-1',
         status: 'evidence_found',
+        questionSufficiency: 'complete',
         questionRefs: [units[0].ref],
         answers: [
           {
             refs: [units[1].ref],
+            utteranceRole: 'response',
+            association: 'clear',
             summary: '그대로 복용하라는 응답',
             inferredRole: 'uncertain',
             speakerUncertainty: '발화자 미확인',
@@ -26,8 +29,75 @@ it('resolves cited units and rejects foreign references and identities', () => {
     ],
   };
   const result = validateReferenceChunk(wire, input, units, 0);
+  const absent = {
+    ...wire,
+    questions: [
+      {
+        ...wire.questions[0],
+        status: 'not_found',
+        questionSufficiency: 'absent',
+        questionRefs: [],
+        answers: [],
+      },
+    ],
+  };
+  expect(validateReferenceChunk(absent, input, units, 0)[0]).toMatchObject({
+    status: 'not_found',
+    answers: [],
+  });
+  expect(() =>
+    validateReferenceChunk(
+      { ...absent, questions: [{ ...absent.questions[0], questionSufficiency: 'complete' }] },
+      input,
+      units,
+      0,
+    ),
+  ).toThrow();
+  const invalidFiltered = {
+    ...wire,
+    questions: [
+      {
+        ...wire.questions[0],
+        answers: [
+          { ...wire.questions[0].answers[0], utteranceRole: 'question', refs: ['foreign'] },
+        ],
+      },
+    ],
+  };
+  expect(() => validateReferenceChunk(invalidFiltered, input, units, 0)).toThrow();
   expect(result[0].answers[0].quotation).toBe(units[1].text);
   expect(result[0].answers[0].speaker).toBe('unknown');
+  const repeatedQuestion = {
+    ...wire,
+    questions: [
+      {
+        ...wire.questions[0],
+        answers: [{ ...wire.questions[0].answers[0], utteranceRole: 'question' }],
+      },
+    ],
+  };
+  expect(validateReferenceChunk(repeatedQuestion, input, units, 0)[0].answers).toEqual([]);
+  const ambiguous = {
+    ...wire,
+    questions: [
+      {
+        ...wire.questions[0],
+        answers: [{ ...wire.questions[0].answers[0], association: 'ambiguous' }],
+      },
+    ],
+  };
+  expect(validateReferenceChunk(ambiguous, input, units, 0)[0]).toMatchObject({
+    status: 'evidence_found',
+    answers: [],
+  });
+  const partial = {
+    ...wire,
+    questions: [{ ...wire.questions[0], questionSufficiency: 'partial' }],
+  };
+  expect(validateReferenceChunk(partial, input, units, 0)[0]).toMatchObject({
+    status: 'indeterminate',
+    answers: [],
+  });
   expect(() =>
     validateReferenceChunk(
       {
@@ -76,10 +146,13 @@ it('allows prior evidence only for the same question and never as a new answer',
       {
         questionId: 'question-1',
         status: 'evidence_found',
+        questionSufficiency: 'complete',
         questionRefs: [units[0].ref],
         answers: [
           {
             refs: [units[1].ref],
+            utteranceRole: 'response',
+            association: 'clear',
             summary: '답변',
             inferredRole: 'uncertain',
             speakerUncertainty: '확인 불가',

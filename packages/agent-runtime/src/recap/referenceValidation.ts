@@ -55,33 +55,50 @@ export function validateReferenceChunk(
       )
     )
       throw new Error('Question and answer evidence overlap.');
+    if ((result.status === 'not_found') !== (result.questionSufficiency === 'absent')) {
+      if (result.questionSufficiency !== 'partial')
+        throw new Error('Question sufficiency conflicts with status.');
+    }
+    const status = result.questionSufficiency === 'partial' ? 'indeterminate' : result.status;
+    if (status === 'not_found' && result.answers.length)
+      throw new Error('Absent questions cannot have answers.');
+    const answers = result.answers.map((answer) => {
+      const evidence = answer.refs.map((ref) => resolveRecapUnit(input, units, ref));
+      // A single text span cannot independently establish both question and answer.
+      if (
+        evidence.some((answerSpan) =>
+          [...questionEvidence, ...prior].some(
+            (questionSpan) =>
+              answerSpan.segmentId === questionSpan.segmentId &&
+              answerSpan.startOffset < questionSpan.endOffset &&
+              questionSpan.startOffset < answerSpan.endOffset,
+          ),
+        )
+      )
+        throw new Error('Question and answer evidence overlap.');
+      return { answer, evidence };
+    });
     return RecapQuestionResultSchema.parse({
       questionId: result.questionId,
-      status: result.status,
+      status,
       questionEvidence,
-      answers: result.answers.map((answer) => {
-        const evidence = answer.refs.map((ref) => resolveRecapUnit(input, units, ref));
-        // A single text span cannot independently establish both question and answer.
-        if (
-          evidence.some((answerSpan) =>
-            [...questionEvidence, ...prior].some(
-              (questionSpan) =>
-                answerSpan.segmentId === questionSpan.segmentId &&
-                answerSpan.startOffset < questionSpan.endOffset &&
-                questionSpan.startOffset < answerSpan.endOffset,
-            ),
-          )
+      answers: answers
+        .filter(
+          ({ answer }) =>
+            status === 'evidence_found' &&
+            answer.utteranceRole === 'response' &&
+            answer.association === 'clear',
         )
-          throw new Error('Question and answer evidence overlap.');
-        return {
-          quotation: evidence.map((item) => item.quote).join('\n'),
-          summary: answer.summary,
-          speaker: 'unknown',
-          inferredRole: answer.inferredRole,
-          speakerUncertainty: answer.speakerUncertainty,
-          evidence,
-        };
-      }),
+        .map(({ answer, evidence }) => {
+          return {
+            quotation: evidence.map((item) => item.quote).join('\n'),
+            summary: answer.summary,
+            speaker: 'unknown',
+            inferredRole: answer.inferredRole,
+            speakerUncertainty: answer.speakerUncertainty,
+            evidence,
+          };
+        }),
     });
   });
 }

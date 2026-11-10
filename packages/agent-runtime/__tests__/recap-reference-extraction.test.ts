@@ -19,10 +19,13 @@ it('derives quotations from selected source units without asking the model for o
         {
           questionId: input.questions[0].id,
           status: 'evidence_found',
+          questionSufficiency: 'complete',
           questionRefs: [payload.transcript[0].ref],
           answers: [
             {
               refs: [payload.transcript[1].ref],
+              utteranceRole: 'response',
+              association: 'clear',
               summary: '그대로 복용하라는 응답',
               inferredRole: 'uncertain',
               speakerUncertainty: '발화자 미확인',

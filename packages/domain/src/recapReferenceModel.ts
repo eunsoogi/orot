@@ -11,11 +11,14 @@ export const RecapReferenceOutputSchema = z.strictObject({
       z.strictObject({
         questionId: z.string().min(1),
         status: z.enum(['evidence_found', 'not_found', 'indeterminate']),
+        questionSufficiency: z.enum(['complete', 'partial', 'absent']),
         questionRefs: z.array(z.string().min(1)).max(16),
         answers: z
           .array(
             z.strictObject({
               refs: z.array(z.string().min(1)).min(1).max(16),
+              utteranceRole: z.enum(['response', 'question', 'uncertain']),
+              association: z.enum(['clear', 'ambiguous']),
               summary: z.string().trim().min(1).max(4000),
               inferredRole: z.enum(['likely_clinician', 'uncertain']),
               speakerUncertainty: z.string().trim().min(1).max(1000),
