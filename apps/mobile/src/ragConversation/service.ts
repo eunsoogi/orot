@@ -114,12 +114,16 @@ export async function runRagConversationTurn(
           ],
         }
       : localEvidence;
-    const initialEvidence = includeConversationTargets(
-      combinedEvidence,
-      options.targetVisitEvidence,
-      options.dailyReportEvidence ?? [],
-      options.workflow.execution.budget.maxEvidenceItems,
-    );
+    // Only an explicit target needs to reserve a share of the workflow budget.
+    const initialEvidence =
+      options.targetVisitEvidence || options.dailyReportEvidence?.length
+        ? includeConversationTargets(
+            combinedEvidence,
+            options.targetVisitEvidence,
+            options.dailyReportEvidence ?? [],
+            options.workflow.execution.budget.maxEvidenceItems,
+          )
+        : combinedEvidence;
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';
