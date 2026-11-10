@@ -189,6 +189,12 @@ export function createAiFeatureServices(
     );
   }
 
+  const dailyReport = createDailyReportFeature(consent, dependencies);
+  const dailyReportSources = createDailyReportSourceResolver({
+    data: privateLocalData,
+    registry,
+    report: dailyReport,
+  });
   const sendRagMessage = createRagConversationService({
     consent,
     queryConsent,
@@ -198,6 +204,7 @@ export function createAiFeatureServices(
     registry,
     ragRunner,
     createOperationRunId: dependencies.createOperationRunId,
+    resolveDailyReport: dailyReportSources,
   });
 
   const visitQuestions = createVisitQuestionFeatureServices({
@@ -205,14 +212,9 @@ export function createAiFeatureServices(
     privateLocalData,
     registry,
   });
-  const dailyReport = createDailyReportFeature(consent, dependencies);
   return {
     dailyReport,
-    dailyReportSources: createDailyReportSourceResolver({
-      data: privateLocalData,
-      registry,
-      report: dailyReport,
-    }),
+    dailyReportSources,
     ...createConversationSummaryIntegration({
       consent,
       dependencies,

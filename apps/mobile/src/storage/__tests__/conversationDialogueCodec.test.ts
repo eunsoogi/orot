@@ -1,3 +1,4 @@
+import { createDailyReportIdentity } from '@orot/domain';
 import { decodeConversationArtifact } from '../conversationArtifactCodec';
 
 const base = {
@@ -44,4 +45,24 @@ test.each([
   { priorDialogueOmitted: false },
 ])('rejects malformed or excessive saved dialogue: %p', extra => {
   expect(decode(extra)).toBeNull();
+});
+
+test('validates report target strictly while accepting legacy turns', () => {
+  const report = {
+    identity: createDailyReportIdentity('2026-11-10', 'Asia/Seoul'),
+    runId: 'run',
+    revision: 1,
+  };
+  expect(decode({})).not.toBeNull();
+  expect(decode({ dailyReport: report })).not.toBeNull();
+  for (const dailyReport of [
+    null,
+    {},
+    { ...report, prose: 'private' },
+    { ...report, revision: 0 },
+    { ...report, revision: 1.5 },
+    { ...report, runId: '' },
+    { ...report, identity: { ...report.identity, key: 'wrong' } },
+  ])
+    expect(decode({ dailyReport })).toBeNull();
 });

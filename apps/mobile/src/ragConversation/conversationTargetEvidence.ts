@@ -44,3 +44,33 @@ export function includeConversationTarget(
   }
   return { ...batch, items, coverage };
 }
+
+/** Keep every selected report source within the existing shared evidence budget. */
+export function includeDailyReportEvidence(
+  batch: EvidenceBatch,
+  items: readonly EvidenceItem[],
+  limit: number,
+): EvidenceBatch {
+  return [...items]
+    .reverse()
+    .reduce(
+      (current, item) => includeConversationTarget(current, item, limit),
+      batch,
+    );
+}
+
+/** Reserve explicit targets together; never silently drop one to fit the budget. */
+export function includeConversationTargets(
+  batch: EvidenceBatch,
+  visit: EvidenceItem | undefined,
+  report: readonly EvidenceItem[],
+  limit: number,
+): EvidenceBatch {
+  if (report.length + Number(Boolean(visit)) > limit)
+    throw new RangeError('Selected evidence exceeds the evidence budget.');
+  return includeDailyReportEvidence(
+    includeConversationTarget(batch, visit, limit),
+    report,
+    limit,
+  );
+}

@@ -18,7 +18,10 @@ import {
   invalidateDailyReportRun,
   invalidDailyReportStatus,
 } from './dailyReportInvalidation';
-import type { DailyReportSave } from './dailyReportStorageTypes';
+import type {
+  DailyReportLookup,
+  DailyReportSave,
+} from './dailyReportStorageTypes';
 import {
   checkDailyReportSaveCancellation,
   dailyReportSaveFailure,
@@ -89,17 +92,18 @@ export function createDailyReportStorage(database: SqlDatabase) {
           value = { status: 'error' };
           return;
         }
-        const sourceChanged = await dailyReportSourcesChanged(
+        const sourceStatus = await dailyReportSourcesChanged(
           tx,
           row.invalid === 1,
           lineage,
           manualHistory,
         );
-        if (sourceChanged) {
+        if (sourceStatus !== 'current') {
           value = {
             status: 'stale',
             runId: head.active_run_id,
             revision: head.revision,
+            sourceStatus,
           };
           return;
         }
@@ -111,21 +115,7 @@ export function createDailyReportStorage(database: SqlDatabase) {
           ...checked,
         };
       });
-      return value as
-        | { status: 'missing' | 'deleted' | 'error' }
-        | { status: 'stale'; runId: string; revision: number }
-        | {
-            status: 'saved';
-            runId: string;
-            revision: number;
-            lineage: import('./dailyReportStorageTypes').DailyReportLineage[];
-            context: NonNullable<
-              ReturnType<typeof validateDailyReportCompletion>
-            >['context'];
-            report: NonNullable<
-              ReturnType<typeof validateDailyReportCompletion>
-            >['report'];
-          };
+      return value as DailyReportLookup;
     } catch {
       return { status: 'error' as const };
     }

@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { createDailyReportIdentity } from '@orot/domain';
 import { DailyReportSourceLinks } from '../DailyReportSourceLinks';
@@ -75,4 +80,26 @@ test('refreshes the report when its stored revision is no longer current', async
   );
   await fireEvent.press(screen.getByText('기록 출처 확인'));
   expect(onStale).toHaveBeenCalledTimes(1);
+});
+
+test('refreshes the report when a cited source was deleted', async () => {
+  const identity = createDailyReportIdentity('2026-11-10', 'Asia/Seoul');
+  const onStale = jest.fn();
+  await render(
+    <DailyReportSourceLinks
+      identity={identity}
+      runId="run"
+      revision={1}
+      resolve={jest.fn(async () => ({ status: 'deleted' as const }))}
+      onOpen={jest.fn()}
+      onStale={onStale}
+    />,
+  );
+  await fireEvent.press(screen.getByText('기록 출처 확인'));
+  await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
+  expect(
+    screen.queryByText(
+      '기록이 바뀌었거나 출처를 확인하지 못했어요. 보고서를 다시 확인해 주세요.',
+    ),
+  ).toBeNull();
 });

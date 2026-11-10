@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationSession } from './conversationSessionTypes';
 import { getRagConversationCopy } from './copy';
@@ -9,6 +10,7 @@ type RestoredTurn = {
   readonly citations: readonly EvidenceReference[];
   readonly completion?: 'complete' | 'partial';
   readonly entryIntent?: 'possibilities';
+  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
@@ -34,6 +36,19 @@ export function createConversationSessionRestoreState(input: {
     try {
       const turns = await input.read(entry.durableId, controller.signal);
       if (sessions.get(id) !== entry || controller.signal.aborted) return;
+      const reports = turns.flatMap(turn =>
+        turn.dailyReport ? [turn.dailyReport] : [],
+      );
+      // Canonical identity keys and revision identify a report regardless of JSON key order.
+      if (
+        reports.some(
+          report =>
+            report.identity.key !== reports[0]!.identity.key ||
+            report.runId !== reports[0]!.runId ||
+            report.revision !== reports[0]!.revision,
+        )
+      )
+        throw new Error('Conflicting report targets.');
       const messages = turns.flatMap((turn, index) => [
         ...(turn.question
           ? [
@@ -65,6 +80,7 @@ export function createConversationSessionRestoreState(input: {
       ]);
       input.update(id, {
         messages,
+        dailyReport: reports[0],
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
           ? 'possibilities'

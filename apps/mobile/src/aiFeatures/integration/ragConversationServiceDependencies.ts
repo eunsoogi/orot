@@ -7,6 +7,7 @@ import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvide
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { SelectedAiResolution } from './provider';
+import type { createDailyReportSourceResolver } from './dailyReportSources';
 
 /** Ports needed to execute one conversation with local and public evidence. */
 export interface RagConversationServiceDependencies {
@@ -20,4 +21,7 @@ export interface RagConversationServiceDependencies {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly ragRunner: typeof runRagConversationTurn;
   readonly createOperationRunId?: () => string;
+  readonly resolveDailyReport?: ReturnType<
+    typeof createDailyReportSourceResolver
+  >;
 }

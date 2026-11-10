@@ -4,11 +4,31 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import { stableJson } from './evidenceUtils';
 
-/** Revalidate the exact saved revision and its source lineage before exposing source links. */
+type Feature = ReturnType<typeof createDailyReportFeature>;
+type Lookup = Awaited<ReturnType<Feature['lookup']>>;
+type DailyReportSourceStatus = 'current' | 'stale' | 'deleted' | 'unavailable';
+
+function lookupStatus(
+  lookup: Lookup,
+  target: { readonly runId: string; readonly revision: number },
+): DailyReportSourceStatus {
+  if (lookup.status === 'saved')
+    return lookup.runId === target.runId && lookup.revision === target.revision
+      ? 'current'
+      : 'stale';
+  if (lookup.status === 'error') return 'unavailable';
+  if (lookup.status === 'deleted' || lookup.status === 'missing')
+    return 'deleted';
+  if (lookup.status === 'stale')
+    return lookup.sourceStatus === 'deleted' ? 'deleted' : 'stale';
+  return 'unavailable';
+}
+
+/** Reopen source links only while the exact saved report revision remains active. */
 export function createDailyReportSourceResolver(input: {
   data: () => Promise<AiFeatureLocalData>;
   registry: LocalEvidenceReferenceRegistry;
-  report: ReturnType<typeof createDailyReportFeature>;
+  report: Feature;
 }) {
   return async (
     identity: DailyReportIdentity,
@@ -16,31 +36,26 @@ export function createDailyReportSourceResolver(input: {
     revision: number,
     signal: AbortSignal,
   ) => {
-    const state = async () => {
-      const saved = await input.report.lookup(identity);
-      if (saved.status === 'error') return 'unavailable' as const;
-      return saved.status === 'saved' &&
-        saved.runId === runId &&
-        saved.revision === revision
-        ? ('current' as const)
-        : ('stale' as const);
-    };
+    const target = { identity, runId, revision };
+    const before = await input.report.lookup(identity);
+    const beforeStatus = lookupStatus(before, target);
     if (signal.aborted) return { status: 'unavailable' as const };
-    const before = await state();
-    if (before !== 'current') return { status: before };
+    if (beforeStatus !== 'current') return { status: beforeStatus };
+
     const data = await input.data();
     const discovery = await data.summaryArtifactDiscovery?.(input.registry);
     const detail = await discovery?.read(runId, signal);
-    const after = await state();
-    if (after !== 'current') return { status: after };
-    if (
-      !detail ||
-      detail.metadata.type !== 'daily_report' ||
-      detail.sourceStatus !== 'current' ||
-      signal.aborted
-    )
+    const after = await input.report.lookup(identity);
+    const afterStatus = lookupStatus(after, target);
+    if (signal.aborted) return { status: 'unavailable' as const };
+    if (afterStatus !== 'current') return { status: afterStatus };
+    if (!detail || detail.metadata.type !== 'daily_report')
       return { status: 'unavailable' as const };
-    // Only cited report evidence is offered; other retained lineage is not a claim.
+    if (detail.sourceStatus === 'changed') return { status: 'stale' as const };
+    if (detail.sourceStatus !== 'current')
+      return { status: 'unavailable' as const };
+
+    // Only citations attached to report claims are available as original sources.
     const cited = detail.content.hypotheses.flatMap(
       item => item.supportingEvidence,
     );
