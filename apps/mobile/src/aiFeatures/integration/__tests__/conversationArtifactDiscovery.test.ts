@@ -11,6 +11,9 @@ import { createConversationArtifactDiscovery } from '../conversationArtifactDisc
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { consent, localData } from '../featureServiceFixtures';
 import { createAiFeatureServices } from '../featureServices';
+import { generalEducation } from '../../../treatmentContext/localTreatmentEvidence';
+import { produceTreatmentRequest } from '../../../treatmentContext/treatmentRequestProducer';
+import { prepareTreatmentRetention } from '../../../treatmentContext/treatmentSavedLibrary';
 
 test('pages retained conversations across sessions after reopening and reads their origin', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-conversation-catalog-'));
@@ -47,6 +50,22 @@ test('pages retained conversations across sessions after reopening and reads the
       'INSERT INTO conversation_artifacts (id, session_id, created_at, result_json) VALUES (?, ?, ?, ?)',
       ['\n'.repeat(600), 'session-b', 'broken', '{invalid'],
     );
+    // A newer dedicated treatment answer must not take a search slot or leak into ordinary history.
+    const signal = new AbortController().signal;
+    const retention = await prepareTreatmentRetention(
+      connection.database,
+      signal,
+    );
+    expect(
+      await produceTreatmentRequest(
+        connection.database,
+        { kind: 'request', selection: { kind: 'general_options' } },
+        generalEducation,
+        signal,
+        [],
+        retention,
+      ),
+    ).toMatchObject({ status: 'validated' });
     const data = localData([]).data;
     Object.assign(data, {
       conversationArtifactDiscovery: async (

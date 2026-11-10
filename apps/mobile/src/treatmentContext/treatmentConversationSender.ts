@@ -6,6 +6,7 @@ import type { ConversationSender } from '../ragConversation/conversationSessionT
 import type { TreatmentEvidenceRequest } from './interfaces';
 import { produceTreatmentRequest } from './treatmentRequestProducer';
 import type { TreatmentRequestAction } from './treatmentRequestProducer';
+import type { TreatmentRetention } from './treatmentRequestProducer';
 import { treatmentSafetyGuidance } from './treatmentSafetyGuidance';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 
@@ -21,6 +22,11 @@ export function treatmentConversationSender(input: {
   readonly request: TreatmentEvidenceRequest;
   readonly safetyInput: SafetyPolicyInput;
   readonly skipEducation?: boolean;
+  readonly prepareRetention?: (
+    database: SqlDatabase,
+    signal: AbortSignal,
+  ) => Promise<TreatmentRetention>;
+  readonly onSaved?: (retention: TreatmentRetention) => void;
 }): TreatmentConversationSender {
   const sender: ConversationSender = async (_question, _history, signal) => {
     const operation = signal ?? new AbortController().signal;
@@ -34,6 +40,7 @@ export function treatmentConversationSender(input: {
         citations: [],
       };
     // Policy and cancellation can resolve without opening storage or starting education.
+    let retention: TreatmentRetention | undefined;
     const result =
       requiredActions.length || operation.aborted || input.skipEducation
         ? await evaluateTreatmentOutput(
@@ -43,16 +50,24 @@ export function treatmentConversationSender(input: {
             operation,
             requiredActions,
           )
-        : await produceTreatmentRequest(
-            typeof input.database === 'function'
-              ? await input.database()
-              : input.database,
-            input.action,
-            input.request,
-            operation,
-            [],
-          );
+        : await (async () => {
+            const database =
+              typeof input.database === 'function'
+                ? await input.database()
+                : input.database;
+            if (!operation.aborted)
+              retention = await input.prepareRetention?.(database, operation);
+            return produceTreatmentRequest(
+              database,
+              input.action,
+              input.request,
+              operation,
+              [],
+              retention,
+            );
+          })();
     if (result.status === 'validated') {
+      if (retention) input.onSaved?.(retention);
       return {
         status: 'answer',
         answer: result.claims.map(claim => claim.text).join('\n'),

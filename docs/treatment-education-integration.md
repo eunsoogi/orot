@@ -43,9 +43,18 @@ those inputs before the local dispatcher can open storage for education.
 Skipping ends the education request and preserves any guidance already triggered
 by the inputs. The form unmounts on submission. The result stays in the sheet,
 outside the draft, transcript, model context and retention. This entry offers
-the fixed general-options statement. Source-bound actions retain the producer's
-existing condition provenance, source-revision checks and dedicated reopen
-path. Generic restoration withholds retained treatment answers.
+the fixed general-options statement. The separate source picker offers current
+diagnosis records and saved possibilities with complete lineage. A possibility
+retains its supporting and contrary references, plus the saved run revision as
+an invalidation dependency. The run itself is never a clinical citation.
+
+An explicit save stores the verified claim in the encrypted treatment library.
+Reopening and follow-up revalidate the stored context and source revisions.
+The library displays metadata before reopening, and normal conversation
+discovery excludes its dedicated session. Deleting a source or saved parent
+revokes dependent outputs through the existing storage guards. The screen
+shows the limits of the fixed claims, including when the evidence cannot
+establish treatment purpose, monitoring or the contents of a clinician plan.
 
 The verifier only accepts its fixed statements. It cannot validate a clinician
 plan's contents, personalized advice, condition-specific options, purpose,

@@ -11,7 +11,10 @@ import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 
 export type TreatmentEducationSelection =
   | { readonly kind: 'general_options' | 'benefits_risks' | 'discuss_options' }
-  | { readonly kind: 'condition' | 'record_question'; readonly index: number };
+  | {
+      readonly kind: 'condition' | 'record_question' | 'source_question';
+      readonly index: number;
+    };
 
 /** Produce one closed, source-bound statement per explicit request. */
 export async function explainTreatmentEducation(
@@ -39,6 +42,16 @@ export async function explainTreatmentEducation(
         if (!condition || !Number.isInteger(selection.index)) return null;
         if (condition.status === 'ai_possibility') {
           if (selection.kind === 'record_question') return null;
+          // A possibility can inform the conversation, but does not support a treatment claim.
+          if (selection.kind === 'source_question')
+            return {
+              claims: [
+                {
+                  text: treatmentSafetyKo['treatmentSafety.discussOptions'],
+                  citations: [],
+                },
+              ],
+            };
           text = treatmentSafetyKo['treatmentSafety.possibleCondition'];
           citations = [
             ...condition.supportingEvidence,
@@ -46,7 +59,8 @@ export async function explainTreatmentEducation(
           ];
         } else {
           text =
-            selection.kind === 'record_question'
+            selection.kind === 'record_question' ||
+            selection.kind === 'source_question'
               ? treatmentSafetyKo['treatmentSafety.recordQuestion']
               : condition.status === 'clinician_recorded'
                 ? treatmentSafetyKo['treatmentSafety.clinicianCondition']

@@ -10,6 +10,7 @@ import { restoreConversationArtifact } from './restoreConversationArtifact';
 import { restoreConversationSessionPage } from './conversationSessionRestoration';
 import { fingerprint } from './evidenceUtils';
 import { retainedResearchSearchText } from './retainedResearchSearch';
+import { treatmentSessionPrefix } from '../../storage/treatmentSessionIdentity';
 
 type Metadata = ArtifactMetadata & { readonly type: 'conversation_turn' };
 type Content = { readonly question: string; readonly answer: string };
@@ -114,8 +115,8 @@ export function createConversationArtifactDiscovery(input: {
       const before = cursor(next);
       await input.storage.currentGeneration();
       const result = await input.database.execute(
-        'SELECT a.rowid AS scan_key, a.id FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE (? IS NULL OR a.rowid < ?) ORDER BY a.rowid DESC LIMIT ?',
-        [before, before, limit + 1],
+        'SELECT a.rowid AS scan_key, a.id FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE s.id NOT LIKE ? AND (? IS NULL OR a.rowid < ?) ORDER BY a.rowid DESC LIMIT ?',
+        [`${treatmentSessionPrefix}%`, before, before, limit + 1],
       );
       const rows = result.rows.slice(0, limit);
       const items: Metadata[] = [];

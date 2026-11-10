@@ -10,6 +10,28 @@ export const treatmentSafetyKo = {
   'treatmentSafety.inputRequired':
     '입력한 정보만으로는 안전 확인을 마칠 수 없어요. 치료 설명을 표시하지 않았어요.',
   'treatmentSafety.verifyReading': '입력한 혈압 수치와 단위를 확인해 주세요.',
+  'treatmentSafety.repeatReading': '60초가 지난 뒤 혈압을 다시 측정해 주세요.',
+  'treatmentSafety.recordReadings': '두 번의 혈압 측정값을 모두 기록해 주세요.',
+  'treatmentSafety.confirmSymptoms': '현재 위험 증상이 있는지 확인해 주세요.',
+  'treatmentSafety.discussAtVisit':
+    '예정된 진료에서 이 내용을 의료진에게 물어보세요.',
+  'treatmentSafety.chooseSource': '기록 또는 가능성 선택',
+  'treatmentSafety.saved': '저장한 치료 설명',
+  'treatmentSafety.noSources':
+    '현재 확인할 수 있는 진단 기록이나 가능성이 없어요.',
+  'treatmentSafety.noSaved': '저장한 치료 설명이 없어요.',
+  'treatmentSafety.sourceClinician': '의료진 기록',
+  'treatmentSafety.sourceReported': '사용자 기록',
+  'treatmentSafety.sourcePossibility': '검토할 가능성',
+  'treatmentSafety.recordUncertainty':
+    '기록만으로 현재 진단 상태를 확인할 수 없어요.',
+  'treatmentSafety.saveAndConfirm': '확인하고 설명 저장',
+  'treatmentSafety.reopen': '저장한 설명 열기',
+  'treatmentSafety.followUp': '의료진에게 물어볼 내용 확인',
+  'treatmentSafety.deleteSaved': '저장한 설명 삭제',
+  'treatmentSafety.sourceLimits':
+    '이 근거로는 치료 목적, 모니터링 방법, 의료진 계획의 내용을 확인할 수 없어요.',
+  'treatmentSafety.sourceCount': '연결된 출처 {count}개',
   'treatmentSafety.open': '치료 선택지 알아보기',
   'treatmentSafety.confirmation': '치료 설명 전 확인',
   'treatmentSafety.privateInput': '이 정보는 이번 확인에만 사용해요.',

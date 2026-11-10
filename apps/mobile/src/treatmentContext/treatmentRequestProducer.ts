@@ -1,6 +1,9 @@
 import type { SafetyPolicyAction } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
-import { stableJson } from '../aiFeatures/integration/evidenceUtils';
+import {
+  fingerprint,
+  stableJson,
+} from '../aiFeatures/integration/evidenceUtils';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import type { TreatmentEvidenceRequest } from './interfaces';
 import { createTreatmentClaimVerifier } from './treatmentClaimVerifier';
@@ -19,9 +22,14 @@ export type TreatmentRequestAction =
   | {
       readonly kind: 'follow_up';
       readonly artifactId: string;
+      readonly sessionId?: string;
       readonly selection: TreatmentEducationSelection;
     }
-  | { readonly kind: 'reopen'; readonly artifactId: string };
+  | {
+      readonly kind: 'reopen';
+      readonly artifactId: string;
+      readonly sessionId?: string;
+    };
 
 export interface TreatmentRetention {
   readonly id: string;
@@ -62,6 +70,7 @@ export async function produceTreatmentRequest(
       if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
       if (
         !original?.treatmentContext ||
+        (chosen.sessionId && chosen.sessionId !== original.sessionId) ||
         (saved && saved.sessionId !== original.sessionId)
       )
         return { status: 'withheld', reason: 'unsupported' };
@@ -104,6 +113,7 @@ export async function produceTreatmentRequest(
         'discuss_options',
         'condition',
         'record_question',
+        'source_question',
       ].includes(selection.kind)
     )
       return { status: 'withheld', reason: 'malformed' };
@@ -136,6 +146,32 @@ export async function produceTreatmentRequest(
     const claim = result.claims[0];
     if (!claim || result.claims.length !== 1)
       return { status: 'withheld', reason: 'unsupported' };
+    const parentRevision = original && fingerprint(original);
+    // Bind the prior answer as a dependency so deletion also wins inside the save transaction.
+    const sources =
+      original && parentRevision
+        ? [
+            ...bound.sources,
+            {
+              kind: 'generated_conversation' as const,
+              id: original.id,
+              revision: parentRevision,
+              reference: {
+                sourceKind: 'generated_artifact' as const,
+                sourceId: original.id,
+                sourceRevision: parentRevision,
+                evidenceId: original.id,
+                evidenceRevision: parentRevision,
+                effectiveTime: null,
+                reviewState: 'unreviewed' as const,
+                locator: {
+                  kind: 'generated_artifact',
+                  type: 'conversation_turn',
+                },
+              },
+            },
+          ]
+        : bound.sources;
     return await safety.save(
       {
         id: saved.id,
@@ -147,7 +183,7 @@ export async function produceTreatmentRequest(
         question: saved.question,
         answer: claim.text,
         citations: claim.citations,
-        sources: bound.sources,
+        sources,
         treatmentContext: bound.context,
       },
       bound,

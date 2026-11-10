@@ -33,15 +33,21 @@ function pressure(value: string) {
 /** Raw measurements and choices live only while this form is mounted. */
 export function TreatmentSafetyForm({
   onSubmit,
+  allowSave,
 }: {
-  readonly onSubmit: (input: SafetyPolicyInput, skip: boolean) => void;
+  readonly onSubmit: (
+    input: SafetyPolicyInput,
+    skip: boolean,
+    save?: boolean,
+  ) => void;
+  readonly allowSave?: boolean;
 }) {
   const [systolic, setSystolic] = useState('');
   const [diastolic, setDiastolic] = useState('');
   const [population, setPopulation] =
     useState<SafetyPolicyInput['population']>();
   const [symptom, setSymptom] = useState<(typeof symptoms)[number][0]>();
-  const submit = (skip: boolean) => {
+  const submit = (skip: boolean, save?: boolean) => {
     // Only this explicitly current, user-entered reading can enter the policy.
     onSubmit(
       {
@@ -68,6 +74,7 @@ export function TreatmentSafetyForm({
             : { status: 'warning_signs', signs: [symptom] },
       },
       skip,
+      save,
     );
   };
   return (
@@ -127,6 +134,13 @@ export function TreatmentSafetyForm({
         title={t('treatmentSafety.confirm')}
         onPress={() => submit(false)}
       />
+      {allowSave ? (
+        <AppButton
+          variant="secondary"
+          title={t('treatmentSafety.saveAndConfirm')}
+          onPress={() => submit(false, true)}
+        />
+      ) : null}
       <AppButton
         variant="secondary"
         title={t('treatmentSafety.skip')}
