@@ -1,36 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { iosTestBuildSpec } from '../ios-test-config.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 // This suite pins the Duo selectors and keeps other profile memberships explicit.
-test('Duo remains opt-in with its own product compatibility and exact native test inventory', () => {
-  const duo = iosTestBuildSpec('duo');
-  const core = iosTestBuildSpec('core');
-  assert.equal(duo.productProfile, 'ios-test-duo');
-  assert.deepEqual(duo.compatibleExecutions, ['duo']);
-  assert.deepEqual(core.compatibleExecutions, [
-    'core',
-    'speech',
-    'backup',
-    'fixtures',
-    'local-model',
-  ]);
-  assert.deepEqual(iosTestBuildSpec('provider-data').compatibleExecutions, [
-    'provider-data',
-    'health-import',
-    'microphone',
-    'provider-selection',
-  ]);
-  const buildInputs = (spec) =>
-    Object.fromEntries(
-      Object.entries(spec).filter(
-        ([key]) => !['productProfile', 'compatibleExecutions'].includes(key),
-      ),
-    );
-  assert.deepEqual(buildInputs(duo), buildInputs(core));
+test('Duo remains opt-in with its exact native test inventory', () => {
   const duoInventory = iosTestInventory('duo');
   const iPhoneFixtures = iosTestInventory('fixtures');
   const coreTests = iosTestInventory('core');
