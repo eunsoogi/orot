@@ -30,6 +30,10 @@ export async function restoreConversationArtifact(input: {
   const saved = await input.storage.read(input.id);
   if (!saved || saved.citations === undefined || input.signal.aborted)
     return null;
+  // Generic restoration cannot perform the closed treatment claim checks.
+  // Keep treatment turns out of both visible history and model context until
+  // the treatment-specific reopen path is integrated with this source binding.
+  if (saved.treatmentContext) return null;
   const restored = await restoreRetainedSources(
     saved.sources.filter(isOriginalConversationSource),
     input.registry,

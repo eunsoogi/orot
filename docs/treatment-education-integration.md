@@ -27,7 +27,8 @@ must use the original session. The store checks visibility, cancellation and
 source freshness; a hidden, deleted or changed source withholds the result.
 The recheck is not an atomic lease through later UI display or a later save:
 the integrating owner must maintain session lifecycle and source freshness at
-those boundaries. Generic conversation restoration does not enforce this path.
+those boundaries. Generic conversation restoration withholds treatment turns
+until a treatment-aware source-binding path is available.
 
 This producer only selects local app-owned copy; it does not access the model
 or literature ports and does not grant, bypass, or request external consent.
@@ -42,8 +43,8 @@ guidance into a conversation outcome. They do not interpret ordinary prompts,
 send model requests, or commit the answer through the generic conversation
 retention observer. The caller must not connect them to the shared screen until
 treatment-aware retention, restoration and follow-up dispatch are integrated:
-generic restoration currently projects stored answers without the treatment
-verifier, and an ordinary follow-up would leave the treatment boundary. The
+generic restoration currently withholds treatment answers, and an ordinary
+follow-up would leave the treatment boundary. The
 sender currently provides a partial, in-memory answer; it is not proof of a
 complete treatment explanation or a saved conversation.
 
