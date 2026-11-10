@@ -31,7 +31,12 @@ const cohorts = {
     profiles: ['core'],
     suites: ['ui'],
     minutes: 20,
-    classes: ['RootNavigationUITests', 'TestHostConnectionTests', 'FormScrollGeometryUITests'],
+    classes: [
+      'RootNavigationUITests',
+      'TestHostConnectionTests',
+      'FormScrollGeometryUITests',
+      'ChartFoundationUITests',
+    ],
   },
   'recording-evidence': {
     profiles: ['core'],
