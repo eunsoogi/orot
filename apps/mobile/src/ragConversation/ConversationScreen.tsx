@@ -23,10 +23,8 @@ import { useNavigationOcclusion } from '../navigation/useNavigationContentInset'
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
-import {
-  consumeConversationEntryForSession,
-  useConversationEntryIntent,
-} from './useConversationEntryIntent';
+import { useConversationEntryIntent } from './useConversationEntryIntent';
+import { entryIntentSender } from './entryIntentSender';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
@@ -212,12 +210,7 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, (question, history, signal, observer) => {
-                  const context = consumeConversationEntryForSession(store, id);
-                  return context
-                    ? onSend(question, history, signal, observer, context)
-                    : onSend(question, history, signal, observer);
-                });
+                store.send(id, entryIntentSender(store, id, onSend));
               }}
               onCancel={cancel}
             />

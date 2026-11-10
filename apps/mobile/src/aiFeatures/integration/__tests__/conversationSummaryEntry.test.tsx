@@ -116,3 +116,60 @@ test('renders a validated summary in the existing conversation', async () => {
   expect(screen.getByText('수면 기록이에요.')).toBeTruthy();
   expect(screen.getByText('저장됨')).toBeTruthy();
 });
+
+test.each([
+  'provider_configuration',
+  'consent_required',
+  'retrieval_failed',
+] as const)(
+  'retains summary intent after %s and consumes it after success',
+  async kind => {
+    const services = createAiFeatureServices({ authorize: jest.fn() });
+    const send = jest
+      .fn<
+        ReturnType<typeof services.sendRagMessage>,
+        Parameters<typeof services.sendRagMessage>
+      >()
+      .mockResolvedValueOnce({ status: 'failure', kind })
+      .mockResolvedValue({ status: 'no_evidence' });
+    await render(
+      <AiFeatureSharedNavigationStateProvider>
+        <AiFeatureFlowScreen
+          route="health-summary"
+          navigationRouteKey="summary-retry"
+          onRouteStateChange={jest.fn()}
+          onBack={jest.fn()}
+          onOpenDiseaseHypotheses={jest.fn()}
+          onOpenRagConversation={jest.fn()}
+          onOpenExternalEvidence={jest.fn()}
+          onOpenProviderSelection={jest.fn()}
+          onOpenSource={jest.fn()}
+          resolveSelectedAi={async () => ({ status: 'selection-required' })}
+          confirmConsent={jest.fn()}
+          selectedAiRevision={0}
+          services={{ ...services, sendRagMessage: send }}
+          onOpenArticle={jest.fn()}
+        />
+      </AiFeatureSharedNavigationStateProvider>,
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('rag-conversation-input').props.value,
+      ).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    expect(send.mock.calls[1]?.[4]).toMatchObject({ intent: 'health-summary' });
+    await waitFor(() =>
+      expect(screen.getByTestId('rag-conversation-input').props.value).toBe(''),
+    );
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '후속 질문',
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(3));
+    expect(send.mock.calls[2]?.[4]).toMatchObject({ intent: 'conversation' });
+  },
+);
