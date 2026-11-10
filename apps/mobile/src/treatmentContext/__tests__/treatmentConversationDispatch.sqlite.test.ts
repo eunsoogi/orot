@@ -6,6 +6,21 @@ import { sendExplicitTreatmentMessage } from '../../ragConversation/conversation
 import type { TreatmentExplanationRequest } from '../interfaces';
 import { treatmentConversationSender } from '../treatmentConversationSender';
 
+const safetyInput = {
+  population: 'adult_not_pregnant' as const,
+  readingContext: 'current_measurement' as const,
+  readings: [
+    {
+      systolicMmHg: 120,
+      diastolicMmHg: 80,
+      unit: 'mmHg' as const,
+      measuredAt: '2026-10-05T00:00:00.000Z',
+      source: 'synthetic',
+    },
+  ],
+  symptomAssessment: { status: 'no_new_or_concerning_symptoms' as const },
+};
+
 test('explicit treatment action reaches a validated conversation answer without provider or search', async () => {
   const db = openSqliteTestDatabase(':memory:');
   const sessions = createConversationSessions();
@@ -35,7 +50,7 @@ test('explicit treatment action reaches a validated conversation answer without 
         database: db.database,
         request,
         action: { kind: 'request', selection: { kind: 'general_options' } },
-        actions: [],
+        safetyInput,
       }),
     );
     expect(sessions.getSnapshot().sessions[0]?.messages).toEqual(
@@ -50,11 +65,29 @@ test('explicit treatment action reaches a validated conversation answer without 
     );
     expect(authorize).not.toHaveBeenCalled();
     expect(search).not.toHaveBeenCalled();
+    expect(
+      await treatmentConversationSender({
+        database: db.database,
+        request,
+        action: { kind: 'request', selection: { kind: 'general_options' } },
+        safetyInput: {},
+      })('Synthetic', [], new AbortController().signal),
+    ).toEqual({ status: 'failure', kind: 'validation_failed' });
     const urgent = await treatmentConversationSender({
       database: db.database,
       request,
       action: { kind: 'request', selection: { kind: 'general_options' } },
-      actions: ['seek_immediate_emergency_help'],
+      safetyInput: {
+        ...safetyInput,
+        readings: [
+          {
+            ...safetyInput.readings[0]!,
+            systolicMmHg: 190,
+            diastolicMmHg: 120,
+          },
+        ],
+        symptomAssessment: { status: 'warning_signs', signs: ['chest_pain'] },
+      },
     })('Synthetic', [], new AbortController().signal);
     expect(urgent).toEqual({
       status: 'answer',
@@ -69,7 +102,7 @@ test('explicit treatment action reaches a validated conversation answer without 
         database: db.database,
         request,
         action: { kind: 'request', selection: { kind: 'condition', index: 4 } },
-        actions: [],
+        safetyInput,
       }),
     );
     expect(

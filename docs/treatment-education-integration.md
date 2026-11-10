@@ -39,7 +39,10 @@ conversation route, provider dispatch and UI are not wired by this module.
 
 `sendExplicitTreatmentMessage` and `treatmentConversationSender` provide a
 typed, opt-in dispatcher and map only a verified result or existing urgent
-guidance into a conversation outcome. They do not interpret ordinary prompts,
+guidance into a conversation outcome. The sender evaluates the existing safety
+policy from a caller-supplied structured input; absent information remains an
+action to withhold, not an assumed normal measurement. It does not perform
+comprehensive triage. They do not interpret ordinary prompts,
 send model requests, or commit the answer through the generic conversation
 retention observer. The caller must not connect them to the shared screen until
 treatment-aware retention, restoration and follow-up dispatch are integrated:

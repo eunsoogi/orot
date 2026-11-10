@@ -1,4 +1,5 @@
-import type { SafetyPolicyAction } from '@orot/domain';
+import { SafetyPolicyEngine } from '@orot/domain';
+import type { SafetyPolicyInput } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import { t } from '../i18n';
 import type { ConversationSender } from '../ragConversation/conversationSessionTypes';
@@ -17,7 +18,7 @@ export function treatmentConversationSender(input: {
   readonly database: SqlDatabase;
   readonly action: TreatmentRequestAction;
   readonly request: TreatmentExplanationRequest;
-  readonly actions: readonly SafetyPolicyAction[];
+  readonly safetyInput: SafetyPolicyInput;
 }): TreatmentConversationSender {
   const sender: ConversationSender = async (_question, _history, signal) => {
     const result = await produceTreatmentRequest(
@@ -25,7 +26,7 @@ export function treatmentConversationSender(input: {
       input.action,
       input.request,
       signal ?? new AbortController().signal,
-      input.actions,
+      new SafetyPolicyEngine().evaluate(input.safetyInput).requiredActions,
     );
     if (result.status === 'validated') {
       return {
