@@ -86,8 +86,7 @@ export function createConversationSessionRestoreState(input: {
           messages[0]?.content.slice(0, 36) ||
           getRagConversationCopy().newConversation,
         error: '',
-        // A tool-only or empty restore has no committed target to authorize a follow-up.
-        restoreFailed: !turns.some(turn => turn.question && turn.answer),
+        restoreFailed: false,
         restoring: false,
       });
       sessions.delete(id);

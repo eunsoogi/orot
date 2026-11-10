@@ -1,5 +1,6 @@
 import { createConversationSessionRestoreState } from '../conversationSessionRestoreState';
 import { createConversationSessions } from '../conversationSessions';
+import { createDailyReportIdentity } from '@orot/domain';
 
 test('disposing while a restore is pending aborts it and suppresses its late content', async () => {
   let finish!: (
@@ -46,41 +47,76 @@ test('restores the possibilities intent with the validated conversation', async 
   );
 });
 
-test.each([[[]], [[{ question: '', answer: '', citations: [] }]]])(
-  'does not enable follow-up without a committed turn',
-  async turns => {
-    const update = jest.fn();
-    const state = createConversationSessionRestoreState({
-      update,
-      read: async () => turns,
+test.each([
+  ['empty', []],
+  [
+    'tool-only',
+    [
+      {
+        question: '',
+        answer: '',
+        citations: [],
+        toolMessageId: 'interrupted',
+        toolEvents: [],
+      },
+    ],
+  ],
+] as const)(
+  'allows a follow-up after restoring a general %s session',
+  async (_kind, turns) => {
+    const retention = {
+      attachExisting: async () => {},
+      activeIdentity: () => 'saved',
+      activeLease: () => null,
+      beginTurn: async () => undefined,
+      invalidate: () => {},
+    };
+    const sessions = createConversationSessions({
+      retention: retention as never,
+      restoreSession: async () => turns,
     });
-    await state.start(1, 'saved');
-    expect(update).toHaveBeenCalledWith(
-      1,
-      expect.objectContaining({ restoreFailed: true }),
+    const id = await sessions.attachExisting(
+      'saved',
+      0,
+      '2026-10-05T00:00:00.000Z',
     );
+    expect(
+      sessions.getSnapshot().sessions.find(session => session.id === id)
+        ?.restoreFailed,
+    ).toBe(false);
+    sessions.setDraft(id, 'follow-up');
+    const send = jest.fn(async () => ({
+      status: 'failure' as const,
+      kind: 'retrieval_failed' as const,
+    }));
+    await sessions.send(id, send);
+    expect(send).toHaveBeenCalledTimes(1);
+    sessions.dispose();
   },
 );
 
-test('an empty restored session cannot dispatch a follow-up', async () => {
-  const retention = {
-    attachExisting: async () => {},
-    activeIdentity: () => 'saved',
-    activeLease: () => null,
-    invalidate: () => {},
+test('rejects conflicting saved report targets', async () => {
+  const report = {
+    identity: createDailyReportIdentity('2026-11-10', 'Asia/Seoul'),
+    runId: 'report',
+    revision: 1,
   };
-  const sessions = createConversationSessions({
-    retention: retention as never,
-    restoreSession: async () => [],
+  const update = jest.fn();
+  const state = createConversationSessionRestoreState({
+    update,
+    read: async () => [
+      { question: 'one', answer: 'answer', citations: [], dailyReport: report },
+      {
+        question: 'two',
+        answer: 'answer',
+        citations: [],
+        dailyReport: { ...report, revision: 2 },
+      },
+    ],
   });
-  const id = await sessions.attachExisting(
-    'saved',
-    0,
-    '2026-10-05T00:00:00.000Z',
+  await state.start(1, 'saved');
+  expect(update).toHaveBeenCalledWith(
+    1,
+    expect.objectContaining({ restoreFailed: true }),
   );
-  sessions.setDraft(id, 'follow-up');
-  const send = jest.fn();
-  await sessions.send(id, send);
-  expect(send).not.toHaveBeenCalled();
-  sessions.dispose();
 });
