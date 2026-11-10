@@ -75,7 +75,9 @@ export function createSummaryArtifactDiscovery(input: {
       await input.storage.list();
       const result = await input.database.execute(
         `SELECT id FROM symptom_summary_runs AS run
-         WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT ?`,
+         WHERE (? IS NULL OR id < ?)
+           AND NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = run.id)
+         ORDER BY id DESC LIMIT ?`,
         [cursor ?? null, cursor ?? null, limit + 1],
       );
       checkCancelled(signal);

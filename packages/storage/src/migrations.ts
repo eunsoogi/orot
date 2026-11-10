@@ -7,9 +7,8 @@ import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigration
 import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
-
-export const CURRENT_SCHEMA_VERSION = 12;
-
+import { createDailyReportTables } from './dailyReportMigration';
+export const CURRENT_SCHEMA_VERSION = 13;
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
   const version = Number(result.rows[0]?.user_version ?? 0);
@@ -245,6 +244,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await createHealthObservationLibraryIndex(transaction);
     await createHealthMedicationLibraryIndex(transaction);
     if (currentVersion < 12) await ensureSymptomDeletionFence(transaction);
-    await transaction.execute('PRAGMA user_version = 12');
+    if (currentVersion < 13) await createDailyReportTables(transaction);
+    await transaction.execute('PRAGMA user_version = 13');
   });
 }
