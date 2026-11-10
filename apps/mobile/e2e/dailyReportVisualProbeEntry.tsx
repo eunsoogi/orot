@@ -1,6 +1,6 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   AppRegistry,
   NativeModules,
@@ -18,6 +18,7 @@ import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter
 import { createNavigationController } from '../src/navigation/navigationController';
 import { SelectedModelControl } from '../src/layout/SelectedModelControl';
 import { feature, identity, target } from './dailyReportVisualFixture';
+import { useControlledDailyReportPreview } from './useControlledDailyReportPreview';
 
 type Route = 'report' | 'conversation';
 const leaveState = {
@@ -35,10 +36,12 @@ export function DailyReportVisualProbe({
   reportFeature = feature,
   reportRevision = target.revision,
   initialRoute = 'report',
+  reportControls,
 }: {
   reportFeature?: ReturnType<typeof createDailyReportFeature>;
   reportRevision?: number;
   initialRoute?: Route;
+  reportControls?: ReactNode;
 } = {}) {
   const [controller] = useState(() =>
     createNavigationController<Route>(initialRoute),
@@ -60,7 +63,10 @@ export function DailyReportVisualProbe({
               initialIdentity={identity}
               navigationRouteKey={navigation.route.key}
               providerSelection={
-                <SelectedModelControl name="합성 검사 모델" local />
+                <>
+                  <SelectedModelControl name="합성 검사 모델" local />
+                  {reportControls}
+                </>
               }
               onBack={navigation.onBack}
               onChat={value => {
@@ -105,6 +111,17 @@ export function DailyReportVisualProbe({
         }
       </NavigationRouteAdapter>
     </ConversationSessionsProvider>
+  );
+}
+
+/** Reuses the visual fixture with an explicitly held preview and native controls. */
+export function DailyReportLoadingProbe() {
+  const { reportFeature, controls } = useControlledDailyReportPreview();
+  return (
+    <DailyReportVisualProbe
+      reportFeature={reportFeature}
+      reportControls={controls}
+    />
   );
 }
 

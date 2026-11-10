@@ -1,5 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { DailyReportVisualProbe } from '../e2e/dailyReportVisualProbeEntry';
+import {
+  DailyReportLoadingProbe,
+  DailyReportVisualProbe,
+} from '../e2e/dailyReportVisualProbeEntry';
+import { t } from '../src/i18n';
 
 jest.mock('react-native-get-random-values', () => ({}));
 
@@ -44,5 +48,36 @@ test('synthetic saved report enters the production conversation with its exact i
   expect(
     await screen.findByText('합성 보고서 대화 연결을 확인했어요.'),
   ).toBeTruthy();
+  await view.unmount();
+});
+
+test('controlled preview rejects and releases only on explicit fixture actions', async () => {
+  const saved = '합성 심박수 기록은 72회예요.';
+  const pending = t('dailyReport.preparing');
+  const error = t('dailyReport.lookupError');
+  const view = await render(<DailyReportLoadingProbe />);
+  expect(screen.getByText(pending)).toBeTruthy();
+  expect(screen.getByText(saved)).toBeTruthy();
+
+  await fireEvent.press(
+    screen.getByTestId('daily-report-fixture-reject-preview'),
+  );
+  expect(screen.getByText(error)).toBeTruthy();
+  expect(screen.queryByText(pending)).toBeNull();
+  expect(screen.getByText(saved)).toBeTruthy();
+
+  await fireEvent.press(
+    screen.getByRole('button', { name: t('dailyReport.retry') }),
+  );
+  expect(screen.getByText(pending)).toBeTruthy();
+  expect(screen.queryByText(error)).toBeNull();
+  expect(screen.getByText(saved)).toBeTruthy();
+
+  await fireEvent.press(
+    screen.getByTestId('daily-report-fixture-release-preview'),
+  );
+  expect(screen.getByText(/까지 확인한 기록 1건/u)).toBeTruthy();
+  expect(screen.queryByText(pending)).toBeNull();
+  expect(screen.getByText(saved)).toBeTruthy();
   await view.unmount();
 });
