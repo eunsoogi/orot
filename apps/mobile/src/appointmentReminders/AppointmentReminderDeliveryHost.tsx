@@ -28,6 +28,9 @@ export function AppointmentReminderDeliveryHost({
     const deliverDaily = createDailyReminderDelivery({
       consume: consumeDailyReminderTarget,
       acknowledge: acknowledgeDailyReminderTarget,
+      onBusy: () => {
+        retryWhenNavigationAvailable = true;
+      },
       confirm: async () => {
         if (controller.getSnapshot().isTransitioning) {
           retryWhenNavigationAvailable = true;

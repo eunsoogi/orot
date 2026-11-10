@@ -32,13 +32,14 @@ test('defers a tap during navigation and delivers it once with an uncertain deli
     .mockResolvedValueOnce('busy')
     .mockResolvedValue('approved');
   const unavailable = jest.fn();
-  const consumer = jest.fn(() => true);
+  const consumer = jest.fn(() => 'opened' as const);
   const unregister = registerDailyReminderConsumer(consumer);
   const deliver = createDailyReminderDelivery({
     consume,
     acknowledge,
     confirm,
     unavailable,
+    onBusy: jest.fn(),
   });
   await deliver();
   expect(consumer).not.toHaveBeenCalled();
@@ -77,6 +78,7 @@ test('surfaces missing consumers and invalid payloads without navigation', async
     acknowledge,
     confirm,
     unavailable,
+    onBusy: jest.fn(),
   });
   await deliver();
   await deliver();
@@ -98,13 +100,14 @@ test('a declined leave prompt cancels that tap while the next tap remains action
     .mockResolvedValueOnce('declined')
     .mockResolvedValue('approved');
   const unavailable = jest.fn();
-  const consumer = jest.fn(() => true);
+  const consumer = jest.fn(() => 'opened' as const);
   const unregister = registerDailyReminderConsumer(consumer);
   await createDailyReminderDelivery({
     consume,
     acknowledge,
     confirm,
     unavailable,
+    onBusy: jest.fn(),
   })();
   expect(consumer).toHaveBeenCalledTimes(1);
   expect(consumer).toHaveBeenCalledWith(
@@ -124,8 +127,8 @@ test('does not deliver to a replacement destination after a pending leave prompt
       }),
   );
   const unavailable = jest.fn();
-  const original = jest.fn(() => true);
-  const replacement = jest.fn(() => true);
+  const original = jest.fn(() => 'opened' as const);
+  const replacement = jest.fn(() => 'opened' as const);
   const unregisterOriginal = registerDailyReminderConsumer(original);
   const deliver = createDailyReminderDelivery({
     consume: async () => pending[0] ?? null,
@@ -134,6 +137,7 @@ test('does not deliver to a replacement destination after a pending leave prompt
     },
     confirm,
     unavailable,
+    onBusy: jest.fn(),
   });
   const delivery = deliver();
   await Promise.resolve();
@@ -151,7 +155,7 @@ test('does not deliver to a replacement destination after a pending leave prompt
 test('surfaces an unavailable date when the destination cannot resolve it', async () => {
   const pending = [{ kind: 'daily_report', deliveryTimestamp: '1700000000' }];
   const unavailable = jest.fn();
-  const unregister = registerDailyReminderConsumer(() => false);
+  const unregister = registerDailyReminderConsumer(() => 'unavailable');
   await createDailyReminderDelivery({
     consume: async () => pending[0] ?? null,
     acknowledge: async () => {
@@ -159,7 +163,35 @@ test('surfaces an unavailable date when the destination cannot resolve it', asyn
     },
     confirm: async () => 'approved',
     unavailable,
+    onBusy: jest.fn(),
   })();
   expect(unavailable).toHaveBeenCalledTimes(1);
+  unregister();
+});
+
+test('keeps the tap when navigation becomes busy after the leave check', async () => {
+  const pending = [{ kind: 'daily_report', deliveryTimestamp: '1700000000' }];
+  const acknowledge = jest.fn(async () => {
+    pending.shift();
+  });
+  const onBusy = jest.fn();
+  const consumer = jest
+    .fn()
+    .mockReturnValueOnce('busy')
+    .mockReturnValue('opened');
+  const unregister = registerDailyReminderConsumer(consumer);
+  const deliver = createDailyReminderDelivery({
+    consume: async () => pending[0] ?? null,
+    acknowledge,
+    confirm: async () => 'approved',
+    onBusy,
+    unavailable: jest.fn(),
+  });
+  await deliver();
+  expect(onBusy).toHaveBeenCalledTimes(1);
+  expect(acknowledge).not.toHaveBeenCalled();
+  await deliver();
+  expect(consumer).toHaveBeenCalledTimes(2);
+  expect(acknowledge).toHaveBeenCalledTimes(1);
   unregister();
 });

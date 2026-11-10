@@ -15,7 +15,9 @@ export interface DailyReminderEntry {
  * restarts: navigation and acknowledgement are not atomic. An observed timezone
  * is evidence for display, not proof of the timezone when delivery occurred.
  */
-export type DailyReminderConsumer = (entry: DailyReminderEntry) => boolean;
+export type DailyReminderConsumer = (
+  entry: DailyReminderEntry,
+) => 'opened' | 'busy' | 'unavailable';
 let consumer: DailyReminderConsumer | undefined;
 
 /** Register only while the destination can synchronously accept an entry. */
@@ -76,6 +78,7 @@ export function createDailyReminderDelivery(port: {
   consume(): Promise<unknown>;
   acknowledge(timestamp: string): Promise<void>;
   confirm(): Promise<'approved' | 'declined' | 'busy'>;
+  onBusy(): void;
   unavailable(): void;
 }) {
   let lastOpened: string | null = null;
@@ -106,8 +109,13 @@ export function createDailyReminderDelivery(port: {
             if (decision === 'busy') return;
             if (decision === 'approved') {
               // A leave prompt can outlive the registered destination.
-              if (consumer !== destination || !destination(parsed))
-                port.unavailable();
+              const result =
+                consumer === destination ? destination(parsed) : 'unavailable';
+              if (result === 'busy') {
+                port.onBusy();
+                return;
+              }
+              if (result === 'unavailable') port.unavailable();
               else lastOpened = parsed.entryKey;
             }
           }

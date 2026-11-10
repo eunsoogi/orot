@@ -44,7 +44,7 @@ test('the app host hands a cold-start daily tap to the registered destination af
   jest.mocked(acknowledgeDailyReminderTarget).mockImplementation(async () => {
     pending.shift();
   });
-  const consumer = jest.fn(() => true);
+  const consumer = jest.fn(() => 'opened' as const);
   const unregister = registerDailyReminderConsumer(consumer);
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
