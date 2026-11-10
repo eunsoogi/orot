@@ -18,7 +18,17 @@ export function sendExplicitTreatmentMessage(
   id: number,
   sender: TreatmentConversationSender,
 ) {
-  return store.send(id, sender);
+  return store.send(id, (_question, _history, signal) =>
+    dispatchExplicitTreatmentAction(sender, signal),
+  );
+}
+
+/** Local safety inputs and results stay outside the ordinary conversation history. */
+export function dispatchExplicitTreatmentAction(
+  sender: TreatmentConversationSender,
+  signal?: AbortSignal,
+) {
+  return sender('', [], signal);
 }
 
 /** Keep the operation identity until preparation succeeds, including cancellation and edited retries. */

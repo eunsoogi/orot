@@ -4,7 +4,9 @@ type TreatmentGuidanceKey =
   | 'treatmentSafety.withheld'
   | 'treatmentSafety.emergency'
   | 'treatmentSafety.conditionalEmergency'
-  | 'treatmentSafety.clinicianPromptly';
+  | 'treatmentSafety.clinicianPromptly'
+  | 'treatmentSafety.inputRequired'
+  | 'treatmentSafety.verifyReading';
 
 /** Only app-owned keys are returned; urgent guidance never includes generated copy. */
 export function treatmentSafetyGuidance(
@@ -12,7 +14,7 @@ export function treatmentSafetyGuidance(
 ): readonly TreatmentGuidanceKey[] {
   if (result.status === 'withheld')
     return result.reason === 'cancelled' ? [] : ['treatmentSafety.withheld'];
-  if (result.status !== 'urgent') return [];
+  if (result.status === 'validated') return [];
   const keys: TreatmentGuidanceKey[] = [];
   if (result.actions.includes('seek_immediate_emergency_help'))
     keys.push('treatmentSafety.emergency');
@@ -24,5 +26,11 @@ export function treatmentSafetyGuidance(
     keys.push('treatmentSafety.conditionalEmergency');
   if (result.actions.includes('contact_clinician_promptly'))
     keys.push('treatmentSafety.clinicianPromptly');
+  if (result.status === 'policy') {
+    if (result.actions.includes('verify_measurement_data'))
+      keys.push('treatmentSafety.verifyReading');
+    if (result.actions.includes('provide_required_information') || !keys.length)
+      keys.push('treatmentSafety.inputRequired');
+  }
   return keys;
 }

@@ -3,7 +3,7 @@ import type { SafetyPolicyAction } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import type { ConversationArtifact } from '../storage/conversationArtifactCodec';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { createTreatmentClaimVerifier } from './treatmentClaimVerifier';
 import { executeTreatmentSafety } from './treatmentSafetyExecution';
 import { readValidatedTreatment } from './treatmentSafetyReopen';
@@ -17,7 +17,7 @@ export function createTreatmentSafetyService(database: SqlDatabase) {
     generate(
       invocation: MultiAgentInvocation,
       generate: (invocation: MultiAgentInvocation) => Promise<unknown>,
-      request: TreatmentExplanationRequest,
+      request: TreatmentEvidenceRequest,
       signal: AbortSignal,
       actions: readonly SafetyPolicyAction[],
     ) {
@@ -32,7 +32,7 @@ export function createTreatmentSafetyService(database: SqlDatabase) {
     },
     reopen(
       id: string,
-      request: TreatmentExplanationRequest,
+      request: TreatmentEvidenceRequest,
       signal: AbortSignal,
       actions: readonly SafetyPolicyAction[],
     ) {
@@ -47,7 +47,7 @@ export function createTreatmentSafetyService(database: SqlDatabase) {
     },
     save(
       candidate: ConversationArtifact,
-      request: TreatmentExplanationRequest,
+      request: TreatmentEvidenceRequest,
       signal: AbortSignal,
       actions: readonly SafetyPolicyAction[],
       expectedSessionVersion = 0,

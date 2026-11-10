@@ -5,7 +5,7 @@ import type {
 import type { SafetyPolicyAction } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import { treatmentSafetyKo } from '../i18n/treatmentSafety';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { createTreatmentSafetyService } from './treatmentSafetyService';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 
@@ -16,7 +16,7 @@ export type TreatmentEducationSelection =
 /** Produce one closed, source-bound statement per explicit request. */
 export async function explainTreatmentEducation(
   database: SqlDatabase,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   selection: TreatmentEducationSelection,
   signal: AbortSignal,
   actions: readonly SafetyPolicyAction[],

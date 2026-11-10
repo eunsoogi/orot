@@ -1,6 +1,6 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { parseTreatmentContext } from './validation';
 
 /**
@@ -12,7 +12,7 @@ import { parseTreatmentContext } from './validation';
 export interface TreatmentClaimVerifier {
   verify(
     claim: TreatmentClaim,
-    request: TreatmentExplanationRequest,
+    request: TreatmentEvidenceRequest,
     signal: AbortSignal,
   ): Promise<boolean>;
 }
@@ -25,7 +25,7 @@ export interface TreatmentClaim {
 /** Withhold generated text unless an independent semantic verifier is available. */
 export async function verifyTreatmentClaim(
   claim: TreatmentClaim,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   verifier: TreatmentClaimVerifier | undefined,
   signal: AbortSignal,
 ): Promise<boolean> {

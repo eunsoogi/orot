@@ -7,16 +7,20 @@ import type { ConversationArtifactSource } from '../ragConversation/conversation
 import type { TreatmentContext } from './types';
 import type { TreatmentPublicEvidenceTool } from './retrieval';
 
-/** Consumers must use the existing inference consent and source revalidation boundaries. */
-export interface TreatmentExplanationRequest {
+/** Local verification needs provenance but has no outbound capabilities. */
+export interface TreatmentEvidenceRequest {
   readonly context: TreatmentContext;
   readonly sources: readonly ConversationArtifactSource[];
-  readonly inferenceConsent: ExecutionConsentPort;
-  readonly publicEvidenceTool: TreatmentPublicEvidenceTool;
   readonly revalidateEvidence: (
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ) => Promise<boolean>;
+}
+
+/** External consumers must use the existing scoped consent and retrieval ports. */
+export interface TreatmentExplanationRequest extends TreatmentEvidenceRequest {
+  readonly inferenceConsent: ExecutionConsentPort;
+  readonly publicEvidenceTool: TreatmentPublicEvidenceTool;
 }
 
 /** Interpretation remains separate from original records and population-level evidence. */

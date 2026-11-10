@@ -1,6 +1,6 @@
 import type { MultiAgentInvocation } from '@orot/agent-runtime';
 import type { SafetyPolicyAction } from '@orot/domain';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import type { TreatmentClaimVerifier } from './safety';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
@@ -10,7 +10,7 @@ import { bufferTreatmentStream } from './treatmentStreamBoundary';
 export async function executeTreatmentSafety(
   invocation: MultiAgentInvocation,
   generate: (invocation: MultiAgentInvocation) => Promise<unknown>,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   verifier: TreatmentClaimVerifier | undefined,
   signal: AbortSignal,
   policyActions: readonly SafetyPolicyAction[],

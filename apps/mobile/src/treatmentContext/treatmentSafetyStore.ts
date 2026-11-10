@@ -2,7 +2,7 @@ import type { SafetyPolicyAction } from '@orot/domain';
 import { decodeConversationArtifact } from '../storage/conversationArtifactCodec';
 import type { ConversationArtifact } from '../storage/conversationArtifactCodec';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import type { TreatmentClaimVerifier } from './safety';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
@@ -12,7 +12,7 @@ import { validateTreatmentArtifact } from './treatmentSafetyArtifact';
 export async function saveValidatedTreatment(
   store: Pick<ReturnType<typeof createConversationArtifactStorage>, 'append'>,
   candidate: ConversationArtifact,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   verifier: TreatmentClaimVerifier,
   signal: AbortSignal,
   actions: readonly SafetyPolicyAction[],

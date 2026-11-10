@@ -2,7 +2,7 @@ import type { SafetyPolicyAction } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { createTreatmentClaimVerifier } from './treatmentClaimVerifier';
 import { explainTreatmentEducation } from './treatmentEducation';
 import type { TreatmentEducationSelection } from './treatmentEducation';
@@ -35,7 +35,7 @@ export interface TreatmentRetention {
 export async function produceTreatmentRequest(
   database: SqlDatabase,
   action: TreatmentRequestAction,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   signal: AbortSignal,
   actions: readonly SafetyPolicyAction[],
   retention?: TreatmentRetention,
@@ -55,7 +55,7 @@ export async function produceTreatmentRequest(
       ...request,
       context: JSON.parse(JSON.stringify(request.context)),
       sources: JSON.parse(JSON.stringify(request.sources)),
-    } as TreatmentExplanationRequest;
+    } as TreatmentEvidenceRequest;
     let original: Awaited<ReturnType<typeof store.read>> = null;
     if (chosen.kind === 'follow_up' || chosen.kind === 'reopen') {
       original = await store.read(chosen.artifactId);

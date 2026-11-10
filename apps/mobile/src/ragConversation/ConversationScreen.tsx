@@ -32,6 +32,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { t } from '../i18n';
+import { TreatmentConversationAction } from '../treatmentContext/TreatmentConversationAction';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -137,6 +138,7 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      {!selectedReport ? <TreatmentConversationAction key={id} /> : null}
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={onOpenDailyReport}

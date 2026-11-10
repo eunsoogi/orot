@@ -3,10 +3,11 @@ import type { SafetyPolicyInput } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import { t } from '../i18n';
 import type { ConversationSender } from '../ragConversation/conversationSessionTypes';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { produceTreatmentRequest } from './treatmentRequestProducer';
 import type { TreatmentRequestAction } from './treatmentRequestProducer';
 import { treatmentSafetyGuidance } from './treatmentSafetyGuidance';
+import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 
 const treatmentSenderBrand: unique symbol = Symbol('treatment-sender');
 export type TreatmentConversationSender = ConversationSender & {
@@ -15,19 +16,42 @@ export type TreatmentConversationSender = ConversationSender & {
 
 /** Build only from a typed user action; no text classifier may start treatment work. */
 export function treatmentConversationSender(input: {
-  readonly database: SqlDatabase;
+  readonly database: SqlDatabase | (() => Promise<SqlDatabase>);
   readonly action: TreatmentRequestAction;
-  readonly request: TreatmentExplanationRequest;
+  readonly request: TreatmentEvidenceRequest;
   readonly safetyInput: SafetyPolicyInput;
+  readonly skipEducation?: boolean;
 }): TreatmentConversationSender {
   const sender: ConversationSender = async (_question, _history, signal) => {
-    const result = await produceTreatmentRequest(
-      input.database,
-      input.action,
-      input.request,
-      signal ?? new AbortController().signal,
-      new SafetyPolicyEngine().evaluate(input.safetyInput).requiredActions,
+    const operation = signal ?? new AbortController().signal;
+    const { requiredActions } = new SafetyPolicyEngine().evaluate(
+      input.safetyInput,
     );
+    if (input.skipEducation && !requiredActions.length && !operation.aborted)
+      return {
+        status: 'answer',
+        answer: t('treatmentSafety.inputRequired'),
+        citations: [],
+      };
+    // Policy and cancellation can resolve without opening storage or starting education.
+    const result =
+      requiredActions.length || operation.aborted || input.skipEducation
+        ? await evaluateTreatmentOutput(
+            null,
+            input.request,
+            undefined,
+            operation,
+            requiredActions,
+          )
+        : await produceTreatmentRequest(
+            typeof input.database === 'function'
+              ? await input.database()
+              : input.database,
+            input.action,
+            input.request,
+            operation,
+            [],
+          );
     if (result.status === 'validated') {
       return {
         status: 'answer',
@@ -36,7 +60,7 @@ export function treatmentConversationSender(input: {
         completion: 'partial',
       };
     }
-    if (result.status === 'urgent') {
+    if (result.status === 'urgent' || result.status === 'policy') {
       const guidance = treatmentSafetyGuidance(result);
       if (guidance.length)
         return {

@@ -72,7 +72,11 @@ test('explicit treatment action reaches a validated conversation answer without 
         action: { kind: 'request', selection: { kind: 'general_options' } },
         safetyInput: {},
       })('Synthetic', [], new AbortController().signal),
-    ).toEqual({ status: 'failure', kind: 'validation_failed' });
+    ).toEqual({
+      status: 'answer',
+      answer: treatmentSafetyKo['treatmentSafety.inputRequired'],
+      citations: [],
+    });
     const urgent = await treatmentConversationSender({
       database: db.database,
       request,

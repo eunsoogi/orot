@@ -35,21 +35,17 @@ or literature ports and does not grant, bypass, or request external consent.
 Any future external operation must use the existing provider-specific scoped
 consent and the separate controlled public-evidence query consent before
 transmission, and must still buffer and independently verify output. The
-conversation route, provider dispatch and UI are not wired by this module.
+conversation route uses the local producer through an explicit treatment action.
 
-`sendExplicitTreatmentMessage` and `treatmentConversationSender` provide a
-typed, opt-in dispatcher and map only a verified result or existing urgent
-guidance into a conversation outcome. The sender evaluates the existing safety
-policy from a caller-supplied structured input; absent information remains an
-action to withhold, not an assumed normal measurement. It does not perform
-comprehensive triage. They do not interpret ordinary prompts,
-send model requests, or commit the answer through the generic conversation
-retention observer. The caller must not connect them to the shared screen until
-treatment-aware retention, restoration and follow-up dispatch are integrated:
-generic restoration currently withholds treatment answers, and an ordinary
-follow-up would leave the treatment boundary. The
-sender currently provides a partial, in-memory answer; it is not proof of a
-complete treatment explanation or a saved conversation.
+The conversation action opens a local confirmation sheet for a user-entered
+current blood pressure, population and symptoms. The existing policy validates
+those inputs before the local dispatcher can open storage for education.
+Skipping ends the education request and preserves any guidance already triggered
+by the inputs. The form unmounts on submission. The result stays in the sheet,
+outside the draft, transcript, model context and retention. This entry offers
+the fixed general-options statement. Source-bound actions retain the producer's
+existing condition provenance, source-revision checks and dedicated reopen
+path. Generic restoration withholds retained treatment answers.
 
 The verifier only accepts its fixed statements. It cannot validate a clinician
 plan's contents, personalized advice, condition-specific options, purpose,
@@ -59,5 +55,5 @@ format has one citation list per turn, so combining general and separately
 source-bound statements cannot safely round-trip in general. Per-claim
 provenance and semantic verification require a coordinated contract change;
 do not weaken validation to work around this limit. Existing app-owned copy
-and guidance still require external clinical review, and provider quality,
-native UI, consent and end-to-end integration remain unverified.
+and guidance still require external clinical review. Real-model quality and
+native UI behavior require separate verification.
