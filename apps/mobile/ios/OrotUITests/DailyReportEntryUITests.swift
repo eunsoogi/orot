@@ -107,7 +107,8 @@ final class DailyReportEntryUITests: XCTestCase {
         defer { UITestConditions.terminateStandaloneApp(app) }
         let scroll = UITestConditions.element(app, "daily-report-screen")
         XCTAssertTrue(UITestConditions.exists(scroll), app.debugDescription)
-        let heading = app.staticTexts["일일 보고서"]
+        // Fabric reports the same heading in nested accessibility elements.
+        let heading = scroll.staticTexts.matching(identifier: "일일 보고서").firstMatch
         try session.assertSpeech(from: heading, expected: "일일 보고서", forbiddenTerms: [], phase: "daily-report-heading", testCase: self)
         let next = try XCUIDevice.shared.voiceOverService.moveForward()
         assertVoiceOverSpeechOutput(next, expected: "2035-01-01", phase: "daily-report-date", testCase: self)
@@ -178,7 +179,8 @@ final class DailyReportEntryUITests: XCTestCase {
         let observation = scroll.staticTexts.matching(identifier: "합성 심박수 기록은 72회예요.").firstMatch
         XCTAssertTrue(UITestConditions.exists(date), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(date).contains("2035-01-01"))
-        UITestConditions.scrollTo(observation, in: scroll)
+        // Hittability alone can leave the lower part of large text outside the viewport.
+        _ = try XCTUnwrap(FormUITestConditions.reveal(observation, in: app, scroll: scroll, keyboardMayBeVisible: false))
         XCTAssertTrue(observation.exists && observation.isHittable, observation.debugDescription)
         let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
         XCTAssertGreaterThan(rail.frame.height, rail.frame.width, "This observation requires the Duo rail")
