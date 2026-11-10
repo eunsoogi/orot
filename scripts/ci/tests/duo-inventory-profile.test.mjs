@@ -119,8 +119,11 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 55);
+  assert.equal(duoInventory.length, 58);
   assert.deepEqual(duoInventory, [
+    'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitDuoAtLargeTextInBothAppearances',
+    'OrotUITests/DailyReportEntryUITests/testVoiceOverReadsSavedReportAndOpensFollowUp',
+    'OrotUITests/DailyReportEntryUITests/testEncryptedSavedReportSurvivesRestartAcrossEntryPaths',
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
