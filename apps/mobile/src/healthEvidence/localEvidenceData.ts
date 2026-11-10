@@ -15,12 +15,21 @@ import {
   readSelectedStaleArtifacts,
 } from './currentEvidenceChunks';
 import type { EvidenceRecordIdentity } from './currentEvidenceChunks';
+import { readDailyReportSnapshot } from './healthContext/dailyReportSnapshot';
 import {
   createHealthContextReader,
   type HealthContextReader,
 } from './healthContext/reader';
 
 export interface LocalEvidenceData {
+  readonly readDailyReportSnapshot?: (
+    ...args: Parameters<typeof readDailyReportSnapshot> extends [
+      unknown,
+      ...infer A,
+    ]
+      ? A
+      : never
+  ) => ReturnType<typeof readDailyReportSnapshot>;
   readonly readHealthContext?: HealthContextReader;
   readonly manualHistory: ManualHistoryRepository;
   readManualHistoryCandidates(
@@ -67,6 +76,8 @@ export function createLocalEvidenceData(
   };
   return {
     manualHistory,
+    readDailyReportSnapshot: (calendar, scope, signal) =>
+      readDailyReportSnapshot(database, calendar, scope, signal),
     readManualHistoryCandidates: (query, signal, scope) =>
       readManualHistoryCandidates(manualHistory, query, signal, scope),
     async readHealthContext(window, topics, signal, trace) {
