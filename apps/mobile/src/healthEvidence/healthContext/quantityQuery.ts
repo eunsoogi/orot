@@ -21,7 +21,7 @@ const concepts = [
   'step_count',
 ] as const;
 
-/** Materialize the bounded period once and aggregate daily before selecting sensor series.
+/** Materialize the bounded period once, applying an optional ingestion cutoff before selecting sensor series.
  * Joining raw observations to both days and selected series made SQLite repeatedly expand JSON/time expressions.
  * Fetch at most thirteen series, using the last only as an overflow indicator; return twelve complete daily series.
  */
@@ -30,6 +30,7 @@ export async function readHealthQuantityContext(
   days: readonly HealthContextDay[],
   signal?: AbortSignal,
   family: 'all' | 'measurements' | 'activity' = 'all',
+  dataAvailableThrough?: string,
 ): Promise<{ series: readonly HealthQuantitySeries[]; truncated: boolean }> {
   if (!days.length || days.length > 90)
     throw new RangeError('Invalid health context days.');
@@ -42,6 +43,8 @@ export async function readHealthQuantityContext(
   const from = localQueryTimestampKey(days[0]!.fromInclusive);
   const to = localQueryTimestampKey(days[days.length - 1]!.toExclusive);
   const at = localQueryTimestampKeyExpression('r.effective_at');
+  const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
+  const ingestionFilter = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
   const selectedConcepts = concepts.filter(
     concept =>
       family === 'all' ||
@@ -50,6 +53,8 @@ export async function readHealthQuantityContext(
         : family === 'measurements'),
   );
   parameters.push(...selectedConcepts, from, to);
+  if (dataAvailableThrough)
+    parameters.push(localQueryTimestampKey(dataAvailableThrough));
   const result = await executor.execute(
     `SELECT * FROM (
       WITH days(date, from_key, to_key) AS (VALUES ${days.map(() => '(?, ?, ?)').join(', ')}),
@@ -70,6 +75,7 @@ export async function readHealthQuantityContext(
         WHERE json_extract(r.payload_json, '$.concept') IN (${selectedConcepts.map(() => '?').join(', ')})
           AND ${currentEvidenceCondition('health_observation')}
           AND ${at} >= ? AND ${at} < ?
+          ${ingestionFilter}
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'
