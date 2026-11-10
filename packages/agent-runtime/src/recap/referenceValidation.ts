@@ -10,19 +10,27 @@ export function validateReferenceChunk(
   chunkIndex: number,
   previous: readonly RecapQuestionResult[] = [],
   allUnits: readonly RecapUnit[] = units,
+  expectedRequestRef: string,
 ) {
   const output = RecapReferenceOutputSchema.parse(value);
+  const questionItems = output.items.filter((item) => item.kind === 'question');
   if (
-    output.recordingSourceId !== input.recordingSourceId ||
-    output.appointmentId !== input.appointmentId ||
-    output.chunkIndex !== chunkIndex ||
-    output.questions.length !== input.questions.length ||
-    new Set(output.questions.map((item) => item.questionId)).size !== input.questions.length
+    output.requestRef !== expectedRequestRef ||
+    questionItems.length !== input.questions.length ||
+    new Set(questionItems.map((item) => item.preparedQuestionRef)).size !==
+      input.questions.length ||
+    output.items.some(
+      (item) => !input.questions.some((_, index) => item.preparedQuestionRef === `q${index}`),
+    )
   )
     throw new Error('Recap response identity mismatch.');
-  return input.questions.map((question) => {
-    const result = output.questions.find((item) => item.questionId === question.id);
+  return input.questions.map((question, index) => {
+    const result = questionItems.find((item) => item.preparedQuestionRef === `q${index}`);
     if (!result) throw new Error('Missing Recap question.');
+    const candidates = output.items
+      .filter((item) => item.kind === 'answer')
+      .filter((item) => item.preparedQuestionRef === `q${index}`);
+    if (candidates.length > 16) throw new Error('Too many answers.');
     const previousQuestion = previous.find((item) => item.questionId === question.id);
     const prior = previousQuestion?.questionEvidence ?? [];
     const priorUnits = allUnits.filter((unit) =>
@@ -38,7 +46,7 @@ export function validateReferenceChunk(
     const questionUnits = [
       ...new Map([...units, ...priorUnits].map((unit) => [unit.ref, unit])).values(),
     ];
-    const questionEvidence = result.questionRefs.map((ref) =>
+    const questionEvidence = result.speechRefs.map((ref) =>
       resolveRecapUnit(input, questionUnits, ref),
     );
     // Recombination also cannot turn an earlier answer span into later question evidence.
@@ -55,15 +63,11 @@ export function validateReferenceChunk(
       )
     )
       throw new Error('Question and answer evidence overlap.');
-    if ((result.status === 'not_found') !== (result.questionSufficiency === 'absent')) {
-      if (result.questionSufficiency !== 'partial')
-        throw new Error('Question sufficiency conflicts with status.');
-    }
-    const status = result.questionSufficiency === 'partial' ? 'indeterminate' : result.status;
-    if (status === 'not_found' && result.answers.length)
+    const status = result.status;
+    if (status === 'not_found' && candidates.length)
       throw new Error('Absent questions cannot have answers.');
-    const answers = result.answers.map((answer) => {
-      const evidence = answer.refs.map((ref) => resolveRecapUnit(input, units, ref));
+    const answers = candidates.map((answer) => {
+      const evidence = answer.speechRefs.map((ref) => resolveRecapUnit(input, units, ref));
       // A single text span cannot independently establish both question and answer.
       if (
         evidence.some((answerSpan) =>
@@ -79,7 +83,7 @@ export function validateReferenceChunk(
       return { answer, evidence };
     });
     return RecapQuestionResultSchema.parse({
-      questionId: result.questionId,
+      questionId: question.id,
       status,
       questionEvidence,
       answers: answers

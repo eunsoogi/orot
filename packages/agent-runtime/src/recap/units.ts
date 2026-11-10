@@ -23,7 +23,16 @@ export function recapUnits(input: RecapInput): RecapUnit[] {
         endOffset--;
       const part = segment.text.slice(startOffset, endOffset);
       const boundary = part.search(/[.!?。！？\n]/);
-      if (boundary >= 0) endOffset = startOffset + boundary + 1;
+      if (boundary >= 0) {
+        endOffset = startOffset + boundary + 1;
+        // Keep a punctuation run together so an ellipsis does not become empty fragments.
+        while (
+          endOffset < segment.text.length &&
+          endOffset < startOffset + 512 &&
+          segment.text[endOffset] === '.'
+        )
+          endOffset++;
+      }
       units.push({
         ref: `u${units.length}`,
         segmentId: segment.id,

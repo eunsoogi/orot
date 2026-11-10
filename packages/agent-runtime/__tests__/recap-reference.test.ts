@@ -1,6 +1,6 @@
 import { recapInput } from './recap-fixtures';
 import { recapUnits, resolveRecapUnit } from '../src/recap/units';
-import { validateReferenceChunk } from '../src/recap/referenceValidation';
+import { validateReferenceChunk } from './recap-reference-test-adapter';
 
 it('resolves cited units and rejects foreign references and identities', () => {
   const input = recapInput('이 약 계속 먹나요? 네, 그대로 드세요.');
@@ -45,14 +45,6 @@ it('resolves cited units and rejects foreign references and identities', () => {
     status: 'not_found',
     answers: [],
   });
-  expect(() =>
-    validateReferenceChunk(
-      { ...absent, questions: [{ ...absent.questions[0], questionSufficiency: 'complete' }] },
-      input,
-      units,
-      0,
-    ),
-  ).toThrow();
   const invalidFiltered = {
     ...wire,
     questions: [
@@ -92,7 +84,7 @@ it('resolves cited units and rejects foreign references and identities', () => {
   });
   const partial = {
     ...wire,
-    questions: [{ ...wire.questions[0], questionSufficiency: 'partial' }],
+    questions: [{ ...wire.questions[0], status: 'indeterminate' }],
   };
   expect(validateReferenceChunk(partial, input, units, 0)[0]).toMatchObject({
     status: 'indeterminate',

@@ -12,25 +12,23 @@ it('derives quotations from selected source units without asking the model for o
   generate.mockImplementation(async (request) => {
     const payload = JSON.parse(String(request.messages[1].content));
     const output = {
-      recordingSourceId: input.recordingSourceId,
-      appointmentId: input.appointmentId,
-      chunkIndex: payload.chunkIndex,
-      questions: [
+      requestRef: payload.requestRef,
+      items: [
         {
-          questionId: input.questions[0].id,
+          kind: 'question',
+          preparedQuestionRef: payload.questions[0].preparedQuestionRef,
           status: 'evidence_found',
-          questionSufficiency: 'complete',
-          questionRefs: [payload.transcript[0].ref],
-          answers: [
-            {
-              refs: [payload.transcript[1].ref],
-              utteranceRole: 'response',
-              association: 'clear',
-              summary: '그대로 복용하라는 응답',
-              inferredRole: 'uncertain',
-              speakerUncertainty: '발화자 미확인',
-            },
-          ],
+          speechRefs: [payload.transcript[0].speechRef],
+        },
+        {
+          kind: 'answer',
+          preparedQuestionRef: payload.questions[0].preparedQuestionRef,
+          speechRefs: [payload.transcript[1].speechRef],
+          utteranceRole: 'response',
+          association: 'clear',
+          summary: '그대로 복용하라는 응답',
+          inferredRole: 'uncertain',
+          speakerUncertainty: '발화자 미확인',
         },
       ],
     };
@@ -41,6 +39,15 @@ it('derives quotations from selected source units without asking the model for o
     });
   });
   const result = await extractTranscriptRecap({ ...options, evidenceMode: 'references' });
+  const firstRequestRef = JSON.parse(
+    String(generate.mock.calls[0][0].messages[1].content),
+  ).requestRef;
+  await extractTranscriptRecap({ ...options, evidenceMode: 'references' });
+  const secondRequestRef = JSON.parse(
+    String(generate.mock.calls[1][0].messages[1].content),
+  ).requestRef;
+  expect(firstRequestRef).not.toBe(secondRequestRef);
+  expect(firstRequestRef.length).toBeLessThan(50);
   expect(result).toMatchObject({
     status: 'result',
     value: {
