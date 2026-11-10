@@ -9,7 +9,7 @@ import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 function assertTestMethodDeclared(identifier) {
   const [target, suite, method] = identifier.split('/');
   const base = `apps/mobile/ios/${target}/${suite}`;
-  const sourcePath = ['swift', 'm']
+  const sourcePath = ['swift', 'm', 'mm']
     .map((extension) => `${base}.${extension}`)
     .find((path) => existsSync(path));
   assert.ok(sourcePath, `Missing test source for ${identifier}`);
@@ -35,7 +35,7 @@ function assertTestMethodDeclared(identifier) {
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 79, 11],
+    ['core', 80, 13],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -123,7 +123,7 @@ test('each profile declares unique existing cases and every test method is sched
   }
   for (const target of ['OrotIntegrationTests', 'OrotUITests']) {
     for (const file of readdirSync(`apps/mobile/ios/${target}`).filter(
-      (file) => file.endsWith('.swift') || file.endsWith('.m'),
+      (file) => file.endsWith('.swift') || file.endsWith('.m') || file.endsWith('.mm'),
     )) {
       const source = readFileSync(`apps/mobile/ios/${target}/${file}`, 'utf8');
       if (file.endsWith('.swift')) {

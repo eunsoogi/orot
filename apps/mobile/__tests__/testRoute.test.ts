@@ -49,6 +49,12 @@ describe('iOS test entry routing', () => {
       'safe-area',
     );
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'backup' })).toBe('backup');
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'chart-foundation' })).toBe(
+      'chart-foundation',
+    );
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'svg-foundation' })).toBe(
+      'svg-foundation',
+    );
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'healthkit' })).toBe(
       'healthkit',
     );
