@@ -10,6 +10,35 @@ jest.mock('../../aiFeatures/integration/provider', () => ({
 
 beforeEach(() => jest.clearAllMocks());
 
+it.each(['invalid_output', 'cancelled', 'stale_source'] as const)(
+  'forwards extraction %s without producing a successful result',
+  async status => {
+    const input = recapInput();
+    const onOutcome = jest.fn(async () => undefined);
+    jest.mocked(extractTranscriptRecap).mockResolvedValueOnce({ status });
+    const completion = createRecapCompletion({
+      loadInput: async () => input,
+      loadCurrent: async () => input,
+      consent: { authorize: async () => 'authorized' },
+      resolveSelected: async () =>
+        ({
+          status: 'ready',
+          provider: { id: 'selected' },
+          modelId: 'chosen',
+          recipient: 'local',
+          remoteProcessing: false,
+        }) as never,
+      onOutcome,
+    });
+    const signal = new AbortController().signal;
+    expect(
+      await completion(input.recordingSourceId, input.segments, signal),
+    ).toEqual({ status });
+    expect(onOutcome).toHaveBeenCalledTimes(1);
+    expect(onOutcome).toHaveBeenCalledWith({ status }, signal);
+  },
+);
+
 it('uses the scoped plain transformation only for the selected Apple identity', async () => {
   const input = recapInput();
   jest
