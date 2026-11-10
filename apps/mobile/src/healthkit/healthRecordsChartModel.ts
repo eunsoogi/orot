@@ -1,6 +1,5 @@
 import type { HealthObservation } from '@orot/domain';
 import { t } from '../i18n';
-import { appColors } from '../layout/appColors';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import type { HealthRecordCategory } from './healthRecordsLibraryModel';
 
@@ -10,13 +9,11 @@ export interface HealthChartPoint {
   readonly amount: number;
   readonly unit: string;
   readonly label: string;
-  readonly color: string;
 }
 
 export interface HealthChartSeries {
   readonly key: string;
   readonly label: string;
-  readonly color: string;
   readonly points: readonly HealthChartPoint[];
 }
 
@@ -36,12 +33,6 @@ function seriesLabel(category: HealthRecordCategory, concept: string): string {
     default:
       return concept;
   }
-}
-
-function seriesColor(category: HealthRecordCategory, concept: string): string {
-  return category === 'blood_pressure' && concept.endsWith('systolic')
-    ? appColors.dangerAction
-    : appColors.primaryAction;
 }
 
 /** Keeps each line to actual saved quantities and avoids comparing unlike units. */
@@ -69,7 +60,6 @@ export function buildHealthChartSeries(
       amount: observation.value.amount,
       unit: observation.value.unit,
       label: seriesLabel(category, observation.concept),
-      color: seriesColor(category, observation.concept),
     });
     groups.set(key, points);
   }
@@ -84,7 +74,6 @@ export function buildHealthChartSeries(
     return {
       key,
       label: first?.label ?? key,
-      color: first?.color ?? appColors.primaryAction,
       points: ordered,
     };
   });
