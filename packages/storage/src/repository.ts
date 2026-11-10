@@ -11,6 +11,7 @@ import {
   listStoredRecords,
   readStoredRecord,
   upsertStoredRecord,
+  assertWritableRecordKind,
 } from './recordPersistence';
 import { createSourceEvidenceRepositories } from './sourceEvidence';
 import { createManualHistoryRepository } from './manualHistory';
@@ -26,6 +27,7 @@ import {
 } from './sourceDeletionReferences';
 import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
 import { clearResearchArtifacts } from './researchDeletion';
+import { readSyncCheckpoint } from './syncCheckpointRead';
 
 export interface DeletedLocalDataReferences {
   readonly sourceRecordIds: readonly string[];
@@ -70,32 +72,10 @@ export interface RecordRepository extends RecordWriter {
   listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
 
-async function readSyncCheckpoint(
-  executor: SqlTransaction | SqlDatabase,
-  key: string,
-): Promise<SyncCheckpoint | null> {
-  const result = await executor.execute(
-    'SELECT checkpoint_key, value, updated_at FROM healthkit_sync_checkpoints WHERE checkpoint_key = ? LIMIT 1',
-    [key],
-  );
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-  if (
-    typeof row.checkpoint_key !== 'string' ||
-    typeof row.value !== 'string' ||
-    typeof row.updated_at !== 'string'
-  ) {
-    throw new Error('A stored HealthKit sync checkpoint is invalid.');
-  }
-  return { key: row.checkpoint_key, value: row.value, updatedAt: row.updated_at };
-}
-
 function createWriter(executor: SqlTransaction): RecordWriter {
   return {
     async put(kind, record) {
-      if (kind === 'transcript_segment') {
-        throw new Error('Transcript revisions must be appended through the transcript repository.');
-      }
+      assertWritableRecordKind(kind);
       await upsertStoredRecord(executor, kind, record);
     },
     async delete(kind, id) {
@@ -190,6 +170,8 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
           }
         }
         await transaction.execute('DELETE FROM healthkit_sync_checkpoints');
+        // The all-local wipe also removes retained question revision identities.
+        await transaction.execute('DELETE FROM visit_question_revisions');
         await transaction.execute('DELETE FROM transcript_artifact_staleness');
         const checkpoints = await transaction.execute(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?)",

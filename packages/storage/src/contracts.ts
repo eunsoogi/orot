@@ -11,6 +11,7 @@ import {
   TranscriptEvidenceSegmentSchema,
   VisitBriefSchema,
   VisitQuestionSchema,
+  VisitQuestionRecordSchema,
 } from '@orot/domain';
 import type {
   Appointment,
@@ -27,6 +28,7 @@ import type {
   TranscriptEvidenceSegment,
   VisitBrief,
   VisitQuestion,
+  VisitQuestionRecord,
 } from '@orot/domain';
 
 export const STORAGE_TABLES = {
@@ -48,6 +50,7 @@ export const STORAGE_TABLES = {
   dose_event: { table: 'dose_events', schema: DoseEventSchema, nullableRecordedAt: true },
   appointment: { table: 'appointments', schema: AppointmentSchema },
   visit_question: { table: 'visit_questions', schema: VisitQuestionSchema },
+  visit_question_record: { table: 'visit_question_records', schema: VisitQuestionRecordSchema },
   visit_brief: { table: 'visit_briefs', schema: VisitBriefSchema },
   transcript_segment: {
     table: 'transcript_segments',
@@ -68,6 +71,7 @@ export interface RecordMap {
   dose_event: DoseEvent;
   appointment: Appointment;
   visit_question: VisitQuestion;
+  visit_question_record: VisitQuestionRecord;
   visit_brief: VisitBrief;
   transcript_segment: TranscriptEvidenceSegment;
 }

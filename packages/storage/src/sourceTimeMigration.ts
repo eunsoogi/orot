@@ -34,13 +34,13 @@ export async function migrateSourceTimes(transaction: SqlExecutor): Promise<void
   }
   for (const table of tables) {
     await transaction.execute(
-      `CREATE TABLE ${table}_v14 (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT, recorded_at TEXT, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))`,
+      `CREATE TABLE ${table}_v15 (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT, recorded_at TEXT, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))`,
     );
     await transaction.execute(
-      `INSERT INTO ${table}_v14 SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM ${table}`,
+      `INSERT INTO ${table}_v15 SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM ${table}`,
     );
     await transaction.execute(`DROP TABLE ${table}`);
-    await transaction.execute(`ALTER TABLE ${table}_v14 RENAME TO ${table}`);
+    await transaction.execute(`ALTER TABLE ${table}_v15 RENAME TO ${table}`);
   }
   for (const row of schema.rows) {
     if (typeof row.sql !== 'string') throw new Error('Invalid database schema definition.');

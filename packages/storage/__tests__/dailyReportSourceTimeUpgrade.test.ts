@@ -1,4 +1,4 @@
-import { openEncryptedStorage, runMigrations } from '../src';
+import { createVisitQuestionRecordRepository, openEncryptedStorage, runMigrations } from '../src';
 import type { SqlDatabase, SqlTransaction } from '../src';
 import { createDatabase, options } from './sourceEvidenceTestSupport';
 
@@ -22,51 +22,90 @@ async function restoreOldSourceSchema(database: SqlDatabase) {
   });
 }
 
-test.each([12, 13])('upgrades version %i preserving sources and report state', async (version) => {
-  const database = createDatabase();
-  const repository = await openEncryptedStorage(options(database));
-  const source = {
-    id: 'synthetic-source',
-    sourceKind: 'medical_document' as const,
-    ingestedAt: '2026-01-01T00:00:00Z',
-    effectiveAt: '2026-01-01T00:00:00Z',
-    recordedAt: '2026-01-01T00:00:00Z',
-    provenance: { origin: 'imported' as const, sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' as const },
-  };
-  try {
-    await repository.put('source_record', source);
-    await restoreOldSourceSchema(database);
-    if (version === 13) {
-      await database.execute('INSERT INTO daily_report_heads VALUES (?, ?, ?, ?)', [
-        'synthetic-day',
-        'run',
-        1,
-        0,
-      ]);
-      await database.execute('INSERT INTO daily_report_revisions VALUES (?, ?, ?)', [
-        'synthetic-day',
-        1,
-        'run',
-      ]);
-    } else {
-      await database.execute('DROP TABLE daily_report_heads');
-      await database.execute('DROP TABLE daily_report_revisions');
+test.each([12, 13, 14])(
+  'upgrades version %i preserving sources and report state',
+  async (version) => {
+    const database = createDatabase();
+    const repository = await openEncryptedStorage(options(database));
+    const source = {
+      id: 'synthetic-source',
+      sourceKind: 'medical_document' as const,
+      ingestedAt: '2026-01-01T00:00:00Z',
+      effectiveAt: '2026-01-01T00:00:00Z',
+      recordedAt: '2026-01-01T00:00:00Z',
+      provenance: { origin: 'imported' as const, sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' as const },
+    };
+    const official = createVisitQuestionRecordRepository(database, {
+      clock: () => source.ingestedAt,
+    });
+    let recap: Awaited<ReturnType<typeof official.saveManual>> | undefined;
+    try {
+      await repository.put('source_record', source);
+      if (version === 14) {
+        const metadata = {
+          effectiveAt: source.ingestedAt,
+          recordedAt: source.ingestedAt,
+          ingestedAt: source.ingestedAt,
+          provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
+          reviewState: { status: 'unreviewed' as const },
+        };
+        await repository.put('appointment', {
+          ...metadata,
+          id: 'synthetic-visit',
+          status: 'scheduled',
+        });
+        await repository.put('visit_question', {
+          ...metadata,
+          id: 'synthetic-question',
+          appointmentId: 'synthetic-visit',
+          questionText: 'Synthetic question?',
+          priority: 'routine',
+          evidenceSpanIds: [],
+        });
+        recap = await official.saveManual({
+          appointmentId: 'synthetic-visit',
+          questionId: 'synthetic-question',
+          expectedQuestionRevision: 'v1:1',
+          answer: 'Synthetic answer',
+        });
+      }
+      await restoreOldSourceSchema(database);
+      if (version >= 13) {
+        await database.execute('INSERT INTO daily_report_heads VALUES (?, ?, ?, ?)', [
+          'synthetic-day',
+          'run',
+          1,
+          0,
+        ]);
+        await database.execute('INSERT INTO daily_report_revisions VALUES (?, ?, ?)', [
+          'synthetic-day',
+          1,
+          'run',
+        ]);
+      } else {
+        await database.execute('DROP TABLE daily_report_heads');
+        await database.execute('DROP TABLE daily_report_revisions');
+      }
+      await database.execute(`PRAGMA user_version = ${version}`);
+      await runMigrations(database);
+      expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
+      expect(await repository.get('source_record', source.id)).toEqual(source);
+      expect((await database.execute('SELECT * FROM daily_report_heads')).rows).toHaveLength(
+        version >= 13 ? 1 : 0,
+      );
+      expect((await database.execute('SELECT * FROM daily_report_revisions')).rows).toHaveLength(
+        version >= 13 ? 1 : 0,
+      );
+      expect((await database.execute('SELECT id FROM visit_question_records')).rows).toHaveLength(
+        version === 14 ? 1 : 0,
+      );
+      if (recap) expect(await official.listForAppointment('synthetic-visit')).toEqual([recap]);
+    } finally {
+      await database.closeAsync?.();
     }
-    await database.execute(`PRAGMA user_version = ${version}`);
-    await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(14);
-    expect(await repository.get('source_record', source.id)).toEqual(source);
-    expect((await database.execute('SELECT * FROM daily_report_heads')).rows).toHaveLength(
-      version === 13 ? 1 : 0,
-    );
-    expect((await database.execute('SELECT * FROM daily_report_revisions')).rows).toHaveLength(
-      version === 13 ? 1 : 0,
-    );
-  } finally {
-    await database.closeAsync?.();
-  }
-});
+  },
+);
 
 test('rolls back the partial version fourteen rebuild without changing version or report data', async () => {
   const database = createDatabase();
@@ -82,7 +121,7 @@ test('rolls back the partial version fourteen rebuild without changing version o
           const wrapped: SqlTransaction = {
             ...transaction,
             execute(query, parameters) {
-              if (query.startsWith('CREATE TABLE evidence_spans_v14')) {
+              if (query.startsWith('CREATE TABLE evidence_spans_v15')) {
                 throw new Error('injected migration interruption');
               }
               return transaction.execute(query, parameters);
@@ -100,7 +139,7 @@ test('rolls back the partial version fourteen rebuild without changing version o
     const columns = await database.execute('PRAGMA table_info(source_records)');
     expect(columns.rows.find((row) => row.name === 'effective_at')?.notnull).toBe(1);
     await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(14);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
   } finally {
     await database.closeAsync?.();
   }

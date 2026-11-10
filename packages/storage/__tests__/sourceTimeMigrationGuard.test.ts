@@ -2,7 +2,7 @@ import { openEncryptedStorage, runMigrations } from '../src';
 import type { SqlDatabase, SqlTransaction } from '../src';
 import { createDatabase, options } from './sourceEvidenceTestSupport';
 
-test.each([12, 13])(
+test.each([12, 13, 14])(
   'rejects missing source timestamp metadata without advancing version %i',
   async (version) => {
     const database = createDatabase();

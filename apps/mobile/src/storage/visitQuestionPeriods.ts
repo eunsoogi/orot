@@ -1,4 +1,8 @@
-import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
+import {
+  localQueryTimestampKey,
+  localQueryTimestampKeyExpression,
+  type SqlExecutor,
+} from '@orot/storage';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import {
@@ -25,14 +29,22 @@ export async function setupVisitQuestionPeriods(tx: SqlExecutor) {
   await tx.execute(`CREATE TRIGGER IF NOT EXISTS visit_question_period_question_deleted AFTER DELETE ON visit_questions BEGIN
     DELETE FROM agent_memory_records WHERE json_extract(record_json, '$.meta.memoryKey') = 'visit-question-review:' || json_extract(OLD.payload_json, '$.appointmentId');
     DELETE FROM visit_question_periods WHERE question_id = OLD.id; END`);
+  const officialPeriods = `(SELECT record.id AS record_id, json_extract(period.value, '$.scope.topic') AS topic, ${localQueryTimestampKeyExpression("json_extract(period.value, '$.scope.window.fromInclusive')")} AS from_key, ${localQueryTimestampKeyExpression("json_extract(period.value, '$.scope.window.toExclusive')")} AS to_key FROM visit_question_records record, json_each(record.payload_json, '$.questionSources') snapshot, json_each(snapshot.value, '$.healthContextSources') period)`;
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const remove = (condition: string) => `
       INSERT OR IGNORE INTO agent_memory_removed_sources (source_id) SELECT p.dependency_id FROM visit_question_periods p WHERE ${condition};
+      DELETE FROM visit_question_records WHERE id IN (SELECT p.record_id FROM ${officialPeriods} p WHERE ${condition});
       DELETE FROM visit_questions WHERE id IN (SELECT p.question_id FROM visit_question_periods p WHERE ${condition});`;
+    await tx.execute(
+      `DROP TRIGGER IF EXISTS visit_question_period_deleted_${table}`,
+    );
     await tx.execute(
       `CREATE TRIGGER IF NOT EXISTS visit_question_period_deleted_${table} AFTER DELETE ON ${table} BEGIN ${remove(guard)} END`,
     );
     const next = guard.replaceAll('OLD.', 'NEW.');
+    await tx.execute(
+      `DROP TRIGGER IF EXISTS visit_question_period_moved_${table}`,
+    );
     await tx.execute(
       `CREATE TRIGGER IF NOT EXISTS visit_question_period_moved_${table} AFTER UPDATE ON ${table} BEGIN ${remove(`(${guard}) AND NOT coalesce((${next}), 0)`)} END`,
     );
@@ -48,6 +60,9 @@ export async function setupVisitQuestionPeriods(tx: SqlExecutor) {
     // Transcript corrections invalidate an original without deleting its health row.
     const stale = `EXISTS (SELECT 1 FROM ${table} h WHERE h.id = NEW.artifact_id AND (${guard.replaceAll('OLD.', 'h.')}))`;
     for (const event of ['INSERT', 'UPDATE']) {
+      await tx.execute(
+        `DROP TRIGGER IF EXISTS visit_question_period_stale_${table}_${event.toLowerCase()}`,
+      );
       await tx.execute(
         `CREATE TRIGGER IF NOT EXISTS visit_question_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN ${remove(stale)} END`,
       );

@@ -147,7 +147,7 @@ test('scoped pages preserve exact source instant order, tied IDs and user-report
   }
 });
 
-test('upgrades version nine by adding only the library index and preserving saved rows', async () => {
+test('upgrades version nine while preserving saved rows and avoiding destructive table changes', async () => {
   const { database, close } = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(database);
@@ -172,8 +172,12 @@ test('upgrades version nine by adding only the library index and preserving save
           }),
         ),
     });
-    expect(statements.some((sql) => /^\s*(DROP|INSERT|UPDATE|ALTER)\b/i.test(sql))).toBe(false);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(14);
+    expect(statements.filter((sql) => /^\s*DROP\b/i.test(sql))).toEqual([
+      'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
+      'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
+    ]);
+    expect(statements.some((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))).toBe(false);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(15);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',

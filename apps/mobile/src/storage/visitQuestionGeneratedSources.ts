@@ -23,6 +23,13 @@ async function revokeQuestionsForParent(
     INSERT OR IGNORE INTO agent_memory_removed_sources (source_id)
       SELECT 'generated-artifact:' || source_kind || ':' || source_id
       FROM (${sourceRows(parentKind, parentId)});
+    DELETE FROM visit_question_records
+      WHERE EXISTS (
+        SELECT 1 FROM json_each(visit_question_records.payload_json, '$.questionSources') snapshot,
+          json_each(snapshot.value, '$.generatedArtifactSources') source
+        WHERE json_extract(source.value, '$.kind') = '${parentKind}'
+          AND json_extract(source.value, '$.id') = ${parentId}
+      );
     DELETE FROM visit_questions
       WHERE EXISTS (
         SELECT 1 FROM json_each(visit_questions.payload_json, '$.generatedArtifactSources') source

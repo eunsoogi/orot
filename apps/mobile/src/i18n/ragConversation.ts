@@ -76,6 +76,7 @@ export const ragConversationKo = {
   'ragConversation.availability.category.doseEvent': '복용 기록',
   'ragConversation.availability.category.appointment': '진료 예약',
   'ragConversation.availability.category.visitQuestion': '진료 질문',
+  'ragConversation.availability.category.visitQuestionRecord': '진료 질문 답변',
   'ragConversation.availability.category.visitBrief': '진료 준비 요약',
   'ragConversation.availability.category.transcriptSegment': '녹음 전사',
   'ragConversation.availability.category.manualHistory':
