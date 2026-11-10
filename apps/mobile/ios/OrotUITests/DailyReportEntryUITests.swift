@@ -120,6 +120,52 @@ final class DailyReportEntryUITests: XCTestCase {
         attach(app, name: "daily-report-voiceover-follow-up")
     }
 
+    /// Seed once through SQLCipher, then reopen without writes in a different app process.
+    func testEncryptedSavedReportSurvivesRestartAcrossEntryPaths() throws {
+        let app = XCUIApplication()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        app.launchArguments = visualArguments + ["-OROT_DAILY_REPORT_PERSISTENCE", "seed"]
+        app.launch()
+        let snapshot = UITestConditions.element(app, "daily-report-persistence-snapshot")
+        let process = UITestConditions.element(app, "daily-report-persistence-process")
+        XCTAssertTrue(UITestConditions.exists(snapshot) && UITestConditions.exists(process), app.debugDescription)
+        let original = UITestConditions.text(snapshot)
+        let originalProcess = UITestConditions.text(process)
+        XCTAssertFalse(originalProcess.isEmpty)
+        let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(original.utf8)) as? [String: Any])
+        XCTAssertEqual(saved["runId"] as? String, "synthetic-report")
+        XCTAssertEqual(saved["revision"] as? Int, 1)
+        let report = try XCTUnwrap(saved["report"] as? [String: Any])
+        let observations = try XCTUnwrap(report["observations"] as? [[String: Any]])
+        XCTAssertEqual(observations.first?["text"] as? String, "합성 심박수 기록은 72회예요.")
+        let reportScreen = UITestConditions.element(app, "daily-report-screen")
+        XCTAssertTrue(UITestConditions.exists(reportScreen), app.debugDescription)
+        let record = app.staticTexts["합성 심박수 기록은 72회예요."]
+        UITestConditions.scrollTo(record, in: reportScreen)
+        XCTAssertTrue(record.exists && record.isHittable, record.debugDescription)
+        let chat = app.buttons["이 보고서에 관해 대화하기"]
+        UITestConditions.scrollTo(chat, in: reportScreen)
+        chat.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch))
+        attach(app, name: "daily-report-persistence-seed")
+
+        app.terminate()
+        app.launchArguments = visualArguments + ["-OROT_DAILY_REPORT_PERSISTENCE", "read"]
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(snapshot) && UITestConditions.exists(process), app.debugDescription)
+        XCTAssertNotEqual(UITestConditions.text(process), originalProcess)
+        UITestConditions.value(snapshot, equals: original)
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
+        let open = UITestConditions.element(app, "daily-report-request")
+        XCTAssertTrue(open.exists && open.isHittable, open.debugDescription)
+        open.tap()
+        XCTAssertTrue(UITestConditions.exists(reportScreen), app.debugDescription)
+        UITestConditions.scrollTo(record, in: reportScreen)
+        XCTAssertTrue(record.exists && record.isHittable, record.debugDescription)
+        attach(app, name: "daily-report-persistence-readback")
+    }
+
     private var visualArguments: [String] {
         ["-OROT_TEST_SCENARIO", "daily-report-visual", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
     }
