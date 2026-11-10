@@ -63,7 +63,7 @@ test('moves review actions into the document when the safe rail cannot hold them
       </NavigationRootLayoutContext.Provider>
     );
   }
-  const view = await render(<Fixture height={440} />);
+  const view = await render(<Fixture height={444} />);
   expect(screen.getByTestId('dock-save-medical-document')).toBeTruthy();
   await view.rerender(<Fixture height={340} />);
   expect(screen.queryByTestId('dock-save-medical-document')).toBeNull();
@@ -77,7 +77,7 @@ test('moves review actions into the document when the safe rail cannot hold them
   await fireEvent.press(screen.getByTestId('medical-document-cancel'));
   expect(save).toHaveBeenCalledTimes(1);
   expect(cancel).toHaveBeenCalledTimes(1);
-  await view.rerender(<Fixture height={440} />);
+  await view.rerender(<Fixture height={444} />);
   expect(screen.queryByTestId('medical-document-save')).toBeNull();
   expect(screen.getByTestId('dock-save-medical-document')).toBeTruthy();
 });

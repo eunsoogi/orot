@@ -56,22 +56,15 @@ export function pageActionRailLayout({
     : navigationCount * step;
   const pageSpace = available - navHeight;
   const railGapCount = rootTabs ? 1 : Math.min(navigationCount, 2);
-  // The centered root group can move as a whole; only its actual controls and
-  // gaps must fit, rather than reserving half the spare segment for each side.
+  // UIKit's flexible spacer occupies a stack gap before the first button, so
+  // every displayed action needs one control height and one spacing interval.
   const capacity = Math.max(
     0,
-    Math.floor(
-      (pageSpace -
-        railGapCount * groupGap +
-        (rootTabs ? NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING : 0)) /
-        step,
-    ),
+    Math.floor((pageSpace - railGapCount * groupGap) / step),
   );
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
-  const displayedActionHeight =
-    displayed * NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
-    Math.max(0, displayed - 1) * NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING;
+  const displayedActionHeight = displayed * step;
   // Center the complete action-and-tab group around the measured usable segment.
   const actionGroupHeight =
     displayed > 0 ? displayedActionHeight + groupGap : 0;
