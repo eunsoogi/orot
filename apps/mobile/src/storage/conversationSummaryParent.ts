@@ -8,6 +8,7 @@ import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
+import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 
 /** A generated parent is usable only at its exact revision with every input still current. */
 export async function assertConversationSummaryParent(
@@ -15,6 +16,20 @@ export async function assertConversationSummaryParent(
   database: SqlDatabase,
   source: SavedGeneratedSummarySource,
 ) {
+  if (
+    (source.reference.locator as { type?: unknown }).type === 'daily_report'
+  ) {
+    const daily = await validateDailyReportArtifact(
+      tx,
+      source.id,
+      createManualHistoryRepository(database),
+    );
+    if (!daily || daily.fingerprint !== source.revision)
+      throw new RetainedSourceInvalidError(
+        'The daily report changed or was removed.',
+      );
+    return;
+  }
   const deleted = await tx.execute(
     'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
     [source.id],
