@@ -10,6 +10,7 @@ export interface DailyReminderEntry {
   readonly deliveryTimeZone: 'unknown';
 }
 
+/** The destination must deduplicate entryKey across restarts: navigation and acknowledgement are not atomic. */
 export type DailyReminderConsumer = (entry: DailyReminderEntry) => boolean;
 let consumer: DailyReminderConsumer | undefined;
 

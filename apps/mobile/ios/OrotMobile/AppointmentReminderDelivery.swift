@@ -9,7 +9,9 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     private var pending: [String: String]?
     private let defaults: UserDefaults
     private let dailyKey = "com.orot.daily-report.delivery-inbox"
-    private let handledDailyKey = "com.orot.daily-report.delivery-handled"
+    private var dailyState: [String: Any] {
+        defaults.dictionary(forKey: dailyKey) ?? [:]
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -19,25 +21,28 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     func consumeDailyTarget() -> [String: String]? {
         lock.lock()
         defer { lock.unlock() }
-        return (defaults.array(forKey: dailyKey) as? [[String: String]])?.first
+        return (dailyState["pending"] as? [[String: String]])?.first
     }
 
     func acknowledgeDailyTarget(_ timestamp: String) {
         lock.lock()
         defer { lock.unlock() }
-        var targets = defaults.array(forKey: dailyKey) as? [[String: String]] ?? []
+        var state = dailyState
+        var targets = state["pending"] as? [[String: String]] ?? []
         guard targets.first?["deliveryTimestamp"] == timestamp else { return }
         targets.removeFirst()
-        defaults.set(targets, forKey: dailyKey)
-        var handled = defaults.stringArray(forKey: handledDailyKey) ?? []
+        var handled = state["handled"] as? [String] ?? []
         handled.append(timestamp)
-        defaults.set(Array(handled.suffix(32)), forKey: handledDailyKey)
+        // A single persisted value keeps inbox removal and deduplication together.
+        state["pending"] = targets
+        state["handled"] = Array(handled.suffix(32))
+        defaults.set(state, forKey: dailyKey)
     }
 
     func hasPendingTarget() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return pending != nil || !(defaults.array(forKey: dailyKey) ?? []).isEmpty
+        return pending != nil || !((dailyState["pending"] as? [[String: String]]) ?? []).isEmpty
     }
 
     func consumeTarget() -> [String: String]? {
@@ -65,12 +70,14 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
             // Delivery time is an observed instant, not evidence of the delivery timezone.
             let timestamp = deliveredAt.map { String($0.timeIntervalSince1970) } ?? ""
             lock.lock()
-            var targets = defaults.array(forKey: dailyKey) as? [[String: String]] ?? []
+            var state = dailyState
+            var targets = state["pending"] as? [[String: String]] ?? []
             let target = ["kind": request.content.userInfo["kind"] as? String ?? "", "deliveryTimestamp": timestamp]
-            let handled = defaults.stringArray(forKey: handledDailyKey) ?? []
+            let handled = state["handled"] as? [String] ?? []
             if !handled.contains(timestamp), !targets.contains(where: { $0["deliveryTimestamp"] == timestamp }) {
                 targets.append(target)
-                defaults.set(targets, forKey: dailyKey)
+                state["pending"] = targets
+                defaults.set(state, forKey: dailyKey)
             }
             lock.unlock()
             NotificationCenter.default.post(name: Self.changed, object: nil)
