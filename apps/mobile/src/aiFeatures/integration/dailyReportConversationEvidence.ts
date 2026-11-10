@@ -29,7 +29,11 @@ export async function prepareDailyReportConversationEvidence(input: {
     );
   const initial = await read();
   if (initial.status !== 'current' || input.signal.aborted) return null;
-  if (initial.sources.length > RAG_CONVERSATION_BUDGET.maxEvidenceItems)
+  // Without any cited record, sending the turn would silently drop the selected report.
+  if (
+    !initial.sources.length ||
+    initial.sources.length > RAG_CONVERSATION_BUDGET.maxEvidenceItems
+  )
     return null;
   const originals = initial.sources.map(source =>
     input.registry.resolve(source),

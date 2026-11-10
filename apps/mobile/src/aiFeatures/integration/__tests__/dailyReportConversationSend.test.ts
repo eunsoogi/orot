@@ -109,6 +109,11 @@ test.each([false, true])(
         finishReason: 'complete' as const,
       }),
     );
+    const onTaskStreamEvent = jest.fn();
+    const runner: typeof runRagConversationTurn = (options, invocation) => {
+      expect(invocation?.onTaskStreamEvent).toBeUndefined();
+      return runRagConversationTurn(options, invocation);
+    };
     const send = createRagConversationService({
       consent: fixture.consent,
       queryConsent: { authorize: async () => 'authorized' },
@@ -129,7 +134,7 @@ test.each([false, true])(
         },
       }),
       registry,
-      ragRunner: runRagConversationTurn,
+      ragRunner: runner,
       resolveDailyReport: async () =>
         current
           ? { status: 'current', sources: [source] }
@@ -139,9 +144,10 @@ test.each([false, true])(
       '이 기록을 설명해 주세요',
       [],
       undefined,
-      undefined,
+      { onTaskStreamEvent },
       context,
     );
+    expect(onTaskStreamEvent).not.toHaveBeenCalled();
     expect(fixture.authorize).toHaveBeenCalled();
     if (changed) {
       expect(generate).not.toHaveBeenCalled();
