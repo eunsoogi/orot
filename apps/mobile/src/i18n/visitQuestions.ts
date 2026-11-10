@@ -56,4 +56,73 @@ export const visitQuestionsKo = {
     '질문에 기록에서 확인되지 않는 날짜나 수치가 들어 있어 근거를 다시 확인해야 해요.',
   'visitQuestions.validation.unusableClarification':
     '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
+  'visitQuestions.inline.title': '진료에서 물어볼 질문',
+  'visitQuestions.inline.question.select': '질문 {number} 선택',
+  'visitQuestions.inline.question.origin.saved': '저장된 질문',
+  'visitQuestions.inline.question.origin.new': '새 질문',
+  'visitQuestions.inline.emptySelection': '저장할 질문을 선택해 주세요.',
+  'visitQuestions.inline.actions.saving': '저장 중',
+  'visitQuestions.inline.actions.save': '선택한 질문 저장',
+  'visitQuestions.saved.count': '{count}개',
+  'visitQuestions.conversation.restorationNotice':
+    '저장된 질문과 처음 생성된 후보를 불러왔어요. 저장하지 않은 편집은 반영되지 않았을 수 있어요.',
+  'visitQuestions.conversation.save.conflict':
+    '질문 저장 중 다른 변경이 있었어요. 저장된 목록을 다시 불러와 주세요.',
+  'visitQuestions.conversation.save.saved': '질문을 저장했어요.',
+  'visitQuestions.conversation.save.searchPending':
+    '질문은 저장됐지만 검색 반영은 다시 시도해야 해요.',
+  'visitQuestions.conversation.save.failed':
+    '질문을 저장하지 못했어요. 예약과 근거를 확인하고 다시 시도해 주세요.',
+  'visitQuestions.conversation.actions.regenerate': '질문 다시 만들기',
+  'visitQuestions.conversation.regenerate.pendingMessage':
+    '작성 중인 메시지를 보내거나 지운 뒤 질문을 다시 만들어 주세요.',
+  'visitQuestions.conversation.answer.ready':
+    '진료에서 물어볼 질문을 준비했어요. 선택하고 수정한 뒤 저장할 수 있어요.',
+  'visitQuestions.retained.loadError': '진료 기록을 다시 불러오지 못했어요.',
+  'visitQuestions.retained.retry': '진료 기록 다시 불러오기',
+  'visitQuestions.recap.loadError': '진료 요약을 불러오지 못했어요.',
+  'visitQuestions.recap.status.pending':
+    '진료 요약 처리를 기다리거나 진행 중이에요.',
+  'visitQuestions.recap.status.consentRequired':
+    '진료 요약을 위한 전송 동의가 필요해요.',
+  'visitQuestions.recap.status.noQuestions':
+    '준비된 질문이 없어 요약하지 않았어요.',
+  'visitQuestions.recap.status.failed': '진료 요약을 완료하지 못했어요.',
+  'visitQuestions.recap.actions.retry': '진료 요약 다시 시도',
+  'visitQuestions.recap.heading': '자동 저장된 진료 요약',
+  'visitQuestions.recap.answer.userEdited': '내가 수정한 답변: {answer}',
+  'visitQuestions.recap.answer.empty': '답변 없음',
+  'visitQuestions.recap.questionStatus.evidenceFound':
+    '녹음에서 질문을 찾았어요',
+  'visitQuestions.recap.questionStatus.notFound': '이 전사에서 찾지 못했어요',
+  'visitQuestions.recap.questionStatus.uncertain': '확인하기 어려워요',
+  'visitQuestions.recap.answer.quotation': '원문: {quotation}',
+  'visitQuestions.recap.answer.summary': 'AI 요약: {summary}',
+  'visitQuestions.recap.answer.speakerUncertainty':
+    '화자 미확인: {uncertainty}',
+  'visitQuestions.recap.actions.playOriginalRecording': '원본 녹음 듣기',
+  'visitQuestions.manual.loadError': '진료 질문을 불러오지 못했어요.',
+  'visitQuestions.manual.saveUnconfirmed':
+    '저장 결과를 확인하지 못했어요. 다시 불러와 확인해 주세요.',
+  'visitQuestions.manual.title': '준비한 진료 질문',
+  'visitQuestions.manual.instructions':
+    '실제로 물어본 질문만 확인해 주세요. 답변은 비워 둘 수 있어요.',
+  'visitQuestions.manual.questionAtConfirmation': '확인 당시 질문: {question}',
+  'visitQuestions.manual.source.stale': '원본이 변경된 기록',
+  'visitQuestions.manual.source.confirmed': '직접 확인',
+  'visitQuestions.manual.source.recordingAnalysis': '녹음 분석 결과',
+  'visitQuestions.manual.answer.userEdited': '사용자가 수정한 답변',
+  'visitQuestions.manual.evidence.notFound':
+    '이 전사에서 질문 근거를 찾지 못했어요.',
+  'visitQuestions.manual.evidence.indeterminate': '질문 여부가 불확실해요.',
+  'visitQuestions.manual.evidence.found': '이 전사에서 질문 근거를 찾았어요.',
+  'visitQuestions.manual.answer.speakerUncertainty':
+    '화자는 확인되지 않았어요. {uncertainty}',
+  'visitQuestions.manual.answer.empty': '입력한 답변 없음',
+  'visitQuestions.manual.actions.edit': '답변 수정',
+  'visitQuestions.manual.actions.confirmAsked': '실제로 물어봤어요',
+  'visitQuestions.manual.answer.label': '의료진 답변',
+  'visitQuestions.manual.actions.save': '저장',
+  'visitQuestions.manual.actions.cancel': '취소',
+  'visitQuestions.manual.actions.reload': '다시 불러오기',
 } as const;

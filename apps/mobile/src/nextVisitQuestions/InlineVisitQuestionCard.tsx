@@ -19,6 +19,7 @@ import type {
   NextVisitEvidenceReference,
   NextVisitQuestionsTheme,
 } from './types';
+import { t } from '../i18n';
 
 /** A conversation owner supplies state for one message and controls save completion. */
 export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
@@ -55,7 +56,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
   return (
     <View testID="inline-visit-review">
       <Text accessibilityRole="header" style={{ color: theme.colors.text }}>
-        진료에서 물어볼 질문
+        {t('visitQuestions.inline.title')}
       </Text>
       {state.items.map((item, index) => {
         const id = item.question.identity!.id;
@@ -63,7 +64,9 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
           <View key={id}>
             <Pressable
               accessibilityRole="checkbox"
-              accessibilityLabel={`질문 ${index + 1} 선택`}
+              accessibilityLabel={t('visitQuestions.inline.question.select', {
+                number: index + 1,
+              })}
               accessibilityState={{
                 checked: item.selected,
                 disabled: isSaving,
@@ -82,7 +85,9 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
                 disabled={isSaving}
               />
               <Text style={{ color: theme.colors.text }}>
-                {item.origin === 'saved' ? '저장된 질문' : '새 질문'}
+                {item.origin === 'saved'
+                  ? t('visitQuestions.inline.question.origin.saved')
+                  : t('visitQuestions.inline.question.origin.new')}
               </Text>
             </Pressable>
             <QuestionCard
@@ -105,7 +110,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
       <EvidenceCaveats caveats={state.caveats} theme={theme} />
       {!state.items.some(item => item.selected) ? (
         <Text style={{ color: theme.colors.textMuted }}>
-          저장할 질문을 선택해 주세요.
+          {t('visitQuestions.inline.emptySelection')}
         </Text>
       ) : null}
       {saveMessage ? (
@@ -114,7 +119,11 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         </Text>
       ) : null}
       <ActionButton
-        label={isSaving ? '저장 중' : '선택한 질문 저장'}
+        label={
+          isSaving
+            ? t('visitQuestions.inline.actions.saving')
+            : t('visitQuestions.inline.actions.save')
+        }
         disabled={!selection || isSaving}
         onPress={submit}
         theme={theme}

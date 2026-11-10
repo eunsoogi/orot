@@ -2,6 +2,7 @@ import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { DisplayMessage } from './ConversationMessage';
 import { visitPreparationSender } from './conversationVisitDispatch';
+import { t } from '../i18n';
 
 /** Start a separate turn without replacing a composer draft or an existing review. */
 export function regenerateVisitQuestions(input: {
@@ -30,7 +31,7 @@ export function regenerateVisitQuestions(input: {
   ) {
     store.setError(
       sessionId,
-      '작성 중인 메시지를 보내거나 지운 뒤 질문을 다시 만들어 주세요.',
+      t('visitQuestions.conversation.regenerate.pendingMessage'),
     );
     return;
   }
