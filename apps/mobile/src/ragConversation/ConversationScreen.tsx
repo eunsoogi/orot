@@ -138,7 +138,14 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      {!selectedReport ? <TreatmentConversationAction key={id} /> : null}
+      {!selectedReport ? (
+        <TreatmentConversationAction
+          key={id}
+          sessionId={id}
+          ownership={store.treatment}
+          onOpenSource={onOpenSource}
+        />
+      ) : null}
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={onOpenDailyReport}

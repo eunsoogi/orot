@@ -8,6 +8,7 @@ import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests_
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { treatmentSafetyKo } from '../../i18n/treatmentSafety';
 import { createSymptomSummaryStorage } from '../../storage/symptomSummaryStorage';
+import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { listTreatmentSourceChoices } from '../treatmentSourceChoices';
 import {
   prepareTreatmentRetention,
@@ -125,7 +126,10 @@ test('production choices bind clinician attribution and exact possibility refere
         revision: fingerprint(summary),
       }),
     );
-    const retention = await prepareTreatmentRetention(database, signal);
+    const store = createConversationArtifactStorage(database);
+    const lease = { id: 'source-test-session', version: 0 };
+    await store.createSession(lease.id, await store.currentGeneration());
+    const retention = prepareTreatmentRetention(lease);
     expect(
       await produceTreatmentRequest(
         database,
@@ -158,11 +162,7 @@ test('production choices bind clinician attribution and exact possibility refere
         [],
       ),
     ).toMatchObject({ status: 'validated' });
-    const followUpRetention = await prepareTreatmentRetention(
-      database,
-      signal,
-      retention,
-    );
+    const followUpRetention = prepareTreatmentRetention(lease, retention);
     expect(
       await produceTreatmentRequest(
         database,
@@ -186,7 +186,7 @@ test('production choices bind clinician attribution and exact possibility refere
         },
       ],
     });
-    await deleteSavedTreatment(database, retention);
+    await deleteSavedTreatment(database, retention, lease);
     expect(
       await produceTreatmentRequest(
         database,

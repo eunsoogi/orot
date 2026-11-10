@@ -52,10 +52,10 @@ test('pages retained conversations across sessions after reopening and reads the
     );
     // A newer dedicated treatment answer must not take a search slot or leak into ordinary history.
     const signal = new AbortController().signal;
-    const retention = await prepareTreatmentRetention(
-      connection.database,
-      signal,
-    );
+    const retention = prepareTreatmentRetention({
+      id: 'session-a',
+      version: 0,
+    });
     expect(
       await produceTreatmentRequest(
         connection.database,

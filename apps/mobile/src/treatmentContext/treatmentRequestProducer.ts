@@ -13,6 +13,8 @@ import { validateTreatmentArtifact } from './treatmentSafetyArtifact';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 import { createTreatmentSafetyService } from './treatmentSafetyService';
+import { presentTreatment } from './treatmentPresentation';
+import type { TreatmentPresentation } from './treatmentPresentation';
 
 export type TreatmentRequestAction =
   | {
@@ -23,12 +25,14 @@ export type TreatmentRequestAction =
       readonly kind: 'follow_up';
       readonly artifactId: string;
       readonly sessionId?: string;
+      readonly sessionVersion?: number;
       readonly selection: TreatmentEducationSelection;
     }
   | {
       readonly kind: 'reopen';
       readonly artifactId: string;
       readonly sessionId?: string;
+      readonly sessionVersion?: number;
     };
 
 export interface TreatmentRetention {
@@ -47,6 +51,7 @@ export async function produceTreatmentRequest(
   signal: AbortSignal,
   actions: readonly SafetyPolicyAction[],
   retention?: TreatmentRetention,
+  presentation?: TreatmentPresentation,
 ): Promise<TreatmentSafetyResult> {
   const verifier = createTreatmentClaimVerifier(database);
   const store = createConversationArtifactStorage(database);
@@ -65,8 +70,35 @@ export async function produceTreatmentRequest(
       sources: JSON.parse(JSON.stringify(request.sources)),
     } as TreatmentEvidenceRequest;
     let original: Awaited<ReturnType<typeof store.read>> = null;
+    const read = async (id: string) =>
+      chosen.kind !== 'request' &&
+      chosen.sessionId &&
+      chosen.sessionVersion !== undefined
+        ? ((
+            await store.readSessionMany(
+              chosen.sessionId,
+              chosen.sessionVersion,
+              [id],
+            )
+          )[0] ?? null)
+        : store.read(id);
+    const present = (
+      result: TreatmentSafetyResult,
+      artifactId?: string,
+      expectedRevision?: string,
+    ) =>
+      presentTreatment({
+        database,
+        bound,
+        result,
+        presentation,
+        signal,
+        read,
+        artifactId,
+        expectedRevision,
+      });
     if (chosen.kind === 'follow_up' || chosen.kind === 'reopen') {
-      original = await store.read(chosen.artifactId);
+      original = await read(chosen.artifactId);
       if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
       if (
         !original?.treatmentContext ||
@@ -89,16 +121,20 @@ export async function produceTreatmentRequest(
       };
       if (chosen.kind === 'reopen') {
         if (saved) return { status: 'withheld', reason: 'malformed' };
-        const current = await store.read(original.id);
+        const current = await read(original.id);
         if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
         if (!current || stableJson(current) !== stableJson(original))
           return { status: 'withheld', reason: 'unsupported' };
-        return validateTreatmentArtifact(
-          current,
-          bound,
-          verifier,
-          signal,
-          actions,
+        return present(
+          await validateTreatmentArtifact(
+            current,
+            bound,
+            verifier,
+            signal,
+            actions,
+          ),
+          current.id,
+          fingerprint(current),
         );
       }
     } else if (chosen.kind !== 'request') {
@@ -127,7 +163,7 @@ export async function produceTreatmentRequest(
     if (result.status !== 'validated') return result;
     if (original) {
       // Re-read the same artifact after validation so deletion, hiding, or source drift withholds the follow-up.
-      const current = await store.read(original.id);
+      const current = await read(original.id);
       if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
       if (!current || stableJson(current) !== stableJson(original))
         return { status: 'withheld', reason: 'unsupported' };
@@ -141,7 +177,12 @@ export async function produceTreatmentRequest(
       if (prior.status !== 'validated') return prior;
     }
     if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
-    if (!saved) return result;
+    if (!saved)
+      return present(
+        result,
+        original?.id,
+        original ? fingerprint(original) : undefined,
+      );
     // One verified claim per turn preserves the existing turn-level citation binding.
     const claim = result.claims[0];
     if (!claim || result.claims.length !== 1)
@@ -172,24 +213,27 @@ export async function produceTreatmentRequest(
             },
           ]
         : bound.sources;
-    return await safety.save(
-      {
-        id: saved.id,
-        sessionId: saved.sessionId,
-        createdAt: saved.createdAt,
-        providerId: 'local',
-        modelId: 'app-owned',
-        status: 'complete',
-        question: saved.question,
-        answer: claim.text,
-        citations: claim.citations,
-        sources,
-        treatmentContext: bound.context,
-      },
-      bound,
-      signal,
-      actions,
-      saved.expectedSessionVersion,
+    return present(
+      await safety.save(
+        {
+          id: saved.id,
+          sessionId: saved.sessionId,
+          createdAt: saved.createdAt,
+          providerId: 'local',
+          modelId: 'app-owned',
+          status: 'complete',
+          question: saved.question,
+          answer: claim.text,
+          citations: claim.citations,
+          sources,
+          treatmentContext: bound.context,
+        },
+        bound,
+        signal,
+        actions,
+        saved.expectedSessionVersion,
+      ),
+      saved.id,
     );
   } catch {
     return {

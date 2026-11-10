@@ -7,6 +7,7 @@ import type { TreatmentEvidenceRequest } from './interfaces';
 import { produceTreatmentRequest } from './treatmentRequestProducer';
 import type { TreatmentRequestAction } from './treatmentRequestProducer';
 import type { TreatmentRetention } from './treatmentRequestProducer';
+import type { TreatmentPresentation } from './treatmentPresentation';
 import { treatmentSafetyGuidance } from './treatmentSafetyGuidance';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 
@@ -22,6 +23,7 @@ export function treatmentConversationSender(input: {
   readonly request: TreatmentEvidenceRequest;
   readonly safetyInput: SafetyPolicyInput;
   readonly skipEducation?: boolean;
+  readonly presentation?: TreatmentPresentation;
   readonly prepareRetention?: (
     database: SqlDatabase,
     signal: AbortSignal,
@@ -64,6 +66,7 @@ export function treatmentConversationSender(input: {
               operation,
               [],
               retention,
+              input.presentation,
             );
           })();
     if (result.status === 'validated') {

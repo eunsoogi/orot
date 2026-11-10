@@ -25,7 +25,9 @@ import {
   undoMemoryConversation,
   undoRetainedConversation,
 } from './conversationSessionTransitions';
+import { conversationTreatmentOwnership } from './conversationTreatmentOwnership';
 export type { ConversationSender, ConversationSession };
+export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
 /** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
@@ -240,11 +242,9 @@ export function createConversationSessions(
     },
     send: (id: number, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend),
-    // This local identity scopes source access to the selected retained conversation.
-    toolSourceSessionId: (id: number) =>
-      options.retention?.activeIdentity(id) ?? null,
+    treatment: conversationTreatmentOwnership(options, () =>
+      disposed ? undefined : snapshot,
+    ),
+    toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
 }
-export type ConversationSessions = ReturnType<
-  typeof createConversationSessions
->;

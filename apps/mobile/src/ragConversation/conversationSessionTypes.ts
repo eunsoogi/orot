@@ -9,8 +9,16 @@ import type { ArtifactContinuation } from './artifactContinuation';
 import type { createConversationSessionRetention } from './conversationSessionRetention';
 import type { EvidenceReference } from '@orot/agent-runtime';
 
+export type ConversationSessions = ReturnType<
+  typeof import('./conversationSessions').createConversationSessions
+>;
+
+type Retention = ReturnType<typeof createConversationSessionRetention>;
+
 export interface ConversationSessionOptions {
-  readonly retention?: ReturnType<typeof createConversationSessionRetention>;
+  readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
+  readonly retention?: Omit<Retention, 'beginSession'> &
+    Partial<Pick<Retention, 'beginSession'>>;
   readonly restoreSession?: (
     id: string,
     signal: AbortSignal,

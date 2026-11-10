@@ -3,7 +3,10 @@ import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { formatDateTime, t } from '../i18n';
 import { listSavedTreatment } from './treatmentSavedLibrary';
-import type { SavedTreatmentChoice } from './treatmentSavedLibrary';
+import type {
+  SavedTreatmentChoice,
+  TreatmentSessionLease,
+} from './treatmentSavedLibrary';
 import { listTreatmentSourceChoices } from './treatmentSourceChoices';
 import type { TreatmentSourceChoice } from './treatmentSourceChoices';
 
@@ -34,10 +37,12 @@ type Choices =
 /** Display record labels or saved metadata only. Opening answer text is a separate verified action. */
 export function TreatmentLibraryChoices({
   mode,
+  lease,
   onSource,
   onSaved,
 }: {
   readonly mode: Choices['kind'];
+  readonly lease: TreatmentSessionLease | null;
   readonly onSource: (choice: TreatmentSourceChoice) => void;
   readonly onSaved: (choice: SavedTreatmentChoice) => void;
 }) {
@@ -47,6 +52,10 @@ export function TreatmentLibraryChoices({
     const controller = new AbortController();
     async function load() {
       try {
+        if (mode === 'saved' && !lease) {
+          setChoices({ kind: 'saved', items: [] });
+          return;
+        }
         const database = await openTreatmentDatabase();
         if (controller.signal.aborted) return;
         const result: Choices =
@@ -58,7 +67,10 @@ export function TreatmentLibraryChoices({
                   controller.signal,
                 ),
               }
-            : { kind: 'saved', items: await listSavedTreatment(database) };
+            : {
+                kind: 'saved',
+                items: lease ? await listSavedTreatment(database, lease) : [],
+              };
         if (!controller.signal.aborted) setChoices(result);
       } catch {
         if (!controller.signal.aborted) setFailed(true);
@@ -66,7 +78,7 @@ export function TreatmentLibraryChoices({
     }
     load();
     return () => controller.abort();
-  }, [mode]);
+  }, [mode, lease]);
   if (failed)
     return (
       <AppText accessibilityRole="alert">

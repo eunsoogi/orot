@@ -32,6 +32,48 @@ export function createConversationSessionRetention(input: {
 }) {
   const slots = new Map<number, Slot>();
   let lifecycle = 0;
+  async function ensureSession(id: number, signal: AbortSignal) {
+    let slot = slots.get(id);
+    if (!slot) {
+      slot = {
+        id: input.createId(),
+        version: 0,
+        hidden: false,
+        turns: new Set(),
+      };
+      slots.set(id, slot);
+    }
+    if (slot.hidden || signal.aborted)
+      throw new Error('Conversation is unavailable.');
+    const current = slot;
+    const version = current.version;
+    const assertLease = () => {
+      if (
+        slots.get(id) !== current ||
+        current.hidden ||
+        current.version !== version ||
+        signal.aborted
+      )
+        throw new Error('Conversation is unavailable.');
+    };
+    const storage = await input.openStorage();
+    assertLease();
+    if (!current.ready) {
+      current.ready = (async () => {
+        const generation = await storage.currentGeneration();
+        await storage.createSession(current.id, generation);
+      })().catch(error => {
+        current.ready = undefined;
+        throw error;
+      });
+    }
+    await current.ready;
+    assertLease();
+    if ((await storage.activeSessionVersion(current.id)) !== version)
+      throw new Error('Conversation is unavailable.');
+    assertLease();
+    return { storage, current, version };
+  }
   return {
     invalidate() {
       lifecycle += 1;
@@ -95,46 +137,12 @@ export function createConversationSessionRetention(input: {
         turns: new Set(),
       });
     },
+    async beginSession(id: number, signal: AbortSignal) {
+      const { current, version } = await ensureSession(id, signal);
+      return { id: current.id, version };
+    },
     async beginTurn(id: number, signal: AbortSignal) {
-      let slot = slots.get(id);
-      if (!slot) {
-        slot = {
-          id: input.createId(),
-          version: 0,
-          hidden: false,
-          turns: new Set(),
-        };
-        slots.set(id, slot);
-      }
-      if (slot.hidden || signal.aborted)
-        throw new Error('Conversation is unavailable.');
-      const current = slot;
-      const version = current.version;
-      const assertLease = () => {
-        if (
-          slots.get(id) !== current ||
-          current.hidden ||
-          current.version !== version ||
-          signal.aborted
-        )
-          throw new Error('Conversation is unavailable.');
-      };
-      const storage = await input.openStorage();
-      assertLease();
-      if (!current.ready) {
-        current.ready = (async () => {
-          const generation = await storage.currentGeneration();
-          await storage.createSession(current.id, generation);
-        })().catch(error => {
-          current.ready = undefined;
-          throw error;
-        });
-      }
-      await current.ready;
-      assertLease();
-      if ((await storage.activeSessionVersion(current.id)) !== version)
-        throw new Error('Conversation is unavailable.');
-      assertLease();
+      const { storage, current, version } = await ensureSession(id, signal);
       const turn = createConversationTurnRetention({
         storage,
         sessionId: current.id,

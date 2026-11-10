@@ -9,6 +9,7 @@ import { fingerprint } from './evidenceUtils';
 import { bindLiveConversationToolSources } from './bindLiveConversationToolSources';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import type { AiFeatureServices } from './featureServices';
+import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -35,6 +36,7 @@ export function createConversationSessionOptions(input: {
     return storage;
   };
   return {
+    resolveTreatmentSource: createTreatmentSourceResolver(input),
     retention: createConversationSessionRetention({
       openStorage,
       createId: operationRunId,

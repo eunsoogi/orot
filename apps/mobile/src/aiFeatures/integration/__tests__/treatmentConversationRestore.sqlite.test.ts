@@ -62,7 +62,7 @@ test('generic history withholds treatment turns while the treatment reopen path 
       signal,
     });
     expect(page.items.map(item => item.id)).toEqual(['ordinary']);
-    expect(page.unavailableCount).toBe(1);
+    expect(page.unavailableCount).toBe(0);
     expect(
       await produceTreatmentRequest(
         connection.database,

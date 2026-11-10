@@ -31,7 +31,8 @@ export const treatmentSafetyKo = {
   'treatmentSafety.deleteSaved': '저장한 설명 삭제',
   'treatmentSafety.sourceLimits':
     '이 근거로는 치료 목적, 모니터링 방법, 의료진 계획의 내용을 확인할 수 없어요.',
-  'treatmentSafety.sourceCount': '연결된 출처 {count}개',
+  'treatmentSafety.openSource': '원본 출처 {index} 열기',
+  'treatmentSafety.generalEducation': '일반 치료 정보',
   'treatmentSafety.open': '치료 선택지 알아보기',
   'treatmentSafety.confirmation': '치료 설명 전 확인',
   'treatmentSafety.privateInput': '이 정보는 이번 확인에만 사용해요.',
