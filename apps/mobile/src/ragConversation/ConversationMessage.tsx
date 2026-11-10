@@ -141,13 +141,14 @@ export function ConversationMessage({
             }
           />
         ) : message.healthSummary === null ? (
-          <Text>저장된 요약을 확인할 수 없어요.</Text>
+          <Text>
+            {t('ragConversation.conversation.savedSummaryUnavailable')}
+          </Text>
         ) : null}
         {!activityBeforeText ? activity : null}
         {message.visitQuestionsUnavailable ? (
           <Text accessibilityRole="alert" style={styles.activity}>
-            저장된 진료 질문을 다시 불러올 수 없어요. 예약과 질문 목록을 확인해
-            주세요.
+            {t('ragConversation.conversation.savedVisitQuestionsUnavailable')}
           </Text>
         ) : null}
         {!user && message.visitQuestions

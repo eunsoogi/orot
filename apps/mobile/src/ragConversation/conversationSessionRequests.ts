@@ -140,7 +140,7 @@ export function createConversationSessionRequests(
           { id: userMessageId, role: 'user', content: question },
         ],
         busy: true,
-        error: session.unsavedCount ? '저장하지 못한 답변이 남아 있어요.' : '',
+        error: session.unsavedCount ? copy.unsavedAnswersRemain : '',
         pendingMessage: { id: responseId, content: '', activity: copy.loading },
       });
       const current = () =>

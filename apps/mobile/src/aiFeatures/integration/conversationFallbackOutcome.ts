@@ -1,4 +1,5 @@
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
+import { t } from '../../i18n';
 
 /** Keep a failed local lookup distinct from a genuinely empty continuation page. */
 export function conversationFallbackOutcome(
@@ -13,8 +14,7 @@ export function conversationFallbackOutcome(
     return {
       status: 'answer',
       citations: [],
-      answer:
-        '아직 일치하는 결과를 찾지 못했어요. 더 이전 결과를 계속 찾아볼 수 있어요.',
+      answer: t('ragConversation.conversation.continuationNoMatch'),
     };
   if (
     localRetrievalFailed &&
