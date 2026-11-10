@@ -99,6 +99,8 @@ test('hides the saved report when source revalidation finds it stale', async () 
       report: {
         generatedAt: '2023-11-15T12:01:00Z',
         observations: [{ text: '합성 기록' }],
+        supportedContext: [],
+        followUpQuestions: [],
         coverage: [],
       },
     })
@@ -198,6 +200,8 @@ test('opens follow-up with the current report identity only after revalidation',
     report: {
       generatedAt: '2023-11-15T12:01:00Z',
       observations: [{ text: '합성 기록' }],
+      supportedContext: [],
+      followUpQuestions: [],
       coverage: [],
     },
   };

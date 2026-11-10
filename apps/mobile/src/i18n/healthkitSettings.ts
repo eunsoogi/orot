@@ -133,14 +133,20 @@ export const healthkitSettingsKo = {
   'dailyReport.cancelled': '보고서 생성을 취소했어요.',
   'dailyReport.stale':
     '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
+  'dailyReport.deleted': '저장된 보고서가 삭제됐어요.',
+  'dailyReport.deletedSource':
+    '보고서의 출처 기록이 삭제되어 저장된 내용을 표시할 수 없어요.',
   'dailyReport.missingOld':
     '이 날짜에 저장된 보고서가 없어요. 오늘을 선택해 새로운 보고서를 만들 수 있어요.',
   'dailyReport.lookupError':
     '저장된 보고서를 확인하지 못했어요. 다시 시도해 주세요.',
   'dailyReport.retry': '다시 확인',
   'dailyReport.generatedAt': '생성 시각: {time}',
+  'dailyReport.savedRevision': '저장된 버전 {revision}',
   'dailyReport.reportCutoff': '기록 확인 기준 시각: {time}',
   'dailyReport.observations': '확인된 기록',
+  'dailyReport.supportedContext': '기록으로 확인한 맥락',
+  'dailyReport.suggestedQuestions': 'AI가 제안한 질문',
   'dailyReport.reportCaution':
     'AI가 고른 기록이며, 독립적인 의학적 사실이나 진단이 아니에요.',
   'dailyReport.chat': '이 보고서에 관해 대화하기',
