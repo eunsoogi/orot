@@ -18,7 +18,7 @@ export function requestsLiteratureExplanation(question: string): boolean {
     return false;
   // Require a request immediately after “related research”; a mention or thanks is not a new search.
   const relatedResearch =
-    /관련\s*연구(?:는|가|를|에\s*대해)?\s*(?:어떤|무엇|알려|설명|요약|보여)/u;
+    /관련\s*연구(?:는|가|를|에\s*대해)?\s*(?:어떤|무엇|(?:알려|설명|요약|보여)(?!\s*(?:해)?줘서\s*고마워))/u;
   return (
     relatedResearch.test(normalized) ||
     (koreanSource.test(normalized) && koreanAction.test(normalized)) ||
