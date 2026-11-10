@@ -87,6 +87,9 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         let toggle = UITestConditions.element(app, "settings-daily-reminder-switch")
         UITestConditions.scrollTo(toggle, in: app.scrollViews.firstMatch)
         XCTAssertTrue(toggle.exists && toggle.isHittable, toggle.debugDescription)
+        // Settings disables the switch until both saved preference and scheduler reads settle.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in toggle.isEnabled }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, status.debugDescription)
         let toggleValue = try XCTUnwrap(toggle.value as? String)
         guard toggleValue == "0" || toggleValue == "1" else {
             throw NSError(domain: "DailyReminderSetup", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unknown reminder switch value: \(toggleValue)"])
