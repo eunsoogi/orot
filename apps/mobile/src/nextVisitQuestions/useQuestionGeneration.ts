@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { copyQuestions } from './questionReview';
+import { createQuestionIdentity } from './questionIdentity';
 import { useQuestionGenerationActivity } from './useQuestionGenerationActivity';
 import type {
   AppointmentViewState,
@@ -129,7 +130,13 @@ export function useQuestionGeneration<
           return;
         }
         clearActivity();
-        setDraftQuestions(copyQuestions(outcome.questions));
+        // Each generation produces new candidates; review edits retain these identities.
+        setDraftQuestions(
+          copyQuestions(outcome.questions).map(question => ({
+            ...question,
+            identity: { id: createQuestionIdentity() },
+          })),
+        );
         setHasUnpersistedReview(true);
         setPhase('reviewing');
         return;

@@ -232,4 +232,15 @@ public final class AppointmentReminderModule: RCTEventEmitter {
     public func consumeTarget(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
         resolve(AppointmentReminderDelivery.shared.consumeTarget() as Any? ?? NSNull())
     }
+
+    @objc(consumeDailyTarget:rejecter:)
+    public func consumeDailyTarget(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
+        resolve(AppointmentReminderDelivery.shared.consumeDailyTarget() as Any? ?? NSNull())
+    }
+
+    @objc(acknowledgeDailyTarget:resolver:rejecter:)
+    public func acknowledgeDailyTarget(_ timestamp: String, resolver resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
+        AppointmentReminderDelivery.shared.acknowledgeDailyTarget(timestamp)
+        resolve(nil)
+    }
 }

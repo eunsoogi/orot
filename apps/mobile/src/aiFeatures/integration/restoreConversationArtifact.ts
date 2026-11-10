@@ -13,6 +13,7 @@ import {
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
 import { restoreConversationParentSource } from './restoreConversationParentSource';
 import { restoreResearchSource } from './restoreResearchSource';
+import { rebindConversationVisitCandidates } from './rebindConversationVisitCandidates';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export async function restoreConversationArtifact(input: {
@@ -95,6 +96,10 @@ export async function restoreConversationArtifact(input: {
   );
   const citations = saved.citations.map(ref => bySource.get(stableJson(ref)));
   if (citations.some(ref => !ref)) return null;
+  const visitCandidates = saved.visitQuestions
+    ? rebindConversationVisitCandidates(saved.visitQuestions, bySource)
+    : undefined;
+  if (saved.visitQuestions && !visitCandidates) return null;
   return {
     id: saved.id,
     sessionId: saved.sessionId,
@@ -104,6 +109,15 @@ export async function restoreConversationArtifact(input: {
     status: saved.status,
     question: saved.question,
     answer: saved.answer,
+    ...(saved.healthSummary ? { healthSummary: saved.healthSummary } : {}),
+    ...(saved.visitQuestions
+      ? {
+          visitQuestions: {
+            appointmentId: saved.visitQuestions.appointmentId,
+            candidates: visitCandidates!,
+          },
+        }
+      : {}),
     revision: fingerprint(saved),
     sources: bound,
     citations: citations as NonNullable<(typeof citations)[number]>[],

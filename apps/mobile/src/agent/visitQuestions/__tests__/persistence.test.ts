@@ -59,7 +59,7 @@ describe('saving reviewed visit questions', () => {
     expect(result.memoryStatus).toBe('saved');
     expect(result.questions).toHaveLength(1);
     expect(result.questions[0]).toMatchObject({
-      id: 'visit-question:appointment-1:1',
+      id: 'synthetic-question-1',
       appointmentId: 'appointment-1',
       position: 1,
       evidenceSpanIds: ['span-1'],
@@ -110,7 +110,18 @@ describe('saving reviewed visit questions', () => {
       },
     };
     const second = await saveReviewedVisitQuestions(
-      input(store, { memory: successfulMemory }),
+      input(store, {
+        memory: successfulMemory,
+        questions: [
+          {
+            ...candidate,
+            identity: {
+              id: first.questions[0]!.id,
+              expectedRevision: localEvidenceFingerprint(first.questions[0]),
+            },
+          },
+        ],
+      }),
     );
 
     expect(second.memoryStatus).toBe('saved');

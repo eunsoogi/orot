@@ -33,6 +33,7 @@ export type AppleNativeSchema =
     };
 
 export interface AppleNativeRequest {
+  readonly profile?: 'recap-transformation';
   readonly instructions: string;
   readonly prompt: string;
   readonly mode: 'text' | 'structured' | 'tools' | 'mixed';

@@ -1,7 +1,6 @@
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
-import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import { runVisitQuestionWorkflow } from '../../agent/visitQuestions/workflow';
@@ -13,6 +12,7 @@ import type { GenerationOutcome } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
 import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
 import { visitQuestionPublicSearch } from './visitQuestionPublicSearch';
+import { loadVisitQuestionAppointment } from './visitQuestionAppointment';
 import {
   currentEvidenceCaveats,
   type EvidenceCoverageState,
@@ -46,16 +46,21 @@ export type VisitQuestionRouteGeneration =
 export interface VisitQuestionRouteGenerationInput {
   readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
   readonly appointment: Appointment;
+  readonly request?: string;
   readonly selectedAi: ReadySelection;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
   readonly signal: AbortSignal;
   readonly observer?: AiWorkflowObserver;
+  readonly registerToolSource?: AiFeatureServices['registerVisitQuestionSource'];
 }
 
 export interface VisitQuestionRouteOperations {
-  loadAppointment(now: string): Promise<Appointment | null>;
+  loadAppointment(
+    now: string,
+    appointmentId?: string,
+  ): Promise<Appointment | null>;
   generate(
     input: VisitQuestionRouteGenerationInput,
   ): Promise<VisitQuestionRouteGeneration>;
@@ -77,20 +82,6 @@ function sameAppointment(context: ReadyContext, appointment: Appointment) {
   );
 }
 
-async function loadAppointment(now: string): Promise<Appointment | null> {
-  // Delay native SQLCipher imports until the route actually reads local records.
-  const { openLocalRecordQueryService } =
-    await import('../../agent/localRecordQuery');
-  const service = await openLocalRecordQueryService();
-  const result = await service.queryNextConfirmedCalendarAppointment(now);
-  if (result.status === 'no_confirmed_upcoming_calendar_appointment')
-    return null;
-  if (!result.appointment) return null;
-  const appointment = AppointmentSchema.safeParse(result.appointment);
-  if (!appointment.success) throw new Error('The next appointment is invalid.');
-  return appointment.data;
-}
-
 async function generate(
   input: VisitQuestionRouteGenerationInput,
 ): Promise<VisitQuestionRouteGeneration> {
@@ -101,6 +92,7 @@ async function generate(
   const now = new Date().toISOString();
   const context = await prepareUpcomingVisitQuestionContext({
     now,
+    appointmentId: input.appointment.id,
     signal: input.signal,
     maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems - 3,
   });
@@ -183,6 +175,7 @@ async function generate(
   };
   const result = await runVisitQuestionWorkflow({
     prepared: workflowContext,
+    ...(input.request !== undefined ? { request: input.request } : {}),
     generatedTools: generated?.tools,
     selection: input.selectedAi.selection as ProviderSelection,
     providerOptions: [input.selectedAi.option],
@@ -192,6 +185,9 @@ async function generate(
     reservedPublicSearchCall: publicSearch.spentModelCall,
     signal: input.signal,
     ...(input.observer ? { observer: input.observer } : {}),
+    ...(input.registerToolSource
+      ? { registerToolSource: input.registerToolSource }
+      : {}),
   });
   const caveats = [
     ...currentEvidenceCaveats(collections),
@@ -232,7 +228,7 @@ async function generate(
 
 export const defaultVisitQuestionRouteOperations: VisitQuestionRouteOperations =
   {
-    loadAppointment,
+    loadAppointment: loadVisitQuestionAppointment,
     generate,
     save: saveVisitQuestionRoute,
   };

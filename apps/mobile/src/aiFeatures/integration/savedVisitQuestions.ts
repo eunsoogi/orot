@@ -110,6 +110,10 @@ export async function restoreSavedVisitQuestions(input: {
       );
       hasUnknownGeneratedSource ||= generated.unknown;
       return {
+        identity: {
+          id: row.id,
+          expectedRevision: localEvidenceFingerprint(row),
+        },
         ...(row.kind ? { kind: row.kind } : {}),
         ...(row.kind !== 'clarification' &&
         citations.length === 0 &&

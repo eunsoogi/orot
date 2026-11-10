@@ -27,6 +27,7 @@ export interface VisitQuestionEvidenceMetadata {
     readonly type:
       | 'symptom_summary'
       | 'disease_possibilities'
+      | 'daily_report'
       | 'conversation_turn'
       | 'research_publication'
       | 'research_web_explanation';

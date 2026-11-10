@@ -23,6 +23,9 @@ test.each([
   async (route, intent) => {
     const services = createAiFeatureServices({ authorize: jest.fn() });
     const send = jest.fn(async () => ({ status: 'no_evidence' as const }));
+    const prepareVisitQuestionTurn = jest.fn(async () => ({
+      status: 'no_evidence' as const,
+    }));
     await render(
       <AiFeatureSharedNavigationStateProvider>
         <AiFeatureFlowScreen
@@ -38,7 +41,11 @@ test.each([
           resolveSelectedAi={async () => ({ status: 'selection-required' })}
           confirmConsent={jest.fn()}
           selectedAiRevision={0}
-          services={{ ...services, sendRagMessage: send }}
+          services={{
+            ...services,
+            sendRagMessage: send,
+            prepareVisitQuestionTurn,
+          }}
           onOpenArticle={jest.fn()}
         />
       </AiFeatureSharedNavigationStateProvider>,
@@ -56,13 +63,26 @@ test.each([
       '수정한 요청',
     );
     await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-    expect(send).toHaveBeenCalledWith(
-      '수정한 요청',
-      [],
-      expect.any(AbortSignal),
-      expect.any(Object),
-      { intent, entryKey: 'intent-entry', appointmentId: undefined },
-    );
+    if (intent === 'visit-questions') {
+      expect(prepareVisitQuestionTurn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          question: '수정한 요청',
+          context: {
+            intent,
+            entryKey: 'intent-entry',
+            appointmentId: undefined,
+          },
+        }),
+      );
+      expect(send).not.toHaveBeenCalled();
+    } else
+      expect(send).toHaveBeenCalledWith(
+        '수정한 요청',
+        [],
+        expect.any(AbortSignal),
+        expect.any(Object),
+        { intent, entryKey: 'intent-entry', appointmentId: undefined },
+      );
   },
 );
 

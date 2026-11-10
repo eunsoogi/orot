@@ -14,4 +14,8 @@ RCT_EXTERN_METHOD(replace : (NSDictionary *_Nullable)value resolver : (RCTPromis
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(consumeTarget : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)
                       reject)
+RCT_EXTERN_METHOD(consumeDailyTarget : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(acknowledgeDailyTarget : (NSString *)timestamp resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end

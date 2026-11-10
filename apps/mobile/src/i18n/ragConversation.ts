@@ -45,6 +45,10 @@ export const ragConversationKo = {
     '답변을 확인하지 못해 표시하지 않았어요. 질문을 바꾸거나 다시 시도해 주세요.',
   'ragConversation.failureStaleEvidence':
     '기록이 변경되어 답변을 확인하지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.failureVisitNoAppointment':
+    '진료 예약을 확인할 수 없어요. 홈에서 예약을 선택하고 다시 시작해 주세요.',
+  'ragConversation.failureVisitSavedUnavailable':
+    '저장된 진료 질문을 확인하지 못했어요. 다시 불러온 뒤 시도해 주세요.',
   'ragConversation.failureBudget':
     '질문을 한 번에 처리하지 못했어요. 질문을 나누어 다시 시도해 주세요.',
   'ragConversation.availability.empty':

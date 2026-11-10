@@ -59,6 +59,7 @@ test('a produced conversation is saved as a question parent and its deletion rem
     await records.put('appointment', appointment);
     const saveInput: Parameters<typeof saveReviewedVisitQuestions>[0] = {
       appointmentId: appointment.id,
+      expectedSavedQuestions: [],
       expectedAppointmentRevision: localEvidenceFingerprint(appointment),
       questions: [{ ...candidate, citations: [citation] }],
       evidence: {
@@ -86,7 +87,7 @@ test('a produced conversation is saved as a question parent and its deletion rem
       revalidateEvidence: async () => true,
     };
     await saveReviewedVisitQuestions(saveInput);
-    const id = 'visit-question:appointment-1:1';
+    const id = 'synthetic-question-1';
     expect(await records.get('visit_question', id)).toMatchObject({
       generatedArtifactSources: [
         { kind: 'generated_conversation', id: parent.id, revision },

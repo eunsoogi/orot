@@ -74,6 +74,7 @@ test.each(['addition', 'update'] as const)(
             appointment: f.prepared.appointment,
             questions: restored.questions,
             caveats: [],
+            expectedSavedQuestions: [],
             resolveSource: reference => f.registry.resolve(reference),
           },
           async () => ({
@@ -122,6 +123,7 @@ test('retains a working current citation when another question period changes', 
     if (!activity) throw new Error('Activity period was not captured.');
     const activityQuestion = {
       ...f.question,
+      identity: { id: 'synthetic-health-activity' },
       questionText: '걸음 수를 다음 진료에서 어떻게 참고할까요?',
       citations: [activity],
     };

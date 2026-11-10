@@ -1,4 +1,5 @@
-import type { SqlExecutor } from '@orot/storage';
+import type { SqlExecutor, ManualHistoryRepository } from '@orot/storage';
+import { validateDailyReportArtifact } from '../../storage/dailyReportArtifactValidation';
 import { decodeSavedSymptomSummary } from '../../storage/symptomSummaryStorageCodec';
 import { decodeConversationArtifact } from '../../storage/conversationArtifactCodec';
 import { readResearchArtifact } from '../../storage/researchArtifactCodec';
@@ -11,6 +12,7 @@ export async function assertGeneratedVisitQuestionSource(
   item: VisitQuestionEvidenceItem,
   metadata: VisitQuestionEvidenceMetadata,
   sql?: SqlExecutor,
+  manualHistory?: ManualHistoryRepository,
 ): Promise<void> {
   const source = metadata.generatedArtifactSource;
   const locator =
@@ -50,6 +52,18 @@ export async function assertGeneratedVisitQuestionSource(
     return;
   }
   if (source.kind === 'generated_summary') {
+    if (source.type === 'daily_report') {
+      if (!manualHistory)
+        throw new Error('Daily report source validation is unavailable.');
+      const daily = await validateDailyReportArtifact(
+        sql,
+        source.id,
+        manualHistory,
+      );
+      if (!daily || daily.fingerprint !== source.revision)
+        throw new Error('The daily report changed or was removed.');
+      return;
+    }
     const invalid = await sql.execute(
       'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
       [source.id],
