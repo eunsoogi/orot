@@ -10,6 +10,7 @@ import type { NextVisitQuestionsTheme } from '../../nextVisitQuestions/types';
 import type { DisplayMessage } from '../../ragConversation/ConversationMessage';
 import type { ConversationSessions } from '../../ragConversation/conversationSessions';
 import { withConversationVisitSave } from '../../ragConversation/conversationVisitSaveLease';
+import { t } from '../../i18n';
 import type { AiFeatureServices } from './featureServices';
 import type { VisitQuestionRouteOperations } from './visitQuestionsRouteOperations';
 import type { VisitQuestionRouteSaveResult } from './visitQuestionsRouteSave';
@@ -70,7 +71,7 @@ export function ConversationVisitQuestionCard({
             [
               visit.restorationNotice,
               visit.restoredFromSnapshot
-                ? '저장된 질문과 처음 생성된 후보를 불러왔어요. 저장하지 않은 편집은 반영되지 않았을 수 있어요.'
+                ? t('visitQuestions.conversation.restorationNotice')
                 : '',
             ]
               .filter(Boolean)
@@ -106,9 +107,7 @@ export function ConversationVisitQuestionCard({
               const latest = current();
               if (!latest) return;
               if (latest.review !== visit.review) {
-                setNotice(
-                  '질문 저장 중 다른 변경이 있었어요. 저장된 목록을 다시 불러와 주세요.',
-                );
+                setNotice(t('visitQuestions.conversation.save.conflict'));
                 return;
               }
               store.updateVisitQuestionReview(
@@ -126,20 +125,18 @@ export function ConversationVisitQuestionCard({
               );
               setNotice(
                 outcome.result.memoryStatus === 'saved'
-                  ? '질문을 저장했어요.'
-                  : '질문은 저장됐지만 검색 반영은 다시 시도해야 해요.',
+                  ? t('visitQuestions.conversation.save.saved')
+                  : t('visitQuestions.conversation.save.searchPending'),
               );
             } else if (outcome.status === 'failed' && outcome.deliverToOwner)
-              setNotice(
-                '질문을 저장하지 못했어요. 예약과 근거를 확인하고 다시 시도해 주세요.',
-              );
+              setNotice(t('visitQuestions.conversation.save.failed'));
           } finally {
             setSaving(false);
           }
         }}
       />
       <ActionButton
-        label="질문 다시 만들기"
+        label={t('visitQuestions.conversation.actions.regenerate')}
         disabled={saving}
         onPress={onRegenerate}
         theme={theme}

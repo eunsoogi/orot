@@ -14,6 +14,7 @@ import { operationRunId } from './featureRunIdentity';
 import { createConversationVisitToolSource } from './conversationVisitToolSource';
 import { prepareConversationVisitRetention } from './prepareConversationVisitRetention';
 import { RetainedSourceInvalidError } from './retainedSourceError';
+import { t } from '../../i18n';
 
 /** Retain the visit reference separately from the user's explicit prepared-question save. */
 export function createConversationVisitTurn(deps: {
@@ -77,8 +78,7 @@ export function createConversationVisitTurn(deps: {
                     : 'validation_failed';
       return { status: 'failure', kind };
     }
-    const answer =
-      '진료에서 물어볼 질문을 준비했어요. 선택하고 수정한 뒤 저장할 수 있어요.';
+    const answer = t('visitQuestions.conversation.answer.ready');
     if (input.observer?.onRetentionCandidate) {
       const prepare = prepareConversationVisitRetention({
         result,

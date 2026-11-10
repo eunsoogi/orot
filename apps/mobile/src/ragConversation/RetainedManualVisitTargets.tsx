@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
+import { t } from '../i18n';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
 import {
   subscribeLocalDataClear,
@@ -112,10 +113,10 @@ export function RetainedManualVisitTargets({
       {error ? (
         <>
           <Text accessibilityRole="alert">
-            진료 기록을 다시 불러오지 못했어요.
+            {t('visitQuestions.retained.loadError')}
           </Text>
           <Button
-            title="진료 기록 다시 불러오기"
+            title={t('visitQuestions.retained.retry')}
             onPress={() => setRevision(value => value + 1)}
           />
         </>
