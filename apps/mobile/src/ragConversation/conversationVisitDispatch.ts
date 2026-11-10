@@ -3,6 +3,7 @@ import type { RagConversationMessage } from './task';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { conversationEntryForSession } from './useConversationEntryIntent';
+import { conversationHistoryPayload } from './conversationHistoryPayload';
 
 const pendingVisits = new WeakMap<
   ConversationSessions,
@@ -54,6 +55,26 @@ export function sendConversationMessage(
   onSend: ConversationScreenProps['onSend'],
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
+  const session = store.getSnapshot().sessions.find(item => item.id === id);
+  const entry = conversationEntryForSession(store, id);
+  if (
+    prepare &&
+    session?.draft.trim() &&
+    !session.busy &&
+    !session.restoring &&
+    !session.retryingSave &&
+    !session.restoreFailed &&
+    !session.quarantined &&
+    !(session.restoreAfterRetry && session.unsavedCount) &&
+    entry &&
+    shouldPrepareVisitQuestions(
+      entry,
+      conversationHistoryPayload(session.messages, session.draft.trim()),
+    )
+  ) {
+    // Record ownership before storage preflight, which may fail before the sender is called.
+    visitPreparationSender(store, id, prepare, entry);
+  }
   return store.send(id, (question, history, signal, observer) => {
     const context =
       pendingVisits.get(store)?.get(id) ??

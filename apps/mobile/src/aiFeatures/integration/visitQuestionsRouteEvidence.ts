@@ -16,6 +16,7 @@ export function generatedArtifactSource(
     citation.sourceKind !== 'generated_artifact' ||
     (type !== 'symptom_summary' &&
       type !== 'disease_possibilities' &&
+      type !== 'daily_report' &&
       type !== 'conversation_turn' &&
       type !== 'research_publication' &&
       type !== 'research_web_explanation') ||
