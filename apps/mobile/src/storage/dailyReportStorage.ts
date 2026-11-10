@@ -4,7 +4,6 @@ import {
   type DailyReportIdentity,
 } from '@orot/domain';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import {
   ensureHealthContextGeneration,
   readHealthContextGeneration,
@@ -20,6 +19,11 @@ import {
   invalidDailyReportStatus,
 } from './dailyReportInvalidation';
 import type { DailyReportSave } from './dailyReportStorageTypes';
+import {
+  checkDailyReportSaveCancellation,
+  dailyReportSaveFailure,
+} from './dailyReportSaveCancellation';
+import type { DailyReportSaveStatus } from './dailyReportSaveCancellation';
 export type {
   DailyReportLineage,
   DailyReportSave,
@@ -127,7 +131,10 @@ export function createDailyReportStorage(database: SqlDatabase) {
     }
   }
 
-  async function save(input: DailyReportSave) {
+  async function save(
+    input: DailyReportSave,
+    signal?: AbortSignal,
+  ): Promise<{ status: DailyReportSaveStatus }> {
     const checked = validateDailyReportCompletion(input.context, input.result);
     if (!checked || !input.runId.trim()) return { status: 'error' as const };
     if (!parseDailyReportLineage(checked.context, input.lineage))
@@ -142,6 +149,7 @@ export function createDailyReportStorage(database: SqlDatabase) {
       await ensure();
       let status: 'saved' | 'reused' | 'stale' | 'deleted' = 'stale';
       await database.transaction(async tx => {
+        checkDailyReportSaveCancellation(signal);
         const invalid = await tx.execute(
           'SELECT id FROM conversation_invalid_summaries WHERE id = ?',
           [input.runId],
@@ -230,16 +238,12 @@ export function createDailyReportStorage(database: SqlDatabase) {
         // Downstream saved artifacts must not keep a superseded active revision alive.
         if (typeof head?.active_run_id === 'string')
           await invalidateDailyReportRun(tx, head.active_run_id);
+        checkDailyReportSaveCancellation(signal);
         status = 'saved';
       });
       return { status };
     } catch (error) {
-      return {
-        status:
-          error instanceof RetainedSourceInvalidError
-            ? ('stale' as const)
-            : ('error' as const),
-      };
+      return { status: dailyReportSaveFailure(error) };
     }
   }
   return { lookup, save };
