@@ -6,7 +6,17 @@ export async function commitHealthKitChanges(
   repository: Pick<RecordRepository, 'transaction'>,
   write: (writer: RecordWriter) => Promise<number>,
 ): Promise<number> {
-  const deleted = await repository.transaction(write);
-  if (deleted > 0) notifyLocalSourceDeleted('healthkit');
+  const ids = new Set<string>();
+  const deleted = await repository.transaction(writer =>
+    write({
+      ...writer,
+      async delete(kind, id) {
+        const removed = await writer.delete(kind, id);
+        if (removed) ids.add(id);
+        return removed;
+      },
+    }),
+  );
+  if (deleted > 0) notifyLocalSourceDeleted('healthkit', ids);
   return deleted;
 }

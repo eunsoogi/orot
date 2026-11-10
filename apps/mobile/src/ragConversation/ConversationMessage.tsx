@@ -14,6 +14,7 @@ import type { RagConversationMessage } from './task';
 export interface DisplayMessage extends RagConversationMessage {
   readonly id: number;
   readonly citations?: readonly EvidenceReference[];
+  readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;

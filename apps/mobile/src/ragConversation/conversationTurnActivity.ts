@@ -21,13 +21,21 @@ export function createConversationTurnActivity(input: {
   let events: readonly ConversationToolEvent[] = [];
   let writing = Promise.resolve();
   let failed = false;
+  let healthBodyWithheld = false;
   const copy = getRagConversationCopy();
   const toolMessageId =
     input.retained?.toolMessageId ?? `response-${input.responseId}`;
-  const metadata = () => ({
-    toolEvents: events,
-    toolMessageId,
-  });
+  const metadata = (withholdHealthBody = false) => {
+    healthBodyWithheld ||= withholdHealthBody;
+    return {
+      toolEvents: healthBodyWithheld
+        ? events.filter(
+            event => event.inputSummary.sourceKind === 'external_medical',
+          )
+        : events,
+      toolMessageId,
+    };
+  };
   const observe = (event: ConversationToolEvent) => {
     const next = mergeConversationToolEvents(events, event);
     // Replayed or reordered events must not repeat source capture or overwrite the terminal record.
@@ -45,7 +53,12 @@ export function createConversationTurnActivity(input: {
     const pending = session.pendingMessage;
     input.update(input.id, {
       ...(pending?.id === input.responseId
-        ? { pendingMessage: { ...pending, ...metadata() } }
+        ? {
+            pendingMessage: {
+              ...pending,
+              ...metadata(pending.withholdHealthBody),
+            },
+          }
         : {}),
       messages: session.messages.map(message =>
         message.toolMessageId === toolMessageId
@@ -70,27 +83,30 @@ export function createConversationTurnActivity(input: {
     observer: {
       onToolEvent: observe,
       onProgress(event: Parameters<typeof progressCopy>[0]) {
-        if (input.current())
+        const pending = input.find(input.id)?.pendingMessage;
+        if (input.current() && pending?.id === input.responseId)
           input.update(input.id, {
             pendingMessage: {
+              ...pending,
               id: input.responseId,
-              content: input.find(input.id).pendingMessage?.content ?? '',
+              content: pending.content,
               activity: progressCopy(event, copy),
-              ...metadata(),
+              ...metadata(pending?.withholdHealthBody),
             },
           });
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
-        if (input.current())
+        const pending = input.find(input.id)?.pendingMessage;
+        if (
+          input.current() &&
+          pending?.id === input.responseId &&
+          !pending.withholdHealthBody
+        )
           input.update(input.id, {
             pendingMessage: {
               id: input.responseId,
-              content: applyWorkflowStreamEvent(
-                input.find(input.id).pendingMessage?.content ?? '',
-                event,
-              ),
-              activity:
-                input.find(input.id).pendingMessage?.activity ?? copy.loading,
+              content: applyWorkflowStreamEvent(pending.content, event),
+              activity: pending.activity,
               ...metadata(),
             },
           });

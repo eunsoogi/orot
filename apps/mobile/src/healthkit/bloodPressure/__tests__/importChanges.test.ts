@@ -148,6 +148,13 @@ describe('applyBloodPressureChanges', () => {
     );
     expect(deletion.deleted).toBe(2);
     expect(onDeletion).toHaveBeenCalledTimes(2);
+    expect(onDeletion).toHaveBeenLastCalledWith(
+      'healthkit',
+      new Set([
+        observationId('remove', 'systolic'),
+        observationId('remove', 'diastolic'),
+      ]),
+    );
     expect(store.observations()).toHaveLength(1);
     await applyBloodPressureChanges(
       store.repository,

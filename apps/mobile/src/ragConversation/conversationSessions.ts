@@ -3,8 +3,6 @@ import { t } from '../i18n';
 import type {
   ConversationSender,
   ConversationSession,
-} from './conversationSessionTypes';
-import type {
   ConversationSessionOptions,
   ConversationSnapshot,
 } from './conversationSessionTypes';
@@ -12,6 +10,7 @@ import { createConversationSessionRestoreState } from './conversationSessionRest
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
+import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { createConversationListeners } from './conversationListeners';
 import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
 import {
@@ -204,15 +203,16 @@ export function createConversationSessions(
     retrySave,
     retryRestore: (id: number) =>
       disposed ? Promise.resolve() : restoration.retry(id),
-    refreshAfterSourceDeletion() {
+    refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
       refreshConversationSources({
         snapshot,
+        event,
         options,
         requests,
         restoration,
         update,
-        apply: next => apply({ ...snapshot, deleted: next.deleted }),
+        apply: change => apply({ ...snapshot, ...change }),
       });
     },
     invalidateAll() {

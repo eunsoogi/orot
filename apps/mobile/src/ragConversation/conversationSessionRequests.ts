@@ -12,7 +12,6 @@ import {
   retainPartial as retainFailedPartial,
   restoreFailedPrompt,
 } from './conversationFailedPrompt';
-
 import type {
   ConversationSender,
   ConversationSession,
@@ -203,6 +202,7 @@ export function createConversationSessionRequests(
         }
         conversationCompletedAnswer({
           id,
+          userMessageId,
           messageId: outcome.status === 'answer' ? responseId : ++messageId,
           copy,
           outcome,
