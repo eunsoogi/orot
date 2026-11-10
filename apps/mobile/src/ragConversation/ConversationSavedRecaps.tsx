@@ -10,6 +10,10 @@ import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { recordingService } from '../recording/recordingService';
 import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
+import {
   requestRecapRetry,
   subscribeRecapUpdates,
 } from '../transcription/recapUpdates';
@@ -67,16 +71,32 @@ export function ConversationSavedRecaps({
           setResults(loaded);
           setRecords(official);
           setStatuses(pending.rows.map(row => String(row.work_status)));
+          setFailed(false);
         }
       })().catch(() => {
-        if (active && current === revision) setFailed(true);
+        if (active && current === revision) {
+          setResults([]);
+          setRecords([]);
+          setStatuses([]);
+          setFailed(true);
+        }
       });
     };
     refresh();
-    const unsubscribe = subscribeRecapUpdates(refresh);
+    const invalidate = () => {
+      setResults([]);
+      setRecords([]);
+      setStatuses([]);
+      refresh();
+    };
+    const unsubscribe = subscribeRecapUpdates(invalidate);
+    const unsubscribeClear = subscribeLocalDataClear(invalidate);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(invalidate);
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeClear();
+      unsubscribeDeletion();
     };
   }, [appointmentId, loadDatabase]);
   return (

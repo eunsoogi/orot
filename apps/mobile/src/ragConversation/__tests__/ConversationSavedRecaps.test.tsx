@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { subscribeRecapRetry } from '../../transcription/recapUpdates';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { ConversationSavedRecaps } from '../ConversationSavedRecaps';
 import {
   recapInput,
@@ -14,6 +15,38 @@ jest.mock('@orot/storage', () => ({
     listForAppointment: async () => [],
   })),
 }));
+
+it('removes displayed results immediately when a source is deleted and refresh fails', async () => {
+  const storage = require('@orot/storage');
+  storage.readCurrentRecapResult.mockResolvedValue(result);
+  let fail = false;
+  const loadDatabase = async () => {
+    if (fail) throw new Error('unavailable');
+    return {
+      execute: async (query: string) => ({
+        rows: query.includes('work_status')
+          ? []
+          : [{ recording_id: result.recordingSourceId }],
+      }),
+      transaction: async () => {},
+    };
+  };
+  await act(async () => {
+    render(
+      <ConversationSavedRecaps
+        appointmentId={result.appointmentId}
+        loadDatabase={loadDatabase}
+      />,
+    );
+  });
+  expect(screen.getByText('자동 저장된 진료 요약')).toBeTruthy();
+  fail = true;
+  await act(async () => {
+    notifyLocalSourceDeleted();
+  });
+  expect(screen.queryByText('자동 저장된 진료 요약')).toBeNull();
+  expect(screen.getByText('진료 요약을 불러오지 못했어요.')).toBeTruthy();
+});
 
 it('requests a retry only for the displayed visit', async () => {
   const listener = jest.fn();

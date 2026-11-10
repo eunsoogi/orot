@@ -7,6 +7,7 @@ import type { AppleOnDeviceSpeechProvider } from './provider';
 import { TranscriptRecognitionError } from './TranscriptRecognitionError';
 import { transcriptAudioRange } from './transcriptAudioRange';
 import { completeProductionRecap } from './productionRecapCompletion';
+import { publishRecapUpdate } from './recapUpdates';
 
 type RepositoryLoader = () => Promise<RecordRepository>;
 type TranscriptionProvider = Pick<
@@ -224,11 +225,13 @@ export function createTranscriptEvidenceService(
     transcribe,
     async correct(segmentId, text) {
       const repository = await loadRepository();
-      return repository.transcripts.correct(
+      const corrected = await repository.transcripts.correct(
         segmentId,
         text,
         now().toISOString(),
       );
+      publishRecapUpdate();
+      return corrected;
     },
     play(segment) {
       return playRange(

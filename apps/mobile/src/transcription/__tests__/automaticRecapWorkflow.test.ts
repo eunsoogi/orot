@@ -67,3 +67,77 @@ it('reports a cache failure without reporting transcription failure or saved', a
   ).toEqual({ status: 'save_failed' });
   expect(statuses).toEqual(['analyzing', 'save_failed']);
 });
+
+it('records a failure when loading cached work rejects', async () => {
+  const statuses: string[] = [];
+  const run = createAutomaticRecapWorkflow({
+    readCurrent: async () => {
+      throw new Error('disk');
+    },
+    extract: jest.fn(),
+    cache: jest.fn(),
+    saveOfficial: jest.fn(),
+    beginStatus: async () => async status => {
+      statuses.push(status);
+    },
+  });
+  expect(
+    await run('source-read-error', [], new AbortController().signal),
+  ).toEqual({ status: 'save_failed' });
+  expect(statuses).toEqual(['analyzing', 'save_failed']);
+});
+
+it('records a failure when input preparation rejects', async () => {
+  const statuses: string[] = [];
+  const run = createAutomaticRecapWorkflow({
+    readCurrent: async () => null,
+    extract: async () => {
+      throw new Error('input unavailable');
+    },
+    cache: jest.fn(),
+    saveOfficial: jest.fn(),
+    beginStatus: async () => async status => {
+      statuses.push(status);
+    },
+  });
+  expect(
+    await run('input-read-error', [], new AbortController().signal),
+  ).toEqual({ status: 'save_failed' });
+  expect(statuses).toEqual(['analyzing', 'save_failed']);
+});
+
+it('starts a replacement analysis when the recording is rebound during an older run', async () => {
+  let binding = 'A';
+  let release!: () => void;
+  let started!: () => void;
+  const entered = new Promise<void>(resolve => {
+    started = resolve;
+  });
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const extract = jest
+    .fn()
+    .mockImplementationOnce(async () => {
+      started();
+      await gate;
+      return { status: 'stale_source' };
+    })
+    .mockResolvedValueOnce({ status: 'no_questions' });
+  const run = createAutomaticRecapWorkflow({
+    bindingKey: async () => binding,
+    readCurrent: async () => null,
+    extract,
+    cache: jest.fn(),
+    saveOfficial: jest.fn(),
+  });
+  const signal = new AbortController().signal;
+  const first = run('same-recording', [], signal);
+  await entered;
+  binding = 'B';
+  const second = run('same-recording', [], signal);
+  release();
+  expect(await first).toEqual({ status: 'stale_source' });
+  expect(await second).toEqual({ status: 'no_questions' });
+  expect(extract).toHaveBeenCalledTimes(2);
+});

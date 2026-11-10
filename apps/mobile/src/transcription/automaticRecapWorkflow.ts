@@ -2,6 +2,7 @@ import type { RecapResult, TranscriptEvidenceSegment } from '@orot/domain';
 import type { RecapCompletionOutcome } from './recapCompletion';
 
 export interface AutomaticRecapPorts {
+  bindingKey?(sourceId: string): Promise<string>;
   readCurrent(sourceId: string): Promise<RecapResult | null>;
   extract(
     sourceId: string,
@@ -21,12 +22,14 @@ const active = new Map<
 
 /** Cache survives a failed official write; only a committed official write can yield saved. */
 export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
-  return function run(
+  return async function run(
     sourceId: string,
     segments: readonly TranscriptEvidenceSegment[],
     signal: AbortSignal,
   ) {
-    const existing = active.get(sourceId);
+    const binding = (await ports.bindingKey?.(sourceId)) ?? '';
+    const key = JSON.stringify([sourceId, binding]);
+    const existing = active.get(key);
     if (existing) return existing;
     const work = (async (): Promise<
       RecapCompletionOutcome | { status: 'saved' | 'save_failed' }
@@ -34,9 +37,21 @@ export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
       if (signal.aborted) return { status: 'cancelled' };
       const recordStatus = await ports.beginStatus?.(sourceId);
       await recordStatus?.('analyzing');
-      let result = await ports.readCurrent(sourceId);
+      let result: RecapResult | null;
+      try {
+        result = await ports.readCurrent(sourceId);
+      } catch {
+        await recordStatus?.('save_failed');
+        return { status: 'save_failed' };
+      }
       if (!result) {
-        const extracted = await ports.extract(sourceId, segments, signal);
+        let extracted: RecapCompletionOutcome;
+        try {
+          extracted = await ports.extract(sourceId, segments, signal);
+        } catch {
+          await recordStatus?.('save_failed');
+          return { status: 'save_failed' };
+        }
         if (extracted.status !== 'result') {
           await recordStatus?.(extracted.status);
           return extracted;
@@ -60,10 +75,10 @@ export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
         return { status: 'save_failed' };
       }
     })();
-    active.set(sourceId, work);
+    active.set(key, work);
     work.then(
-      () => active.delete(sourceId),
-      () => active.delete(sourceId),
+      () => active.delete(key),
+      () => active.delete(key),
     );
     return work;
   };

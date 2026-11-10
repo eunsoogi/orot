@@ -5,6 +5,7 @@ import {
   loadCurrentRecapInput,
   markRecapSaved,
   readCurrentRecapResult,
+  readRecapBinding,
 } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { createRecapCompletion } from './recapCompletion';
@@ -26,6 +27,8 @@ export function createAutomaticRecapService(
   });
   const official = createVisitQuestionRecordRepository(database);
   return createAutomaticRecapWorkflow({
+    bindingKey: async sourceId =>
+      JSON.stringify(await readRecapBinding(database, sourceId)),
     readCurrent: sourceId => readCurrentRecapResult(database, sourceId),
     extract,
     cache: result => cacheRecapResult(database, result),

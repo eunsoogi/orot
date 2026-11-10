@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
@@ -7,16 +7,20 @@ import {
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
 import { ManualVisitRecords } from './ManualVisitRecords';
+import { ConversationSavedRecaps } from './ConversationSavedRecaps';
+import type { SqlDatabase } from '@orot/storage';
 
 /** Restores only exact visits from source-validated turns of the currently active durable session. */
 export function RetainedManualVisitTargets({
   sessionId,
   discover,
   excluded,
+  loadRecapDatabase,
 }: {
   readonly sessionId: string;
   readonly discover: AiFeatureServices['conversationArtifacts'];
   readonly excluded: string;
+  readonly loadRecapDatabase?: () => Promise<SqlDatabase>;
 }) {
   const [targets, setTargets] = useState<string[]>([]);
   const [revision, setRevision] = useState(0);
@@ -97,7 +101,13 @@ export function RetainedManualVisitTargets({
   return (
     <>
       {targets.map(id => (
-        <ManualVisitRecords key={id} appointmentId={id} />
+        <Fragment key={id}>
+          <ConversationSavedRecaps
+            appointmentId={id}
+            loadDatabase={loadRecapDatabase}
+          />
+          <ManualVisitRecords appointmentId={id} />
+        </Fragment>
       ))}
       {error ? (
         <>

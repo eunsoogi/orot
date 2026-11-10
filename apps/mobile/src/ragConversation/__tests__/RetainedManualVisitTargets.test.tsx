@@ -8,6 +8,38 @@ jest.mock('../ManualVisitRecords', () => ({
     return <Text>{appointmentId}</Text>;
   },
 }));
+jest.mock('../ConversationSavedRecaps', () => ({
+  ConversationSavedRecaps: ({ appointmentId }: { appointmentId: string }) => {
+    const { Text } = require('react-native');
+    return <Text>{`recap:${appointmentId}`}</Text>;
+  },
+}));
+
+test('shows Recap for a source-validated restored visit', async () => {
+  const discovery = {
+    activeSessionVersion: jest.fn().mockResolvedValue(0),
+    readSession: jest.fn().mockResolvedValue({
+      items: [
+        {
+          id: 'turn',
+          revision: '1',
+          visitQuestions: { appointmentId: 'visit' },
+        },
+      ],
+      unavailableCount: 0,
+      nextCursor: null,
+    }),
+    revalidateSession: jest.fn().mockResolvedValue(true),
+  };
+  await render(
+    <RetainedManualVisitTargets
+      sessionId="session"
+      discover={jest.fn().mockResolvedValue(discovery)}
+      excluded="[]"
+    />,
+  );
+  await waitFor(() => expect(screen.getByText('recap:visit')).toBeTruthy());
+});
 
 test('a source deletion aborts an older retained-session read before it can expose a visit', async () => {
   let finish!: (page: unknown) => void;
