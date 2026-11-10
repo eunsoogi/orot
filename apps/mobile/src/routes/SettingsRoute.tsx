@@ -8,6 +8,7 @@ import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provid
 import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
+import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
 
 interface SettingsRouteProps {
   /** Tracks the latest committed choice after persisted resolution confirms it is valid. */
@@ -135,6 +136,8 @@ export function SettingsRoute({
                 />
               </View>
             </View>
+
+            <SettingsDailyReminderSection />
 
             <View style={styles.section} testID="settings-section-app-info">
               <Text accessibilityRole="header" style={styles.sectionTitle}>

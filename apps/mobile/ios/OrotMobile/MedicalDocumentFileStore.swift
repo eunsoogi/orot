@@ -179,9 +179,13 @@ struct MedicalDocumentFileStore {
                 forKeys: [.isExcludedFromBackupKey],
             ).isExcludedFromBackup == true
             guard isProtected, isExcluded else {
+                // These closed boolean diagnostics identify the failed boundary without exposing file paths.
+                NSLog("medical-document-protection: protected=%d backup-excluded=%d", isProtected, isExcluded)
                 throw MedicalDocumentFileStoreFailure.fileProtectionUnavailable
             }
         } catch {
+            // Do not log the underlying error, which can include private filenames or paths.
+            NSLog("medical-document-protection: verification-failed")
             throw MedicalDocumentFileStoreFailure.fileProtectionUnavailable
         }
     }

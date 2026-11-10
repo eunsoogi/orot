@@ -36,7 +36,7 @@ it('preserves explicit selection, fences reassignment and invalidates a deleted 
   ).rejects.toThrow();
 });
 
-it.each([13, 14])(
+it.each([13, 14, 15])(
   'upgrades a version %i database without losing existing recording and question rows',
   async (version) => {
     const fixture = await setupAutomatic();
@@ -45,7 +45,7 @@ it.each([13, 14])(
       await fixture.database.execute('DROP TABLE recap_bindings');
       await fixture.database.execute(`PRAGMA user_version = ${version}`);
       await runMigrations(fixture.database);
-      expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
+      expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
       expect(
         await fixture.records.get('source_record', fixture.result.recordingSourceId),
       ).not.toBeNull();

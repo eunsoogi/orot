@@ -29,11 +29,11 @@ function report(cohort) {
 
 test('Linux aggregation retains all first-attempt observations from each compatible cohort', () => {
   for (const [cohort, count] of [
-    ['release', 168],
-    ['release-core', 120],
-    ['release-ui', 48],
+    ['release', 170],
+    ['release-core', 121],
+    ['release-ui', 49],
     ['speech', 9],
-    ['debug', 27],
+    ['debug', 28],
   ])
     assert.equal(verifyIosTestCohortResults(report(cohort), cohort, context).length, count);
 });

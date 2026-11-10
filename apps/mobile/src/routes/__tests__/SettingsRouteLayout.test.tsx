@@ -94,6 +94,7 @@ test.each([
       'settings-section-ai-accounts',
       'settings-section-health-data',
       'settings-section-privacy-backup',
+      'settings-section-daily-reminders',
       'settings-section-app-info',
     ]) {
       expect(screen.getByTestId(id)).toBeTruthy();

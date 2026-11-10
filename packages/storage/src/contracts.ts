@@ -32,8 +32,8 @@ import type {
 } from '@orot/domain';
 
 export const STORAGE_TABLES = {
-  source_record: { table: 'source_records', schema: SourceRecordSchema },
-  evidence_span: { table: 'evidence_spans', schema: EvidenceSpanSchema },
+  source_record: { table: 'source_records', schema: SourceRecordSchema, nullableSourceTimes: true },
+  evidence_span: { table: 'evidence_spans', schema: EvidenceSpanSchema, nullableSourceTimes: true },
   encounter: { table: 'encounters', schema: EncounterSchema },
   health_observation: {
     table: 'health_observations',

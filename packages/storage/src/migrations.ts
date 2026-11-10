@@ -7,13 +7,14 @@ import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigration
 import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
+import { migrateSourceTimes } from './sourceTimeMigration';
 import { createManualHistoryTable } from './manualHistoryMigrations';
 import { createVisitQuestionRecordTables } from './visitQuestionRecordMigrations';
 import { createDailyReportTables } from './dailyReportMigration';
 import { createRecapBindingTables } from './recapBinding';
 import { readUserVersion } from './schemaVersion';
 
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -222,7 +223,8 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
       await createVisitQuestionRecordTables(transaction);
       await createSourceDeletionIntegrity(transaction);
     }
-    if (currentVersion < 15) await createRecapBindingTables(transaction);
-    await transaction.execute('PRAGMA user_version = 15');
+    if (currentVersion < 15) await migrateSourceTimes(transaction);
+    if (currentVersion < 16) await createRecapBindingTables(transaction);
+    await transaction.execute('PRAGMA user_version = 16');
   });
 }

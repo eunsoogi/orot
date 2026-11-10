@@ -67,6 +67,39 @@ export const healthkitSettingsKo = {
   'settings.healthData.disabled': '자동 동기화를 껐어요.',
   'settings.healthData.loading': '저장한 동기화 설정을 불러오는 중…',
   'settings.healthData.loadError': '저장한 설정을 불러오지 못했어요.',
+  'settings.dailyReminder.title': '일일 보고서 알림',
+  'settings.dailyReminder.description':
+    '원하는 시각을 정해 매일 알림을 받을 수 있어요. 알림에는 건강 정보가 포함되지 않고, 알림을 열어도 AI가 자동으로 실행되지 않아요.',
+  'settings.dailyReminder.enabled': '일일 보고서 알림 켜기',
+  'settings.dailyReminder.toggleHint':
+    '저장한 시간에 매일 알림을 예약해요. 알림 권한은 직접 켤 때만 요청해요.',
+  'settings.dailyReminder.time': '알림 시간',
+  'settings.dailyReminder.chooseTime': '시간 선택',
+  'settings.dailyReminder.changeTime': '변경',
+  'settings.dailyReminder.changeTimeAccessibility':
+    '알림 시간 {time}. 바꾸려면 탭하세요.',
+  'settings.dailyReminder.timeHint': '알림을 받을 현지 시각을 고르고 저장해요.',
+  'settings.dailyReminder.loading': '저장한 알림 설정과 권한을 확인하는 중…',
+  'settings.dailyReminder.saving': '알림 설정 저장 중…',
+  'settings.dailyReminder.loadError': '저장한 알림 설정을 불러오지 못했어요.',
+  'settings.dailyReminder.saveError':
+    '설정이 저장됐는지 확인하지 못했어요. 다시 시도해 주세요.',
+  'settings.dailyReminder.disabled': '일일 보고서 알림이 꺼져 있어요.',
+  'settings.dailyReminder.scheduled': '매일 {time} 알림을 예약했어요.',
+  'settings.dailyReminder.deliveryNote':
+    'iOS는 알림을 선택한 시각에 정확히 전달한다고 보장하지 않아요.',
+  'settings.dailyReminder.denied':
+    '설정은 저장했지만 알림 권한이 꺼져 있어 예약하지 못했어요.',
+  'settings.dailyReminder.authorizationUnknown':
+    '알림 권한 상태를 확인하지 못했어요. iOS 설정에서 권한을 확인한 뒤 다시 시도해 주세요.',
+  'settings.dailyReminder.scheduleError':
+    '알림을 예약하지 못했어요. 시간을 바꾸거나 다시 시도해 주세요.',
+  'settings.dailyReminder.openSettings': 'iOS 설정에서 알림 권한 확인',
+  'settings.dailyReminder.retry': '다시 시도',
+  'settings.dailyReminder.pickerTitle': '알림 시간 선택',
+  'settings.dailyReminder.cancel': '취소',
+  'settings.dailyReminder.saveTime': '시간 저장',
+  'settings.dailyReminder.enableWithTime': '시간을 저장하고 알림 켜기',
   'settings.syncStatus.title': '권한 및 동기화 상태',
   'settings.syncStatus.healthData': '건강 기록',
   'settings.syncStatus.noSelection':

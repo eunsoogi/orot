@@ -71,6 +71,7 @@ test('groups destinations and preserves every Settings action', async () => {
     'settings-section-ai-accounts',
     'settings-section-health-data',
     'settings-section-privacy-backup',
+    'settings-section-daily-reminders',
     'settings-section-app-info',
   ]);
   expect(screen.getByText(t('settings.summary'))).toBeTruthy();
