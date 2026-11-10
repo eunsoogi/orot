@@ -42,6 +42,7 @@ export async function setupResearchArtifactGuards(tx: SqlExecutor) {
       WHERE p.root_id = OLD.id AND NOT EXISTS (SELECT 1 FROM agent_memory_removed_sources existing WHERE existing.source_id = 'generated-artifact:' || p.kind || ':' || p.id);`
         : ''
     }
+    DELETE FROM visit_question_records WHERE EXISTS (SELECT 1 FROM json_each(visit_question_records.payload_json, '$.questionSources') snapshot, json_each(snapshot.value, '$.generatedArtifactSources') s JOIN research_artifact_affected p ON json_extract(s.value, '$.kind') = p.kind AND json_extract(s.value, '$.id') = p.id WHERE p.root_id = OLD.id);
     DELETE FROM visit_questions WHERE EXISTS (SELECT 1 FROM json_each(visit_questions.payload_json, '$.generatedArtifactSources') s JOIN research_artifact_affected p ON json_extract(s.value, '$.kind') = p.kind AND json_extract(s.value, '$.id') = p.id WHERE p.root_id = OLD.id);`
     : '';
   for (const event of ['DELETE', 'UPDATE'] as const) {
