@@ -1,3 +1,11 @@
-/* Korean is the app's only supported language, so this table is also the default. */
-"dailyReportReminder.body" = "오늘의 기록을 확인해 보세요.";
-"appointmentReminder.body" = "준비할 내용을 확인해 보세요.";
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>appointmentReminder.body</key>
+	<string>준비할 내용을 확인해 보세요.</string>
+	<key>dailyReportReminder.body</key>
+	<string>오늘의 기록을 확인해 보세요.</string>
+</dict>
+</plist>
