@@ -69,6 +69,8 @@ export function createMedicalDocumentImportService(
   const files = dependencies.fileDeletion ?? medicalDocumentFileDeletion;
   const pick = dependencies.pick ?? medicalDocumentNativeBridge.pick;
   const getTimestamp = dependencies.now ?? (() => new Date().toISOString());
+  // Only a transaction attempt or an already-persisted identity can make cancellation ambiguous.
+  const possiblyCommitted = new Set<string>();
 
   return {
     async listDocuments() {
@@ -145,6 +147,7 @@ export function createMedicalDocumentImportService(
         throw new MedicalDocumentImportError('STALE_DOCUMENT');
       }
       if (existing) {
+        if (existing.id === document.id) possiblyCommitted.add(document.id);
         await preserveDuplicateOriginal(files, existing, document, generation);
         return 'duplicate';
       }
@@ -157,6 +160,7 @@ export function createMedicalDocumentImportService(
       }
 
       try {
+        possiblyCommitted.add(document.id);
         await repository.transaction(async writer => {
           if (await writer.get('source_record', document.id)) {
             throw new Error('The document source identifier already exists.');
@@ -184,6 +188,8 @@ export function createMedicalDocumentImportService(
           throw saveFailure('transaction', error);
         }
         if (duplicate) {
+          if (duplicate.id !== document.id)
+            possiblyCommitted.delete(document.id);
           await preserveDuplicateOriginal(
             files,
             duplicate,
@@ -192,20 +198,24 @@ export function createMedicalDocumentImportService(
           );
           return 'duplicate';
         }
+        possiblyCommitted.delete(document.id);
         // Keep the staged original available so the review can retry or cancel this save.
         throw saveFailure('transaction', error);
       }
     },
     async discardDocument(document) {
       // A commit may have succeeded before lifecycle invalidation; never delete its original.
-      let saved: SourceRecord | null;
-      try {
-        saved = await (await getRepository()).sourceRecords.get(document.id);
-      } catch {
-        throw new MedicalDocumentImportError('CLEANUP_FAILED');
+      if (possiblyCommitted.has(document.id)) {
+        let saved: SourceRecord | null;
+        try {
+          saved = await (await getRepository()).sourceRecords.get(document.id);
+        } catch {
+          throw new MedicalDocumentImportError('CLEANUP_FAILED');
+        }
+        if (saved) return;
       }
-      if (saved) return;
       await discardOriginal(files, document.id);
+      possiblyCommitted.delete(document.id);
     },
   };
 }

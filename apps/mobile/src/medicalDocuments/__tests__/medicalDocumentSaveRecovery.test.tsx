@@ -70,8 +70,33 @@ test('reserves a pending save before a second tap enters', async () => {
   await act(async () => {
     const first = result.current.saveMedicalDocument();
     const second = result.current.saveMedicalDocument();
+    const cancel = result.current.discardMedicalDocument();
     expect(service.saveDocument).toHaveBeenCalledTimes(1);
+    expect(service.discardDocument).not.toHaveBeenCalled();
     finish('saved');
-    await Promise.all([first, second]);
+    await Promise.all([first, second, cancel]);
+  });
+});
+
+test('does not start a save while cancellation is pending', async () => {
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => {
+    finish = resolve;
+  });
+  const service: MedicalDocumentImportService = {
+    listDocuments: jest.fn().mockResolvedValue([]),
+    getDocument: jest.fn(),
+    selectDocument: jest.fn().mockResolvedValue(photo),
+    saveDocument: jest.fn(),
+    discardDocument: jest.fn(() => pending),
+  };
+  const { result } = await renderHook(() => useMedicalDocumentImport(service));
+  await act(() => result.current.selectMedicalDocument('photos'));
+  await act(async () => {
+    const cancel = result.current.discardMedicalDocument();
+    const save = result.current.saveMedicalDocument();
+    expect(service.saveDocument).not.toHaveBeenCalled();
+    finish();
+    await Promise.all([cancel, save]);
   });
 });

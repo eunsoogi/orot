@@ -17,6 +17,15 @@ export async function migrateSourceTimes(transaction: SqlExecutor): Promise<void
     tables.map((table) => transaction.execute(`PRAGMA table_info(${table})`)),
   );
   if (
+    schemas.some((result) =>
+      ['effective_at', 'recorded_at'].some(
+        (name) =>
+          !result.rows.some((row) => row.name === name && (row.notnull === 0 || row.notnull === 1)),
+      ),
+    )
+  )
+    throw new Error('Source timestamp schema is unavailable.');
+  if (
     schemas.every((result) =>
       result.rows
         .filter((row) => row.name === 'effective_at' || row.name === 'recorded_at')

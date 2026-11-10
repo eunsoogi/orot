@@ -48,7 +48,7 @@ export function useMedicalDocumentImport(
   const [stagedDocument, setStagedDocument] =
     useState<StagedMedicalDocument | null>(null);
   const [activity, setActivity] = useState<ImportActivity>(null);
-  const saving = useRef(false);
+  const operationInProgress = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
   const [savedDocuments, setSavedDocuments] = useState<
     MedicalDocumentSourceRecord[]
@@ -92,7 +92,13 @@ export function useMedicalDocumentImport(
   });
 
   async function selectMedicalDocument(source: 'files' | 'photos' = 'files') {
-    if (activity !== null || stagedDocument !== null) return;
+    if (
+      activity !== null ||
+      stagedDocument !== null ||
+      operationInProgress.current
+    )
+      return;
+    operationInProgress.current = true;
     setMessage(null);
     setActivity('selecting');
     try {
@@ -101,14 +107,16 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
+      operationInProgress.current = false;
       setActivity(null);
     }
   }
 
   async function saveMedicalDocument() {
-    if (!stagedDocument || activity !== null || saving.current) return;
-    // React state updates are asynchronous; reserve the save before a second tap can enter.
-    saving.current = true;
+    if (!stagedDocument || activity !== null || operationInProgress.current)
+      return;
+    // Reserve synchronously so Save and Cancel cannot race before React renders busy state.
+    operationInProgress.current = true;
     setMessage(null);
     setActivity('saving');
     try {
@@ -123,13 +131,15 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
-      saving.current = false;
+      operationInProgress.current = false;
       setActivity(null);
     }
   }
 
   async function discardMedicalDocument() {
-    if (!stagedDocument || activity !== null) return;
+    if (!stagedDocument || activity !== null || operationInProgress.current)
+      return;
+    operationInProgress.current = true;
     setActivity('discarding');
     setMessage(null);
     try {
@@ -138,6 +148,7 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
+      operationInProgress.current = false;
       setActivity(null);
     }
   }
