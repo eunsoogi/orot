@@ -68,6 +68,27 @@ it('reports a cache failure without reporting transcription failure or saved', a
   expect(statuses).toEqual(['analyzing', 'save_failed']);
 });
 
+it('does not start the official write when cancelled while marking saving', async () => {
+  const controller = new AbortController();
+  const statuses: string[] = [];
+  const saveOfficial = jest.fn();
+  const run = createAutomaticRecapWorkflow({
+    readCurrent: async () => recapResult(recapInput()),
+    extract: jest.fn(),
+    cache: jest.fn(),
+    saveOfficial,
+    beginStatus: async () => async status => {
+      statuses.push(status);
+      if (status === 'saving') controller.abort();
+    },
+  });
+  expect(await run('cancel-before-write', [], controller.signal)).toEqual({
+    status: 'cancelled',
+  });
+  expect(saveOfficial).not.toHaveBeenCalled();
+  expect(statuses).toEqual(['analyzing', 'saving', 'cancelled']);
+});
+
 it('records a failure when loading cached work rejects', async () => {
   const statuses: string[] = [];
   const run = createAutomaticRecapWorkflow({

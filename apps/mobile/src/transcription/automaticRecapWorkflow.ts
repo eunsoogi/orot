@@ -36,6 +36,10 @@ export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
     > => {
       if (signal.aborted) return { status: 'cancelled' };
       const recordStatus = await ports.beginStatus?.(sourceId);
+      const cancelled = async () => {
+        await recordStatus?.('cancelled');
+        return { status: 'cancelled' as const };
+      };
       await recordStatus?.('analyzing');
       let result: RecapResult | null;
       try {
@@ -56,7 +60,7 @@ export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
           await recordStatus?.(extracted.status);
           return extracted;
         }
-        if (signal.aborted) return { status: 'cancelled' };
+        if (signal.aborted) return cancelled();
         result = extracted.value;
         try {
           await ports.cache(result);
@@ -65,9 +69,11 @@ export function createAutomaticRecapWorkflow(ports: AutomaticRecapPorts) {
           return { status: 'save_failed' };
         }
       }
-      if (signal.aborted) return { status: 'cancelled' };
+      if (signal.aborted) return cancelled();
       try {
         await recordStatus?.('saving');
+        // Once the official transaction starts it may commit; check immediately before it.
+        if (signal.aborted) return cancelled();
         await ports.saveOfficial(result);
         return { status: 'saved' };
       } catch {

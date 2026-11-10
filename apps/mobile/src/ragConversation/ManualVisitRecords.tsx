@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
-import { appColors } from '../layout/appColors';
+import { styles } from './manualVisitRecordStyles';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
 import { openManualVisitRecords } from './manualVisitRecordService';
+import { subscribeRecapUpdates } from '../transcription/recapUpdates';
 import type {
   ManualVisitQuestion,
   ManualVisitRecords as ManualVisitRecordsService,
@@ -47,15 +48,17 @@ export function ManualVisitRecords({
     };
     const clear = subscribeLocalDataClear(invalidate);
     const source = subscribeLocalSourceDeletion(invalidate);
+    // Routine progress from another recording must not discard an unfinished edit.
+    const recap = subscribeRecapUpdates(() => setReload(value => value + 1));
     return () => {
       clear();
       source();
+      recap();
     };
   }, []);
   useEffect(() => {
     let active = true;
     setItems([]);
-    setEditing(null);
     setService(null);
     setError('');
     open()
@@ -73,6 +76,10 @@ export function ManualVisitRecords({
       active = false;
     };
   }, [appointmentId, open, reload]);
+  useEffect(() => {
+    setEditing(null);
+    setAnswer('');
+  }, [appointmentId]);
   const save = async () => {
     if (!service || !editing || saving.current) return;
     const item = items.find(value => value.question.id === editing.questionId);
@@ -125,23 +132,28 @@ export function ManualVisitRecords({
                 <Text>확인 당시 질문: {record.questionText}</Text>
               )}
               <Text>
-                {record.sourceMethod === 'manual_confirmed'
-                  ? '직접 확인'
-                  : '녹음 분석 결과'}
+                {item.staleAutomaticIds?.includes(record.id)
+                  ? '원본이 변경된 기록'
+                  : record.sourceMethod === 'manual_confirmed'
+                    ? '직접 확인'
+                    : '녹음 분석 결과'}
               </Text>
               {record.editOrigin === 'user_edit' ? (
                 <Text>사용자가 수정한 답변</Text>
               ) : null}
-              {record.sourceMethod === 'ai_generated' && (
-                <Text>
-                  {record.automaticSource?.result.status === 'not_found'
-                    ? '이 전사에서 질문 근거를 찾지 못했어요.'
-                    : record.automaticSource?.result.status === 'indeterminate'
-                      ? '질문 여부가 불확실해요.'
-                      : '이 전사에서 질문 근거를 찾았어요.'}
-                </Text>
-              )}
               {record.sourceMethod === 'ai_generated' &&
+                !item.staleAutomaticIds?.includes(record.id) && (
+                  <Text>
+                    {record.automaticSource?.result.status === 'not_found'
+                      ? '이 전사에서 질문 근거를 찾지 못했어요.'
+                      : record.automaticSource?.result.status ===
+                          'indeterminate'
+                        ? '질문 여부가 불확실해요.'
+                        : '이 전사에서 질문 근거를 찾았어요.'}
+                  </Text>
+                )}
+              {record.sourceMethod === 'ai_generated' &&
+                !item.staleAutomaticIds?.includes(record.id) &&
                 record.editOrigin === 'ai_analysis' &&
                 record.automaticSource?.result.answers.map((result, index) => (
                   <View key={index}>
@@ -224,24 +236,3 @@ export function ManualVisitRecords({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  panel: { padding: 20, gap: 12 },
-  title: { fontSize: 18, fontWeight: '700' },
-  card: {
-    backgroundColor: appColors.surface,
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-  },
-  editor: { gap: 8 },
-  action: { minHeight: 44, justifyContent: 'center' },
-  input: {
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 8,
-    padding: 10,
-    color: appColors.text,
-  },
-});

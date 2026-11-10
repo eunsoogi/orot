@@ -1,6 +1,7 @@
 import {
   createVisitQuestionRecordRepository,
   readVisitQuestionRevision,
+  readCurrentRecapResult,
 } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { VisitQuestionSchema } from '@orot/domain';
@@ -10,6 +11,7 @@ export interface ManualVisitQuestion {
   readonly question: VisitQuestion;
   readonly revision: string;
   readonly records: readonly VisitQuestionRecord[];
+  readonly staleAutomaticIds?: readonly string[];
 }
 
 /** Uses the same encrypted database and transaction-bound revision as official record writes. */
@@ -41,12 +43,49 @@ export function createManualVisitRecords(database: SqlDatabase) {
         );
       });
       const records = await official.listForAppointment(appointmentId);
-      return questions.map(item => ({
-        ...item,
-        records: records.filter(
-          record => record.questionId === item.question.id,
-        ),
-      }));
+      return Promise.all(
+        questions.map(async item => {
+          const selected = records.filter(
+            record => record.questionId === item.question.id,
+          );
+          const staleAutomaticIds: string[] = [];
+          const visible: VisitQuestionRecord[] = [];
+          for (const record of selected) {
+            if (
+              record.sourceMethod === 'ai_generated' &&
+              record.automaticSource
+            ) {
+              const source = record.automaticSource;
+              const current = await readCurrentRecapResult(
+                database,
+                source.recordingSourceId,
+              ).catch(() => null);
+              // Match the exact snapshot, not merely the recording: a newer analysis does not refresh an older record.
+              const fresh =
+                current &&
+                current.appointmentId === appointmentId &&
+                JSON.stringify(current.binding) ===
+                  JSON.stringify(source.binding) &&
+                JSON.stringify(current.sources) ===
+                  JSON.stringify(source.sources) &&
+                current.preparedQuestions.some(
+                  q =>
+                    q.id === record.questionId &&
+                    q.revision === record.questionRevision,
+                );
+              if (!fresh) {
+                if (record.editOrigin === 'user_edit') {
+                  staleAutomaticIds.push(record.id);
+                  visible.push(record);
+                }
+                continue;
+              }
+            }
+            visible.push(record);
+          }
+          return { ...item, records: visible, staleAutomaticIds };
+        }),
+      );
     },
     saveManual: official.saveManual,
     edit: official.edit,
