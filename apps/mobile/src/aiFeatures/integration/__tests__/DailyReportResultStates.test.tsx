@@ -24,7 +24,10 @@ function fixture(lookup: (identity: Identity) => unknown) {
 }
 
 test.each([
-  [{ status: 'deleted' }, '저장된 보고서가 삭제됐어요.'],
+  [
+    { status: 'deleted' },
+    '저장된 보고서를 찾을 수 없어요. 보고서나 출처 기록이 삭제되었을 수 있어요.',
+  ],
   [
     { status: 'stale', runId: 'saved', revision: 2, sourceStatus: 'deleted' },
     '보고서의 출처 기록이 삭제되어 저장된 내용을 표시할 수 없어요.',

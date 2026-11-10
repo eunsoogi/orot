@@ -133,7 +133,8 @@ export const healthkitSettingsKo = {
   'dailyReport.cancelled': '보고서 생성을 취소했어요.',
   'dailyReport.stale':
     '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
-  'dailyReport.deleted': '저장된 보고서가 삭제됐어요.',
+  'dailyReport.deleted':
+    '저장된 보고서를 찾을 수 없어요. 보고서나 출처 기록이 삭제되었을 수 있어요.',
   'dailyReport.deletedSource':
     '보고서의 출처 기록이 삭제되어 저장된 내용을 표시할 수 없어요.',
   'dailyReport.missingOld':
