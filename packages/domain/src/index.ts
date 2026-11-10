@@ -79,8 +79,44 @@ export type {
   VisitBrief,
 } from './visits';
 export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
+export { VisitQuestionRecordSchema } from './visitQuestionRecords';
+export type { VisitQuestionRecord } from './visitQuestionRecords';
 export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
+export {
+  createDailyReportIdentity,
+  dailyReportIdentityKey,
+  DailyReportContextRequestSchema,
+  DailyReportIdentitySchema,
+  DailyReportLocalDateSchema,
+  DailyReportTimeZoneSchema,
+} from './dailyReportIdentity';
+export { dailyReportCalendarInterval } from './dailyReportCalendar';
+export type { DailyReportCalendarInterval } from './dailyReportCalendar';
+export type { DailyReportContextRequest, DailyReportIdentity } from './dailyReportIdentity';
+export {
+  DailyReportContextSchema,
+  DailyReportCoverageStatusSchema,
+  DailyReportProviderMetadataSchema,
+  DailyReportSourceCoverageSchema,
+  DailyReportSourceRecordSchema,
+} from './dailyReportContext';
+export type {
+  DailyReportContext,
+  DailyReportProviderMetadata,
+  DailyReportSourceCoverage,
+  DailyReportSourceRecord,
+} from './dailyReportContext';
+export {
+  DailyReportFailureCodeSchema,
+  DailyReportGenerationResultSchema,
+  DailyReportOutputSchema,
+} from './dailyReportOutput';
+export type {
+  DailyReportFailureCode,
+  DailyReportGenerationResult,
+  DailyReportOutput,
+} from './dailyReportOutput';
 export {
   INITIAL_SAFETY_POLICY,
   SafetyPolicyActionSchema,
@@ -130,3 +166,18 @@ export {
   TranscriptEvidenceSegmentSchema,
 } from './transcripts';
 export type { TranscriptAudioRange, TranscriptEvidenceSegment } from './transcripts';
+export {
+  RecapInputSchema,
+  RecapEvidenceSchema,
+  RecapQuestionResultSchema,
+  RecapResultSchema,
+} from './recap';
+export type { RecapInput, RecapEvidence, RecapQuestionResult, RecapResult } from './recap';
+export {
+  isRecapResultCurrent,
+  RecapBindingSchema,
+  RecapPreparedQuestionSchema,
+  RecapSourceSchema,
+} from './recap';
+export { RecapModelOutputSchema, recapModelJsonSchema } from './recapModel';
+export { RecapReferenceOutputSchema, recapReferenceJsonSchema } from './recapReferenceModel';

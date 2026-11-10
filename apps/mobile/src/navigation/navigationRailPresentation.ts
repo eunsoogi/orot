@@ -4,7 +4,9 @@ import {
   NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
   NAVIGATION_ROOT_RAIL_GUTTER,
+  NAVIGATION_ROOT_RAIL_WIDTH,
   type NavigationRootLayout,
+  type RightNavigationRootLayout,
 } from './navigationRootLayout';
 import { pageActionRailLayout } from './navigationPageActionLayout';
 
@@ -53,4 +55,22 @@ export function navigationRailPresentation(
     height: rightLayout ? height : 0,
     bottomInset: rightLayout ? bottomInset : undefined,
   };
+}
+
+/** Keep the window-hosted rail wide enough for its trailing inset. */
+export function navigationRailFrameStyle(
+  layout: RightNavigationRootLayout | undefined,
+  height: number,
+) {
+  return layout
+    ? {
+        bottom: 0,
+        height,
+        position: 'absolute' as const,
+        ...(layout.railSide === 'left' ? { left: 0 } : { right: 0 }),
+        width:
+          (layout.railWidth ?? NAVIGATION_ROOT_RAIL_WIDTH) +
+          layout.railRightInset,
+      }
+    : undefined;
 }

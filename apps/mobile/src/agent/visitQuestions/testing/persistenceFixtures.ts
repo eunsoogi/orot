@@ -71,6 +71,7 @@ export const citation: VisitQuestionEvidenceItem = {
 };
 
 export const candidate: VisitQuestionCandidate = {
+  identity: { id: 'synthetic-question-1' },
   questionText: '이 기록을 진료에서 어떻게 확인하면 좋을까요?',
   rationale: '최근 기록을 의료진과 함께 확인할 수 있어요.',
   priority: 'routine',
@@ -190,12 +191,33 @@ export function input(
   } = {},
 ) {
   const data = collection();
+  const saved = store.list('visit_question') as ReturnType<
+    typeof oldQuestion
+  >[];
   return {
     appointmentId: appointment.id,
     expectedAppointmentRevision: localEvidenceFingerprint(
       options.currentAppointment ?? appointment,
     ),
-    questions: options.questions ?? [candidate],
+    expectedSavedQuestions: saved
+      .filter(row => row.appointmentId === appointment.id)
+      .map(row => ({ id: row.id, revision: localEvidenceFingerprint(row) })),
+    questions: (options.questions ?? [candidate]).map((question, index) => {
+      const id =
+        question.identity?.id ??
+        question.legacySource?.id ??
+        `synthetic-question-${index + 1}`;
+      const original = saved.find(row => row.id === id);
+      return {
+        ...question,
+        identity: question.identity ?? {
+          id,
+          ...(original
+            ? { expectedRevision: localEvidenceFingerprint(original) }
+            : {}),
+        },
+      };
+    }),
     evidence: {
       ...data,
       metadataByCitation: new Map([

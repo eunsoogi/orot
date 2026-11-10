@@ -1,6 +1,7 @@
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { saveVisitQuestionRoute } from '../visitQuestionsRouteSave';
 import type { VisitQuestionRouteGeneration } from '../visitQuestionsRouteOperations';
+import type { VisitQuestionCandidate } from '../../../agent/visitQuestions/taskContract';
 import {
   appointment,
   createOperations,
@@ -13,9 +14,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-jest.mock('../../../backup/backupSupport', () => ({
-  prepareBackupSupport: jest.fn(async () => 'ready'),
-}));
 jest.mock('../../../providers/selection/options', () => {
   const actual = jest.requireActual('../../../providers/selection/options');
   return {
@@ -30,7 +28,15 @@ test('saves the reviewed draft through the session and route, then discards a la
   let finish!: (value: VisitQuestionRouteGeneration) => void;
   const generated = readyQuestions();
   const citation = generated.questions[0]!.citations[0]!;
-  const receive = jest.fn(async () => ({ memoryStatus: 'saved' as const }));
+  const receive = jest.fn(
+    async (questions: readonly VisitQuestionCandidate[]) => ({
+      questions: questions.map(question => ({
+        ...question,
+        id: question.identity!.id,
+      })),
+      memoryStatus: 'saved' as const,
+    }),
+  );
   const context = {
     status: 'ready' as const,
     appointment,
@@ -64,10 +70,22 @@ test('saves the reviewed draft through the session and route, then discards a la
   );
   await fireEvent.press(route.getByTestId('next-visit-review-save'));
   await waitFor(() => expect(route.getByText('저장할 질문')).toBeTruthy());
-  expect(receive).toHaveBeenCalledWith([
-    { ...generated.questions[0], questionText: '저장할 질문' },
-    ...generated.questions.slice(1),
-  ]);
+  expect(receive).toHaveBeenCalledWith(
+    [
+      expect.objectContaining({
+        ...generated.questions[0],
+        identity: { id: expect.any(String) },
+        questionText: '저장할 질문',
+      }),
+      ...generated.questions.slice(1).map(question =>
+        expect.objectContaining({
+          ...question,
+          identity: { id: expect.any(String) },
+        }),
+      ),
+    ],
+    [],
+  );
   await fireEvent.press(route.getByTestId('next-visit-saved-edit'));
   await fireEvent.changeText(
     route.getByTestId('next-visit-question-text-0'),

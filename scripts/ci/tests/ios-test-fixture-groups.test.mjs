@@ -11,10 +11,18 @@ test('fixture groups partition appointment, document-import, and orientation jou
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [13, 11, 12, 24],
+    [13, 11, 14, 25],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 60);
+  assert.equal(original.length, 63);
+  assert.equal(
+    iosTestInventory('fixtures', 'questions').filter(
+      (identifier) =>
+        identifier ===
+        'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+    ).length,
+    1,
+  );
   const manualHistory = [
     'OrotUITests/ManualHistoryUITests/testKnownDateProvenanceAndCorrectionSurviveProcessRestart',
     'OrotUITests/ManualHistoryUITests/testUnknownDateAndConfirmedLineageDeletionSurviveProcessRestart',
@@ -46,6 +54,11 @@ test('fixture groups partition appointment, document-import, and orientation jou
         identifier.startsWith('OrotUITests/MedicalDocumentImportJourneyUITests/'),
       ),
     documentImportJourneys,
+  );
+  assert.ok(
+    iosTestInventory('fixtures', 'calendar').includes(
+      'OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch',
+    ),
   );
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);

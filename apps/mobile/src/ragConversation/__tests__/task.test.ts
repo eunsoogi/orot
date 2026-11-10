@@ -1,5 +1,55 @@
 import { ragConversationTask } from '../task';
 
+test('keeps entry purpose and the selected evidence alias separate from editable question text', () => {
+  const message = ragConversationTask.createMessages({
+    request: '수정한 질문',
+    context: {
+      history: [{ role: 'user', content: '이전 질문' }],
+      intent: 'visit-questions',
+      targetEvidenceId: 'e1',
+    },
+    evidence: {
+      items: [
+        {
+          sourceKind: 'personal_record',
+          sourceId: 's1',
+          sourceRevision: 'sr1',
+          evidenceId: 'e1',
+          evidenceRevision: 'er1',
+          locator: { kind: 'local-evidence', token: 'e1' },
+          effectiveTime: null,
+          reviewState: 'unreviewed',
+          content: 'appointment: {"status":"scheduled"}',
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  })[0];
+  if (message.role !== 'user' || typeof message.content !== 'string')
+    throw new Error('Expected user text');
+  const body = JSON.parse(message.content);
+  expect(body.question).toBe('수정한 질문');
+  expect(body.entryContext).toEqual({
+    intent: 'visit-questions',
+    targetEvidenceId: 'e1',
+  });
+  expect(body.previousConversation).toEqual([
+    { role: 'user', content: '이전 질문' },
+  ]);
+  expect(() =>
+    ragConversationTask.createMessages({
+      request: '수정한 질문',
+      context: {
+        history: [],
+        intent: 'visit-questions',
+        targetEvidenceId: 'missing',
+      },
+      evidence: { items: [], coverage: [], conflicts: [] },
+    }),
+  ).toThrow('selected visit evidence');
+});
+
 test('lets multi-topic questions use bounded overview and short paragraphs instead of forcing one sentence', () => {
   const messages = ragConversationTask.createMessages({
     request: 'Explain my steps, sleep and measurements.',

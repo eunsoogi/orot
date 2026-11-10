@@ -6,11 +6,12 @@ import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
 import type { HealthContextDay, HealthSleepDay } from './types';
 
-/** Merge overlapping intervals before calculating duration; category codes and duplicate sources are never sleep counts. */
+/** Merge overlapping intervals before duration math and filter by ingestion cutoff; codes and duplicate sources are never sleep counts. */
 export async function readHealthSleepContext(
   executor: SqlExecutor,
   days: readonly HealthContextDay[],
   signal?: AbortSignal,
+  dataAvailableThrough?: string,
 ): Promise<{
   days: readonly HealthSleepDay[];
   unsupportedCategories: boolean;
@@ -27,6 +28,10 @@ export async function readHealthSleepContext(
     localQueryTimestampKey(days.at(-1)!.toExclusive),
     localQueryTimestampKey(days[0]!.fromInclusive),
   );
+  const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
+  const ingestionFilter = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
+  if (dataAvailableThrough)
+    parameters.push(localQueryTimestampKey(dataAvailableThrough));
   const fromKey = localQueryTimestampKeyExpression('r.effective_at');
   const toKey = localQueryTimestampKeyExpression(
     "json_extract(r.payload_json, '$.endedAt')",
@@ -52,6 +57,7 @@ export async function readHealthSleepContext(
       WHERE json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
         AND ${currentEvidenceCondition('health_observation')}
         AND ${fromKey} < ? AND ${toKey} > ?
+        ${ingestionFilter}
     ), intervals AS (
       SELECT * FROM samples WHERE finish > start
       UNION ALL SELECT date, start, finish, 'all_asleep' AS stage FROM samples

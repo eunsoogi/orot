@@ -173,15 +173,22 @@ struct MedicalDocumentFileStore {
             values.isExcludedFromBackup = true
             try mutableURL.setResourceValues(values)
 
-            let attributes = try fileManager.attributesOfItem(atPath: url.path)
-            let isProtected = (attributes[.protectionKey] as? FileProtectionType) == .complete
-            let isExcluded = try url.resourceValues(
-                forKeys: [.isExcludedFromBackupKey],
-            ).isExcludedFromBackup == true
+            let raw = try fileManager.attributesOfItem(atPath: url.path)[.protectionKey]
+            // Only absent metadata permits the URL fallback; malformed or weaker values fail closed.
+            if raw == nil {
+                try (url as NSURL).setResourceValue(URLFileProtection.complete.rawValue, forKey: .fileProtectionKey)
+            }
+            let observed = try URL(fileURLWithPath: url.path).resourceValues(forKeys: [.fileProtectionKey, .isExcludedFromBackupKey])
+            let isProtected = raw == nil ? observed.fileProtection == .complete : (raw as? FileProtectionType) == .complete && (observed.fileProtection == nil || observed.fileProtection == .complete)
+            let isExcluded = observed.isExcludedFromBackup == true
             guard isProtected, isExcluded else {
+                // These closed boolean diagnostics identify the failed boundary without exposing file paths.
+                NSLog("medical-document-protection: protected=%d backup-excluded=%d", isProtected, isExcluded)
                 throw MedicalDocumentFileStoreFailure.fileProtectionUnavailable
             }
         } catch {
+            // Do not log the underlying error, which can include private filenames or paths.
+            NSLog("medical-document-protection: verification-failed")
             throw MedicalDocumentFileStoreFailure.fileProtectionUnavailable
         }
     }

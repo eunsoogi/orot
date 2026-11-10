@@ -148,7 +148,9 @@ test('keeps the staged original available when record persistence can be retried
   const persistenceFailure = new Error('Synthetic storage interruption.');
   jest.mocked(repository.transaction).mockRejectedValueOnce(persistenceFailure);
 
-  await expect(service.saveDocument(document)).rejects.toBe(persistenceFailure);
+  await expect(service.saveDocument(document)).rejects.toMatchObject({
+    code: 'SAVE_FAILED',
+  });
 
   expect(files.discard).not.toHaveBeenCalled();
 });

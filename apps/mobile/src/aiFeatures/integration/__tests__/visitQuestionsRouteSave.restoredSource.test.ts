@@ -153,7 +153,17 @@ function preparedContext(items: readonly VisitQuestionEvidenceItem[]) {
     evidence: { batch: { items } },
     searchEvidence: jest.fn(async () => ({ batch: { items } })),
     reloadPersonalEvidence: jest.fn(async () => items[0]),
-    saveReviewedQuestions: jest.fn(async () => ({ memoryStatus: 'saved' })),
+    saveReviewedQuestions: jest.fn(
+      async (
+        questions: readonly { readonly identity?: { readonly id: string } }[],
+      ) => ({
+        questions: questions.map((entry, index) => ({
+          ...entry,
+          id: entry.identity?.id ?? `synthetic-${index}`,
+        })),
+        memoryStatus: 'saved',
+      }),
+    ),
     revalidateEvidence: jest.fn(async () => true),
   };
 }
@@ -176,6 +186,7 @@ async function saveRestoredCitation(
       appointment,
       questions: [reviewedQuestion],
       caveats: [],
+      expectedSavedQuestions: [],
       resolveSource,
     },
     () =>

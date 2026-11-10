@@ -24,6 +24,8 @@ export function appointmentState(content: string): string | undefined {
 export function priorMessages(
   context: JsonValue | undefined,
 ): readonly RagConversationMessage[] {
+  // Current visit entry stores the same bounded history inside its intent context.
+  if (isObject(context)) context = context.history as JsonValue | undefined;
   if (!Array.isArray(context)) return [];
   return context.slice(-8).flatMap(message => {
     if (

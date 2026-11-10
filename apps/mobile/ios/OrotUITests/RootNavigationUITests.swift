@@ -12,6 +12,12 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try verifySettingsRoutes()
     }
 
+    /// Keep the scheduled case in this suite while its fixture journey lives separately.
+    @MainActor
+    func testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt() throws {
+        try verifyContextualConversationKeyboard()
+    }
+
     @MainActor
     func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
@@ -122,11 +128,14 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // This React Native text header has a native StaticText trait; use its typed XCTest query on startup.
         let welcomeTitle = app.staticTexts.matching(identifier: "welcome-title").firstMatch
         XCTAssertTrue(UITestConditions.exists(welcomeTitle))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        let action = UITestConditions.element(app, "ai-feature-visit-questions")
-        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
+        let action = UITestConditions.element(app, "conversation-saved-visit-questions")
+        FormUITestConditions.reveal(action, in: app, scrollID: "conversation-history-page", towardTop: true)
+        XCTAssertTrue(action.isHittable, action.debugDescription)
         action.tap()
-        let scroll = UITestConditions.element(app, "next-visit-questions-scroll")
+        let scroll = UITestConditions.element(app, "saved-visit-questions-screen")
         XCTAssertTrue(UITestConditions.exists(scroll))
         let observed = try NavigationUITestConditions.safeArea(app, testCase: self)
         let roots = app.descendants(matching: .any).matching(identifier: "navigation-keyboard-avoiding-root").allElementsBoundByIndex
@@ -138,8 +147,9 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(root.frame.height, observed.frame.height, accuracy: 0.5)
         XCTAssertGreaterThan(observed.top, 0)
         XCTAssertGreaterThanOrEqual(scroll.frame.minY - root.frame.minY, observed.top)
-        let title = UITestConditions.element(app, "next-visit-title")
+        let title = app.staticTexts["saved-visit-questions-title"]
         XCTAssertTrue(title.exists && !title.frame.isEmpty)
+        XCTAssertEqual(title.label, "저장된 진료 질문")
         XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back").control
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-home").control
@@ -158,7 +168,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         // Send the intended completion path near the far edge; existing route assertions still decide success.
         edgeBack(scroll, in: app, fraction: 0.98, velocity: .fast)
         captureNavigationObservation(app, "after-full-edge-back")
-        let ai = UITestConditions.element(app, "ai-features-screen")
+        let ai = UITestConditions.element(app, "conversation-history-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
         let returnResult = UITestConditions.wait(for: [returned])
         // Preserve the failed ordering too: XCTest's assertion exception can bypass Swift defer.
@@ -166,39 +176,11 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(returnResult, .completed, app.debugDescription)
         captureNavigationObservation(app, "after-returned-route")
         capture(app, "edge-back-completed")
-        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        FormUITestConditions.reveal(action, in: app, scrollID: "conversation-history-page", towardTop: true)
         action.tap()
         XCTAssertTrue(UITestConditions.exists(scroll))
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-    }
-
-    @MainActor
-    func testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt() throws {
-        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
-        defer { app.terminate() }
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
-        tap(app, "ai-feature-rag-conversation")
-        let input = UITestConditions.element(app, "rag-conversation-input")
-        XCTAssertTrue(input.waitForAppearance())
-        // The composer is docked below the history, so scrolling history cannot reveal its input.
-        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
-        input.tap()
-        let keyboard = app.keyboards.firstMatch
-        XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
-        XCTAssertGreaterThan(keyboard.frame.height, 100)
-        try NavigationUITestConditions.assertSharedViewport(app, keyboard: keyboard, testCase: self)
-        for identifier in ["navigation-back", "navigation-home"] {
-            let action = try NavigationUITestConditions.navigationAction(app, identifier)
-            XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
-        }
-        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: "conversation-keyboard-native-navigation", testCase: self, requireCurrentNavigation: true)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
-        try NavigationUITestConditions.assertSharedViewport(app, testCase: self)
-        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-home", name: "home-after-keyboard-navigation", testCase: self)
     }
 
     @MainActor

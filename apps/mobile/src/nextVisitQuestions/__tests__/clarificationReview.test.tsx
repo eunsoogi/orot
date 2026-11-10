@@ -40,8 +40,18 @@ test('keeps saved questions separate while selecting and saving a mixed review',
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));
   expect(props.onSaveReviewedQuestions).toHaveBeenCalledWith(
     appointment,
-    [generated[0], clarification],
+    [
+      expect.objectContaining({
+        ...generated[0],
+        identity: { id: expect.any(String) },
+      }),
+      expect.objectContaining({
+        ...clarification,
+        identity: { id: expect.any(String) },
+      }),
+    ],
     ['incomplete_coverage'],
+    [{ id: 'fixture-1', revision: 'revision-1' }],
   );
   await fireEvent.press(await screen.findByTestId('next-visit-saved-edit'));
   expect(screen.getByTestId('next-visit-question-text-1')).toHaveDisplayValue(
@@ -52,6 +62,7 @@ test('keeps saved questions separate while selecting and saving a mixed review',
 test('allows editing and removing a restored legacy question without relabeling it', async () => {
   const legacy = {
     ...questions[0]!,
+    identity: { id: 'legacy', expectedRevision: 'original' },
     citations: [],
     legacySource: { id: 'legacy', revision: 'original' },
   };
@@ -82,5 +93,9 @@ test('allows editing and removing a restored legacy question without relabeling 
     appointment,
     [{ ...legacy, questionText: '수정한 이전 질문을 확인할까요?' }],
     [],
+    [
+      { id: 'legacy', revision: 'original' },
+      { id: 'fixture-2', revision: 'revision-2' },
+    ],
   );
 });

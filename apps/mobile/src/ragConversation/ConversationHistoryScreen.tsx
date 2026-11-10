@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationHistoryLayout } from './ConversationHistoryLayout';
+import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 
 export interface ConversationHistoryRow {
@@ -27,8 +28,12 @@ function dayLabel(value: string) {
 /** Shows only app-owned conversation state; the preview never resolves evidence or starts inference. */
 export function ConversationHistoryScreen({
   onBack,
+  onOpenSavedAnalysis,
+  onOpenSavedVisitQuestions,
 }: {
   readonly onBack: () => void;
+  readonly onOpenSavedAnalysis?: () => void;
+  readonly onOpenSavedVisitQuestions?: () => void;
 }) {
   const store = useConversationSessions();
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
@@ -53,6 +58,25 @@ export function ConversationHistoryScreen({
     <>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
       <ConversationHistoryLayout
+        header={
+          <>
+            {/* Saved outputs remain reachable without restoring a feature-selection dashboard. */}
+            {onOpenSavedAnalysis ? (
+              <Button
+                title="저장된 요약과 가능성"
+                onPress={onOpenSavedAnalysis}
+                testID="conversation-saved-analysis"
+              />
+            ) : null}
+            {onOpenSavedVisitQuestions ? (
+              <Button
+                title="저장된 진료 질문"
+                onPress={onOpenSavedVisitQuestions}
+                testID="conversation-saved-visit-questions"
+              />
+            ) : null}
+          </>
+        }
         deleted={state.deleted !== null}
         onBack={onBack}
         onCreateSession={store.create}

@@ -21,7 +21,10 @@ import { selectTestRoute } from './testRoute';
 import { startTestOperationRunner } from './testOperationRunner';
 import { registerCapabilityTestEntry } from './capabilityTestEntry';
 import { registerTestApplicationRenderer } from './testApplicationRenderer';
-import { registerNavigationTestObserver } from '../src/navigation/navigationTestObservation';
+import {
+  captureNavigationTestSnapshot,
+  registerNavigationTestObserver,
+} from '../src/navigation/navigationTestObservation';
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
@@ -71,7 +74,7 @@ if (route === 'test-host') {
   require('./openaiProviderProbeEntry');
 } else if (route === 'next-visit-questions') {
   require('./nextVisitQuestionsProbeEntry');
-} else if (!registerCapabilityTestEntry(route)) {
+} else if (!registerCapabilityTestEntry(route, settings)) {
   require('./e2eRouterEntry');
 }
 
@@ -131,18 +134,18 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
     let active = true;
     // Update only the diagnostic native label; avoid a React render loop during UIKit transitions.
     const timer = setInterval(() => {
-      NativeModules.OrotTestControl.navigationSnapshot().then(
-        (value: unknown) => {
-          if (active) {
-            navigationMarker.current?.setNativeProps({
-              accessibilityLabel: JSON.stringify(value),
-            });
-            gestureMarker.current?.setNativeProps({
-              accessibilityLabel: compactNavigationObservation(value),
-            });
-          }
-        },
-      );
+      captureNavigationTestSnapshot(() =>
+        NativeModules.OrotTestControl.navigationSnapshot(),
+      ).then((value: unknown) => {
+        if (active) {
+          navigationMarker.current?.setNativeProps({
+            accessibilityLabel: JSON.stringify(value),
+          });
+          gestureMarker.current?.setNativeProps({
+            accessibilityLabel: compactNavigationObservation(value),
+          });
+        }
+      });
     }, 200);
     return () => {
       active = false;

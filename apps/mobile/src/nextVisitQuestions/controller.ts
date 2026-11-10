@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { copyQuestions, isValidReview } from './questionReview';
 import { useQuestionDraftControls } from './questionDraftControls';
 import { useQuestionPersistence } from './useQuestionPersistence';
@@ -23,7 +23,16 @@ export function useNextVisitQuestionsController<
 >(
   inputs: NextVisitQuestionsControllerInputs<TReference>,
 ): NextVisitQuestionsController<TReference> {
-  const { appointment, provider, onGenerate, onSaveReviewedQuestions } = inputs;
+  const {
+    appointment,
+    provider,
+    savedQuestions,
+    onGenerate,
+    onSaveReviewedQuestions,
+  } = inputs;
+  const savedBaseline = useRef<
+    readonly { id: string; revision: string }[] | null
+  >(null);
   const [phase, setPhase] = useState<QuestionGenerationPhase>('idle');
   const [draftQuestions, setDraftQuestions] = useState<
     readonly NextVisitQuestion<TReference>[]
@@ -64,6 +73,7 @@ export function useNextVisitQuestionsController<
     contextKeys: currentContextKeys,
     draftQuestions,
     caveats,
+    savedBaseline,
     onSaveReviewedQuestions,
     setPhase,
     setDraftQuestions,
@@ -74,7 +84,7 @@ export function useNextVisitQuestionsController<
     preview: generationPreview,
     message: generationMessage,
     reset: resetGeneration,
-    generate,
+    generate: runGeneration,
     cancelGeneration,
   } = useQuestionGeneration({
     appointment,
@@ -101,6 +111,27 @@ export function useNextVisitQuestionsController<
     setSourceReference(null);
   }, [appointmentKey, clearSaveMessage, resetGeneration]);
 
+  const generate = useCallback(() => {
+    const snapshot =
+      savedOverride?.appointmentId ===
+      (appointment.status === 'ready' ? appointment.appointment.id : null)
+        ? savedOverride
+        : savedQuestions.status === 'ready' &&
+            appointment.status === 'ready' &&
+            savedQuestions.appointmentId === appointment.appointment.id
+          ? savedQuestions
+          : null;
+    savedBaseline.current =
+      snapshot &&
+      snapshot.questions.every(question => question.identity?.expectedRevision)
+        ? snapshot.questions.map(question => ({
+            id: question.identity!.id,
+            revision: question.identity!.expectedRevision!,
+          }))
+        : null;
+    return runGeneration();
+  }, [appointment, savedOverride, savedQuestions, runGeneration]);
+
   const startReview = useCallback(
     (
       questions: readonly NextVisitQuestion<TReference>[],
@@ -109,6 +140,14 @@ export function useNextVisitQuestionsController<
       // Opening a saved list supersedes pending generation and save replies.
       resetGeneration();
       invalidateSave();
+      savedBaseline.current = questions.every(
+        question => question.identity?.expectedRevision,
+      )
+        ? questions.map(question => ({
+            id: question.identity!.id,
+            revision: question.identity!.expectedRevision!,
+          }))
+        : null;
       setDraftQuestions(copyQuestions(questions));
       setHasUnpersistedReview(false);
       setCaveats([...reviewCaveats]);

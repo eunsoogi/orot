@@ -40,13 +40,14 @@ test('integrated native inventory retains manual history, standard adapters, geo
   const full = ['release', 'debug', 'speech'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(full.length, 198);
-  assert.equal(new Set(full).size, 192);
+  assert.equal(full.length, 209);
+  assert.equal(new Set(full).size, 202);
   for (const identifier of [
     ...manual,
     'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
     'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/AppointmentReminderJourneyUITests/testReminderControlsAndPreparationAcrossAppearancesAndLargeText',
+    'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
   ])
     assert.equal(full.filter((value) => value === identifier).length, 1);
 });

@@ -67,7 +67,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(12);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
     expect(
       (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
     ).toHaveLength(0);
@@ -94,7 +94,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(12);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
     expect(
       (
         await database.execute(
@@ -182,7 +182,7 @@ describe('storage migrations', () => {
       "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'transcript_artifact_staleness_transcript_idx'",
     );
     expect(stalenessIndex.rows).toHaveLength(1);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(12);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
     await database.closeAsync?.();
   });
 });

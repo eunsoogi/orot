@@ -112,27 +112,6 @@ enum NavigationPageActionUITestConditions {
         }
     }
 
-    static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
-        let direct = UITestConditions.element(app, id)
-        let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || overflow.exists }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-        if direct.exists {
-            return direct
-        }
-        XCTAssertTrue(overflow.exists && overflow.isHittable, app.debugDescription)
-        overflow.tap()
-        let item = app.buttons[label]
-        XCTAssertTrue(UITestConditions.exists(item), app.debugDescription)
-        return item
-    }
-
-    static func tap(_ app: XCUIApplication, id: String, label: String) {
-        let target = pageAction(app, id: id, label: label)
-        XCTAssertTrue(target.exists && target.isHittable, app.debugDescription)
-        target.tap()
-    }
-
     /// Validate actual native frames and hit testing before selecting any menu item.
     static func assertToolbar(_ app: XCUIApplication, marker: String, actions: [String]) {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, marker)), app.debugDescription)

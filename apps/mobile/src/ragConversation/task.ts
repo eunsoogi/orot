@@ -19,6 +19,7 @@ import type { LiteratureIdentity } from './literatureCitationBinding';
 import { appointmentState, isObject, priorMessages } from './taskHistory';
 import { requestsLiteratureExplanation } from './literatureIntent';
 import { projectConversationStream } from './taskStreaming';
+import { conversationEntryContext } from './conversationEntryContext';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -62,6 +63,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     // Possibility discussions need the same observation/inference boundary as the symptom summary.
     'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
@@ -69,7 +71,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
-    'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
+    'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, or an explicit window for a requested period, and weekly or daily detail when needed; use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
     'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
     // An empty personal library does not establish that public literature is unavailable.
     'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +
@@ -85,7 +87,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'When publication evidence is present, report personal records only as localClaims with exact evidenceId, sourceRevision, evidenceRevision and complete unchanged content in span. Cite every displayed record. The application renders source-backed claims and states when a comparison is unverified. ' +
     'For a simple record question, answer in one short Korean sentence using only relevant facts. Do not repeat unrelated evidence or metadata. Keep IDs only in citations, never in the answer text. ' +
     'For medications, distinguish a recorded dose or prescription from confirmed current use; do not claim an old dose proves current use. Preserve qualifications and uncertainty. ' +
-    'For a specific medication and date or time, request local-health-context with an explicit time-zone-aware window and doseHistory; follow hasMore pages as needed. A scheduled time is not an intake time, and only an explicit taken or administered event establishes recorded intake. ' +
+    'For a requested period, use an explicit time-zone-aware window with inclusive start and exclusive end, at most 90 local calendar days. For a specific medication and date or time, add doseHistory and select only medications; follow hasMore pages as needed. A scheduled time is not an intake time, and only an explicit taken or administered event establishes recorded intake. ' +
     'Preserve event status and source-relative time. A scheduled event or intention is not an ongoing or completed event; a completed event is not ongoing. Never turn a future plan into a present-tense fact. ' +
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: conversationResultSchema as JsonObject,
@@ -97,6 +99,10 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         role: 'user',
         content: JSON.stringify({
           question: input.request,
+          entryContext: conversationEntryContext(
+            input.context,
+            input.evidence.items,
+          ),
           displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           answerRequirements:
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',

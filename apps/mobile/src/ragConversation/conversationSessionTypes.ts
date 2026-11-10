@@ -21,6 +21,9 @@ export interface ConversationSessionOptions {
       completion?: 'complete' | 'partial';
       toolMessageId?: string;
       toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+      healthSummary?: import('./healthSummary').HealthSummaryResult | null;
+      visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+      visitQuestionsUnavailable?: boolean;
     }[]
   >;
 }
@@ -43,6 +46,8 @@ export type PendingTurn = {
   readonly userMessageId: number;
   saving: boolean;
   committed: boolean;
+  summarySaving: boolean;
+  summaryCommitted: boolean;
 };
 
 export type ConversationSender = (

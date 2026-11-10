@@ -11,6 +11,8 @@ export interface HealthContextWindow {
   readonly fromInclusive: string;
   readonly toExclusive: string;
   readonly timeZone: string;
+  /** Optional ingestion cutoff for reproducible snapshots; occurrence time still selects the day. */
+  readonly dataAvailableThrough?: string;
   readonly doseHistory?: {
     readonly medicationName?: string;
     readonly page: number;

@@ -38,6 +38,10 @@ test('restores only the active appointment in saved order and registers readable
     '질문 question-2',
   ]);
   expect(restored.questions[0]?.citations).toHaveLength(1);
+  expect(restored.questions.map(item => item.identity.id)).toEqual([
+    'question-1',
+    'question-2',
+  ]);
   expect(restored.caveats).toEqual([]);
   expect(restored.restorationNotice).toContain('원본 버전');
   expect(restored.restorationNotice).toContain(

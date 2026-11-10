@@ -7,6 +7,7 @@ import {
 /** Registers a focused screen's actions without retaining callbacks after cleanup. */
 export function useNavigationRouteActions(
   actions: readonly NavigationRouteAction[],
+  enabled = true,
 ): boolean {
   const host = useContext(NavigationPrimaryActionContext);
   const ownerKey = useRef(host?.routeKey);
@@ -62,7 +63,12 @@ export function useNavigationRouteActions(
     previousActions.current = next;
   }, [signature]);
   useLayoutEffect(() => {
-    if (!register || !ownerKey.current || currentActions.current.length === 0)
+    if (
+      !enabled ||
+      !register ||
+      !ownerKey.current ||
+      currentActions.current.length === 0
+    )
       return;
     let active = true;
     const registered = currentActions.current.map(action => ({
@@ -106,6 +112,6 @@ export function useNavigationRouteActions(
       active = false;
       unregister();
     };
-  }, [register, signature]);
-  return host !== null;
+  }, [register, signature, enabled]);
+  return host !== null && enabled;
 }

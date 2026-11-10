@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react-native';
 import { t } from '../../i18n';
 import { SettingsRoute } from '../SettingsRoute';
 import { settingsRouteResolverOptions } from '../settingsRouteTestSupport';
+import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
+import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
@@ -14,6 +16,39 @@ const originalDimensions = {
   window: Dimensions.get('window'),
   screen: Dimensions.get('screen'),
 };
+
+test('keeps one settings end gutter beyond the navigation overlap', async () => {
+  await render(
+    <NavigationOcclusionContext.Provider
+      value={{
+        placement: 'bottom',
+        systemInsets: { top: 0, right: 0, bottom: 34, left: 0 },
+        viewportInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+        scrollContentInsets: { top: 0, right: 0, bottom: 52, left: 0 },
+      }}
+    >
+      <NavigationRouteScrollView>
+        <SettingsRoute
+          selectedProvider="Cached provider label"
+          selectedAiResolverOptions={settingsRouteResolverOptions()}
+          onOpenProviderSettings={jest.fn()}
+          onOpenAccounts={jest.fn()}
+          onOpenPrivacy={jest.fn()}
+          onOpenBackup={jest.fn()}
+          onOpenHealthData={jest.fn()}
+          onOpenSyncStatus={jest.fn()}
+        />
+      </NavigationRouteScrollView>
+    </NavigationOcclusionContext.Provider>,
+  );
+  const scroll = StyleSheet.flatten(
+    screen.getByTestId('navigation-route-scroll').props.contentContainerStyle,
+  );
+  const panel = StyleSheet.flatten(
+    screen.getByTestId('settings-title').parent!.props.style,
+  );
+  expect(scroll.paddingBottom + panel.paddingBottom).toBe(80);
+});
 
 afterEach(() => {
   Dimensions.set(originalDimensions);
@@ -59,6 +94,7 @@ test.each([
       'settings-section-ai-accounts',
       'settings-section-health-data',
       'settings-section-privacy-backup',
+      'settings-section-daily-reminders',
       'settings-section-app-info',
     ]) {
       expect(screen.getByTestId(id)).toBeTruthy();

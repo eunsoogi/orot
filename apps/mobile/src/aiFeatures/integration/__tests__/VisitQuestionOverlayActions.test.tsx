@@ -11,11 +11,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-// The shared route fixture imports App; native backup startup is unrelated to
-// the real AI navigation and question controller exercised here.
-jest.mock('../../../backup/backupSupport', () => ({
-  prepareBackupSupport: jest.fn(async () => 'ready'),
-}));
 jest.mock('../../../providers/selection/options', () => {
   const actual = jest.requireActual('../../../providers/selection/options');
   return {

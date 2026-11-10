@@ -45,6 +45,8 @@ export function getRagConversationFailureCopy(
     retrieval_failed: 'ragConversation.failureRetrieval',
     validation_failed: 'ragConversation.failureValidation',
     stale_evidence: 'ragConversation.failureStaleEvidence',
+    visit_no_appointment: 'ragConversation.failureVisitNoAppointment',
+    visit_saved_unavailable: 'ragConversation.failureVisitSavedUnavailable',
     budget_exceeded: 'ragConversation.failureBudget',
     unavailable: 'ragConversation.unavailable',
   } as const satisfies Record<RagConversationFailureKind, string>;

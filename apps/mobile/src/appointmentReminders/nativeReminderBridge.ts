@@ -21,6 +21,23 @@ export function consumeAppointmentReminderTarget(): Promise<unknown> {
   return native().consumeTarget();
 }
 
+/** Daily and appointment inboxes share a native wake signal but drain independently. */
+export function consumeDailyReminderTarget(): Promise<unknown> {
+  return (
+    native() as ReminderEventModule & { consumeDailyTarget(): Promise<unknown> }
+  ).consumeDailyTarget();
+}
+
+export function acknowledgeDailyReminderTarget(
+  timestamp: string,
+): Promise<void> {
+  return (
+    native() as ReminderEventModule & {
+      acknowledgeDailyTarget(value: string): Promise<void>;
+    }
+  ).acknowledgeDailyTarget(timestamp);
+}
+
 /** Subscribe before draining the inbox so cold-start and foreground taps share one path. */
 export function subscribeAppointmentReminderOpened(
   listener: () => void,

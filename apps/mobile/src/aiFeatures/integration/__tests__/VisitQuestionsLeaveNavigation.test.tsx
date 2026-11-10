@@ -29,7 +29,7 @@ const phases = [
   { hasUnsavedChanges: true, isSaving: true, isGenerating: false, revision: 3 },
 ];
 
-/** Retained work never needs destructive-leave approval; other feature guards remain separate. */
+/** The saved-question history entry retains its existing non-destructive leave ownership. */
 test.each(phases)(
   'leaves visit questions without a prompt in phase $revision',
   async state => {
@@ -42,7 +42,12 @@ test.each(phases)(
         renderVisitQuestions={input => <Probe {...input} state={state} />}
       />,
     );
-    await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
+    await fireEvent.press(
+      route.getByTestId('rag-conversation-sessions-toggle'),
+    );
+    await fireEvent.press(
+      route.getByTestId('conversation-saved-visit-questions'),
+    );
     await waitFor(() =>
       expect(route.getByTestId('visit-question-route')).toBeTruthy(),
     );
