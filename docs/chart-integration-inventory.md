@@ -53,16 +53,12 @@ The component tests `useHomeMetricsInvalidation.test.tsx`,
 `useHomeMetrics.test.tsx` and `HomeMetricsChartState.test.tsx` are relevant;
 their presence here does not establish a pass at the integration revision.
 
-At the baseline, `useHealthRecordCategoryPages.ts` retains pages on recoverable
-refresh failure and rejects completions from older generations, but does not
-subscribe to local deletion or clear events. On candidate `5fa8944802ce84fba603cdde00c27808ae3b872f`,
-the hook subscribes to both events, increments its generation, clears retained
-pages and reloads. Its candidate tests include
-`useHealthRecordCategoryPagesInvalidation.test.tsx`. This is an inspected code
-change, not a passing result, nor proof of permission-revocation propagation.
-After integration, verify actual commit-to-event wiring, deletion during a
-pending load, permission/access loss, failed refresh, focus/foreground,
-selection and late completion. Distinguish cleared data from valid stale data.
+The integrated `useHealthRecordCategoryPages.ts` retains valid pages as stale
+on recoverable refresh failure and rejects completions from older generations.
+On local deletion or clear events it increments the generation, clears the
+retained pages and reloads. The event and load boundaries are exercised by
+`useHealthRecordCategoryPagesInvalidation.test.tsx`. Permission or access
+loss is a separate observation from committed deletion.
 
 ## Evidence mapping and outstanding acceptance
 
@@ -89,10 +85,9 @@ selection and late completion. Distinguish cleared data from valid stale data.
   measured expanded/narrow windows; XXXL chart values; representative appearance
   and Reduce Motion; and dense synthetic data responsiveness and memory with
   dataset, environment and measurement limits recorded. Preserve first failures.
-- Prepared native scenarios in `e6a5c4f1f1b1250def3cf60fe30558c31a298735`
-  are unregistered and unexecuted. Parent ownership is needed for shared Xcode
-  and Duo inventory registration; verify selectors and fixture applicability
-  after integration. Store future results outside disposable worktrees.
+- The acceptance candidate registers the Home XXXL values and blood-pressure
+  VoiceOver cases in Xcode and the Duo inventory. The exact native outcomes,
+  fixture bounds and unverified device states belong in the validation record.
 
 ## Reproduce the source inventory
 
