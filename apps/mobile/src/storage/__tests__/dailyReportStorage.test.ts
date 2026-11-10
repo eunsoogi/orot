@@ -13,7 +13,6 @@ import { createDailyReportContext } from '../../healthEvidence/healthContext/dai
 import { readHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
 import { createDailyReportStorage } from '../dailyReportStorage';
 import { crashUncommittedPointer } from '../testSupport/dailyReportCrashSupport';
-
 const observation = HealthObservationSchema.parse({
   id: 'synthetic-observation',
   effectiveAt: '2035-01-01T01:00:00Z',
@@ -25,7 +24,6 @@ const observation = HealthObservationSchema.parse({
   concept: 'heart_rate',
   value: { kind: 'quantity', amount: 72, unit: 'count/min' },
 });
-
 test('serializes revisions, survives reopening and removes source-derived text on deletion', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'daily-report-'));
   const path = join(directory, 'reports.sqlite');
@@ -96,6 +94,15 @@ test('serializes revisions, survives reopening and removes source-derived text o
     };
     expect(await store.save(input)).toEqual({ status: 'saved' });
     expect(await store.save(input)).toEqual({ status: 'reused' });
+    expect(
+      await store.save({
+        ...input,
+        runId: 'missing-source',
+        lineage: [{ ...input.lineage[0]!, localId: 'missing' }],
+        mode: { kind: 'revise', expectedRunId: 'run-one' },
+      }),
+    ).toEqual({ status: 'stale' });
+    expect((await store.lookup(context.identity)).status).toBe('saved');
     const otherEntryPoint = createDailyReportStorage(connection.database);
     const races = await Promise.all(
       [store, otherEntryPoint].map((entryPoint, index) =>
