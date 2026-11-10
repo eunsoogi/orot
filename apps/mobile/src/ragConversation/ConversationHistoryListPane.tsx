@@ -14,6 +14,7 @@ import { appColors } from '../layout/appColors';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import type { ConversationHistoryRow } from './ConversationHistoryScreen';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { t } from '../i18n';
 
 interface NativeHistoryProps extends ViewProps {
   readonly rows: readonly ConversationHistoryRow[];
@@ -61,8 +62,8 @@ export function ConversationHistoryListPane({
   const hasDock = useNavigationRouteActions([
     {
       id: 'new-history-session',
-      label: '새 대화',
-      accessibilityLabel: '새 대화',
+      label: t('ragConversation.history.newConversation'),
+      accessibilityLabel: t('ragConversation.history.newConversation'),
       testID: 'conversation-history-new',
       systemImageName: 'plus',
       onPress: onCreateSession,
@@ -74,12 +75,14 @@ export function ConversationHistoryListPane({
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <Text accessibilityRole="header" style={styles.heading}>
-              대화 기록
+              {t('ragConversation.history.title')}
             </Text>
             {!hasDock ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="새 대화"
+                accessibilityLabel={t(
+                  'ragConversation.history.newConversation',
+                )}
                 style={styles.newButton}
                 onPress={onCreateSession}
                 testID="conversation-history-new"
@@ -89,7 +92,9 @@ export function ConversationHistoryListPane({
               </Pressable>
             ) : null}
           </View>
-          <Text style={styles.count}>{rows.length}개의 대화</Text>
+          <Text style={styles.count}>
+            {t('ragConversation.history.count', { count: rows.length })}
+          </Text>
         </View>
       ) : null}
       {NativeHistory ? (
@@ -97,9 +102,11 @@ export function ConversationHistoryListPane({
           testID="conversation-history-list"
           style={[styles.list, { height: nativeHeight }]}
           rows={rows}
-          headerTitle="대화 기록"
-          headerCount={`${rows.length}개의 대화`}
-          newSessionLabel="새 대화"
+          headerTitle={t('ragConversation.history.title')}
+          headerCount={t('ragConversation.history.count', {
+            count: rows.length,
+          })}
+          newSessionLabel={t('ragConversation.history.newConversation')}
           showsNewSession={!hasDock}
           headerTextColor={appColors.text}
           headerSecondaryColor={appColors.secondary}
@@ -122,7 +129,12 @@ export function ConversationHistoryListPane({
               key={row.id}
               accessibilityRole="button"
               accessibilityLabel={row.title}
-              accessibilityActions={[{ name: 'delete', label: '삭제' }]}
+              accessibilityActions={[
+                {
+                  name: 'delete',
+                  label: t('ragConversation.history.deleteAction'),
+                },
+              ]}
               onAccessibilityAction={event => {
                 if (event.nativeEvent.actionName === 'delete')
                   onDeleteSession(row.id);
@@ -136,10 +148,12 @@ export function ConversationHistoryListPane({
       )}
       {deleted ? (
         <View style={styles.undo} accessibilityLiveRegion="polite">
-          <Text style={styles.undoMessage}>대화를 삭제했어요.</Text>
+          <Text style={styles.undoMessage}>
+            {t('ragConversation.history.deleted')}
+          </Text>
           <View style={styles.undoAction}>
             <AppButton
-              title="실행 취소"
+              title={t('ragConversation.history.undoDelete')}
               variant="secondary"
               onPress={onUndoRemove}
               testID="conversation-history-undo"

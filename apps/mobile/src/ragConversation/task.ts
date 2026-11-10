@@ -8,6 +8,7 @@ import type {
   TaskResponderContract,
   TaskResponderInput,
 } from '@orot/agent-runtime';
+import { t } from '../i18n';
 import { hasUnsupportedClinicalClaim } from './clinicalClaimValidation';
 import { renderMixedEvidenceAnswer } from './mixedEvidenceAnswer';
 import type { LocalClaimIdentity } from './localEvidenceClaims';
@@ -174,7 +175,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     )
       return {
         status: 'needs_clarification',
-        message: '문헌 질문에 대한 근거를 확인하지 못했어요.',
+        message: t('ragConversation.literature.requestEvidenceUnavailable'),
       } as const;
     if (value.answerKind !== 'conversation' && !input.evidence.items.length) {
       return {
@@ -191,7 +192,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       if (!rendered)
         return {
           status: 'needs_clarification',
-          message: '문헌의 통계와 출처가 일치하는지 확인하지 못했어요.',
+          message: t('ragConversation.literature.statisticsSourceMismatch'),
         } as const;
       return {
         status: 'valid',
@@ -215,7 +216,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       // Plain prose cannot establish literature claims or a record-to-literature comparison.
       return {
         status: 'needs_clarification',
-        message: '문헌의 설명과 출처가 일치하는지 확인하지 못했어요.',
+        message: t('ragConversation.literature.explanationSourceMismatch'),
       } as const;
     }
     // A model instruction alone cannot prevent a definitive diagnosis from reaching the user.

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import type { Appointment } from '@orot/domain';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
+import { t } from '../i18n';
 import type { RecordingStatus } from './recordingTypes';
 
 export function OptionalRecordingVisitPicker({
@@ -63,15 +64,15 @@ export function RecordingVisitPicker({
   }, []);
   return (
     <View>
-      <AppText>연결할 진료 선택 (선택 사항)</AppText>
+      <AppText>{t('recording.visitPicker.heading')}</AppText>
       {failed ? (
         <AppText accessibilityRole="alert">
-          진료 목록을 불러오지 못했어요.
+          {t('recording.visitPicker.loadError')}
         </AppText>
       ) : null}
       <AppButton
         variant="neutral"
-        title="연결하지 않기"
+        title={t('recording.visitPicker.disconnect')}
         disabled={disabled}
         accessibilityState={{ selected: selected === null }}
         onPress={() => onSelect(null)}
@@ -81,7 +82,11 @@ export function RecordingVisitPicker({
           key={visit.id}
           variant="list"
           disabled={disabled}
-          title={`${visit.clinicLabel || '진료'} · ${new Date(visit.effectiveAt).toLocaleString('ko-KR')}`}
+          title={t('recording.visitPicker.visitTitle', {
+            clinic:
+              visit.clinicLabel || t('recording.visitPicker.visitFallback'),
+            date: new Date(visit.effectiveAt).toLocaleString('ko-KR'),
+          })}
           accessibilityState={{ selected: selected === visit.id }}
           onPress={() => onSelect(visit.id)}
         />

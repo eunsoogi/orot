@@ -3,6 +3,7 @@ import type { RagConversationObserver } from '../../ragConversation/conversation
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
 import type { HealthSummaryRequest } from '../../ragConversation/healthSummary';
 import { AiProviderSelectionError } from './provider';
+import { t } from '../../i18n';
 
 /** The turn stores only a reference; the authoritative summary owns its evidence and save state. */
 export function createConversationHealthSummary(
@@ -29,7 +30,7 @@ export function createConversationHealthSummary(
       };
     }
     if ('failure' in output) return output.failure;
-    const answer = '건강 기록을 요약했어요.';
+    const answer = t('ragConversation.conversation.healthSummary.generated');
     if (!signal.aborted && observer?.onRetentionCandidate) {
       try {
         await observer.onRetentionCandidate(
