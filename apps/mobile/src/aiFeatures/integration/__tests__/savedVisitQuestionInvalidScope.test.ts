@@ -29,25 +29,31 @@ test('reports invalid saved provenance without claiming a health record changed'
   const fixture = await visitHealthFixture();
   try {
     await fixture.save();
-    const before = await fixture.records.list('visit_question');
-    const source = before[0]!.healthContextSources![0]!;
+    const saved = await fixture.records.list('visit_question');
+    const source = saved[0]!.healthContextSources![0]!;
     const invalidRow = {
-      ...before[0]!,
+      ...saved[0]!,
       healthContextSources: [
-        { ...source, scope: { ...source.scope, topic: 'invalid' } },
+        {
+          ...source,
+          scope: {
+            ...source.scope,
+            window: {
+              fromInclusive: '2026-01-01T00:00:00Z',
+              toExclusive: '2026-04-02T00:00:00Z',
+              timeZone: 'UTC',
+            },
+          },
+        },
       ],
     };
-    const originalList = fixture.records.list.bind(fixture.records);
-    const records = {
-      ...fixture.records,
-      list: jest.fn(async (kind: string) =>
-        kind === 'visit_question' ? [invalidRow] : originalList(kind as never),
-      ),
-    } as typeof fixture.records;
+    // The stored schema admits 91 elapsed days; the reader permits only 90 local days.
+    await fixture.records.put('visit_question', invalidRow);
+    const before = await fixture.records.list('visit_question');
     const read = jest.fn(fixture.read);
     const result = await loadSavedVisitQuestionState({
       appointmentId: fixture.prepared.appointment.id,
-      records,
+      records: fixture.records,
       sourceReader: createLocalHealthEvidenceRepository(fixture.database),
       readHealthContext: read,
       registry: new LocalEvidenceReferenceRegistry(),
