@@ -9,11 +9,16 @@ import { EvidenceSourceDetailScreen } from '../src/aiFeatures/integration/Eviden
 import { SelectedModelControl } from '../src/layout/SelectedModelControl';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
+import type { EvidenceReference } from '@orot/agent-runtime';
 import {
   evidenceVisualRecords,
   evidenceVisualReference,
 } from './evidenceVisualFixtures';
-import { sendSyntheticConversation } from './conversationVisualFixture';
+import {
+  conversationVisualSessionOptions,
+  resolveConversationVisualToolSource,
+  sendSyntheticConversation,
+} from './conversationVisualFixture';
 
 type Route = 'conversation' | 'history' | 'evidence';
 const leaveState = {
@@ -26,13 +31,16 @@ const leaveState = {
   }),
 };
 
-/** Production conversation/session/navigation components with an explicitly synthetic sender. */
+/** Production conversation/navigation components with synthetic session identity, source, and sender. */
 function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
   const [controller] = useState(() =>
     createNavigationController<Route>('conversation'),
   );
+  const [openedSource, setOpenedSource] = useState<EvidenceReference>(
+    evidenceVisualReference,
+  );
   return (
-    <ConversationSessionsProvider>
+    <ConversationSessionsProvider options={conversationVisualSessionOptions}>
       <NavigationRouteAdapter
         controller={controller}
         leaveState={leaveState}
@@ -48,7 +56,7 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
             return (
               <EvidenceSourceDetailScreen
                 navigationRouteKey={navigation.route.key}
-                reference={evidenceVisualReference}
+                reference={openedSource}
                 readSource={async () => ({
                   status: 'available',
                   document: {
@@ -67,7 +75,11 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
               }
               onBack={onBack}
               onOpenHistory={() => navigation.push('history')}
-              onOpenSource={() => navigation.push('evidence')}
+              onOpenSource={reference => {
+                setOpenedSource(reference);
+                navigation.push('evidence');
+              }}
+              resolveToolSource={resolveConversationVisualToolSource}
               onSend={
                 failure
                   ? async () => ({ status: 'unavailable' })
