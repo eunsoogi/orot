@@ -1,4 +1,5 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
+import { t } from '../i18n';
 import type { LiteratureIdentity } from './literatureCitationBinding';
 import { summarizeSupportedAbstract } from './literatureQualitative';
 
@@ -116,14 +117,18 @@ export function validateLiteratureStatistics(
 /** Render only the checked numeric fields, independently of source narrative. */
 function formatStatistics(statistics: readonly SourceStatistic[]): string {
   const labels: Record<StatisticMeasure, string> = {
-    odds_ratio: '오즈비',
-    risk_ratio: '위험비',
-    hazard_ratio: '위험률비',
+    odds_ratio: t('externalMedicalEvidence.literature.statistic.oddsRatio'),
+    risk_ratio: t('externalMedicalEvidence.literature.statistic.riskRatio'),
+    hazard_ratio: t('externalMedicalEvidence.literature.statistic.hazardRatio'),
   };
   return statistics
-    .map(
-      s =>
-        `${labels[s.measure]} ${s.value} (${s.confidenceLevel}% 신뢰구간 ${s.confidenceInterval})`,
+    .map(s =>
+      t('externalMedicalEvidence.literature.statisticLine', {
+        label: labels[s.measure],
+        value: s.value,
+        confidenceLevel: s.confidenceLevel,
+        confidenceInterval: s.confidenceInterval,
+      }),
     )
     .join('\n');
 }
@@ -199,10 +204,22 @@ export function renderLiteratureAnswer(
         [c.populationSpan, c.resultSpan, c.limitationSpan].filter(Boolean),
       ),
     ]
-      .map(span => `초록에서 선택한 문장: ${span}`)
+      .map(span =>
+        t('externalMedicalEvidence.literature.selectedSentence', { span }),
+      )
       .join('\n');
+    const statisticText =
+      result?.status === 'valid'
+        ? `\n${t('externalMedicalEvidence.literature.statisticsHeading', { statistics: formatStatistics(result.statistics) })}`
+        : '';
+    const verificationText =
+      result?.status === 'valid'
+        ? `\n${summary ? t('externalMedicalEvidence.literature.statisticsOutcomeUnknown') : t('externalMedicalEvidence.literature.sentenceRolesAndOutcomeUnknown')}`
+        : !summary
+          ? `\n${t('externalMedicalEvidence.literature.sentenceMeaningUnknown')}`
+          : '';
     lines.push(
-      `${summary ? `${summary}\n` : ''}${excerpts}${result?.status === 'valid' ? `\n초록의 수치 표기: ${formatStatistics(result.statistics)}` : ''}${result?.status === 'valid' ? (summary ? '\n이 수치가 관찰 결과인지 확인하지 못했어요.' : '\n선택한 문장의 역할과 이 수치가 관찰 결과인지 확인하지 못했어요.') : !summary ? '\n선택한 문장의 의미를 충분히 확인하지 못했어요.' : ''}\n질문과의 관련성 및 연구의 한계는 충분히 확인하지 못했어요. 원문 전체와 출판 상태는 확인하지 못했어요.`,
+      `${summary ? `${summary}\n` : ''}${excerpts}${statisticText}${verificationText}\n${t('externalMedicalEvidence.literature.relevanceAndLimitsUnknown')}`,
     );
   }
   return { answer: lines.join('\n\n'), references };

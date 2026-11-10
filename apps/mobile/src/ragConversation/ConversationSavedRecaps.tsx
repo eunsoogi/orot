@@ -8,6 +8,7 @@ import {
 } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
+import { t } from '../i18n';
 import { recordingService } from '../recording/recordingService';
 import {
   subscribeLocalDataClear,
@@ -103,18 +104,18 @@ export function ConversationSavedRecaps({
     <View>
       {failed ? (
         <AppText accessibilityRole="alert">
-          진료 요약을 불러오지 못했어요.
+          {t('visitQuestions.recap.loadError')}
         </AppText>
       ) : null}
       {statuses.map((status, index) => (
         <AppText key={index} accessibilityLiveRegion="polite">
           {status === 'analyzing' || status === 'saving' || status === 'pending'
-            ? '진료 요약 처리를 기다리거나 진행 중이에요.'
+            ? t('visitQuestions.recap.status.pending')
             : status === 'consent_required'
-              ? '진료 요약을 위한 전송 동의가 필요해요.'
+              ? t('visitQuestions.recap.status.consentRequired')
               : status === 'no_questions'
-                ? '준비된 질문이 없어 요약하지 않았어요.'
-                : '진료 요약을 완료하지 못했어요.'}
+                ? t('visitQuestions.recap.status.noQuestions')
+                : t('visitQuestions.recap.status.failed')}
         </AppText>
       ))}
       {statuses.some(
@@ -122,14 +123,16 @@ export function ConversationSavedRecaps({
           !['pending', 'analyzing', 'saving', 'no_questions'].includes(status),
       ) ? (
         <AppButton
-          title="진료 요약 다시 시도"
+          title={t('visitQuestions.recap.actions.retry')}
           variant="secondary"
           onPress={() => requestRecapRetry(appointmentId)}
         />
       ) : null}
       {results.map(result => (
         <View key={result.recordingSourceId}>
-          <AppText accessibilityRole="header">자동 저장된 진료 요약</AppText>
+          <AppText accessibilityRole="header">
+            {t('visitQuestions.recap.heading')}
+          </AppText>
           {result.questions.map(question => (
             <View key={question.questionId}>
               <AppText>
@@ -149,26 +152,43 @@ export function ConversationSavedRecaps({
                 )
                 .map(record => (
                   <AppText key={record.id}>
-                    내가 수정한 답변: {record.answer ?? '답변 없음'}
+                    {t('visitQuestions.recap.answer.userEdited', {
+                      answer:
+                        record.answer ?? t('visitQuestions.recap.answer.empty'),
+                    })}
                   </AppText>
                 ))}
               <AppText>
                 {question.status === 'evidence_found'
-                  ? '녹음에서 질문을 찾았어요'
+                  ? t('visitQuestions.recap.questionStatus.evidenceFound')
                   : question.status === 'not_found'
-                    ? '이 전사에서 찾지 못했어요'
-                    : '확인하기 어려워요'}
+                    ? t('visitQuestions.recap.questionStatus.notFound')
+                    : t('visitQuestions.recap.questionStatus.uncertain')}
               </AppText>
               {question.answers.map((answer, index) => (
                 <View key={index}>
-                  <AppText>원문: {answer.quotation}</AppText>
-                  <AppText>AI 요약: {answer.summary}</AppText>
-                  <AppText>화자 미확인: {answer.speakerUncertainty}</AppText>
+                  <AppText>
+                    {t('visitQuestions.recap.answer.quotation', {
+                      quotation: answer.quotation,
+                    })}
+                  </AppText>
+                  <AppText>
+                    {t('visitQuestions.recap.answer.summary', {
+                      summary: answer.summary,
+                    })}
+                  </AppText>
+                  <AppText>
+                    {t('visitQuestions.recap.answer.speakerUncertainty', {
+                      uncertainty: answer.speakerUncertainty,
+                    })}
+                  </AppText>
                   {answer.evidence.map((evidence, evidenceIndex) => (
                     <AppButton
                       key={evidenceIndex}
                       variant="text"
-                      title="원본 녹음 듣기"
+                      title={t(
+                        'visitQuestions.recap.actions.playOriginalRecording',
+                      )}
                       onPress={() => {
                         recordingService
                           .playRange(

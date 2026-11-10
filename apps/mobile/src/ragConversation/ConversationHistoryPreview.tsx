@@ -5,6 +5,7 @@ import { appColors } from '../layout/appColors';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationSession } from './conversationSessions';
+import { t } from '../i18n';
 
 const ignoreSource = (_reference: EvidenceReference) => undefined;
 const ignoreLinkError = () => undefined;
@@ -29,7 +30,7 @@ export function ConversationHistoryPreview({
         style={styles.title}
         testID="conversation-history-preview-title"
       >
-        {session?.title ?? '대화 미리보기'}
+        {session?.title ?? t('ragConversation.history.previewTitle')}
       </Text>
       <View
         style={styles.messages}
@@ -50,7 +51,7 @@ export function ConversationHistoryPreview({
             style={styles.empty}
             testID="conversation-history-preview-empty"
           >
-            이 대화에는 아직 메시지가 없어요.
+            {t('ragConversation.history.previewEmpty')}
           </Text>
         )}
         {session?.error ? (

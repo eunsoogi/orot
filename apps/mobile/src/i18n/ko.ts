@@ -13,8 +13,10 @@ import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
 import { appointmentActionsKo } from './appointmentActionsKo';
 import { medicalDocumentSaveErrorsKo } from './medicalDocumentSaveErrors';
+import { chartsKo } from './charts';
 
 export const ko = {
+  ...chartsKo,
   ...homeOverviewKo,
   ...probeKo,
   ...manualHistoryKo,
@@ -181,13 +183,6 @@ export const ko = {
   'appointments.form.timezoneHint':
     '날짜와 시간은 기기의 현지 시간대로 표시돼요.',
   'appointments.form.noteLabel': '메모 (선택)',
-  'appointments.actions.add': '예약 추가',
-  'appointments.actions.edit': '수정',
-  'appointments.actions.cancel': '예약 취소',
-  'appointments.actions.cancelForClinic': '{clinic} 예약 취소',
-  'appointments.actions.save': '저장',
-  'appointments.actions.saving': '저장 중…',
-  'appointments.actions.close': '닫기',
   'calendar.title': '캘린더 연결',
   'calendar.description':
     '예정된 일정은 이 기기에서만 확인해요. 외래 일정은 직접 선택하고 확인해 주세요.',

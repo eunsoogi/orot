@@ -51,7 +51,15 @@
       "format": "prettier"
     },
     "xml": {
-      "extensions": [".xml", ".plist", ".entitlements", ".storyboard", ".xcprivacy", ".svg"],
+      "extensions": [
+        ".xml",
+        ".plist",
+        ".entitlements",
+        ".storyboard",
+        ".strings",
+        ".xcprivacy",
+        ".svg"
+      ],
       "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier"
@@ -114,6 +122,10 @@
     "vendor/patches/react-native-screens@4.27.0.patch": {
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
       "validation": "Frozen pnpm installation, native navigation regression and clean iOS compilation."
+    },
+    "vendor/patches/react-native-svg@15.16.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native SVG property and reuse tests, and clean iOS compilation."
     },
     "vendor/patches/metro-runtime@0.87.1.patch": {
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",

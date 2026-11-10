@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
+import { t } from '../i18n';
 import { styles } from './manualVisitRecordStyles';
 import {
   subscribeLocalDataClear,
@@ -37,6 +38,7 @@ export function ManualVisitRecords({
   const saving = useRef(false);
   const contentVersion = useRef(0);
   const [reload, setReload] = useState(0);
+  const emptyAnswerLabel = t('visitQuestions.manual.answer.empty');
   useEffect(() => {
     const invalidate = () => {
       contentVersion.current += 1;
@@ -70,7 +72,7 @@ export function ManualVisitRecords({
         }
       })
       .catch(() => {
-        if (active) setError('진료 질문을 불러오지 못했어요.');
+        if (active) setError(t('visitQuestions.manual.loadError'));
       });
     return () => {
       active = false;
@@ -110,7 +112,7 @@ export function ManualVisitRecords({
       setAnswer('');
     } catch {
       if (contentVersion.current === version)
-        setError('저장 결과를 확인하지 못했어요. 다시 불러와 확인해 주세요.');
+        setError(t('visitQuestions.manual.saveUnconfirmed'));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -120,36 +122,40 @@ export function ManualVisitRecords({
   return (
     <View style={styles.panel} testID="manual-visit-records">
       <Text accessibilityRole="header" style={styles.title}>
-        준비한 진료 질문
+        {t('visitQuestions.manual.title')}
       </Text>
-      <Text>실제로 물어본 질문만 확인해 주세요. 답변은 비워 둘 수 있어요.</Text>
+      <Text>{t('visitQuestions.manual.instructions')}</Text>
       {items.map(item => (
         <View key={item.question.id} style={styles.card}>
           <Text>{item.question.questionText}</Text>
           {item.records.map(record => (
             <View key={record.id}>
               {record.questionText !== item.question.questionText && (
-                <Text>확인 당시 질문: {record.questionText}</Text>
+                <Text>
+                  {t('visitQuestions.manual.questionAtConfirmation', {
+                    question: record.questionText,
+                  })}
+                </Text>
               )}
               <Text>
                 {item.staleAutomaticIds?.includes(record.id)
-                  ? '원본이 변경된 기록'
+                  ? t('visitQuestions.manual.source.stale')
                   : record.sourceMethod === 'manual_confirmed'
-                    ? '직접 확인'
-                    : '녹음 분석 결과'}
+                    ? t('visitQuestions.manual.source.confirmed')
+                    : t('visitQuestions.manual.source.recordingAnalysis')}
               </Text>
               {record.editOrigin === 'user_edit' ? (
-                <Text>사용자가 수정한 답변</Text>
+                <Text>{t('visitQuestions.manual.answer.userEdited')}</Text>
               ) : null}
               {record.sourceMethod === 'ai_generated' &&
                 !item.staleAutomaticIds?.includes(record.id) && (
                   <Text>
                     {record.automaticSource?.result.status === 'not_found'
-                      ? '이 전사에서 질문 근거를 찾지 못했어요.'
+                      ? t('visitQuestions.manual.evidence.notFound')
                       : record.automaticSource?.result.status ===
                           'indeterminate'
-                        ? '질문 여부가 불확실해요.'
-                        : '이 전사에서 질문 근거를 찾았어요.'}
+                        ? t('visitQuestions.manual.evidence.indeterminate')
+                        : t('visitQuestions.manual.evidence.found')}
                   </Text>
                 )}
               {record.sourceMethod === 'ai_generated' &&
@@ -159,16 +165,18 @@ export function ManualVisitRecords({
                   <View key={index}>
                     <Text>{result.summary}</Text>
                     <Text>
-                      화자는 확인되지 않았어요. {result.speakerUncertainty}
+                      {t('visitQuestions.manual.answer.speakerUncertainty', {
+                        uncertainty: result.speakerUncertainty,
+                      })}
                     </Text>
                   </View>
                 ))}
               {record.sourceMethod === 'manual_confirmed' ||
               record.editOrigin === 'user_edit' ? (
-                <Text>{record.answer ?? '입력한 답변 없음'}</Text>
+                <Text>{record.answer ?? emptyAnswerLabel}</Text>
               ) : null}
               <Button
-                title="답변 수정"
+                title={t('visitQuestions.manual.actions.edit')}
                 disabled={busy}
                 onPress={() => {
                   setEditing({
@@ -195,23 +203,27 @@ export function ManualVisitRecords({
                 setError('');
               }}
             >
-              <Text>실제로 물어봤어요</Text>
+              <Text>{t('visitQuestions.manual.actions.confirmAsked')}</Text>
             </Pressable>
           )}
           {editing?.questionId === item.question.id && (
             <View style={styles.editor}>
-              <Text>의료진 답변</Text>
+              <Text>{t('visitQuestions.manual.answer.label')}</Text>
               <TextInput
-                accessibilityLabel="의료진 답변"
+                accessibilityLabel={t('visitQuestions.manual.answer.label')}
                 multiline
                 value={answer}
                 onChangeText={setAnswer}
                 editable={!busy}
                 style={styles.input}
               />
-              <Button title="저장" disabled={busy} onPress={save} />
               <Button
-                title="취소"
+                title={t('visitQuestions.manual.actions.save')}
+                disabled={busy}
+                onPress={save}
+              />
+              <Button
+                title={t('visitQuestions.manual.actions.cancel')}
                 disabled={busy}
                 onPress={() => {
                   setEditing(null);
@@ -227,7 +239,7 @@ export function ManualVisitRecords({
         <>
           <Text accessibilityRole="alert">{error}</Text>
           <Button
-            title="다시 불러오기"
+            title={t('visitQuestions.manual.actions.reload')}
             disabled={busy}
             onPress={() => setReload(value => value + 1)}
           />

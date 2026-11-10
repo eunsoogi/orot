@@ -1,5 +1,8 @@
 /** Korean catalog entries for the AI root and its owned feature routes. */
 export const aiFeaturesKo = {
+  'aiFeatures.healthContext.searchFilter': '검색 조건',
+  'aiFeatures.healthContext.searchFilterRedacted':
+    '개인정보 보호를 위해 보관하지 않았어요.',
   'aiFeatures.heading': 'AI 도우미',
   'aiFeatures.subtitle': '내 기록에서 시작하는 대화.',
   'aiFeatures.disclaimer': 'AI 응답은 의료진의 진단을 대신하지 않아요.',

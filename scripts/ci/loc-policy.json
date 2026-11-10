@@ -26,6 +26,7 @@
     ".rb",
     ".sh",
     ".storyboard",
+    ".strings",
     ".swift",
     ".toml",
     ".ts",

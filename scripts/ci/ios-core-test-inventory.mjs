@@ -9,6 +9,7 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
@@ -74,6 +75,8 @@ export const coreTests = [
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal',
   ...windowPresentationAnchorTests,
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
+  'OrotUITests/ChartFoundationUITests/testDenseChartPagesAndVoiceOverValues',
+  'OrotUITests/ChartFoundationUITests/testSVGPropertyUpdatesAndRemount',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',

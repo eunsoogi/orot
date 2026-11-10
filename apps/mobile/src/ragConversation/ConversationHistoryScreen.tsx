@@ -3,6 +3,7 @@ import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationHistoryLayout } from './ConversationHistoryLayout';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import { t } from '../i18n';
 
 export interface ConversationHistoryRow {
   readonly id: number;
@@ -19,9 +20,9 @@ function dayLabel(value: string) {
   yesterday.setDate(today.getDate() - 1);
   const key = (item: Date) => item.toLocaleDateString('ko-KR');
   return key(date) === key(today)
-    ? '오늘'
+    ? t('ragConversation.history.today')
     : key(date) === key(yesterday)
-      ? '어제'
+      ? t('ragConversation.history.yesterday')
       : key(date);
 }
 
@@ -63,14 +64,14 @@ export function ConversationHistoryScreen({
             {/* Saved outputs remain reachable without restoring a feature-selection dashboard. */}
             {onOpenSavedAnalysis ? (
               <Button
-                title="저장된 요약과 가능성"
+                title={t('ragConversation.history.savedAnalysis')}
                 onPress={onOpenSavedAnalysis}
                 testID="conversation-saved-analysis"
               />
             ) : null}
             {onOpenSavedVisitQuestions ? (
               <Button
-                title="저장된 진료 질문"
+                title={t('ragConversation.history.savedVisitQuestions')}
                 onPress={onOpenSavedVisitQuestions}
                 testID="conversation-saved-visit-questions"
               />

@@ -7,6 +7,7 @@ import type {
   RagConversationRunOptions,
 } from './service';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
+import { t } from '../i18n';
 
 /** Keep generated prose out of conversation history; the source screen re-reads it on demand. */
 export async function confirmHistoricalArtifacts(
@@ -30,8 +31,9 @@ export async function confirmHistoricalArtifacts(
   return true;
 }
 
-export const HISTORICAL_ARTIFACT_MESSAGE =
-  '이전에 생성된 AI 결과를 찾았어요. 아래 출처에서 생성 시각, 불확실성과 현재 출처 상태를 확인해 주세요. 독립적으로 확인된 의료 사실은 아니에요.';
+export const HISTORICAL_ARTIFACT_MESSAGE = t(
+  'ragConversation.conversation.historicalArtifactNotice',
+);
 
 /** Return a link only after the artifact and its original sources are checked again. */
 export async function historicalArtifactOutcome(

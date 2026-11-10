@@ -1,4 +1,5 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
+import { t } from '../i18n';
 import { renderLocalClaims } from './localEvidenceClaims';
 import { renderLiteratureAnswer } from './literatureStatistics';
 import { requestsLiteratureExplanation } from './literatureIntent';
@@ -32,10 +33,10 @@ export function renderMixedEvidenceAnswer(
       local?.answer,
       literature?.answer,
       local && literature
-        ? '기록과 문헌의 직접적인 비교는 확인하지 못했어요.'
+        ? t('ragConversation.mixed.directComparisonUnavailable')
         : undefined,
       missingLiterature
-        ? '요청하신 문헌은 확인하지 못했고 기록과의 비교도 확인하지 못했어요.'
+        ? t('ragConversation.mixed.literatureAndComparisonUnavailable')
         : undefined,
     ]
       .filter(Boolean)
