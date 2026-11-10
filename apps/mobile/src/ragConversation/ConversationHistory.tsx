@@ -27,6 +27,7 @@ export function ConversationHistory({
   onRetryRestore,
   toolSourceSessionId,
   resolveToolSource,
+  renderVisitQuestions,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
@@ -48,6 +49,7 @@ export function ConversationHistory({
   readonly onRetryRestore?: () => void;
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
+  readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -193,6 +195,7 @@ export function ConversationHistory({
             compact={compact}
             toolSourceSessionId={toolSourceSessionId}
             resolveToolSource={resolveToolSource}
+            renderVisitQuestions={renderVisitQuestions}
           />
         ))}
         {error ? (

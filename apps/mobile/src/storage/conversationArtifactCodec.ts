@@ -7,6 +7,9 @@ import {
   parseHealthSummaryReference,
   type HealthSummaryReference,
 } from '../ragConversation/healthSummary';
+import { parseConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
+import type { ConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
+import { referenceOnly } from '../diseaseHypotheses/resultValidation';
 
 export interface ConversationArtifact {
   readonly id: string;
@@ -20,6 +23,7 @@ export interface ConversationArtifact {
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations?: readonly EvidenceReference[];
   readonly healthSummary?: HealthSummaryReference;
+  readonly visitQuestions?: ConversationVisitQuestionReference;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -155,6 +159,41 @@ export function decodeConversationArtifact(
     )
       return null;
     const sources = value.sources as Record<string, unknown>[];
+    if (value.visitQuestions !== undefined) {
+      const visit = parseConversationVisitQuestionReference(
+        value.visitQuestions,
+      );
+      if (
+        !visit ||
+        !sources.some(
+          source =>
+            stableJson(source.reference) === stableJson(visit.source) &&
+            Array.isArray(source.records) &&
+            source.records.some(
+              record =>
+                object(record) &&
+                record.kind === 'appointment' &&
+                record.id === visit.appointmentId,
+            ),
+        )
+      )
+        return null;
+      for (const question of visit.candidates) {
+        for (const reference of [
+          ...question.citations,
+          ...(question.generatedArtifactContext ?? []),
+        ]) {
+          if (
+            !sources.some(
+              source =>
+                stableJson(source.reference) ===
+                stableJson(referenceOnly(reference)),
+            )
+          )
+            return null;
+        }
+      }
+    }
     if (
       value.citations !== undefined &&
       (!Array.isArray(value.citations) ||

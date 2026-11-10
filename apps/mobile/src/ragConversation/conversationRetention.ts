@@ -13,6 +13,7 @@ export interface ConversationRetentionCandidate {
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations: readonly EvidenceReference[];
   readonly healthSummary?: HealthSummaryReference;
+  readonly visitQuestions?: import('./conversationVisitQuestionReference').ConversationVisitQuestionReference;
 }
 
 /** Retrying source capture revalidates the original answer without rerunning the model. */

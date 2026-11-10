@@ -9,6 +9,7 @@ import {
   type VisitQuestionQueryPort,
 } from './evidenceRevalidation';
 import { localEvidenceFingerprint } from './evidence';
+import { selectedVisitQuery } from './selectedVisitQuery';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
@@ -68,6 +69,7 @@ export type VisitQuestionContextResult =
 /** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
+  readonly appointmentId?: string;
   readonly maxEvidenceItems: number;
   readonly queryService: VisitQuestionQueryPort;
   readonly store?: EvidenceSearchRuntime['store'];
@@ -88,11 +90,16 @@ export async function prepareVisitQuestionContext(input: {
     );
   }
   if (input.signal?.aborted) return { status: 'cancelled' };
+  const queryService = selectedVisitQuery(
+    input.queryService,
+    input.repository,
+    input.appointmentId,
+  );
   let result: Awaited<
     ReturnType<VisitQuestionQueryPort['queryNextConfirmedCalendarAppointment']>
   >;
   try {
-    result = await input.queryService.queryNextConfirmedCalendarAppointment(
+    result = await queryService.queryNextConfirmedCalendarAppointment(
       input.now,
     );
   } catch (error) {
@@ -177,7 +184,7 @@ export async function prepareVisitQuestionContext(input: {
     appointment,
     query,
     metadataByCitation,
-    queryService: input.queryService,
+    queryService,
     repository: input.repository,
     buildChunks,
     currentTime: input.currentTime ?? (() => new Date().toISOString()),

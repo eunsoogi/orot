@@ -13,6 +13,8 @@ export type RagConversationFailureKind =
   | 'retrieval_failed'
   | 'validation_failed'
   | 'stale_evidence'
+  | 'visit_no_appointment'
+  | 'visit_saved_unavailable'
   | 'budget_exceeded'
   | 'unavailable';
 
@@ -27,6 +29,7 @@ export type RagConversationOutcome =
       readonly retryHealthSummary?: () => Promise<
         import('./healthSummary').HealthSummaryResult | null
       >;
+      readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
     }
   | { readonly status: 'insufficient' }
   | {

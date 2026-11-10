@@ -4,6 +4,25 @@ import type {
   DeletedConversation,
 } from './conversationSessionTypes';
 
+/** Navigation mutates only the app-owned session list. */
+export function createConversationNavigation(input: {
+  snapshot: () => ConversationSnapshot;
+  apply: (value: ConversationSnapshot | null) => void;
+  empty: () => ConversationSession;
+  disposed: () => boolean;
+}) {
+  return {
+    select(id: number) {
+      if (!input.disposed())
+        input.apply(selectConversation(input.snapshot(), id));
+    },
+    create() {
+      if (!input.disposed())
+        input.apply(addConversation(input.snapshot(), input.empty()));
+    },
+  };
+}
+
 /** Apply local list transitions without touching source records or restoring retained prose. */
 export function removeConversation(
   snapshot: ConversationSnapshot,

@@ -21,6 +21,7 @@ export function createConversationSummaryIntegration(input: {
   registry: LocalEvidenceReferenceRegistry;
   diseaseRunner: typeof runDiseaseHypothesisAnalysis;
   sendRagMessage: ReturnType<typeof createRagConversationService>;
+  loadSavedVisitQuestions: import('./featureServices').AiFeatureServices['loadSavedVisitQuestions'];
 }) {
   const summarize = createConversationHealthSummary(
     createHealthSummaryService({
@@ -38,6 +39,7 @@ export function createConversationSummaryIntegration(input: {
       createConversationSessionOptions({
         loadLocalData: input.loadData,
         registry: input.registry,
+        loadSavedVisitQuestions: input.loadSavedVisitQuestions,
         restoreHealthSummary: async reference =>
           restoreHealthSummary({
             reference,

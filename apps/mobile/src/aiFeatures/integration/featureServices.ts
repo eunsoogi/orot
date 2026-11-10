@@ -15,8 +15,6 @@ import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvid
 import type { AiFeatureLocalData } from './localData';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { requireSelectedAi, resolveSelectedAiProvider } from './provider';
-import { loadSavedVisitQuestionState } from './savedVisitQuestions';
-import { createVisitQuestionSourceService } from './visitQuestionSourceRegistration';
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { createRagConversationService } from './ragConversationService';
@@ -33,6 +31,7 @@ import {
 } from './defaultPublicSearch';
 import { diseaseTaskWithPublicContext } from './diseaseTaskWithPublicContext';
 import { publicSummaryTask } from './publicSummaryTask';
+import { createVisitQuestionFeatureServices } from './visitQuestionFeatureServices';
 
 import type { AiFeatureServices } from './featureServiceTypes';
 export type { AiFeatureServices } from './featureServiceTypes';
@@ -199,16 +198,12 @@ export function createAiFeatureServices(
     createOperationRunId: dependencies.createOperationRunId,
   });
 
+  const visitQuestions = createVisitQuestionFeatureServices({
+    loadLocalData,
+    privateLocalData,
+    registry,
+  });
   return {
-    async generatedArtifactTools() {
-      const data = await privateLocalData();
-      return {
-        tools: conversationGeneratedTools(data, registry, undefined).tools,
-        validate: (references, signal) =>
-          registry.revalidateEvidence(references, signal),
-        owns: reference => Boolean(registry.resolve(reference)),
-      };
-    },
     ...createConversationSummaryIntegration({
       consent,
       dependencies,
@@ -217,7 +212,9 @@ export function createAiFeatureServices(
       registry,
       diseaseRunner,
       sendRagMessage,
+      loadSavedVisitQuestions: visitQuestions.loadSavedVisitQuestions,
     }),
+    ...visitQuestions,
     async conversationArtifacts() {
       const data = await privateLocalData();
       return data.conversationArtifactDiscovery
@@ -225,20 +222,7 @@ export function createAiFeatureServices(
         : null;
     },
     summaryHistory: summaryPersistence.history,
-    ...createVisitQuestionSourceService(registry, loadLocalData),
     externalEvidence,
-    async loadSavedVisitQuestions(appointmentId) {
-      const data = await loadLocalData();
-      const { openLocalStorage } = await import('../../storage/secureDatabase');
-      return loadSavedVisitQuestionState({
-        appointmentId,
-        records: await openLocalStorage(),
-        sourceReader: data.repository,
-        registry,
-        readHealthContext: data.readHealthContext,
-        data,
-      });
-    },
     generateDiseaseHypotheses: (signal, observer) =>
       analyze(false, signal, observer),
     summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),

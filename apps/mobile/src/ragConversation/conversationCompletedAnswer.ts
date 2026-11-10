@@ -37,6 +37,7 @@ export function conversationCompletedAnswer(input: {
               citations: outcome.citations,
               completion: outcome.completion,
               healthSummary: outcome.healthSummary,
+              visitQuestions: outcome.visitQuestions,
               retryHealthSummary: outcome.retryHealthSummary
                 ? healthSummaryRetry({
                     id,

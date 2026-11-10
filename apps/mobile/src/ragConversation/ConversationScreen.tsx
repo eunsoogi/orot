@@ -24,8 +24,9 @@ import { useNavigationRouteActions } from '../navigation/useNavigationRouteActio
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
 import { useConversationEntryIntent } from './useConversationEntryIntent';
-import { entryIntentSender } from './entryIntentSender';
 import type { ConversationScreenProps } from './ConversationScreenProps';
+import { sendConversationMessage } from './conversationVisitDispatch';
+import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -38,6 +39,8 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
   resolveToolSource,
+  prepareVisitQuestions,
+  renderVisitQuestions,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
   const [contentHeight, setContentHeight] = useState(0);
@@ -188,6 +191,19 @@ export function ConversationScreen({
               }}
               onOpenSource={onOpenSource}
               resolveToolSource={resolveToolSource}
+              renderVisitQuestions={
+                renderVisitQuestions
+                  ? message =>
+                      renderVisitQuestions(message, id, store, () =>
+                        regenerateVisitQuestions({
+                          store,
+                          sessionId: id,
+                          message,
+                          prepare: prepareVisitQuestions,
+                        }),
+                      )
+                  : undefined
+              }
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
@@ -210,7 +226,12 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() => {
-                store.send(id, entryIntentSender(store, id, onSend));
+                sendConversationMessage(
+                  store,
+                  id,
+                  onSend,
+                  prepareVisitQuestions,
+                ).catch(() => {});
               }}
               onCancel={cancel}
             />

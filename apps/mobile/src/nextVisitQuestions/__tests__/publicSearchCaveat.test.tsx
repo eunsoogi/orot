@@ -36,7 +36,15 @@ test('shows the public-source limitation and carries it through review and save'
     ),
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));
-  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(appointment, questions, [
-    'public_search_not_retained',
-  ]);
+  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(
+    appointment,
+    questions.map(question =>
+      expect.objectContaining({
+        ...question,
+        identity: { id: expect.any(String) },
+      }),
+    ),
+    ['public_search_not_retained'],
+    [],
+  );
 });

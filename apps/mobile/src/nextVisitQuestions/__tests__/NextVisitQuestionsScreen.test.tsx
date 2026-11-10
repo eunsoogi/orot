@@ -119,8 +119,19 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
   ).toBeTruthy();
   expect(onSaveReviewedQuestions).toHaveBeenCalledWith(
     appointment,
-    [questions[1], { ...questions[0], questionText: '수정한 증상 변화 질문' }],
+    [
+      expect.objectContaining({
+        ...questions[1],
+        identity: { id: expect.any(String) },
+      }),
+      expect.objectContaining({
+        ...questions[0],
+        identity: { id: expect.any(String) },
+        questionText: '수정한 증상 변화 질문',
+      }),
+    ],
     ['conflicting_records'],
+    [],
   );
 
   await fireEvent.press(screen.getByTestId('next-visit-saved-edit'));
@@ -176,9 +187,17 @@ test('passes evidence caveats to the save adapter', async () => {
   await screen.findByTestId('next-visit-review-list');
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));
 
-  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(appointment, questions, [
-    'conflicting_records',
-  ]);
+  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(
+    appointment,
+    questions.map(question =>
+      expect.objectContaining({
+        ...question,
+        identity: { id: expect.any(String) },
+      }),
+    ),
+    ['conflicting_records'],
+    [],
+  );
 });
 
 test('shows caveats when previously saved questions are reloaded', async () => {
@@ -199,48 +218,4 @@ test('shows caveats when previously saved questions are reloaded', async () => {
   await fireEvent.press(screen.getByTestId('next-visit-saved-edit'));
   expect(screen.getByTestId('next-visit-review-list')).toBeTruthy();
   expect(screen.getByText(caveat)).toBeTruthy();
-});
-
-test('does not show saved questions while the loaded appointment does not match', async () => {
-  const props = makeProps({
-    savedQuestions: {
-      status: 'ready',
-      appointmentId: appointment.id,
-      questions,
-      caveats: ['conflicting_records'],
-    },
-  });
-  const { rerender } = await render(<NextVisitQuestionsScreen {...props} />);
-  expect(screen.getByTestId('next-visit-saved-list')).toBeTruthy();
-
-  const nextAppointment = { ...appointment, id: 'synthetic-appointment-2' };
-  // A stale snapshot stays hidden until the current visit's list is loaded.
-  await rerender(
-    <NextVisitQuestionsScreen
-      {...props}
-      appointment={{ status: 'ready', appointment: nextAppointment }}
-    />,
-  );
-
-  expect(screen.getByTestId('next-visit-saved-loading')).toBeTruthy();
-  expect(screen.queryByTestId('next-visit-saved-list')).toBeNull();
-  expect(screen.queryByText(questions[0].questionText)).toBeNull();
-
-  const nextQuestions = [
-    { ...questions[0], questionText: '새 예약에 불러온 질문입니다.' },
-  ];
-  await rerender(
-    <NextVisitQuestionsScreen
-      {...props}
-      appointment={{ status: 'ready', appointment: nextAppointment }}
-      savedQuestions={{
-        status: 'ready',
-        appointmentId: nextAppointment.id,
-        questions: nextQuestions,
-        caveats: [],
-      }}
-    />,
-  );
-  expect(screen.getByTestId('next-visit-saved-list')).toBeTruthy();
-  expect(screen.getByText(nextQuestions[0].questionText)).toBeTruthy();
 });

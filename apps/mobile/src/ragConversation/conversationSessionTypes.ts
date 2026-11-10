@@ -22,6 +22,8 @@ export interface ConversationSessionOptions {
       toolMessageId?: string;
       toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
       healthSummary?: import('./healthSummary').HealthSummaryResult | null;
+      visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+      visitQuestionsUnavailable?: boolean;
     }[]
   >;
 }

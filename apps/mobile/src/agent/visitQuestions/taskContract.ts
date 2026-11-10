@@ -70,6 +70,11 @@ export interface VisitQuestionResponderInput {
 }
 
 export interface VisitQuestionCandidate {
+  /** Identity is app-owned; the saved revision fences edits to an existing row. */
+  readonly identity?: {
+    readonly id: string;
+    readonly expectedRevision?: string;
+  };
   readonly kind?: 'confirmed_fact' | 'clarification';
   readonly legacySource?: { readonly id: string; readonly revision: string };
   readonly questionText: string;
@@ -79,6 +84,12 @@ export interface VisitQuestionCandidate {
   /** Generated context admitted during research remains a dependency even when uncited. */
   readonly generatedArtifactContext?: readonly VisitQuestionEvidenceItem[];
 }
+
+/** Snapshot of the complete saved list before review, including rows later removed. */
+export type SavedQuestionRevision = {
+  readonly id: string;
+  readonly revision: string;
+};
 
 export type VisitQuestionTaskResult =
   | {
