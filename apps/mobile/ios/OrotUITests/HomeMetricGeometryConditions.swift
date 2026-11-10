@@ -86,15 +86,19 @@ enum HomeMetricGeometryConditions {
 
     @MainActor
     static func captureCard(_ card: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) {
-        // Keep Home's grouped VoiceOver card and prove its seven daily values remain available.
-        XCTAssertFalse(card.label.isEmpty)
-        let dailyEntries = card.label.components(separatedBy: "; ")
-        XCTAssertEqual(dailyEntries.count, 7, card.label)
-        let values = dailyEntries.compactMap { $0.components(separatedBy: ": ").last }
-        XCTAssertEqual(values.count, 7, card.label)
+        // The summary stays grouped while each dated chart row remains individually discoverable.
+        let metric = String(card.identifier.dropFirst("home-metric-".count))
+        let summary = UITestConditions.element(app, "home-metric-summary-\(metric)")
+        XCTAssertFalse(summary.label.isEmpty)
+        let chart = UITestConditions.element(app, "home-metric-chart-\(metric)")
+        let labels = Set(chart.staticTexts.allElementsBoundByIndex.map(\.label))
+        let entries = labels.filter { $0.range(of: #"^\d{4}-\d{2}-\d{2}: "#, options: .regularExpression) != nil }
+        XCTAssertEqual(entries.count, 7, chart.debugDescription)
+        let values = entries.compactMap { $0.components(separatedBy: ": ").dropFirst().first }
+        XCTAssertEqual(values.count, 7, chart.debugDescription)
         XCTAssertTrue(
-            values.contains { $0.range(of: #"\d+"#, options: .regularExpression) != nil },
-            "At least one daily value must remain in the native accessibility label.",
+            values.contains { $0.range(of: #"^\d+"#, options: .regularExpression) != nil },
+            "At least one daily row must expose its recorded value through native accessibility.",
         )
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "\(card.identifier)-readability"

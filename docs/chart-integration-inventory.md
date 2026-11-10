@@ -85,9 +85,10 @@ loss is a separate observation from committed deletion.
   measured expanded/narrow windows; XXXL chart values; representative appearance
   and Reduce Motion; and dense synthetic data responsiveness and memory with
   dataset, environment and measurement limits recorded. Preserve first failures.
-- The acceptance candidate registers the Home XXXL values and blood-pressure
-  VoiceOver cases in Xcode and the Duo inventory. The exact native outcomes,
-  fixture bounds and unverified device states belong in the validation record.
+- Xcode registers both the Home XXXL values case and the blood-pressure
+  VoiceOver case. Home is in the Duo inventory, and the blood-pressure speech
+  case is available as an explicitly selected Duo diagnostic. The validation
+  record distinguishes their native outcomes and fixture bounds.
 
 ## Reproduce the source inventory
 
