@@ -2,6 +2,7 @@ import type { createConversationTurnRetention } from './conversationTurnRetentio
 import type { ConversationSession } from './conversationSessionTypes';
 import type { PendingTurn } from './conversationSessionTypes';
 import type { RagConversationObserver } from './service';
+import { t } from '../i18n';
 
 type Turn = ReturnType<typeof createConversationTurnRetention>;
 
@@ -21,8 +22,8 @@ export function createConversationRequestSaveRecovery(
     update(id, {
       unsavedCount: turns.length,
       error: turns.length
-        ? '답변을 저장하지 못했어요.'
-        : '원본을 확인할 수 없어 답변을 저장하지 못했어요.',
+        ? t('ragConversation.conversation.answerSaveFailed')
+        : t('ragConversation.conversation.answerSaveSourceUnavailable'),
     });
   };
   return {
@@ -86,7 +87,9 @@ export function createConversationRequestSaveRecovery(
               }
             : {}),
           unsavedCount: turns.length,
-          error: turns.length ? '저장하지 못한 답변이 남아 있어요.' : '',
+          error: turns.length
+            ? t('ragConversation.conversation.unsavedAnswersRemain')
+            : '',
         });
       } catch {
         if (pending.get(id) === turns && !suspended.has(id)) {
@@ -98,8 +101,8 @@ export function createConversationRequestSaveRecovery(
           update(id, {
             unsavedCount: turns.length,
             error: turn.hasPending()
-              ? '답변을 저장하지 못했어요. 다시 시도해 주세요.'
-              : '원본이 변경되어 답변을 저장할 수 없어요.',
+              ? t('ragConversation.conversation.answerSaveRetry')
+              : t('ragConversation.conversation.answerSaveSourceChanged'),
           });
         }
       } finally {
@@ -129,7 +132,7 @@ export function createConversationRequestSaveRecovery(
       if (count)
         update(id, {
           unsavedCount: count,
-          error: '저장하지 못한 답변이 남아 있어요.',
+          error: t('ragConversation.conversation.unsavedAnswersRemain'),
         });
     },
     forget(id: number) {

@@ -1,4 +1,5 @@
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
+import { t } from '../i18n';
 
 export type LocalClaimIdentity = Pick<
   EvidenceReference,
@@ -71,7 +72,9 @@ export function renderLocalClaims(
       evidenceId: item.evidenceId,
       evidenceRevision: item.evidenceRevision,
     });
-    lines.push(`기록 원문: ${c.span}`);
+    lines.push(
+      t('ragConversation.literature.recordSourceText', { span: c.span }),
+    );
   }
   return { answer: lines.join('\n\n'), references };
 }

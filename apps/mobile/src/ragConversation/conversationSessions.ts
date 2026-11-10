@@ -1,4 +1,5 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
+import { t } from '../i18n';
 import type {
   ConversationSender,
   ConversationSession,
@@ -127,8 +128,8 @@ export function createConversationSessions(
       }
       update(id, {
         busy: false,
-        error: '대화를 삭제하지 못했어요. 다시 시도해 주세요.',
-        deletionError: '대화를 삭제하지 못했어요. 다시 시도해 주세요.',
+        error: t('ragConversation.conversation.deleteFailed'),
+        deletionError: t('ragConversation.conversation.deleteFailed'),
       });
     } finally {
       if (lifecycle === started) deleting = false;
@@ -151,8 +152,8 @@ export function createConversationSessions(
     } catch {
       if (lifecycle !== started) return;
       update(snapshot.activeId, {
-        error: '대화를 복원하지 못했어요. 다시 시도해 주세요.',
-        deletionError: '대화를 복원하지 못했어요. 다시 시도해 주세요.',
+        error: t('ragConversation.conversation.restoreFailed'),
+        deletionError: t('ragConversation.conversation.restoreFailed'),
       });
     } finally {
       if (lifecycle === started) deleting = false;

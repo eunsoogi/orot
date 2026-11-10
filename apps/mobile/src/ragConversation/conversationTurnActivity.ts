@@ -5,6 +5,7 @@ import {
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import { progressCopy } from './conversationProgress';
 import { getRagConversationCopy } from './copy';
+import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 
@@ -63,7 +64,7 @@ export function createConversationTurnActivity(input: {
       await writing;
       if (failed && input.current())
         input.update(input.id, {
-          error: '도구 실행 기록을 저장하지 못했어요.',
+          error: t('ragConversation.conversation.toolActivitySaveFailed'),
         });
     },
     observer: {

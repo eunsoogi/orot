@@ -6,6 +6,7 @@ import { ConversationSources } from './ConversationSources';
 import type { HealthSummaryResult } from './healthSummary';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
+import { t } from '../i18n';
 
 /** Show only the validated sections and their original source links. */
 export function HealthSummaryCard({
@@ -25,10 +26,15 @@ export function HealthSummaryCard({
   const saved = result.analysis.savedSummary;
   return (
     <View style={styles.card} testID="health-summary-card">
-      <AppText style={styles.title}>건강 기록 요약</AppText>
+      <AppText style={styles.title}>
+        {t('ragConversation.conversation.healthSummary.title')}
+      </AppText>
       <AppText testID="health-summary-period">
-        {window.fromInclusive} 이상 · {window.toExclusive} 미만 (
-        {window.timeZone})
+        {t('ragConversation.conversation.healthSummary.dateRange', {
+          from: window.fromInclusive,
+          to: window.toExclusive,
+          timeZone: window.timeZone,
+        })}
       </AppText>
       {result.analysis.omittedUnsupportedContent ? (
         <AppText accessibilityRole="alert" testID="health-summary-omitted">
@@ -44,12 +50,20 @@ export function HealthSummaryCard({
         ? saved.contentReviewIssues?.map(issue => (
             <AppText key={issue} accessibilityRole="alert">
               {issue === 'prescription'
-                ? '이 요약의 처방 여부 표현은 다시 확인이 필요해요. 약의 일정 등록만으로 처방 여부를 알 수는 없어요.'
+                ? t(
+                    'ragConversation.conversation.healthSummary.prescriptionReview',
+                  )
                 : issue === 'sleep_count'
-                  ? '이 요약의 수면 횟수 표현은 다시 확인이 필요해요. 수면 단계 값은 횟수가 아니에요.'
+                  ? t(
+                      'ragConversation.conversation.healthSummary.sleepCountReview',
+                    )
                   : issue === 'sleep_duration'
-                    ? '이 요약의 수면 구간 길이는 원문과 맞지 않을 수 있어요. 원문의 시작·종료 시각을 확인해 주세요.'
-                    : '이 요약의 걸음 수 단위는 다시 확인이 필요해요. 걸음 수를 횟수로 읽지 않도록 원문을 확인해 주세요.'}
+                    ? t(
+                        'ragConversation.conversation.healthSummary.sleepDurationReview',
+                      )
+                    : t(
+                        'ragConversation.conversation.healthSummary.stepCountReview',
+                      )}
             </AppText>
           ))
         : null}
@@ -78,13 +92,15 @@ export function HealthSummaryCard({
       <AppText testID="health-summary-save-status">
         {saved?.status === 'saved'
           ? saved.sourceChanged
-            ? '원본이 변경된 이전 요약'
-            : '저장됨'
+            ? t('ragConversation.conversation.healthSummary.sourceChanged')
+            : t('ragConversation.conversation.healthSummary.saved')
           : saved?.status === 'source_unavailable'
-            ? '원본을 확인하지 못해 저장하지 못했어요.'
+            ? t('ragConversation.conversation.healthSummary.sourceUnavailable')
             : saved?.status === 'failed'
-              ? '저장하지 못했어요.'
-              : '저장 상태를 확인할 수 없어요.'}
+              ? t('ragConversation.conversation.healthSummary.saveFailed')
+              : t(
+                  'ragConversation.conversation.healthSummary.saveStatusUnknown',
+                )}
       </AppText>
       {saved && saved.status !== 'saved' && onRetry ? (
         <Pressable
@@ -93,7 +109,9 @@ export function HealthSummaryCard({
           onPress={onRetry}
           style={styles.retry}
         >
-          <AppText>저장 다시 시도</AppText>
+          <AppText>
+            {t('ragConversation.conversation.healthSummary.retrySave')}
+          </AppText>
         </Pressable>
       ) : null}
     </View>

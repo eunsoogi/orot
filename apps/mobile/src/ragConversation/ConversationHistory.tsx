@@ -8,6 +8,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
+import { t } from '../i18n';
 
 /** Owns the transcript viewport and keeps each answer's citations beside it. */
 export function ConversationHistory({
@@ -209,13 +210,16 @@ export function ConversationHistory({
         ) : null}
         {unsavedCount > 0 && onRetrySave ? (
           <Button
-            title="답변 저장 다시 시도"
+            title={t('ragConversation.conversation.retrySave')}
             onPress={onRetrySave}
             disabled={retryingSave}
           />
         ) : null}
         {restoreFailed && onRetryRestore ? (
-          <Button title="대화 다시 불러오기" onPress={onRetryRestore} />
+          <Button
+            title={t('ragConversation.history.retryRestore')}
+            onPress={onRetryRestore}
+          />
         ) : null}
       </View>
       {/* The footer stays in place while compact follow targets the end of messages. */}
