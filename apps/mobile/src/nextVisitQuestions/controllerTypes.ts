@@ -47,5 +47,9 @@ export type NextVisitQuestionsControllerInputs<
   TReference extends NextVisitEvidenceReference,
 > = Pick<
   NextVisitQuestionsScreenProps<TReference>,
-  'appointment' | 'provider' | 'onGenerate' | 'onSaveReviewedQuestions'
+  | 'appointment'
+  | 'provider'
+  | 'savedQuestions'
+  | 'onGenerate'
+  | 'onSaveReviewedQuestions'
 >;

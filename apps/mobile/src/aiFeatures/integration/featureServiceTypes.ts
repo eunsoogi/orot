@@ -19,6 +19,9 @@ import type { createConversationArtifactDiscovery } from './conversationArtifact
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
+  prepareVisitQuestionTurn?: ReturnType<
+    typeof import('./conversationVisitTurn').createConversationVisitTurn
+  >;
   generatedArtifactTools?(): Promise<{
     tools: readonly EvidenceSearchTool[];
     validate: (

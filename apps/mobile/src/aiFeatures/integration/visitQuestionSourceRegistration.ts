@@ -1,4 +1,4 @@
-import type { EvidenceItem } from '@orot/agent-runtime';
+import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import {
   localEvidenceFingerprint,
   VISIT_QUESTION_RECORD_KINDS,
@@ -19,6 +19,7 @@ export interface VisitQuestionSourceService {
   registerVisitQuestionSource(
     reference: VisitQuestionEvidenceItem,
     validate: (signal: AbortSignal) => Promise<boolean>,
+    durableReference?: EvidenceReference,
   ): EvidenceItem;
 }
 
@@ -91,11 +92,11 @@ export function createVisitQuestionSourceService(
   loadLocalData: () => Promise<AiFeatureLocalData>,
 ): VisitQuestionSourceService {
   return {
-    registerVisitQuestionSource(reference, validate) {
+    registerVisitQuestionSource(reference, validate, durableReference) {
       const { content, ...evidenceReference } = reference;
       return registry.add({
         // Keep display text outside the stable evidence identity used for later reads.
-        reference: evidenceReference,
+        reference: durableReference ?? evidenceReference,
         content,
         validate: async signal => !signal.aborted && (await validate(signal)),
         async readSource(signal): Promise<EvidenceSourceReadResult> {

@@ -110,7 +110,7 @@ export function SavedQuestionsSection<
               count={questions.length}
               editable={false}
               index={index}
-              key={`saved-${index}`}
+              key={question.identity?.id ?? `saved-${index}`}
               onMove={() => undefined}
               onOpenSource={onOpenSource}
               onRemove={() => undefined}

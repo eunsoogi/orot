@@ -14,6 +14,7 @@ import { setupVisitQuestionPeriods } from '../../../storage/visitQuestionPeriods
 import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage';
 import { prepareVisitQuestionContext } from '../evidenceService';
 import { saveReviewedVisitQuestions } from '../persistence';
+import { localEvidenceFingerprint } from '../evidence';
 import { appointment, now } from './persistenceFixtures';
 import type { SaveReviewedVisitQuestionsInput } from '../persistence';
 
@@ -115,23 +116,46 @@ export async function visitHealthFixture(
   const item = await prepared.reloadPersonalEvidence(original);
   if (!item) throw new Error('Synthetic health period was not captured.');
   const question = {
+    identity: { id: 'synthetic-health-question' },
     questionText:
       '이 기간에 관찰된 기록의 변화를 다음 진료에서 어떻게 확인할까요?',
     rationale: '기간별 건강 기록을 함께 살펴볼 수 있어요.',
     priority: 'routine' as const,
     citations: [item],
   };
-  const save = (overrides: Partial<SaveReviewedVisitQuestionsInput> = {}) =>
-    saveReviewedVisitQuestions({
+  const save = async (
+    overrides: Partial<SaveReviewedVisitQuestionsInput> = {},
+  ) => {
+    const previous = await records.list('visit_question');
+    const questions = (overrides.questions ?? [question]).map(
+      (entry, index) => {
+        const id = entry.identity?.id ?? `synthetic-generated-${index}`;
+        const saved = previous.find(row => row.id === id);
+        return {
+          ...entry,
+          identity: {
+            id,
+            ...(saved
+              ? { expectedRevision: localEvidenceFingerprint(saved) }
+              : {}),
+          },
+        };
+      },
+    );
+    return saveReviewedVisitQuestions({
       appointmentId: appointment.id,
       expectedAppointmentRevision: prepared.appointmentRevision,
+      expectedSavedQuestions: previous
+        .filter(row => row.appointmentId === appointment.id)
+        .map(row => ({ id: row.id, revision: localEvidenceFingerprint(row) })),
       now,
       repository: records,
       evidence: prepared.evidence,
-      questions: [question],
       revalidateEvidence: prepared.revalidateEvidence,
       ...overrides,
+      questions,
     });
+  };
   const memory = () =>
     createAgentMemory({
       embedder: {

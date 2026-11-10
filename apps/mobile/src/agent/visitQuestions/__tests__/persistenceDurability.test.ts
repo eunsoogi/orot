@@ -45,6 +45,10 @@ describe('reviewed visit-question durability', () => {
       const original = oldQuestion('legacy-question', appointment.id);
       await records.put('visit_question', original as never);
       const question = {
+        identity: {
+          id: original.id,
+          expectedRevision: localEvidenceFingerprint(original),
+        },
         questionText: '이전 질문을 다시 확인할까요?',
         rationale: '이전 내용을 확인할 수 있어요.',
         priority: 'routine' as const,
@@ -56,6 +60,9 @@ describe('reviewed visit-question durability', () => {
       };
       const saved = await saveReviewedVisitQuestions({
         ...input(repository(), { questions: [question] }),
+        expectedSavedQuestions: [
+          { id: original.id, revision: localEvidenceFingerprint(original) },
+        ],
         repository: records,
       });
       expect(saved.questions[0]).toMatchObject({
@@ -77,6 +84,10 @@ describe('reviewed visit-question durability', () => {
       );
       const second = {
         ...question,
+        identity: {
+          id: current.id,
+          expectedRevision: localEvidenceFingerprint(current),
+        },
         legacySource: {
           id: current.id,
           revision: localEvidenceFingerprint(current),
@@ -85,6 +96,9 @@ describe('reviewed visit-question durability', () => {
       await expect(
         saveReviewedVisitQuestions({
           ...input(repository(), { questions: [second] }),
+          expectedSavedQuestions: [
+            { id: current.id, revision: localEvidenceFingerprint(current) },
+          ],
           repository: records,
         }),
       ).rejects.toThrow(/stale transcript evidence/i);
@@ -121,6 +135,7 @@ describe('reviewed visit-question durability', () => {
           candidate,
           {
             ...clarificationQuestions[0]!,
+            identity: { id: 'synthetic-question-2' },
             kind: 'clarification',
             priority: 'routine',
             citations: [],
@@ -135,7 +150,7 @@ describe('reviewed visit-question durability', () => {
       await runMigrations(opened.database);
       const reopenedRecords = createRecordRepository(opened.database);
       await expect(
-        reopenedRecords.get('visit_question', 'visit-question:appointment-1:1'),
+        reopenedRecords.get('visit_question', 'synthetic-question-1'),
       ).resolves.toMatchObject({
         questionText: candidate.questionText,
         appointmentId: 'appointment-1',
@@ -144,7 +159,7 @@ describe('reviewed visit-question durability', () => {
         reviewState: { status: 'reviewed', reviewerId: 'local-user' },
       });
       await expect(
-        reopenedRecords.get('visit_question', 'visit-question:appointment-1:2'),
+        reopenedRecords.get('visit_question', 'synthetic-question-2'),
       ).resolves.toMatchObject({
         kind: 'clarification',
         questionText: clarificationQuestions[0]!.questionText,
