@@ -76,6 +76,7 @@ export default function WelcomeRoute({
         {onOpenDailyReport ? (
           <AppButton
             title={t('dailyReport.title')}
+            testID="home-open-daily-report"
             variant="secondary"
             onPress={onOpenDailyReport}
           />
