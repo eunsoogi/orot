@@ -41,11 +41,11 @@ import Foundation
                 #if OROT_TESTS && targetEnvironment(simulator)
                     let text = try await AppleFoundationModelsMock.shared.respond(request)
                 #else
-                // This profile is selected before generation and never retries a refused request.
-                let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
-                let session = LanguageModelSession(model: model, instructions: instructions)
-                let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
-                let text = try await session.respond(to: prompt, options: options).content
+                    // This profile is selected before generation and never retries a refused request.
+                    let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+                    let session = LanguageModelSession(model: model, instructions: instructions)
+                    let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
+                    let text = try await session.respond(to: prompt, options: options).content
                 #endif
                 return ["text": text, "toolCalls": [], "finishReason": "complete"]
             }
