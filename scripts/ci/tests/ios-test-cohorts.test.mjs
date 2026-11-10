@@ -24,7 +24,8 @@ test('three execution cohorts retain both build configurations and the separate 
 
 test('cohort tasks preserve the complete registered inventory, including every fixture group and both Speech boundaries', () => {
   const tasks = ['release', 'speech', 'debug'].flatMap(iosTestCohortTasks);
-  const actual = new Set(tasks.flatMap((task) => task.identifiers));
+  const scheduled = tasks.flatMap((task) => task.identifiers);
+  const actual = new Set(scheduled);
   const profiles = [
     'core',
     'speech',
@@ -40,8 +41,16 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 196);
+  assert.equal(actual.size, 197);
   assert.deepEqual([...actual].sort(), [...expected].sort());
+  assert.equal(
+    scheduled.filter(
+      (identifier) =>
+        identifier ===
+        'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+    ).length,
+    1,
+  );
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
     tasks.filter((task) => task.profile === 'speech').map((task) => task.suite),
@@ -98,7 +107,7 @@ test('two Release destinations partition the original work exactly once and pres
   // Appointment selection stays inside Calendar and expands only the Release UI destination.
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [118, 48],
+    [119, 48],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',
