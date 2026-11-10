@@ -64,6 +64,19 @@ describe('transcript evidence service', () => {
     expect(playRange).toHaveBeenCalledWith(source.id, 250, 1801);
   });
 
+  it('hands persisted transcript revisions to the completion adapter', async () => {
+    const { repository, transcripts } = makeRepository([original]);
+    const onTranscribed = jest.fn(async () => undefined);
+    const service = createTranscriptEvidenceService({
+      loadRepository: async () => repository,
+      onTranscribed,
+    });
+    const signal = new AbortController().signal;
+    await service.transcribe(source.id, signal);
+    expect(transcripts.listForRecording).toHaveBeenCalledWith(source.id);
+    expect(onTranscribed).toHaveBeenCalledWith(source.id, [original], signal);
+  });
+
   it('forwards caller cancellation to the provider for a saved recording', async () => {
     const { repository } = makeRepository();
     const controller = new AbortController();

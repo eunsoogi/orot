@@ -1,4 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
+export { extractTranscriptRecap } from './recap/extract';
+export type { RecapExtractionOptions, RecapExtractionOutcome } from './recap/extract';
 export { createProductionChatModel, invokeProductionRequest } from './langchain/production';
 export {
   createLocalRecordQueryService,

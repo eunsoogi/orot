@@ -6,7 +6,10 @@ import type {
   AppleNativeStreamPacket,
 } from '@orot/provider-apple';
 import type { AppleNativeRequest } from './schema';
-import { serializeAppleRequest } from './serializeRequest';
+import {
+  serializeAppleRequest,
+  serializeAppleRecapRequest,
+} from './serializeRequest';
 
 const EVENT_NAME = 'AppleFoundationModelsEvent';
 
@@ -55,6 +58,22 @@ export const appleFoundationModelsNativeBridge: AppleFoundationModelsNativeBridg
       nativeModule?.cancel(requestId);
     },
   };
+
+/** This bridge is scoped to Recap and never exposes a streaming or tool path. */
+export const appleRecapNativeBridge: AppleFoundationModelsNativeBridge = {
+  getAvailability: () => appleFoundationModelsNativeBridge.getAvailability(),
+  async generate(request, requestId) {
+    if (!nativeModule) throw bridgeUnavailable();
+    return nativeModule.generate(
+      serializeAppleRecapRequest(request),
+      requestId,
+    );
+  },
+  stream() {
+    throw new Error('Recap transformation does not stream.');
+  },
+  cancel: requestId => appleFoundationModelsNativeBridge.cancel(requestId),
+};
 
 async function* createNativeStream(
   request: AppleNativeRequest,
