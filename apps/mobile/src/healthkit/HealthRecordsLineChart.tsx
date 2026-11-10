@@ -64,9 +64,14 @@ export function HealthRecordsLineChart({
                   ? 'ready'
                   : 'empty',
       },
-      series: series.map((item, index) => ({
-        // Stored units and concept identifiers are not guaranteed to be valid chart keys.
-        id: `series_${index}`,
+      series: series.map(item => ({
+        // Keys remain stable when a pressure component is absent or changes order.
+        id:
+          category === 'blood_pressure'
+            ? item.key.endsWith('diastolic')
+              ? 'diastolic'
+              : 'systolic'
+            : (metrics[category] ?? 'measurement'),
         label: item.label,
         unit: item.points[0]?.unit ?? '',
         style:

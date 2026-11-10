@@ -40,7 +40,7 @@ test('preserves distinct labeled pressure series with non-color line styles', as
     correlation('pressure'),
     '2026-10-01T00:00:00Z',
   ).observations;
-  await render(
+  const result = await render(
     <HealthRecordsLineChart
       category="blood_pressure"
       observations={observations}
@@ -59,6 +59,19 @@ test('preserves distinct labeled pressure series with non-color line styles', as
   expect(
     data.series.flatMap(series => series.points.map(point => point.value)),
   ).toEqual([120, 80]);
+  await result.rerender(
+    <HealthRecordsLineChart
+      category="blood_pressure"
+      observations={[...observations].reverse()}
+    />,
+  );
+  const reversed = JSON.parse(
+    screen.getByTestId('chart-data').props.children,
+  ) as ChartData;
+  expect(reversed.series.map(series => [series.label, series.id])).toEqual([
+    ['이완기', 'diastolic'],
+    ['수축기', 'systolic'],
+  ]);
 });
 
 test('keeps unit groups separate and drops invalid values and dates', async () => {
