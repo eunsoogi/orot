@@ -87,3 +87,31 @@ test('withholds the answer when the selected report changes during retention', a
     }),
   ).resolves.toEqual({ status: 'failure', kind: 'stale_evidence' });
 });
+
+test('keeps an atomically saved answer if cancellation rejects the post-commit report read', async () => {
+  const controller = new AbortController();
+  const outcome = {
+    status: 'answer' as const,
+    answer: 'Committed answer',
+    citations: [],
+  };
+  await expect(
+    finishRagConversation({
+      outcome,
+      publicSearch: {
+        status: 'success',
+        batch: { items: [], coverage: [], conflicts: [] },
+      },
+      retention: {
+        onValidatedEvidence: () => {},
+        finish: async () => ({ outcome, retained: true }),
+      },
+      signal: controller.signal,
+      continuation: false,
+      reportIsCurrent: async () => {
+        controller.abort();
+        throw new Error('Artifact discovery was cancelled.');
+      },
+    }),
+  ).resolves.toEqual(outcome);
+});

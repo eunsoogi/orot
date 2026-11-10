@@ -24,13 +24,16 @@ export async function finishRagConversation(input: {
       : input.outcome;
   const finished = await input.retention.finish(annotated);
   // Retention can await a transaction after the workflow's last report check.
-  const reportChanged =
-    !input.signal.aborted &&
-    input.reportIsCurrent &&
-    !(await input.reportIsCurrent());
+  const reportCurrent = !input.signal.aborted
+    ? await input.reportIsCurrent?.().catch(error => {
+        // A cancelled read cannot undo an answer whose storage transaction won.
+        if (input.signal.aborted) return false;
+        throw error;
+      })
+    : undefined;
   if (input.signal.aborted && !finished.retained)
     return { status: 'failure', kind: 'cancelled' };
-  if (reportChanged && !input.signal.aborted)
+  if (reportCurrent === false && !input.signal.aborted)
     return { status: 'failure', kind: 'stale_evidence' };
   if (
     input.continuation &&
