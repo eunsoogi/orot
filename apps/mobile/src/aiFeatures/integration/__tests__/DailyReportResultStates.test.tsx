@@ -89,3 +89,58 @@ test('a failed explicit regeneration keeps the existing saved revision available
   expect(screen.getByText('이전에 저장된 합성 기록')).toBeTruthy();
   expect(screen.getByText('다시 요약하기')).toBeTruthy();
 });
+
+test('a source revision change after regeneration hides the prior saved report', async () => {
+  let lookups = 0;
+  const feature = fixture(identity => {
+    lookups += 1;
+    return lookups === 1
+      ? {
+          status: 'saved',
+          runId: 'previous',
+          revision: 3,
+          context: { identity, generationCutoff: '2026-11-09T03:00:00Z' },
+          report: {
+            generatedAt: '2026-11-09T03:01:00Z',
+            observations: [{ text: '이전에 저장된 합성 기록' }],
+            supportedContext: [],
+            followUpQuestions: [],
+            coverage: [],
+          },
+        }
+      : {
+          status: 'stale',
+          runId: 'previous',
+          revision: 3,
+          sourceStatus: 'stale',
+        };
+  });
+  feature.start = jest.fn(() => ({
+    status: 'started' as const,
+    cancel: jest.fn(),
+    result: Promise.resolve({
+      status: 'failed' as const,
+      code: 'source_revision_changed',
+    }),
+  }));
+  await render(
+    <DailyReportRoute
+      feature={feature as unknown as Feature}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={jest.fn()}
+    />,
+  );
+  await screen.findByText('이전에 저장된 합성 기록');
+  await fireEvent.press(screen.getByText('다시 요약하기'));
+  expect(
+    await screen.findByText(
+      '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByText('이전에 저장된 합성 기록')).toBeNull();
+  expect(feature.start).toHaveBeenCalledWith(expect.anything(), {
+    kind: 'revise',
+    expectedRunId: 'previous',
+  });
+});

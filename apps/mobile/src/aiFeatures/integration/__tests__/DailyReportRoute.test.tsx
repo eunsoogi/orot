@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -7,6 +8,7 @@ import {
 import { createDailyReportIdentity } from '@orot/domain';
 import { DailyReportRoute } from '../DailyReportRoute';
 import type { createDailyReportFeature } from '../dailyReportFeature';
+import { notifyLocalSourceDeleted } from '../../../storage/localDataClearEvents';
 
 test('an old reminder only looks up its exact day until today is selected and requested', async () => {
   const old = createDailyReportIdentity('2023-11-15', 'Asia/Seoul');
@@ -129,6 +131,58 @@ test('hides the saved report when source revalidation finds it stale', async () 
     '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
   );
   expect(screen.queryByText('합성 기록')).toBeNull();
+});
+
+test('hides a saved report immediately after a cited source is deleted', async () => {
+  const identity = createDailyReportIdentity('2023-11-15', 'Asia/Seoul');
+  const lookup = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 'saved',
+      runId: 'run',
+      revision: 1,
+      context: { identity, generationCutoff: '2023-11-15T12:00:00Z' },
+      report: {
+        generatedAt: '2023-11-15T12:01:00Z',
+        observations: [{ text: '합성 기록' }],
+        supportedContext: [],
+        followUpQuestions: [],
+        coverage: [],
+      },
+    })
+    .mockResolvedValue({
+      status: 'stale',
+      runId: 'run',
+      revision: 1,
+      sourceStatus: 'deleted',
+    });
+  const feature = {
+    lookup,
+    preview: jest.fn(async () => ({ status: 'not_today' as const })),
+    start: jest.fn(),
+    active: jest.fn(() => null),
+    retain: jest.fn(() => () => {}),
+  } as unknown as ReturnType<typeof createDailyReportFeature>;
+  await render(
+    <DailyReportRoute
+      feature={feature}
+      initialIdentity={identity}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={jest.fn()}
+    />,
+  );
+  await screen.findByText('합성 기록');
+  await act(async () => {
+    notifyLocalSourceDeleted();
+  });
+  expect(screen.queryByText('합성 기록')).toBeNull();
+  expect(
+    await screen.findByText(
+      '보고서의 출처 기록이 삭제되어 저장된 내용을 표시할 수 없어요.',
+    ),
+  ).toBeTruthy();
+  expect(lookup).toHaveBeenCalledTimes(2);
 });
 
 test('publishes active generation to the navigation guard and cancels when its route unmounts', async () => {
