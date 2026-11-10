@@ -49,7 +49,9 @@ final class AutomaticRecapPersistenceIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(receipt["sourceId"] as? String, source)
         XCTAssertEqual(try XCTUnwrap(receipt["result"] as? NSDictionary), try XCTUnwrap(baseline["result"] as? NSDictionary))
         XCTAssertEqual(try XCTUnwrap(receipt["records"] as? NSArray), try XCTUnwrap(baseline["records"] as? NSArray))
-        try attach(receipt, name: "automatic-recap-reopened")
+        var reopened = receipt
+        reopened["processIdentifier"] = Int(ProcessInfo.processInfo.processIdentifier)
+        try attach(reopened, name: "automatic-recap-reopened")
         let cleanup = try await TestOperationBroker.shared.request("automatic-recap-cleanup", parameters: ["sourceId": source])
         XCTAssertEqual(cleanup["cleaned"] as? Bool, true)
         XCTAssertEqual(cleanup["sourceId"] as? String, source)
