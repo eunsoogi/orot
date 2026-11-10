@@ -1,6 +1,6 @@
 import type { SafetyPolicyAction } from '@orot/domain';
 import type { ConversationArtifact } from '../storage/conversationArtifactCodec';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import type { TreatmentClaimVerifier } from './safety';
 import { evaluateTreatmentOutput } from './treatmentSafetyBoundary';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
@@ -8,7 +8,7 @@ import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 /** A saved turn's prior answers must pass the same checks before follow-up use. */
 export async function validateTreatmentArtifact(
   artifact: ConversationArtifact,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   verifier: TreatmentClaimVerifier | undefined,
   signal: AbortSignal,
   actions: readonly SafetyPolicyAction[],

@@ -1,14 +1,14 @@
 import type {
   ConversationSession,
   ConversationSnapshot,
+  ConversationSessionOptions,
 } from './conversationSessionTypes';
-import type { createConversationSessionRetention } from './conversationSessionRetention';
 import type { createConversationSessionRestoreState } from './conversationSessionRestoreState';
 import { addConversation } from './conversationSessionTransitions';
 
 /** Attach an existing durable identity before exposing its freshly restored transcript. */
 export function createConversationSessionAttachment(input: {
-  retention?: ReturnType<typeof createConversationSessionRetention>;
+  retention?: ConversationSessionOptions['retention'];
   restoration: ReturnType<typeof createConversationSessionRestoreState>;
   canRestore: boolean;
   empty: () => ConversationSession;

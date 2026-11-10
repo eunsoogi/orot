@@ -1,4 +1,5 @@
 import type { SqlExecutor } from '@orot/storage';
+import { treatmentArtifactPredicate } from './treatmentSessionIdentity';
 
 /** Keyset paging keeps equal timestamps ordered without dropping older turns. */
 export async function listConversationArtifactPage(
@@ -6,6 +7,7 @@ export async function listConversationArtifactPage(
   sessionId: string,
   cursor?: { readonly createdAt: string; readonly id: string },
   limit = 50,
+  kind: 'conversation' | 'treatment' = 'conversation',
 ) {
   if (
     !Number.isSafeInteger(limit) ||
@@ -18,7 +20,13 @@ export async function listConversationArtifactPage(
   )
     throw new RangeError('Invalid conversation page.');
   const result = await database.execute(
-    "SELECT a.id, a.created_at FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 WHERE a.session_id = ? AND a.created_at = strftime('%Y-%m-%dT%H:%M:%fZ', julianday(a.created_at)) AND (? IS NULL OR a.created_at < ? OR (a.created_at = ? AND a.id < ?)) ORDER BY a.created_at DESC, a.id DESC LIMIT ?",
+    `SELECT a.id, a.created_at FROM conversation_artifacts a
+      JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0
+      JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
+      WHERE a.session_id = ? AND ${kind === 'treatment' ? treatmentArtifactPredicate : `NOT (${treatmentArtifactPredicate})`}
+      AND a.created_at = strftime('%Y-%m-%dT%H:%M:%fZ', julianday(a.created_at))
+      AND (? IS NULL OR a.created_at < ? OR (a.created_at = ? AND a.id < ?))
+      ORDER BY a.created_at DESC, a.id DESC LIMIT ?`,
     [
       sessionId,
       cursor?.createdAt ?? null,

@@ -1,4 +1,5 @@
 import type { SqlExecutor } from '@orot/storage';
+import { treatmentSessionPrefix } from './treatmentSessionIdentity';
 
 type SessionCursor = { readonly updatedAt: string; readonly id: string };
 
@@ -25,12 +26,14 @@ export async function listConversationSessionPage(
      JOIN (SELECT session_id, created_at FROM conversation_artifacts
        UNION ALL SELECT session_id, created_at FROM conversation_tool_events) a ON a.session_id = s.id
      WHERE s.hidden = 0 AND typeof(s.id) = 'text' AND length(s.id) > 0
+       AND s.id NOT LIKE ?
        AND typeof(s.version) = 'integer' AND s.version BETWEEN 0 AND 9007199254740991
        AND a.created_at = strftime('%Y-%m-%dT%H:%M:%fZ', julianday(a.created_at))
      GROUP BY s.id, s.version
      HAVING (? IS NULL OR MAX(a.created_at) < ? OR (MAX(a.created_at) = ? AND s.id < ?))
      ORDER BY updated_at DESC, s.id DESC LIMIT ?`,
     [
+      `${treatmentSessionPrefix}%`,
       cursor?.updatedAt ?? null,
       cursor?.updatedAt ?? null,
       cursor?.updatedAt ?? null,
