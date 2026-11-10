@@ -3,6 +3,7 @@ import type { RagConversationMessage } from './task';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { conversationEntryForSession } from './useConversationEntryIntent';
+import { entryIntentSender } from './entryIntentSender';
 import { conversationHistoryPayload } from './conversationHistoryPayload';
 
 const pendingVisits = new WeakMap<
@@ -92,8 +93,11 @@ export function sendConversationMessage(
         observer,
         context,
       );
-    return context
-      ? onSend(question, history, signal, observer, context)
-      : onSend(question, history, signal, observer);
+    return entryIntentSender(store, id, onSend)(
+      question,
+      history,
+      signal,
+      observer,
+    );
   });
 }

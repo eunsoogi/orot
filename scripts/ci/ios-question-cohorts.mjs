@@ -24,6 +24,7 @@ export const questionCohorts = {
       'KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
       'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
       'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
+      'ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
     ],
   },
   'questions-summary': {

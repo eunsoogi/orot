@@ -76,7 +76,7 @@ test('Questions partitions complete stateful cases into five independently sched
     identifiers.slice().sort(),
     iosTestCohortTasks('questions')[0].identifiers.slice().sort(),
   );
-  assert.equal(new Set(identifiers).size, 13);
+  assert.equal(new Set(identifiers).size, 14);
   assert.equal(
     identifiers.filter(
       (identifier) =>
