@@ -14,8 +14,10 @@ final class ConversationToolEventsUITests: OrotFailFastTestCase {
         try voiceOver.prepareForStandardInteraction()
 
         let app = XCUIApplication()
+        // This source-navigation journey alone needs the synthetic retained session identity.
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "conversation-visual",
+            "-OROT_TEST_CONVERSATION_TOOL_SOURCE", "YES",
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
         ] + AppearanceUITestConditions.observationArguments

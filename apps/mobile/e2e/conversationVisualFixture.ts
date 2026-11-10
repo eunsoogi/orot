@@ -89,9 +89,14 @@ const visualSessionRetention: NonNullable<
   async finalize() {},
 };
 
-export const conversationVisualSessionOptions: ConversationSessionOptions = {
-  retention: visualSessionRetention,
-};
+/** General history journeys stay memory-only so their delete and undo path is preserved. */
+export const conversationVisualSessionOptions: ConversationSessionOptions = {};
+
+/** Only the tool-source journey needs this retained identity to resolve its synthetic source. */
+export const conversationVisualToolSourceSessionOptions: ConversationSessionOptions =
+  {
+    retention: visualSessionRetention,
+  };
 
 /** Keep every rendered state synthetic while preserving retry identity across two runs. */
 const syntheticToolEvents: readonly ConversationToolEvent[] = [

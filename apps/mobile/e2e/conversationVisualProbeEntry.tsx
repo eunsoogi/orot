@@ -1,6 +1,6 @@
 import '../src/agent/polyfills';
 import { useState } from 'react';
-import { AppRegistry } from 'react-native';
+import { AppRegistry, NativeModules } from 'react-native';
 import { name as appName } from '../app.json';
 import { ConversationScreen } from '../src/ragConversation/ConversationScreen';
 import { ConversationHistoryScreen } from '../src/ragConversation/ConversationHistoryScreen';
@@ -16,9 +16,26 @@ import {
 } from './evidenceVisualFixtures';
 import {
   conversationVisualSessionOptions,
+  conversationVisualToolSourceSessionOptions,
   resolveConversationVisualToolSource,
   sendSyntheticConversation,
 } from './conversationVisualFixture';
+
+const settingsManager = (
+  NativeModules as unknown as {
+    SettingsManager?: {
+      settings?: Record<string, unknown>;
+      getConstants?: () => { settings?: Record<string, unknown> };
+    };
+  }
+).SettingsManager;
+const launchSettings =
+  settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
+// The provider creates its store once, so opt into retained identity before the source journey mounts.
+const visualSessionOptions =
+  launchSettings.OROT_TEST_CONVERSATION_TOOL_SOURCE === 'YES'
+    ? conversationVisualToolSourceSessionOptions
+    : conversationVisualSessionOptions;
 
 type Route = 'conversation' | 'history' | 'evidence';
 const leaveState = {
@@ -31,7 +48,7 @@ const leaveState = {
   }),
 };
 
-/** Production conversation/navigation components with synthetic session identity, source, and sender. */
+/** Production conversation/navigation components with the synthetic retained identity limited to source navigation. */
 function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
   const [controller] = useState(() =>
     createNavigationController<Route>('conversation'),
@@ -40,7 +57,7 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
     evidenceVisualReference,
   );
   return (
-    <ConversationSessionsProvider options={conversationVisualSessionOptions}>
+    <ConversationSessionsProvider options={visualSessionOptions}>
       <NavigationRouteAdapter
         controller={controller}
         leaveState={leaveState}
