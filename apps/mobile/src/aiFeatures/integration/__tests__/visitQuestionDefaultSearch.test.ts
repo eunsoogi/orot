@@ -27,9 +27,29 @@ test('does not send a public request or ask for consent with a local-only select
   expect(confirm).not.toHaveBeenCalled();
   expect(result).toMatchObject({
     result: { status: 'unavailable' },
-    caveat: 'public_search_unavailable',
+    caveat: 'public_search_not_configured',
     spentModelCall: false,
   });
+});
+
+test('identifies missing search capability without asking consent or making a request', async () => {
+  const run = publicEvidenceFixture();
+  const { searchPublicWeb: _search, ...provider } = run.selected.provider;
+  expect(_search).toBe(run.search);
+  const confirm = jest.fn(async () => true);
+  const result = await visitQuestionPublicSearch({
+    selected: { ...run.selected, provider },
+    confirm,
+    query: 'Synthetic blood pressure',
+    signal: run.controller.signal,
+  });
+  expect(result).toMatchObject({
+    result: { status: 'unavailable' },
+    caveat: 'public_search_unsupported',
+    spentModelCall: false,
+  });
+  expect(confirm).not.toHaveBeenCalled();
+  expect(run.search).not.toHaveBeenCalled();
 });
 
 function setup(allow = true) {
@@ -119,7 +139,7 @@ test('continues local generation when the selected public provider is unavailabl
   const result = await run.generate();
   expect(result).toMatchObject({
     status: 'ready',
-    caveats: expect.arrayContaining(['public_search_unavailable']),
+    caveats: expect.arrayContaining(['public_search_failed']),
   });
   expect(jest.mocked(runVisitQuestionWorkflow)).toHaveBeenCalledTimes(1);
 });

@@ -7,6 +7,7 @@ import {
   successfulOutputs,
 } from '../../../agent/visitQuestions/testing/workflowFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
+import { providerFailure } from '@orot/model-runtime';
 
 jest.mock('../visitQuestionsContextLoader', () => ({
   loadVisitQuestionsContext: jest.fn(),
@@ -57,4 +58,54 @@ test('the real visit workflow searches once and keeps generated citations local'
     'Synthetic cited web explanation.',
   );
   expect(confirmConsent.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test('preserves locally grounded questions when the public search attempt fails', async () => {
+  const prepared = preparedContext();
+  const fixture = publicEvidenceFixture();
+  fixture.search.mockResolvedValue(
+    providerFailure({
+      code: 'provider_unavailable',
+      message: 'Synthetic search failure',
+      retryable: true,
+    }),
+  );
+  const model = makeProvider(
+    successfulOutputs(prepared.initialEvidence, prepared.supplementalEvidence),
+  );
+  const provider = { ...model.provider, searchPublicWeb: fixture.search };
+  const { selection, option } = selectedOption(provider);
+  jest.mocked(loadVisitQuestionsContext).mockResolvedValue({
+    prepareUpcomingVisitQuestionContext: async () => ({
+      ...prepared,
+      saveReviewedQuestions: jest.fn(),
+    }),
+  } as never);
+  const result = await defaultVisitQuestionRouteOperations.generate({
+    appointment: prepared.appointment,
+    selectedAi: {
+      status: 'ready',
+      selection,
+      option,
+      provider,
+      modelId: selection.modelId,
+      recipient: 'Synthetic account',
+      remoteProcessing: true,
+    },
+    confirmConsent: async () => true,
+    signal: new AbortController().signal,
+  });
+  expect(fixture.search).toHaveBeenCalledTimes(1);
+  expect(result.status).toBe('ready');
+  if (result.status !== 'ready') throw new Error('Local questions were lost.');
+  expect(result.questions).toHaveLength(3);
+  expect(result.caveats).toContain('public_search_failed');
+  expect(
+    result.questions.every(question => question.citations.length > 0),
+  ).toBe(true);
+  expect(
+    result.questions
+      .flatMap(question => question.citations)
+      .every(citation => citation.sourceKind === 'personal_record'),
+  ).toBe(true);
 });

@@ -48,3 +48,37 @@ test('shows the public-source limitation and carries it through review and save'
     [],
   );
 });
+
+test.each([
+  [
+    'public_search_unsupported',
+    '선택한 AI는 공개 웹검색을 지원하지 않아 검색 결과를 반영하지 않았어요.',
+  ],
+  [
+    'public_search_not_configured',
+    '현재 선택한 AI 설정에서는 공개 웹검색을 연결할 수 없어 검색 결과를 반영하지 않았어요.',
+  ],
+  [
+    'public_search_failed',
+    '공개 웹검색을 완료하지 못해 검색 결과를 반영하지 않았어요. 다시 시도할 수 있어요.',
+  ],
+] as const)(
+  'shows %s alongside locally generated questions',
+  async (caveat, message) => {
+    await render(
+      <NextVisitQuestionsScreen
+        {...makeProps({
+          onGenerate: async () => ({
+            status: 'ready',
+            questions,
+            caveats: [caveat],
+          }),
+        })}
+      />,
+    );
+    await fireEvent.press(screen.getByTestId('next-visit-generate'));
+    expect(await screen.findByTestId('next-visit-review-list')).toBeTruthy();
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(screen.getByDisplayValue(questions[0]!.questionText)).toBeTruthy();
+  },
+);

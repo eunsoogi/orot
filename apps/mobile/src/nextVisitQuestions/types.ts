@@ -152,6 +152,9 @@ export type EvidenceCaveat =
   | 'public_search_not_retained'
   | 'public_search_consent_required'
   | 'public_search_empty'
+  | 'public_search_failed'
+  | 'public_search_not_configured'
+  | 'public_search_unsupported'
   | 'public_search_unavailable';
 
 export type QuestionGenerationPhase =

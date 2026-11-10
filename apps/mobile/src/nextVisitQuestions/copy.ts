@@ -1,4 +1,5 @@
 import type { EvidenceCaveat } from './types';
+import { t } from '../i18n';
 
 // This screen keeps its Korean copy local because the shared catalog is owned by another task.
 export const nextVisitQuestionsCopy = {
@@ -111,6 +112,9 @@ export const evidenceCaveatCopy: Readonly<Record<EvidenceCaveat, string>> = {
   public_search_consent_required:
     '공개 웹검색 동의가 없어 검색 결과를 반영하지 않았어요.',
   public_search_empty: '공개 웹검색에서 결과를 찾지 못했어요.',
+  public_search_failed: t('visitQuestions.search.failed'),
+  public_search_not_configured: t('visitQuestions.search.notConfigured'),
+  public_search_unsupported: t('visitQuestions.search.unsupported'),
   public_search_unavailable:
     '공개 웹검색을 사용할 수 없어 검색 결과를 반영하지 않았어요.',
 };

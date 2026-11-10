@@ -1,5 +1,11 @@
 /** Messages for restoring reviewed visit questions and their historical sources. */
 export const visitQuestionRestorationKo = {
+  'visitQuestions.search.failed':
+    '공개 웹검색을 완료하지 못해 검색 결과를 반영하지 않았어요. 다시 시도할 수 있어요.',
+  'visitQuestions.search.notConfigured':
+    '현재 선택한 AI 설정에서는 공개 웹검색을 연결할 수 없어 검색 결과를 반영하지 않았어요.',
+  'visitQuestions.search.unsupported':
+    '선택한 AI는 공개 웹검색을 지원하지 않아 검색 결과를 반영하지 않았어요.',
   'visitQuestions.restore.missingSource':
     '질문에 연결된 원문 근거를 찾을 수 없어 저장 목록을 불러오지 못했어요.',
   'visitQuestions.restore.changedGeneratedSource':
