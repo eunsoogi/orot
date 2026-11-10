@@ -1,22 +1,15 @@
 # Chart integration source inventory
 
-This is a preparation ledger for the integrated chart acceptance. It is not an
-execution result or a substitute for the final revision-scoped validation.
+This ledger covers the chart consumers after the loading-state migration.
+Runtime observations and their source revision are recorded in
+[iOS validation coverage](ios-validation.md).
 
 ## Revision and scope
 
-- Source baseline: `dbc9af7af5713a4be80f5f575b4a559bb54708d4`, the remote
-  `main` read on 2026-11-11. The checkout carrying this ledger is based on
-  `eb913c0d1148cce8d9ebea8caf02d1d82c7bb92c` and preserves the separate
-  native-test preparation commit `e6a5c4f1f1b1250def3cf60fe30558c31a298735`.
-- Loading candidates examined separately: `a655520a0618c12b4196f9a479c3e571688bfb11`
-  and its descendant `5fa8944802ce84fba603cdde00c27808ae3b872f`. The latter
-  has no changes from the former in the chart, Home, health-record, mobile
-  package, or lockfile paths listed below. The source baseline is **not** an
-  ancestor of the first candidate. Neither candidate is a confirmed final
-  post-loading common revision. Repeat this inventory after integration.
-- `#696` and `#701` were open when inspected. No acceptance test, build, or
-  Simulator was run for this ledger.
+The inventory was checked against the loading candidate and the merged
+loading-state tree at `f2ec6b28170aa2f05a3166d9b8d095543c14fc2d`.
+The common acceptance candidate `7713852c0a26fff283284ab9733a5c76f2282b34`
+preserves the same chart, Home, health-record and dependency files.
 
 ## Production consumers
 
@@ -33,7 +26,7 @@ proof that later changes cannot introduce another consumer.
 
 ## Facade, dependencies and search result
 
-At the baseline, production `ChartPlot.tsx` is the only app source importing
+Production `ChartPlot.tsx` is the only app source importing
 `react-native-chart-kit/v2`. Its line and bar components use
 `react-native-chart-kit` 7.0.4; `react-native-svg` 15.16.1 is its declared peer
 and appears as `RNSVG` in `apps/mobile/ios/Podfile.lock`. Do not remove SVG
@@ -52,7 +45,7 @@ source observations, not native interaction or performance results.
 
 ## Loading, deletion and lifecycle
 
-At the baseline, `useHomeMetrics.ts` invalidates its snapshot after local data
+`useHomeMetrics.ts` invalidates its snapshot after local data
 clear, source deletion and app return to active; load generations reject older
 completions. Recoverable refresh failure retains a snapshot as stale, while a
 new selection has a separate generation guard. Midnight schedules a refresh.
