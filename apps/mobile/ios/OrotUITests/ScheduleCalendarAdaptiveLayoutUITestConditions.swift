@@ -65,8 +65,74 @@ enum ScheduleCalendarAdaptiveLayoutUITestConditions {
                 XCTFail("The native Schedule rail is unavailable: \(error)", file: file, line: line)
             }
         }
+        assertCircularControls(app, file: file, line: line)
         XCTAssertEqual(layout.columns, 1, "Schedule must use one measured region", file: file, line: line)
         XCTAssertLessThanOrEqual(primary.frame.maxY, secondary.frame.minY + 0.5, file: file, line: line)
+    }
+
+    /// Measure painted date faces separately from their full-column Pressable targets.
+    /// Keep all frames in one snapshot so a reflow cannot mix geometry from different layouts.
+    private static func assertCircularControls(
+        _ app: XCUIApplication,
+        file: StaticString,
+        line: UInt,
+    ) {
+        guard let snapshot = try? app.snapshot() else {
+            XCTFail("Calendar native frames are unavailable", file: file, line: line)
+            return
+        }
+        // A single hierarchy snapshot binds every comparison to the same layout instant.
+        var frames: [String: CGRect] = [:]
+        func collect(_ element: XCUIElementSnapshot) {
+            if element.identifier.hasPrefix("calendar-") {
+                frames[element.identifier] = element.frame
+            }
+            for child in element.children {
+                collect(child)
+            }
+        }
+        collect(snapshot)
+        let controls = ["calendar-previous-month", "calendar-next-month"].compactMap { id in
+            frames[id].map { (identifier: id, frame: $0) }
+        }
+        let faces = frames.filter { $0.key.hasPrefix("calendar-day-face-") }
+            .map { (identifier: $0.key, frame: $0.value) }
+            .sorted { $0.identifier < $1.identifier }
+        var targets: [(identifier: String, frame: CGRect)] = []
+        for face in faces {
+            let dateIdentifier = face.identifier.replacingOccurrences(of: "calendar-day-face-", with: "calendar-day-")
+            guard let targetFrame = frames[dateIdentifier] else {
+                XCTFail("Missing date target: \(dateIdentifier)", file: file, line: line)
+                continue
+            }
+            targets.append((identifier: dateIdentifier, frame: targetFrame))
+            XCTAssertGreaterThanOrEqual(targetFrame.width, 44, dateIdentifier, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(targetFrame.height, 44, dateIdentifier, file: file, line: line)
+            XCTAssertTrue(
+                targetFrame.insetBy(dx: -0.5, dy: -0.5).contains(face.frame),
+                "The visible date face must stay inside its Pressable target: \(dateIdentifier)",
+                file: file,
+                line: line,
+            )
+        }
+        let observed = (controls + faces + targets).map { "\($0.identifier): \($0.frame)" }.joined(separator: "\n")
+        XCTContext.runActivity(named: "Calendar circular-control native frames") { activity in
+            let attachment = XCTAttachment(string: observed)
+            attachment.lifetime = .keepAlways
+            activity.add(attachment)
+        }
+        XCTAssertEqual(controls.count, 2, "Both month controls must expose their native frames", file: file, line: line)
+        XCTAssertFalse(faces.isEmpty, "Date faces must expose their native frames", file: file, line: line)
+        XCTAssertEqual(targets.count, faces.count, "Every visible date face must have one measured date target", file: file, line: line)
+        for control in controls {
+            XCTAssertGreaterThanOrEqual(control.frame.width, 44, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(control.frame.height, 44, file: file, line: line)
+        }
+        for element in controls + faces {
+            let frame = element.frame
+            XCTAssertFalse(frame.isEmpty, element.identifier, file: file, line: line)
+            XCTAssertEqual(frame.width, frame.height, accuracy: 0.5, element.identifier, file: file, line: line)
+        }
     }
 
     static func changeOrientation(

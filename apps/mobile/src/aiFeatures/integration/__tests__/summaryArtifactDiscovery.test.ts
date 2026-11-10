@@ -66,6 +66,15 @@ test('discovers persisted output in pages and marks a corrected source before de
     connection.close();
     connection = openSqliteTestDatabase(path);
     history = createManualHistoryRepository(connection.database);
+    // Daily reports share the table but must not consume legacy-summary search pages.
+    await connection.database.execute(
+      'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
+      ['z-daily', '2035-01-01T00:00:00Z', 'Synthetic', '{}'],
+    );
+    await connection.database.execute(
+      'INSERT INTO daily_report_revisions (identity_key, revision, run_id) VALUES (?, ?, ?)',
+      ['daily-report:2035-01-01@UTC', 1, 'z-daily'],
+    );
     const discovery = createSummaryArtifactDiscovery({
       database: connection.database,
       storage: createSymptomSummaryStorage(connection.database),

@@ -3,6 +3,7 @@ import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { visibleSummary } from './symptomSummaryQuarantine';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
+import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 
 /** All admitted summaries and their source revisions must share one database snapshot. */
 export async function revalidateSummaryArtifacts(
@@ -13,6 +14,18 @@ export async function revalidateSummaryArtifacts(
   let valid = true;
   await database.transaction(async tx => {
     for (const item of items) {
+      const daily = await tx.execute(
+        'SELECT run_id FROM daily_report_revisions WHERE run_id = ?',
+        [item.id],
+      );
+      if (daily.rows.length) {
+        const current = await validateDailyReportArtifact(tx, item.id, history);
+        if (!current || current.fingerprint !== item.revision) {
+          valid = false;
+          return;
+        }
+        continue;
+      }
       const result = await tx.execute(
         `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary} AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)`,
         [item.id],

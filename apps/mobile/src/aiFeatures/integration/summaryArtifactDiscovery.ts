@@ -15,9 +15,10 @@ import { fingerprint } from './evidenceUtils';
 import { restoreSymptomSummary } from './symptomSummarySources';
 import { revalidateSummaryArtifacts } from '../../storage/summaryArtifactRevalidation';
 import { retainedResearchSearchText } from './retainedResearchSearch';
+import { readDailyReportArtifact } from './dailyReportArtifactDiscovery';
 
 type SummaryMetadata = ArtifactMetadata & {
-  readonly type: 'symptom_summary' | 'disease_possibilities';
+  readonly type: 'symptom_summary' | 'disease_possibilities' | 'daily_report';
   readonly inputLineage: 'complete' | 'unknown';
 };
 
@@ -74,8 +75,11 @@ export function createSummaryArtifactDiscovery(input: {
       // The existing store owns table creation and lifecycle triggers, including old databases.
       await input.storage.list();
       const result = await input.database.execute(
-        `SELECT id FROM symptom_summary_runs AS run
-         WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT ?`,
+        `SELECT id, EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = run.id) AS daily FROM symptom_summary_runs AS run
+         WHERE (? IS NULL OR id < ?)
+           AND (NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = run.id)
+             OR EXISTS (SELECT 1 FROM daily_report_heads h WHERE h.active_run_id = run.id AND h.deleted = 0))
+         ORDER BY id DESC LIMIT ?`,
         [cursor ?? null, cursor ?? null, limit + 1],
       );
       checkCancelled(signal);
@@ -87,6 +91,29 @@ export function createSummaryArtifactDiscovery(input: {
       for (const row of rows) {
         if (typeof row.id !== 'string')
           throw new Error('Invalid saved artifact identity.');
+        if (row.daily === 1) {
+          const daily = await readDailyReportArtifact({
+            ...input,
+            id: row.id,
+            signal,
+          });
+          if (!daily) {
+            unavailableCount += 1;
+            continue;
+          }
+          const content = daily.content.hypotheses
+            .flatMap(section => [
+              section.title,
+              section.summary,
+              section.uncertainty,
+              ...section.missingData,
+            ])
+            .join(' ')
+            .normalize('NFKC')
+            .toLowerCase();
+          if (!needle || content.includes(needle)) items.push(daily.metadata);
+          continue;
+        }
         const saved = await input.storage.read(row.id);
         // Corrupt, unsupported or concurrently deleted rows stay visible as coverage gaps.
         if (!saved) {
@@ -136,6 +163,12 @@ export function createSummaryArtifactDiscovery(input: {
     },
     async read(id, signal) {
       checkCancelled(signal);
+      const daily = await input.database.execute(
+        'SELECT run_id FROM daily_report_revisions WHERE run_id = ?',
+        [id],
+      );
+      if (daily.rows.length)
+        return readDailyReportArtifact({ ...input, id, signal });
       const saved = await input.storage.read(id);
       if (!saved) return null;
       // Older rows retained citations only; their uncited deleted inputs cannot be revalidated.

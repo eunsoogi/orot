@@ -3,7 +3,7 @@ import XCTest
 /// Synthetic events exercise the production conversation screen and its test-only evidence route.
 @MainActor
 final class ConversationToolEventsUITests: OrotFailFastTestCase {
-    /// Checks safe summaries, independent native disclosures, accessibility and source return at large text.
+    /// Checks independent tool disclosures, their native source route, and large-text behavior in both appearances.
     func testSyntheticToolCallsExpandIndependentlyWithNativeTargets() throws {
         guard #available(iOS 27.0, *) else {
             XCTFail("The tool-event VoiceOver observation requires the public iOS 27 service")
@@ -14,13 +14,35 @@ final class ConversationToolEventsUITests: OrotFailFastTestCase {
         try voiceOver.prepareForStandardInteraction()
 
         let app = XCUIApplication()
+        // This source-navigation journey alone needs the synthetic retained session identity.
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "conversation-visual",
+            "-OROT_TEST_CONVERSATION_TOOL_SOURCE", "YES",
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
-        ]
+        ] + AppearanceUITestConditions.observationArguments
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
         app.launch()
-        defer { UITestConditions.terminateStandaloneApp(app) }
+        defer {
+            if let originalAppearance {
+                do {
+                    try AppearanceUITestConditions.restore(
+                        originalAppearance,
+                        returningTo: app,
+                        testCase: self,
+                    )
+                } catch {
+                    XCTFail("Could not restore Simulator appearance: \(error)")
+                }
+            }
+            UITestConditions.terminateStandaloneApp(app)
+        }
+        _ = try AppearanceUITestConditions.select(
+            false,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: { originalAppearance = $0 },
+        )
 
         let input = UITestConditions.element(app, "rag-conversation-input")
         let history = UITestConditions.element(app, "rag-conversation-history")
@@ -67,8 +89,15 @@ final class ConversationToolEventsUITests: OrotFailFastTestCase {
         XCTAssertFalse(failedDetails.exists)
         XCTAssertEqual(
             Set(completedDetails.staticTexts.allElementsBoundByIndex.map(\.label)),
-            Set(["입력 요약", "개인 기록", "결과 요약", "참고 자료 0개", "출처", "연결된 출처가 없어요."]),
+            Set(["입력 요약", "개인 기록", "결과 요약", "참고 자료 1개", "출처"]),
         )
+        let toolSource = completedDetails.buttons.matching(
+            NSPredicate(format: "label == %@", "원문 출처 확인 · 개인 기록"),
+        ).firstMatch
+        XCTAssertTrue(UITestConditions.exists(toolSource), completedDetails.debugDescription)
+        FormUITestConditions.reveal(toolSource, in: app, scroll: history)
+        XCTAssertTrue(toolSource.isHittable, toolSource.debugDescription)
+        XCTAssertGreaterThanOrEqual(toolSource.frame.height, 44, toolSource.debugDescription)
 
         FormUITestConditions.reveal(failed, in: app, scroll: history)
         XCTAssertTrue(failed.isHittable)
@@ -88,12 +117,12 @@ final class ConversationToolEventsUITests: OrotFailFastTestCase {
         failed.tap()
         XCTAssertFalse(failedDetails.exists)
 
-        // VoiceOver must name the real disclosure and activate its expanded and collapsed states.
+        // The hint must distinguish the two real native disclosure states, not just repeat the status.
         FormUITestConditions.reveal(completed, in: app, scroll: history)
         XCTAssertTrue(completed.label.contains("local_records · 완료"), completed.debugDescription)
         try voiceOver.assertSpeech(
             from: completed,
-            expected: "완료",
+            expected: "도구 호출 세부 정보 표시",
             forbiddenTerms: [],
             phase: "conversation-tool-event-collapsed",
             testCase: self,
@@ -102,14 +131,50 @@ final class ConversationToolEventsUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(completedDetails), app.debugDescription)
         try voiceOver.assertSpeech(
             from: completed,
-            expected: "완료",
+            expected: "도구 호출 세부 정보 숨기기",
             forbiddenTerms: [],
             phase: "conversation-tool-event-expanded",
             testCase: self,
         )
-        completed.doubleTap()
-        XCTAssertFalse(completedDetails.exists)
         try voiceOver.prepareForStandardInteraction()
+        FormUITestConditions.reveal(toolSource, in: app, scroll: history)
+        try voiceOver.assertSpeech(
+            from: toolSource,
+            expected: "원문 출처 확인",
+            forbiddenTerms: [],
+            phase: "conversation-tool-source",
+            testCase: self,
+        )
+        try voiceOver.prepareForStandardInteraction()
+        FormUITestConditions.reveal(completed, in: app, scroll: history)
+        completed.tap()
+        XCTAssertFalse(completedDetails.exists)
+
+        // The conversation keeps its real large-text target and source route after a system appearance change.
+        _ = try AppearanceUITestConditions.select(
+            true,
+            returningTo: app,
+            testCase: self,
+        )
+        FormUITestConditions.reveal(completed, in: app, scroll: history)
+        XCTAssertTrue(completed.isHittable)
+        XCTAssertGreaterThanOrEqual(completed.frame.height, 44, completed.debugDescription)
+        completed.tap()
+        let darkCompletedDetails = toolDetails(app, run: runId, call: "tool-1")
+        XCTAssertTrue(UITestConditions.exists(darkCompletedDetails), app.debugDescription)
+        let darkToolSource = darkCompletedDetails.buttons.matching(
+            NSPredicate(format: "label == %@", "원문 출처 확인 · 개인 기록"),
+        ).firstMatch
+        FormUITestConditions.reveal(darkToolSource, in: app, scroll: history)
+        XCTAssertTrue(darkToolSource.isHittable, darkToolSource.debugDescription)
+        XCTAssertGreaterThanOrEqual(darkToolSource.frame.height, 44, darkToolSource.debugDescription)
+        darkToolSource.tap()
+
+        let toolSourceDetail = UITestConditions.element(app, "ai-feature-source-detail")
+        XCTAssertTrue(UITestConditions.exists(toolSourceDetail), app.debugDescription)
+        XCTAssertTrue(toolSourceDetail.staticTexts["근거 살펴보기"].exists, toolSourceDetail.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
 
         // Reopen the native keyboard so scrolling and composer reachability are checked together.
         if !app.keyboards.firstMatch.exists {

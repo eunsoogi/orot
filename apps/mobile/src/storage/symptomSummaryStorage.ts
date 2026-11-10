@@ -69,6 +69,10 @@ export function createSymptomSummaryStorage(
       await tx.execute(
         'CREATE TRIGGER IF NOT EXISTS summary_source_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN DELETE FROM symptom_summary_sources WHERE summary_id = OLD.id; END',
       );
+      // Keep only a content-free tombstone when a source deletion removes the active report.
+      await tx.execute(
+        'CREATE TRIGGER IF NOT EXISTS daily_report_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN UPDATE daily_report_heads SET active_run_id = NULL, deleted = 1 WHERE active_run_id = OLD.id; END',
+      );
       await tx.execute(
         'DELETE FROM symptom_summary_sources WHERE NOT EXISTS (SELECT 1 FROM symptom_summary_runs WHERE id = summary_id)',
       );
@@ -184,7 +188,7 @@ export function createSymptomSummaryStorage(
       await ensure();
       // A stable cursor and fixed page size bound history reads independently of total saved runs.
       const rows = await database.execute(
-        `SELECT r.id, r.created_at, r.model_name, r.result_json FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
+        `SELECT r.id, r.created_at, r.model_name, r.result_json FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = r.id) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
         [before ?? null, before ?? null],
       );
       return rows.rows.flatMap(row => {

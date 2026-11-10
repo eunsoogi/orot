@@ -18,8 +18,8 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     (id) =>
       id.includes('/KeyboardSafeAreaUITests/') ||
       id.includes('/ConversationComposerDockUITests/') ||
-      id.includes('/ConversationHealthSummaryUITests/') ||
-      id.includes('/ConversationToolEventsUITests/'),
+      id.includes('/ConversationToolEventsUITests/') ||
+      id.includes('/ConversationHealthSummaryUITests/'),
   );
   assert.equal(expected.length, 8);
   const full = iosTestExecutionPlan();

@@ -63,103 +63,111 @@ export function HomeMetrics() {
     fontScale,
   );
   return (
-    <View style={styles.section}>
-      <View style={styles.heading}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {t('home.healthOverview')}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          testID="home-metrics-edit"
-          style={styles.edit}
-          disabled={data.state !== 'ready' || saving}
-          accessibilityState={{ disabled: data.state !== 'ready' || saving }}
-          onPress={() => {
-            setDraft(data.selection);
-            setSaveError(false);
-          }}
-        >
-          <Text>{t('home.metricEdit')}</Text>
-        </Pressable>
-      </View>
-      {data.state === 'loading' ? (
-        <Text>{t('home.preparationLoading')}</Text>
-      ) : data.state === 'failed' ? (
-        <>
-          <Text accessibilityRole="alert">{t('home.metricError')}</Text>
-          <AppButton title={t('appointments.retry')} onPress={data.retry} />
-        </>
-      ) : (
-        <View
-          style={styles.grid}
-          testID="home-metric-grid"
-          onLayout={event => {
-            const { width } = event.nativeEvent.layout;
-            setGridWidth(current => (current === width ? current : width));
-          }}
-        >
-          {data.selection.map(metric =>
-            data.metrics[metric] ? (
-              <HomeMetricCard
-                key={metric}
-                metric={data.metrics[metric]!}
-                width={gridLayout.cardWidth}
-              />
-            ) : (
-              <View
-                key={metric}
-                style={[
-                  styles.card,
-                  styles.gridCard,
-                  { width: gridLayout.cardWidth },
-                ]}
-              >
-                <Text style={styles.cardTitle}>{title(metric)}</Text>
-                <Text>
-                  {metric !== 'sleep' && data.quantityTruncated
-                    ? t('home.metricTruncated')
-                    : t('home.metricWindowEmpty')}
-                </Text>
-              </View>
-            ),
-          )}
+    <View style={styles.sections} testID="home-health-sections">
+      <View style={styles.section} testID="home-health-overview-section">
+        <View style={styles.heading} testID="home-health-overview-heading">
+          <Text accessibilityRole="header" style={styles.title}>
+            {t('home.healthOverview')}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            testID="home-metrics-edit"
+            style={styles.edit}
+            disabled={data.state !== 'ready' || saving}
+            accessibilityState={{ disabled: data.state !== 'ready' || saving }}
+            onPress={() => {
+              setDraft(data.selection);
+              setSaveError(false);
+            }}
+          >
+            <Text>{t('home.metricEdit')}</Text>
+          </Pressable>
         </View>
-      )}
-      {draft && (
-        <HomeMetricSelectionEditor
-          canSave={draft.length >= 2 && draft.length <= 4}
-          onCancel={() => setDraft(null)}
-          onSave={save}
-          onToggle={toggle}
-          saveError={saveError}
-          saving={saving}
-          selection={draft}
-          title={title}
-        />
-      )}
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="home-recent-changes"
-      >
-        {t('home.recentChanges')}
-      </Text>
-      {data.state === 'ready' &&
-        (comparisons.length ? (
-          comparisons.map(metric => (
-            <HomeRecentHealthChange
-              key={metric.metric}
-              metric={metric}
-              title={title(metric.metric)}
-              layout={recentChangeLayout}
-              formatValue={(amount, unit) =>
-                formatHomeMetricValue(metric.metric, amount, unit)
-              }
-            />
-          ))
+        {data.state === 'loading' ? (
+          <Text>{t('home.preparationLoading')}</Text>
+        ) : data.state === 'failed' ? (
+          <>
+            <Text accessibilityRole="alert">{t('home.metricError')}</Text>
+            <AppButton title={t('appointments.retry')} onPress={data.retry} />
+          </>
         ) : (
-          <Text>{t('home.noChanges')}</Text>
-        ))}
+          <View
+            style={styles.grid}
+            testID="home-metric-grid"
+            onLayout={event => {
+              const { width } = event.nativeEvent.layout;
+              setGridWidth(current => (current === width ? current : width));
+            }}
+          >
+            {data.selection.map(metric =>
+              data.metrics[metric] ? (
+                <HomeMetricCard
+                  key={metric}
+                  metric={data.metrics[metric]!}
+                  width={gridLayout.cardWidth}
+                />
+              ) : (
+                <View
+                  key={metric}
+                  style={[
+                    styles.card,
+                    styles.gridCard,
+                    { width: gridLayout.cardWidth },
+                  ]}
+                >
+                  <Text style={styles.cardTitle}>{title(metric)}</Text>
+                  <Text>
+                    {metric !== 'sleep' && data.quantityTruncated
+                      ? t('home.metricTruncated')
+                      : t('home.metricWindowEmpty')}
+                  </Text>
+                </View>
+              ),
+            )}
+          </View>
+        )}
+        {draft && (
+          <HomeMetricSelectionEditor
+            canSave={draft.length >= 2 && draft.length <= 4}
+            onCancel={() => setDraft(null)}
+            onSave={save}
+            onToggle={toggle}
+            saveError={saveError}
+            saving={saving}
+            selection={draft}
+            title={title}
+          />
+        )}
+      </View>
+      <View style={styles.section} testID="home-recent-changes-section">
+        <View style={styles.heading} testID="home-recent-changes-heading">
+          <Text
+            accessibilityRole="header"
+            style={styles.title}
+            testID="home-recent-changes"
+          >
+            {t('home.recentChanges')}
+          </Text>
+        </View>
+        <View style={styles.section} testID="home-recent-changes-content">
+          {data.state === 'ready' &&
+            (comparisons.length ? (
+              comparisons.map(metric => (
+                <HomeRecentHealthChange
+                  key={metric.metric}
+                  metric={metric}
+                  title={title(metric.metric)}
+                  layout={recentChangeLayout}
+                  formatValue={(amount, unit) =>
+                    formatHomeMetricValue(metric.metric, amount, unit)
+                  }
+                />
+              ))
+            ) : (
+              <Text>{t('home.noChanges')}</Text>
+            ))}
+        </View>
+      </View>
     </View>
   );
 }
