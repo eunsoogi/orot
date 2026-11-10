@@ -5,6 +5,8 @@ import { fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import { photoDocumentJourney } from '../medical-document-photo-fixture.mjs';
+import { duoAcceptanceDiagnosticTests } from '../ios-acceptance-diagnostic-inventory.mjs';
+import { resolveIosTestProfileSelection } from '../ios-test-profile-selection.mjs';
 
 // The control never enters the default suite or a different destination.
 test('rotation control is admitted only as an explicit single Duo diagnostic', () => {
@@ -106,4 +108,15 @@ test('Duo photo validation admits only its explicit single journey', () => {
       rmSync(run.directory, { recursive: true, force: true });
     }
   }
+});
+
+test('Duo speech diagnostics stay out of the default inventory', () => {
+  const [speech] = duoAcceptanceDiagnosticTests;
+  assert.ok(!iosTestInventory('duo').includes(speech));
+  assert.doesNotThrow(() => resolveIosTestProfileSelection('duo', [speech]));
+  assert.throws(() => resolveIosTestProfileSelection('core', [speech]), /Duo acceptance/);
+  assert.throws(
+    () => resolveIosTestProfileSelection('duo', [speech, hostConnectionTest]),
+    /Duo acceptance/,
+  );
 });

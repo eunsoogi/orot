@@ -54,7 +54,21 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         let pressure = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "120 mmHg")).firstMatch
         try voiceOver.assertSpeech(from: pressure, expected: "120", forbiddenTerms: [], phase: "chart-value", testCase: self)
         try voiceOver.prepareForStandardInteraction()
+        verifyDenseChartPages(in: app)
+    }
 
+    /// Preserve the paging and outlier oracle when the host cannot return VoiceOver speech.
+    @MainActor
+    func testDenseChartPagesKeepOutlierReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "chart-foundation"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        verifyDenseChartPages(in: app)
+    }
+
+    @MainActor
+    private func verifyDenseChartPages(in app: XCUIApplication) {
         let scroll = app.scrollViews.firstMatch
         let next = UITestConditions.element(app, "dense-health-chart-next")
         UITestConditions.scrollTo(next, in: scroll)

@@ -1,6 +1,7 @@
 import { iosTestInventory } from './ios-test-inventory.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 import { photoDocumentJourney } from './medical-document-photo-fixture.mjs';
+import { duoAcceptanceDiagnosticTests } from './ios-acceptance-diagnostic-inventory.mjs';
 
 const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
 // These cases are manually selected diagnostics, never part of a default test inventory.
@@ -58,10 +59,14 @@ export function resolveIosTestProfileSelection(
   const hostPreparation = isIosHostPreparation(tests, preparationPhase);
   const isFixtureProfile = fixtureProfiles.includes(profile);
   const profileCandidates = profile === 'duo' ? [...fixtureProfiles, 'duo'] : fixtureProfiles;
+  const explicitDuoDiagnostic = tests.some((test) => duoAcceptanceDiagnosticTests.includes(test));
+  if (explicitDuoDiagnostic && (profile !== 'duo' || tests.length !== 1))
+    throw new Error('Duo acceptance diagnostics require an explicit single journey');
   // Host preparation is an explicit exception; otherwise a partial Duo match must fail closed.
   if (
     profile === 'duo' &&
     !hostPreparation &&
+    !explicitDuoDiagnostic &&
     tests.some((test) => !iosTestInventory('duo').includes(test))
   )
     throw new Error('Duo cases require their dedicated host-orchestrated destination');
