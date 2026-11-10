@@ -34,7 +34,8 @@ export function useTreatmentConversationAction({
     links?: readonly VerifiedTreatmentSource[];
     general?: readonly string[];
   } | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<'submit' | 'other' | null>(null);
+  const [submitFailed, setSubmitFailed] = useState(false);
   const [mode, setMode] = useState<'form' | 'sources' | 'saved'>('form');
   const [source, setSource] = useState<TreatmentSourceChoice | null>(null);
   const [saved, setSaved] = useState<SavedTreatmentChoice | null>(null);
@@ -46,32 +47,40 @@ export function useTreatmentConversationAction({
   const close = () => {
     active.current?.abort();
     active.current = null;
-    setPending(false);
+    setPending(null);
     setResult(null);
     setSource(null);
     setSaved(null);
     setFollowUp(false);
     setPublicTopic(null);
     setMode('form');
+    setSubmitFailed(false);
     setOpen(false);
   };
 
-  const run = async (perform: (signal: AbortSignal) => Promise<void>) => {
+  const run = async (
+    perform: (signal: AbortSignal) => Promise<void>,
+    kind: 'submit' | 'other' = 'other',
+  ) => {
     if (active.current) return;
     const operation = new AbortController();
     active.current = operation;
-    // Unmount the form before processing. No raw input reaches screen state.
-    setPending(true);
+    // The mounted form alone owns raw input during submission and a recoverable failure.
+    setPending(kind);
+    setSubmitFailed(false);
     setResult(null);
     try {
       await perform(operation.signal);
     } catch {
-      if (!operation.signal.aborted)
-        setResult({ answer: t('treatmentSafety.withheld'), verified: false });
+      if (!operation.signal.aborted) {
+        if (kind === 'submit') setSubmitFailed(true);
+        else
+          setResult({ answer: t('treatmentSafety.withheld'), verified: false });
+      }
     } finally {
       if (active.current === operation) {
         active.current = null;
-        setPending(false);
+        setPending(null);
       }
     }
   };
@@ -164,7 +173,7 @@ export function useTreatmentConversationAction({
           links,
           general,
         });
-    });
+    }, 'submit');
 
   const remove = (item: SavedTreatmentChoice) =>
     run(async signal => {
@@ -212,6 +221,7 @@ export function useTreatmentConversationAction({
     setOpen,
     result,
     pending,
+    submitFailed,
     mode,
     setMode,
     source,

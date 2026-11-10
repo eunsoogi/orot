@@ -194,7 +194,7 @@ export function DailyReportRoute({
           <AppButton
             title={t('dailyReport.retry')}
             variant="secondary"
-            onPress={state.refresh}
+            onPress={state.retry}
           />
         </>
       ) : null}

@@ -17,10 +17,22 @@ export function useDailyReportRoute(
   initialOperation?: ReturnType<Feature['start']>,
   ownsOperation = true,
 ) {
-  const [lookup, setLookup] = useState<Lookup | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [revision, setRevision] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [lookupResult, setLookup] = useState<{
+    key: string;
+    value: Lookup;
+  } | null>(null);
+  const [previewResult, setPreview] = useState<{
+    key: string;
+    value: Preview;
+  } | null>(null);
+  const lookup =
+    lookupResult?.key === identity?.key ? (lookupResult?.value ?? null) : null;
+  const preview =
+    previewResult?.key === identity?.key
+      ? (previewResult?.value ?? null)
+      : null;
+  const [lookupRevision, setLookupRevision] = useState(0);
+  const [previewRevision, setPreviewRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
@@ -28,14 +40,27 @@ export function useDailyReportRoute(
   identityRef.current = identity?.key;
   const generationRef = useRef(0);
   const lookupGenerationRef = useRef(0);
-  const refresh = useCallback(() => {
-    // Hide previously saved prose before rechecking the committed local-data state.
+  const previewGenerationRef = useRef(0);
+  const refreshLookup = useCallback(() => {
     lookupGenerationRef.current += 1;
     setLookup(null);
-    setPreview(null);
-    setLoading(true);
-    setRevision(value => value + 1);
+    setLookupRevision(value => value + 1);
   }, []);
+  const refreshPreview = useCallback(() => {
+    previewGenerationRef.current += 1;
+    setPreview(null);
+    setPreviewRevision(value => value + 1);
+  }, []);
+  const refresh = useCallback(() => {
+    // Invalidation must clear both regions and fence pending reads before the next effect.
+    refreshLookup();
+    refreshPreview();
+  }, [refreshLookup, refreshPreview]);
+  const retry = () => {
+    // A transient failure in one region does not invalidate a valid sibling result.
+    if (lookup?.status === 'error') refreshLookup();
+    if (preview?.status === 'error') refreshPreview();
+  };
   const identityKey = identity?.key;
   useEffect(() => {
     if (!identityKey) return;
@@ -97,39 +122,41 @@ export function useDailyReportRoute(
     };
   }, [feature, identity, initialOperation, ownsOperation, refresh]);
   useEffect(() => {
-    let current = true;
-    const lookupGeneration = ++lookupGenerationRef.current;
-    const controller = new AbortController();
+    const generation = ++lookupGenerationRef.current;
     setLookup(null);
-    setPreview(null);
-    setLoading(true);
-    if (!identity) {
-      setLoading(false);
-      return () => controller.abort();
-    }
-    Promise.all([
-      feature.lookup(identity),
-      feature.preview(identity, controller.signal),
-    ]).then(
-      ([saved, data]) => {
-        if (current && lookupGeneration === lookupGenerationRef.current) {
-          setLookup(saved);
-          setPreview(data);
-          setLoading(false);
-        }
-      },
-      () => {
-        if (current && lookupGeneration === lookupGenerationRef.current) {
-          setLookup({ status: 'error' });
-          setLoading(false);
-        }
-      },
-    );
+    if (!identity) return;
+    let current = true;
+    const settle = (value: Lookup) => {
+      if (
+        current &&
+        identityRef.current === identity.key &&
+        generation === lookupGenerationRef.current
+      )
+        setLookup({ key: identity.key, value });
+    };
+    feature.lookup(identity).then(settle, () => settle({ status: 'error' }));
     return () => {
       current = false;
-      controller.abort();
     };
-  }, [feature, identity, revision]);
+  }, [feature, identity, lookupRevision]);
+  useEffect(() => {
+    const generation = ++previewGenerationRef.current;
+    setPreview(null);
+    if (!identity) return;
+    const controller = new AbortController();
+    const settle = (value: Preview) => {
+      if (
+        !controller.signal.aborted &&
+        identityRef.current === identity.key &&
+        generation === previewGenerationRef.current
+      )
+        setPreview({ key: identity.key, value });
+    };
+    feature
+      .preview(identity, controller.signal)
+      .then(settle, () => settle({ status: 'error' }));
+    return () => controller.abort();
+  }, [feature, identity, previewRevision]);
   const generate = () => {
     if (!identity || !lookup || busy) return;
     const ownerKey = identity.key;
@@ -172,11 +199,12 @@ export function useDailyReportRoute(
   return {
     lookup,
     preview,
-    loading,
+    loading: Boolean(identity && (!lookup || !preview)),
     busy,
     failure,
     generate,
     refresh,
+    retry,
     cancel: () => cancelRef.current?.(),
   };
 }

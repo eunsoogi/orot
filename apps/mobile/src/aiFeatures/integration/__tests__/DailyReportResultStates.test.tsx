@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { createDailyReportIdentity } from '@orot/domain';
+import { t } from '../../../i18n';
 import { DailyReportRoute } from '../DailyReportRoute';
 import type { createDailyReportFeature } from '../dailyReportFeature';
 
@@ -9,7 +10,10 @@ type Identity = ReturnType<typeof createDailyReportIdentity>;
 function fixture(lookup: (identity: Identity) => unknown) {
   return {
     lookup: jest.fn(async (identity: Identity) => lookup(identity)),
-    preview: jest.fn(async () => ({ status: 'not_today' })),
+    preview: jest.fn<
+      ReturnType<Feature['preview']>,
+      Parameters<Feature['preview']>
+    >(async () => ({ status: 'not_today' })),
     start: jest.fn(() => ({
       status: 'started',
       cancel: jest.fn(),
@@ -143,4 +147,73 @@ test('a source revision change after regeneration hides the prior saved report',
     kind: 'revise',
     expectedRunId: 'previous',
   });
+});
+
+test('saved content appears during preview loading and survives retrying a failed preview', async () => {
+  const feature = fixture(identity => ({
+    status: 'saved',
+    runId: 'previous',
+    revision: 3,
+    context: { identity, generationCutoff: '2026-11-09T03:00:00Z' },
+    report: {
+      generatedAt: '2026-11-09T03:01:00Z',
+      observations: [{ text: '저장된 합성 기록' }],
+      supportedContext: [],
+      followUpQuestions: [],
+      coverage: [],
+    },
+  }));
+  let rejectPreview!: (error: Error) => void;
+  feature.preview.mockImplementationOnce(
+    () =>
+      new Promise((_, reject) => {
+        rejectPreview = reject;
+      }),
+  );
+  await render(
+    <DailyReportRoute
+      feature={feature as unknown as Feature}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={jest.fn()}
+    />,
+  );
+  expect(screen.getByText('저장된 합성 기록')).toBeTruthy();
+  await act(async () => rejectPreview(new Error('Synthetic preview failure')));
+  await screen.findByRole('alert');
+  await fireEvent.press(screen.getByRole('button', { name: '다시 확인' }));
+  expect(screen.getByText('저장된 합성 기록')).toBeTruthy();
+  expect(feature.lookup).toHaveBeenCalledTimes(1);
+  expect(feature.preview).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('the current preview appears while the saved lookup is pending', async () => {
+  let finishLookup!: (value: { status: 'missing' }) => void;
+  const feature = fixture(
+    () =>
+      new Promise(resolve => {
+        finishLookup = resolve;
+      }),
+  );
+  feature.preview.mockResolvedValueOnce({
+    status: 'ready',
+    cutoff: '2026-11-09T03:00:00Z',
+    count: 0,
+    partial: false,
+    coverage: [],
+    latestSourceTime: null,
+  });
+  await render(
+    <DailyReportRoute
+      feature={feature as unknown as Feature}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={jest.fn()}
+    />,
+  );
+  expect(screen.getByText(t('dailyReport.empty'))).toBeTruthy();
+  expect(screen.getByText(t('dailyReport.preparing'))).toBeTruthy();
+  await act(async () => finishLookup({ status: 'missing' }));
+  expect(screen.queryByText(t('dailyReport.preparing'))).toBeNull();
 });
