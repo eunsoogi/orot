@@ -124,7 +124,9 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(edit.isHittable)
         edit.tap()
         let restoredInput = node(app, "next-visit-question-text-0")
-        XCTAssertTrue(FormUITestConditions.replace(restoredInput, with: "수정한 합성 질문을 확인할까요?", in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(FormUITestConditions.replace(restoredInput, with: "수정한 합성 질문을 확인할까요?", in: app, scrollID: "next-visit-questions-scroll", observeInput: observation.map { observer in
+            { phase in observer.captureUIKit(phase, app: app, testCase: self) }
+        }))
         let resave = node(app, "next-visit-review-save")
         _ = try XCTUnwrap(FormUITestConditions.reveal(resave, in: app, scrollID: "next-visit-questions-scroll", avoiding: restoredInput))
         XCTAssertTrue(resave.isHittable)

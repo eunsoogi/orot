@@ -157,6 +157,13 @@ export async function restoreSavedVisitQuestions(input: {
     ))
   )
     throw new SavedVisitQuestionsReadError('changed_generated_source');
+  // Generated-source reads can overlap a list mutation; take the publication snapshot last.
+  if (generatedLinks.length)
+    await assertSavedVisitQuestionsCurrent(
+      input.records,
+      appointmentId,
+      ordered,
+    );
   const hasGeneratedOnly = questions.some(
     question =>
       question.citations.length === 0 &&
