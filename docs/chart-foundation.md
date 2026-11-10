@@ -26,7 +26,7 @@ Simulator의 합성 자료로 VoiceOver가 측정값과 출처를 발화하고 �
 
 깨끗한 iOS 테스트 빌드에서는 SVG 15.16.1의 경고 60개가 저장소의 경고 검사에 걸렸습니다. 같은 앱에서 15.15.4를 비교했을 때도 경고 60개가 발생했고, 해당 버전의 Pod 최소 배포 대상 오류로 빌드가 실패했습니다. 경고를 무시하거나 검사 기준을 완화하지 않았습니다. Gifted Charts도 SVG peer를 요구하므로 차트 라이브러리만 바꿔서는 이 문제를 제거하지 못합니다. Victory와 Skia는 별도의 네이티브 의존성과 설정 및 재검증이 필요합니다.
 
-Victory 비교에는 Victory Native 43.0.1, Skia 2.15.4, Reanimated 4.7.1, Worklets 0.13.1, Gesture Handler 3.5.0을 사용했습니다. 이 패키지들은 각각 MIT 라이선스이며, 선언된 peer 범위에서 Reanimated와 Worklets는 React Native 0.87을 포함합니다. [공식 설치 문서](https://nearform.com/open-source/victory-native/docs/getting-started)는 Skia 2.x와 Worklets Babel 플러그인을 요구합니다. 잠금 파일만 계산한 비교에서는 기존 파일보다 377줄이 추가됐고 Skia는 플랫폼별 네이티브 패키지도 가져옵니다.
+Victory 비교에는 Victory Native 43.0.1, Skia 2.15.4, Reanimated 4.7.1, Worklets 0.13.1, Gesture Handler 3.5.0을 사용했습니다. 이 패키지들은 각각 MIT 라이선스이며, 선언된 peer 범위에서 Reanimated와 Worklets는 React Native 0.87을 포함합니다. [공식 설치 문서](https://nearform.com/open-source/victory-native/docs/getting-started)는 Skia 2.x와 Worklets Babel 플러그인을 요구합니다. 기존 의존성을 유지한 채 대안을 추가한 잠금 파일 비교에서는 377줄이 추가됐고 Skia는 플랫폼별 네이티브 패키지도 가져옵니다.
 
 기존 SVG와 Chart Kit을 제거하고 합성 선 차트만 번들에 넣은 깨끗한 iOS Simulator 빌드에서 Xcode는 성공했지만 경고 검사에 200건이 걸렸습니다. Skia 헤더의 문서 경고, Gesture Handler의 미사용 함수, Reanimated의 정수 변환 등입니다. 경고 검사 통과 전이므로 Simulator 화면을 확인하지 않았으며, 이는 차트 계약이나 실제 접근성을 검증한 결과가 아닙니다. 대안 구현에서는 공용 데이터 계약, 서식, 페이지 정책과 값 목록을 재사용할 수 있지만 렌더러와 네이티브 검증은 교체해야 합니다.
 
