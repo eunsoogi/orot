@@ -195,9 +195,16 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       sessionId: string,
       cursor?: { readonly createdAt: string; readonly id: string },
       limit = 50,
+      kind: 'conversation' | 'treatment' = 'conversation',
     ) {
       await ensure();
-      return listConversationArtifactPage(database, sessionId, cursor, limit);
+      return listConversationArtifactPage(
+        database,
+        sessionId,
+        cursor,
+        limit,
+        kind,
+      );
     },
   };
 }

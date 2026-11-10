@@ -1,7 +1,7 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { SafetyPolicyAction } from '@orot/domain';
 import { containsDefinitiveClinicalClaim } from '../diseaseHypotheses/clinicalClaimGuard';
-import type { TreatmentExplanationRequest } from './interfaces';
+import type { TreatmentEvidenceRequest } from './interfaces';
 import { verifyTreatmentClaim } from './safety';
 import type { TreatmentClaim, TreatmentClaimVerifier } from './safety';
 
@@ -69,7 +69,7 @@ function parseClaims(value: unknown): TreatmentClaim[] | null {
 /** The caller must buffer the entire generated envelope and never project its prefixes. */
 export async function evaluateTreatmentOutput(
   output: unknown,
-  request: TreatmentExplanationRequest,
+  request: TreatmentEvidenceRequest,
   verifier: TreatmentClaimVerifier | undefined,
   signal: AbortSignal,
   policyActions: readonly SafetyPolicyAction[],

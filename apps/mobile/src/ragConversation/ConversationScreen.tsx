@@ -32,6 +32,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { t } from '../i18n';
+import { TreatmentConversationAction } from '../treatmentContext/TreatmentConversationAction';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -65,7 +66,8 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const selectedReport = conversationEntryForSession(store, id)?.dailyReport;
+  const selectedReport =
+    session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
@@ -136,6 +138,14 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      {!selectedReport ? (
+        <TreatmentConversationAction
+          key={id}
+          sessionId={id}
+          ownership={store.treatment}
+          onOpenSource={onOpenSource}
+        />
+      ) : null}
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={onOpenDailyReport}

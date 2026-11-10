@@ -109,6 +109,18 @@ export function DailyReportRoute({
     isToday && chosenToday && state.lookup && state.lookup.status !== 'error',
   );
   const saved = state.lookup?.status === 'saved' ? state.lookup : null;
+  const lookup = state.lookup;
+  // An invalidated or unreadable report has a known state distinct from a missing day.
+  const lookupNotice =
+    lookup?.status === 'stale'
+      ? 'sourceStatus' in lookup && lookup.sourceStatus === 'deleted'
+        ? 'dailyReport.deletedSource'
+        : 'dailyReport.stale'
+      : lookup?.status === 'deleted'
+        ? 'dailyReport.deleted'
+        : !isToday && lookup?.status === 'missing'
+          ? 'dailyReport.missingOld'
+          : null;
   return (
     <ScrollView
       contentContainerStyle={[styles.content, navigationInset]}
@@ -173,12 +185,7 @@ export function DailyReportRoute({
           onStale={state.refresh}
         />
       ) : null}
-      {state.lookup?.status === 'stale' ? (
-        <AppText>{t('dailyReport.stale')}</AppText>
-      ) : null}
-      {!isToday && state.lookup && state.lookup.status !== 'saved' ? (
-        <AppText>{t('dailyReport.missingOld')}</AppText>
-      ) : null}
+      {lookupNotice ? <AppText>{t(lookupNotice)}</AppText> : null}
       {state.lookup?.status === 'error' || state.preview?.status === 'error' ? (
         <>
           <AppText accessibilityRole="alert">

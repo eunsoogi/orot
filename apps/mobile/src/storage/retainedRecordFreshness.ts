@@ -20,6 +20,7 @@ export async function assertRetainedRecordsCurrent(
       if (!current || fingerprint(current) !== record.revision)
         throw new RetainedSourceInvalidError(
           'A cited source changed before saving.',
+          current ? 'changed' : 'deleted',
         );
       continue;
     }
@@ -36,6 +37,7 @@ export async function assertRetainedRecordsCurrent(
     if (typeof serialized !== 'string')
       throw new RetainedSourceInvalidError(
         'A cited source was removed before saving.',
+        'deleted',
       );
     await assertSummarySourceAvailable(tx, record.kind, record.id, serialized);
     const parsed = JSON.parse(serialized);
@@ -46,12 +48,13 @@ export async function assertRetainedRecordsCurrent(
     )
       throw new RetainedSourceInvalidError(
         'A cited source changed before saving.',
+        'changed',
       );
     const stale = await tx.execute(
       'SELECT artifact_id FROM transcript_artifact_staleness WHERE artifact_kind = ? AND artifact_id = ? LIMIT 1',
       [record.kind, record.id],
     );
     if (stale.rows.length)
-      throw new RetainedSourceInvalidError('A cited source is stale.');
+      throw new RetainedSourceInvalidError('A cited source is stale.', 'stale');
   }
 }

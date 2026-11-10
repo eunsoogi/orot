@@ -68,6 +68,9 @@ export function registerCapabilityTestEntry(
     case 'summary-visual':
       require('./summaryVisualProbeEntry');
       break;
+    case 'daily-report-visual':
+      require('./dailyReportVisualProbeEntry');
+      break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');
       break;

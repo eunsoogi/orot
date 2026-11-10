@@ -15,6 +15,7 @@ import {
 } from './conversationArtifactCodec';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
 import { assertConversationSummaryParent } from './conversationSummaryParent';
+import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from '../treatmentContext/attribution';
 
@@ -26,6 +27,19 @@ export async function assertConversationArtifactCurrent(
   requireGeneration: boolean,
 ) {
   const history = createManualHistoryRepository(database);
+  // New report-bound turns must still belong to the active revision at commit.
+  // A previously committed turn can be reopened using its original record lineage.
+  if (requireGeneration && artifact.dailyReport) {
+    const target = artifact.dailyReport;
+    const active = await validateDailyReportArtifact(tx, target.runId, history);
+    if (
+      active?.context.identity.key !== target.identity.key ||
+      active.revision !== target.revision
+    )
+      throw new RetainedSourceInvalidError(
+        'The selected report changed before saving.',
+      );
+  }
   const path = new Set<string>();
   let visited = 0;
   const visit = async (current: ConversationArtifact): Promise<void> => {

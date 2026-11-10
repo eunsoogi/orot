@@ -14,11 +14,17 @@ export function entryIntentSender(
 ): ConversationSender {
   return async (question, history, signal, observer) => {
     const selected = conversationEntryForSession(store, id);
+    const restored = store.getSnapshot().sessions.find(item => item.id === id);
+    // Restored targets are revalidated by the same guard used for the original entry.
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
-    const context =
-      store.getSnapshot().sessions.find(item => item.id === id)?.entryIntent ===
-        'possibilities' &&
-      (!selected || selected.intent === 'conversation')
+    const context = restored?.dailyReport
+      ? {
+          intent: restored.entryIntent ?? ('conversation' as const),
+          entryKey: 'restored',
+          dailyReport: restored.dailyReport,
+        }
+      : restored?.entryIntent === 'possibilities' &&
+          (!selected || selected.intent === 'conversation')
         ? { intent: 'possibilities' as const, entryKey: 'restored' }
         : selected;
     let committed = false;

@@ -7,7 +7,6 @@ import {
 import { conversationCompletedAnswer } from './conversationCompletedAnswer';
 import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
-import type { createConversationSessionRetention } from './conversationSessionRetention';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import {
   retainPartial as retainFailedPartial,
@@ -16,6 +15,7 @@ import {
 import type {
   ConversationSender,
   ConversationSession,
+  ConversationSessionOptions,
   PendingTurn,
 } from './conversationSessionTypes';
 
@@ -24,7 +24,7 @@ export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
   conversationScope: (id: number) => string,
-  retention?: ReturnType<typeof createConversationSessionRetention>,
+  retention?: ConversationSessionOptions['retention'],
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);

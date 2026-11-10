@@ -10,6 +10,7 @@ import { bindLiveConversationToolSources } from './bindLiveConversationToolSourc
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
+import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -36,6 +37,7 @@ export function createConversationSessionOptions(input: {
     return storage;
   };
   return {
+    resolveTreatmentSource: createTreatmentSourceResolver(input),
     retention: createConversationSessionRetention({
       openStorage,
       createId: operationRunId,
@@ -133,6 +135,7 @@ export function createConversationSessionOptions(input: {
             ),
             completion: turn.status,
             ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
+            ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
             ...(turn.healthSummary
               ? {
                   healthSummary:

@@ -35,6 +35,7 @@ export interface TreatmentPublicEvidence {
 
 export interface TreatmentContext {
   readonly version: 1;
+  readonly publicTopic?: 'hypertension';
   readonly conditions: readonly TreatmentCondition[];
   /** Source documents are distinct from AI interpretation; their contents still require review. */
   readonly clinicianPlans:

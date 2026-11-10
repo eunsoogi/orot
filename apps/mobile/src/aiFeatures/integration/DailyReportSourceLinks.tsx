@@ -55,8 +55,9 @@ export function DailyReportSourceLinks({
           result.status === 'current' && selected !== undefined
             ? result.sources[selected]
             : undefined;
-        if (result.status === 'stale') {
+        if (result.status === 'stale' || result.status === 'deleted') {
           setSources(null);
+          // The route must hide saved text when its backing evidence is no longer valid.
           onStale();
         } else if (
           result.status !== 'current' ||

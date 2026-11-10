@@ -1,7 +1,34 @@
 import { t } from '../../i18n';
+import { SafetyPolicyEngine } from '@orot/domain';
 import { treatmentSafetyGuidance } from '../treatmentSafetyGuidance';
 import { evaluateTreatmentOutput } from '../treatmentSafetyBoundary';
 import type { TreatmentExplanationRequest } from '../interfaces';
+
+test('retains the existing repeat measurement action for a current severe reading', () => {
+  const decision = new SafetyPolicyEngine().evaluate({
+    population: 'adult_not_pregnant',
+    readingContext: 'current_measurement',
+    readings: [
+      {
+        systolicMmHg: 190,
+        diastolicMmHg: 120,
+        unit: 'mmHg',
+        measuredAt: '2026-10-05T00:00:00.000Z',
+        source: 'synthetic',
+      },
+    ],
+    symptomAssessment: { status: 'no_new_or_concerning_symptoms' },
+  });
+  expect(decision.requiredActions).toEqual([
+    'recheck_measurement_after_60_seconds',
+  ]);
+  expect(
+    treatmentSafetyGuidance({
+      status: 'policy',
+      actions: decision.requiredActions,
+    }),
+  ).toEqual(['treatmentSafety.repeatReading']);
+});
 
 test('offers a bounded clinician discussion when generated claims are withheld', () => {
   const keys = treatmentSafetyGuidance({

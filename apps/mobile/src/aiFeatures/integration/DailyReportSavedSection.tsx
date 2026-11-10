@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
-import { t } from '../../i18n';
+import { formatDateTime, t } from '../../i18n';
 import { DailyReportCoverage } from './DailyReportCoverage';
 import { DailyReportSourceLinks } from './DailyReportSourceLinks';
 import type { createDailyReportFeature } from './dailyReportFeature';
@@ -41,14 +41,23 @@ export function DailyReportSavedSection({
       generation.current += 1;
     };
   }, [saved.runId, saved.revision]);
+  const { timeZone } = saved.context.identity;
   return (
     <View style={styles.group}>
       <AppText>
-        {t('dailyReport.generatedAt', { time: saved.report.generatedAt })}
+        {t('dailyReport.savedRevision', { revision: saved.revision })}
+      </AppText>
+      <AppText>
+        {t('dailyReport.generatedAt', {
+          time: formatDateTime(new Date(saved.report.generatedAt), timeZone),
+        })}
       </AppText>
       <AppText>
         {t('dailyReport.reportCutoff', {
-          time: saved.context.generationCutoff,
+          time: formatDateTime(
+            new Date(saved.context.generationCutoff),
+            timeZone,
+          ),
         })}
       </AppText>
       <AppText accessibilityRole="header">
@@ -57,6 +66,16 @@ export function DailyReportSavedSection({
       {saved.report.observations.map((item, index) => (
         <AppText key={index}>{item.text}</AppText>
       ))}
+      {saved.report.supportedContext.length > 0 ? (
+        <>
+          <AppText accessibilityRole="header">
+            {t('dailyReport.supportedContext')}
+          </AppText>
+          {saved.report.supportedContext.map((item, index) => (
+            <AppText key={index}>{item.text}</AppText>
+          ))}
+        </>
+      ) : null}
       <DailyReportCoverage coverage={saved.report.coverage} />
       {onOpenSource ? (
         <DailyReportSourceLinks
@@ -69,6 +88,16 @@ export function DailyReportSavedSection({
         />
       ) : null}
       <AppText>{t('dailyReport.reportCaution')}</AppText>
+      {saved.report.followUpQuestions.length > 0 ? (
+        <>
+          <AppText accessibilityRole="header">
+            {t('dailyReport.suggestedQuestions')}
+          </AppText>
+          {saved.report.followUpQuestions.map((question, index) => (
+            <AppText key={index}>{question}</AppText>
+          ))}
+        </>
+      ) : null}
       <AppText>{t('dailyReport.chatNote')}</AppText>
       <AppButton
         title={t('dailyReport.chat')}

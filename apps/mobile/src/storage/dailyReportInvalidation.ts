@@ -10,7 +10,7 @@ export async function dailyReportSourcesChanged(
   lineage: DailyReportLineage[],
   history: ManualHistoryRepository,
 ) {
-  if (invalid) return true;
+  if (invalid) return 'stale' as const;
   try {
     await assertRetainedRecordsCurrent(
       tx,
@@ -21,10 +21,12 @@ export async function dailyReportSourcesChanged(
       })),
       history,
     );
-    return false;
+    return 'current' as const;
   } catch (error) {
     if (!(error instanceof RetainedSourceInvalidError)) throw error;
-    return true;
+    return error.reason === 'deleted'
+      ? ('deleted' as const)
+      : ('stale' as const);
   }
 }
 

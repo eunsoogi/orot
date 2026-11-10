@@ -17,6 +17,7 @@ export const capabilityScenarios = [
   'conversation-visual',
   'conversation-failure-visual',
   'summary-visual',
+  'daily-report-visual',
   'local-e5',
   'local-query',
   'provider-selection',

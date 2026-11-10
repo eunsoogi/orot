@@ -122,6 +122,8 @@ export const ragConversationKo = {
   'ragConversation.history.previewEmpty': '이 대화에는 아직 메시지가 없어요.',
   'ragConversation.history.retryRestore': '대화 다시 불러오기',
   'ragConversation.history.restoreFailed': '저장된 대화를 불러오지 못했어요.',
+  'ragConversation.conversation.continuationAvailable':
+    '더 이전 결과를 계속 찾아볼 수 있어요.',
   'ragConversation.conversation.continuationNoMatch':
     '아직 일치하는 결과를 찾지 못했어요. 더 이전 결과를 계속 찾아볼 수 있어요.',
   'ragConversation.conversation.historicalArtifactNotice':

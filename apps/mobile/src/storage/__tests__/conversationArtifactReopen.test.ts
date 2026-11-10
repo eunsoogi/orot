@@ -33,6 +33,7 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
       ],
       priorUserReports: ['earlier report'],
       sources: [],
+      citations: [],
     };
     await storage.append(value);
     await storage.append({ ...value, id: 'turn-2' });

@@ -13,6 +13,8 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
     report: {
       generatedAt: '2026-11-09T03:01:00Z',
       observations: [],
+      supportedContext: [{ text: '합성 근거로 확인한 맥락' }],
+      followUpQuestions: ['합성 질문을 더 확인할까요?'],
       coverage: [],
     },
   } as unknown as Extract<
@@ -37,6 +39,13 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
       onStale={jest.fn()}
     />,
   );
+  expect(screen.getByText('저장된 버전 1')).toBeTruthy();
+  expect(
+    screen.getByRole('header', { name: '기록으로 확인한 맥락' }),
+  ).toBeTruthy();
+  expect(screen.getByText('합성 근거로 확인한 맥락')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'AI가 제안한 질문' })).toBeTruthy();
+  expect(screen.getByText('합성 질문을 더 확인할까요?')).toBeTruthy();
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
   await view.rerender(
     <DailyReportSavedSection
@@ -46,6 +55,7 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
       onStale={jest.fn()}
     />,
   );
+  expect(screen.getByText('저장된 버전 2')).toBeTruthy();
   resolve(saved);
   await Promise.resolve();
   expect(onChat).not.toHaveBeenCalled();
