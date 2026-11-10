@@ -19,7 +19,7 @@ export function entryIntentSender(
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
     const context = restored?.dailyReport
       ? {
-          intent: 'conversation' as const,
+          intent: restored.entryIntent ?? ('conversation' as const),
           entryKey: 'restored',
           dailyReport: restored.dailyReport,
         }

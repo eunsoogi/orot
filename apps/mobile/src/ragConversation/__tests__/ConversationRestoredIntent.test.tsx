@@ -67,68 +67,78 @@ test('continues a restored possibilities conversation after a plain route entry'
   );
 });
 
-test('continues a restored report conversation with its original revision', async () => {
-  const report = {
-    identity: {
-      kind: 'daily_report' as const,
-      localDate: '2026-11-10',
-      timeZone: 'Asia/Seoul',
-      key: 'daily-report:2026-11-10@Asia/Seoul',
-    },
-    runId: 'run',
-    revision: 1,
-  };
-  let store!: ConversationSessions;
-  const options = {
-    retention: {
-      attachExisting: async () => {},
-      activeIdentity: () => 'saved',
-      activeLease: () => null,
-      beginTurn: async () => undefined,
-      invalidate: () => {},
-    } as never,
-    restoreSession: async () => [
-      {
-        question: '보고서',
-        answer: '답변',
-        citations: [],
-        dailyReport: report,
+test.each([false, true])(
+  'continues a restored report conversation (possibilities: %s)',
+  async possibilities => {
+    const report = {
+      identity: {
+        kind: 'daily_report' as const,
+        localDate: '2026-11-10',
+        timeZone: 'Asia/Seoul',
+        key: 'daily-report:2026-11-10@Asia/Seoul',
       },
-    ],
-  };
-  const send = jest.fn(async () => ({
-    status: 'failure' as const,
-    kind: 'retrieval_failed' as const,
-  }));
-  function Capture() {
-    store = useConversationSessions();
-    return (
-      <ConversationScreen
-        entryContext={{ intent: 'conversation', entryKey: 'plain' }}
-        onBack={jest.fn()}
-        onOpenSource={jest.fn()}
-        onSend={send}
-      />
+      runId: 'run',
+      revision: 1,
+    };
+    let store!: ConversationSessions;
+    const options = {
+      retention: {
+        attachExisting: async () => {},
+        activeIdentity: () => 'saved',
+        activeLease: () => null,
+        beginTurn: async () => undefined,
+        invalidate: () => {},
+      } as never,
+      restoreSession: async () => [
+        {
+          question: '보고서',
+          answer: '답변',
+          citations: [],
+          dailyReport: report,
+          ...(possibilities ? { entryIntent: 'possibilities' as const } : {}),
+        },
+      ],
+    };
+    const send = jest.fn(async () => ({
+      status: 'failure' as const,
+      kind: 'retrieval_failed' as const,
+    }));
+    function Capture() {
+      store = useConversationSessions();
+      return (
+        <ConversationScreen
+          entryContext={{ intent: 'conversation', entryKey: 'plain' }}
+          onBack={jest.fn()}
+          onOpenSource={jest.fn()}
+          onSend={send}
+        />
+      );
+    }
+    await render(
+      <ConversationSessionsProvider options={options}>
+        <Capture />
+      </ConversationSessionsProvider>,
     );
-  }
-  await render(
-    <ConversationSessionsProvider options={options}>
-      <Capture />
-    </ConversationSessionsProvider>,
-  );
-  await act(async () => {
-    await store.attachExisting('saved', 0, '2026-10-05T00:00:00.000Z');
-  });
-  await fireEvent.changeText(
-    screen.getByTestId('rag-conversation-input'),
-    '이어서',
-  );
-  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-  expect(send).toHaveBeenCalledWith(
-    '이어서',
-    expect.any(Array),
-    expect.any(AbortSignal),
-    expect.any(Object),
-    expect.objectContaining({ dailyReport: report }),
-  );
-});
+    await act(async () => {
+      await store.attachExisting('saved', 0, '2026-10-05T00:00:00.000Z');
+    });
+    expect(
+      screen.getByText(/선택한 보고서: 2026-11-10 · Asia\/Seoul/),
+    ).toBeTruthy();
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '이어서',
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    expect(send).toHaveBeenCalledWith(
+      '이어서',
+      expect.any(Array),
+      expect.any(AbortSignal),
+      expect.any(Object),
+      expect.objectContaining({
+        dailyReport: report,
+        intent: possibilities ? 'possibilities' : 'conversation',
+      }),
+    );
+  },
+);

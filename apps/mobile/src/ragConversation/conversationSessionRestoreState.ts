@@ -39,10 +39,13 @@ export function createConversationSessionRestoreState(input: {
       const reports = turns.flatMap(turn =>
         turn.dailyReport ? [turn.dailyReport] : [],
       );
-      // A session must never silently switch to a different report revision.
+      // Canonical identity keys and revision identify a report regardless of JSON key order.
       if (
         reports.some(
-          report => JSON.stringify(report) !== JSON.stringify(reports[0]),
+          report =>
+            report.identity.key !== reports[0]!.identity.key ||
+            report.runId !== reports[0]!.runId ||
+            report.revision !== reports[0]!.revision,
         )
       )
         throw new Error('Conflicting report targets.');

@@ -65,7 +65,8 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const selectedReport = conversationEntryForSession(store, id)?.dailyReport;
+  const selectedReport =
+    session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
