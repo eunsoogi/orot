@@ -1,6 +1,7 @@
 import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
 import { projectHealthContext } from '../../healthEvidence/healthContext/projection';
 import type { HealthContextScope } from '../../healthEvidence/healthContext/scope';
+import { t } from '../../i18n';
 import type { EvidenceSourceDetailSection } from './evidenceSourcePresentation';
 import type { EvidenceSourceDocument } from './evidenceSourceDocument';
 
@@ -54,8 +55,8 @@ export function presentHealthContext(
         ...(filterRedacted
           ? [
               {
-                label: '검색 조건',
-                value: '개인정보 보호를 위해 보관하지 않았어요.',
+                label: t('aiFeatures.healthContext.searchFilter'),
+                value: t('aiFeatures.healthContext.searchFilterRedacted'),
               },
             ]
           : []),
