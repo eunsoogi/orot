@@ -1,7 +1,24 @@
 import {
   createDailyReminderDelivery,
+  parseDailyReminderEntry,
   registerDailyReminderConsumer,
 } from '../dailyReminderDelivery';
+
+test('preserves an old delivery instant while exposing timezone-dependent dates as observations', () => {
+  const payload = { kind: 'daily_report', deliveryTimestamp: '1700000000' };
+  const seoul = parseDailyReminderEntry(payload, 'Asia/Seoul');
+  const newYork = parseDailyReminderEntry(payload, 'America/New_York');
+  expect(seoul).toMatchObject({
+    dateInObservedTimeZone: '2023-11-15',
+    deliveryTimeZone: 'unknown',
+  });
+  expect(newYork).toMatchObject({
+    dateInObservedTimeZone: '2023-11-14',
+    deliveryTimeZone: 'unknown',
+  });
+  expect(seoul?.entryKey).toBe(newYork?.entryKey);
+  expect(seoul?.deliveredAt).toBe('2023-11-14T22:13:20.000Z');
+});
 
 test('defers a tap during navigation and delivers it once with an uncertain delivery timezone', async () => {
   const entry = { kind: 'daily_report', deliveryTimestamp: '1700000000' };

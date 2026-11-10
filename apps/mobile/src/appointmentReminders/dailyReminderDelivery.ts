@@ -30,6 +30,7 @@ export function registerDailyReminderConsumer(
 
 export function parseDailyReminderEntry(
   value: unknown,
+  observedTimeZone?: string,
 ): DailyReminderEntry | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as Record<string, unknown>;
@@ -43,7 +44,8 @@ export function parseDailyReminderEntry(
   if (!Number.isFinite(instant.getTime()) || instant.getTime() > Date.now())
     return null;
   try {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const zone =
+      observedTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: zone,
       year: 'numeric',
