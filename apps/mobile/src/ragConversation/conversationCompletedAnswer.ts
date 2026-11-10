@@ -80,7 +80,7 @@ export function conversationCompletedAnswer(input: {
                   })
                 : undefined,
             }
-          : {}),
+          : { healthSources: [] }),
       },
     ],
   });

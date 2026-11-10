@@ -33,7 +33,12 @@ test.each([false, true])(
       }));
       const sender = jest.fn(async (_q, _history, _signal, observer) => {
         observer.onRetentionFailure(prepare);
-        return { status: 'answer' as const, answer: 'answer', citations: [] };
+        return {
+          status: 'answer' as const,
+          answer: 'answer',
+          citations: [],
+          healthSources: deleteUnrelated ? [] : (true as const),
+        };
       });
       store.setDraft(1, 'question');
       await store.send(1, sender);

@@ -55,6 +55,17 @@ function matchesDeletion(
   );
 }
 
+function displayedHealthSources(value: {
+  readonly healthSources?: HealthSourceDependencies;
+  readonly citations?: readonly EvidenceReference[];
+}): HealthSourceDependencies {
+  // Only an explicit empty dependency list establishes independence without citations.
+  return (
+    value.healthSources ??
+    (value.citations?.length ? healthSourceDependencies(value.citations) : true)
+  );
+}
+
 export function answerUsesDeletedHealthEvidence(
   answer: Extract<RagConversationOutcome, { status: 'answer' }>,
   deletedIds?: ReadonlySet<string>,
@@ -62,10 +73,7 @@ export function answerUsesDeletedHealthEvidence(
   return Boolean(
     answer.healthSummary ||
     answer.visitQuestions ||
-    matchesDeletion(
-      answer.healthSources ?? healthSourceDependencies(answer.citations),
-      deletedIds,
-    ),
+    matchesDeletion(displayedHealthSources(answer), deletedIds),
   );
 }
 
@@ -83,11 +91,7 @@ export function filterHealthDerivedMessages(
       message.incomplete ||
       message.healthSummary ||
       message.visitQuestions ||
-      matchesDeletion(
-        message.healthSources ??
-          healthSourceDependencies(message.citations ?? []),
-        deletedIds,
-      );
+      matchesDeletion(displayedHealthSources(message), deletedIds);
     if (!affected)
       return [
         tools?.length === message.toolEvents?.length

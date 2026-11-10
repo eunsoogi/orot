@@ -69,29 +69,38 @@ function pendingAnswer() {
   };
 }
 
-test('preserves a pending unrelated request, its prompt, and a newer user draft', async () => {
-  const { store, id, session } = await mountSession();
-  const pending = pendingAnswer();
-  await act(async () => {
-    store.setDraft(id, 'unrelated prompt');
-    store.send(id, pending.send);
-    store.setDraft(id, 'newer draft');
-  });
-  await act(async () => notifyLocalSourceDeleted('healthkit'));
-  expect(pending.signal?.aborted).toBe(false);
-  expect(session()).toMatchObject({ busy: true, draft: 'newer draft' });
-  await act(async () =>
-    pending.finish({
-      status: 'answer',
-      answer: 'unrelated answer',
-      citations: [],
-    }),
-  );
-  expect(session().messages.map(item => item.content)).toEqual([
-    'unrelated prompt',
-    'unrelated answer',
-  ]);
-});
+test.each([
+  ['known independent', [] as const],
+  ['missing source metadata', undefined],
+] as const)(
+  'preserves a pending request and drafts, then checks its %s answer',
+  async (_scope, healthSources) => {
+    const { store, id, session } = await mountSession();
+    const pending = pendingAnswer();
+    await act(async () => {
+      store.setDraft(id, 'unrelated prompt');
+      store.send(id, pending.send);
+      store.setDraft(id, 'newer draft');
+    });
+    await act(async () => notifyLocalSourceDeleted('healthkit'));
+    expect(pending.signal?.aborted).toBe(false);
+    expect(session()).toMatchObject({ busy: true, draft: 'newer draft' });
+    await act(async () =>
+      pending.finish({
+        status: 'answer',
+        answer: 'unrelated answer',
+        citations: [],
+        healthSources,
+      }),
+    );
+    expect(session().messages.map(item => item.content)).toEqual(
+      healthSources
+        ? ['unrelated prompt', 'unrelated answer']
+        : ['unrelated prompt'],
+    );
+    expect(session().draft).toBe('newer draft');
+  },
+);
 
 test('withholds health-dependent saved and pending answer bodies across deletion', async () => {
   const { store, id, session } = await mountSession();
