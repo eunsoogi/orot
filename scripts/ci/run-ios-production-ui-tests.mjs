@@ -28,11 +28,16 @@ const [
   resultPath,
   ...extra
 ] = process.argv.slice(2);
-if (!resultPath || extra.length > 1 || (extra.length && extra[0] !== '--cancellation-probe'))
+if (
+  !resultPath ||
+  extra.length > 1 ||
+  (extra.length && !['--cancellation-probe', '--daily-report-entry'].includes(extra[0]))
+)
   throw new Error(
-    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <swift-response> <result.xcresult> [--cancellation-probe]',
+    'Usage: run-ios-production-ui-tests.mjs <udid> <runner.app> <xctestrun> <production.app> <receipt.json> <settings.json> <build.log> <swift-response> <result.xcresult> [--cancellation-probe|--daily-report-entry]',
   );
-const cancellationProbe = extra.length === 1;
+const cancellationProbe = extra[0] === '--cancellation-probe';
+const dailyReport = extra[0] === '--daily-report-entry';
 const command = (tool, args) =>
   execFileSync(tool, args, {
     encoding: 'utf8',
@@ -82,6 +87,7 @@ try {
         command('xcrun', ['nm', '-j', testBinary]),
         command('strings', [testBinary]),
         cancellationProbe,
+        dailyReport,
       );
       const app = realpathSync(appPath);
       const installed = installedApp();
@@ -210,6 +216,7 @@ try {
           return { appPath, runnerPath };
         },
         cancellationProbe,
+        dailyReport,
       });
     },
     verifyAfter(context) {
