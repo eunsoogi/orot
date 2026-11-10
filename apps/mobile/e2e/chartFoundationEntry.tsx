@@ -6,7 +6,11 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { name } from '../app.json';
 import { ChartPlot } from '../src/ui/charts/ChartPlot';
 import type { ChartData } from '../src/ui/charts/types';
@@ -85,34 +89,42 @@ const dense: ChartData = {
 
 /** Synthetic local-only fixture for exercising the real native renderer. */
 function ChartFoundationFixture() {
+  return (
+    <SafeAreaProvider>
+      <ChartFoundationContent />
+    </SafeAreaProvider>
+  );
+}
+
+function ChartFoundationContent() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [showDense, setShowDense] = useState(true);
+  // The renderer needs the content width, excluding landscape safe areas and padding.
   const shared = {
-    width: width - 32,
+    width: width - insets.left - insets.right - 32,
     height: 220,
   };
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <ChartPlot {...shared} kind="line" title="혈압" data={line} />
-          <ChartPlot {...shared} kind="bar" title="걸음" data={bars} />
-          <Button
-            title={showDense ? '밀집 자료 닫기' : '밀집 자료 열기'}
-            onPress={() => setShowDense(!showDense)}
+    <SafeAreaView style={styles.fill}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ChartPlot {...shared} kind="line" title="혈압" data={line} />
+        <ChartPlot {...shared} kind="bar" title="걸음" data={bars} />
+        <Button
+          title={showDense ? '밀집 자료 닫기' : '밀집 자료 열기'}
+          onPress={() => setShowDense(!showDense)}
+        />
+        {showDense && (
+          <ChartPlot
+            {...shared}
+            kind="line"
+            title="밀집 심박수"
+            data={dense}
+            testID="dense-health-chart"
           />
-          {showDense && (
-            <ChartPlot
-              {...shared}
-              kind="line"
-              title="밀집 심박수"
-              data={dense}
-              testID="dense-health-chart"
-            />
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 const styles = StyleSheet.create({
