@@ -36,6 +36,17 @@ consent and the separate controlled public-evidence query consent before
 transmission, and must still buffer and independently verify output. The
 conversation route, provider dispatch and UI are not wired by this module.
 
+`sendExplicitTreatmentMessage` and `treatmentConversationSender` provide a
+typed, opt-in dispatcher and map only a verified result or existing urgent
+guidance into a conversation outcome. They do not interpret ordinary prompts,
+send model requests, or commit the answer through the generic conversation
+retention observer. The caller must not connect them to the shared screen until
+treatment-aware retention, restoration and follow-up dispatch are integrated:
+generic restoration currently projects stored answers without the treatment
+verifier, and an ordinary follow-up would leave the treatment boundary. The
+sender currently provides a partial, in-memory answer; it is not proof of a
+complete treatment explanation or a saved conversation.
+
 The verifier only accepts its fixed statements. It cannot validate a clinician
 plan's contents, personalized advice, condition-specific options, purpose,
 monitoring, public-paper findings, or arbitrary model prose. Missing, stale or

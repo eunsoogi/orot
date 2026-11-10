@@ -1,14 +1,19 @@
-import type { TranslationKey } from '../i18n';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
+
+type TreatmentGuidanceKey =
+  | 'treatmentSafety.withheld'
+  | 'treatmentSafety.emergency'
+  | 'treatmentSafety.conditionalEmergency'
+  | 'treatmentSafety.clinicianPromptly';
 
 /** Only app-owned keys are returned; urgent guidance never includes generated copy. */
 export function treatmentSafetyGuidance(
   result: TreatmentSafetyResult,
-): readonly TranslationKey[] {
+): readonly TreatmentGuidanceKey[] {
   if (result.status === 'withheld')
     return result.reason === 'cancelled' ? [] : ['treatmentSafety.withheld'];
   if (result.status !== 'urgent') return [];
-  const keys: TranslationKey[] = [];
+  const keys: TreatmentGuidanceKey[] = [];
   if (result.actions.includes('seek_immediate_emergency_help'))
     keys.push('treatmentSafety.emergency');
   else if (

@@ -5,11 +5,21 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import { conversationHistoryPayload } from './conversationHistoryPayload';
+import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
   ConversationSessions,
   Map<number, ConversationEntryContext>
 >();
+
+/** Explicit treatment actions use their own validated sender, never text-based routing. */
+export function sendExplicitTreatmentMessage(
+  store: ConversationSessions,
+  id: number,
+  sender: TreatmentConversationSender,
+) {
+  return store.send(id, sender);
+}
 
 /** Keep the operation identity until preparation succeeds, including cancellation and edited retries. */
 export function visitPreparationSender(
