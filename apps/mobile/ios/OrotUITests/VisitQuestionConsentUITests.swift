@@ -73,6 +73,109 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         add(attachment)
     }
 
+    /// The synthetic provider is local; reviewed questions use the app's encrypted storage and survive a process restart.
+    @MainActor
+    func testReviewedQuestionsPersistAcrossRestartAndStayScopedToTheirVisit() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-OROT_VISIT_QUESTION_PERSISTENCE", "synthetic"]
+        // Opt-in observation retains only selection, focus and length, never the question text.
+        let observation = ProcessInfo.processInfo.environment["OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION"] == "1" ? EncounterInputObservation() : nil
+        if let observation {
+            app.launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", observation.run.uuidString]
+        }
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-empty")), app.debugDescription)
+        let generate = node(app, "next-visit-generate")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(generate.isHittable)
+        generate.tap()
+        let input = node(app, "next-visit-question-text-0")
+        XCTAssertTrue(FormUITestConditions.replace(input, with: "합성 질문을 진료에서 확인할까요?", in: app, scrollID: "next-visit-questions-scroll", observeInput: observation.map { observer in
+            { phase in observer.captureUIKit(phase, app: app, testCase: self) }
+        }))
+        let save = node(app, "next-visit-review-save")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input))
+        XCTAssertTrue(save.isHittable)
+        save.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        let snapshot = node(app, "visit-persistence-snapshot")
+        let savedIDs = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let value = UITestConditions.text(snapshot)
+            return value.hasPrefix("[\"") && value != "[]"
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [savedIDs]), .completed, app.debugDescription)
+        let originalIDs = UITestConditions.text(snapshot)
+        let originalProcess = UITestConditions.text(node(app, "visit-persistence-process"))
+        XCTAssertFalse(originalProcess.isEmpty)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), originalProcess)
+        UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        // Fabric exposes the same rendered text as nested accessibility elements.
+        let saved = app.staticTexts.matching(identifier: "합성 질문을 진료에서 확인할까요?").firstMatch
+        _ = FormUITestConditions.reveal(saved, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(saved.exists, app.debugDescription)
+        let edit = node(app, "next-visit-saved-edit")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(edit, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(edit.isHittable)
+        edit.tap()
+        let restoredInput = node(app, "next-visit-question-text-0")
+        try replaceRestoredQuestion(restoredInput, in: app, observation: observation)
+        let resave = node(app, "next-visit-review-save")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(resave, in: app, scrollID: "next-visit-questions-scroll", avoiding: restoredInput))
+        XCTAssertTrue(resave.isHittable)
+        resave.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        let editedProcess = UITestConditions.text(node(app, "visit-persistence-process"))
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), editedProcess)
+        UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
+        let edited = app.staticTexts.matching(identifier: "수정한 합성 질문을 확인할까요?").firstMatch
+        _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(edited.exists, app.debugDescription)
+        let changeVisit = node(app, "visit-persistence-switch")
+        XCTAssertTrue(changeVisit.isHittable)
+        changeVisit.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-empty")), app.debugDescription)
+        XCTAssertFalse(edited.exists)
+        XCTAssertTrue(changeVisit.isHittable)
+        changeVisit.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(edited.exists, app.debugDescription)
+    }
+
+    /// This persistence journey checks native editing, not keyboard Select All behavior.
+    @MainActor
+    private func replaceRestoredQuestion(_ input: XCUIElement, in app: XCUIApplication, observation: EncounterInputObservation?) throws {
+        let original = "합성 질문을 진료에서 확인할까요?"
+        let replacement = "수정한 합성 질문을 확인할까요?"
+        let reference = try XCTUnwrap(FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(input.isHittable)
+        XCTAssertEqual(input.value as? String, original)
+        input.tap()
+        _ = try XCTUnwrap(FormUITestConditions.exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: "next-visit-questions-scroll", observeFocusGesture: nil))
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", "next-visit-question-text-0"))
+        XCTAssertTrue(focused.firstMatch.exists)
+        observation?.captureUIKit(.beforeDelete, app: app, testCase: self)
+        // Delete from the observed end of the restored value; exact-empty catches a misplaced cursor.
+        input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count))
+        observation?.captureUIKit(.afterDelete, app: app, testCase: self)
+        XCTAssertEqual(input.value as? String, "")
+        observation?.captureUIKit(.beforeType, app: app, testCase: self)
+        for character in replacement {
+            app.typeText(String(character))
+        }
+        observation?.captureUIKit(.afterType, app: app, testCase: self)
+        XCTAssertEqual(input.value as? String, replacement)
+    }
+
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)

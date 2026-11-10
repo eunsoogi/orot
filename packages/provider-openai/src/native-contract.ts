@@ -66,6 +66,7 @@ export interface ChatGPTPlanNativeError {
     | 'incomplete'
     | 'interrupted'
     | 'transport'
+    | 'offline'
     | 'provider';
   readonly httpStatusCode?: number;
   readonly bodyShape?: string;

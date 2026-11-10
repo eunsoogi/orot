@@ -197,6 +197,28 @@ test('does not turn an unavailable reader into a changed-but-readable historical
   }
 });
 
+test('offers retry when the health reader is missing without deleting saved questions', async () => {
+  const f = await fixture();
+  try {
+    const before = await f.records.list('visit_question');
+    const result = await loadSavedVisitQuestionState({
+      appointmentId: f.prepared.appointment.id,
+      records: f.records,
+      sourceReader: createLocalHealthEvidenceRepository(f.database),
+      registry: f.registry,
+    });
+    expect(result).toMatchObject({
+      status: 'error',
+      message:
+        '건강 기록을 확인할 수 없어 저장된 질문을 불러오지 못했어요. 다시 시도해 주세요.',
+    });
+    expect(await f.records.list('visit_question')).toEqual(before);
+    expect((await f.load()).status).toBe('ready');
+  } finally {
+    f.close();
+  }
+});
+
 test('fails closed when changed facts coincide with an advanced deletion generation', async () => {
   const f = await fixture();
   try {

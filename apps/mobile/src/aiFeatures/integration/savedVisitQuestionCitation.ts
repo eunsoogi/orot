@@ -14,6 +14,7 @@ export class SavedVisitQuestionsReadError extends Error {
     | 'stale_artifact'
     | 'changed_saved_questions'
     | 'changed_health_context'
+    | 'health_context_reader_unavailable'
     | 'changed_generated_source';
 
   constructor(reason: SavedVisitQuestionsReadError['reason']) {
@@ -24,11 +25,13 @@ export class SavedVisitQuestionsReadError extends Error {
           ? 'A saved visit question no longer has its cited source.'
           : reason === 'changed_generated_source'
             ? 'A generated source changed or is unavailable.'
-            : reason === 'changed_health_context'
-              ? 'The saved health-period evidence changed or is unavailable.'
-              : reason === 'changed_saved_questions'
-                ? 'The saved visit-question list changed while loading.'
-                : 'A saved visit question relies on a corrected transcript.',
+            : reason === 'health_context_reader_unavailable'
+              ? 'The health-period reader is unavailable.'
+              : reason === 'changed_health_context'
+                ? 'The saved health-period evidence changed or is unavailable.'
+                : reason === 'changed_saved_questions'
+                  ? 'The saved visit-question list changed while loading.'
+                  : 'A saved visit question relies on a corrected transcript.',
     );
     this.name = 'SavedVisitQuestionsReadError';
     this.reason = reason;

@@ -4,6 +4,7 @@ import { runVisitQuestionWorkflow } from '../../../agent/visitQuestions/workflow
 import { preparedContext } from '../../../agent/visitQuestions/testing/workflowFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import { providerFailure } from '@orot/model-runtime';
+import { visitQuestionPublicSearch } from '../visitQuestionPublicSearch';
 
 jest.mock('../visitQuestionsContextLoader', () => ({
   loadVisitQuestionsContext: jest.fn(),
@@ -12,6 +13,63 @@ jest.mock('../../../agent/visitQuestions/workflow', () => ({
   runVisitQuestionWorkflow: jest.fn(),
 }));
 beforeEach(() => jest.clearAllMocks());
+
+test('reports only a typed offline cause and keeps public queries free of private input', async () => {
+  const run = setup();
+  run.search.mockResolvedValue(
+    providerFailure({
+      code: 'provider_unavailable',
+      message: 'synthetic',
+      retryable: true,
+      connectivity: 'offline',
+    }),
+  );
+  const result = await run.generate();
+  expect(result).toMatchObject({
+    status: 'ready',
+    caveats: expect.arrayContaining(['public_search_offline']),
+  });
+  expect(run.search).toHaveBeenCalledTimes(1);
+  expect(run.search.mock.calls[0]![0].query).not.toMatch(/김테스트|170\/100/);
+});
+
+test('does not send a public request or ask for consent with a local-only selection', async () => {
+  const run = publicEvidenceFixture();
+  const confirm = jest.fn(async () => true);
+  const result = await visitQuestionPublicSearch({
+    selected: { ...run.selected, remoteProcessing: false },
+    confirm,
+    query: 'Synthetic blood pressure',
+    signal: run.controller.signal,
+  });
+  expect(run.search).not.toHaveBeenCalled();
+  expect(confirm).not.toHaveBeenCalled();
+  expect(result).toMatchObject({
+    result: { status: 'unavailable' },
+    caveat: 'public_search_not_configured',
+    spentModelCall: false,
+  });
+});
+
+test('identifies missing search capability without asking consent or making a request', async () => {
+  const run = publicEvidenceFixture();
+  const { searchPublicWeb: _search, ...provider } = run.selected.provider;
+  expect(_search).toBe(run.search);
+  const confirm = jest.fn(async () => true);
+  const result = await visitQuestionPublicSearch({
+    selected: { ...run.selected, provider },
+    confirm,
+    query: 'Synthetic blood pressure',
+    signal: run.controller.signal,
+  });
+  expect(result).toMatchObject({
+    result: { status: 'unavailable' },
+    caveat: 'public_search_unsupported',
+    spentModelCall: false,
+  });
+  expect(confirm).not.toHaveBeenCalled();
+  expect(run.search).not.toHaveBeenCalled();
+});
 
 function setup(allow = true) {
   const run = publicEvidenceFixture();
@@ -100,7 +158,7 @@ test('continues local generation when the selected public provider is unavailabl
   const result = await run.generate();
   expect(result).toMatchObject({
     status: 'ready',
-    caveats: expect.arrayContaining(['public_search_unavailable']),
+    caveats: expect.arrayContaining(['public_search_failed']),
   });
   expect(jest.mocked(runVisitQuestionWorkflow)).toHaveBeenCalledTimes(1);
 });

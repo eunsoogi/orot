@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import { providerSuccess } from '@orot/model-runtime';
 import { useInferenceConsent } from '../src/agent/execution/useInferenceConsent';
 import { createPublicWebEvidence } from '../src/aiFeatures/integration/publicWebEvidence';
@@ -46,7 +46,7 @@ export function PublicSearchConsentProbe({
     }).then(result => setStatus(result.status));
   }
   return (
-    <View>
+    <View style={styles.container}>
       <Button
         testID="public-search-probe-start"
         title="Search"
@@ -57,3 +57,8 @@ export function PublicSearchConsentProbe({
     </View>
   );
 }
+
+// Keep the synthetic action within the visible content area, away from system chrome.
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center' },
+});

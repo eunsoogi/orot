@@ -159,6 +159,7 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
     case unsupportedCapability(String)
     case unsupportedInput(String)
     case transportUnavailable
+    case offline
     case invalidHTTPResponse
     case invalidContentType
     case httpFailure(ChatGPTResponsesDiagnostics)
@@ -173,6 +174,7 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
         case let .unsupportedCapability(capability): "The ChatGPT plan route does not support \(capability)."
         case let .unsupportedInput(input): "The ChatGPT plan route does not support \(input) input."
         case .transportUnavailable: "ChatGPT inference could not connect to the Responses API."
+        case .offline: "The device reported no internet connection."
         case .invalidHTTPResponse: "ChatGPT returned an invalid HTTP response."
         case .invalidContentType: "ChatGPT returned a non-event-stream Responses body."
         case let .httpFailure(diagnostics): Self.message(for: diagnostics)
