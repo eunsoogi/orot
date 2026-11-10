@@ -9,6 +9,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "medical-document-import",
+            "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
@@ -18,7 +19,10 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
 
         // The host seeds one synthetic image in the owned Simulator; selection remains in PHPicker.
         XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
-        let photo = app.collectionViews.cells.firstMatch
+        // The Duo system extension exposes photo assets as images, not app-owned cells.
+        let photo = ProcessInfo.processInfo.environment["OROT_DUO_PHOTO_VALIDATION"] == "YES"
+            ? XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker").images.matching(identifier: "PXGGridLayout-Info").firstMatch
+            : app.collectionViews.cells.firstMatch
         XCTAssertTrue(photo.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(photo.isHittable, app.debugDescription)
         photo.tap()
@@ -26,7 +30,30 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(node(app, "medical-document-review-original-photo").exists, app.debugDescription)
         let text = node(app, "medical-document-review-text-0")
         XCTAssertTrue(UITestConditions.text(text).lowercased().contains("synthetic clinic"), app.debugDescription)
-        tap(app, "medical-document-save")
+        if ProcessInfo.processInfo.environment["OROT_DUO_PHOTO_VALIDATION"] == "YES" {
+            let root = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
+            let save = node(app, "medical-document-save")
+            let cancel = node(app, "medical-document-cancel")
+            let review = node(app, "medical-document-review-content")
+            XCTAssertTrue(review.exists, app.debugDescription)
+            XCTAssertGreaterThan(root.toolbar.frame.height, root.toolbar.frame.width)
+            XCTAssertGreaterThanOrEqual(root.toolbar.frame.minX, review.frame.maxX - 1)
+            XCTAssertTrue(save.exists && save.isHittable && cancel.exists && cancel.isHittable, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(save.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(save.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(cancel.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
+            XCTAssertFalse(save.frame.intersects(cancel.frame))
+            XCTAssertFalse(save.frame.intersects(root.toolbar.frame))
+            XCTAssertFalse(cancel.frame.intersects(root.toolbar.frame))
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "synthetic-photo-review-duo"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            save.tap()
+        } else {
+            tap(app, "medical-document-save")
+        }
 
         let saved = node(app, "medical-document-source-0")
         XCTAssertTrue(saved.waitForAppearance(), app.debugDescription)
