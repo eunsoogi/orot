@@ -19,22 +19,25 @@ Apple model responses and cannot establish actual Apple Intelligence inference.
    `OrotUITests/DailyReminderDeliveryUITests/testScheduledDailyReminderOpensPreparationFromSystemBanner`.
    The source in this branch alone does not register it. Complete the repository
    UI host preparation and preserve its separate result before the journey.
-3. On that installation, use the normal app Settings screen to enable the daily
-   reminder, choose a near-future local hour and minute, save it, and explicitly
-   allow the OS notification permission. Choose enough real time for the runner
-   to start. Record the chosen time, device timezone, settings status, and
-   whether the system accepted permission. Do not change the OS clock, inject a
-   notification, or substitute a fixture for delivery.
-4. The UI test relaunches the app and checks the scheduled Settings status.
-   Confirm that the test runner retained the same installation and preference;
-   a reinstall or reset that loses them invalidates this setup. The separate
-   `DailyReminderSystemCenterTests` uses an isolated preference suite and
-   removes its own request; it does not schedule this UI journey.
+3. Start with a disposable installation. The UI test uses the existing native
+   navigation helper to open the normal app Settings screen, selects a time
+   three minutes ahead in its Korean picker, saves, and explicitly allows the
+   real system notification prompt if it appears. It checks the saved status
+   against the chosen local hour and minute. The picker must expose distinct
+   Korean period, hour, and minute wheels; an unknown accessibility structure
+   fails instead of selecting guessed controls. The test does not change the OS
+   clock, inject a notification, or substitute a fixture for delivery.
+4. Record the device timezone, chosen time, settings status, and actual prompt
+   or already-authorized state. Each invocation schedules a new near-future
+   time, so it does not rely on a previously prepared preference surviving a
+   runner reinstall. The separate `DailyReminderSystemCenterTests` uses an
+   isolated preference suite and removes its own request; run it after granting
+   permission, not as a substitute for this UI journey.
 
 ## Warm and cold observations
 
-Use a distinct result bundle and an independently scheduled future reminder
-for each mode. With the parent-supplied product and owner paths, the existing
+Use a distinct result bundle for each mode; each invocation schedules its own
+future reminder. With the parent-supplied product and owner paths, the existing
 runner accepts an explicit case selection. For example, after setting the
 shell variables `RUN_FILE`, `OWNER_FILE` and `RESULT_BUNDLE` to the verified
 paths, the warm run is:
@@ -46,8 +49,8 @@ node scripts/ci/run-ios-tests.mjs core "$RUN_FILE" "$OWNER_FILE" "$RESULT_BUNDLE
   OrotUITests/DailyReminderDeliveryUITests/testScheduledDailyReminderOpensPreparationFromSystemBanner
 ```
 
-For cold, repeat the setup with a new future time and result path and set the
-mode to `cold`. Confirm in the test runner that these opt-in values arrived;
+For cold, use a new result path and set the mode to `cold`. Confirm in the test
+runner that these opt-in values arrived;
 a skipped test is not a pass. The test backgrounds the running app in warm mode
 and terminates it in cold mode, waits for the real SpringBoard banner, taps it,
 and checks the report preparation screen. Preserve its scheduled-state,
