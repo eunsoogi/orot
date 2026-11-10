@@ -62,20 +62,18 @@ test('keeps both citations when both claims were rendered and marks the comparis
     sourceId: 'record',
     evidenceId: 'local',
   };
-  jest
-    .mocked(runMultiAgentWorkflow)
-    .mockResolvedValueOnce({
-      status: 'result',
-      value: {
-        answer: '기록 원문과 문헌 원문. 비교 미확인.',
-        completion: 'partial',
-        literatureReferences: [paper],
-        localReferences: [local],
-      },
-      citations: [paper, local],
-      coverage: [],
-      checkpoint: {} as never,
-    });
+  jest.mocked(runMultiAgentWorkflow).mockResolvedValueOnce({
+    status: 'result',
+    value: {
+      answer: '기록 원문과 문헌 원문. 비교 미확인.',
+      completion: 'partial',
+      literatureReferences: [paper],
+      localReferences: [local],
+    },
+    citations: [paper, local],
+    coverage: [],
+    checkpoint: {} as never,
+  });
   const outcome = await runRagConversationTurn({
     question: '기록과 문헌',
     previousMessages: [],
@@ -105,15 +103,13 @@ test('refuses a rendered local claim whose source revision differs from its cita
     effectiveTime: null,
     reviewState: 'unknown' as const,
   };
-  jest
-    .mocked(runMultiAgentWorkflow)
-    .mockResolvedValueOnce({
-      status: 'result',
-      value: { answer: '기록 원문', localReferences: [local] },
-      citations: [{ ...local, evidenceRevision: '2' }],
-      coverage: [],
-      checkpoint: {} as never,
-    });
+  jest.mocked(runMultiAgentWorkflow).mockResolvedValueOnce({
+    status: 'result',
+    value: { answer: '기록 원문', localReferences: [local] },
+    citations: [{ ...local, evidenceRevision: '2' }],
+    coverage: [],
+    checkpoint: {} as never,
+  });
   const outcome = await runRagConversationTurn({
     question: '기록',
     previousMessages: [],

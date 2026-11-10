@@ -31,26 +31,24 @@ test('a personal-record answer remains available when unrelated literature is pr
     text: local.content,
     metadata: { sourceId: local.sourceId, evidenceId: local.evidenceId },
   };
-  f.generate
-    .mockReset()
-    .mockResolvedValueOnce(
-      response({
-        type: 'result',
-        value: {
-          answerKind: 'grounded',
-          answer: 'ignored',
-          localClaims: [
-            {
-              sourceRevision: 'r1',
-              evidenceId: 'local',
-              evidenceRevision: 'e1',
-              span: local.content,
-            },
-          ],
-        },
-        citations: ['local'],
-      }),
-    );
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: {
+        answerKind: 'grounded',
+        answer: 'ignored',
+        localClaims: [
+          {
+            sourceRevision: 'r1',
+            evidenceId: 'local',
+            evidenceRevision: 'e1',
+            span: local.content,
+          },
+        ],
+      },
+      citations: ['local'],
+    }),
+  );
   const result = await runRagConversationTurn({
     ...f.options,
     question: '내 수면 기록을 알려줘',
