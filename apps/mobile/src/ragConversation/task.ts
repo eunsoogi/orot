@@ -22,7 +22,6 @@ import {
   isEvidenceIndependentConversation,
   requestsLiteratureExplanation,
 } from './literatureIntent';
-import { projectConversationStream } from './taskStreaming';
 import { conversationEntryContext } from './conversationEntryContext';
 import { priorDialogue } from './priorDialogue';
 import { possibilityPrompt } from './possibilityPrompt';
@@ -42,7 +41,8 @@ export interface GroundedRagAnswer {
   readonly localReferences?: readonly LocalClaimIdentity[];
 }
 
-/** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
+/** Distinguishes dialogue from claims needing current sources; history is context only.
+ * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   taskVersion: '6',
@@ -90,7 +90,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: conversationResultSchema as JsonObject,
   createResultSchema: selectConversationResultSchema,
-  projectStreamedText: projectConversationStream,
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
       {

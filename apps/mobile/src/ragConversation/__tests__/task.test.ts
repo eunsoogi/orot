@@ -105,9 +105,9 @@ const reference = {
   reviewState: 'reviewed' as const,
 };
 
-test('does not stream an unvalidated literature answer when personal evidence is also present', () => {
+test('requires validated literature fields when personal evidence is also present', () => {
   const input = {
-    request: 'Explain the evidence',
+    request: 'Summarize research papers about sleep',
     evidence: {
       items: [
         { ...reference, content: 'A personal record' },
@@ -122,10 +122,12 @@ test('does not stream an unvalidated literature answer when personal evidence is
       conflicts: [],
     },
   };
-  const raw = JSON.stringify({
-    value: { answerKind: 'grounded', answer: '위험도 40% 증가' },
-  });
-  expect(ragConversationTask.projectStreamedText?.(raw, input)).toBeUndefined();
+  expect(
+    ragConversationTask.validateResult(
+      { answerKind: 'grounded', answer: '위험도 40% 증가' },
+      input,
+    ).status,
+  ).toBe('needs_clarification');
 });
 
 test('makes previous assistant claims context only and validates a current-evidence answer', () => {
