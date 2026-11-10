@@ -90,6 +90,8 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: conversationResultSchema as JsonObject,
   createResultSchema: selectConversationResultSchema,
+  // Keep the guided provider stream observer active without projecting provisional text.
+  projectStreamedText: () => undefined,
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
       {

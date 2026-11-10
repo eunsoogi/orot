@@ -59,12 +59,28 @@ test('does not expose a clinical possibility with an invalid citation through wo
   expect(result.status).not.toBe('answer');
 });
 
-test('returns a conversational answer only after validation', async () => {
+test('keeps guided provider streaming internal and returns the answer only after validation', async () => {
   const events: unknown[] = [];
+  const options = streamingOptions('함께 살펴볼 수 있어요.');
+  const provider = options.workflow.provider;
   const result = await runRagConversationTurn(
-    streamingOptions('함께 살펴볼 수 있어요.'),
+    {
+      ...options,
+      workflow: {
+        ...options.workflow,
+        provider: {
+          ...provider,
+          capabilities: {
+            ...provider.capabilities,
+            structuredOutput: true,
+            structuredOutputStreaming: true,
+          },
+        },
+      },
+    },
     { onTaskStreamEvent: event => events.push(event) },
   );
+  expect(provider.generate).not.toHaveBeenCalled();
   expect(JSON.stringify(events)).not.toContain('함께 살펴');
   expect(result).toMatchObject({
     status: 'answer',
@@ -136,7 +152,10 @@ test('publishes tool progress while the final answer is still pending', async ()
     { onToolEvent, onTaskStreamEvent },
   );
   expect(search).toHaveBeenCalledTimes(1);
-  expect(onTaskStreamEvent).not.toHaveBeenCalled();
+  expect(onTaskStreamEvent.mock.calls).toEqual([
+    [{ type: 'started' }],
+    [{ type: 'started' }],
+  ]);
   expect(result).toMatchObject({
     status: 'answer',
     answer: '함께 살펴볼 수 있어요.',
