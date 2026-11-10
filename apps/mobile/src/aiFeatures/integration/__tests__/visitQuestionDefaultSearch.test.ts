@@ -14,6 +14,25 @@ jest.mock('../../../agent/visitQuestions/workflow', () => ({
 }));
 beforeEach(() => jest.clearAllMocks());
 
+test('reports only a typed offline cause and keeps public queries free of private input', async () => {
+  const run = setup();
+  run.search.mockResolvedValue(
+    providerFailure({
+      code: 'provider_unavailable',
+      message: 'synthetic',
+      retryable: true,
+      connectivity: 'offline',
+    }),
+  );
+  const result = await run.generate();
+  expect(result).toMatchObject({
+    status: 'ready',
+    caveats: expect.arrayContaining(['public_search_offline']),
+  });
+  expect(run.search).toHaveBeenCalledTimes(1);
+  expect(run.search.mock.calls[0]![0].query).not.toMatch(/김테스트|170\/100/);
+});
+
 test('does not send a public request or ask for consent with a local-only selection', async () => {
   const run = publicEvidenceFixture();
   const confirm = jest.fn(async () => true);

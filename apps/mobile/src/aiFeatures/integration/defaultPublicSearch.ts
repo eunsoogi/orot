@@ -4,13 +4,14 @@ import type {
   MultiAgentBudget,
 } from '@orot/agent-runtime';
 import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/types';
+import { PublicSearchOfflineError } from './publicSearchFailure';
 
 export type DefaultPublicSearchResult =
   | { readonly status: 'success'; readonly batch: EvidenceBatch }
   | {
-      readonly status:
-        'empty' | 'unavailable' | 'consent_required' | 'cancelled';
-    };
+      readonly status: 'empty' | 'consent_required' | 'cancelled';
+    }
+  | { readonly status: 'unavailable'; readonly reason?: 'offline' };
 
 /** Reserve the preflight provider call inside the feature's existing budget. */
 export function budgetAfterPublicSearch(
@@ -120,8 +121,11 @@ export async function runDefaultPublicSearch(input: {
     return result.items.length
       ? { status: 'success', batch: result }
       : { status: 'empty' };
-  } catch {
-    // Provider errors do not establish an empty result or an offline state.
-    return { status: input.signal.aborted ? 'cancelled' : 'unavailable' };
+  } catch (error) {
+    // Only a typed provider cause establishes offline; generic failures remain unavailable.
+    if (input.signal.aborted) return { status: 'cancelled' };
+    return error instanceof PublicSearchOfflineError
+      ? { status: 'unavailable', reason: 'offline' }
+      : { status: 'unavailable' };
   }
 }

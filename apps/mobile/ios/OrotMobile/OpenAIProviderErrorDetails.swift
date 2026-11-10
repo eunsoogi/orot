@@ -10,6 +10,7 @@ enum OpenAIProviderErrorDetails {
             case .unsupportedCapability: result["kind"] = "unsupported_capability"
             case .unsupportedInput: result["kind"] = "unsupported_input"
             case .transportUnavailable: result["kind"] = "transport"
+            case .offline: result["kind"] = "offline"
             case .invalidRequest: result["kind"] = "invalid_request"
             case let .incomplete(details): result["kind"] = "incomplete"; Self.add(details, to: &result)
             case .interrupted: result["kind"] = "interrupted"
@@ -53,6 +54,7 @@ enum OpenAIProviderErrorDetails {
             case .incomplete: "incomplete"
             case .interrupted: "interrupted"
             case .transportUnavailable: "transport_unavailable"
+            case .offline: "offline"
             default: "other"
             }
             let allowedParameters = ["model", "temperature", "max_output_tokens", "tools", "tool_choice", "parallel_tool_calls", "input", "store", "text.format"]

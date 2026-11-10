@@ -66,6 +66,10 @@ public extension ChatGPTOAuthClient {
             if Self.isCancellation(error) {
                 throw CancellationError()
             }
+            // Only the explicit OS no-connection error establishes this cause; DNS and timeouts remain generic.
+            if (error as? URLError)?.code == .notConnectedToInternet {
+                throw ChatGPTResponsesError.offline
+            }
             throw ChatGPTResponsesError.transportUnavailable
         }
 

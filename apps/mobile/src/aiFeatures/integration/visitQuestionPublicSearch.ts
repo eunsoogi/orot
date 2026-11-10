@@ -42,11 +42,13 @@ export async function visitQuestionPublicSearch(input: {
           ? 'public_search_consent_required'
           : result.status === 'empty'
             ? 'public_search_empty'
-            : web
-              ? 'public_search_failed'
-              : input.selected.provider.searchPublicWeb
-                ? 'public_search_not_configured'
-                : 'public_search_unsupported';
+            : result.status === 'unavailable' && result.reason === 'offline'
+              ? 'public_search_offline'
+              : web
+                ? 'public_search_failed'
+                : input.selected.provider.searchPublicWeb
+                  ? 'public_search_not_configured'
+                  : 'public_search_unsupported';
   return {
     result,
     caveat,

@@ -51,6 +51,10 @@ test('shows the public-source limitation and carries it through review and save'
 
 test.each([
   [
+    'public_search_offline',
+    '인터넷에 연결되어 있지 않아 공개 웹검색 결과를 반영하지 않았어요.',
+  ],
+  [
     'public_search_unsupported',
     '선택한 AI는 공개 웹검색을 지원하지 않아 검색 결과를 반영하지 않았어요.',
   ],

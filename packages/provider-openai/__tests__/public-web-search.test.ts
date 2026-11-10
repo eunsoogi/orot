@@ -8,6 +8,16 @@ const webSearch = {
 };
 const text = 'Synthetic public explanation.';
 
+test('preserves a native offline failure through public search', async () => {
+  const run = fixture(async (bridge, id) => {
+    bridge.emit({ requestId: id, type: 'failed', error: { kind: 'offline' } });
+  });
+  await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toMatchObject({
+    ok: false,
+    error: { code: 'provider_unavailable', connectivity: 'offline' },
+  });
+});
+
 function fixture(onStart?: (bridge: FakeBridge, id: string) => Promise<void>) {
   const bridge = new FakeBridge();
   const startPublicWebSearch = jest.fn(

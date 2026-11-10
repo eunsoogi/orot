@@ -26,6 +26,8 @@ export interface ProviderError {
   readonly code: ProviderErrorCode;
   readonly message: string;
   readonly retryable: boolean;
+  /** Present only when a provider preserves an explicit OS no-internet error. */
+  readonly connectivity?: 'offline';
 }
 
 export type ProviderResult<T> =

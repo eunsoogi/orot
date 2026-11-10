@@ -53,7 +53,7 @@ actor StubChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
 }
 
 func responsesClient(
-    _ streamTransport: StubChatGPTResponsesHTTPTransport,
+    _ streamTransport: any ChatGPTResponsesHTTPTransport,
     store: InMemoryChatGPTCredentialStore? = nil,
     account: ChatGPTStoredAccount? = nil,
 ) throws -> ChatGPTOAuthClient {

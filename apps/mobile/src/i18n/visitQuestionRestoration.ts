@@ -1,5 +1,7 @@
 /** Messages for restoring reviewed visit questions and their historical sources. */
 export const visitQuestionRestorationKo = {
+  'visitQuestions.search.offline':
+    '인터넷에 연결되어 있지 않아 공개 웹검색 결과를 반영하지 않았어요.',
   'visitQuestions.search.failed':
     '공개 웹검색을 완료하지 못해 검색 결과를 반영하지 않았어요. 다시 시도할 수 있어요.',
   'visitQuestions.search.notConfigured':
