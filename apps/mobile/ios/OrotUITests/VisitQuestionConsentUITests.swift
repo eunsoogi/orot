@@ -124,9 +124,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(edit.isHittable)
         edit.tap()
         let restoredInput = node(app, "next-visit-question-text-0")
-        XCTAssertTrue(FormUITestConditions.replace(restoredInput, with: "수정한 합성 질문을 확인할까요?", in: app, scrollID: "next-visit-questions-scroll", observeInput: observation.map { observer in
-            { phase in observer.captureUIKit(phase, app: app, testCase: self) }
-        }))
+        try replaceRestoredQuestion(restoredInput, in: app, observation: observation)
         let resave = node(app, "next-visit-review-save")
         _ = try XCTUnwrap(FormUITestConditions.reveal(resave, in: app, scrollID: "next-visit-questions-scroll", avoiding: restoredInput))
         XCTAssertTrue(resave.isHittable)
@@ -151,6 +149,30 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
         _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
         XCTAssertTrue(edited.exists, app.debugDescription)
+    }
+
+    /// This persistence journey checks native editing, not keyboard Select All behavior.
+    @MainActor
+    private func replaceRestoredQuestion(_ input: XCUIElement, in app: XCUIApplication, observation: EncounterInputObservation?) throws {
+        let original = "합성 질문을 진료에서 확인할까요?"
+        let replacement = "수정한 합성 질문을 확인할까요?"
+        _ = try XCTUnwrap(FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(input.isHittable)
+        XCTAssertEqual(input.value as? String, original)
+        input.tap()
+        let focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", "next-visit-question-text-0"))
+        XCTAssertTrue(focused.firstMatch.exists)
+        observation?.captureUIKit(.beforeDelete, app: app, testCase: self)
+        // Delete from the observed end of the restored value; exact-empty catches a misplaced cursor.
+        input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count))
+        observation?.captureUIKit(.afterDelete, app: app, testCase: self)
+        XCTAssertEqual(input.value as? String, "")
+        observation?.captureUIKit(.beforeType, app: app, testCase: self)
+        for character in replacement {
+            app.typeText(String(character))
+        }
+        observation?.captureUIKit(.afterType, app: app, testCase: self)
+        XCTAssertEqual(input.value as? String, replacement)
     }
 
     @MainActor
