@@ -2,26 +2,6 @@ import XCTest
 
 /// Selects the host-seeded synthetic image through Photos and reads the committed source after relaunch.
 final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
-    /// Captures the system extension's actual accessibility tree before selecting an observed item.
-    @MainActor
-    func testSystemPhotoPickerAccessibilityObservation() throws {
-        let app = XCUIApplication()
-        defer { app.terminate() }
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "medical-document-import", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "records-import-medical-photo")
-        XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
-        // The bundle identifier was read from the running PhotosPicker extension's Info.plist.
-        let picker = XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker")
-        let tree = picker.debugDescription
-        let attachment = XCTAttachment(string: tree)
-        attachment.name = "system-photo-picker-accessibility"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        print("SYSTEM_PHOTO_PICKER_ACCESSIBILITY \(tree)")
-    }
     @MainActor
     func testSelectedPhotoSavesAndSurvivesRelaunch() throws {
         let app = XCUIApplication()
@@ -54,6 +34,10 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
             let root = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
             let save = node(app, "medical-document-save")
             let cancel = node(app, "medical-document-cancel")
+            let review = node(app, "medical-document-review-content")
+            XCTAssertTrue(review.exists, app.debugDescription)
+            XCTAssertGreaterThan(root.toolbar.frame.height, root.toolbar.frame.width)
+            XCTAssertGreaterThanOrEqual(root.toolbar.frame.minX, review.frame.maxX - 1)
             XCTAssertTrue(save.exists && save.isHittable && cancel.exists && cancel.isHittable, app.debugDescription)
             XCTAssertGreaterThanOrEqual(save.frame.width, 44)
             XCTAssertGreaterThanOrEqual(save.frame.height, 44)
