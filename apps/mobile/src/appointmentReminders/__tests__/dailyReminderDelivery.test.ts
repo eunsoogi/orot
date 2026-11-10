@@ -96,3 +96,53 @@ test('a declined leave prompt cancels that tap while the next tap remains action
   expect(acknowledge).toHaveBeenCalledTimes(2);
   unregister();
 });
+
+test('does not deliver to a replacement destination after a pending leave prompt', async () => {
+  const pending = [{ kind: 'daily_report', deliveryTimestamp: '1700000000' }];
+  let approve!: (result: 'approved') => void;
+  const confirm = jest.fn(
+    () =>
+      new Promise<'approved'>(resolve => {
+        approve = resolve;
+      }),
+  );
+  const unavailable = jest.fn();
+  const original = jest.fn(() => true);
+  const replacement = jest.fn(() => true);
+  const unregisterOriginal = registerDailyReminderConsumer(original);
+  const deliver = createDailyReminderDelivery({
+    consume: async () => pending[0] ?? null,
+    acknowledge: async () => {
+      pending.shift();
+    },
+    confirm,
+    unavailable,
+  });
+  const delivery = deliver();
+  await Promise.resolve();
+  await Promise.resolve();
+  const unregisterReplacement = registerDailyReminderConsumer(replacement);
+  approve('approved');
+  await delivery;
+  expect(original).not.toHaveBeenCalled();
+  expect(replacement).not.toHaveBeenCalled();
+  expect(unavailable).toHaveBeenCalledTimes(1);
+  unregisterOriginal();
+  unregisterReplacement();
+});
+
+test('surfaces an unavailable date when the destination cannot resolve it', async () => {
+  const pending = [{ kind: 'daily_report', deliveryTimestamp: '1700000000' }];
+  const unavailable = jest.fn();
+  const unregister = registerDailyReminderConsumer(() => false);
+  await createDailyReminderDelivery({
+    consume: async () => pending[0] ?? null,
+    acknowledge: async () => {
+      pending.shift();
+    },
+    confirm: async () => 'approved',
+    unavailable,
+  })();
+  expect(unavailable).toHaveBeenCalledTimes(1);
+  unregister();
+});

@@ -10,7 +10,11 @@ export interface DailyReminderEntry {
   readonly deliveryTimeZone: 'unknown';
 }
 
-/** The destination must deduplicate entryKey across restarts: navigation and acknowledgement are not atomic. */
+/**
+ * The destination must reject an unresolvable date and deduplicate entryKey across
+ * restarts: navigation and acknowledgement are not atomic. An observed timezone
+ * is evidence for display, not proof of the timezone when delivery occurred.
+ */
 export type DailyReminderConsumer = (entry: DailyReminderEntry) => boolean;
 let consumer: DailyReminderConsumer | undefined;
 
@@ -92,13 +96,16 @@ export function createDailyReminderDelivery(port: {
           continue;
         }
         if (parsed.entryKey !== lastOpened) {
-          if (!consumer) {
+          const destination = consumer;
+          if (!destination) {
             port.unavailable();
           } else {
             const decision = await port.confirm();
             if (decision === 'busy') return;
             if (decision === 'approved') {
-              if (!consumer || !consumer(parsed)) port.unavailable();
+              // A leave prompt can outlive the registered destination.
+              if (consumer !== destination || !destination(parsed))
+                port.unavailable();
               else lastOpened = parsed.entryKey;
             }
           }
