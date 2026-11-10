@@ -25,7 +25,18 @@ test('accepts only a visit reference backed by the exact appointment dependency'
       },
     ],
     visitQuestions: { appointmentId: 'visit-a', source, candidates: [] },
+    healthSummary: {
+      summaryId: 'summary-a',
+      window: {
+        fromInclusive: '2026-10-01T00:00:00Z',
+        toExclusive: '2026-10-05T00:00:00Z',
+        timeZone: 'UTC',
+      },
+    },
   };
+  expect(
+    decodeConversationArtifact(JSON.stringify(artifact))?.healthSummary,
+  ).toEqual(artifact.healthSummary);
   expect(
     decodeConversationArtifact(JSON.stringify(artifact))?.visitQuestions
       ?.appointmentId,

@@ -26,6 +26,14 @@ import {
   isGeneratedResearchSource,
 } from '../ragConversation/conversationArtifactSources';
 
+function assertSummaryNotCancelled(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    const error = new Error('The summary save was cancelled.');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
 /** Append-only generated results live in the existing SQLCipher database, never plaintext preferences. */
 export function createSymptomSummaryStorage(
   database: SqlDatabase,
@@ -118,12 +126,15 @@ export function createSymptomSummaryStorage(
     });
   }
   return {
-    async append(value) {
+    async append(value, signal) {
+      assertSummaryNotCancelled(signal);
       await ensure();
       const serialized = JSON.stringify(value);
       if (serialized.length > 128_000 || !decodeSavedSymptomSummary(serialized))
         throw new Error('The summary cannot be saved.');
+      assertSummaryNotCancelled(signal);
       await database.transaction(async tx => {
+        assertSummaryNotCancelled(signal);
         const invalid = await tx.execute(
           'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
           [value.id],
@@ -139,6 +150,7 @@ export function createSymptomSummaryStorage(
         if (existing.rows.length) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different result already owns this summary ID.');
+          assertSummaryNotCancelled(signal);
           return;
         }
         await tx.execute(
@@ -168,6 +180,8 @@ export function createSymptomSummaryStorage(
             );
           }
         }
+        // A pre-commit cancellation rolls back both the result and its source dependencies.
+        assertSummaryNotCancelled(signal);
       });
     },
     async list(before) {

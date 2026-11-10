@@ -25,6 +25,10 @@ export type RagConversationOutcome =
       readonly answer: string;
       readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
+      readonly healthSummary?: import('./healthSummary').HealthSummaryResult;
+      readonly retryHealthSummary?: () => Promise<
+        import('./healthSummary').HealthSummaryResult | null
+      >;
       readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
     }
   | { readonly status: 'insufficient' }

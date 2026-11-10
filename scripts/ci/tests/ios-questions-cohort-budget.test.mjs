@@ -18,9 +18,10 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     (id) =>
       id.includes('/KeyboardSafeAreaUITests/') ||
       id.includes('/ConversationComposerDockUITests/') ||
-      id.includes('/ConversationToolEventsUITests/'),
+      id.includes('/ConversationToolEventsUITests/') ||
+      id.includes('/ConversationHealthSummaryUITests/'),
   );
-  assert.equal(expected.length, 7);
+  assert.equal(expected.length, 8);
   const full = iosTestExecutionPlan();
   assert.equal(full.length, 28);
   const selected = iosTestExecutionPlan(cohorts);
@@ -40,10 +41,10 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     return tasks[0].identifiers;
   });
   assert.deepEqual(identifiers.slice().sort(), expected.slice().sort());
-  assert.equal(new Set(identifiers).size, 7);
+  assert.equal(new Set(identifiers).size, 8);
   // The conversation journeys share their existing budget; no method is cut into phases.
   assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [composer, dock, toolEvents]);
-  assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 4);
+  assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 5);
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
