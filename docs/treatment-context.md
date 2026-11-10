@@ -36,3 +36,17 @@ from retrieval time. The existing conversation restoration and
 follow-up UI do not yet project this field: the explanation owner must wire it
 from the validated storage read and apply the treatment safety boundary before
 display. No additional storage or permission is introduced by this contract.
+
+## Preliminary claim verification boundary
+
+`verifyTreatmentClaim` requires a source-bound claim, an independent verifier,
+and successful source freshness checks before and after verification. It fails
+closed on cancellation, source drift, missing verification, or an exception.
+The verifier must inspect the original source content and the claim in context;
+the supplied references and model classifications cannot prove semantic support.
+No such verifier is supplied here. A successful call is not a complete treatment
+safety decision: it does not identify medication instructions, unsupported
+diagnoses, urgent symptoms, contraindications, or unsafe streaming prefixes.
+Do not use this preliminary function alone to display or persist treatment
+explanations. The complete safety boundary, urgent routing, stream buffering,
+synthetic evaluation and stored-result enforcement remain release blockers.
