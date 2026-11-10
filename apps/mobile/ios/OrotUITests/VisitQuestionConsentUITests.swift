@@ -73,6 +73,76 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         add(attachment)
     }
 
+    /// The synthetic provider is local; reviewed questions use the app's encrypted storage and survive a process restart.
+    @MainActor
+    func testReviewedQuestionsPersistAcrossRestartAndStayScopedToTheirVisit() throws {
+        let app = XCUIApplication()
+        defer { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-OROT_VISIT_QUESTION_PERSISTENCE", "synthetic"]
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-empty")), app.debugDescription)
+        let generate = node(app, "next-visit-generate")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(generate, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(generate.isHittable)
+        generate.tap()
+        let input = node(app, "next-visit-question-text-0")
+        XCTAssertTrue(FormUITestConditions.replace(input, with: "합성 질문을 진료에서 확인할까요?", in: app, scrollID: "next-visit-questions-scroll"))
+        let save = node(app, "next-visit-review-save")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input))
+        XCTAssertTrue(save.isHittable)
+        save.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        let snapshot = node(app, "visit-persistence-snapshot")
+        let savedIDs = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let value = UITestConditions.text(snapshot)
+            return value.hasPrefix("[\"") && value != "[]"
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [savedIDs]), .completed, app.debugDescription)
+        let originalIDs = UITestConditions.text(snapshot)
+        let originalProcess = UITestConditions.text(node(app, "visit-persistence-process"))
+        XCTAssertFalse(originalProcess.isEmpty)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), originalProcess)
+        UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        let saved = app.staticTexts["합성 질문을 진료에서 확인할까요?"]
+        _ = FormUITestConditions.reveal(saved, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(saved.exists, app.debugDescription)
+        let edit = node(app, "next-visit-saved-edit")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(edit, in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(edit.isHittable)
+        edit.tap()
+        let restoredInput = node(app, "next-visit-question-text-0")
+        XCTAssertTrue(FormUITestConditions.replace(restoredInput, with: "수정한 합성 질문을 확인할까요?", in: app, scrollID: "next-visit-questions-scroll"))
+        let resave = node(app, "next-visit-review-save")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(resave, in: app, scrollID: "next-visit-questions-scroll", avoiding: restoredInput))
+        XCTAssertTrue(resave.isHittable)
+        resave.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        let editedProcess = UITestConditions.text(node(app, "visit-persistence-process"))
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
+        XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), editedProcess)
+        UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
+        let edited = app.staticTexts["수정한 합성 질문을 확인할까요?"]
+        _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(edited.exists, app.debugDescription)
+        let changeVisit = node(app, "visit-persistence-switch")
+        XCTAssertTrue(changeVisit.isHittable)
+        changeVisit.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-empty")), app.debugDescription)
+        XCTAssertFalse(edited.exists)
+        XCTAssertTrue(changeVisit.isHittable)
+        changeVisit.tap()
+        XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
+        _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
+        XCTAssertTrue(edited.exists, app.debugDescription)
+    }
+
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
