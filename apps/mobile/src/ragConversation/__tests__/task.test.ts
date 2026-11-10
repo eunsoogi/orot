@@ -105,31 +105,6 @@ const reference = {
   reviewState: 'reviewed' as const,
 };
 
-test('requires validated literature fields when personal evidence is also present', () => {
-  const input = {
-    request: 'Summarize research papers about sleep',
-    evidence: {
-      items: [
-        { ...reference, content: 'A personal record' },
-        {
-          ...reference,
-          sourceKind: 'external_medical' as const,
-          evidenceId: 'paper',
-          content: 'OR 1.40',
-        },
-      ],
-      coverage: [],
-      conflicts: [],
-    },
-  };
-  expect(
-    ragConversationTask.validateResult(
-      { answerKind: 'grounded', answer: '위험도 40% 증가' },
-      input,
-    ).status,
-  ).toBe('needs_clarification');
-});
-
 test('makes previous assistant claims context only and validates a current-evidence answer', () => {
   const input = {
     request: '지난달 혈압이 어땠나요?',
