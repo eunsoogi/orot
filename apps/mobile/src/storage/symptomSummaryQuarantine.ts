@@ -46,6 +46,7 @@ export async function assertSummarySourceAvailable(
   ) {
     throw new RetainedSourceInvalidError(
       'A cited source was removed before saving.',
+      'deleted',
     );
   }
 }
@@ -70,5 +71,6 @@ export async function assertSymptomPeriodAvailable(
   if (result.rows.length)
     throw new RetainedSourceInvalidError(
       'A symptom period source was removed.',
+      'deleted',
     );
 }

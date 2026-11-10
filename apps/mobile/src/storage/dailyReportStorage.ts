@@ -89,17 +89,18 @@ export function createDailyReportStorage(database: SqlDatabase) {
           value = { status: 'error' };
           return;
         }
-        const sourceChanged = await dailyReportSourcesChanged(
+        const sourceStatus = await dailyReportSourcesChanged(
           tx,
           row.invalid === 1,
           lineage,
           manualHistory,
         );
-        if (sourceChanged) {
+        if (sourceStatus !== 'current') {
           value = {
             status: 'stale',
             runId: head.active_run_id,
             revision: head.revision,
+            sourceStatus,
           };
           return;
         }
@@ -113,7 +114,12 @@ export function createDailyReportStorage(database: SqlDatabase) {
       });
       return value as
         | { status: 'missing' | 'deleted' | 'error' }
-        | { status: 'stale'; runId: string; revision: number }
+        | {
+            status: 'stale';
+            runId: string;
+            revision: number;
+            sourceStatus: 'stale' | 'deleted';
+          }
         | {
             status: 'saved';
             runId: string;
