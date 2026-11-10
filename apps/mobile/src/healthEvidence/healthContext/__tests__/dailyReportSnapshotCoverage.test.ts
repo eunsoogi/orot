@@ -80,6 +80,22 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
         item => item.source === 'health_observation',
       )?.status,
     ).toBe('partial');
+    for (let index = 0; index < 5; index++)
+      await put(`large-${index}`, { concept: 'x'.repeat(15000) });
+    const large = await readDailyReportSnapshot(
+      connection.database,
+      calendar.context,
+      {
+        sourceIds: Array.from({ length: 5 }, (_, index) => `large-${index}`),
+      },
+    );
+    expect(large.values.length).toBeGreaterThan(0);
+    expect(large.values.length).toBeLessThan(5);
+    expect(
+      large.sourceSnapshot.coverage.find(
+        item => item.source === 'health_observation',
+      )?.status,
+    ).toBe('partial');
     for (let index = 0; index < 101; index++)
       await put(`bounded-${String(index).padStart(3, '0')}`, {});
     const bounded = await readDailyReportSnapshot(
