@@ -140,7 +140,8 @@ final class DailyReportEntryUITests: XCTestCase {
         XCTAssertEqual(observations.first?["text"] as? String, "합성 심박수 기록은 72회예요.")
         let reportScreen = UITestConditions.element(app, "daily-report-screen")
         XCTAssertTrue(UITestConditions.exists(reportScreen), app.debugDescription)
-        let record = app.staticTexts["합성 심박수 기록은 72회예요."]
+        // Fabric exposes this same rendered text as nested accessibility elements.
+        let record = reportScreen.staticTexts.matching(identifier: "합성 심박수 기록은 72회예요.").firstMatch
         UITestConditions.scrollTo(record, in: reportScreen)
         XCTAssertTrue(record.exists && record.isHittable, record.debugDescription)
         let chat = app.buttons["이 보고서에 관해 대화하기"]
@@ -173,7 +174,8 @@ final class DailyReportEntryUITests: XCTestCase {
     /// Check the report's real viewport and rail, then preserve screenshots for visual clipping review.
     private func assertSavedReport(_ app: XCUIApplication, scroll: XCUIElement) throws {
         let date = UITestConditions.element(app, "daily-report-date")
-        let observation = app.staticTexts["합성 심박수 기록은 72회예요."]
+        // Fabric exposes this same rendered text as nested accessibility elements.
+        let observation = scroll.staticTexts.matching(identifier: "합성 심박수 기록은 72회예요.").firstMatch
         XCTAssertTrue(UITestConditions.exists(date), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(date).contains("2035-01-01"))
         UITestConditions.scrollTo(observation, in: scroll)
