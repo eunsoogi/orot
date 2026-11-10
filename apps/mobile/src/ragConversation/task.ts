@@ -182,7 +182,11 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       } as const;
     }
     if ('literature' in value || 'localClaims' in value) {
-      const rendered = renderMixedEvidenceAnswer(value, input.evidence.items);
+      const rendered = renderMixedEvidenceAnswer(
+        value,
+        input.evidence.items,
+        input.request,
+      );
       if (!rendered)
         return {
           status: 'needs_clarification',
