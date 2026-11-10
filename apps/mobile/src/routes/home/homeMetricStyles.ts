@@ -4,11 +4,14 @@ import { homeMetricGridGap } from './homeMetricLayout';
 
 /** Shared card and chart geometry stays inside the Home route's single scroll owner. */
 export const homeMetricStyles = StyleSheet.create({
+  sections: { gap: 24 },
   section: { gap: 12 },
   heading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    // Reserve the same heading geometry with or without the 44pt edit action.
+    minHeight: 44,
     // Large system text must wrap before it can push the edit action offscreen.
     flexWrap: 'wrap',
   },
