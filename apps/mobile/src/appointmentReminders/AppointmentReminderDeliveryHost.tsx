@@ -5,8 +5,11 @@ import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { createAppointmentReminderDelivery } from './reminderCoordinator';
 import { buildAppointmentReminder } from './reminderPlan';
+import { createDailyReminderDelivery } from './dailyReminderDelivery';
 import {
   consumeAppointmentReminderTarget,
+  consumeDailyReminderTarget,
+  acknowledgeDailyReminderTarget,
   subscribeAppointmentReminderOpened,
 } from './nativeReminderBridge';
 
@@ -22,6 +25,22 @@ export function AppointmentReminderDeliveryHost({
     let retryWhenNavigationAvailable = false;
     const reconcile = () =>
       runtime.coordinator.reconcile().catch(() => undefined);
+    const deliverDaily = createDailyReminderDelivery({
+      consume: consumeDailyReminderTarget,
+      acknowledge: acknowledgeDailyReminderTarget,
+      confirm: async () => {
+        if (controller.getSnapshot().isTransitioning) {
+          retryWhenNavigationAvailable = true;
+          return 'busy';
+        }
+        return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
+      },
+      unavailable: () =>
+        Alert.alert(
+          '오늘의 기록',
+          '이 알림을 열 수 없어요. 앱에서 다시 확인해 주세요.',
+        ),
+    });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
       loadAppointments: runtime.list,
@@ -60,8 +79,15 @@ export function AppointmentReminderDeliveryHost({
             : '예약을 확인하지 못했어요. 앱을 다시 열어 주세요.',
         ),
     });
+    // Serialize both families so two simultaneous taps cannot race leave guards.
+    let drainQueue = Promise.resolve();
     const drain = () => {
-      deliver().catch(() => undefined);
+      drainQueue = drainQueue
+        .then(async () => {
+          await deliver();
+          await deliverDaily();
+        })
+        .catch(() => undefined);
     };
     let unsubscribe = () => {};
     try {

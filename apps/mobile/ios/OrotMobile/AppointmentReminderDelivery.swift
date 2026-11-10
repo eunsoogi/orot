@@ -7,11 +7,37 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     static let changed = Notification.Name("OrotAppointmentReminderOpened")
     private let lock = NSLock()
     private var pending: [String: String]?
+    private let defaults: UserDefaults
+    private let dailyKey = "com.orot.daily-report.delivery-inbox"
+    private let handledDailyKey = "com.orot.daily-report.delivery-handled"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        super.init()
+    }
+
+    func consumeDailyTarget() -> [String: String]? {
+        lock.lock()
+        defer { lock.unlock() }
+        return (defaults.array(forKey: dailyKey) as? [[String: String]])?.first
+    }
+
+    func acknowledgeDailyTarget(_ timestamp: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        var targets = defaults.array(forKey: dailyKey) as? [[String: String]] ?? []
+        guard targets.first?["deliveryTimestamp"] == timestamp else { return }
+        targets.removeFirst()
+        defaults.set(targets, forKey: dailyKey)
+        var handled = defaults.stringArray(forKey: handledDailyKey) ?? []
+        handled.append(timestamp)
+        defaults.set(Array(handled.suffix(32)), forKey: handledDailyKey)
+    }
 
     func hasPendingTarget() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return pending != nil
+        return pending != nil || !(defaults.array(forKey: dailyKey) ?? []).isEmpty
     }
 
     func consumeTarget() -> [String: String]? {
@@ -28,11 +54,28 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
         withCompletionHandler completionHandler: @escaping () -> Void,
     ) {
         defer { completionHandler() }
-        receive(response.notification.request, actionIdentifier: response.actionIdentifier)
+        receive(response.notification.request, actionIdentifier: response.actionIdentifier, deliveredAt: response.notification.date)
     }
 
     /// Captures default-action taps only; dismissal cannot become navigation intent.
-    func receive(_ request: UNNotificationRequest, actionIdentifier: String) {
+    func receive(_ request: UNNotificationRequest, actionIdentifier: String, deliveredAt: Date? = nil) {
+        if request.identifier == DailyReminderNotifications.requestIdentifier,
+           actionIdentifier == UNNotificationDefaultActionIdentifier
+        {
+            // Delivery time is an observed instant, not evidence of the delivery timezone.
+            let timestamp = deliveredAt.map { String($0.timeIntervalSince1970) } ?? ""
+            lock.lock()
+            var targets = defaults.array(forKey: dailyKey) as? [[String: String]] ?? []
+            let target = ["kind": request.content.userInfo["kind"] as? String ?? "", "deliveryTimestamp": timestamp]
+            let handled = defaults.stringArray(forKey: handledDailyKey) ?? []
+            if !handled.contains(timestamp), !targets.contains(where: { $0["deliveryTimestamp"] == timestamp }) {
+                targets.append(target)
+                defaults.set(targets, forKey: dailyKey)
+            }
+            lock.unlock()
+            NotificationCenter.default.post(name: Self.changed, object: nil)
+            return
+        }
         guard request.identifier == AppointmentReminderNotifications.requestIdentifier,
               actionIdentifier == UNNotificationDefaultActionIdentifier,
               let id = request.content.userInfo["appointmentId"] as? String,
@@ -52,7 +95,7 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void,
     ) {
         completionHandler(
-            notification.request.identifier == AppointmentReminderNotifications.requestIdentifier
+            [AppointmentReminderNotifications.requestIdentifier, DailyReminderNotifications.requestIdentifier].contains(notification.request.identifier)
                 ? [.banner, .list] : [],
         )
     }
