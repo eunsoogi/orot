@@ -65,7 +65,7 @@ describe('historical file database migration', () => {
       expect(await repository.get('source_record', source.id)).toEqual(source);
       expect(await repository.get('evidence_span', evidence.id)).toEqual(evidence);
       expect((await connection.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(
-        13,
+        14,
       );
       await expect(
         connection.database.execute(
@@ -126,7 +126,7 @@ describe('historical file database migration', () => {
       expect(await reopened.get('source_record', source.id)).toEqual(source);
       expect(await reopened.get('evidence_span', evidence.id)).toEqual(evidence);
       expect((await connection.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(
-        13,
+        14,
       );
     } finally {
       connection.close();

@@ -79,6 +79,8 @@ export type {
   VisitBrief,
 } from './visits';
 export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
+export { VisitQuestionRecordSchema } from './visitQuestionRecords';
+export type { VisitQuestionRecord } from './visitQuestionRecords';
 export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
 export {
