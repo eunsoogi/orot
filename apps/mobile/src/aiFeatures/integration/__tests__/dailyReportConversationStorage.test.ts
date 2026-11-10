@@ -1,4 +1,7 @@
-import { HealthObservationSchema } from '@orot/domain';
+import {
+  createDailyReportIdentity,
+  HealthObservationSchema,
+} from '@orot/domain';
 import {
   createManualHistoryRepository,
   createRecordRepository,
@@ -18,7 +21,7 @@ import { fingerprint } from '../evidenceUtils';
 import type { AiFeatureLocalData } from '../localData';
 import type { createDailyReportFeature } from '../dailyReportFeature';
 
-test.each(['corrected', 'deleted', 'replaced'] as const)(
+test.each(['corrected', 'deleted', 'replaced', 'report deleted'] as const)(
   'saved revision resolves cited records and rejects a %s source or revision',
   async change => {
     const connection = openSqliteTestDatabase(':memory:');
@@ -134,10 +137,34 @@ test.each(['corrected', 'deleted', 'replaced'] as const)(
       expect(payload).not.toContain(cited.id);
       expect(payload).not.toContain(uncited.id);
       expect(await prepared?.isCurrent()).toBe(true);
+      for (const wrong of [
+        {
+          identity: createDailyReportIdentity('2035-01-02', 'UTC'),
+          runId: 'daily-one',
+          revision: 1,
+        },
+        { identity: context.identity, runId: 'other-run', revision: 1 },
+        { identity: context.identity, runId: 'daily-one', revision: 2 },
+      ]) {
+        expect(
+          await prepareDailyReportConversationEvidence({
+            report: wrong,
+            resolve,
+            registry,
+            loadLocalData: async () => data,
+            signal,
+          }),
+        ).toBeNull();
+      }
       if (change === 'corrected')
         await repository.put('health_observation', makeRecord(cited.id, 80));
       else if (change === 'deleted')
         await repository.delete('health_observation', cited.id);
+      else if (change === 'report deleted')
+        await connection.database.execute(
+          'DELETE FROM symptom_summary_runs WHERE id = ?',
+          ['daily-one'],
+        );
       else
         expect(
           (
