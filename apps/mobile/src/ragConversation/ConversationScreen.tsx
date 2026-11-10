@@ -18,7 +18,7 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
-import { t } from '../i18n';
+import { DailyReportConversationHeader } from './DailyReportConversationHeader';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
@@ -136,24 +136,10 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      {selectedReport ? (
-        <Text>
-          {t('dailyReport.followUpIdentity', {
-            date: selectedReport.identity.localDate,
-            zone: selectedReport.identity.timeZone,
-          })}{' '}
-          {'\n'}
-          {t('dailyReport.chatNote')}
-        </Text>
-      ) : null}
-      {onOpenDailyReport ? (
-        <Button
-          title={t('dailyReport.openFromChat')}
-          testID="daily-report-request"
-          variant="secondary"
-          onPress={onOpenDailyReport}
-        />
-      ) : null}
+      <DailyReportConversationHeader
+        report={selectedReport}
+        onRequest={onOpenDailyReport}
+      />
     </View>
   );
 

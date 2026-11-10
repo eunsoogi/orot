@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
@@ -35,7 +35,7 @@ export function DailyReportSavedSection({
   onStale: () => void;
 }) {
   const generation = useRef(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     generation.current += 1;
     return () => {
       generation.current += 1;
