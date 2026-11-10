@@ -1,5 +1,6 @@
 import type { VisitQuestionEvidenceItem } from '../agent/visitQuestions/taskContract';
 import type { InlineVisitReview } from '../nextVisitQuestions/inlineVisitReview';
+import type { ConversationVisitQuestions } from './conversationVisitQuestions';
 import type {
   ConversationSession,
   ConversationSnapshot,
@@ -15,6 +16,7 @@ export function createConversationVisitReviewUpdater(
     id: number,
     messageId: number,
     review: InlineVisitReview<VisitQuestionEvidenceItem>,
+    validateSource?: ConversationVisitQuestions['validateSource'],
   ) => {
     const session = snapshot().sessions.find(item => item.id === id);
     const message = session?.messages.find(item => item.id === messageId);
@@ -27,7 +29,14 @@ export function createConversationVisitReviewUpdater(
     update(id, {
       messages: session!.messages.map(item =>
         item.id === messageId
-          ? { ...item, visitQuestions: { ...message.visitQuestions!, review } }
+          ? {
+              ...item,
+              visitQuestions: {
+                ...message.visitQuestions!,
+                review,
+                ...(validateSource ? { validateSource } : {}),
+              },
+            }
           : item,
       ),
     });

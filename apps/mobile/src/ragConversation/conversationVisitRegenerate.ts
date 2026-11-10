@@ -1,6 +1,7 @@
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { DisplayMessage } from './ConversationMessage';
+import { visitPreparationSender } from './conversationVisitDispatch';
 
 /** Start a separate turn without replacing a composer draft or an existing review. */
 export function regenerateVisitQuestions(input: {
@@ -35,8 +36,9 @@ export function regenerateVisitQuestions(input: {
   }
   store.setDraft(sessionId, question);
   store
-    .send(sessionId, (text, history, signal, observer) =>
-      prepare(text, history, signal, observer, {
+    .send(
+      sessionId,
+      visitPreparationSender(store, sessionId, prepare, {
         intent: 'visit-questions',
         entryKey: message.visitQuestions!.review.ownerKey,
         appointmentId: message.visitQuestions!.appointment.id,

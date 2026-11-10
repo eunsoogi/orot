@@ -32,6 +32,7 @@ test('saving a selected question updates only its owning conversation message', 
     visitQuestions: { appointment, review, validateSource: async () => true },
   }));
   const message = store.getSnapshot().sessions[0]!.messages[1]!;
+  const savedValidator = jest.fn(async () => true);
   const save = jest.fn(async input => ({
     questions: input.questions.map((question: typeof candidate) => ({
       ...question,
@@ -39,7 +40,7 @@ test('saving a selected question updates only its owning conversation message', 
     })),
     caveats: [],
     memoryStatus: 'saved' as const,
-    validateSource: async () => true,
+    validateSource: savedValidator,
   }));
   function View() {
     const current = store.getSnapshot().sessions[0]!.messages[1]!;
@@ -72,5 +73,15 @@ test('saving a selected question updates only its owning conversation message', 
     ).toEqual([{ id: 'new-id', revision: 'revision' }]),
   );
   expect(message.visitQuestions?.review.expectedSavedQuestions).toEqual([]);
+  const committed =
+    store.getSnapshot().sessions[0]!.messages[1]!.visitQuestions!;
+  await committed.validateSource(
+    candidate.citations[0]!,
+    new AbortController().signal,
+  );
+  expect(savedValidator).toHaveBeenCalled();
+  await rendered.rerender(<View />);
+  await fireEvent.press(screen.getByTestId('inline-visit-save'));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
   store.dispose();
 });
