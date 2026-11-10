@@ -9,6 +9,7 @@ import {
 } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { createRecapCompletion } from './recapCompletion';
+import type { RecapCompletionPorts } from './recapCompletion';
 import { createAutomaticRecapWorkflow } from './automaticRecapWorkflow';
 import { publishRecapUpdate } from './recapUpdates';
 
@@ -16,6 +17,7 @@ import { publishRecapUpdate } from './recapUpdates';
 export function createAutomaticRecapService(
   database: SqlDatabase,
   consent: ExecutionConsentPort,
+  resolveSelected?: RecapCompletionPorts['resolveSelected'],
 ) {
   const loadCurrent = (sourceId: string) =>
     loadCurrentRecapInput(database, sourceId);
@@ -23,6 +25,8 @@ export function createAutomaticRecapService(
     loadInput: sourceId => loadCurrent(sourceId),
     loadCurrent,
     consent,
+    // Tests may select a synthetic provider; ordinary callers retain the saved-provider resolver.
+    ...(resolveSelected ? { resolveSelected } : {}),
     onOutcome: async () => {},
   });
   const official = createVisitQuestionRecordRepository(database);

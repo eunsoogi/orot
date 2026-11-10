@@ -54,7 +54,21 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         let pressure = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "120 mmHg")).firstMatch
         try voiceOver.assertSpeech(from: pressure, expected: "120", forbiddenTerms: [], phase: "chart-value", testCase: self)
         try voiceOver.prepareForStandardInteraction()
+        verifyDenseChartPages(in: app)
+    }
 
+    /// Preserve the paging and outlier oracle when the host cannot return VoiceOver speech.
+    @MainActor
+    func testDenseChartPagesKeepOutlierReachable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "chart-foundation"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        verifyDenseChartPages(in: app)
+    }
+
+    @MainActor
+    private func verifyDenseChartPages(in app: XCUIApplication) {
         let scroll = app.scrollViews.firstMatch
         let next = UITestConditions.element(app, "dense-health-chart-next")
         UITestConditions.scrollTo(next, in: scroll)
@@ -64,11 +78,12 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         XCTAssertEqual(page.label, "1 / 3쪽")
         let started = Date()
         next.tap()
-        XCTAssertEqual(page.label, "2 / 3쪽")
+        // React commits the page update after the native tap returns.
+        UITestConditions.value(page, equals: "2 / 3쪽")
         print("CHART_PAGE_TAP_SECONDS \(Date().timeIntervalSince(started))")
         XCTAssertTrue(next.exists && next.isHittable, next.debugDescription)
         next.tap()
-        XCTAssertEqual(page.label, "3 / 3쪽")
+        UITestConditions.value(page, equals: "3 / 3쪽")
 
         let outlier = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "199회/분")).firstMatch
         UITestConditions.scrollTo(outlier, in: scroll)

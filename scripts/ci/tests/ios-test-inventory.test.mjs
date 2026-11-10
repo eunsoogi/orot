@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
-import { productionTestInventory } from '../production-ui-contract.mjs';
-import { rotationDiagnosticTests } from '../ios-test-profile-selection.mjs';
+import { explicitIosDiagnosticSelectors } from './ios-test-explicit-diagnostics.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
 
 function assertTestMethodDeclared(identifier) {
@@ -112,12 +111,7 @@ test('each profile declares unique existing cases and every test method is sched
     }
   }
   // Gated diagnostics are checked for declaration but never included in default suites.
-  for (const identifier of [
-    ...iosTestInventory('speech', 'preparation'),
-    ...iosTestInventory('core', 'authentication'),
-    ...productionTestInventory,
-    ...rotationDiagnosticTests,
-  ]) {
+  for (const identifier of explicitIosDiagnosticSelectors()) {
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }

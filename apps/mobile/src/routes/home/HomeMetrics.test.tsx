@@ -11,7 +11,11 @@ import type { HomeMetric } from './metricSelection';
 import type { HomeMetricProjection } from './metricProjection';
 
 jest.mock('./useHomeMetrics');
-jest.mock('../../ui/charts', () => ({ ChartPlot: jest.fn(() => null) }));
+jest.mock('react-native-chart-kit/v2', () => ({
+  ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
+  LineChart: () => null,
+  BarChart: () => null,
+}));
 const mocked = jest.mocked(useHomeMetrics);
 
 test.each([
@@ -57,7 +61,7 @@ test.each([
 
     await render(<HomeMetrics />);
 
-    const summary = screen.getByTestId(`home-metric-${metric}`);
+    const summary = screen.getByTestId(`home-metric-summary-${metric}`);
     expect(summary.props.accessibilityLabel).toContain(statistic);
     expect(summary.props.accessibilityLabel).toContain(`${formattedValue}.`);
     if (rawUnit)
@@ -160,7 +164,9 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
     save,
   });
   await render(<HomeMetrics />);
-  expect(screen.getByLabelText(/2026-10-15: 기록이 없어요/)).toBeTruthy();
+  expect(
+    screen.getByText('2026-10-15: 측정되지 않음 · 일부 기록 · 출처: 건강 기록'),
+  ).toBeTruthy();
   expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));

@@ -1,6 +1,11 @@
 import { act, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ChartPlot } from '../../ui/charts';
-import { HomeMetricCard } from './HomeMetricCard';
+import {
+  HomeMetricCard,
+  HomeMetricChartPlaceholder,
+  homeMetricTitle,
+} from './HomeMetricCard';
 import { homeMetricChartData } from './homeMetricChart';
 import type { HomeMetricProjection } from './metricProjection';
 import type { HomeMetric } from './metricSelection';
@@ -125,6 +130,50 @@ test('keeps the shared chart width tied to the measured Home card content', asyn
   });
 
   expect(chartPlot.mock.calls.at(-1)?.[0].width).toBe(278);
+});
+
+test('keeps the metric summary and its chart as separate accessibility targets', async () => {
+  await render(<HomeMetricCard metric={projection('steps', 10)} width={320} />);
+
+  const card = screen.getByTestId('home-metric-steps');
+  const summary = screen.getByTestId('home-metric-summary-steps');
+  const chart = screen.getByTestId('home-metric-chart-container-steps');
+
+  expect(card.props.accessible).not.toBe(true);
+  expect(card.props.accessibilityLabel).toBeUndefined();
+  expect(summary.props.accessible).toBe(true);
+  expect(summary.props.accessibilityLabel).toContain(homeMetricTitle('steps'));
+  expect(summary.props.accessibilityLabel).toContain('2026-10-14');
+  expect(summary.props.accessibilityLabel).toContain('10걸음');
+  expect(card.children).toContain(summary);
+  expect(card.children).toContain(chart);
+  expect(StyleSheet.flatten(card.props.style).gap).toBe(6);
+  expect(StyleSheet.flatten(summary.props.style).gap).toBe(6);
+});
+
+test('keeps placeholder chart status and guidance outside its title summary', async () => {
+  await render(
+    <HomeMetricChartPlaceholder
+      metric="steps"
+      width={320}
+      status="empty"
+      emptyMessage="No records are available."
+    />,
+  );
+
+  const card = screen.getByTestId('home-metric-steps');
+  const summary = screen.getByTestId('home-metric-summary-steps');
+  const chart = screen.getByTestId('home-metric-chart-container-steps');
+
+  expect(card.props.accessible).not.toBe(true);
+  expect(summary.props.accessible).toBe(true);
+  expect(summary.props.accessibilityLabel).toBe(homeMetricTitle('steps'));
+  expect(card.children).toContain(summary);
+  expect(card.children).toContain(chart);
+  expect(card.children).toContain(
+    screen.getByText('No records are available.'),
+  );
+  expect(chartPlot.mock.calls.at(-1)?.[0].data.coverage.status).toBe('empty');
 });
 
 test('marks an all-missing chart empty without turning its slots into zero', () => {

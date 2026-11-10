@@ -2,7 +2,9 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { homeMetricGridGap } from './homeMetricLayout';
 
-/** Shared card and chart geometry stays inside the Home route's single scroll owner. */
+const homeMetricCardGap = 6;
+
+/** Shared card, summary, and chart geometry stays inside Home's single scroll owner. */
 export const homeMetricStyles = StyleSheet.create({
   sections: { gap: 24 },
   section: { gap: 12 },
@@ -39,8 +41,10 @@ export const homeMetricStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderRadius: 16,
     padding: 14,
-    gap: 6,
+    gap: homeMetricCardGap,
   },
+  /** Preserve the card's spacing when headline content is grouped for accessibility. */
+  metricSummary: { gap: homeMetricCardGap },
   recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
   recentChangeRow: {
     flexDirection: 'row',

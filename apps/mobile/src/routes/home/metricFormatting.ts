@@ -1,6 +1,5 @@
 import { formatNumber, t, type TranslationKey } from '../../i18n';
 import type { HomeMetric } from './metricSelection';
-import type { HomeMetricProjection } from './metricProjection';
 
 type HomeMetricUnitTranslationKey = Extract<
   TranslationKey,
@@ -26,22 +25,6 @@ export function homeMetricStatistic(metric: HomeMetric): string {
     bodyMass: t('home.dailyLatest'),
     steps: t('home.dailySum'),
   }[metric];
-}
-
-/** Formats chart-day VoiceOver summaries without changing projected sample values. */
-export function formatHomeMetricDaySummary(
-  metric: HomeMetricProjection,
-): string {
-  return metric.days
-    .map(day => {
-      const value =
-        day.value === null
-          ? t('home.metricEmpty')
-          : formatHomeMetricValue(metric.metric, day.value, metric.unit);
-      const partial = day.partial ? `, ${t('home.partialToday')}` : '';
-      return `${day.date}: ${value}${partial}`;
-    })
-    .join('; ');
 }
 
 /** Formats overview aggregates while preserving the source unit for unsupported pairs. */

@@ -1,11 +1,23 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { ChartPlot } from '../../ui/charts';
 import { HomeMetrics } from './HomeMetrics';
 import type { HomeMetricProjection } from './metricProjection';
 import { useHomeMetrics } from './useHomeMetrics';
 
 jest.mock('./useHomeMetrics');
-jest.mock('../../ui/charts', () => ({ ChartPlot: jest.fn(() => null) }));
+jest.mock('react-native-chart-kit/v2', () => ({
+  ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
+  LineChart: () => null,
+  BarChart: () => null,
+}));
+jest.mock('../../ui/charts', () => ({
+  ChartPlot: jest.fn(jest.requireActual('../../ui/charts').ChartPlot),
+}));
 const mocked = jest.mocked(useHomeMetrics);
 const chartPlot = jest.mocked(ChartPlot);
 
@@ -91,9 +103,10 @@ test.each([
     expect(
       chartProps?.data.series[0]?.points.map(point => point.value),
     ).toEqual([450, 500]);
+    const chart = within(screen.getByTestId('home-metric-chart-steps'));
     expect(
-      screen.getByTestId('home-metric-steps').props.accessibilityLabel,
-    ).toContain(state === 'stale' ? '이전에 불러온' : '불러오는 중');
+      chart.getByText(state === 'stale' ? /이전에 불러온/u : /불러오는 중/u),
+    ).toBeTruthy();
 
     if (state === 'stale') {
       expect(screen.getByRole('alert')).toHaveTextContent(

@@ -13,11 +13,7 @@ import {
   homeMetricChartData,
   homeMetricChartPlaceholderData,
 } from './homeMetricChart';
-import {
-  formatHomeMetricDaySummary,
-  formatHomeMetricValue,
-  homeMetricStatistic,
-} from './metricFormatting';
+import { formatHomeMetricValue, homeMetricStatistic } from './metricFormatting';
 
 export const homeMetricTitle = (metric: HomeMetric) =>
   ({
@@ -90,7 +86,7 @@ function MeasuredHomeMetricChart({
   );
 }
 
-/** Renders a metric with the shared daily chart while keeping source and time-zone metadata private. */
+/** Groups only the headline summary so chart values, guidance, and controls stay independently accessible. */
 export function HomeMetricCard({
   metric,
   width,
@@ -107,33 +103,35 @@ export function HomeMetricCard({
     metric.latest.value,
     metric.unit,
   );
-  const summary = formatHomeMetricDaySummary(metric);
   const accessibilityLabel = [
     homeMetricTitle(metric.metric),
     `${metric.latest.date} ${statistic}: ${latestValue}`,
     metric.measuredAt
       ? formatDateTime(new Date(metric.measuredAt))
       : t('home.measurementUnknown'),
-    summary,
-    ...(chartStatus ? [t(`chart.state.${chartStatus}`)] : []),
   ].join('. ');
   return (
     <View
       style={[styles.card, styles.gridCard, { width }]}
       testID={`home-metric-${metric.metric}`}
-      accessibilityLabel={accessibilityLabel}
-      accessible
     >
-      <HomeMetricHeading metric={metric.metric} />
-      <Text style={styles.number}>{latestValue}</Text>
-      <Text style={styles.detail}>
-        {metric.latest.date} · {statistic}
-      </Text>
-      <Text style={styles.detail}>
-        {metric.measuredAt
-          ? formatDateTime(new Date(metric.measuredAt))
-          : t('home.measurementUnknown')}
-      </Text>
+      <View
+        style={styles.metricSummary}
+        testID={`home-metric-summary-${metric.metric}`}
+        accessibilityLabel={accessibilityLabel}
+        accessible
+      >
+        <HomeMetricHeading metric={metric.metric} />
+        <Text style={styles.number}>{latestValue}</Text>
+        <Text style={styles.detail}>
+          {metric.latest.date} · {statistic}
+        </Text>
+        <Text style={styles.detail}>
+          {metric.measuredAt
+            ? formatDateTime(new Date(metric.measuredAt))
+            : t('home.measurementUnknown')}
+        </Text>
+      </View>
       <MeasuredHomeMetricChart metric={metric.metric} data={chartData} />
       {metric.days.at(-1)?.partial && (
         <Text style={styles.detail}>{t('home.partialToday')}</Text>
@@ -142,7 +140,7 @@ export function HomeMetricCard({
   );
 }
 
-/** Keeps the chart frame in place until Home has a usable local snapshot. */
+/** Keeps the chart frame stable while leaving chart status and empty guidance accessible. */
 export function HomeMetricChartPlaceholder({
   metric,
   width,
@@ -157,15 +155,19 @@ export function HomeMetricChartPlaceholder({
   >;
   readonly emptyMessage?: string;
 }) {
-  const accessibilityLabel = `${homeMetricTitle(metric)}. ${t(`chart.state.${status}`)}`;
   return (
     <View
       style={[styles.card, styles.gridCard, { width }]}
       testID={`home-metric-${metric}`}
-      accessibilityLabel={accessibilityLabel}
-      accessible
     >
-      <HomeMetricHeading metric={metric} />
+      <View
+        style={styles.metricSummary}
+        testID={`home-metric-summary-${metric}`}
+        accessibilityLabel={homeMetricTitle(metric)}
+        accessible
+      >
+        <HomeMetricHeading metric={metric} />
+      </View>
       {/* Keep the chart's vertical position stable while local metric values are unavailable. */}
       <Text style={styles.number}>{'\u00a0'}</Text>
       <Text style={styles.detail}>{'\u00a0'}</Text>

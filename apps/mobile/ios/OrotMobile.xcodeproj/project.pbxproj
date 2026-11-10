@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000002 /* ChartFoundationUITests.swift */; };
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
+		256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */; };
 		A11200000000000000000003 /* DailyReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000003 /* DailyReminderModule.m */; };
 		A11200000000000000000002 /* DailyReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000002 /* DailyReminderModule.swift */; };
 		A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000001 /* DailyReminderNotifications.swift */; };
@@ -29,6 +30,8 @@
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
+		33A558BEDCD0FEDDD2F84E4E /* RecordingBackgroundRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */; };
+		9A7C8AAE9E62B5477FF3CD29 /* DailyReminderDeliveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5A0E10C3AC43AF78DF8AF5 /* DailyReminderDeliveryUITests.swift */; };
 		0C2288C598E4BFD070081E6E /* PagedHealthRecordsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */; };
 		0C80B921A6F3F58F76C31292 /* libPods-OrotMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */; };
 		12D0939BEAED8755996F1E07 /* ProviderSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */; };
@@ -83,6 +86,7 @@
 		8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */; };
 		864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */; };
 		E71F9C4B106A43E6B9A2D310 /* EncounterReviewPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */; };
+		3C097EC88B5FBB31E551CF58 /* AutomaticRecapPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D281BBD915351B1CE96318 /* AutomaticRecapPersistenceIntegrationTests.swift */; };
 		864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */; };
 		876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */; };
 		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
@@ -249,6 +253,7 @@
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		A7C87A6DBF7A4A8FA2D86B11 /* HomeMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */; };
 		FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */; };
+		195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */; };
 		F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */; };
 		7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */; };
 		69CCDA09AD7D4D7B894E04FA /* EvidenceSourceDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */; };
@@ -318,6 +323,7 @@
 
 /* Begin PBXFileReference section */
 		B11200000000000000000004 /* DailyReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderNotificationTests.swift; sourceTree = "<group>"; };
+		6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderSystemCenterTests.swift; sourceTree = "<group>"; };
 		B11200000000000000000003 /* DailyReminderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DailyReminderModule.m; path = OrotMobile/DailyReminderModule.m; sourceTree = "<group>"; };
 		B11200000000000000000002 /* DailyReminderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderModule.swift; path = OrotMobile/DailyReminderModule.swift; sourceTree = "<group>"; };
 		B11200000000000000000001 /* DailyReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderNotifications.swift; path = OrotMobile/DailyReminderNotifications.swift; sourceTree = "<group>"; };
@@ -372,6 +378,8 @@
 		4DD0E61F7D56E61215372EFE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerGlassView.swift; sourceTree = "<group>"; };
 		56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPlaybackUITests.swift; sourceTree = "<group>"; };
+		C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingBackgroundRecoveryUITests.swift; sourceTree = "<group>"; };
+		BE5A0E10C3AC43AF78DF8AF5 /* DailyReminderDeliveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderDeliveryUITests.swift; sourceTree = "<group>"; };
 		5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestOperationBrokerTests.swift; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-OrotMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.release.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.release.xcconfig"; sourceTree = "<group>"; };
 		57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHistoryUITestConditions.swift; sourceTree = "<group>"; };
@@ -429,6 +437,7 @@
 		ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixtureIsolationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EncounterReviewPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
+		32D281BBD915351B1CE96318 /* AutomaticRecapPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticRecapPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatePersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTests.swift; sourceTree = "<group>"; };
 		F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTestSupport.swift; sourceTree = "<group>"; };
@@ -447,6 +456,7 @@
 		CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryReservedRegionMatcher.swift; sourceTree = "<group>"; };
 		A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricGeometryConditions.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeDuoUITests.swift; sourceTree = "<group>"; };
+		1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartConsumerAcceptanceUITests.swift; sourceTree = "<group>"; };
 		0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportDuoUITests.swift; sourceTree = "<group>"; };
 		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
 		975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EvidenceSourceDuoUITests.swift; sourceTree = "<group>"; };
@@ -840,6 +850,7 @@
 				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
 				B11200000000000000000004 /* DailyReminderNotificationTests.swift */,
+				6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */,
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
@@ -868,6 +879,7 @@
 				ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */,
 				AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */,
 				E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */,
+				32D281BBD915351B1CE96318 /* AutomaticRecapPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
 				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
 				A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */,
@@ -931,6 +943,7 @@
 				D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */,
 				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
 				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
+				1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */,
 				A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */,
 				D4687A5C9F8E4A2B913C7602 /* HomeMetricScrollGeometry.swift */,
 				D3FBD4A586A2465C82F30711 /* HomeMetricScrollUITestConditions.swift */,
@@ -1015,6 +1028,8 @@
 				A670E5C349B64234AA94155A /* RecordingDeletionLatencyUITests.swift */,
 				AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */,
 				56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */,
+				C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */,
+				BE5A0E10C3AC43AF78DF8AF5 /* DailyReminderDeliveryUITests.swift */,
 				B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */,
 				46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */,
 				57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */,
@@ -1442,6 +1457,7 @@
 				D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */,
 				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,
+				195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */,
 				A7C87A6DBF7A4A8FA2D86B11 /* HomeMetricGeometryConditions.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,
 				7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */,
@@ -1514,6 +1530,8 @@
 				607365FCA0E94B0589DEAF02 /* RecordingDeletionLatencyUITests.swift in Sources */,
 				4F4BD3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift in Sources */,
 				075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */,
+				33A558BEDCD0FEDDD2F84E4E /* RecordingBackgroundRecoveryUITests.swift in Sources */,
+				9A7C8AAE9E62B5477FF3CD29 /* DailyReminderDeliveryUITests.swift in Sources */,
 				332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */,
 				F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */,
 				B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */,
@@ -1545,6 +1563,7 @@
 				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
 				A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */,
+				256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */,
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
@@ -1573,6 +1592,7 @@
 				8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */,
 				E71F9C4B106A43E6B9A2D310 /* EncounterReviewPersistenceIntegrationTests.swift in Sources */,
+				3C097EC88B5FBB31E551CF58 /* AutomaticRecapPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
 				A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */,
