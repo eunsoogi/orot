@@ -1,5 +1,6 @@
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { DailyReportContextRequest } from '@orot/domain';
+import type { DailyReportIdentity } from '@orot/domain';
 import { t } from '../../i18n';
 
 /** Entry intent stays separate from editable text for downstream conversation tools. */
@@ -15,6 +16,12 @@ export interface ConversationEntryContext {
   readonly intent: ConversationIntent;
   readonly entryKey: string;
   readonly appointmentId?: string;
+  /** A route-local artifact identity; it does not authorize report content transfer. */
+  readonly dailyReport?: {
+    readonly identity: DailyReportIdentity;
+    readonly runId: string;
+    readonly revision: number;
+  };
 }
 
 /** Explicit daily-report requests stay typed and separate from ordinary conversation text. */

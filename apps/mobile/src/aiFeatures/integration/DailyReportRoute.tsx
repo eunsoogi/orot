@@ -13,9 +13,10 @@ import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationSta
 import type { createDailyReportFeature } from './dailyReportFeature';
 import { useDailyReportRoute } from './useDailyReportRoute';
 import { DailyReportCoverage } from './DailyReportCoverage';
-import { DailyReportSourceLinks } from './DailyReportSourceLinks';
+import { DailyReportSavedSection } from './DailyReportSavedSection';
 import type { AiFeatureServices } from './featureServices';
 import type { EvidenceReference } from '@orot/agent-runtime';
+import type { ConversationEntryContext } from './conversationIntent';
 
 /** Displays an exact saved day; only the explicit action may invoke generation. */
 function todayIdentity() {
@@ -54,7 +55,9 @@ export function DailyReportRoute({
   readonly reminder?: boolean;
   readonly providerSelection: ReactNode;
   readonly onBack: () => void;
-  readonly onChat: () => void;
+  readonly onChat: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => void;
   readonly resolveSources?: AiFeatureServices['dailyReportSources'];
   readonly onOpenSource?: (source: EvidenceReference) => void;
   readonly navigationRouteKey?: string;
@@ -110,7 +113,7 @@ export function DailyReportRoute({
         {t('dailyReport.title')}
       </AppText>
       {identity ? (
-        <AppText>
+        <AppText testID="daily-report-date">
           {t('dailyReport.date', {
             date: identity.localDate,
             zone: identity.timeZone,
@@ -148,40 +151,14 @@ export function DailyReportRoute({
         </View>
       ) : null}
       {saved ? (
-        <View style={styles.group}>
-          <AppText>
-            {t('dailyReport.generatedAt', { time: saved.report.generatedAt })}
-          </AppText>
-          <AppText>
-            {t('dailyReport.reportCutoff', {
-              time: saved.context.generationCutoff,
-            })}
-          </AppText>
-          <AppText accessibilityRole="header">
-            {t('dailyReport.observations')}
-          </AppText>
-          {saved.report.observations.map((item, index) => (
-            <AppText key={index}>{item.text}</AppText>
-          ))}
-          <DailyReportCoverage coverage={saved.report.coverage} />
-          {onOpenSource ? (
-            <DailyReportSourceLinks
-              identity={saved.context.identity}
-              runId={saved.runId}
-              revision={saved.revision}
-              resolve={resolveSources}
-              onOpen={onOpenSource}
-              onStale={state.refresh}
-            />
-          ) : null}
-          <AppText>{t('dailyReport.reportCaution')}</AppText>
-          <AppText>{t('dailyReport.chatNote')}</AppText>
-          <AppButton
-            title={t('dailyReport.chat')}
-            variant="secondary"
-            onPress={onChat}
-          />
-        </View>
+        <DailyReportSavedSection
+          saved={saved}
+          feature={feature}
+          resolveSources={resolveSources}
+          onOpenSource={onOpenSource}
+          onChat={onChat}
+          onStale={state.refresh}
+        />
       ) : null}
       {state.lookup?.status === 'stale' ? (
         <AppText>{t('dailyReport.stale')}</AppText>

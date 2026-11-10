@@ -218,7 +218,12 @@ test('checks the current route only after the daily intent is durable', async ()
     expect(dailyReminderIntentStore.write).toHaveBeenCalled(),
   );
   const editing = controller.push('health-records')!;
-  const editGuard = jest.fn(async () => false);
+  const editGuard = jest.fn(
+    async (_transition, onExplicitDecline?: () => void) => {
+      onExplicitDecline?.();
+      return false;
+    },
+  );
   controller.registerLeaveGuard(editing.key, editGuard);
   await act(async () => {
     release();

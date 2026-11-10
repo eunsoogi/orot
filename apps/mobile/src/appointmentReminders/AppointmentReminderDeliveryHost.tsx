@@ -11,7 +11,11 @@ import {
   registerDailyReminderConsumer,
 } from './dailyReminderDelivery';
 import { createDailyReminderDestination } from './dailyReminderDestination';
+import { createReminderNavigationDecisions } from './reminderNavigationDecisions';
 import { dailyReminderIntentStore } from './dailyReminderIntentStore';
+import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
+import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
+import { createDailyConversationRouteCleanup } from '../aiFeatures/integration/dailyConversationRouteCleanup';
 import {
   consumeAppointmentReminderTarget,
   consumeDailyReminderTarget,
@@ -29,23 +33,13 @@ export function AppointmentReminderDeliveryHost({
   useEffect(() => {
     if (!runtime) return;
     let retryWhenNavigationAvailable = false;
-    let navigationQueue = Promise.resolve();
-    const confirmNavigation = () => {
-      const next = navigationQueue.then(async () => {
-        if (controller.getSnapshot().isTransitioning) {
-          retryWhenNavigationAvailable = true;
-          return 'busy' as const;
-        }
-        return (await controller.requestTabSwitch())
-          ? ('approved' as const)
-          : ('declined' as const);
-      });
-      navigationQueue = next.then(
-        () => undefined,
-        () => undefined,
-      );
-      return next;
-    };
+    const navigationDecisions = createReminderNavigationDecisions(
+      controller,
+      runtime,
+      () => {
+        retryWhenNavigationAvailable = true;
+      },
+    );
     const destination = createDailyReminderDestination({
       ...dailyReminderIntentStore,
       canOpen: entry =>
@@ -62,7 +56,9 @@ export function AppointmentReminderDeliveryHost({
           )
         )
           return 'opened';
-        const decision = await confirmNavigation();
+        const decision = await navigationDecisions.daily(
+          snapshot.currentRoute.key,
+        );
         if (decision !== 'approved') return decision;
         const current = controller.getSnapshot();
         if (
@@ -97,8 +93,12 @@ export function AppointmentReminderDeliveryHost({
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
       loadAppointments: runtime.list,
-      confirmNavigation,
+      confirmNavigation: navigationDecisions.appointment,
       openVisitPreparation: appointment => {
+        if (!navigationDecisions.appointmentRouteIsCurrent()) {
+          retryWhenNavigationAvailable = true;
+          return false;
+        }
         const plan = buildAppointmentReminder(
           [appointment],
           { appointmentId: appointment.id, leadMinutes: 60 },
@@ -128,13 +128,39 @@ export function AppointmentReminderDeliveryHost({
     // Inbox storage is independent; only navigation decisions share a queue.
     let appointmentQueue = Promise.resolve();
     let dailyQueue = Promise.resolve();
+    let conversationQueue = Promise.resolve();
     let restorePending = true;
+    let conversationRestorePending = true;
+    let conversationRestoreDeferred = false;
+    const cleanupConversation = createDailyConversationRouteCleanup({
+      runtime,
+      routeExists: key =>
+        controller.getSnapshot().routes.some(route => route.key === key),
+    });
     const drain = () => {
       appointmentQueue = appointmentQueue
         .then(async () => {
           await deliver();
         })
         .catch(() => undefined);
+      conversationQueue = conversationQueue
+        .then(async () => {
+          await dailyReportConversationIntentStore.retryDismissals();
+          if (!conversationRestorePending) return;
+          const result = await restoreDailyReportConversation({
+            controller,
+            runtime,
+            confirm: navigationDecisions.conversation,
+          });
+          if (result === 'busy') retryWhenNavigationAvailable = true;
+          else {
+            conversationRestorePending = false;
+            conversationRestoreDeferred = result === 'deferred';
+          }
+        })
+        .catch(() => {
+          retryWhenNavigationAvailable = true;
+        });
       dailyQueue = dailyQueue
         .then(async () => {
           if (restorePending) {
@@ -159,6 +185,11 @@ export function AppointmentReminderDeliveryHost({
     }
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
+        cleanupConversation();
+        if (conversationRestoreDeferred) {
+          conversationRestorePending = true;
+          conversationRestoreDeferred = false;
+        }
         reconcile().catch(() => undefined);
         drain();
       }
@@ -169,13 +200,14 @@ export function AppointmentReminderDeliveryHost({
       for (const targets of [
         runtime.targets,
         runtime.homePreparationTargets,
-        runtime.dailyConversationTargets,
+        runtime.dailyReportFollowUps,
       ]) {
         for (const key of targets.keys()) {
           if (!snapshot.routes.some(route => route.key === key))
             targets.delete(key);
         }
       }
+      cleanupConversation();
       for (const [key, entry] of runtime.dailyReportTargets) {
         if (!snapshot.routes.some(route => route.key === key)) {
           runtime.dailyReportTargets.delete(key);

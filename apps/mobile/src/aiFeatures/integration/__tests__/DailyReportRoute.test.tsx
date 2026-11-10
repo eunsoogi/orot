@@ -187,3 +187,45 @@ test('an overlay copy can unmount without cancelling the retained report operati
   expect(retain).not.toHaveBeenCalled();
   expect(cancel).not.toHaveBeenCalled();
 });
+
+test('opens follow-up with the current report identity only after revalidation', async () => {
+  const identity = createDailyReportIdentity('2023-11-15', 'Asia/Seoul');
+  const saved = {
+    status: 'saved' as const,
+    runId: 'run',
+    revision: 2,
+    context: { identity, generationCutoff: '2023-11-15T12:00:00Z' },
+    report: {
+      generatedAt: '2023-11-15T12:01:00Z',
+      observations: [{ text: '합성 기록' }],
+      coverage: [],
+    },
+  };
+  const feature = {
+    lookup: jest.fn(async () => saved),
+    preview: jest.fn(async () => ({ status: 'not_today' as const })),
+    start: jest.fn(),
+    active: jest.fn(() => null),
+    retain: jest.fn(() => () => {}),
+  } as unknown as ReturnType<typeof createDailyReportFeature>;
+  const onChat = jest.fn();
+  await render(
+    <DailyReportRoute
+      feature={feature}
+      initialIdentity={identity}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={onChat}
+    />,
+  );
+  await screen.findByText('합성 기록');
+  await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
+  await waitFor(() =>
+    expect(onChat).toHaveBeenCalledWith({
+      identity,
+      runId: 'run',
+      revision: 2,
+    }),
+  );
+  expect(feature.start).not.toHaveBeenCalled();
+});

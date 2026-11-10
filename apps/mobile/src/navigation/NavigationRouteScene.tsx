@@ -84,9 +84,17 @@ export function NavigationRouteScene<Name extends string>({
         confirm: async request => {
           const source = getLeaveStateSource();
           if (!source) return false;
-          const approved = await (source.confirm ?? confirmNavigationLeave)(
-            request,
-          );
+          const approved = await (source.confirm ?? confirmNavigationLeave)({
+            ...request,
+            ...(request.onExplicitDecline
+              ? {
+                  onExplicitDecline: () => {
+                    if (getLeaveStateSource() === source)
+                      request.onExplicitDecline?.();
+                  },
+                }
+              : {}),
+          });
           return approved && getLeaveStateSource() === source;
         },
         stopRecording: async () => {

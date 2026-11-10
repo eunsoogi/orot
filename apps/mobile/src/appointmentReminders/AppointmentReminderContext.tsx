@@ -7,6 +7,7 @@ import { withAppointmentReminders } from './reminderRepository';
 import type { AppointmentReminderTarget } from './reminderPlan';
 import type { DailyReminderEntry } from './dailyReminderDelivery';
 import type { DailyReportConversationIntent } from '../aiFeatures/integration/conversationIntent';
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { createDailyReportFeature } from '../aiFeatures/integration/dailyReportFeature';
 
 type Loader = () => Promise<AppointmentRepository>;
@@ -32,10 +33,14 @@ export function createAppointmentReminderRuntime(load: Loader) {
       string,
       {
         intent: DailyReportConversationIntent;
-        operation: ReturnType<
+        operation?: ReturnType<
           ReturnType<typeof createDailyReportFeature>['start']
         >;
       }
+    >(),
+    dailyReportFollowUps: new Map<
+      string,
+      NonNullable<ConversationEntryContext['dailyReport']>
     >(),
   };
 }

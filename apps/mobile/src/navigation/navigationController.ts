@@ -13,6 +13,7 @@ export interface NavigationTransition<Name extends string> {
 
 export type NavigationLeaveGuard<Name extends string> = (
   transition: NavigationTransition<Name>,
+  onExplicitDecline?: () => void,
 ) => boolean | Promise<boolean>;
 
 export interface NavigationSnapshot<Name extends string> {
@@ -35,6 +36,9 @@ export interface NavigationController<Name extends string> {
   reconcileNativeBack: (routeKey: string) => boolean;
   requestHome: () => Promise<boolean>;
   requestTabSwitch: () => Promise<boolean>;
+  requestTabSwitchDecision: () => Promise<
+    'approved' | 'declined' | 'unavailable' | 'busy'
+  >;
 }
 
 function createRoute<Name extends string>(
@@ -141,6 +145,32 @@ export function createNavigationController<Name extends string>(
     }
   }
 
+  /** Preserve an explicit cancel separately from an unavailable or stale guard. */
+  async function requestTabSwitchDecision(): Promise<
+    'approved' | 'declined' | 'unavailable' | 'busy'
+  > {
+    if (isTransitioning) return 'busy';
+    const from = routes[routes.length - 1];
+    const root = routes[0];
+    if (!from || !root) return 'unavailable';
+    isTransitioning = true;
+    publish();
+    try {
+      const guard = leaveGuards.get(from.key);
+      if (!guard) return 'unavailable';
+      let declined = false;
+      const allowed = await guard({ intent: 'tab', from, to: root }, () => {
+        declined = true;
+      });
+      return allowed ? 'approved' : declined ? 'declined' : 'unavailable';
+    } catch {
+      return 'unavailable';
+    } finally {
+      isTransitioning = false;
+      publish();
+    }
+  }
+
   return {
     getSnapshot: () => snapshot,
     subscribe: listener => {
@@ -172,5 +202,6 @@ export function createNavigationController<Name extends string>(
     requestBack: () => requestLeave('back'),
     requestHome: () => requestLeave('home'),
     requestTabSwitch,
+    requestTabSwitchDecision,
   };
 }

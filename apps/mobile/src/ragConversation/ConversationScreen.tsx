@@ -24,7 +24,10 @@ import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/use
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useConversationSessionActions } from './useConversationSessionActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
-import { useConversationEntryIntent } from './useConversationEntryIntent';
+import {
+  useConversationEntryIntent,
+  conversationEntryForSession,
+} from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
@@ -61,6 +64,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const selectedReport = conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
@@ -131,9 +135,20 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      {selectedReport ? (
+        <Text>
+          {t('dailyReport.followUpIdentity', {
+            date: selectedReport.identity.localDate,
+            zone: selectedReport.identity.timeZone,
+          })}{' '}
+          {'\n'}
+          {t('dailyReport.chatNote')}
+        </Text>
+      ) : null}
       {onOpenDailyReport ? (
         <Button
           title={t('dailyReport.openFromChat')}
+          testID="daily-report-request"
           variant="secondary"
           onPress={onOpenDailyReport}
         />

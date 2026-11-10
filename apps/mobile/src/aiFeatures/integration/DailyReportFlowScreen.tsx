@@ -6,6 +6,7 @@ import { useAppointmentReminderRuntime } from '../../appointmentReminders/Appoin
 import type { AiFeatureServices } from './featureServices';
 import { DailyReportRoute } from './DailyReportRoute';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
+import type { ConversationEntryContext } from './conversationIntent';
 
 /** Resolves a route-bound reminder or typed conversation request without changing its date. */
 export function DailyReportFlowScreen({
@@ -23,7 +24,9 @@ export function DailyReportFlowScreen({
   routeKey?: string;
   providerSelection: ReactNode;
   onBack: () => void;
-  onChat: () => void;
+  onChat: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => void;
   onOpenSource: (source: EvidenceReference) => void;
   onNavigationStateChange?: AiFeatureNavigationStateChange;
   ownsOperation?: boolean;

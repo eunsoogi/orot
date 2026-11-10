@@ -1,7 +1,8 @@
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { t } from '../../i18n';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -26,6 +27,7 @@ import { useAppointmentReminderRuntime } from '../../appointmentReminders/Appoin
 import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
 
 export interface AiFeatureFlowProps {
+  readonly isEntryCurrent?: () => boolean;
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
   readonly consent: ExecutionConsentPort;
   readonly services: AiFeatureServices;
@@ -52,6 +54,7 @@ export function AiFeatureFlow({
   onProviderSelectionCommitted,
   serviceDependencies,
   services,
+  isEntryCurrent,
 }: AiFeatureFlowProps) {
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
   const reminderRuntime = useAppointmentReminderRuntime();
@@ -130,6 +133,12 @@ export function AiFeatureFlow({
                 pushFeatureRoute('disease-hypotheses')
               }
               onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
+              onOpenDailyReportChat={target => {
+                if (!isEntryCurrent?.() || !reminderRuntime) return;
+                const route = pushFeatureRoute('rag-conversation');
+                if (route)
+                  reminderRuntime.dailyReportFollowUps.set(route.key, target);
+              }}
               onOpenDailyReport={() => {
                 requestDailyReportFromConversation({
                   feature: services.dailyReport,
@@ -137,6 +146,13 @@ export function AiFeatureFlow({
                   navigate: () => pushFeatureRoute('daily-report'),
                   now: new Date().toISOString(),
                   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  isCurrent: isEntryCurrent ?? (() => false),
+                }).then(result => {
+                  if (result === 'unavailable')
+                    Alert.alert(
+                      t('dailyReport.title'),
+                      t('dailyReport.entryError'),
+                    );
                 });
               }}
               onOpenConversationHistory={() =>

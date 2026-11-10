@@ -141,9 +141,12 @@ export const healthkitSettingsKo = {
   'dailyReport.observations': '확인된 기록',
   'dailyReport.reportCaution':
     'AI가 고른 기록이며, 독립적인 의학적 사실이나 진단이 아니에요.',
-  'dailyReport.chat': '일반 대화 열기',
+  'dailyReport.chat': '이 보고서에 관해 대화하기',
   'dailyReport.chatNote': '보고서 내용은 대화에 자동으로 전달되지 않아요.',
+  'dailyReport.followUpIdentity': '선택한 보고서: {date} · {zone}',
   'dailyReport.openFromChat': '오늘의 보고서 요청하기',
+  'dailyReport.entryError':
+    '보고서 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.',
   'conversationIntent.healthSummary':
     '최근 건강 기록을 날짜와 근거 출처와 함께 요약해 주세요.',
   'conversationIntent.possibilities':
