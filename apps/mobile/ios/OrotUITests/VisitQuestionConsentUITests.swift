@@ -156,10 +156,11 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
     private func replaceRestoredQuestion(_ input: XCUIElement, in app: XCUIApplication, observation: EncounterInputObservation?) throws {
         let original = "합성 질문을 진료에서 확인할까요?"
         let replacement = "수정한 합성 질문을 확인할까요?"
-        _ = try XCTUnwrap(FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll"))
+        let reference = try XCTUnwrap(FormUITestConditions.reveal(input, in: app, scrollID: "next-visit-questions-scroll"))
         XCTAssertTrue(input.isHittable)
         XCTAssertEqual(input.value as? String, original)
         input.tap()
+        _ = try XCTUnwrap(FormUITestConditions.exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: "next-visit-questions-scroll", observeFocusGesture: nil))
         let focused = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND hasKeyboardFocus == true", "next-visit-question-text-0"))
         XCTAssertTrue(focused.firstMatch.exists)
         observation?.captureUIKit(.beforeDelete, app: app, testCase: self)
