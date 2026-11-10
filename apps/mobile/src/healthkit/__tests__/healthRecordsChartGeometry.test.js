@@ -1,7 +1,7 @@
 const { execFileSync } = require('node:child_process');
 
-// Exercise the installed library's real scale and label solver in Node. Jest's
-// React Native configuration does not transform this dependency's ESM files.
+// Exercise the installed library's real scale and label solver in an isolated
+// Node process, independent of the chart component mock used by consumer tests.
 test('the chart library positions irregular instants and resolves narrow labels', () => {
   const script = `
     const fs = require('node:fs');
