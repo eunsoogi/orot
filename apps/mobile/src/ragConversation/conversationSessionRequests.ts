@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
 import {
@@ -140,7 +141,9 @@ export function createConversationSessionRequests(
           { id: userMessageId, role: 'user', content: question },
         ],
         busy: true,
-        error: session.unsavedCount ? copy.unsavedAnswersRemain : '',
+        error: session.unsavedCount
+          ? t('ragConversation.conversation.unsavedAnswersRemain')
+          : '',
         pendingMessage: { id: responseId, content: '', activity: copy.loading },
       });
       const current = () =>
