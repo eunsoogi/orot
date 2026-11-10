@@ -98,6 +98,17 @@ export async function runDomainTestOperation(
         parameters.fixtureIdentifier,
       );
     }
+    case 'automatic-recap-seed':
+    case 'automatic-recap-read':
+    case 'automatic-recap-cleanup': {
+      const recap =
+        await import('./transcription/automaticRecapPersistenceOperation');
+      if (operation === 'automatic-recap-seed')
+        return recap.seedAutomaticRecapPersistence();
+      return operation === 'automatic-recap-read'
+        ? recap.readAutomaticRecapPersistence(parameters.sourceId)
+        : recap.cleanupAutomaticRecapPersistence(parameters.sourceId);
+    }
     case 'automatic-speech-readback':
     case 'automatic-speech-cleanup': {
       const {
