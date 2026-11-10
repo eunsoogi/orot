@@ -79,6 +79,11 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         defer { app.terminate() }
         app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-OROT_VISIT_QUESTION_PERSISTENCE", "synthetic"]
+        // Opt-in observation retains only selection, focus and length, never the question text.
+        let observation = ProcessInfo.processInfo.environment["OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION"] == "1" ? EncounterInputObservation() : nil
+        if let observation {
+            app.launchArguments += ["-OROT_TEST_VISIT_QUESTION_INPUT_OBSERVATION", observation.run.uuidString]
+        }
         app.launch()
         XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-empty")), app.debugDescription)
@@ -87,7 +92,9 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(generate.isHittable)
         generate.tap()
         let input = node(app, "next-visit-question-text-0")
-        XCTAssertTrue(FormUITestConditions.replace(input, with: "합성 질문을 진료에서 확인할까요?", in: app, scrollID: "next-visit-questions-scroll"))
+        XCTAssertTrue(FormUITestConditions.replace(input, with: "합성 질문을 진료에서 확인할까요?", in: app, scrollID: "next-visit-questions-scroll", observeInput: observation.map { observer in
+            { phase in observer.captureUIKit(phase, app: app, testCase: self) }
+        }))
         let save = node(app, "next-visit-review-save")
         _ = try XCTUnwrap(FormUITestConditions.reveal(save, in: app, scrollID: "next-visit-questions-scroll", avoiding: input))
         XCTAssertTrue(save.isHittable)
