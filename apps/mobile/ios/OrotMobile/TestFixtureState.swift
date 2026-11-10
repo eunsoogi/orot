@@ -11,6 +11,7 @@
             "com.orot.mobile.database-encryption-key.v1", "com.orot.mobile.database-initialization.v1",
             "com.orot.mobile.provider-selection.v1", "com.orot.provider.openai.credentials",
             "com.orot.provider.openai.simulator-fixture",
+            "com.orot.mobile.daily-reminder-intent.v1", "com.orot.mobile.daily-conversation-intent.v1",
         ]
         private static let manager = FileManager.default
         private static let bundle = "com.orot.mobile"

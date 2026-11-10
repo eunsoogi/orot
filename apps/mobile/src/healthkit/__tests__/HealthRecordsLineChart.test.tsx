@@ -1,20 +1,24 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions } from 'react-native';
 import { HealthRecordsLineChart } from '../HealthRecordsLineChart';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation } from '../bloodPressure/testSupport';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 
-type ChartNode = ReturnType<Awaited<ReturnType<typeof render>>['toJSON']>;
-function renderedStyles(
-  node: ChartNode | string,
-): ReturnType<typeof StyleSheet.flatten>[] {
-  if (!node || typeof node === 'string') return [];
-  return [
-    StyleSheet.flatten(node.props.style),
-    ...(node.children ?? []).flatMap(renderedStyles),
-  ];
-}
+jest.mock('react-native-chart-kit/v2', () => {
+  const { View } = require('react-native');
+  return {
+    ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
+    LineChart: (props: object) => <View {...props} testID="line-renderer" />,
+    BarChart: (props: object) => <View {...props} testID="bar-renderer" />,
+  };
+});
+
+beforeEach(() => {
+  Dimensions.set({
+    window: { width: 390, height: 844, scale: 3, fontScale: 1 },
+  });
+});
 
 test.each([
   ['blood_pressure', 'blood pressure systolic'],
@@ -22,7 +26,7 @@ test.each([
   ['steps', 'step_count'],
   ['body_mass', 'body_mass'],
 ] as const)(
-  'shows one marker only for a single sample in %s',
+  'passes all %s measurements to the library with visible dots',
   async (category, concept) => {
     const observations = Array.from({ length: 100 }, (_, index) =>
       healthObservation(
@@ -31,52 +35,40 @@ test.each([
         new Date(Date.UTC(2026, 9, 1, 0, index)).toISOString(),
       ),
     );
-    const markers = () =>
-      renderedStyles(result.toJSON()).filter(style => {
-        return (
-          style?.borderRadius === 6 &&
-          style?.width === 12 &&
-          style?.height === 12
-        );
-      });
-    const lines = () =>
-      renderedStyles(result.toJSON()).filter(style => {
-        return style?.height === 2 && style?.position === 'absolute';
-      });
     const result = await render(
       <HealthRecordsLineChart
         category={category}
         observations={observations.slice(0, 1)}
       />,
     );
-    expect(markers()).toHaveLength(1);
-    expect(lines()).toHaveLength(0);
+    await fireEvent(
+      screen.getByTestId('health-record-chart-plot-row'),
+      'layout',
+      { nativeEvent: { layout: { width: 320 } } },
+    );
+    const chart = () =>
+      screen.getByTestId('line-renderer', { includeHiddenElements: true });
+    expect(chart().props.showDots).toBe(true);
+    expect(chart().props.data).toHaveLength(1);
     await result.rerender(
       <HealthRecordsLineChart
         category={category}
         observations={observations.slice(0, 2)}
       />,
     );
-    expect(markers()).toHaveLength(0);
-    expect(lines()).toHaveLength(1);
+    expect(chart().props.data).toHaveLength(2);
     await result.rerender(
       <HealthRecordsLineChart
         category={category}
         observations={observations}
       />,
     );
-    expect(markers()).toHaveLength(0);
-    expect(lines()).toHaveLength(99);
+    expect(chart().props.data).toHaveLength(100);
+    expect(chart().props.decimation).toBe(false);
   },
 );
 
-// Uneven measurement dates must not become evenly spaced chart labels.
-test('anchors the middle date to its timestamp and hides overlapping ticks', async () => {
-  const originalWindow = Dimensions.get('window');
-  Dimensions.set({
-    window: { width: 438, height: 900, scale: 3, fontScale: 1 },
-  });
-  // Labels use the device time zone; keep the fixture at local 09:00 on CI and developer machines.
+test('passes irregular instants to the scale and exposes both pressure values', async () => {
   const measuredAt = (day: number) => new Date(2026, 9, day, 9).toISOString();
   const observations = [1, 4, 11].flatMap(day =>
     mapBloodPressureCorrelation(
@@ -96,28 +88,42 @@ test('anchors the middle date to its timestamp and hides overlapping ticks', asy
   await fireEvent(
     screen.getByTestId('health-record-chart-plot-row'),
     'layout',
-    {
-      nativeEvent: { layout: { width: 438 } },
-    },
+    { nativeEvent: { layout: { width: 138 } } },
   );
-  expect(screen.getByTestId('health-chart-date-' + measuredAt(11))).toHaveStyle(
-    { left: 400 },
-  );
-  expect(screen.getByText('10. 1.\n09:00')).toHaveStyle({ width: 68 });
-  expect(screen.getByTestId('health-chart-date-' + measuredAt(4))).toHaveStyle({
-    left: 120,
+  const chart = screen.getByTestId('line-renderer', {
+    includeHiddenElements: true,
   });
-  await fireEvent(
-    screen.getByTestId('health-record-chart-plot-row'),
-    'layout',
-    {
-      nativeEvent: { layout: { width: 138 } },
-    },
+  expect(chart.props.data.map((row: { x: number }) => row.x)).toEqual(
+    [1, 4, 11].map(day => Date.parse(measuredAt(day))),
   );
-  expect(screen.queryByTestId('health-chart-date-' + measuredAt(4))).toBeNull();
+  expect(chart.props.formatXLabel(Date.parse(measuredAt(4)), 1)).toBe('');
   expect(
     screen.getByTestId('health-record-chart-blood_pressure').props
       .accessibilityLabel,
   ).toContain('120 mmHg');
-  await act(() => Dimensions.set({ window: originalWindow }));
+  expect(
+    screen.getByTestId('health-record-chart-blood_pressure').props
+      .accessibilityLabel,
+  ).toContain('80 mmHg');
+});
+
+test('keeps measured values accessible when large text replaces the plot', async () => {
+  const original = Dimensions.get('window');
+  Dimensions.set({ window: { ...original, fontScale: 2 } });
+  const observations = mapBloodPressureCorrelation(
+    correlation('large-text'),
+    '2026-10-12T00:00:00Z',
+  ).observations;
+  await render(
+    <HealthRecordsLineChart
+      category="blood_pressure"
+      observations={observations}
+    />,
+  );
+  expect(screen.getByText(/큰 글자에서는/)).toBeTruthy();
+  expect(screen.getByText(/수축기 \(실선\)/)).toBeTruthy();
+  expect(screen.getByText(/이완기 \(점선\)/)).toBeTruthy();
+  expect(screen.getByText(/120 mmHg/)).toBeTruthy();
+  expect(screen.getByText(/80 mmHg/)).toBeTruthy();
+  await act(() => Dimensions.set({ window: original }));
 });

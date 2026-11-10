@@ -5,7 +5,9 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   productionCancellationTest,
   productionConversationTest,
+  productionDailyReportTest,
   productionTestRun,
+  verifyDailyReportResult,
 } from './production-ui-contract.mjs';
 import { runOwned } from './production-ui-cancellation.mjs';
 import { runProductionCancellationProbe } from './production-ui-native-cancellation.mjs';
@@ -21,12 +23,17 @@ export async function runProductionTest({
   installedApp,
   resolveInstalled,
   cancellationProbe,
+  dailyReport,
 }) {
   const testRun = join(directory, 'production.xctestrun');
-  const selected = cancellationProbe ? productionCancellationTest : productionConversationTest;
+  const selected = dailyReport
+    ? productionDailyReportTest
+    : cancellationProbe
+      ? productionCancellationTest
+      : productionConversationTest;
   const prepare = (probe) => {
     context.verifySource();
-    const expected = productionTestRun(context.input, probe);
+    const expected = productionTestRun(context.input, probe, dailyReport);
     writeFileSync(testRun, JSON.stringify(expected));
     execFileSync('plutil', ['-convert', 'xml1', testRun], { timeout: 30000 });
     const configured = JSON.parse(
@@ -89,6 +96,24 @@ export async function runProductionTest({
     const result = await runOwned('xcodebuild', prepare());
     if (result.code !== 0 || result.signal || result.cancellation)
       throw new Error('Native test failed or was cancelled: ' + JSON.stringify(result));
+    if (dailyReport) {
+      const report = JSON.parse(
+        execFileSync(
+          'xcrun',
+          [
+            'xcresulttool',
+            'get',
+            'test-results',
+            'tests',
+            '--path',
+            resolve(resultPath),
+            '--compact',
+          ],
+          { encoding: 'utf8' },
+        ),
+      );
+      verifyDailyReportResult(report);
+    }
     return result;
   } finally {
     console.log(JSON.stringify({ stage: 'native_trace', ...readProductionTrace(udid, started) }));

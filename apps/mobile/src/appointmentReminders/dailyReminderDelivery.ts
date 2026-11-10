@@ -1,4 +1,5 @@
 import { createDailyReportIdentity } from '@orot/domain';
+import type { DailyReportContextRequest } from '@orot/domain';
 
 /** The delivery instant does not establish the timezone at delivery. */
 export interface DailyReminderEntry {
@@ -8,6 +9,8 @@ export interface DailyReminderEntry {
   readonly observedTimeZone: string;
   readonly dateInObservedTimeZone: string;
   readonly deliveryTimeZone: 'unknown';
+  /** An explicit later selection does not rewrite the notification's observed delivery date. */
+  readonly selectedRequest?: DailyReportContextRequest;
 }
 
 /**
@@ -17,7 +20,11 @@ export interface DailyReminderEntry {
  */
 export type DailyReminderConsumer = (
   entry: DailyReminderEntry,
-) => 'opened' | 'busy' | 'unavailable';
+) =>
+  | 'opened'
+  | 'busy'
+  | 'unavailable'
+  | Promise<'opened' | 'busy' | 'unavailable'>;
 let consumer: DailyReminderConsumer | undefined;
 
 /** Register only while the destination can synchronously accept an entry. */
@@ -80,6 +87,7 @@ export function createDailyReminderDelivery(port: {
   confirm(): Promise<'approved' | 'declined' | 'busy'>;
   onBusy(): void;
   unavailable(): void;
+  alreadyHandled?(entry: DailyReminderEntry): Promise<boolean>;
 }) {
   let lastOpened: string | null = null;
   let queue = Promise.resolve();
@@ -101,6 +109,16 @@ export function createDailyReminderDelivery(port: {
           continue;
         }
         if (parsed.entryKey !== lastOpened) {
+          try {
+            if (port.alreadyHandled && (await port.alreadyHandled(parsed))) {
+              lastOpened = parsed.entryKey;
+              await port.acknowledge(timestamp);
+              continue;
+            }
+          } catch {
+            port.onBusy();
+            return;
+          }
           const destination = consumer;
           if (!destination) {
             port.unavailable();
@@ -109,8 +127,15 @@ export function createDailyReminderDelivery(port: {
             if (decision === 'busy') return;
             if (decision === 'approved') {
               // A leave prompt can outlive the registered destination.
-              const result =
-                consumer === destination ? destination(parsed) : 'unavailable';
+              let result: 'opened' | 'busy' | 'unavailable';
+              try {
+                result =
+                  consumer === destination
+                    ? await destination(parsed)
+                    : 'unavailable';
+              } catch {
+                result = 'busy';
+              }
               if (result === 'busy') {
                 port.onBusy();
                 return;

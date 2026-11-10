@@ -188,10 +188,10 @@ test.each([
             ? [
                 'incomplete_coverage',
                 'truncated_results',
-                'public_search_unavailable',
+                'public_search_unsupported',
               ]
-            : ['incomplete_coverage', 'public_search_unavailable']
-          : ['public_search_unavailable'],
+            : ['incomplete_coverage', 'public_search_unsupported']
+          : ['public_search_unsupported'],
       });
     } finally {
       f.close();

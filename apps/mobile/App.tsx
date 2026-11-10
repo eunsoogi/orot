@@ -4,7 +4,7 @@ import {
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -77,6 +77,11 @@ function App({
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
   const [activeTab, setActiveTab] = useState<AppRootTab>('home');
+  const activeTabRef = useRef(activeTab);
+  const selectActiveTab = (tab: AppRootTab) => {
+    activeTabRef.current = tab;
+    setActiveTab(tab);
+  };
   const [selectedProvider, setSelectedProvider] = useState('');
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
@@ -107,13 +112,13 @@ function App({
   }, []);
 
   function openRecording() {
-    setActiveTab('records');
+    selectActiveTab('records');
     appNavigation.push('recording');
   }
 
   const rootTabs: NavigationRootTabs = {
     activeTab,
-    onSelect: setActiveTab,
+    onSelect: selectActiveTab,
   };
 
   return (
@@ -131,7 +136,7 @@ function App({
             }
             showHome
             homeAction={async () => {
-              if (await appNavigation.requestHome()) setActiveTab('home');
+              if (await appNavigation.requestHome()) selectActiveTab('home');
             }}
             rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
             contentLayoutOwner={appContentLayoutOwner}
@@ -143,6 +148,16 @@ function App({
                 <AppAiFeatureScene
                   actions={actions}
                   defaultConversation={actions.route.name === 'home'}
+                  isEntryCurrent={() => {
+                    const snapshot = appNavigation.getSnapshot();
+                    return (
+                      AppState.currentState === 'active' &&
+                      !snapshot.isTransitioning &&
+                      snapshot.currentRoute.key === actions.route.key &&
+                      (actions.route.name !== 'home' ||
+                        activeTabRef.current === 'ai')
+                    );
+                  }}
                   consent={ai.consent}
                   services={ai.services}
                   renderVisitQuestions={
@@ -178,7 +193,7 @@ function App({
                   loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
                   actions={actions}
                   activeTab={activeTab}
-                  selectTab={setActiveTab}
+                  selectTab={selectActiveTab}
                   backupPreparationState={backupPreparation.state}
                   retryBackupPreparation={backupPreparation.retry}
                   calendarBridge={calendarBridge}

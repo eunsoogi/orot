@@ -42,7 +42,7 @@ const SAFE_FAILURE_MESSAGE_KEYS = {
   stale_evidence: 'visitQuestions.workflowResults.failure.staleEvidence',
   invalid_output: 'visitQuestions.workflowResults.failure.invalidOutput',
   budget_exceeded: 'visitQuestions.workflowResults.failure.budgetExceeded',
-  unavailable: 'visitQuestions.workflowResults.failure.unavailable',
+  unavailable: 'visitQuestions.generation.unavailable',
 } as const;
 
 /** Restores exact citations and maps runtime failures to app-owned localized copy. */
@@ -60,6 +60,19 @@ export async function mapVisitQuestionWorkflowResult(input: {
     };
   }
   if (result.status !== 'result') {
+    // Provider error codes are safe classifications; never display provider-supplied error text.
+    const providerMessage =
+      result.status === 'unavailable' &&
+      result.providerErrorCode === 'safety_refusal'
+        ? t('ragConversation.failureProviderRefused')
+        : result.status === 'unavailable' &&
+            (result.providerErrorCode === 'unsupported_capability' ||
+              result.providerErrorCode === 'unsupported_input')
+          ? t('ragConversation.failureProviderConfiguration')
+          : result.status === 'unavailable' &&
+              result.providerErrorCode === 'provider_unavailable'
+            ? t('visitQuestions.workflow.providerUnavailable')
+            : undefined;
     const messageKey =
       SAFE_FAILURE_MESSAGE_KEYS[
         result.status as keyof typeof SAFE_FAILURE_MESSAGE_KEYS
@@ -72,7 +85,8 @@ export async function mapVisitQuestionWorkflowResult(input: {
         ? result.message
         : undefined;
     // The runtime adds message only after the task validator approves clarification copy.
-    const message = validatedClarificationMessage ?? t(messageKey);
+    const message =
+      validatedClarificationMessage ?? providerMessage ?? t(messageKey);
     return {
       status:
         result.status === 'needs_clarification'

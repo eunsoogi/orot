@@ -1,10 +1,15 @@
 import { createContext, useContext, useMemo } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import type { AppointmentRepository } from '@orot/storage';
+import type { DailyReportContextRequest } from '@orot/domain';
 import { AppointmentReminderCoordinator } from './reminderCoordinator';
 import { appointmentReminderPort } from './nativeReminderBridge';
 import { withAppointmentReminders } from './reminderRepository';
 import type { AppointmentReminderTarget } from './reminderPlan';
+import type { DailyReminderEntry } from './dailyReminderDelivery';
+import type { DailyReportConversationIntent } from '../aiFeatures/integration/conversationIntent';
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
+import type { createDailyReportFeature } from '../aiFeatures/integration/dailyReportFeature';
 
 type Loader = () => Promise<AppointmentRepository>;
 
@@ -23,6 +28,29 @@ export function createAppointmentReminderRuntime(load: Loader) {
     targets: new Map<string, AppointmentReminderTarget>(),
     // Home can show manual or already-started visits; these read-only targets never enter reminder scheduling or inference.
     homePreparationTargets: new Map<string, string>(),
+    // The exact observed day is retained for this route, including provider detours.
+    dailyReportTargets: new Map<string, DailyReminderEntry>(),
+    dailyReportSelection: {
+      selectReminder: null as
+        | null
+        | ((
+            entryKey: string,
+            request: DailyReportContextRequest,
+          ) => Promise<DailyReminderEntry>),
+    },
+    dailyConversationTargets: new Map<
+      string,
+      {
+        intent: DailyReportConversationIntent;
+        operation?: ReturnType<
+          ReturnType<typeof createDailyReportFeature>['start']
+        >;
+      }
+    >(),
+    dailyReportFollowUps: new Map<
+      string,
+      NonNullable<ConversationEntryContext['dailyReport']>
+    >(),
   };
 }
 

@@ -89,6 +89,14 @@ export function toProviderError(value: unknown): ProviderError {
       retryable: false,
     };
   }
+  if (details.kind === 'offline') {
+    return {
+      code: 'provider_unavailable',
+      message: 'The device reported no internet connection.',
+      retryable: true,
+      connectivity: 'offline',
+    };
+  }
   if (
     details.kind === 'transport' ||
     details.kind === 'usage_unavailable' ||

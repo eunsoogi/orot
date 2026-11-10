@@ -86,7 +86,7 @@ export function HealthRecordsCategoryCard({
         }
       >
         <Text accessibilityRole="header" style={styles.title}>
-          {title + ' 기록'}
+          {title}
         </Text>
         <Text style={styles.count}>
           {t(
@@ -123,12 +123,15 @@ export function HealthRecordsCategoryCard({
             timestamp: latest ? formatRecordedAt(latest.effectiveAt) : '-',
           })}
         </Text>
-      ) : (
+      ) : null}
+      {!eventLike ? (
         <HealthRecordsCategoryCharts
           category={category}
           observations={recentObservations}
+          hasMore={hasMore}
+          loadState={loadState}
         />
-      )}
+      ) : null}
       {latest && !latestPressure ? (
         <View style={styles.latestCopy}>
           <Text style={styles.latestTitle}>{displayRecordValue(latest)}</Text>

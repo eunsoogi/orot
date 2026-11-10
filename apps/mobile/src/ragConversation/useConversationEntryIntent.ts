@@ -54,7 +54,10 @@ export function useConversationEntryIntent(
       item => item.id === snapshot.activeId,
     )!;
     // A route entry must not overwrite an unrelated draft, exchange or pending response.
-    if (request && (active.draft || active.messages.length || active.busy))
+    if (
+      context.dailyReport ||
+      (request && (active.draft || active.messages.length || active.busy))
+    )
       store.create();
     const id = store.getSnapshot().activeId;
     let entries = sessionEntries.get(store);
@@ -63,7 +66,8 @@ export function useConversationEntryIntent(
       sessionEntries.set(store, entries);
     }
     // A plain entry must not relabel an existing conversation selected in history.
-    if (request || !entries.has(id)) entries.set(id, context);
+    if (context.dailyReport || request || !entries.has(id))
+      entries.set(id, context);
     if (request) store.setDraft(id, request);
   }, [context, store]);
 }

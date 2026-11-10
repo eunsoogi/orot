@@ -65,7 +65,9 @@ function setup() {
     async () => store.repository,
   );
   const controller = createNavigationController<AppNavigationRoute>('home');
-  const guard = jest.fn(async () => true);
+  const guard = jest.fn(
+    async (_transition?: unknown, _onExplicitDecline?: () => void) => true,
+  );
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     guard,
@@ -137,7 +139,10 @@ it('drains cold-start and foreground taps through a guarded route for the exact 
     runtime.targets.get(controller.getSnapshot().currentRoute.key),
   ).toEqual(target);
   jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce(target);
-  guard.mockResolvedValueOnce(false);
+  guard.mockImplementationOnce(async (_transition, decline) => {
+    decline?.();
+    return false;
+  });
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     guard,
@@ -151,7 +156,10 @@ it('drains cold-start and foreground taps through a guarded route for the exact 
 
 it('does not retry a reminder tap after its own navigation guard is declined', async () => {
   const { runtime, controller, guard, target } = setup();
-  guard.mockResolvedValueOnce(false);
+  guard.mockImplementationOnce(async (_transition, decline) => {
+    decline?.();
+    return false;
+  });
   jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce(target);
   await render(
     <AppointmentReminderProvider runtime={runtime}>

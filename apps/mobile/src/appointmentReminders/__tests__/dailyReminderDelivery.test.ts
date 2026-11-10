@@ -195,3 +195,33 @@ test('keeps the tap when navigation becomes busy after the leave check', async (
   expect(acknowledge).toHaveBeenCalledTimes(1);
   unregister();
 });
+
+test('awaits durable acceptance before acknowledging a daily tap', async () => {
+  let accept!: (value: 'opened') => void;
+  const pending = [{ kind: 'daily_report', deliveryTimestamp: '1700000000' }];
+  const acknowledge = jest.fn(async () => {
+    pending.shift();
+  });
+  const unregister = registerDailyReminderConsumer(
+    () =>
+      new Promise(resolve => {
+        accept = resolve;
+      }),
+  );
+  const deliver = createDailyReminderDelivery({
+    consume: async () => pending[0] ?? null,
+    acknowledge,
+    confirm: async () => 'approved',
+    onBusy: jest.fn(),
+    unavailable: jest.fn(),
+  });
+  const result = deliver();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(acknowledge).not.toHaveBeenCalled();
+  accept('opened');
+  await result;
+  expect(acknowledge).toHaveBeenCalledTimes(1);
+  unregister();
+});

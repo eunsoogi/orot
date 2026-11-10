@@ -1,15 +1,36 @@
 import { isDeepStrictEqual } from 'node:util';
 import { isAbsolute, join } from 'node:path';
+import { verifyIosTestResults } from './ios-test-results.mjs';
 
 /** Production verification is an explicit route and is never part of fixture defaults. */
 export const productionConversationTest =
   'OrotUITests/ProductionRagConversationUITests/testProductionConversation';
 export const productionCancellationTest =
   'OrotUITests/ProductionRagConversationUITests/testProductionCancellationBeforeSend';
-export const productionTestInventory = [productionConversationTest, productionCancellationTest];
+export const productionDailyReportTest =
+  'OrotUITests/DailyReportEntryUITests/testDailyEntryAndConversationDateSurviveRestart';
+export const productionTestInventory = [
+  productionConversationTest,
+  productionCancellationTest,
+  productionDailyReportTest,
+];
+
+/** A successful Xcode process is insufficient when the opt-in case was skipped. */
+export function verifyDailyReportResult(report) {
+  return verifyIosTestResults(report, [productionDailyReportTest]);
+}
 
 /** Fail before installing a runner that cannot expose the selected XCTest case. */
-export function verifyProductionTestSymbols(symbols, strings, probe = false) {
+export function verifyProductionTestSymbols(symbols, strings, probe = false, dailyReport = false) {
+  if (dailyReport) {
+    if (
+      probe ||
+      !symbols.includes('OrotUITests23DailyReportEntryUITests') ||
+      !strings.includes('testDailyEntryAndConversationDateSurviveRestartAndReturnError:')
+    )
+      throw new Error('Production daily report entry test is absent from the runner');
+    return;
+  }
   if (
     !symbols.includes('OrotUITests32ProductionRagConversationUITests') ||
     !strings.includes('testProductionConversationAndReturnError:') ||
@@ -44,8 +65,9 @@ export function productionTestingEnvironment(environment, testRoot) {
 }
 
 /** Bind Simulator installation to validated production and runner paths, never fixture products. */
-export function productionTestRun(input, probe) {
+export function productionTestRun(input, probe, dailyReport = false) {
   validateProductionInputs(input);
+  if (probe && dailyReport) throw new Error('Conflicting production test modes');
   if (
     probe &&
     (!Number.isInteger(probe.port) ||
@@ -59,6 +81,7 @@ export function productionTestRun(input, probe) {
     testingEnvironment.OROT_PRODUCTION_CANCEL_PORT = String(probe.port);
     testingEnvironment.OROT_PRODUCTION_CANCEL_TOKEN = probe.token;
   }
+  if (dailyReport) testingEnvironment.OROT_DAILY_REPORT_PRODUCTION_UI = 'YES';
   return {
     __xctestrun_metadata__: { FormatVersion: 1 },
     OrotUITests: {
@@ -76,9 +99,12 @@ export function productionTestRun(input, probe) {
       TestHostBundleIdentifier: input.runnerId,
       TestingEnvironmentVariables: testingEnvironment,
       OnlyTestIdentifiers: [
-        (probe ? productionCancellationTest : productionConversationTest).slice(
-          'OrotUITests/'.length,
-        ),
+        (dailyReport
+          ? productionDailyReportTest
+          : probe
+            ? productionCancellationTest
+            : productionConversationTest
+        ).slice('OrotUITests/'.length),
       ],
     },
   };

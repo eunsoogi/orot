@@ -13,7 +13,8 @@
                     defaults.string(forKey: "OROT_EVIDENCE_SOURCE_DUO_VISUAL_STATE") == "synthetic") ||
                 (defaults.string(forKey: "OROT_TEST_PROFILE") == "next-visit-questions" &&
                     defaults.string(forKey: "OROT_TEST_SCENARIO") == nil &&
-                    defaults.string(forKey: "OROT_TEST_VISIT_QUESTION_TARGET") == "third")
+                    (defaults.string(forKey: "OROT_TEST_VISIT_QUESTION_TARGET") == "third" ||
+                        defaults.string(forKey: "OROT_VISIT_QUESTION_PERSISTENCE") == "synthetic"))
             else {
                 return nil
             }

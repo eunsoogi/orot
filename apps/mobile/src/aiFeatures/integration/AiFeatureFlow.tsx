@@ -1,7 +1,8 @@
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { t } from '../../i18n';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -22,8 +23,11 @@ import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
+import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
 
 export interface AiFeatureFlowProps {
+  readonly isEntryCurrent?: () => boolean;
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
   readonly consent: ExecutionConsentPort;
   readonly services: AiFeatureServices;
@@ -50,8 +54,10 @@ export function AiFeatureFlow({
   onProviderSelectionCommitted,
   serviceDependencies,
   services,
+  isEntryCurrent,
 }: AiFeatureFlowProps) {
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
+  const reminderRuntime = useAppointmentReminderRuntime();
   const { state: shared, setState: setShared } =
     useAiFeatureSharedNavigationState();
   const {
@@ -105,6 +111,7 @@ export function AiFeatureFlow({
           >
             <AiFeatureFlowScreen
               route={screenRoute}
+              reportOwnsOperation={!sourceDetailOpen && !providerSelectionOpen}
               onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
               onOpenSavedVisitQuestions={
                 renderVisitQuestions
@@ -126,6 +133,28 @@ export function AiFeatureFlow({
                 pushFeatureRoute('disease-hypotheses')
               }
               onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
+              onOpenDailyReportChat={target => {
+                if (!isEntryCurrent?.() || !reminderRuntime) return;
+                const route = pushFeatureRoute('rag-conversation');
+                if (route)
+                  reminderRuntime.dailyReportFollowUps.set(route.key, target);
+              }}
+              onOpenDailyReport={() => {
+                requestDailyReportFromConversation({
+                  feature: services.dailyReport,
+                  runtime: reminderRuntime,
+                  navigate: () => pushFeatureRoute('daily-report'),
+                  now: new Date().toISOString(),
+                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  isCurrent: isEntryCurrent ?? (() => false),
+                }).then(result => {
+                  if (result === 'unavailable')
+                    Alert.alert(
+                      t('dailyReport.title'),
+                      t('dailyReport.entryError'),
+                    );
+                });
+              }}
               onOpenConversationHistory={() =>
                 pushFeatureRoute('conversation-history')
               }

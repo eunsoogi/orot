@@ -1,11 +1,26 @@
 import { useEffect } from 'react';
 import { Alert, AppState } from 'react-native';
+import { t } from '../i18n';
 import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { createAppointmentReminderDelivery } from './reminderCoordinator';
 import { buildAppointmentReminder } from './reminderPlan';
-import { createDailyReminderDelivery } from './dailyReminderDelivery';
+import {
+  createDailyReminderDelivery,
+  registerDailyReminderConsumer,
+} from './dailyReminderDelivery';
+import { createDailyReminderDestination } from './dailyReminderDestination';
+import { createReminderNavigationDecisions } from './reminderNavigationDecisions';
+import { dailyReminderIntentStore } from './dailyReminderIntentStore';
+import {
+  createDailyReminderRouteCleanup,
+  pruneClosedReminderRoutes,
+} from './dailyReminderRouteCleanup';
+import { createDailyReminderDrain } from './dailyReminderDrain';
+import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
+import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
+import { createDailyConversationRouteCleanup } from '../aiFeatures/integration/dailyConversationRouteCleanup';
 import {
   consumeAppointmentReminderTarget,
   consumeDailyReminderTarget,
@@ -23,39 +38,73 @@ export function AppointmentReminderDeliveryHost({
   useEffect(() => {
     if (!runtime) return;
     let retryWhenNavigationAvailable = false;
+    const navigationDecisions = createReminderNavigationDecisions(
+      controller,
+      runtime,
+      () => {
+        retryWhenNavigationAvailable = true;
+      },
+    );
+    const destination = createDailyReminderDestination({
+      ...dailyReminderIntentStore,
+      canOpen: entry =>
+        ![...runtime.dailyReportTargets.values()].some(
+          value => value.entryKey !== entry.entryKey,
+        ),
+      open: async entry => {
+        const snapshot = controller.getSnapshot();
+        if (
+          [...runtime.dailyReportTargets.entries()].some(
+            ([key, value]) =>
+              value.entryKey === entry.entryKey &&
+              snapshot.routes.some(route => route.key === key),
+          )
+        )
+          return 'opened';
+        const decision = await navigationDecisions.daily(
+          snapshot.currentRoute.key,
+        );
+        if (decision !== 'approved') return decision;
+        const current = controller.getSnapshot();
+        if (
+          current.isTransitioning ||
+          current.currentRoute.key !== snapshot.currentRoute.key ||
+          [...runtime.dailyReportTargets.values()].some(
+            value => value.entryKey !== entry.entryKey,
+          )
+        )
+          return 'busy';
+        const route = controller.push('daily-report');
+        if (!route) return 'busy';
+        runtime.dailyReportTargets.set(route.key, entry);
+        return 'opened';
+      },
+    });
+    runtime.dailyReportSelection.selectReminder = destination.select;
+    const unregisterDaily = registerDailyReminderConsumer(destination.accept);
     const reconcile = () =>
       runtime.coordinator.reconcile().catch(() => undefined);
     const deliverDaily = createDailyReminderDelivery({
       consume: consumeDailyReminderTarget,
       acknowledge: acknowledgeDailyReminderTarget,
+      alreadyHandled: destination.alreadyHandled,
       onBusy: () => {
         retryWhenNavigationAvailable = true;
       },
-      confirm: async () => {
-        if (controller.getSnapshot().isTransitioning) {
-          retryWhenNavigationAvailable = true;
-          return 'busy';
-        }
-        return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
-      },
+      // The destination confirms after durable storage, immediately before pushing the route.
+      confirm: async () => 'approved',
       unavailable: () =>
-        Alert.alert(
-          '오늘의 기록',
-          '이 알림을 열 수 없어요. 앱에서 다시 확인해 주세요.',
-        ),
+        Alert.alert(t('dailyReminder.openTitle'), t('dailyReminder.openError')),
     });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
       loadAppointments: runtime.list,
-      confirmNavigation: async () => {
-        // Distinguish a temporary transition from the user's leave decision.
-        if (controller.getSnapshot().isTransitioning) {
-          retryWhenNavigationAvailable = true;
-          return 'busy';
-        }
-        return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
-      },
+      confirmNavigation: navigationDecisions.appointment,
       openVisitPreparation: appointment => {
+        if (!navigationDecisions.appointmentRouteIsCurrent()) {
+          retryWhenNavigationAvailable = true;
+          return false;
+        }
         const plan = buildAppointmentReminder(
           [appointment],
           { appointmentId: appointment.id, leadMinutes: 60 },
@@ -76,21 +125,73 @@ export function AppointmentReminderDeliveryHost({
       },
       onUnavailable: reason =>
         Alert.alert(
-          '진료 준비',
+          t('medicalAppointments.reminder.openTitle'),
           reason === 'stale'
-            ? '예약이 바뀌었거나 취소되어 이 알림을 열 수 없어요. 일정에서 최신 예약을 확인해 주세요.'
-            : '예약을 확인하지 못했어요. 앱을 다시 열어 주세요.',
+            ? t('medicalAppointments.reminder.stale')
+            : t('medicalAppointments.reminder.unavailable'),
         ),
     });
-    // Serialize both families so two simultaneous taps cannot race leave guards.
-    let drainQueue = Promise.resolve();
+    // Inbox storage is independent; only navigation decisions share a queue.
+    let appointmentQueue = Promise.resolve();
+    let conversationQueue = Promise.resolve();
+    let conversationRestorePending = true;
+    let conversationRestoreDeferred = false;
+    const cleanupConversation = createDailyConversationRouteCleanup({
+      runtime,
+      routeExists: key =>
+        controller.getSnapshot().routes.some(route => route.key === key),
+    });
+    const cleanupDaily = createDailyReminderRouteCleanup({
+      runtime,
+      routeExists: key =>
+        controller.getSnapshot().routes.some(route => route.key === key),
+      dismiss: destination.dismiss,
+    });
+    const drainConversation = () => {
+      conversationQueue = conversationQueue
+        .then(async () => {
+          // A locked dismissal is retried by the next lifecycle, not by navigation guard publications.
+          try {
+            await dailyReportConversationIntentStore.retryDismissals();
+          } catch {
+            return;
+          }
+          if (!conversationRestorePending) return;
+          const result = await restoreDailyReportConversation({
+            controller,
+            runtime,
+            confirm: navigationDecisions.conversation,
+          });
+          if (result === 'busy') {
+            // A daily route blocks restoration until its durable dismissal succeeds.
+            if (!runtime.dailyReportTargets.size)
+              retryWhenNavigationAvailable = true;
+          } else {
+            conversationRestorePending = false;
+            conversationRestoreDeferred = result === 'deferred';
+          }
+        })
+        // A storage read or write failure is retried on a later lifecycle event.
+        .catch(() => undefined);
+    };
+    const retryNavigation = () => {
+      retryWhenNavigationAvailable = true;
+    };
+    const drainDaily = createDailyReminderDrain({
+      cleanup: cleanupDaily,
+      restore: destination.restore,
+      deliver: deliverDaily,
+      onBusy: retryNavigation,
+      onClosed: drainConversation,
+    });
     const drain = () => {
-      drainQueue = drainQueue
+      appointmentQueue = appointmentQueue
         .then(async () => {
           await deliver();
-          await deliverDaily();
         })
         .catch(() => undefined);
+      drainConversation();
+      drainDaily();
     };
     let unsubscribe = () => {};
     try {
@@ -100,27 +201,42 @@ export function AppointmentReminderDeliveryHost({
     }
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
+        cleanupConversation();
+        if (conversationRestoreDeferred) {
+          conversationRestorePending = true;
+          conversationRestoreDeferred = false;
+        }
         reconcile().catch(() => undefined);
         drain();
       }
     });
+    let routeKeys = controller
+      .getSnapshot()
+      .routes.map(route => route.key)
+      .join('|');
     const navigation = controller.subscribe(() => {
       const snapshot = controller.getSnapshot();
-      // Route lifetime, not a rendered view's mount, owns targets through provider/source detours.
-      for (const targets of [runtime.targets, runtime.homePreparationTargets]) {
-        for (const key of targets.keys()) {
-          if (!snapshot.routes.some(route => route.key === key))
-            targets.delete(key);
-        }
-      }
+      const nextRouteKeys = snapshot.routes.map(route => route.key).join('|');
+      const routesChanged = routeKeys !== nextRouteKeys;
+      routeKeys = nextRouteKeys;
+      pruneClosedReminderRoutes(runtime, key =>
+        snapshot.routes.some(route => route.key === key),
+      );
+      cleanupConversation();
+      const dailyRouteClosed = [...runtime.dailyReportTargets.keys()].some(
+        key => !snapshot.routes.some(route => route.key === key),
+      );
       if (retryWhenNavigationAvailable && !snapshot.isTransitioning) {
         retryWhenNavigationAvailable = false;
         drain();
-      }
+      } else if (dailyRouteClosed && routesChanged) drainDaily();
     });
     reconcile().catch(() => undefined);
     drain();
     return () => {
+      if (runtime.dailyReportSelection.selectReminder === destination.select)
+        runtime.dailyReportSelection.selectReminder = null;
+      unregisterDaily();
       unsubscribe();
       subscription.remove();
       navigation();

@@ -176,7 +176,7 @@ enum FormUITestConditions {
     }
 
     /// Reserve the current keyboard boundary before revealing a focused form input.
-    private static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String, observeFocusGesture _: ((String, CGRect?) -> Void)?, stopAfterFirstFocusDrag _: Bool = false) -> (application: CGRect, input: CGRect)? {
+    static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String, observeFocusGesture _: ((String, CGRect?) -> Void)?, stopAfterFirstFocusDrag _: Bool = false) -> (application: CGRect, input: CGRect)? {
         let keyboard = app.keyboards.firstMatch
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil

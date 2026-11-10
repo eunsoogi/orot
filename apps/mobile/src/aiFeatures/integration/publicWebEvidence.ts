@@ -13,6 +13,7 @@ import {
 } from '../../externalMedicalEvidence/publicWebSources';
 import { publicWebSearchConsentScope } from '../../agent/execution/inferenceConsentScopes';
 import { boundedPublicWebRequest } from './boundedPublicWebRequest';
+import { PublicSearchOfflineError } from './publicSearchFailure';
 
 import {
   parsePublicWebQuery,
@@ -102,6 +103,12 @@ export function createPublicWebEvidence(input: {
       );
       if (request.signal.aborted)
         throw new Error('Public web search was cancelled.');
+      if (
+        !result.ok &&
+        result.error.code === 'provider_unavailable' &&
+        result.error.connectivity === 'offline'
+      )
+        throw new PublicSearchOfflineError();
       if (!result.ok)
         throw new Error(
           'The selected model could not return cited public web evidence.',
