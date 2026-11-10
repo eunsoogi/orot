@@ -3,6 +3,9 @@ import { savedHomeQuestions } from '../../../test-helpers/homeOverviewFixtures';
 import { savedSource } from '../../recording/recordingScreenSupport';
 import WelcomeRoute, { type WelcomeRouteProps } from '../WelcomeRoute';
 import { formatDate, t } from '../../i18n';
+import { StyleSheet } from 'react-native';
+import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
+import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('../../navigation', () => ({
@@ -36,6 +39,30 @@ function props(overrides: Partial<WelcomeRouteProps> = {}): WelcomeRouteProps {
     ...overrides,
   };
 }
+
+test('keeps one home end gutter beyond the navigation overlap', async () => {
+  await render(
+    <NavigationOcclusionContext.Provider
+      value={{
+        placement: 'bottom',
+        systemInsets: { top: 0, right: 0, bottom: 34, left: 0 },
+        viewportInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+        scrollContentInsets: { top: 0, right: 0, bottom: 52, left: 0 },
+      }}
+    >
+      <NavigationRouteScrollView>
+        <WelcomeRoute {...props()} />
+      </NavigationRouteScrollView>
+    </NavigationOcclusionContext.Provider>,
+  );
+  const scroll = StyleSheet.flatten(
+    screen.getByTestId('navigation-route-scroll').props.contentContainerStyle,
+  );
+  const page = StyleSheet.flatten(
+    screen.getByTestId('home-screen').props.style,
+  );
+  expect(scroll.paddingBottom + page.paddingBottom).toBe(84);
+});
 
 test('shows saved questions without a symptom journal shortcut', async () => {
   const input = props();

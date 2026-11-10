@@ -9,17 +9,10 @@ import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 import { createManualHistoryTable } from './manualHistoryMigrations';
 import { createVisitQuestionRecordTables } from './visitQuestionRecordMigrations';
+import { createDailyReportTables } from './dailyReportMigration';
+import { readUserVersion } from './schemaVersion';
 
-export const CURRENT_SCHEMA_VERSION = 13;
-
-async function readUserVersion(database: SqlExecutor): Promise<number> {
-  const result = await database.execute('PRAGMA user_version');
-  const version = Number(result.rows[0]?.user_version ?? 0);
-  if (!Number.isSafeInteger(version) || version < 0) {
-    throw new Error('The database schema version is invalid.');
-  }
-  return version;
-}
+export const CURRENT_SCHEMA_VERSION = 14;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -222,10 +215,12 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await createHealthObservationLibraryIndex(transaction);
     await createHealthMedicationLibraryIndex(transaction);
     if (currentVersion < 12) await ensureSymptomDeletionFence(transaction);
-    if (currentVersion < 13) {
+    if (currentVersion < 13) await createDailyReportTables(transaction);
+    // Version 13 belongs to daily reports on main; add official visit records separately.
+    if (currentVersion < 14) {
       await createVisitQuestionRecordTables(transaction);
       await createSourceDeletionIntegrity(transaction);
     }
-    await transaction.execute('PRAGMA user_version = 13');
+    await transaction.execute('PRAGMA user_version = 14');
   });
 }

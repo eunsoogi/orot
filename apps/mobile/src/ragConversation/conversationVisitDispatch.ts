@@ -3,6 +3,42 @@ import type { RagConversationMessage } from './task';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { conversationEntryForSession } from './useConversationEntryIntent';
+import { conversationHistoryPayload } from './conversationHistoryPayload';
+
+const pendingVisits = new WeakMap<
+  ConversationSessions,
+  Map<number, ConversationEntryContext>
+>();
+
+/** Keep the operation identity until preparation succeeds, including cancellation and edited retries. */
+export function visitPreparationSender(
+  store: ConversationSessions,
+  id: number,
+  prepare: NonNullable<ConversationScreenProps['prepareVisitQuestions']>,
+  context: ConversationEntryContext,
+) {
+  let pending = pendingVisits.get(store);
+  if (!pending) {
+    pending = new Map();
+    pendingVisits.set(store, pending);
+  }
+  const entries = pending;
+  entries.set(id, context);
+  return async (
+    ...args: Parameters<
+      NonNullable<ConversationScreenProps['prepareVisitQuestions']>
+    >
+  ) => {
+    const result = await prepare(args[0], args[1], args[2], args[3], context);
+    if (
+      !args[2]?.aborted &&
+      result.status !== 'failure' &&
+      result.status !== 'unavailable'
+    )
+      entries.delete(id);
+    return result;
+  };
+}
 
 /** Entry intent starts one operation; later ordinary conversation turns do not regenerate questions. */
 export function shouldPrepareVisitQuestions(
@@ -19,10 +55,43 @@ export function sendConversationMessage(
   onSend: ConversationScreenProps['onSend'],
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
+  const session = store.getSnapshot().sessions.find(item => item.id === id);
+  const entry = conversationEntryForSession(store, id);
+  if (
+    prepare &&
+    session?.draft.trim() &&
+    !session.busy &&
+    !session.restoring &&
+    !session.retryingSave &&
+    !session.restoreFailed &&
+    !session.quarantined &&
+    !(session.restoreAfterRetry && session.unsavedCount) &&
+    entry &&
+    shouldPrepareVisitQuestions(
+      entry,
+      conversationHistoryPayload(session.messages, session.draft.trim()),
+    )
+  ) {
+    // Record ownership before storage preflight, which may fail before the sender is called.
+    visitPreparationSender(store, id, prepare, entry);
+  }
   return store.send(id, (question, history, signal, observer) => {
-    const context = conversationEntryForSession(store, id);
-    if (prepare && shouldPrepareVisitQuestions(context, history))
-      return prepare(question, history, signal, observer, context);
+    const context =
+      pendingVisits.get(store)?.get(id) ??
+      conversationEntryForSession(store, id);
+    if (
+      prepare &&
+      context &&
+      (pendingVisits.get(store)?.has(id) ||
+        shouldPrepareVisitQuestions(context, history))
+    )
+      return visitPreparationSender(store, id, prepare, context)(
+        question,
+        history,
+        signal,
+        observer,
+        context,
+      );
     return context
       ? onSend(question, history, signal, observer, context)
       : onSend(question, history, signal, observer);

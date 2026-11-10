@@ -12,6 +12,7 @@ import { createInlineVisitReview } from '../../../nextVisitQuestions/inlineVisit
 import { AiFeatureFlowScreen } from '../AiFeatureFlowScreen';
 import { AiFeatureSharedNavigationStateProvider } from '../AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from '../featureServices';
+import type { AiFeatureServices } from '../featureServices';
 import { defaultVisitQuestionRouteOperations } from '../visitQuestionsRouteOperations';
 
 jest.mock(
@@ -29,12 +30,36 @@ test('the visit entry shows editable questions in chat, saves explicitly and kee
     [],
     () => 'candidate-1',
   );
-  const prepare = jest.fn(async () => ({
-    status: 'answer' as const,
-    answer: '질문을 준비했어요.',
-    citations: [],
-    visitQuestions: { appointment, review, validateSource: async () => true },
-  }));
+  const prepare = jest.fn(
+    async ({
+      observer,
+    }: Parameters<
+      NonNullable<AiFeatureServices['prepareVisitQuestionTurn']>
+    >[0]) => {
+      // The actual runtime/SQLite event path has separate integration coverage.
+      observer?.onToolEvent?.({
+        version: 1,
+        operationRunId: 'visit-run',
+        callId: 'call-1',
+        toolName: 'record-search',
+        order: 1,
+        status: 'completed',
+        inputSummary: { sourceKind: 'personal_record' },
+        resultSummary: { referenceCount: 0 },
+        sources: [],
+      });
+      return {
+        status: 'answer' as const,
+        answer: '질문을 준비했어요.',
+        citations: [],
+        visitQuestions: {
+          appointment,
+          review,
+          validateSource: async () => true,
+        },
+      };
+    },
+  );
   const send = jest.fn(async () => ({ status: 'no_evidence' as const }));
   const save = jest
     .spyOn(defaultVisitQuestionRouteOperations, 'save')
@@ -79,6 +104,13 @@ test('the visit entry shows editable questions in chat, saves explicitly and kee
   await waitFor(() =>
     expect(screen.getByTestId('inline-visit-review')).toBeTruthy(),
   );
+  await fireEvent.press(
+    screen.getByTestId('rag-tool-event-visit-run-call-1-toggle'),
+  );
+  expect(
+    screen.getByTestId('rag-tool-event-visit-run-call-1-details'),
+  ).toBeTruthy();
+  expect(screen.getByTestId('inline-visit-review')).toBeTruthy();
   expect(save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('inline-visit-select-0'));
   await fireEvent.changeText(

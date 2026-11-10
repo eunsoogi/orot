@@ -134,64 +134,79 @@ describe('official visit-question records', () => {
     }
   });
 
-  it('initializes a version twelve question and retains its revision across reopen and ID reuse', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'visit-question-revision-'));
-    const path = join(directory, 'database.sqlite');
-    let connection = await setup(path);
-    try {
-      for (const name of ['visit_questions_revision_insert', 'visit_questions_revision_update'])
-        await connection.database.execute(`DROP TRIGGER ${name}`);
-      await connection.database.execute('DROP TABLE visit_question_revisions');
-      await connection.database.execute('DROP TABLE visit_question_record_history');
-      await connection.database.execute('DROP TABLE visit_question_records');
-      await connection.database.execute('PRAGMA user_version = 12');
-      connection.close();
-      connection = openSqliteTestDatabase(path) as typeof connection;
-      const original = connection.database;
-      await expect(
-        runMigrations({
-          ...original,
-          transaction: (operation) =>
-            original.transaction((sql) =>
-              operation({
-                ...sql,
-                execute: (query, values) => {
-                  if (query.includes('CREATE TABLE IF NOT EXISTS visit_question_record_history'))
-                    throw new Error('injected migration failure');
-                  return sql.execute(query, values);
-                },
-              }),
-            ),
-        }),
-      ).rejects.toThrow('injected migration failure');
-      expect((await original.execute('PRAGMA user_version')).rows[0].user_version).toBe(12);
-      expect(
-        (
-          await original.execute(
-            "SELECT name FROM sqlite_master WHERE name = 'visit_question_revisions'",
-          )
-        ).rows,
-      ).toEqual([]);
-      expect(
-        (await original.execute('SELECT id FROM visit_questions WHERE id = ?', [question.id])).rows,
-      ).toHaveLength(1);
-      await runMigrations(connection.database);
-      expect(await readVisitQuestionRevision(connection.database, question.id)).toBe('v1:1');
-      connection.close();
-      const reopened = openSqliteTestDatabase(path);
+  it.each([12, 13])(
+    'upgrades version %i and retains question and daily report data across reopen and rollback',
+    async (version) => {
+      const directory = mkdtempSync(join(tmpdir(), 'visit-question-revision-'));
+      const path = join(directory, 'database.sqlite');
+      let connection = await setup(path);
       try {
-        expect(await readVisitQuestionRevision(reopened.database, question.id)).toBe('v1:1');
-        await reopened.database.execute('DELETE FROM visit_questions WHERE id = ?', [question.id]);
-        const records = await openEncryptedStorage(createOptions(reopened.database));
-        await records.put('visit_question', question);
-        expect(await readVisitQuestionRevision(reopened.database, question.id)).toBe('v1:2');
+        for (const name of ['visit_questions_revision_insert', 'visit_questions_revision_update'])
+          await connection.database.execute(`DROP TRIGGER ${name}`);
+        await connection.database.execute('DROP TABLE visit_question_revisions');
+        await connection.database.execute('DROP TABLE visit_question_record_history');
+        await connection.database.execute('DROP TABLE visit_question_records');
+        await connection.database.execute(
+          "INSERT INTO daily_report_heads VALUES ('identity', 'run', 1, 0)",
+        );
+        await connection.database.execute(`PRAGMA user_version = ${version}`);
+        connection.close();
+        connection = openSqliteTestDatabase(path) as typeof connection;
+        const original = connection.database;
+        await expect(
+          runMigrations({
+            ...original,
+            transaction: (operation) =>
+              original.transaction((sql) =>
+                operation({
+                  ...sql,
+                  execute: (query, values) => {
+                    if (query.includes('CREATE TABLE IF NOT EXISTS visit_question_record_history'))
+                      throw new Error('injected migration failure');
+                    return sql.execute(query, values);
+                  },
+                }),
+              ),
+          }),
+        ).rejects.toThrow('injected migration failure');
+        expect((await original.execute('PRAGMA user_version')).rows[0].user_version).toBe(version);
+        expect(
+          (await original.execute('SELECT active_run_id FROM daily_report_heads')).rows,
+        ).toEqual([{ active_run_id: 'run' }]);
+        expect(
+          (
+            await original.execute(
+              "SELECT name FROM sqlite_master WHERE name = 'visit_question_revisions'",
+            )
+          ).rows,
+        ).toEqual([]);
+        expect(
+          (await original.execute('SELECT id FROM visit_questions WHERE id = ?', [question.id]))
+            .rows,
+        ).toHaveLength(1);
+        await runMigrations(connection.database);
+        expect(await readVisitQuestionRevision(connection.database, question.id)).toBe('v1:1');
+        connection.close();
+        const reopened = openSqliteTestDatabase(path);
+        try {
+          expect(await readVisitQuestionRevision(reopened.database, question.id)).toBe('v1:1');
+          expect(
+            (await reopened.database.execute('SELECT active_run_id FROM daily_report_heads')).rows,
+          ).toEqual([{ active_run_id: 'run' }]);
+          await reopened.database.execute('DELETE FROM visit_questions WHERE id = ?', [
+            question.id,
+          ]);
+          const records = await openEncryptedStorage(createOptions(reopened.database));
+          await records.put('visit_question', question);
+          expect(await readVisitQuestionRevision(reopened.database, question.id)).toBe('v1:2');
+        } finally {
+          reopened.close();
+        }
       } finally {
-        reopened.close();
+        rmSync(directory, { recursive: true, force: true });
       }
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
-  });
+    },
+  );
 
   it('removes retained revision identities during an all-local-data wipe', async () => {
     const { records, database, close } = await setup();

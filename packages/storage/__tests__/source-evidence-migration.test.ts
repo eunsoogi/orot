@@ -45,7 +45,7 @@ describe('persistent source and evidence repository schema migration', () => {
     await database.execute('PRAGMA user_version = 1');
 
     const repository = await openEncryptedStorage(options(database));
-    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(13);
+    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(14);
     expect(
       (
         await database.execute(

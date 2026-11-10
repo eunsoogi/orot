@@ -3,6 +3,7 @@ import { ActionSheetIOS, View } from 'react-native';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
 import { NavigationGlassSurface } from '../NavigationGlassSurface';
 import { NavigationPageActionDock } from '../NavigationPageActionDock';
+import { registerNavigationTestObserver } from '../navigationTestObservation';
 import type { NavigationRouteAction } from '../useNavigationPrimaryAction';
 
 let dispatch: NavigationSurfaceProps['onAction'];
@@ -18,6 +19,8 @@ function Surface({ onAction, testID }: NavigationSurfaceProps) {
 }
 
 test('overflow invokes only a currently enabled action and ignores selections after route exit', async () => {
+  const observe = jest.fn();
+  const stopObservation = registerNavigationTestObserver(observe);
   const save = jest.fn();
   const cancel = jest.fn();
   const actions: NavigationRouteAction[] = [
@@ -64,6 +67,12 @@ test('overflow invokes only a currently enabled action and ignores selections af
     >[0]),
   );
   expect(show).toHaveBeenCalledTimes(1);
+  expect(observe).toHaveBeenCalledWith(
+    expect.objectContaining({ event: 'menu-handler', routeKey: 'first' }),
+  );
+  expect(observe).toHaveBeenCalledWith(
+    expect.objectContaining({ event: 'menu-show-request', routeKey: 'first' }),
+  );
   await act(async () => select?.(1));
   expect(cancel).not.toHaveBeenCalled();
   await act(async () =>
@@ -77,6 +86,7 @@ test('overflow invokes only a currently enabled action and ignores selections af
   expect(save).not.toHaveBeenCalled();
   show.mockRestore();
   dismiss.mockRestore();
+  stopObservation();
 });
 
 test('uses current native width measurements and ignores stale results', async () => {

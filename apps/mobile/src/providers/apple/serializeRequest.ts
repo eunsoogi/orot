@@ -12,6 +12,28 @@ const safetyInstructions = [
   'Preserve supplied source IDs and protocol enum values exactly in structured output.',
 ].join(' ');
 
+/** Recap transforms supplied speech; guided schemas and tools are not valid in this profile. */
+export function serializeAppleRecapRequest(
+  request: LanguageModelRequest,
+): AppleNativeRequest {
+  if (
+    request.responseFormat ||
+    request.tools?.length ||
+    request.toolChoice ||
+    request.messages.some(
+      message =>
+        message.role === 'tool' ||
+        (message.role === 'assistant' && message.toolCalls?.length),
+    )
+  ) {
+    throw codedError(
+      'INVALID_REQUEST',
+      'Recap transformation accepts plain text only.',
+    );
+  }
+  return { ...serializeAppleRequest(request), profile: 'recap-transformation' };
+}
+
 export function serializeAppleRequest(
   request: LanguageModelRequest,
 ): AppleNativeRequest {

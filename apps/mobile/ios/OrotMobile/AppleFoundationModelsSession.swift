@@ -30,6 +30,25 @@ import Foundation
             guard let request = payload as? [String: Any], let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt and instructions are required.", nil) }
+            if let profile = request["profile"] {
+                guard let name = profile as? String, name == "recap-transformation",
+                      request["mode"] as? String == "text", request["schema"] == nil,
+                      request["nativeResponseSchema"] == nil,
+                      !usesNativeTools(request), (request["toolNames"] as? [Any] ?? []).isEmpty,
+                      (request["nativeToolCalls"] as? [Any] ?? []).isEmpty,
+                      request["nativeToolChoice"] as? String != "required"
+                else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Invalid Recap transformation request.", nil) }
+                #if OROT_TESTS && targetEnvironment(simulator)
+                    let text = try await AppleFoundationModelsMock.shared.respond(request)
+                #else
+                    // This profile is selected before generation and never retries a refused request.
+                    let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+                    let session = LanguageModelSession(model: model, instructions: instructions)
+                    let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
+                    let text = try await session.respond(to: prompt, options: options).content
+                #endif
+                return ["text": text, "toolCalls": [], "finishReason": "complete"]
+            }
             #if !(OROT_TESTS && targetEnvironment(simulator))
                 if usesNativeTools(request) {
                     return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in
@@ -70,6 +89,9 @@ import Foundation
                   let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt, mode and instructions are required.", nil) }
+            if request["profile"] != nil {
+                throw appleFoundationModelsFailure("INVALID_REQUEST", "Transformation requests cannot stream.", nil)
+            }
             #if !(OROT_TESTS && targetEnvironment(simulator))
                 if usesNativeTools(request) {
                     return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ActionSheetIOS, Dimensions } from 'react-native';
 import { NavigationActionBar } from '../NavigationActionBar';
 import { createNavigationController } from '../navigationController';
+import { registerNavigationTestObserver } from '../navigationTestObservation';
 
 const metricsControl = globalThis as typeof globalThis & {
   __OROT_TEST_PAGE_METRICS__?: null;
@@ -56,6 +57,8 @@ test('keeps the selected root tab direct when large text requires More without p
 });
 
 test('keeps the selected root and primary page action direct while More dispatches guarded tabs', async () => {
+  const observe = jest.fn();
+  const stopObservation = registerNavigationTestObserver(observe);
   const originalWindow = Dimensions.get('window');
   const originalScreen = Dimensions.get('screen');
   Dimensions.set({
@@ -114,6 +117,12 @@ test('keeps the selected root and primary page action direct while More dispatch
     await fireEvent.press(
       screen.getByTestId('navigation-page-action-overflow'),
     );
+    expect(observe).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'menu-handler' }),
+    );
+    expect(observe).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'menu-show-request' }),
+    );
     const options = show.mock.calls[0]![0].options;
     const records = options.indexOf('기록 탭');
     expect(records).toBeGreaterThanOrEqual(0);
@@ -124,6 +133,7 @@ test('keeps the selected root and primary page action direct while More dispatch
       Dimensions.set({ window: originalWindow, screen: originalScreen }),
     );
     show.mockRestore();
+    stopObservation();
     delete metricsControl.__OROT_TEST_PAGE_METRICS__;
   }
 });
