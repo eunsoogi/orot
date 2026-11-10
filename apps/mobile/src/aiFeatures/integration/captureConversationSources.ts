@@ -38,7 +38,7 @@ export async function captureConversationSources(
       doc.sourceKind !== 'generated_artifact' ||
       !(
         ('analysis' in doc &&
-          ['symptom_summary', 'disease_possibilities'].includes(
+          ['symptom_summary', 'disease_possibilities', 'daily_report'].includes(
             doc.metadata.type,
           )) ||
         ('conversation' in doc && doc.metadata.type === 'conversation_turn') ||

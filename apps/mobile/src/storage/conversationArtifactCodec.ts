@@ -92,9 +92,11 @@ export function decodeConversationArtifact(
           !object(ref.locator) ||
           ref.locator.kind !== 'generated_artifact' ||
           !(source.kind === 'generated_summary'
-            ? ['symptom_summary', 'disease_possibilities'].includes(
-                String(ref.locator.type),
-              )
+            ? [
+                'symptom_summary',
+                'disease_possibilities',
+                'daily_report',
+              ].includes(String(ref.locator.type))
             : source.kind === 'generated_conversation'
               ? ref.locator.type === 'conversation_turn'
               : ['research_publication', 'research_web_explanation'].includes(

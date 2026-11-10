@@ -9,6 +9,11 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // Keep daily reminder preference and notification boundaries in the core integration cohort.
+  'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testOriginCarrierSurvivesActualRNSerializationWithoutOriginalNSError',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
