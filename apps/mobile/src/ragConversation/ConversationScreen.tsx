@@ -21,8 +21,7 @@ import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
-import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
+import { useConversationSessionActions } from './useConversationSessionActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
 import { useConversationEntryIntent } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
@@ -48,7 +47,6 @@ export function ConversationScreen({
   const [contentHeight, setContentHeight] = useState(0);
   const { fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
-  const actionPlacement = useNavigationActionPlacement();
   const composerLayout = conversationComposerLayout(
     contentHeight,
     occlusion.scrollContentInsets.bottom,
@@ -63,35 +61,11 @@ export function ConversationScreen({
   const { id, draft, messages, pendingMessage, busy, error } = session;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
-  // The shell places Back before this group; preserve history before new session within the page actions.
-  const hasDockActions = useNavigationRouteActions(
-    actionPlacement === 'contextual'
-      ? [
-          {
-            id: 'conversation-history',
-            label: copy.sessions,
-            accessibilityLabel: copy.sessions,
-            testID: 'rag-conversation-sessions-toggle',
-            systemImageName: 'clock.arrow.circlepath',
-            disabled: !onOpenHistory,
-            onPress: () => onOpenHistory?.(),
-          },
-          {
-            id: 'conversation-new-session',
-            label: copy.newConversation,
-            accessibilityLabel: copy.newConversation,
-            testID: 'rag-conversation-new-session',
-            systemImageName: 'plus',
-            onPress: () => {
-              store.create();
-            },
-          },
-        ]
-      : [],
+  const showSessionActionsInHeader = useConversationSessionActions(
+    store,
+    copy,
+    onOpenHistory,
   );
-  // Standalone or unobserved geometry keeps the iPhone header until a navigation host owns the actions.
-  const showSessionActionsInHeader =
-    actionPlacement !== 'contextual' || !hasDockActions;
   const cancel = () => store.cancel(id);
   const onLinkError = () =>
     store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
