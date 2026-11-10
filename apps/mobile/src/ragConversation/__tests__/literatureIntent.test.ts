@@ -4,6 +4,9 @@ import { ragConversationTask } from '../task';
 test.each([
   '수면에 관한 문헌을 설명해 주세요',
   '논문 찾아서 요약해 줘',
+  '관련 연구를 알려줘',
+  '논문을 설명해 줘. 관련 연구 알려줘서 고마워요',
+  '관련 연구는 어떤가요? 관련 연구 알려줘서 고마워요',
   'Summarize research papers about sleep',
 ])('identifies an explicit literature request: %s', question => {
   expect(requestsLiteratureExplanation(question)).toBe(true);
@@ -58,6 +61,10 @@ test('does not expose an uncited risk claim for an indirect research question', 
 test.each([
   '고마워요',
   '논문 찾아줘서 고마워요',
+  '관련 연구를 알려줘서 고마워요',
+  '연구 결과를 알려줘서 고마워요',
+  '나는 연구 일을 해요',
+  '내 수면 기록을 연구 노트에 적어 줘',
   '내 수면 기록을 요약해 줘',
   'Thank you for the paper',
 ])(

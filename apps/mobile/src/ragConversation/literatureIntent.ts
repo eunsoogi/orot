@@ -11,12 +11,16 @@ export function requestsLiteratureExplanation(question: string): boolean {
   const normalized = question.normalize('NFKC').replace(/\s+/gu, ' ').trim();
   // A completed action followed only by thanks is an acknowledgement, not a new search.
   if (
-    /^(?:문헌|논문)(?:을|를)?\s*(?:찾아|설명해|요약해)\s*줘서\s*고마워(?:요)?[.!?]*$/u.test(
+    /^(?:문헌|논문|(?:관련\s*)?연구(?:\s*결과)?)(?:을|를)?\s*(?:찾아|알려|설명해|요약해|보여)\s*줘서\s*고마워(?:요)?[.!?]*$/u.test(
       normalized,
     )
   )
     return false;
+  // Require a request immediately after “related research”; a mention or thanks is not a new search.
+  const relatedResearch =
+    /관련\s*연구(?:는|가|를|에\s*대해)?\s*(?:어떤|무엇|알려|설명|요약|보여)/u;
   return (
+    relatedResearch.test(normalized) ||
     (koreanSource.test(normalized) && koreanAction.test(normalized)) ||
     (englishSource.test(normalized) && englishAction.test(normalized))
   );
