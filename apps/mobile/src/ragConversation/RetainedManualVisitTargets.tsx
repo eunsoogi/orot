@@ -10,16 +10,19 @@ import {
 import { ManualVisitRecords } from './ManualVisitRecords';
 import { ConversationSavedRecaps } from './ConversationSavedRecaps';
 import type { SqlDatabase } from '@orot/storage';
+import type { ManualVisitDrafts } from './useManualVisitDraft';
 
 /** Restores only exact visits from source-validated turns of the currently active durable session. */
 export function RetainedManualVisitTargets({
   sessionId,
   discover,
+  drafts,
   excluded,
   loadRecapDatabase,
 }: {
   readonly sessionId: string;
   readonly discover: AiFeatureServices['conversationArtifacts'];
+  readonly drafts?: ManualVisitDrafts;
   readonly excluded: string;
   readonly loadRecapDatabase?: () => Promise<SqlDatabase>;
 }) {
@@ -107,7 +110,7 @@ export function RetainedManualVisitTargets({
             appointmentId={id}
             loadDatabase={loadRecapDatabase}
           />
-          <ManualVisitRecords appointmentId={id} />
+          <ManualVisitRecords appointmentId={id} drafts={drafts} />
         </Fragment>
       ))}
       {error ? (

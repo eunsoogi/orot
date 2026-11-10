@@ -98,8 +98,10 @@ export function useAppHomeData(
       setRecordings([]);
       refreshRecordings();
     };
-    const unsubscribeDeletion =
-      subscribeLocalSourceDeletion(invalidateRecordings);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(
+      invalidateRecordings,
+      'local',
+    );
     const unsubscribeClear = subscribeLocalDataClear(() => {
       setAppointments([]);
       refreshAppointments();

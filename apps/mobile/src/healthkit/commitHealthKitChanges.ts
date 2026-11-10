@@ -7,6 +7,6 @@ export async function commitHealthKitChanges(
   write: (writer: RecordWriter) => Promise<number>,
 ): Promise<number> {
   const deleted = await repository.transaction(write);
-  if (deleted > 0) notifyLocalSourceDeleted();
+  if (deleted > 0) notifyLocalSourceDeleted('healthkit');
   return deleted;
 }

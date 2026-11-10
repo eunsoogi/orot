@@ -20,22 +20,34 @@ const item = {
   records: [],
 } as unknown as ManualVisitQuestion;
 
-test('keeps an unfinished answer during an unrelated recap update', async () => {
-  const service = {
-    load: jest.fn().mockResolvedValue([item]),
-    saveManual: jest.fn(),
-    edit: jest.fn(),
-  } as unknown as Service;
-  const open = async () => service;
-  await render(<ManualVisitRecords appointmentId="visit-1" open={open} />);
-  await screen.findByText('언제 복용하나요?');
-  await fireEvent.press(screen.getByText('실제로 물어봤어요'));
-  await fireEvent.changeText(screen.getByLabelText('의료진 답변'), '작성 중');
-  await act(async () => publishRecapUpdate());
-  await waitFor(() =>
-    expect(screen.getByLabelText('의료진 답변').props.value).toBe('작성 중'),
-  );
-});
+test.each([
+  ['recap update', async () => publishRecapUpdate()],
+  [
+    'HealthKit deletion notification',
+    () => notifyLocalSourceDeleted('healthkit'),
+  ],
+] as const)(
+  'keeps an unfinished answer during an unrelated %s',
+  async (_label, update) => {
+    const service = {
+      load: jest.fn().mockResolvedValue([item]),
+      saveManual: jest.fn(),
+      edit: jest.fn(),
+    } as unknown as Service;
+    const open = async () => service;
+    await render(<ManualVisitRecords appointmentId="visit-1" open={open} />);
+    await screen.findByText('언제 복용하나요?');
+    await fireEvent.press(screen.getByText('실제로 물어봤어요'));
+    await fireEvent.changeText(screen.getByLabelText('의료진 답변'), '작성 중');
+    await act(async () => {
+      await update();
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText('의료진 답변').props.value).toBe('작성 중'),
+    );
+    expect(service.saveManual).not.toHaveBeenCalled();
+  },
+);
 
 test('does not save a prepared question until the user confirms and saves; cancel leaves it unchanged', async () => {
   const service = {

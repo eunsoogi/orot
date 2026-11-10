@@ -3,6 +3,8 @@ import { createConversationArtifactStorage } from '../../storage/conversationArt
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { createConversationSessions } from '../conversationSessions';
 import { waitFor } from '@testing-library/react-native';
+import { subscribeLocalSourceDeletion } from '../../storage/localDataClearEvents';
+import { commitHealthKitChanges } from '../../healthkit/commitHealthKitChanges';
 
 test('source removal immediately hides loaded answers and restores only surviving turns', async () => {
   const f = await healthContextFixture();
@@ -57,8 +59,16 @@ test('source removal immediately hides loaded answers and restores only survivin
       '2026-10-05T00:00:00.000Z',
     );
     store.setDraft(id, 'keep draft');
-    await f.repository.delete('health_observation', f.inside.id);
-    store.refreshAfterSourceDeletion();
+    const unsubscribe = subscribeLocalSourceDeletion(
+      store.refreshAfterSourceDeletion,
+    );
+    try {
+      await commitHealthKitChanges(f.repository, async writer =>
+        Number(await writer.delete('health_observation', f.inside.id)),
+      );
+    } finally {
+      unsubscribe();
+    }
     expect(
       store.getSnapshot().sessions.find(session => session.id === id)?.messages,
     ).toEqual([]);

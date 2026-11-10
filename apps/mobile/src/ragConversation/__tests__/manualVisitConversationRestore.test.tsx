@@ -31,6 +31,7 @@ import { createConversationArtifactStorage } from '../../storage/conversationArt
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { manualVisitRestoreData } from '../testSupport/manualVisitRestoreData';
+import { verifyManualVisitHealthKitRefresh } from '../testSupport/verifyManualVisitHealthKitRefresh';
 import { prepareConversationVisitRetention } from '../../aiFeatures/integration/prepareConversationVisitRetention';
 import { createVisitQuestionSourceService } from '../../aiFeatures/integration/visitQuestionSourceRegistration';
 import { restoreConversationArtifact } from '../../aiFeatures/integration/restoreConversationArtifact';
@@ -218,12 +219,7 @@ test('restores a source-validated visit and its official answer after reopening 
     });
     clock.mockRestore();
     await screen.findByText('저장된 답변');
-    expect(screen.getByText('답변 수정')).toBeTruthy();
-    await fireEvent.press(screen.getByText('답변 수정'));
-    await fireEvent.changeText(
-      screen.getByLabelText('의료진 답변'),
-      '재열기 후 수정',
-    );
+    await verifyManualVisitHealthKitRefresh(records);
     await fireEvent.press(screen.getByText('저장'));
     await waitFor(() =>
       expect(screen.getByText('재열기 후 수정')).toBeTruthy(),
@@ -233,6 +229,8 @@ test('restores a source-validated visit and its official answer after reopening 
         await createManualVisitRecords(connection.database).load(appointment.id)
       )[0].records[0].answer,
     ).toBe('재열기 후 수정');
+    await fireEvent.press(screen.getByText('답변 수정'));
+    await fireEvent.changeText(screen.getByLabelText('의료진 답변'), '초안');
     await act(async () => {
       await records.sourceRecords.delete(sourceRecord.id);
       notifyLocalSourceDeleted();
@@ -240,6 +238,7 @@ test('restores a source-validated visit and its official answer after reopening 
     await waitFor(() =>
       expect(screen.queryByText('재열기 후 수정')).toBeNull(),
     );
+    expect(screen.queryByLabelText('의료진 답변')).toBeNull();
     view.unmount();
   } finally {
     connection.close();

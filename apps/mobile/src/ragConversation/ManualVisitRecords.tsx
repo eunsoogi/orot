@@ -9,6 +9,11 @@ import {
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
 import { openManualVisitRecords } from './manualVisitRecordService';
+import {
+  matchesManualVisitDraft,
+  useManualVisitDraft,
+  type ManualVisitDrafts,
+} from './useManualVisitDraft';
 import { subscribeRecapUpdates } from '../transcription/recapUpdates';
 import type {
   ManualVisitQuestion,
@@ -19,20 +24,22 @@ import type {
 export function ManualVisitRecords({
   appointmentId,
   open = openManualVisitRecords,
+  drafts,
 }: {
   readonly appointmentId: string;
   readonly open?: () => Promise<ManualVisitRecordsService>;
+  readonly drafts?: ManualVisitDrafts;
 }) {
   const [items, setItems] = useState<ManualVisitQuestion[]>([]);
   const [service, setService] = useState<ManualVisitRecordsService | null>(
     null,
   );
-  const [editing, setEditing] = useState<{
-    questionId: string;
-    recordId?: string;
-    expectedRevision?: number;
-  } | null>(null);
-  const [answer, setAnswer] = useState('');
+  const {
+    draft,
+    clear: clearDraft,
+    begin,
+    setAnswer,
+  } = useManualVisitDraft(appointmentId, drafts);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
@@ -43,21 +50,21 @@ export function ManualVisitRecords({
     const invalidate = () => {
       contentVersion.current += 1;
       setItems([]);
-      setEditing(null);
-      setAnswer('');
+      clearDraft();
       setError('');
       setReload(value => value + 1);
     };
     const clear = subscribeLocalDataClear(invalidate);
-    const source = subscribeLocalSourceDeletion(invalidate);
-    // Routine progress from another recording must not discard an unfinished edit.
+    const source = subscribeLocalSourceDeletion(invalidate, 'local');
+    // Unrelated HealthKit deletions and recap progress must not discard an unfinished edit.
     const recap = subscribeRecapUpdates(() => setReload(value => value + 1));
     return () => {
+      contentVersion.current += 1;
       clear();
       source();
       recap();
     };
-  }, []);
+  }, [clearDraft]);
   useEffect(() => {
     let active = true;
     setItems([]);
@@ -78,24 +85,20 @@ export function ManualVisitRecords({
       active = false;
     };
   }, [appointmentId, open, reload]);
-  useEffect(() => {
-    setEditing(null);
-    setAnswer('');
-  }, [appointmentId]);
   const save = async () => {
-    if (!service || !editing || saving.current) return;
-    const item = items.find(value => value.question.id === editing.questionId);
+    if (!service || !draft || saving.current) return;
+    const item = items.find(value => matchesManualVisitDraft(value, draft));
     if (!item) return;
     saving.current = true;
     const version = contentVersion.current;
     setBusy(true);
     setError('');
     try {
-      const value = answer.trim() || null;
-      if (editing.recordId && editing.expectedRevision !== undefined)
+      const value = draft.answer.trim() || null;
+      if (draft.recordId && draft.recordRevision !== undefined)
         await service.edit({
-          id: editing.recordId,
-          expectedRevision: editing.expectedRevision,
+          id: draft.recordId,
+          expectedRevision: draft.recordRevision,
           answer: value,
         });
       else
@@ -108,8 +111,7 @@ export function ManualVisitRecords({
       const loaded = await service.load(appointmentId);
       if (contentVersion.current !== version) return;
       setItems(loaded);
-      setEditing(null);
-      setAnswer('');
+      clearDraft();
     } catch {
       if (contentVersion.current === version)
         setError(t('visitQuestions.manual.saveUnconfirmed'));
@@ -179,12 +181,7 @@ export function ManualVisitRecords({
                 title={t('visitQuestions.manual.actions.edit')}
                 disabled={busy}
                 onPress={() => {
-                  setEditing({
-                    questionId: item.question.id,
-                    recordId: record.id,
-                    expectedRevision: record.revision,
-                  });
-                  setAnswer(record.answer ?? '');
+                  begin(item, record);
                   setError('');
                 }}
               />
@@ -198,21 +195,20 @@ export function ManualVisitRecords({
               style={styles.action}
               disabled={busy}
               onPress={() => {
-                setEditing({ questionId: item.question.id });
-                setAnswer('');
+                begin(item);
                 setError('');
               }}
             >
               <Text>{t('visitQuestions.manual.actions.confirmAsked')}</Text>
             </Pressable>
           )}
-          {editing?.questionId === item.question.id && (
+          {draft && matchesManualVisitDraft(item, draft) && (
             <View style={styles.editor}>
               <Text>{t('visitQuestions.manual.answer.label')}</Text>
               <TextInput
                 accessibilityLabel={t('visitQuestions.manual.answer.label')}
                 multiline
-                value={answer}
+                value={draft.answer}
                 onChangeText={setAnswer}
                 editable={!busy}
                 style={styles.input}
@@ -226,8 +222,7 @@ export function ManualVisitRecords({
                 title={t('visitQuestions.manual.actions.cancel')}
                 disabled={busy}
                 onPress={() => {
-                  setEditing(null);
-                  setAnswer('');
+                  clearDraft();
                   setError('');
                 }}
               />
