@@ -1,11 +1,12 @@
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishRagConversation } from './finishRagConversation';
-import type { RagConversationOutcome } from '../../ragConversation/service';
-import type { RagConversationObserver } from '../../ragConversation/service';
+import type {
+  RagConversationOutcome,
+  RagConversationObserver,
+} from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
-import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import { operationRunId } from './featureRunIdentity';
 import { conversationGeneratedTools } from './conversationGeneratedTools';
 import { withProviderStage } from '../../providers/diagnostics';
@@ -13,21 +14,21 @@ import { ragConversationFailure } from './ragConversationFailure';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { createResearchInputTracker } from './researchInputTracker';
-import { observeConversationTool } from '../../ragConversation/observeConversationTool';
-import { retainLiteratureResults } from './researchRetention';
-import {
-  budgetAfterPublicSearch,
-  runDefaultPublicSearch,
-} from './defaultPublicSearch';
+import { budgetAfterPublicSearch } from './defaultPublicSearch';
 import type { ConversationEntryContext } from './conversationIntent';
-import { resolveConversationEntryTarget } from './conversationVisitTarget';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
-import {
-  conversationHistoryIsCurrent,
-  loadConversationHistory,
-} from './conversationHistorySources';
+import { loadConversationHistory } from './conversationHistorySources';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
 import { guardHistory } from './conversationHistoryProviderGuard';
+import {
+  conversationInputsAreCurrent,
+  emptyConversationSnapshot,
+  resolveConversationTargets,
+} from './conversationEntryTargets';
+import {
+  conversationExternalEvidence,
+  conversationPublicSearch,
+} from './conversationExternalEvidence';
 
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
@@ -39,6 +40,7 @@ export function createRagConversationService({
   registry,
   ragRunner,
   createOperationRunId,
+  resolveDailyReport,
 }: RagConversationServiceDependencies) {
   return async function sendRagMessage(
     question: string,
@@ -55,11 +57,11 @@ export function createRagConversationService({
     const signal = linked.controller.signal;
     let stage: 'selection' | 'data' | 'workflow' = 'selection';
     try {
-      // Resolve the Home target before any provider work; never fall back to another visit.
-      if (entryContext?.appointmentId !== undefined) stage = 'data';
-      const target = await resolveConversationEntryTarget({
+      stage = 'data';
+      const target = await resolveConversationTargets({
         context: entryContext,
         loadLocalData,
+        resolveDailyReport,
         registry,
         signal,
       });
@@ -68,18 +70,21 @@ export function createRagConversationService({
           status: 'failure',
           kind: signal.aborted ? 'cancelled' : target.failure,
         };
+      const report = target.report;
       stage = 'selection';
-      const early = await conversationEarlyResponse({
-        question: normalizedQuestion,
-        observer,
-        loadLocalData,
-        targetData: target.data,
-        registry,
-        signal,
-        onData: () => {
-          stage = 'data';
-        },
-      });
+      const early =
+        !report &&
+        (await conversationEarlyResponse({
+          question: normalizedQuestion,
+          observer,
+          loadLocalData,
+          targetData: target.data,
+          registry,
+          signal,
+          onData: () => {
+            stage = 'data';
+          },
+        }));
       if (early) return early;
       stage = 'selection';
       const selected = await withProviderStage('rag', 'selection', selectedAi);
@@ -95,40 +100,32 @@ export function createRagConversationService({
         registry,
         signal,
       });
-      const historyIsCurrent = () =>
-        conversationHistoryIsCurrent(registry, history.references, signal);
+      const historyIsCurrent = conversationInputsAreCurrent(
+        registry,
+        history.references,
+        signal,
+        report,
+      );
       const researchInputs = createResearchInputTracker(
         registry,
         data,
         observer?.retentionSession?.id,
       );
-      const external = createSelectedExternalEvidence({
+      const external = conversationExternalEvidence({
         selected,
         consent,
-        literature: retainLiteratureResults(
-          externalEvidence,
-          loadLocalData,
-          'record_conversation',
-          observer?.retentionSession,
-          researchInputs.recordResearch,
-          { providerId: selected.provider.id, modelId: selected.modelId },
-        ),
-        literatureConsent: queryConsent,
-        loadData: loadLocalData,
-        originFeature: 'record_conversation',
-        retentionSession: observer?.retentionSession,
-        captureResearchInputs: researchInputs.capture,
-        validateResearchInputs: researchInputs.revalidate,
-        onResearchRetained: researchInputs.recordResearch,
+        queryConsent,
+        externalEvidence,
+        loadLocalData,
+        observer,
+        researchInputs,
       });
       const runId = createOperationRunId?.() ?? operationRunId();
-      const publicSearch = await runDefaultPublicSearch({
-        tool: observeConversationTool(
-          external.publicWebTool,
-          observer?.onToolEvent,
-        ),
-        operationRunId: runId,
-        request: normalizedQuestion,
+      const publicSearch = await conversationPublicSearch({
+        external,
+        observer,
+        runId,
+        question: normalizedQuestion,
         signal,
       });
       if (publicSearch.status === 'cancelled')
@@ -180,15 +177,17 @@ export function createRagConversationService({
           question: normalizedQuestion,
           entryIntent: entryContext?.intent,
           targetVisitEvidence: target.evidence,
+          dailyReportEvidence: report?.items,
           previousMessages: history.messages,
           validatedPriorTurns: history.priorTurns,
           priorDialogueOmitted: history.omitted,
           onValidatedEvidence: references =>
-            retention.onValidatedEvidence([...references, ...history.sources]),
-          loadCurrentEvidence: async () => ({
-            batch: { items: [], coverage: [], conflicts: [] },
-            chunks: [],
-          }),
+            retention.onValidatedEvidence([
+              ...references,
+              ...history.sources,
+              ...(report?.items ?? []),
+            ]),
+          loadCurrentEvidence: emptyConversationSnapshot,
           rag: data.rag,
           ...(publicSearch.status === 'success'
             ? { publicEvidence: publicSearch.batch }
@@ -201,7 +200,7 @@ export function createRagConversationService({
             ...guardHistory(
               execution,
               historyIsCurrent,
-              !!history.references.length,
+              !!history.references.length || !!report,
             ),
             execution: {
               ...execution.execution,
@@ -217,9 +216,10 @@ export function createRagConversationService({
           onProgress: observer?.onProgress,
           onToolEvent: observer?.onToolEvent,
           // A changed history must not leak a draft before its lineage is rechecked.
-          onTaskStreamEvent: history.references.length
-            ? undefined
-            : observer?.onTaskStreamEvent,
+          onTaskStreamEvent:
+            history.references.length || report
+              ? undefined
+              : observer?.onTaskStreamEvent,
           signal,
         },
       );
