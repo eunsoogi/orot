@@ -213,7 +213,7 @@ export async function runRagConversationTurn(
           : {}),
         // Label source-relative time even when the model omits that qualifier in its prose.
         answer: presentation.mixed
-          ? `${result.value.answer}\n\n${t('ragConversation.mixed.directComparisonUnavailable')}`
+          ? `${result.value.answer}\n\n${t('ragConversation.mixed.recordComparisonUnavailable')}`
           : result.citations.some(isPublicWebReference)
             ? `${result.value.answer}\n\n${t('externalMedicalEvidence.answer.publicWebDisclaimer')}`
             : result.citations.some(

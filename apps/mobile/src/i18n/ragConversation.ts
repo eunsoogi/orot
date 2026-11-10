@@ -175,6 +175,8 @@ export const ragConversationKo = {
   'ragConversation.conversation.healthSummary.retrySave': '저장 다시 시도',
   'ragConversation.mixed.directComparisonUnavailable':
     '기록과 문헌의 직접적인 비교는 확인하지 못했어요.',
+  'ragConversation.mixed.recordComparisonUnavailable':
+    '기록과의 비교는 확인하지 못했어요.',
   'ragConversation.mixed.literatureAndComparisonUnavailable':
     '요청하신 문헌은 확인하지 못했고 기록과의 비교도 확인하지 못했어요.',
   'ragConversation.literature.requestEvidenceUnavailable':
