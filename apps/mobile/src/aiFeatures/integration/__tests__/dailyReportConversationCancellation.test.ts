@@ -1,4 +1,5 @@
 import { createDailyReportIdentity } from '@orot/domain';
+import { finishRagConversation } from '../finishRagConversation';
 import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { apple, consent, localData } from '../featureServiceFixtures';
@@ -60,4 +61,29 @@ test('a report without cited evidence cannot fall back to an ordinary conversati
   ).resolves.toEqual({ status: 'failure', kind: 'stale_evidence' });
   expect(selectedAi).not.toHaveBeenCalled();
   expect(ragRunner).not.toHaveBeenCalled();
+});
+
+test('withholds the answer when the selected report changes during retention', async () => {
+  let reportCurrent = true;
+  const answer = {
+    status: 'answer' as const,
+    answer: 'Synthetic prior revision answer',
+    citations: [],
+  };
+  await expect(
+    finishRagConversation({
+      outcome: answer,
+      publicSearch: { status: 'unavailable' },
+      retention: {
+        onValidatedEvidence: () => {},
+        finish: async () => {
+          reportCurrent = false;
+          return { outcome: answer, retained: false };
+        },
+      },
+      signal: new AbortController().signal,
+      continuation: false,
+      reportIsCurrent: async () => reportCurrent,
+    }),
+  ).resolves.toEqual({ status: 'failure', kind: 'stale_evidence' });
 });

@@ -238,6 +238,7 @@ export function createRagConversationService({
         retention,
         signal,
         continuation: Boolean(continuation),
+        reportIsCurrent: report?.isCurrent,
       });
     } catch (error) {
       return ragConversationFailure(error, signal, stage);

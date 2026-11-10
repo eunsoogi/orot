@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
 import type { createConversationRetentionBridge } from './conversationRetentionBridge';
 import {
@@ -12,6 +13,7 @@ export async function finishRagConversation(input: {
   retention: ReturnType<typeof createConversationRetentionBridge>;
   signal: AbortSignal;
   continuation: boolean;
+  reportIsCurrent?: () => Promise<boolean>;
 }): Promise<RagConversationOutcome> {
   const annotated =
     input.outcome.status === 'answer' && input.publicSearch.status !== 'success'
@@ -21,8 +23,15 @@ export async function finishRagConversation(input: {
         }
       : input.outcome;
   const finished = await input.retention.finish(annotated);
+  // Retention can await a transaction after the workflow's last report check.
+  const reportChanged =
+    !input.signal.aborted &&
+    input.reportIsCurrent &&
+    !(await input.reportIsCurrent());
   if (input.signal.aborted && !finished.retained)
     return { status: 'failure', kind: 'cancelled' };
+  if (reportChanged && !input.signal.aborted)
+    return { status: 'failure', kind: 'stale_evidence' };
   if (
     input.continuation &&
     finished.outcome.status === 'answer' &&
@@ -32,7 +41,7 @@ export async function finishRagConversation(input: {
   )
     return {
       ...finished.outcome,
-      answer: `${finished.outcome.answer}\n\n더 이전 결과를 계속 찾아볼 수 있어요.`,
+      answer: `${finished.outcome.answer}\n\n${t('ragConversation.conversation.continuationAvailable')}`,
     };
   return finished.outcome;
 }

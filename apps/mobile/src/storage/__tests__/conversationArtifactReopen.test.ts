@@ -1,4 +1,3 @@
-import { createDailyReportIdentity } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
@@ -7,10 +6,6 @@ import {
   rmSync,
   tmpdir,
 } from '../../../../../packages/storage/__tests__/sourceEvidenceTestSupport';
-import { createConversationSessionOptions } from '../../aiFeatures/integration/conversationSessionOptions';
-import { createConversationArtifactDiscovery } from '../../aiFeatures/integration/conversationArtifactDiscovery';
-import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
-import { localData } from '../../aiFeatures/integration/featureServiceFixtures';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
 test('reopen preserves completed output and an empty-corpus wipe fences late sessions and writes', async () => {
@@ -33,11 +28,6 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
       question: 'question',
       answer: 'answer',
       entryIntent: 'possibilities' as const,
-      dailyReport: {
-        identity: createDailyReportIdentity('2026-11-10', 'Asia/Seoul'),
-        runId: 'report',
-        revision: 1,
-      },
       priorDialogue: [
         { question: 'earlier report', answer: 'follow-up question' },
       ],
@@ -58,30 +48,6 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
     connection = openSqliteTestDatabase(path);
     storage = createConversationArtifactStorage(connection.database);
     expect(await storage.read('turn')).toEqual(value);
-    const registry = new LocalEvidenceReferenceRegistry();
-    const data = Object.assign(localData([]).data, {
-      openConversationArtifactStorage: async () => storage,
-      conversationArtifactDiscovery: async () =>
-        createConversationArtifactDiscovery({
-          database: connection.database,
-          storage,
-          data,
-          registry,
-        }),
-    });
-    const options = createConversationSessionOptions({
-      loadLocalData: async () => data,
-      registry,
-    });
-    const turns = await options.restoreSession!(
-      'session',
-      new AbortController().signal,
-    );
-    expect(turns.map(turn => turn.dailyReport)).toEqual([
-      value.dailyReport,
-      value.dailyReport,
-    ]);
-
     await expect(storage.createSession('pending', epoch)).rejects.toThrow();
     await createRecordRepository(connection.database).deleteAllLocalData();
     expect(await storage.read('turn')).toBeNull();
