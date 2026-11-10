@@ -9,11 +9,12 @@ import type {
 } from './types';
 
 /** Own one message's explicit-save operation; a started database commit cannot be cancelled. */
-export function createInlineVisitSave<T extends NextVisitEvidenceReference>(
+export function createInlineVisitSave<
+  T extends NextVisitEvidenceReference,
+  R extends SaveReviewedQuestionsResult<T> = SaveReviewedQuestionsResult<T>,
+>(
   ownerKey: string,
-  persist: (
-    selection: InlineVisitSelection<T>,
-  ) => Promise<SaveReviewedQuestionsResult<T>>,
+  persist: (selection: InlineVisitSelection<T>) => Promise<R>,
   isCurrentOwner: () => boolean,
 ) {
   let pending = false;

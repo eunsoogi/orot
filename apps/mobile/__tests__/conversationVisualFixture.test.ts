@@ -48,3 +48,26 @@ test('failure has no successful text or citation event', async () => {
   ).resolves.toEqual({ status: 'unavailable' });
   expect(onTaskStreamEvent).not.toHaveBeenCalled();
 });
+
+test('synthetic summary demonstrates failure and per-card retry without provider execution', async () => {
+  const outcome = await sendSyntheticConversation(
+    'summary-probe',
+    [],
+    new AbortController().signal,
+  );
+  if (
+    outcome.status !== 'answer' ||
+    !outcome.healthSummary ||
+    !outcome.retryHealthSummary
+  )
+    throw new Error('Expected synthetic summary');
+  expect(outcome.healthSummary.analysis).toMatchObject({
+    incompleteEvidence: true,
+    omittedUnsupportedContent: true,
+    savedSummary: { status: 'failed' },
+  });
+  expect(await outcome.retryHealthSummary()).toMatchObject({
+    reference: outcome.healthSummary.reference,
+    analysis: { savedSummary: { status: 'saved' } },
+  });
+});

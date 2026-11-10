@@ -1,4 +1,5 @@
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
+import type { DailyReportContextRequest } from '@orot/domain';
 
 /** Entry intent stays separate from editable text for downstream conversation tools. */
 export type ConversationIntent =
@@ -13,6 +14,13 @@ export interface ConversationEntryContext {
   readonly intent: ConversationIntent;
   readonly entryKey: string;
   readonly appointmentId?: string;
+}
+
+/** Explicit daily-report requests stay typed and separate from ordinary conversation text. */
+export interface DailyReportConversationIntent {
+  readonly kind: 'daily-report';
+  readonly entryKey: string;
+  readonly request: DailyReportContextRequest;
 }
 
 export const conversationIntentRequests: Record<ConversationIntent, string> = {

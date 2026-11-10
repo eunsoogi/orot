@@ -65,6 +65,12 @@ export function createVisitQuestionRecordRepository(
           questionId: question.id,
           questionText: question.questionText,
           questionRevision: input.expectedQuestionRevision,
+          questionSources: [
+            {
+              healthContextSources: question.healthContextSources,
+              generatedArtifactSources: question.generatedArtifactSources,
+            },
+          ],
           revision: 1,
           sourceMethod: 'manual_confirmed',
           editOrigin: 'manual_confirmation',
@@ -133,6 +139,13 @@ export function createVisitQuestionRecordRepository(
               questionId: question.questionId,
               questionText: prepared.questionText,
               questionRevision: prepared.revision,
+              questionSources: [
+                ...(previous?.questionSources ?? []),
+                {
+                  healthContextSources: storedQuestion.healthContextSources,
+                  generatedArtifactSources: storedQuestion.generatedArtifactSources,
+                },
+              ],
               revision: (previous?.revision ?? 0) + 1,
               sourceMethod: 'ai_generated',
               editOrigin: 'ai_analysis',

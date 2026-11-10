@@ -34,7 +34,14 @@ test('edits stay with their answer and cannot be delivered to another session', 
   expect(store.updateVisitQuestionReview(second, message.id, edited)).toBe(
     false,
   );
-  expect(store.updateVisitQuestionReview(first, message.id, edited)).toBe(true);
+  const savedValidator = jest.fn(async () => false);
+  expect(
+    store.updateVisitQuestionReview(first, message.id, edited, savedValidator),
+  ).toBe(true);
+  expect(
+    store.getSnapshot().sessions.find(session => session.id === first)
+      ?.messages[1]?.visitQuestions?.validateSource,
+  ).toBe(savedValidator);
   expect(
     store.getSnapshot().sessions.find(session => session.id === first)
       ?.messages[1]?.visitQuestions?.review.items[0]?.question.questionText,

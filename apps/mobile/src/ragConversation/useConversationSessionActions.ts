@@ -1,13 +1,14 @@
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
-import { getRagConversationCopy } from './copy';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import type { ConversationSessions } from './conversationSessions';
+import type { getRagConversationCopy } from './copy';
 
-/** Register session actions where the current navigation geometry can expose them. */
+/** Keep history before new session in the host actions and retain a header fallback. */
 export function useConversationSessionActions(
-  onOpenHistory: (() => void) | undefined,
-  onCreate: () => void,
-) {
-  const copy = getRagConversationCopy();
+  store: ConversationSessions,
+  copy: ReturnType<typeof getRagConversationCopy>,
+  onOpenHistory?: () => void,
+): boolean {
   const placement = useNavigationActionPlacement();
   const hasDockActions = useNavigationRouteActions(
     placement === 'contextual'
@@ -27,7 +28,9 @@ export function useConversationSessionActions(
             accessibilityLabel: copy.newConversation,
             testID: 'rag-conversation-new-session',
             systemImageName: 'plus',
-            onPress: onCreate,
+            onPress: () => {
+              store.create();
+            },
           },
         ]
       : [],

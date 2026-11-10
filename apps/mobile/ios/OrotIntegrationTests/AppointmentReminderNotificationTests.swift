@@ -202,6 +202,25 @@ final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
         XCTAssertNil(inbox.consumeTarget())
     }
 
+    func testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget() throws {
+        let suite = "daily-delivery-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let inbox = AppointmentReminderDelivery(defaults: defaults)
+        let visit = try AppointmentReminderNotificationPlan(input() as NSDictionary).request()
+        let daily = try XCTUnwrap(DailyReminderPreference(["enabled": true, "hour": 9, "minute": 0])).request()
+        inbox.receive(visit, actionIdentifier: UNNotificationDefaultActionIdentifier)
+        inbox.receive(daily, actionIdentifier: UNNotificationDefaultActionIdentifier, deliveredAt: Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(inbox.consumeTarget()?["appointmentId"], "synthetic-visit")
+        XCTAssertEqual(inbox.consumeDailyTarget()?["deliveryTimestamp"], "1700000000.0")
+        let restarted = AppointmentReminderDelivery(defaults: defaults)
+        XCTAssertEqual(restarted.consumeDailyTarget()?["deliveryTimestamp"], "1700000000.0")
+        restarted.acknowledgeDailyTarget("1700000000.0")
+        XCTAssertNil(restarted.consumeDailyTarget())
+        restarted.receive(daily, actionIdentifier: UNNotificationDefaultActionIdentifier, deliveredAt: Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertNil(restarted.consumeDailyTarget())
+    }
+
     func testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation() throws {
         let inbox = AppointmentReminderDelivery()
         let request = try AppointmentReminderNotificationPlan(input() as NSDictionary).request()

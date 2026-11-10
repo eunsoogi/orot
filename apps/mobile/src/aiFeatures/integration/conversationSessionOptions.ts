@@ -14,6 +14,11 @@ import type { AiFeatureServices } from './featureServices';
 export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly restoreHealthSummary?: (
+    reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
+  ) => Promise<
+    import('../../ragConversation/healthSummary').HealthSummaryResult | null
+  >;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }): ConversationSessionOptions {
   let recovered: Promise<void> | undefined;
@@ -121,6 +126,13 @@ export function createConversationSessionOptions(input: {
             answer: turn.answer,
             citations: turn.citations,
             completion: turn.status,
+            ...(turn.healthSummary
+              ? {
+                  healthSummary:
+                    (await input.restoreHealthSummary?.(turn.healthSummary)) ??
+                    null,
+                }
+              : {}),
             toolMessageId: turn.id,
             toolEvents:
               toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
@@ -133,6 +145,10 @@ export function createConversationSessionOptions(input: {
           };
         }),
       );
+      if (
+        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+      )
+        throw new Error('Conversation content changed during restoration.');
       // Interrupted tool-only turns have no validated prose, but remain visible and never running.
       for (const turn of toolTurns)
         if (!restored.some(item => item.toolMessageId === turn.messageId))

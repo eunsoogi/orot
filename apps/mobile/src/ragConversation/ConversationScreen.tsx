@@ -62,11 +62,13 @@ export function ConversationScreen({
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
+    store,
+    copy,
     onOpenHistory,
-    () => {
-      store.create();
-    },
   );
+  const cancel = () => store.cancel(id);
+  const onLinkError = () =>
+    store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.');
   // App-owned sessions keep drafts and requests alive when this route is removed.
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -179,9 +181,7 @@ export function ConversationScreen({
                   : undefined
               }
               toolSourceSessionId={toolSourceSessionId}
-              onLinkError={() =>
-                store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.')
-              }
+              onLinkError={onLinkError}
               footer={
                 <ManualVisitTargetPanels
                   store={store}
@@ -216,7 +216,7 @@ export function ConversationScreen({
                   prepareVisitQuestions,
                 ).catch(() => {});
               }}
-              onCancel={() => store.cancel(id)}
+              onCancel={cancel}
             />
           </View>
         }

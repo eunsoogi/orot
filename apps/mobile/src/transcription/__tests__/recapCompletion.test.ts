@@ -10,6 +10,70 @@ jest.mock('../../aiFeatures/integration/provider', () => ({
 
 beforeEach(() => jest.clearAllMocks());
 
+it.each(['invalid_output', 'cancelled', 'stale_source'] as const)(
+  'forwards extraction %s without producing a successful result',
+  async status => {
+    const input = recapInput();
+    const onOutcome = jest.fn(async () => undefined);
+    jest.mocked(extractTranscriptRecap).mockResolvedValueOnce({ status });
+    const completion = createRecapCompletion({
+      loadInput: async () => input,
+      loadCurrent: async () => input,
+      consent: { authorize: async () => 'authorized' },
+      resolveSelected: async () =>
+        ({
+          status: 'ready',
+          provider: { id: 'selected' },
+          modelId: 'chosen',
+          recipient: 'local',
+          remoteProcessing: false,
+        }) as never,
+      onOutcome,
+    });
+    const signal = new AbortController().signal;
+    expect(
+      await completion(input.recordingSourceId, input.segments, signal),
+    ).toEqual({ status });
+    expect(onOutcome).toHaveBeenCalledTimes(1);
+    expect(onOutcome).toHaveBeenCalledWith({ status }, signal);
+  },
+);
+
+it('uses the scoped plain transformation only for the selected Apple identity', async () => {
+  const input = recapInput();
+  jest
+    .mocked(extractTranscriptRecap)
+    .mockResolvedValueOnce({ status: 'no_questions' });
+  const completion = createRecapCompletion({
+    loadInput: async () => input,
+    loadCurrent: async () => input,
+    consent: { authorize: async () => 'authorized' },
+    resolveSelected: async () =>
+      ({
+        status: 'ready',
+        provider: { id: 'apple-foundation-models' },
+        modelId: 'system-default',
+        recipient: 'local',
+        remoteProcessing: false,
+      }) as never,
+    onOutcome: async () => undefined,
+  });
+  await completion(
+    input.recordingSourceId,
+    input.segments,
+    new AbortController().signal,
+  );
+  const options = jest.mocked(extractTranscriptRecap).mock.calls[0][0];
+  expect(options.evidenceMode).toBe('references');
+  expect(options.provider.id).toBe('apple-foundation-models');
+  expect(options.provider.capabilities).toMatchObject({
+    streaming: false,
+    structuredOutput: false,
+    toolCalling: false,
+  });
+  expect(options.execution.modelId).toBe('system-default');
+});
+
 it('passes only the latest transcript revision and selected model to extraction', async () => {
   const input = recapInput();
   const corrected = createTranscriptCorrection(

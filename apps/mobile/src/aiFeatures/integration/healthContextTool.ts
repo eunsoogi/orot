@@ -49,12 +49,14 @@ function parseInput(
           topic: 'medications',
           window: v.window,
         });
+  // Explicit windows are RAG-only; paged dose history remains medication-only.
   if (
     v.window !== undefined &&
     (!allowDoseHistory ||
       v.days !== undefined ||
-      !scope?.window.doseHistory ||
-      (v.topics !== undefined &&
+      !scope ||
+      (scope.window.doseHistory &&
+        v.topics !== undefined &&
         (v.topics as unknown[]).some(topic => topic !== 'medications')))
   )
     return undefined;
@@ -62,7 +64,9 @@ function parseInput(
     ...(v.window ? {} : { days: (v.days as number) ?? 30 }),
     topics:
       (v.topics as string[]) ??
-      (v.window ? ['medications'] : [...HEALTH_CONTEXT_TOPICS]),
+      (scope?.window.doseHistory
+        ? ['medications']
+        : [...HEALTH_CONTEXT_TOPICS]),
     detail: (v.detail as string) ?? 'summary',
     ...(v.window ? { window: v.window as JsonObject } : {}),
   };
@@ -81,7 +85,7 @@ export function createHealthContextTool(
     description:
       'Read longitudinal health context from the last 7, 30 (default), or 90 local calendar days. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals.' +
       (feature === 'rag'
-        ? ' For detailed medication history choose window with explicit ISO instants, IANA timeZone, and doseHistory containing an optional exact medicationName, zero-based page (0-1000) and pageSize (1-20). The range covers at most 90 local days and is [fromInclusive, toExclusive); convert local calendar boundaries using the requested time zone. Follow hasMore with the next page up to page 1000; narrow the period beyond that. Data changes can shift pages. Registration and scheduled times are not intake; an absent event is unknown.'
+        ? ' For any topics, choose window with explicit ISO instants and IANA timeZone for a specific period. The range covers at most 90 local days and is [fromInclusive, toExclusive); convert local calendar boundaries using the requested time zone. For medication history only, optionally add doseHistory with an exact medicationName, zero-based page (0-1000) and pageSize (1-20). Follow hasMore with the next page up to page 1000; narrow the period beyond that. Data changes can shift pages. Registration and scheduled times are not intake; an absent event is unknown.'
         : ''),
     inputSchema: {
       type: 'object',
@@ -103,7 +107,7 @@ export function createHealthContextTool(
               window: {
                 type: 'object',
                 description:
-                  'Medication period: explicit ISO instant fromInclusive and toExclusive, IANA timeZone, and doseHistory { medicationName?: exact name, page: zero-based integer, pageSize: 1-20 }. Omit days.',
+                  'Period for selected topics: explicit ISO instant fromInclusive and toExclusive, IANA timeZone. Omit days. Optional doseHistory { medicationName?: exact name, page: zero-based integer, pageSize: 1-20 } is medications-only.',
                 properties: {
                   fromInclusive: { type: 'string' },
                   toExclusive: { type: 'string' },
@@ -119,12 +123,7 @@ export function createHealthContextTool(
                     additionalProperties: false,
                   },
                 },
-                required: [
-                  'fromInclusive',
-                  'toExclusive',
-                  'timeZone',
-                  'doseHistory',
-                ],
+                required: ['fromInclusive', 'toExclusive', 'timeZone'],
                 additionalProperties: false,
               },
             }

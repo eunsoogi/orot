@@ -26,6 +26,14 @@ import {
   isGeneratedResearchSource,
 } from '../ragConversation/conversationArtifactSources';
 
+function assertSummaryNotCancelled(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    const error = new Error('The summary save was cancelled.');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
 /** Append-only generated results live in the existing SQLCipher database, never plaintext preferences. */
 export function createSymptomSummaryStorage(
   database: SqlDatabase,
@@ -60,6 +68,10 @@ export function createSymptomSummaryStorage(
       // SQLCipher connections may disable foreign keys; dependency rows are only a projection.
       await tx.execute(
         'CREATE TRIGGER IF NOT EXISTS summary_source_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN DELETE FROM symptom_summary_sources WHERE summary_id = OLD.id; END',
+      );
+      // Keep only a content-free tombstone when a source deletion removes the active report.
+      await tx.execute(
+        'CREATE TRIGGER IF NOT EXISTS daily_report_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN UPDATE daily_report_heads SET active_run_id = NULL, deleted = 1 WHERE active_run_id = OLD.id; END',
       );
       await tx.execute(
         'DELETE FROM symptom_summary_sources WHERE NOT EXISTS (SELECT 1 FROM symptom_summary_runs WHERE id = summary_id)',
@@ -114,12 +126,15 @@ export function createSymptomSummaryStorage(
     });
   }
   return {
-    async append(value) {
+    async append(value, signal) {
+      assertSummaryNotCancelled(signal);
       await ensure();
       const serialized = JSON.stringify(value);
       if (serialized.length > 128_000 || !decodeSavedSymptomSummary(serialized))
         throw new Error('The summary cannot be saved.');
+      assertSummaryNotCancelled(signal);
       await database.transaction(async tx => {
+        assertSummaryNotCancelled(signal);
         const invalid = await tx.execute(
           'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
           [value.id],
@@ -135,6 +150,7 @@ export function createSymptomSummaryStorage(
         if (existing.rows.length) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different result already owns this summary ID.');
+          assertSummaryNotCancelled(signal);
           return;
         }
         await tx.execute(
@@ -164,13 +180,15 @@ export function createSymptomSummaryStorage(
             );
           }
         }
+        // A pre-commit cancellation rolls back both the result and its source dependencies.
+        assertSummaryNotCancelled(signal);
       });
     },
     async list(before) {
       await ensure();
       // A stable cursor and fixed page size bound history reads independently of total saved runs.
       const rows = await database.execute(
-        `SELECT r.id, r.created_at, r.model_name, r.result_json FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
+        `SELECT r.id, r.created_at, r.model_name, r.result_json FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = r.id) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
         [before ?? null, before ?? null],
       );
       return rows.rows.flatMap(row => {

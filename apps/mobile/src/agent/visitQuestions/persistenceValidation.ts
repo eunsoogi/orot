@@ -110,9 +110,15 @@ export async function assertCurrentVisitQuestionRecord(
   item: VisitQuestionEvidenceItem,
   metadata: VisitQuestionEvidenceMetadata,
   sql?: SqlExecutor,
+  manualHistory?: import('@orot/storage').ManualHistoryRepository,
 ): Promise<void> {
   if (item.sourceKind === 'generated_artifact')
-    return assertGeneratedVisitQuestionSource(item, metadata, sql);
+    return assertGeneratedVisitQuestionSource(
+      item,
+      metadata,
+      sql,
+      manualHistory,
+    );
   if (metadata.recordKind && metadata.evidenceRecordId) {
     const currentEvidence = await writer.get(
       metadata.recordKind,

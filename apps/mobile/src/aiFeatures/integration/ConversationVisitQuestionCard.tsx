@@ -12,6 +12,7 @@ import type { ConversationSessions } from '../../ragConversation/conversationSes
 import { withConversationVisitSave } from '../../ragConversation/conversationVisitSaveLease';
 import type { AiFeatureServices } from './featureServices';
 import type { VisitQuestionRouteOperations } from './visitQuestionsRouteOperations';
+import type { VisitQuestionRouteSaveResult } from './visitQuestionsRouteSave';
 
 /** Keeps explicit question saves separate from the conversation turn and its own retention. */
 export function ConversationVisitQuestionCard({
@@ -44,7 +45,10 @@ export function ConversationVisitQuestionCard({
       .getSnapshot()
       .sessions.find(session => session.id === sessionId)
       ?.messages.find(item => item.id === message.id)?.visitQuestions;
-  const save = createInlineVisitSave<VisitQuestionEvidenceItem>(
+  const save = createInlineVisitSave<
+    VisitQuestionEvidenceItem,
+    VisitQuestionRouteSaveResult
+  >(
     visit.review.ownerKey,
     selection =>
       operations.save({
@@ -115,6 +119,10 @@ export function ConversationVisitQuestionCard({
                   outcome.ownerKey,
                   outcome.result.questions,
                 ),
+                async (reference, signal) =>
+                  (await outcome.result.validateSource(reference, signal)) ||
+                  (!signal.aborted &&
+                    (await latest.validateSource(reference, signal))),
               );
               setNotice(
                 outcome.result.memoryStatus === 'saved'

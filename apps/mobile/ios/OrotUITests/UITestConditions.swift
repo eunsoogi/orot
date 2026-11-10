@@ -116,8 +116,12 @@ enum UITestConditions {
         return snapshot.label
     }
 
-    /// Scroll the caller-owned viewport, preserving app-wide versus nested scroll behavior.
-    static func scrollTo(_ element: XCUIElement, in container: XCUIElement, searchTowardTop: Bool = false) {
+    /// Keep ordinary scroll callers on XCTest's existing swipe behavior.
+    static func scrollTo(
+        _ element: XCUIElement,
+        in container: XCUIElement,
+        searchTowardTop: Bool = false,
+    ) {
         for _ in 0 ..< 8 {
             let targetExists = element.exists
             if targetExists, element.isHittable {

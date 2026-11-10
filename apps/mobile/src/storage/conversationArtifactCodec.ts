@@ -3,6 +3,10 @@ import type { ConversationArtifactSource } from '../ragConversation/conversation
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
+import {
+  parseHealthSummaryReference,
+  type HealthSummaryReference,
+} from '../ragConversation/healthSummary';
 import { parseConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
 import type { ConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
 import { referenceOnly } from '../diseaseHypotheses/resultValidation';
@@ -18,6 +22,7 @@ export interface ConversationArtifact {
   readonly answer: string;
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations?: readonly EvidenceReference[];
+  readonly healthSummary?: HealthSummaryReference;
   readonly visitQuestions?: ConversationVisitQuestionReference;
 }
 
@@ -92,9 +97,11 @@ export function decodeConversationArtifact(
           !object(ref.locator) ||
           ref.locator.kind !== 'generated_artifact' ||
           !(source.kind === 'generated_summary'
-            ? ['symptom_summary', 'disease_possibilities'].includes(
-                String(ref.locator.type),
-              )
+            ? [
+                'symptom_summary',
+                'disease_possibilities',
+                'daily_report',
+              ].includes(String(ref.locator.type))
             : source.kind === 'generated_conversation'
               ? ref.locator.type === 'conversation_turn'
               : ['research_publication', 'research_web_explanation'].includes(
@@ -146,6 +153,11 @@ export function decodeConversationArtifact(
           return null;
       }
     }
+    if (
+      value.healthSummary !== undefined &&
+      !parseHealthSummaryReference(value.healthSummary)
+    )
+      return null;
     const sources = value.sources as Record<string, unknown>[];
     if (value.visitQuestions !== undefined) {
       const visit = parseConversationVisitQuestionReference(

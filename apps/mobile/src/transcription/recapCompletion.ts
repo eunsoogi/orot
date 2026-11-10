@@ -9,6 +9,8 @@ import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import { latestRecapTranscript } from './recapTranscriptSnapshot';
+import { appleRecapProvider } from '../providers/apple';
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 
 export type RecapCompletionOutcome =
   RecapExtractionOutcome | { status: 'not_linked' | 'selection_required' };
@@ -102,8 +104,14 @@ export function createRecapCompletion(ports: RecapCompletionPorts) {
         outcome = { status: 'unavailable', errorCode: 'provider_unavailable' };
       else
         outcome = await extractTranscriptRecap({
+          ...(selected.value.provider.id === APPLE_PROVIDER_ID
+            ? { evidenceMode: 'references' as const }
+            : {}),
           input: parsed.data,
-          provider: selected.value.provider,
+          provider:
+            selected.value.provider.id === APPLE_PROVIDER_ID
+              ? appleRecapProvider()
+              : selected.value.provider,
           consent: ports.consent,
           signal,
           execution: {

@@ -54,6 +54,7 @@ export async function readHealthContextReport(
               : selected.has('activity')
                 ? 'activity'
                 : 'measurements',
+            window.dataAvailableThrough,
           ),
         )
       : { series: [], truncated: false };
@@ -64,12 +65,17 @@ export async function readHealthContextReport(
     : { medications: [], truncated: false };
   const sleep = selected.has('sleep')
     ? await traceHealthContext(trace, 'sleep', () =>
-        readHealthSleepContext(executor, days, signal),
+        readHealthSleepContext(
+          executor,
+          days,
+          signal,
+          window.dataAvailableThrough,
+        ),
       )
     : { days: [], unsupportedCategories: false };
   const symptoms = selected.has('symptoms')
     ? await traceHealthContext(trace, 'symptoms', () =>
-        readHealthSymptomContext(executor, days),
+        readHealthSymptomContext(executor, days, window.dataAvailableThrough),
       )
     : { entryCount: 0, recordedDays: 0, latest: [] };
   if (signal?.aborted) throw new Error('Health context was cancelled.');

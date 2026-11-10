@@ -36,32 +36,35 @@ it('preserves explicit selection, fences reassignment and invalidates a deleted 
   ).rejects.toThrow();
 });
 
-it('upgrades a version 13 database without losing existing recording and question rows', async () => {
-  const fixture = await setupAutomatic();
-  try {
-    await fixture.database.execute('DROP TABLE recap_results');
-    await fixture.database.execute('DROP TABLE recap_bindings');
-    await fixture.database.execute('PRAGMA user_version = 13');
-    await runMigrations(fixture.database);
-    expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(14);
-    expect(
-      await fixture.records.get('source_record', fixture.result.recordingSourceId),
-    ).not.toBeNull();
-    expect(
-      await fixture.records.get('visit_question', fixture.result.questions[0].questionId),
-    ).not.toBeNull();
-    await bindRecordingToVisit(
-      fixture.database,
-      fixture.result.recordingSourceId,
-      fixture.result.appointmentId,
-    );
-    expect(
-      await loadCurrentRecapInput(fixture.database, fixture.result.recordingSourceId),
-    ).not.toBeNull();
-  } finally {
-    fixture.close();
-  }
-});
+it.each([13, 14])(
+  'upgrades a version %i database without losing existing recording and question rows',
+  async (version) => {
+    const fixture = await setupAutomatic();
+    try {
+      await fixture.database.execute('DROP TABLE recap_results');
+      await fixture.database.execute('DROP TABLE recap_bindings');
+      await fixture.database.execute(`PRAGMA user_version = ${version}`);
+      await runMigrations(fixture.database);
+      expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
+      expect(
+        await fixture.records.get('source_record', fixture.result.recordingSourceId),
+      ).not.toBeNull();
+      expect(
+        await fixture.records.get('visit_question', fixture.result.questions[0].questionId),
+      ).not.toBeNull();
+      await bindRecordingToVisit(
+        fixture.database,
+        fixture.result.recordingSourceId,
+        fixture.result.appointmentId,
+      );
+      expect(
+        await loadCurrentRecapInput(fixture.database, fixture.result.recordingSourceId),
+      ).not.toBeNull();
+    } finally {
+      fixture.close();
+    }
+  },
+);
 
 it('fences an explicit unlink and later relink', async () => {
   const fixture = await setupAutomatic();
