@@ -115,6 +115,10 @@
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
       "validation": "Frozen pnpm installation, native navigation regression and clean iOS compilation."
     },
+    "vendor/patches/react-native-svg@15.16.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native SVG property and reuse tests, and clean iOS compilation."
+    },
     "vendor/patches/metro-runtime@0.87.1.patch": {
       "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
       "validation": "Frozen pnpm installation, development-loader behavior tests and Hermes compilation."

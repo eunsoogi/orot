@@ -145,6 +145,7 @@
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
 		A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */; };
+		A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */; };
 		A20400000000000000000001 /* AppProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000001 /* AppProgressView.swift */; };
 		A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */; };
 		A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */; };
@@ -404,6 +405,7 @@
 		AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationMeasuredReservation.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
+		A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; path = SVGFoundationIntegrationTests.mm; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
 		D40E9817CB8A4FAF92E6B211 /* EncounterReviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncounterReviewUITests.swift; sourceTree = "<group>"; };
 		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
@@ -861,6 +863,7 @@
 				E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
 				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
+				A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */,
 				B37000000000000000000005 /* MedicalDocumentImportTests.swift */,
 				B37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift */,
 				ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */,
@@ -1560,6 +1563,7 @@
 				E71F9C4B106A43E6B9A2D310 /* EncounterReviewPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
+				A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */,
 				A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */,
 				A37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift in Sources */,
 				98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */,

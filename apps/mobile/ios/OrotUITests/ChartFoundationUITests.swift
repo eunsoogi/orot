@@ -2,6 +2,40 @@ import XCTest
 
 /// Exercises the synthetic shared chart through native touch and actual VoiceOver speech.
 final class ChartFoundationUITests: OrotFailFastTestCase {
+    /// Confirms SVG descendants retain touch and render after native prop updates and remount.
+    @MainActor
+    func testSVGPropertyUpdatesAndRemount() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "svg-foundation"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        let toggle = app.buttons["변경 및 복원"]
+        let remount = app.buttons["다시 생성"]
+        XCTAssertTrue(toggle.exists && toggle.isHittable)
+        let initial = XCTAttachment(screenshot: app.screenshot())
+        initial.name = "svg-initial"
+        initial.lifetime = .keepAlways
+        add(initial)
+        toggle.tap()
+        XCTAssertTrue(app.staticTexts["상태: 변경 / 적중: 0"].exists)
+        let changed = XCTAttachment(screenshot: app.screenshot())
+        changed.name = "svg-changed"
+        changed.lifetime = .keepAlways
+        add(changed)
+        let svg = app.otherElements["svg-foundation"]
+        XCTAssertTrue(svg.exists && svg.isHittable, svg.debugDescription)
+        svg.coordinate(withNormalizedOffset: CGVector(dx: 170.0 / 320.0, dy: 105.0 / 240.0)).tap()
+        XCTAssertTrue(app.staticTexts["상태: 변경 / 적중: 1"].exists)
+        toggle.tap()
+        XCTAssertTrue(app.staticTexts["상태: 기본 / 적중: 1"].exists)
+        remount.tap()
+        XCTAssertTrue(app.staticTexts["상태: 기본 / 적중: 1"].exists)
+        let remounted = XCTAttachment(screenshot: app.screenshot())
+        remounted.name = "svg-remounted"
+        remounted.lifetime = .keepAlways
+        add(remounted)
+    }
+
     @MainActor
     func testDenseChartPagesAndVoiceOverValues() throws {
         guard #available(iOS 27.0, *) else {

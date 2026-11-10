@@ -92,6 +92,9 @@ export function registerCapabilityTestEntry(
     case 'chart-foundation':
       require('./chartFoundationEntry');
       break;
+    case 'svg-foundation':
+      require('./svgFoundationEntry');
+      break;
     default:
       return false;
   }
