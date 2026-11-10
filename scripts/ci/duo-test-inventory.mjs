@@ -1,5 +1,9 @@
 /** Explicit native regressions that opt in to the dedicated iPhone Duo runtime. */
 export const duoTests = [
+  // Daily reports use the opt-in Duo destination and synthetic local data for visual, VoiceOver and encrypted-reopen checks.
+  'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitDuoAtLargeTextInBothAppearances',
+  'OrotUITests/DailyReportEntryUITests/testVoiceOverReadsSavedReportAndOpensFollowUp',
+  'OrotUITests/DailyReportEntryUITests/testEncryptedSavedReportSurvivesRestartAcrossEntryPaths',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
   'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
