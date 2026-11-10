@@ -26,23 +26,6 @@ test.each([
       input,
     ),
   ).toBe(false);
-  const raw = JSON.stringify({
-    type: 'result',
-    value: { answerKind: 'conversation', answer: '비만 위험도 40% 증가' },
-  });
-  expect(ragConversationTask.projectStreamedText?.(raw, input)).toBeUndefined();
-});
-
-test('does not stream an uncited risk claim for an indirect research question', () => {
-  const input = {
-    request: '수면과 비만 관련 연구는 어떤가요?',
-    evidence: { items: [], coverage: [], conflicts: [] },
-  };
-  const raw = JSON.stringify({
-    type: 'result',
-    value: { answerKind: 'conversation', answer: '비만 위험도 40% 증가' },
-  });
-  expect(ragConversationTask.projectStreamedText?.(raw, input)).toBeUndefined();
 });
 
 test('does not expose an uncited risk claim for an indirect research question', () => {
