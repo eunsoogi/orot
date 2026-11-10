@@ -1,6 +1,5 @@
 import type { ManualHistoryRepository, SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
-import { readHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
 import { parseDailyReportLineage } from './dailyReportLineage';
 import { validateDailyReportCompletion } from './dailyReportValidation';
@@ -35,14 +34,6 @@ export async function validateDailyReportArtifact(
     return null;
   const lineage = parseDailyReportLineage(checked.context, raw.lineage);
   if (!lineage) return null;
-  const generation = await readHealthContextGeneration(tx);
-  if (
-    generation.mutationGeneration !==
-      checked.context.sourceSnapshot.mutationGeneration ||
-    generation.deletionGeneration !==
-      checked.context.sourceSnapshot.deletionGeneration
-  )
-    return null;
   try {
     await assertRetainedRecordsCurrent(
       tx,

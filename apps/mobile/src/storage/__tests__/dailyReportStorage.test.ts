@@ -228,7 +228,7 @@ test('serializes revisions, survives reopening and removes source-derived text o
       "SELECT result_json FROM symptom_summary_runs WHERE result_json LIKE '%Synthetic private report%'",
     );
     expect(rows.rows).toHaveLength(0);
-    expect(await store.save(input)).toEqual({ status: 'stale' });
+    expect(await store.save(input)).toEqual({ status: 'deleted' });
     await createRecordRepository(connection.database).put(
       'health_observation',
       observation,

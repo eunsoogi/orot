@@ -8,15 +8,9 @@ import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 import { createDailyReportTables } from './dailyReportMigration';
+import { readUserVersion } from './schemaVersion';
+
 export const CURRENT_SCHEMA_VERSION = 13;
-async function readUserVersion(database: SqlExecutor): Promise<number> {
-  const result = await database.execute('PRAGMA user_version');
-  const version = Number(result.rows[0]?.user_version ?? 0);
-  if (!Number.isSafeInteger(version) || version < 0) {
-    throw new Error('The database schema version is invalid.');
-  }
-  return version;
-}
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {

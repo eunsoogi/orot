@@ -15,6 +15,7 @@ import { validateDailyReportCompletion } from './dailyReportValidation';
 import { visibleSummary } from './symptomSummaryQuarantine';
 import { parseDailyReportLineage } from './dailyReportLineage';
 import {
+  dailyReportSourcesChanged,
   invalidateDailyReportRun,
   invalidDailyReportStatus,
 } from './dailyReportInvalidation';
@@ -84,14 +85,13 @@ export function createDailyReportStorage(database: SqlDatabase) {
           value = { status: 'error' };
           return;
         }
-        const generation = await readHealthContextGeneration(tx);
-        if (
-          row.invalid === 1 ||
-          generation.mutationGeneration !==
-            checked.context.sourceSnapshot.mutationGeneration ||
-          generation.deletionGeneration !==
-            checked.context.sourceSnapshot.deletionGeneration
-        ) {
+        const sourceChanged = await dailyReportSourcesChanged(
+          tx,
+          row.invalid === 1,
+          lineage,
+          manualHistory,
+        );
+        if (sourceChanged) {
           value = {
             status: 'stale',
             runId: head.active_run_id,
@@ -142,24 +142,12 @@ export function createDailyReportStorage(database: SqlDatabase) {
       await ensure();
       let status: 'saved' | 'reused' | 'stale' | 'deleted' = 'stale';
       await database.transaction(async tx => {
-        const generation = await readHealthContextGeneration(tx);
-        if (
-          generation.mutationGeneration !==
-            checked.context.sourceSnapshot.mutationGeneration ||
-          generation.deletionGeneration !==
-            checked.context.sourceSnapshot.deletionGeneration
-        )
-          return;
         const invalid = await tx.execute(
           'SELECT id FROM conversation_invalid_summaries WHERE id = ?',
           [input.runId],
         );
         if (invalid.rows.length) {
-          status = await invalidDailyReportStatus(
-            tx,
-            checked.context.identity.key,
-            input.runId,
-          );
+          status = await invalidDailyReportStatus(tx, input.runId);
           return;
         }
         // Direct source validation runs inside the same write transaction as the active pointer.
@@ -199,6 +187,14 @@ export function createDailyReportStorage(database: SqlDatabase) {
           else throw new Error('Run identity conflict.');
           return;
         }
+        const generation = await readHealthContextGeneration(tx);
+        if (
+          generation.mutationGeneration !==
+            checked.context.sourceSnapshot.mutationGeneration ||
+          generation.deletionGeneration !==
+            checked.context.sourceSnapshot.deletionGeneration
+        )
+          return;
         if (input.mode.kind === 'initial' && head) {
           status = head.deleted === 1 ? 'deleted' : 'stale';
           return;
