@@ -22,6 +22,9 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
   readonly dailyReport?: ReturnType<
     typeof import('./dailyReportFeature').createDailyReportFeature
   >;
+  readonly dailyReportSources?: ReturnType<
+    typeof import('./dailyReportSources').createDailyReportSourceResolver
+  >;
   prepareVisitQuestionTurn?: ReturnType<
     typeof import('./conversationVisitTurn').createConversationVisitTurn
   >;

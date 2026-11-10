@@ -1,5 +1,6 @@
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { DailyReportContextRequest } from '@orot/domain';
+import { t } from '../../i18n';
 
 /** Entry intent stays separate from editable text for downstream conversation tools. */
 export type ConversationIntent =
@@ -25,13 +26,10 @@ export interface DailyReportConversationIntent {
 
 export const conversationIntentRequests: Record<ConversationIntent, string> = {
   conversation: '',
-  'health-summary': '최근 건강 기록을 날짜와 근거 출처와 함께 요약해 주세요.',
-  possibilities:
-    '건강 기록에서 검토할 가능성을 지지·반대 근거와 불확실성을 구분해 설명해 주세요.',
-  'visit-questions':
-    '다음 진료에서 물어볼 질문을 기록과 근거를 바탕으로 준비해 주세요.',
-  'medical-literature':
-    '관련 의학 문헌을 찾아 출처를 확인할 수 있게 설명해 주세요.',
+  'health-summary': t('conversationIntent.healthSummary'),
+  possibilities: t('conversationIntent.possibilities'),
+  'visit-questions': t('conversationIntent.visitQuestions'),
+  'medical-literature': t('conversationIntent.medicalLiterature'),
 };
 
 /** Legacy links keep their meaning while using the same conversation surface. */

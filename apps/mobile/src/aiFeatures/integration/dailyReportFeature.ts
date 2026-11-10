@@ -5,6 +5,7 @@ import { createDailyReportStorage } from '../../storage/dailyReportStorage';
 import { createDailyReportService } from './dailyReportService';
 import { createDailyReportRequests } from './dailyReportRequests';
 import { boundedDailyReport } from './dailyReportDeadline';
+import { previewDailyReport } from './dailyReportPreview';
 import { operationRunId } from './featureRunIdentity';
 import { resolveSelectedAiProvider } from './provider';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
@@ -19,10 +20,14 @@ export function createDailyReportFeature(
       module.openLocalAgentMemoryDatabase(),
     );
   const currentIdentity = (
-    timeZone: string,
+    _timeZone: string,
     now = new Date().toISOString(),
   ) => {
-    const current = currentDailyReportContextRequest(now, timeZone);
+    // A changed device timezone requires a new explicit today selection.
+    const current = currentDailyReportContextRequest(
+      now,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
     return current.status === 'ready'
       ? createDailyReportIdentity(
           current.request.localDate,
@@ -30,7 +35,7 @@ export function createDailyReportFeature(
         )
       : null;
   };
-  return createDailyReportRequests({
+  const requests = createDailyReportRequests({
     currentIdentity,
     lookup: async identity => {
       try {
@@ -80,4 +85,17 @@ export function createDailyReportFeature(
         }
       }),
   });
+  return {
+    ...requests,
+    preview: (
+      identity: Parameters<typeof previewDailyReport>[0]['identity'],
+      signal: AbortSignal,
+    ) =>
+      previewDailyReport({
+        identity,
+        signal,
+        now: new Date().toISOString(),
+        openDatabase: database,
+      }),
+  };
 }

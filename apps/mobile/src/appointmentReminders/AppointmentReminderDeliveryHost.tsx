@@ -6,7 +6,12 @@ import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { createAppointmentReminderDelivery } from './reminderCoordinator';
 import { buildAppointmentReminder } from './reminderPlan';
-import { createDailyReminderDelivery } from './dailyReminderDelivery';
+import {
+  createDailyReminderDelivery,
+  registerDailyReminderConsumer,
+} from './dailyReminderDelivery';
+import { createDailyReminderDestination } from './dailyReminderDestination';
+import { dailyReminderIntentStore } from './dailyReminderIntentStore';
 import {
   consumeAppointmentReminderTarget,
   consumeDailyReminderTarget,
@@ -24,35 +29,75 @@ export function AppointmentReminderDeliveryHost({
   useEffect(() => {
     if (!runtime) return;
     let retryWhenNavigationAvailable = false;
+    let navigationQueue = Promise.resolve();
+    const confirmNavigation = () => {
+      const next = navigationQueue.then(async () => {
+        if (controller.getSnapshot().isTransitioning) {
+          retryWhenNavigationAvailable = true;
+          return 'busy' as const;
+        }
+        return (await controller.requestTabSwitch())
+          ? ('approved' as const)
+          : ('declined' as const);
+      });
+      navigationQueue = next.then(
+        () => undefined,
+        () => undefined,
+      );
+      return next;
+    };
+    const destination = createDailyReminderDestination({
+      ...dailyReminderIntentStore,
+      canOpen: entry =>
+        ![...runtime.dailyReportTargets.values()].some(
+          value => value.entryKey !== entry.entryKey,
+        ),
+      open: async entry => {
+        const snapshot = controller.getSnapshot();
+        if (
+          [...runtime.dailyReportTargets.entries()].some(
+            ([key, value]) =>
+              value.entryKey === entry.entryKey &&
+              snapshot.routes.some(route => route.key === key),
+          )
+        )
+          return 'opened';
+        const decision = await confirmNavigation();
+        if (decision !== 'approved') return decision;
+        const current = controller.getSnapshot();
+        if (
+          current.isTransitioning ||
+          current.currentRoute.key !== snapshot.currentRoute.key ||
+          [...runtime.dailyReportTargets.values()].some(
+            value => value.entryKey !== entry.entryKey,
+          )
+        )
+          return 'busy';
+        const route = controller.push('daily-report');
+        if (!route) return 'busy';
+        runtime.dailyReportTargets.set(route.key, entry);
+        return 'opened';
+      },
+    });
+    const unregisterDaily = registerDailyReminderConsumer(destination.accept);
     const reconcile = () =>
       runtime.coordinator.reconcile().catch(() => undefined);
     const deliverDaily = createDailyReminderDelivery({
       consume: consumeDailyReminderTarget,
       acknowledge: acknowledgeDailyReminderTarget,
+      alreadyHandled: destination.alreadyHandled,
       onBusy: () => {
         retryWhenNavigationAvailable = true;
       },
-      confirm: async () => {
-        if (controller.getSnapshot().isTransitioning) {
-          retryWhenNavigationAvailable = true;
-          return 'busy';
-        }
-        return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
-      },
+      // The destination confirms after durable storage, immediately before pushing the route.
+      confirm: async () => 'approved',
       unavailable: () =>
         Alert.alert(t('dailyReminder.openTitle'), t('dailyReminder.openError')),
     });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
       loadAppointments: runtime.list,
-      confirmNavigation: async () => {
-        // Distinguish a temporary transition from the user's leave decision.
-        if (controller.getSnapshot().isTransitioning) {
-          retryWhenNavigationAvailable = true;
-          return 'busy';
-        }
-        return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
-      },
+      confirmNavigation,
       openVisitPreparation: appointment => {
         const plan = buildAppointmentReminder(
           [appointment],
@@ -80,15 +125,31 @@ export function AppointmentReminderDeliveryHost({
             : t('medicalAppointments.reminder.unavailable'),
         ),
     });
-    // Serialize both families so two simultaneous taps cannot race leave guards.
-    let drainQueue = Promise.resolve();
+    // Inbox storage is independent; only navigation decisions share a queue.
+    let appointmentQueue = Promise.resolve();
+    let dailyQueue = Promise.resolve();
+    let restorePending = true;
     const drain = () => {
-      drainQueue = drainQueue
+      appointmentQueue = appointmentQueue
         .then(async () => {
           await deliver();
-          await deliverDaily();
         })
         .catch(() => undefined);
+      dailyQueue = dailyQueue
+        .then(async () => {
+          if (restorePending) {
+            const restored = await destination.restore();
+            if (restored === 'busy') {
+              retryWhenNavigationAvailable = true;
+              return;
+            }
+            restorePending = false;
+          }
+          await deliverDaily();
+        })
+        .catch(() => {
+          retryWhenNavigationAvailable = true;
+        });
     };
     let unsubscribe = () => {};
     try {
@@ -105,10 +166,20 @@ export function AppointmentReminderDeliveryHost({
     const navigation = controller.subscribe(() => {
       const snapshot = controller.getSnapshot();
       // Route lifetime, not a rendered view's mount, owns targets through provider/source detours.
-      for (const targets of [runtime.targets, runtime.homePreparationTargets]) {
+      for (const targets of [
+        runtime.targets,
+        runtime.homePreparationTargets,
+        runtime.dailyConversationTargets,
+      ]) {
         for (const key of targets.keys()) {
           if (!snapshot.routes.some(route => route.key === key))
             targets.delete(key);
+        }
+      }
+      for (const [key, entry] of runtime.dailyReportTargets) {
+        if (!snapshot.routes.some(route => route.key === key)) {
+          runtime.dailyReportTargets.delete(key);
+          destination.dismiss(entry.entryKey).catch(() => undefined);
         }
       }
       if (retryWhenNavigationAvailable && !snapshot.isTransitioning) {
@@ -119,6 +190,7 @@ export function AppointmentReminderDeliveryHost({
     reconcile().catch(() => undefined);
     drain();
     return () => {
+      unregisterDaily();
       unsubscribe();
       subscription.remove();
       navigation();

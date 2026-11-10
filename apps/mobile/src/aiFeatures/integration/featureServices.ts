@@ -33,6 +33,7 @@ import { diseaseTaskWithPublicContext } from './diseaseTaskWithPublicContext';
 import { publicSummaryTask } from './publicSummaryTask';
 import { createVisitQuestionFeatureServices } from './visitQuestionFeatureServices';
 import { createDailyReportFeature } from './dailyReportFeature';
+import { createDailyReportSourceResolver } from './dailyReportSources';
 
 import type { AiFeatureServices } from './featureServiceTypes';
 export type { AiFeatureServices } from './featureServiceTypes';
@@ -204,8 +205,14 @@ export function createAiFeatureServices(
     privateLocalData,
     registry,
   });
+  const dailyReport = createDailyReportFeature(consent, dependencies);
   return {
-    dailyReport: createDailyReportFeature(consent, dependencies),
+    dailyReport,
+    dailyReportSources: createDailyReportSourceResolver({
+      data: privateLocalData,
+      registry,
+      report: dailyReport,
+    }),
     ...createConversationSummaryIntegration({
       consent,
       dependencies,

@@ -75,3 +75,28 @@ test('a request arriving after midnight cannot join the previous day', async () 
   finish({ status: 'failed', code: 'cancelled' });
   if (first.status === 'started') await first.result;
 });
+
+test('leaving one report route keeps a shared request alive until its last owner leaves', async () => {
+  let finish!: (value: { status: 'failed'; code: string }) => void;
+  const run = jest.fn().mockImplementation(
+    () =>
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+  );
+  const requests = createDailyReportRequests({
+    lookup: jest.fn(),
+    run,
+    currentIdentity: () => today,
+  });
+  const releaseFirst = requests.retain(today);
+  const releaseSecond = requests.retain(today);
+  const operation = requests.start(today, { kind: 'reuse_or_generate' });
+  await Promise.resolve();
+  releaseFirst();
+  expect(run.mock.calls[0][2].aborted).toBe(false);
+  releaseSecond();
+  expect(run.mock.calls[0][2].aborted).toBe(true);
+  finish({ status: 'failed', code: 'cancelled' });
+  if (operation.status === 'started') await operation.result;
+});

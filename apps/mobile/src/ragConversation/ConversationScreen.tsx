@@ -18,6 +18,7 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
+import { t } from '../i18n';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
@@ -36,6 +37,7 @@ export function ConversationScreen({
   onNavigationStateChange,
   onBack,
   onOpenHistory,
+  onOpenDailyReport,
   onSend,
   onOpenSource,
   resolveToolSource,
@@ -129,6 +131,13 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      {onOpenDailyReport ? (
+        <Button
+          title={t('dailyReport.openFromChat')}
+          variant="secondary"
+          onPress={onOpenDailyReport}
+        />
+      ) : null}
     </View>
   );
 

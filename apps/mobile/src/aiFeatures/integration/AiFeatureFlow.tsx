@@ -22,6 +22,8 @@ import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
+import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
 
 export interface AiFeatureFlowProps {
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -52,6 +54,7 @@ export function AiFeatureFlow({
   services,
 }: AiFeatureFlowProps) {
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
+  const reminderRuntime = useAppointmentReminderRuntime();
   const { state: shared, setState: setShared } =
     useAiFeatureSharedNavigationState();
   const {
@@ -105,6 +108,7 @@ export function AiFeatureFlow({
           >
             <AiFeatureFlowScreen
               route={screenRoute}
+              reportOwnsOperation={!sourceDetailOpen && !providerSelectionOpen}
               onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
               onOpenSavedVisitQuestions={
                 renderVisitQuestions
@@ -126,6 +130,15 @@ export function AiFeatureFlow({
                 pushFeatureRoute('disease-hypotheses')
               }
               onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
+              onOpenDailyReport={() => {
+                requestDailyReportFromConversation({
+                  feature: services.dailyReport,
+                  runtime: reminderRuntime,
+                  navigate: () => pushFeatureRoute('daily-report'),
+                  now: new Date().toISOString(),
+                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                });
+              }}
               onOpenConversationHistory={() =>
                 pushFeatureRoute('conversation-history')
               }

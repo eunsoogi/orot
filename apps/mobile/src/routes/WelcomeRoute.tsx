@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
+import { AppButton } from '../layout/AppButton';
 import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
@@ -26,6 +27,7 @@ export interface WelcomeRouteProps extends HomePreparationLoaders {
   readonly onOpenSchedule: () => void;
   readonly onOpenRecords: () => void;
   readonly onOpenRecording: () => void;
+  readonly onOpenDailyReport?: () => void;
 }
 
 /** Keeps visit preparation and health metrics in one ordered page. */
@@ -35,6 +37,7 @@ export default function WelcomeRoute({
   onRetryAppointments,
   onPrepareVisit,
   onOpenSchedule,
+  onOpenDailyReport,
   loadSavedVisitQuestions,
 }: WelcomeRouteProps) {
   const preparation = useHomePreparationData(appointment?.id, {
@@ -70,6 +73,13 @@ export default function WelcomeRoute({
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="home-overview-sections">
+        {onOpenDailyReport ? (
+          <AppButton
+            title={t('dailyReport.title')}
+            variant="secondary"
+            onPress={onOpenDailyReport}
+          />
+        ) : null}
         <NextVisitPanel
           appointment={appointment}
           appointmentState={appointmentState}

@@ -1,4 +1,5 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { DailyReportFlowScreen } from './DailyReportFlowScreen';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
@@ -67,6 +68,8 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenVisitQuestions?: () => void;
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
+  readonly onOpenDailyReport?: () => void;
+  readonly reportOwnsOperation?: boolean;
   readonly onOpenExternalEvidence: () => void;
   readonly onOpenConversationHistory?: () => void;
   readonly onOpenProviderSelection: () => void;
@@ -95,6 +98,9 @@ export function AiFeatureFlowScreen({
   onBack,
   onOpenProviderSelection,
   onOpenConversationHistory,
+  onOpenRagConversation,
+  onOpenDailyReport,
+  reportOwnsOperation,
   onOpenSource,
   resolveSelectedAi,
   confirmConsent,
@@ -127,6 +133,7 @@ export function AiFeatureFlowScreen({
       onNavigationStateChange={onFeatureNavigationStateChange}
       onBack={onBack}
       onOpenHistory={onOpenConversationHistory}
+      onOpenDailyReport={onOpenDailyReport}
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
       resolveToolSource={services.resolveToolSource}
@@ -161,6 +168,20 @@ export function AiFeatureFlowScreen({
   if (intent !== null) return conversation;
 
   switch (route) {
+    case 'daily-report':
+      return (
+        <DailyReportFlowScreen
+          services={services}
+          routeKey={navigationRouteKey}
+          providerSelection={providerSelection}
+          onBack={onBack}
+          onChat={onOpenRagConversation}
+          onOpenSource={onOpenSource}
+          onNavigationStateChange={onFeatureNavigationStateChange}
+          ownsOperation={reportOwnsOperation}
+          fallback={conversation}
+        />
+      );
     case 'saved-visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({

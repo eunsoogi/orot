@@ -1,6 +1,7 @@
 /** Destinations retained beneath source and provider overlays in the AI flow. */
 export type FeatureScreenRoute =
   | 'health-summary'
+  | 'daily-report'
   | 'saved-analysis'
   | 'saved-visit-questions'
   | 'entry'
@@ -20,6 +21,7 @@ export function isFeatureScreenRoute(
 ): route is FeatureScreenRoute {
   return (
     route === 'health-summary' ||
+    route === 'daily-report' ||
     route === 'saved-analysis' ||
     route === 'saved-visit-questions' ||
     route === 'entry' ||

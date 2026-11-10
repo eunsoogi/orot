@@ -24,8 +24,31 @@ export function createDailyReportRequests(input: {
       result: ReturnType<Runner>;
     }
   >();
+  const owners = new Map<string, number>();
   return {
     lookup: input.lookup,
+    /** Only the last real report route leaving cancels a shared request. */
+    retain(identity: DailyReportIdentity) {
+      owners.set(identity.key, (owners.get(identity.key) ?? 0) + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const remaining = (owners.get(identity.key) ?? 1) - 1;
+        if (remaining > 0) owners.set(identity.key, remaining);
+        else {
+          owners.delete(identity.key);
+          active.get(identity.key)?.controller.abort();
+        }
+      };
+    },
+    /** A remounted route can observe and cancel the same operation without starting another. */
+    active(identity: DailyReportIdentity) {
+      const running = active.get(identity.key);
+      return running
+        ? { result: running.result, cancel: () => running.controller.abort() }
+        : null;
+    },
     start(identity: DailyReportIdentity, mode: Mode) {
       const modeKey =
         mode.kind === 'revise'

@@ -73,6 +73,8 @@ export function ReminderOriginControl({
       },
       targets: new Map(),
       homePreparationTargets: new Map(),
+      dailyReportTargets: new Map(),
+      dailyConversationTargets: new Map(),
     } satisfies AppointmentReminderRuntime & { transport: boolean[] };
   }, []);
   useEffect(() => {
