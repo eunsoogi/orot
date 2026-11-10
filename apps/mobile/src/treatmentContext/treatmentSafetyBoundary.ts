@@ -75,7 +75,6 @@ export async function evaluateTreatmentOutput(
   signal: AbortSignal,
   policyActions: readonly SafetyPolicyAction[],
 ): Promise<TreatmentSafetyResult> {
-  if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
   const urgent = policyActions.filter(
     action =>
       action === 'seek_immediate_emergency_help' ||
@@ -85,6 +84,7 @@ export async function evaluateTreatmentOutput(
   if (urgent.length) return { status: 'urgent', actions: [...policyActions] };
   if (policyActions.length)
     return { status: 'policy', actions: [...policyActions] };
+  if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
   const claims = parseClaims(output);
   if (!claims) return { status: 'withheld', reason: 'malformed' };
   if (

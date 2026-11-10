@@ -52,6 +52,14 @@ policy action is not proof that the person is safe: the current policy is narrow
 and does not perform comprehensive triage. `bufferTreatmentStream` disables
 the task stream callback; consumers must use it before starting generation and
 must never project the raw response through another channel.
+`executeTreatmentSafety` performs the policy and cancellation checks before
+generation, refuses to call a provider when the verifier is missing, and then
+buffers and evaluates the complete output for each turn. It does not grant
+consent or choose a provider; those remain the caller's existing obligations.
+The typed app-owned fallback and immediate-help copy is exposed through
+`treatmentSafetyGuidance`; cancellation does not erase a previously established
+policy action. The policy action consumer remains responsible for presenting
+non-emergency actions.
 
 The lexical screen does not detect every unsafe paraphrase or establish semantic
 support. A successful verifier call is only as reliable as the independent
@@ -59,6 +67,5 @@ verifier and the source content it inspected. No treatment workflow currently
 connects these interfaces to generation, stored output, reopening, or follow-up.
 Do not use the preliminary boundary alone to display or persist explanations.
 An implemented and evaluated semantic verifier, end-to-end enforcement,
-clinically reviewed emergency guidance, useful bounded alternatives, and real
-provider quality evidence remain release blockers. A disclaimer cannot replace
-these requirements.
+clinical review of the guidance, and real provider quality evidence remain
+release blockers. A disclaimer cannot replace these requirements.
