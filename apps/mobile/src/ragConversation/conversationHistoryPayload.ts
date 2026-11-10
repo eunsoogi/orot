@@ -15,6 +15,18 @@ export function providerHistoryMessage({
   };
 }
 
+/** Bound user context while excluding assistant prose whose complete lineage is not retained. */
+export function boundedProviderHistory(
+  messages: readonly RagConversationMessage[],
+): readonly RagConversationMessage[] {
+  return messages.slice(-8).map(message =>
+    providerHistoryMessage({
+      role: message.role,
+      content: message.content.slice(0, 2000),
+    }),
+  );
+}
+
 /** Assistant prose lacks complete input lineage; retrieve it explicitly after its sources are checked. */
 export function conversationHistoryPayload(
   messages: readonly DisplayMessage[],

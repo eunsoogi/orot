@@ -15,7 +15,7 @@ import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/dele
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
 import { historicalArtifactOutcome } from './historicalArtifactAnswer';
-import { providerHistoryMessage } from './conversationHistoryPayload';
+import { boundedProviderHistory } from './conversationHistoryPayload';
 import { trackValidatedEvidence } from './conversationRetentionEvidence';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
@@ -67,18 +67,6 @@ export interface RagConversationRunOptions {
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
   >;
-}
-
-function boundedHistory(
-  messages: readonly RagConversationMessage[],
-): readonly RagConversationMessage[] {
-  // Keep user context while excluding prior AI prose until its complete lineage is retained.
-  return messages.slice(-8).map(message =>
-    providerHistoryMessage({
-      role: message.role,
-      content: message.content.slice(0, 2000),
-    }),
-  );
 }
 
 /** Runs local E5 retrieval on a fresh bounded snapshot before every consent-checked model turn. */
@@ -135,13 +123,13 @@ export async function runRagConversationTurn(
         request: question,
         context: (options.entryIntent
           ? {
-              history: boundedHistory(options.previousMessages),
+              history: boundedProviderHistory(options.previousMessages),
               intent: options.entryIntent,
               ...(options.targetVisitEvidence
                 ? { targetEvidenceId: options.targetVisitEvidence.evidenceId }
                 : {}),
             }
-          : boundedHistory(
+          : boundedProviderHistory(
               options.previousMessages,
             )) as unknown as import('@orot/model-runtime').JsonValue,
         task: ragConversationTask,
