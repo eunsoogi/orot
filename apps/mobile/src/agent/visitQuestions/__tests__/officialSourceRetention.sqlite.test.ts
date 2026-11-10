@@ -31,6 +31,13 @@ test.each(['period', 'generated'] as const)(
       await f.database.execute(
         "INSERT INTO symptom_summary_runs VALUES ('summary', 'time', 'model', '{}')",
       );
+      await f.database.execute(
+        "INSERT INTO symptom_summary_runs VALUES ('unrelated-summary', 'time', 'model', '{}')",
+      );
+      await f.records.put(
+        'health_observation',
+        healthObservation('unrelated', 'heart_rate', '2026-09-01T00:00:00Z'),
+      );
       await f.save();
       const original = (await f.records.list('visit_question'))[0]!;
       const question = {
@@ -72,9 +79,15 @@ test.each(['period', 'generated'] as const)(
           generatedArtifactSources: question.generatedArtifactSources,
         });
         await records.delete('health_observation', 'unrelated');
+        expect(await records.get('health_observation', 'unrelated')).toBeNull();
+        const deleted = await reopened.database.execute(
+          "DELETE FROM symptom_summary_runs WHERE id = 'unrelated-summary'",
+        );
+        expect(deleted.rowsAffected).toBe(1);
         expect(
           await restored.listForAppointment(question.appointmentId!),
         ).toHaveLength(1);
+        expect(await restored.history(saved.id)).toHaveLength(1);
         if (source === 'period')
           await records.delete('health_observation', f.observation.id);
         else
