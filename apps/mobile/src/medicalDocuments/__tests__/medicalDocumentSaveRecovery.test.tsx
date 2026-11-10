@@ -41,7 +41,9 @@ test.each([
         .mockRejectedValue(new MedicalDocumentImportError(code)),
       discardDocument: jest.fn().mockResolvedValue(undefined),
     };
-    const { result } = await renderHook(() => useMedicalDocumentImport(service));
+    const { result } = await renderHook(() =>
+      useMedicalDocumentImport(service),
+    );
     await act(() => result.current.selectMedicalDocument('photos'));
     await act(() => result.current.saveMedicalDocument());
     expect(result.current.stagedDocument).toEqual(photo);
