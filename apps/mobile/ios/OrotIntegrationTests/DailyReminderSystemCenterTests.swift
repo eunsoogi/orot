@@ -1,6 +1,6 @@
 import Foundation
-import UserNotifications
 @testable import Orot
+import UserNotifications
 import XCTest
 
 /// This opt-in check observes the OS scheduler; delivery and taps require a separate UI journey.
@@ -31,8 +31,8 @@ final class DailyReminderSystemCenterTests: XCTestCase {
         let future = Date().addingTimeInterval(5 * 60)
         let time = Calendar.current.dateComponents([.hour, .minute], from: future)
         let scheduler = DailyReminderNotifications(defaults: defaults)
-        let result = await scheduler.save([
-            "enabled": true, "hour": try XCTUnwrap(time.hour), "minute": try XCTUnwrap(time.minute),
+        let result = try await scheduler.save([
+            "enabled": true, "hour": XCTUnwrap(time.hour), "minute": XCTUnwrap(time.minute),
         ])
         XCTAssertEqual(result["status"] as? String, "scheduled")
         let pending = await center.pendingNotificationRequests().filter { $0.identifier == identifier }

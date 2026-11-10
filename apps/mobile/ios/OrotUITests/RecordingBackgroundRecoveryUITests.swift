@@ -43,7 +43,9 @@ final class RecordingBackgroundRecoveryUITests: OrotFailFastTestCase {
                   let value = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
             else { return false }
             receipt = value
-            if value["phase"] as? String == "failed" { return true }
+            if value["phase"] as? String == "failed" {
+                return true
+            }
             if phase == "requested" {
                 return value["phase"] as? String == phase && (value["maximumPositionMs"] as? Double ?? 0) >= 1000
             }

@@ -59,7 +59,11 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         try scheduleReminder(app, status: status)
         attach(app, name: "daily-reminder-scheduled")
 
-        if mode == "cold" { app.terminate() } else { XCUIDevice.shared.press(.home) }
+        if mode == "cold" {
+            app.terminate()
+        } else {
+            XCUIDevice.shared.press(.home)
+        }
         let background = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let state = app.state
             return mode == "cold" ? state == .notRunning : state == .runningBackground || state == .runningBackgroundSuspended
@@ -72,7 +76,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
             notification.exists && notification.isHittable
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [delivered]), .completed)
-        guard notification.exists && notification.isHittable else { return }
+        guard notification.exists, notification.isHittable else { return }
         attach(springboard, name: "daily-reminder-system-banner")
         notification.tap()
         let foreground = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == .runningForeground }, object: nil)
@@ -128,7 +132,9 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         let periodValue = try XCTUnwrap(period.value as? String)
         let desiredPeriod = targetHour < 12 ? "오전" : "오후"
         let selectedPeriod = periodValue.replacingOccurrences(of: targetHour < 12 ? "오후" : "오전", with: desiredPeriod)
-        if selectedPeriod != periodValue { period.adjust(toPickerWheelValue: selectedPeriod) }
+        if selectedPeriod != periodValue {
+            period.adjust(toPickerWheelValue: selectedPeriod)
+        }
         try adjust(hour, number: targetHour % 12 == 0 ? 12 : targetHour % 12)
         try adjust(minute, number: targetMinute)
         // If setting the wheel took too long, the next calendar occurrence may be tomorrow.
@@ -173,7 +179,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
     /// Preserve the observed wheel's suffix and padding when selecting the requested value.
     private func adjust(_ wheel: XCUIElement, number: Int) throws {
         let value = try XCTUnwrap(wheel.value as? String)
-        wheel.adjust(toPickerWheelValue: try DailyReminderWheelText.replacingNumber(value, with: number))
+        try wheel.adjust(toPickerWheelValue: DailyReminderWheelText.replacingNumber(value, with: number))
     }
 
     private func attach(_ app: XCUIApplication, name: String) {
