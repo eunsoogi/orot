@@ -8,7 +8,7 @@ import type { HealthContextReader } from '../../healthEvidence/healthContext/rea
 import type { AiFeatureLocalData } from './localData';
 import { restoreSavedGeneratedSources } from './savedVisitQuestionGeneratedSources';
 import { restoreVisitQuestionPeriodForHistory } from './savedVisitQuestionHealthContext';
-import { stableJson } from './evidenceUtils';
+import { assertSavedVisitQuestionsCurrent } from './savedVisitQuestionConcurrency';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import {
   hasStaleVisitQuestionEvidence,
@@ -145,19 +145,7 @@ export async function restoreSavedVisitQuestions(input: {
   ) {
     throw new SavedVisitQuestionsReadError('stale_artifact');
   }
-  // A deletion/move guard can remove a saved row while its sources are loading.
-  // Recheck the artifact itself as well as its source so that async restoration cannot resurrect it.
-  const currentRows = await Promise.all(
-    ordered.map(row => input.records.get('visit_question', row.id)),
-  );
-  if (
-    ordered.some(
-      (row, index) =>
-        !currentRows[index] ||
-        stableJson(currentRows[index]) !== stableJson(row),
-    )
-  )
-    throw new SavedVisitQuestionsReadError('changed_saved_questions');
+  await assertSavedVisitQuestionsCurrent(input.records, appointmentId, ordered);
   const generatedLinks = questions.flatMap(
     question => question.generatedArtifactContext ?? [],
   );
