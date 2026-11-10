@@ -159,6 +159,53 @@ test.each(['문헌을 설명해 주세요', '수면과 비만 관련 연구는 �
   },
 );
 
+test('a mixed request rejects a plain grounded answer when only a local record is available', async () => {
+  const f = fixture();
+  f.generate.mockReset().mockResolvedValueOnce(
+    response({
+      type: 'result',
+      value: { answerKind: 'grounded', answer: local.content },
+      citations: ['local'],
+    }),
+  );
+  const chunk = {
+    id: 'local',
+    text: local.content,
+    metadata: { sourceId: local.sourceId, evidenceId: local.evidenceId },
+  };
+  const result = await runRagConversationTurn({
+    ...f.options,
+    question: '내 기록과 문헌을 알려줘',
+    loadCurrentEvidence: async () => ({
+      batch: {
+        items: [local],
+        coverage: [
+          {
+            sourceKind: 'personal_record',
+            searchedSourceIds: ['record'],
+            gaps: [],
+            truncated: false,
+            resultLimit: 1,
+            returnedCount: 1,
+          },
+        ],
+        conflicts: [],
+      },
+      chunks: [chunk as never],
+    }),
+    rag: { search: async () => [{ chunk, score: 1 }] as never },
+    workflow: {
+      ...f.options.workflow,
+      execution: {
+        ...f.options.workflow.execution,
+        allowedScope: { sourceKinds: ['personal_record', 'external_medical'] },
+      },
+    },
+  });
+  expect(f.generate).toHaveBeenCalled();
+  expect(result.status).not.toBe('answer');
+});
+
 test('a greeting remains conversational even when unrelated literature exists', async () => {
   const f = fixture();
   f.generate.mockReset().mockResolvedValueOnce(

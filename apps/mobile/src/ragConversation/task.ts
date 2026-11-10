@@ -208,9 +208,10 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     if (
       value.answerKind !== 'conversation' &&
       value.answerKind !== 'prior_output' &&
-      input.evidence.items.length > 0 &&
-      input.evidence.items.some(item => item.sourceId === 'europe-pmc')
+      (requestsLiteratureExplanation(input.request) ||
+        input.evidence.items.some(item => item.sourceId === 'europe-pmc'))
     ) {
+      // Plain prose cannot establish literature claims or a record-to-literature comparison.
       return {
         status: 'needs_clarification',
         message: '문헌의 설명과 출처가 일치하는지 확인하지 못했어요.',
