@@ -1,12 +1,5 @@
-import {
-  STORAGE_TABLES,
-  type SqlExecutor,
-  type ManualHistoryRepository,
-} from '@orot/storage';
-import type {
-  SavedRecordSummarySource,
-  SavedSummarySource,
-} from '../diseaseHypotheses/savedSummaries';
+import { type SqlExecutor, type ManualHistoryRepository } from '@orot/storage';
+import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import type {
   SavedGeneratedConversationSource,
@@ -14,14 +7,13 @@ import type {
 } from '../diseaseHypotheses/savedSummaries';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
+import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
+import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertSummaryPeriodCurrent } from './symptomSummaryPeriods';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { readResearchArtifact } from './researchArtifactCodec';
-import {
-  assertSummarySourceAvailable,
-  assertSymptomPeriodAvailable,
-} from './symptomSummaryQuarantine';
+import { assertSymptomPeriodAvailable } from './symptomSummaryQuarantine';
 
 interface Ancestry {
   readonly path: Set<string>;
@@ -45,6 +37,20 @@ async function assertGeneratedSummaryCurrent(
     );
   ancestry.path.add(key);
   try {
+    if (
+      (source.reference.locator as { type?: unknown }).type === 'daily_report'
+    ) {
+      const daily = await validateDailyReportArtifact(
+        tx,
+        source.id,
+        manualHistory,
+      );
+      if (!daily || daily.fingerprint !== source.revision)
+        throw new RetainedSourceInvalidError(
+          'The daily report changed or was removed.',
+        );
+      return;
+    }
     const invalid = await tx.execute(
       'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
       [source.id],
@@ -197,53 +203,5 @@ export async function assertRetainedEvidenceCurrent(
       continue;
     }
     await assertRetainedRecordsCurrent(tx, source.records, manualHistory);
-  }
-}
-
-/** Apply the same source and quarantine checks to non-summary artifacts. */
-export async function assertRetainedRecordsCurrent(
-  tx: SqlExecutor,
-  records: SavedRecordSummarySource['records'],
-  manualHistory: ManualHistoryRepository,
-) {
-  for (const record of records) {
-    if (record.kind === 'manual_history') {
-      const current = await manualHistory.getEvidence(record.id, tx);
-      if (!current || fingerprint(current) !== record.revision)
-        throw new RetainedSourceInvalidError(
-          'A cited source changed before saving.',
-        );
-      continue;
-    }
-    const memory = record.kind === 'reviewed_memory';
-    const table = memory
-      ? 'agent_memory_records'
-      : STORAGE_TABLES[record.kind].table;
-    const column = memory ? 'record_json' : 'payload_json';
-    const current = await tx.execute(
-      `SELECT ${column} AS source_json FROM ${table} WHERE id = ?`,
-      [record.id],
-    );
-    const serialized = current.rows[0]?.source_json;
-    if (typeof serialized !== 'string')
-      throw new RetainedSourceInvalidError(
-        'A cited source was removed before saving.',
-      );
-    await assertSummarySourceAvailable(tx, record.kind, record.id, serialized);
-    const parsed = JSON.parse(serialized);
-    if (
-      fingerprint(
-        memory ? { text: parsed.text, meta: parsed.meta } : parsed,
-      ) !== record.revision
-    )
-      throw new RetainedSourceInvalidError(
-        'A cited source changed before saving.',
-      );
-    const stale = await tx.execute(
-      'SELECT artifact_id FROM transcript_artifact_staleness WHERE artifact_kind = ? AND artifact_id = ? LIMIT 1',
-      [record.kind, record.id],
-    );
-    if (stale.rows.length)
-      throw new RetainedSourceInvalidError('A cited source is stale.');
   }
 }

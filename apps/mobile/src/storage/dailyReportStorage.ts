@@ -10,15 +10,19 @@ import {
   readHealthContextGeneration,
 } from '../healthEvidence/healthContext/generation';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
-import { assertRetainedRecordsCurrent } from './retainedEvidenceFreshness';
+import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
 import { validateDailyReportCompletion } from './dailyReportValidation';
 import { visibleSummary } from './symptomSummaryQuarantine';
+import { parseDailyReportLineage } from './dailyReportLineage';
+import {
+  invalidateDailyReportRun,
+  invalidDailyReportStatus,
+} from './dailyReportInvalidation';
 import type { DailyReportSave } from './dailyReportStorageTypes';
 export type {
   DailyReportLineage,
   DailyReportSave,
 } from './dailyReportStorageTypes';
-
 /** The same encrypted summary database serializes both entry points and all revision changes. */
 export function createDailyReportStorage(database: SqlDatabase) {
   const summaries = createSymptomSummaryStorage(database);
@@ -34,7 +38,6 @@ export function createDailyReportStorage(database: SqlDatabase) {
       ready = undefined;
       throw error;
     }));
-
   async function lookup(identity: DailyReportIdentity) {
     const parsed = DailyReportIdentitySchema.safeParse(identity);
     if (!parsed.success) return { status: 'error' as const };
@@ -71,7 +74,13 @@ export function createDailyReportStorage(database: SqlDatabase) {
           status: 'completed',
           report: saved.report,
         });
-        if (!checked || checked.context.identity.key !== parsed.data.key) {
+        const lineage =
+          checked && parseDailyReportLineage(checked.context, saved.lineage);
+        if (
+          !checked ||
+          !lineage ||
+          checked.context.identity.key !== parsed.data.key
+        ) {
           value = { status: 'error' };
           return;
         }
@@ -94,6 +103,7 @@ export function createDailyReportStorage(database: SqlDatabase) {
           status: 'saved',
           runId: head.active_run_id,
           revision: head.revision,
+          lineage,
           ...checked,
         };
       });
@@ -104,6 +114,7 @@ export function createDailyReportStorage(database: SqlDatabase) {
             status: 'saved';
             runId: string;
             revision: number;
+            lineage: import('./dailyReportStorageTypes').DailyReportLineage[];
             context: NonNullable<
               ReturnType<typeof validateDailyReportCompletion>
             >['context'];
@@ -119,20 +130,7 @@ export function createDailyReportStorage(database: SqlDatabase) {
   async function save(input: DailyReportSave) {
     const checked = validateDailyReportCompletion(input.context, input.result);
     if (!checked || !input.runId.trim()) return { status: 'error' as const };
-    const expected = checked.context.sourceSnapshot.records
-      .map(record =>
-        stableJson([record.source, record.recordId, record.revision]),
-      )
-      .sort();
-    const supplied = input.lineage
-      .map(record =>
-        stableJson([record.source, record.recordId, record.revision]),
-      )
-      .sort();
-    if (
-      stableJson(expected) !== stableJson(supplied) ||
-      input.lineage.some(item => !item.localId.trim())
-    )
+    if (!parseDailyReportLineage(checked.context, input.lineage))
       return { status: 'error' as const };
     const stored = JSON.stringify({
       inputLineage: 'complete',
@@ -157,7 +155,11 @@ export function createDailyReportStorage(database: SqlDatabase) {
           [input.runId],
         );
         if (invalid.rows.length) {
-          status = 'deleted';
+          status = await invalidDailyReportStatus(
+            tx,
+            checked.context.identity.key,
+            input.runId,
+          );
           return;
         }
         // Direct source validation runs inside the same write transaction as the active pointer.
@@ -229,6 +231,9 @@ export function createDailyReportStorage(database: SqlDatabase) {
           'INSERT INTO daily_report_heads (identity_key, active_run_id, revision, deleted) VALUES (?, ?, ?, 0) ON CONFLICT(identity_key) DO UPDATE SET active_run_id = excluded.active_run_id, revision = excluded.revision, deleted = 0',
           [checked.context.identity.key, input.runId, revision],
         );
+        // Downstream saved artifacts must not keep a superseded active revision alive.
+        if (typeof head?.active_run_id === 'string')
+          await invalidateDailyReportRun(tx, head.active_run_id);
         status = 'saved';
       });
       return { status };
