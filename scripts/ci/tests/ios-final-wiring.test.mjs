@@ -87,10 +87,10 @@ test('full integration execution preserves profile observations and every regist
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  // Nine host regressions run outside iOS; the six picker journeys still repeat across cohorts.
-  assert.equal(scheduled.length, 198);
+  // Nine host regressions run outside iOS; seven picker journeys repeat across cohorts.
+  assert.equal(scheduled.length, 200);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 192);
+  assert.equal(identifiers.size, 193);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
@@ -110,6 +110,7 @@ test('full integration execution preserves profile observations and every regist
       'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
       2,
     ],
+    ['OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch', 2],
     [
       'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
       2,

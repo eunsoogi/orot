@@ -27,6 +27,7 @@ const documentJourneys = [
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testDuplicateImportKeepsSavedOriginalAndProvenance',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testScannedPdfIsRejectedWithoutSavingSource',
+  'OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch',
   'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
   'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerGestureDismissalRestoresInteraction',
   'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerRecoversAfterBackgroundAndForeground',
