@@ -10,6 +10,8 @@ import {
 import { parseConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
 import type { ConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
 import { referenceOnly } from '../diseaseHypotheses/resultValidation';
+import { hasValidTreatmentContext } from '../treatmentContext/validation';
+import type { TreatmentContext } from '../treatmentContext/types';
 
 export const CONVERSATION_SOURCE_LIMIT = 24;
 
@@ -30,6 +32,7 @@ export interface ConversationArtifact {
   readonly citations?: readonly EvidenceReference[];
   readonly healthSummary?: HealthSummaryReference;
   readonly visitQuestions?: ConversationVisitQuestionReference;
+  readonly treatmentContext?: TreatmentContext;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -186,6 +189,7 @@ export function decodeConversationArtifact(
     )
       return null;
     const sources = value.sources as Record<string, unknown>[];
+    if (!hasValidTreatmentContext(value)) return null;
     if (value.visitQuestions !== undefined) {
       const visit = parseConversationVisitQuestionReference(
         value.visitQuestions,

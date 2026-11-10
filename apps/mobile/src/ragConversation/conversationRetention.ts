@@ -19,6 +19,7 @@ export interface ConversationRetentionCandidate {
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations: readonly EvidenceReference[];
   readonly healthSummary?: HealthSummaryReference;
+  readonly treatmentContext?: import('../treatmentContext/types').TreatmentContext;
   readonly visitQuestions?: import('./conversationVisitQuestionReference').ConversationVisitQuestionReference;
 }
 
