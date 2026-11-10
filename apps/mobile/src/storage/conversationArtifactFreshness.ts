@@ -16,6 +16,7 @@ import {
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
 import { assertConversationSummaryParent } from './conversationSummaryParent';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
+import { assertTreatmentAttribution } from '../treatmentContext/attribution';
 
 /** Validate a bounded ancestry in one transaction, rejecting cycles and unavailable parents. */
 export async function assertConversationArtifactCurrent(
@@ -69,6 +70,13 @@ export async function assertConversationArtifactCurrent(
         );
       }
     }
+    if (current.treatmentContext)
+      await assertTreatmentAttribution(
+        tx,
+        history,
+        current.treatmentContext,
+        current.sources,
+      );
     path.delete(current.id);
   };
   await visit(artifact);
