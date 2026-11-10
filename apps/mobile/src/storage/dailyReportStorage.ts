@@ -187,7 +187,9 @@ export function createDailyReportStorage(database: SqlDatabase) {
         ).rows[0];
         if (existing || prior) {
           if (
-            existing?.result_json === stored &&
+            typeof existing?.result_json === 'string' &&
+            stableJson(JSON.parse(existing.result_json)) ===
+              stableJson(JSON.parse(stored)) &&
             prior?.identity_key === checked.context.identity.key
           )
             status = head?.active_run_id === input.runId ? 'reused' : 'stale';

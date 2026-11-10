@@ -36,8 +36,7 @@ test('serializes revisions, survives reopening and removes source-derived text o
       timeZone: 'UTC',
       requestedAt: '2035-01-01T12:00:00Z',
     });
-    if (calendar.status !== 'ready')
-      throw new Error('Invalid calendar fixture');
+    if (calendar.status !== 'ready') throw new Error('Invalid fixture');
     expect((await store.lookup(calendar.context.identity)).status).toBe(
       'missing',
     );
@@ -93,7 +92,11 @@ test('serializes revisions, survives reopening and removes source-derived text o
       mode: { kind: 'initial' as const },
     };
     expect(await store.save(input)).toEqual({ status: 'saved' });
-    expect(await store.save(input)).toEqual({ status: 'reused' });
+    const retry = {
+      ...input,
+      lineage: [Object.assign({ revision }, input.lineage[0]!)],
+    };
+    expect(await store.save(retry)).toEqual({ status: 'reused' });
     expect(
       await store.save({
         ...input,
@@ -113,10 +116,8 @@ test('serializes revisions, survives reopening and removes source-derived text o
         }),
       ),
     );
-    expect(races.map(result => result.status).sort()).toEqual([
-      'saved',
-      'stale',
-    ]);
+    const statuses = races.map(result => result.status).sort();
+    expect(statuses).toEqual(['saved', 'stale']);
     const active = await store.lookup(context.identity);
     if (active.status !== 'saved') throw new Error('Expected active report');
     expect(await store.save(input)).toEqual({ status: 'stale' });
