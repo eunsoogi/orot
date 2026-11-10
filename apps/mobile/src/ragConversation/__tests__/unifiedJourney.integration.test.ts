@@ -27,7 +27,7 @@ import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskC
 import { createConversationSessions } from '../conversationSessions';
 import { runRagConversationTurn } from '../service';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
-import { scriptedLiteratureProvider } from './unifiedJourneyFixture';
+import { scriptedLiteratureProvider } from '../testSupport/unifiedJourneyFixture';
 
 /** One session owns all turns; the model, summary, candidate and HTTP transport are synthetic. */
 test('keeps summary, follow-up, grounded literature and edited visit questions in one conversation', async () => {
