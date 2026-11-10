@@ -54,8 +54,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         NavigationWindowGeometryUITestConditions.assertGeometry(root)
         let rootRouteKey = root.routeKey
         let rootFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "ai-root-content-and-rail", testCase: self,
+            app, navigationID: "navigation-tab-ai", name: "ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
+        let rootState = try NavigationGeometryUITestConditions.observedNavigationSide(app, testCase: self)
         let question = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(UITestConditions.exists(question) && question.isHittable)
         question.tap()
@@ -104,7 +105,21 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
             defer { XCUIDevice.shared.orientation = .portrait }
             let before = try waitForGeometry(app, routeKey: rootRouteKey)
             let beforeLayout = try XCTUnwrap(before.adaptive)
+            // Capture both sides of the actual request; missing observations remain explicit.
+            let rotationProbe: (String) -> Void = { phase in
+                guard ProcessInfo.processInfo.environment["OROT_TEST_DUO_ROTATION_PROBE"] == "1" else { return }
+                let at = Date().timeIntervalSince1970 * 1000
+                print("OROT_DUO_ROTATION phase=\(phase) atMs=\(at) device=\(XCUIDevice.shared.orientation.rawValue) appFrame=\(app.frame) route=\(rootRouteKey) routeWidthBefore=\(beforeLayout.width)")
+                let report = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "duo-rotation-\(phase)")
+                if let report, let data = try? JSONSerialization.data(withJSONObject: report), let json = String(data: data, encoding: .utf8) {
+                    print("OROT_DUO_ROTATION_OBSERVATION phase=\(phase) payload=\(json)")
+                } else {
+                    print("OROT_DUO_ROTATION_OBSERVATION phase=\(phase) unavailable")
+                }
+            }
+            rotationProbe("before")
             XCUIDevice.shared.orientation = .landscapeLeft
+            rotationProbe("after")
             let landscape = try waitForGeometry(
                 app, widthDifferentFrom: before.publicUIKit.windowBounds.width,
                 routeWidthDifferentFrom: beforeLayout.width, routeKey: rootRouteKey,
@@ -123,9 +138,10 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let finalQuestion = try waitForGeometry(app, routeKey: rootRouteKey)
         NavigationWindowGeometryUITestConditions.assertGeometry(finalQuestion)
         let conversationFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "question-content-and-rail", testCase: self,
+            app, navigationID: "navigation-tab-ai", name: "question-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
-        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame, conversationFrame])
+        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame])
+        try NavigationGeometryUITestConditions.assertReturnNavigation(app, root: rootFrame, rootState: rootState, returned: conversationFrame, citation: source, testCase: self)
         try NavigationWindowGeometryUITestConditions.verifyObservedSplit(app, testCase: self)
         XCTAssertTrue((question.value as? String) == draft, "The edited question must survive the source-detail route")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
@@ -134,9 +150,9 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let returnedRoot = try waitForGeometry(app, routeKey: rootRouteKey, requiresAdaptiveLayout: false)
         NavigationWindowGeometryUITestConditions.assertGeometry(returnedRoot)
         let returnedRootFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "returned-ai-root-content-and-rail", testCase: self,
+            app, navigationID: "navigation-tab-ai", name: "returned-ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
-        NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame, conversationFrame, returnedRootFrame])
+        try NavigationGeometryUITestConditions.assertReturnNavigation(app, root: rootFrame, rootState: rootState, returned: returnedRootFrame, citation: source, testCase: self)
     }
 
     /// The optional diagnostic retains the real question editor and its original UIKit observer in a separate process.

@@ -149,6 +149,7 @@
                 }
                 resolve(["navigation": observations, "events": self.gestureEvents,
                          "presentations": presentations,
+                         "menuPresentations": UserDefaults.standard.string(forKey: "OROT_TEST_MENU_PRESENTATION") == "YES" ? MenuPresentationTestObservation.snapshot() : [],
                          "lifecycle": TestLifecycleObservation.snapshot(),
                          "conversationHit": ConversationHitObservationTrigger.shared.cached(session: UserDefaults.standard.string(forKey: "OROT_TEST_CONVERSATION_HIT_OBSERVATION"), owner: self.navigationObservationID, identity: { [weak owner = self] object in owner?.observationIdentifier(object, prefix: "view") ?? "unavailable" }), "windowGeometry": NavigationGeometryTestObservation.snapshot(identity: UserDefaults.standard.string(forKey: "OROT_TEST_NAVIGATION_FOCUS_OBSERVATION") == "YES" ? { self.observationIdentifier($0, prefix: "view") } : nil),
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])

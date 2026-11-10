@@ -9,6 +9,11 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // Keep daily reminder preference and notification boundaries in the core integration cohort.
+  'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testOriginCarrierSurvivesActualRNSerializationWithoutOriginalNSError',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
@@ -18,6 +23,7 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testPendingReplacementUsesOneRequestAndCancellationRemovesIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testFloatingRequestRetainsCivilTimeIdentityWithoutPinningDeviceZone',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
+  'OrotIntegrationTests/AppointmentReminderNotificationTests/testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.

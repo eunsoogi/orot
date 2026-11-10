@@ -1,9 +1,11 @@
 import { View } from 'react-native';
+import type { ReactNode } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
+import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
@@ -20,6 +22,12 @@ export interface DisplayMessage extends RagConversationMessage {
   /** Only committed turns may be used as durable conversation history. */
   readonly retainedTurnId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
+  readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
+  readonly retryHealthSummary?: () => Promise<
+    import('./healthSummary').HealthSummaryResult | null
+  >;
+  readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
+  readonly visitQuestionsUnavailable?: boolean;
   /** Failed prompts stay visible when the user has already drafted a different question. */
   readonly failed?: boolean;
 }
@@ -33,6 +41,7 @@ export function ConversationMessage({
   compact = false,
   toolSourceSessionId,
   resolveToolSource,
+  renderVisitQuestions,
 }: {
   readonly message: DisplayMessage;
   readonly onOpenSource: (reference: EvidenceReference) => void;
@@ -41,6 +50,7 @@ export function ConversationMessage({
   readonly compact?: boolean;
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
+  readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
   const user = message.role === 'user';
   const MessageText = user ? Text : AiResponseText;
@@ -116,7 +126,33 @@ export function ConversationMessage({
             {message.content}
           </MessageText>
         ) : null}
+        {message.healthSummary ? (
+          <HealthSummaryCard
+            result={message.healthSummary}
+            showCitations={showCitations}
+            onOpenSource={onOpenSource}
+            onLinkError={onLinkError}
+            onRetry={
+              message.retryHealthSummary
+                ? () => {
+                    message.retryHealthSummary?.().catch(onLinkError);
+                  }
+                : undefined
+            }
+          />
+        ) : message.healthSummary === null ? (
+          <Text>저장된 요약을 확인할 수 없어요.</Text>
+        ) : null}
         {!activityBeforeText ? activity : null}
+        {message.visitQuestionsUnavailable ? (
+          <Text accessibilityRole="alert" style={styles.activity}>
+            저장된 진료 질문을 다시 불러올 수 없어요. 예약과 질문 목록을 확인해
+            주세요.
+          </Text>
+        ) : null}
+        {!user && message.visitQuestions
+          ? renderVisitQuestions?.(message)
+          : null}
         {showCitations ? (
           <ConversationSources
             references={message.citations ?? []}

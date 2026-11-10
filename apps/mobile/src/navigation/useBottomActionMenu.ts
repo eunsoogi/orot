@@ -7,6 +7,7 @@ import type {
   NavigationGlassActionEventHandler,
 } from './NavigationGlassSurface';
 import { settleNavigationRequest } from './nativeNavigationActions';
+import { observeNavigationTest } from './navigationTestObservation';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
 /** A route or action-state change invalidates an open menu and its callback. */
@@ -14,12 +15,16 @@ export function useBottomActionMenu({
   routeKey,
   navigation,
   pages,
+  overflowNavigationIds,
+  overflowPageIds,
   disabled,
   onNavigation,
 }: {
   routeKey: string;
   navigation: readonly NavigationGlassAction[];
   pages: readonly NavigationRouteAction[];
+  overflowNavigationIds: readonly string[];
+  overflowPageIds: readonly string[];
   disabled: boolean;
   onNavigation: NavigationGlassActionEventHandler;
 }) {
@@ -27,16 +32,36 @@ export function useBottomActionMenu({
     routeKey,
     navigation,
     pages,
+    overflowNavigationIds,
+    overflowPageIds,
     disabled,
     onNavigation,
   });
-  current.current = { routeKey, navigation, pages, disabled, onNavigation };
+  current.current = {
+    routeKey,
+    navigation,
+    pages,
+    overflowNavigationIds,
+    overflowPageIds,
+    disabled,
+    onNavigation,
+  };
   const generation = useRef(0);
-  const open = useRef(false);
+  const sequence = useRef(0);
+  const open = useRef<number | null>(null);
   const signature = JSON.stringify([
     routeKey,
     disabled,
-    navigation,
+    navigation.map(
+      ({
+        id,
+        label,
+        accessibilityLabel,
+        disabled: unavailable,
+        busy,
+        selected,
+      }) => [id, label, accessibilityLabel, unavailable, busy, selected],
+    ),
     pages.map(
       ({
         id,
@@ -51,35 +76,52 @@ export function useBottomActionMenu({
   useLayoutEffect(() => {
     generation.current += 1;
     if (open.current) {
-      open.current = false;
+      observeNavigationTest('menu-dismiss', { reason: 'signature-change' });
+      open.current = null;
       ActionSheetIOS.dismissActionSheet();
     }
     return () => {
       generation.current += 1;
       if (open.current) {
-        open.current = false;
+        observeNavigationTest('menu-dismiss', { reason: 'effect-cleanup' });
+        open.current = null;
         ActionSheetIOS.dismissActionSheet();
       }
     };
   }, [signature]);
   return useCallback(() => {
     const snapshot = current.current;
-    if (snapshot.disabled || open.current) return;
+    observeNavigationTest('menu-handler', { routeKey: snapshot.routeKey });
+    if (snapshot.disabled || open.current !== null) {
+      observeNavigationTest('menu-rejected', {
+        reason: snapshot.disabled ? 'disabled' : 'already-open',
+      });
+      return;
+    }
     const entries = [
-      ...snapshot.navigation.map(action => ({
-        kind: 'navigation' as const,
-        action,
-      })),
-      ...snapshot.pages.map(action => ({ kind: 'page' as const, action })),
+      ...snapshot.overflowNavigationIds
+        .flatMap(id => snapshot.navigation.filter(action => action.id === id))
+        .map(action => ({
+          kind: 'navigation' as const,
+          action,
+        })),
+      ...snapshot.overflowPageIds
+        .flatMap(id => snapshot.pages.filter(action => action.id === id))
+        .map(action => ({ kind: 'page' as const, action })),
     ];
-    if (!entries.length) return;
+    if (!entries.length) {
+      observeNavigationTest('menu-rejected', { reason: 'empty' });
+      return;
+    }
     const labels = entries.map(({ kind, action }) => {
       const selected = kind === 'navigation' && action.selected;
       const busy = 'busy' in action && action.busy;
       return `${action.accessibilityLabel}${selected ? ' (선택됨)' : ''}${busy ? ' (진행 중)' : ''}`;
     });
     const token = generation.current;
-    open.current = true;
+    const menuID = ++sequence.current;
+    open.current = menuID;
+    observeNavigationTest('menu-show-request', { routeKey: snapshot.routeKey });
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: [...labels, navigationText.closeActionMenu],
@@ -94,13 +136,14 @@ export function useBottomActionMenu({
         ),
       },
       index => {
-        open.current = false;
         if (
+          open.current !== menuID ||
           generation.current !== token ||
           current.current.routeKey !== snapshot.routeKey ||
           current.current.disabled
         )
           return;
+        open.current = null;
         const entry = entries[index];
         if (!entry) return;
         if (entry.kind === 'navigation') {

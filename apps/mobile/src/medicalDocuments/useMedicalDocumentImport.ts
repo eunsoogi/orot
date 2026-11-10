@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { medicalDocumentImportService } from './medicalDocumentImportService';
@@ -29,6 +29,12 @@ function errorMessage(error: unknown): string {
       return t('medicalDocument.error.fileProtectionUnavailable');
     case 'CLEANUP_FAILED':
       return t('medicalDocument.error.cleanupFailed');
+    case 'SAVE_FAILED':
+      return t('medicalDocument.error.saveFailed');
+    case 'STALE_DOCUMENT':
+      return t('medicalDocument.error.staleDocument');
+    case 'DUPLICATE_RECOVERY_FAILED':
+      return t('medicalDocument.error.duplicateRecoveryFailed');
     case 'NATIVE_UNAVAILABLE':
     case 'IMPORT_FAILED':
       return t('medicalDocument.error.importFailed');
@@ -42,6 +48,7 @@ export function useMedicalDocumentImport(
   const [stagedDocument, setStagedDocument] =
     useState<StagedMedicalDocument | null>(null);
   const [activity, setActivity] = useState<ImportActivity>(null);
+  const operationInProgress = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
   const [savedDocuments, setSavedDocuments] = useState<
     MedicalDocumentSourceRecord[]
@@ -85,7 +92,13 @@ export function useMedicalDocumentImport(
   });
 
   async function selectMedicalDocument(source: 'files' | 'photos' = 'files') {
-    if (activity !== null || stagedDocument !== null) return;
+    if (
+      activity !== null ||
+      stagedDocument !== null ||
+      operationInProgress.current
+    )
+      return;
+    operationInProgress.current = true;
     setMessage(null);
     setActivity('selecting');
     try {
@@ -94,12 +107,16 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
+      operationInProgress.current = false;
       setActivity(null);
     }
   }
 
   async function saveMedicalDocument() {
-    if (!stagedDocument || activity !== null) return;
+    if (!stagedDocument || activity !== null || operationInProgress.current)
+      return;
+    // Reserve synchronously so Save and Cancel cannot race before React renders busy state.
+    operationInProgress.current = true;
     setMessage(null);
     setActivity('saving');
     try {
@@ -114,12 +131,15 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
+      operationInProgress.current = false;
       setActivity(null);
     }
   }
 
   async function discardMedicalDocument() {
-    if (!stagedDocument || activity !== null) return;
+    if (!stagedDocument || activity !== null || operationInProgress.current)
+      return;
+    operationInProgress.current = true;
     setActivity('discarding');
     setMessage(null);
     try {
@@ -128,6 +148,7 @@ export function useMedicalDocumentImport(
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
+      operationInProgress.current = false;
       setActivity(null);
     }
   }

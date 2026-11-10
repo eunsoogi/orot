@@ -6,7 +6,9 @@ import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
 import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
+import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
+import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
 
 interface SettingsRouteProps {
   /** Tracks the latest committed choice after persisted resolution confirms it is valid. */
@@ -135,6 +137,8 @@ export function SettingsRoute({
               </View>
             </View>
 
+            <SettingsDailyReminderSection />
+
             <View style={styles.section} testID="settings-section-app-info">
               <Text accessibilityRole="header" style={styles.sectionTitle}>
                 {t('settings.appInfo')}
@@ -164,7 +168,8 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 28,
+    // The outer route scroller already supplies the navigation gap.
+    paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 18 },

@@ -1,5 +1,5 @@
 import type { createConversationTurnRetention } from './conversationTurnRetention';
-import type { ConversationSession } from './conversationSessionRequests';
+import type { ConversationSession } from './conversationSessionTypes';
 import type { PendingTurn } from './conversationSessionTypes';
 import type { RagConversationObserver } from './service';
 

@@ -2,10 +2,9 @@ import { createConversationSessionRequests } from './conversationSessionRequests
 import type {
   ConversationSender,
   ConversationSession,
-} from './conversationSessionRequests';
+} from './conversationSessionTypes';
 import type {
   ConversationSessionOptions,
-  DeletedConversation,
   ConversationSnapshot,
 } from './conversationSessionTypes';
 import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
@@ -13,14 +12,15 @@ import { createConversationSessionAttachment } from './conversationSessionAttach
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
 import { createConversationListeners } from './conversationListeners';
+import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
 import {
   createEmptyConversation,
+  initialConversationSnapshot,
   quarantineConversation,
 } from './conversationEmptySession';
 import {
-  addConversation,
+  createConversationNavigation,
   removeConversation,
-  selectConversation,
   undoMemoryConversation,
   undoRetainedConversation,
 } from './conversationSessionTransitions';
@@ -33,11 +33,7 @@ export function createConversationSessions(
   const owner = ++nextSessionOwner;
   let nextId = 0;
   const empty = () => createEmptyConversation(++nextId);
-  let snapshot = {
-    activeId: 1,
-    sessions: [empty()] as readonly ConversationSession[],
-    deleted: null as DeletedConversation | null,
-  };
+  let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
@@ -176,14 +172,17 @@ export function createConversationSessions(
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
     setError: (id: number, error: string) => update(id, { error }),
-    select(id: number) {
-      if (disposed) return;
-      apply(selectConversation(snapshot, id));
-    },
-    create() {
-      if (disposed) return;
-      apply(addConversation(snapshot, empty()));
-    },
+    updateVisitQuestionReview: createConversationVisitReviewUpdater(
+      () => snapshot,
+      update,
+      () => disposed,
+    ),
+    ...createConversationNavigation({
+      snapshot: () => snapshot,
+      apply,
+      empty,
+      disposed: () => disposed,
+    }),
     remove(id: number) {
       if (disposed) return;
       if (options.retention) return removeRetained(id);

@@ -33,6 +33,7 @@
         private weak var identifiedInput: UITextView?
         private var nextInputIdentity = 0
         private var currentInputIdentity: Int?
+        private var lastTouch: [String: Any] = [:]
         private lazy var snapshotMarker = VisitQuestionInputSnapshotMarker(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
 
         init(windowScene: UIWindowScene, run: UUID) {
@@ -52,6 +53,13 @@
         }
 
         override func sendEvent(_ event: UIEvent) {
+            if UserDefaults.standard.string(forKey: "OROT_TEST_VISIT_QUESTION_TARGET") == "third",
+               event.type == .touches, let touch = event.allTouches?.first(where: { $0.phase == .began })
+            {
+                let point = touch.location(in: self)
+                lastTouch = ["x": point.x, "y": point.y, "uptime": ProcessInfo.processInfo.systemUptime, "viewClass": touch.view.map { String(describing: type(of: $0)) } ?? "none",
+                             "insideTarget": touch.view.map(owns) ?? false]
+            }
             let current: Int?
             if event.type == .presses {
                 step += 1
@@ -89,7 +97,8 @@
             var node: UIView? = view
             var matched = false
             while let current = node, current !== self {
-                if current.accessibilityIdentifier == "next-visit-question-text-0" {
+                let target = UserDefaults.standard.string(forKey: "OROT_TEST_VISIT_QUESTION_TARGET") == "third" ? "next-visit-question-text-2" : "next-visit-question-text-0"
+                if current.accessibilityIdentifier == target {
                     matched = true
                 }
                 node = current.superview
@@ -133,10 +142,46 @@
                 recentEvents: trace.bufferedEvents,
                 eventBufferTruncated: trace.bufferedEventsTruncated,
             )
-            guard let data = try? JSONEncoder().encode(sample), let value = String(data: data, encoding: .utf8) else {
+            guard let data = try? JSONEncoder().encode(sample),
+                  var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            else {
                 return "{\"status\":\"encoding-failed\"}"
             }
+            if UserDefaults.standard.string(forKey: "OROT_TEST_VISIT_QUESTION_TARGET") == "third" {
+                object["hitDiagnostic"] = inputHitDiagnostic()
+            }
+            guard let result = try? JSONSerialization.data(withJSONObject: object), let value = String(data: result, encoding: .utf8) else { return "{\"status\":\"encoding-failed\"}" }
             return value
+        }
+
+        /// Report only geometry and responder state; UIKit hit testing is read-only and never delivers a touch.
+        private func inputHitDiagnostic() -> [String: Any] {
+            var stack: [UIView] = [self]
+            var matches: [UITextView] = []
+            var visited = 0
+            while !stack.isEmpty, visited < 2048 {
+                let view = stack.removeLast()
+                visited += 1
+                if let input = view as? UITextView, owns(input) {
+                    matches.append(input)
+                }
+                stack.append(contentsOf: view.subviews)
+            }
+            guard stack.isEmpty, matches.count == 1, let input = matches.first else {
+                return ["status": stack.isEmpty ? "ambiguous-or-missing" : "truncated", "matches": matches.count]
+            }
+            let point = convert(input.accessibilityActivationPoint, from: nil as UIWindow?)
+            let hit = hitTest(point, with: nil)
+            let frame = input.convert(input.bounds, to: self)
+            return ["status": "available", "editable": input.isEditable, "interactionEnabled": input.isUserInteractionEnabled,
+                    "focused": input.isFirstResponder, "inputFrame": rect(frame), "activationPoint": ["x": point.x, "y": point.y],
+                    "hitClass": hit.map { String(describing: type(of: $0)) } ?? "none",
+                    "hitWithinInput": hit.map { $0 === input || $0.isDescendant(of: input) } ?? false,
+                    "hitAncestorOfInput": hit.map { input.isDescendant(of: $0) } ?? false, "lastTouch": lastTouch]
+        }
+
+        private func rect(_ value: CGRect) -> [String: CGFloat] {
+            ["x": value.minX, "y": value.minY, "width": value.width, "height": value.height]
         }
 
         private func identity(for input: UITextView?) -> Int? {

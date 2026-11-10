@@ -20,6 +20,7 @@ import {
 
 import * as reminderDiagnostics from './ios-test-reminder-diagnostic.mjs';
 import { executeIosFixtureSession } from './ios-test-fixture-session.mjs';
+import { prepareMedicalDocumentPhoto } from './medical-document-photo-fixture.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
 if (
@@ -149,6 +150,7 @@ try {
             JSON.stringify({ identifier, ...reset }, null, 2) + '\n',
           );
         } else resetIosTestFixtureContainer(profile, owner, app);
+        prepareMedicalDocumentPhoto(profile, owner, identifier);
         lastMode = mode;
         current.setupComplete = true;
         console.log(

@@ -8,9 +8,12 @@ import type {
   RagConversationObserver,
   RagConversationOutcome,
 } from './service';
+import type { DisplayMessage } from './ConversationMessage';
+import type { ConversationSessions } from './conversationSessions';
 
 /** Public screen inputs keep the transcript, source actions, and composer on their existing owners. */
 export interface ConversationScreenProps {
+  readonly discoverManualVisits?: import('../aiFeatures/integration/featureServiceTypes').AiFeatureServices['conversationArtifacts'];
   readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
@@ -26,4 +29,13 @@ export interface ConversationScreenProps {
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly resolveToolSource?: ResolveConversationToolSource;
+  readonly prepareVisitQuestions?: NonNullable<
+    ConversationScreenProps['onSend']
+  >;
+  readonly renderVisitQuestions?: (
+    message: DisplayMessage,
+    sessionId: number,
+    store: ConversationSessions,
+    onRegenerate: () => void,
+  ) => ReactNode;
 }

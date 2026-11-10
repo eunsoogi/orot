@@ -5,6 +5,7 @@ import { AppText as Text } from '../layout/AppText';
 import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
+import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel } from './HomeSummaryPanels';
 import { HomeMetrics } from './home/HomeMetrics';
@@ -100,7 +101,8 @@ const styles = StyleSheet.create({
     gap: hubSpacing.item,
     paddingHorizontal: hubSpacing.horizontal,
     paddingTop: hubSpacing.top,
-    paddingBottom: hubSpacing.bottom,
+    // The outer route scroller already contributes the shared navigation gap.
+    paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
     backgroundColor: appColors.background,
   },
   header: { gap: 8 },

@@ -1,3 +1,4 @@
+import { assignFixtureQuestionIds } from '../testSupport/visitQuestionFixtureIdentity';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
@@ -173,8 +174,9 @@ test.each(['on-device', 'selected-context-remote'] as const)(
       const saved = await saveVisitQuestionRoute(
         {
           appointment: prepared.appointment,
-          questions: result.questions,
+          questions: assignFixtureQuestionIds(result.questions),
           caveats: [],
+          expectedSavedQuestions: [],
           resolveSource: services.resolveSource,
           validateGeneratedArtifact: async (reference, signal) =>
             generated.validate([reference], signal),
@@ -205,6 +207,7 @@ test.each(['on-device', 'selected-context-remote'] as const)(
               ) =>
                 saveReviewedVisitQuestions({
                   appointmentId: prepared.appointment.id,
+                  expectedSavedQuestions: [],
                   expectedAppointmentRevision: localEvidenceFingerprint(
                     prepared.appointment,
                   ),
@@ -219,7 +222,7 @@ test.each(['on-device', 'selected-context-remote'] as const)(
         }),
       );
       expect(saved.questions).toHaveLength(3);
-      const questionId = `visit-question:${prepared.appointment.id}:1`;
+      const questionId = 'synthetic-question-0';
       expect(await records.get('visit_question', questionId)).toMatchObject({
         generatedArtifactSources: expect.arrayContaining([
           expect.objectContaining({

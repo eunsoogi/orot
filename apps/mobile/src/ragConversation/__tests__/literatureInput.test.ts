@@ -72,4 +72,10 @@ test('keeps each publication access limit with its own evidence in the model inp
   expect(ragConversationTask.systemPrompt).toContain(
     'Never infer that full text was read',
   );
+  expect(ragConversationTask.systemPrompt).toContain(
+    'an odds ratio is an odds ratio, not a risk ratio, hazard ratio, absolute risk or percentage increase in risk',
+  );
+  expect(ragConversationTask.systemPrompt).toContain(
+    'Distinguish association from causation',
+  );
 });

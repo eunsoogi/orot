@@ -101,7 +101,7 @@ test('a save paused before persistence cannot re-protect a deleted source', asyn
     ).resolves.toMatchObject({ medicalDocumentCleanupPending: false });
 
     resolveHashLookup(null);
-    await expect(saving).rejects.toMatchObject({ code: 'IMPORT_FAILED' });
+    await expect(saving).rejects.toMatchObject({ code: 'STALE_DOCUMENT' });
     expect(repository.transaction).not.toHaveBeenCalled();
     await expect(getProtectedMedicalDocumentSourceIds()).resolves.toEqual([]);
     const nativeReconcile =

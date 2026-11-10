@@ -2,8 +2,42 @@ import Foundation
 @testable import Orot
 import XCTest
 
+/// Preserve the exact FileManager assertion when present and verify absent metadata through a fresh URL.
+func assertMedicalDocumentCompleteProtection(_ url: URL) throws {
+    let raw = try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey]
+    if let raw {
+        XCTAssertEqual(raw as? FileProtectionType, .complete)
+    } else {
+        XCTAssertEqual(try URL(fileURLWithPath: url.path).resourceValues(forKeys: [.fileProtectionKey]).fileProtection, .complete)
+    }
+}
+
 /// Verifies recovery preserves a retained original before duplicate cleanup can run.
 final class MedicalDocumentFileOperationsTests: XCTestCase {
+    /// Requires actual protected-directory and file readback, including Simulator's URL metadata path.
+    func testProtectedSyntheticOriginalUsesCompleteProtectionAndExcludesBackup() throws {
+        let root = temporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = MedicalDocumentFileStore(rootDirectory: root)
+        let id = UUID().uuidString.lowercased()
+        try store.store(data: Data("Synthetic".utf8), identifier: id, fileExtension: "txt")
+        for url in [root, root.appendingPathComponent("\(id).txt")] {
+            let values = try url.resourceValues(forKeys: [.fileProtectionKey, .isExcludedFromBackupKey])
+            XCTAssertEqual(values.fileProtection, .complete)
+            XCTAssertEqual(values.isExcludedFromBackup, true)
+        }
+    }
+
+    /// A known weaker FileManager value must never enter the missing-metadata fallback.
+    func testKnownWeakerProtectionIsRejected() throws {
+        let root = temporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let manager = FailureInjectingFileManager()
+        manager.reportWeakerProtection = true
+        XCTAssertThrowsError(try MedicalDocumentFileStore(fileManager: manager, rootDirectory: root).protect(root))
+    }
+
     func testDuplicateSourceRecoveryRestoresMissingCanonicalOriginal() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -23,10 +57,14 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
         let retained = root.appendingPathComponent("\(retainedID).txt")
         XCTAssertEqual(try Data(contentsOf: retained), bytes)
         XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("\(stagedID).txt")), bytes)
-        XCTAssertEqual(
-            try FileManager.default.attributesOfItem(atPath: retained.path)[.protectionKey] as? FileProtectionType,
-            .complete,
-        )
+        let protection = try FileManager.default.attributesOfItem(atPath: retained.path)[.protectionKey]
+        if let protection {
+            XCTAssertEqual(protection as? FileProtectionType, .complete)
+        } else {
+            // Simulator can omit FileManager metadata; require a fresh, exact URL value instead.
+            let freshURL = URL(fileURLWithPath: retained.path)
+            XCTAssertEqual(try freshURL.resourceValues(forKeys: [.fileProtectionKey]).fileProtection, .complete)
+        }
         XCTAssertTrue(try retained.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
     }
 
@@ -163,9 +201,18 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
 }
 
 private final class FailureInjectingFileManager: FileManager {
+    var reportWeakerProtection = false
     var failRecoveryCopy = false
     var failProtectionPath: String?
     var failInstallationPath: String?
+
+    override func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any] {
+        var attributes = try super.attributesOfItem(atPath: path)
+        if reportWeakerProtection {
+            attributes[.protectionKey] = FileProtectionType.none
+        }
+        return attributes
+    }
 
     override func copyItem(at sourceURL: URL, to destinationURL: URL) throws {
         if failRecoveryCopy, destinationURL.lastPathComponent.hasPrefix(".recovery-") {

@@ -79,9 +79,24 @@ export async function createSourceDeletionIntegrity(transaction: SqlExecutor): P
       continue;
     const table = definition.table;
     const dependencyPredicate = sourceDeletionDependencyPredicate(kind, table, 'OLD.id');
+    if (kind === 'visit_question') {
+      // Fence dependent official identities before deleting their prepared question.
+      await transaction.execute(
+        'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
+      );
+    }
+    const fenceOfficial =
+      kind === 'visit_question'
+        ? `
+         INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
+         SELECT official.id FROM visit_question_records AS official
+         JOIN visit_questions ON visit_questions.id = json_extract(official.payload_json, '$.questionId')
+         WHERE ${dependencyPredicate};`
+        : '';
     await transaction.execute(
       `CREATE TRIGGER IF NOT EXISTS source_records_delete_${table}_dependencies
        BEFORE DELETE ON source_records BEGIN
+         ${fenceOfficial}
          INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
          SELECT id FROM ${table} WHERE ${dependencyPredicate};
          DELETE FROM ${table} WHERE ${dependencyPredicate};

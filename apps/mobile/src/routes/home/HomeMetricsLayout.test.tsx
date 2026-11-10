@@ -123,8 +123,8 @@ test.each([2, 3, 4])(
       nativeEvent: { layout: { width: 348, height: 600, x: 0, y: 0 } },
     });
 
-    expect(selection.map(cardWidth)).toEqual(Array(count).fill(170));
-    expect(170 * 2 + 8).toBe(348);
+    // An ordinary iPhone's measured content must keep each metric on its own row.
+    expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
       expect(
         within(screen.getByTestId(`home-metric-${metric}`)).getAllByText(
@@ -150,7 +150,12 @@ test('reflows measured card widths on resize and large text changes', async () =
   await fireEvent(metricGrid(), 'layout', {
     nativeEvent: { layout: { width: 348, height: 600, x: 0, y: 0 } },
   });
-  expect(cardWidth('sleep')).toBe(170);
+  expect(cardWidth('sleep')).toBe(348);
+
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 648, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(320);
 
   dimensions.mockReturnValue({
     width: 390,
@@ -159,12 +164,20 @@ test('reflows measured card widths on resize and large text changes', async () =
     fontScale: 1.25,
   });
   await rerender(<HomeMetrics />);
-  expect(cardWidth('sleep')).toBe(348);
+  expect(cardWidth('sleep')).toBe(648);
 
   await fireEvent(metricGrid(), 'layout', {
     nativeEvent: { layout: { width: 600, height: 600, x: 0, y: 0 } },
   });
-  expect(cardWidth('sleep')).toBe(296);
+  expect(cardWidth('sleep')).toBe(600);
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 808, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(400);
+  await fireEvent(metricGrid(), 'layout', {
+    nativeEvent: { layout: { width: 440, height: 600, x: 0, y: 0 } },
+  });
+  expect(cardWidth('sleep')).toBe(440);
 });
 
 test.each([

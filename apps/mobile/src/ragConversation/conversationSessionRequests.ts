@@ -4,9 +4,10 @@ import {
   conversationHistoryPayload,
   retainedHistoryTurns,
 } from './conversationHistoryPayload';
+import { conversationCompletedAnswer } from './conversationCompletedAnswer';
+import { observeSummaryCommit } from './conversationSummaryCommit';
 import type { createConversationSessionRetention } from './conversationSessionRetention';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
-import { conversationOutcomeText } from './conversationOutcomeText';
 import {
   retainPartial as retainFailedPartial,
   restoreFailedPrompt,
@@ -16,10 +17,6 @@ import type {
   ConversationSender,
   ConversationSession,
   PendingTurn,
-} from './conversationSessionTypes';
-export type {
-  ConversationSender,
-  ConversationSession,
 } from './conversationSessionTypes';
 
 /** Owns request lifetime and prevents late results from clearing a newer retry. */
@@ -56,7 +53,11 @@ export function createConversationSessionRequests(
     controller.abort();
     activities.get(id)?.finish('cancelled');
     // A database commit may already have won; wait for that write's outcome.
-    if (turn?.saving && !settled) return;
+    if (
+      (turn?.saving || turn?.summarySaving || turn?.summaryCommitted) &&
+      !settled
+    )
+      return;
     controllers.delete(id);
     pendingTurns.delete(id);
     update(id, { artifactContinuation: null });
@@ -119,6 +120,8 @@ export function createConversationSessionRequests(
         userMessageId,
         saving: false,
         committed: false,
+        summarySaving: false,
+        summaryCommitted: false,
       };
       pendingTurns.set(id, request);
       const messagesWithoutRetry = session.messages.filter(
@@ -171,11 +174,15 @@ export function createConversationSessionRequests(
           onArtifactContinuation(value) {
             if (current()) update(id, { artifactContinuation: value });
           },
+          ...observeSummaryCommit(request),
           ...activity.observer,
         });
         if (
           !current() &&
-          !(controllers.get(id) === controller && request.committed)
+          !(
+            controllers.get(id) === controller &&
+            (request.committed || request.summaryCommitted)
+          )
         )
           return;
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
@@ -194,27 +201,16 @@ export function createConversationSessionRequests(
           );
           return;
         }
-        update(id, {
-          pendingMessage: null,
-          messages: [
-            ...find(id).messages,
-            {
-              // Reuse the streamed bubble only after the workflow validates its final answer.
-              id: outcome.status === 'answer' ? responseId : ++messageId,
-              role: 'assistant',
-              content: conversationOutcomeText(outcome),
-              ...activity.metadata(),
-              ...(request.committed && retained
-                ? { retainedTurnId: retained.toolMessageId }
-                : {}),
-              ...(outcome.status === 'answer'
-                ? {
-                    citations: outcome.citations,
-                    completion: outcome.completion,
-                  }
-                : {}),
-            },
-          ],
+        conversationCompletedAnswer({
+          id,
+          messageId: outcome.status === 'answer' ? responseId : ++messageId,
+          copy,
+          outcome,
+          activity,
+          retainedTurnId:
+            request.committed && retained ? retained.toolMessageId : undefined,
+          find,
+          update,
         });
       } catch {
         if (current()) {
@@ -233,7 +229,11 @@ export function createConversationSessionRequests(
         await activity?.flush();
         if (activities.get(id) === activity) activities.delete(id);
         if (controllers.get(id) === controller) {
-          if (controller.signal.aborted && !request.committed) {
+          if (
+            controller.signal.aborted &&
+            !request.committed &&
+            !request.summaryCommitted
+          ) {
             cancel(id, true);
             return;
           }

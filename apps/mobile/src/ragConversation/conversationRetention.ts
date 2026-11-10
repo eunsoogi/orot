@@ -1,5 +1,6 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from './conversationArtifactSources';
+import type { HealthSummaryReference } from './healthSummary';
 
 /** Private candidate: persistent identities remain on-device and never enter a model request. */
 export interface ConversationRetentionCandidate {
@@ -17,6 +18,8 @@ export interface ConversationRetentionCandidate {
   readonly status?: 'complete' | 'partial';
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations: readonly EvidenceReference[];
+  readonly healthSummary?: HealthSummaryReference;
+  readonly visitQuestions?: import('./conversationVisitQuestionReference').ConversationVisitQuestionReference;
 }
 
 /** Retrying source capture revalidates the original answer without rerunning the model. */

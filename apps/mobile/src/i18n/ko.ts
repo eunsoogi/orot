@@ -12,6 +12,7 @@ import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
 import { appointmentActionsKo } from './appointmentActionsKo';
+import { medicalDocumentSaveErrorsKo } from './medicalDocumentSaveErrors';
 
 export const ko = {
   ...homeOverviewKo,
@@ -53,7 +54,7 @@ export const ko = {
   'records.recordings': '진료 녹음',
   'records.savedRecordingsSummary': '녹음과 전사 내용을 확인해요.',
   'records.healthRecords': '가져온 건강 기록',
-  'medicalDocument.import.title': '의료 문서 가져오기',
+  'medicalDocument.import.title': '파일에서 의료 문서 가져오기',
   'medicalDocument.import.photos': '사진에서 의료 문서 가져오기',
   'medicalDocument.import.photosSummary':
     '선택한 사진의 글자를 기기에서 읽어요.',
@@ -245,4 +246,5 @@ export const ko = {
   ...providerAccountsKo,
   ...healthRecordsKo,
   ...healthkitSettingsKo,
+  ...medicalDocumentSaveErrorsKo,
 } as const;

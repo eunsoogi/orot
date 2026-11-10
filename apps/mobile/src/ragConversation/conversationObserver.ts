@@ -20,6 +20,9 @@ export type RagConversationObserver = Pick<
   readonly onArtifactContinuation?: (
     value: ArtifactContinuation | null,
   ) => void;
+  /** Summary and conversation commits are independent; cancellation waits for the summary write. */
+  readonly onSummarySaveStart?: () => void;
+  readonly onSummarySaveSettled?: (committed: boolean) => void;
   /** Resolution means the atomic retention commit won even if cancellation arrived afterward. */
   readonly onRetentionCandidate?: (
     candidate: ConversationRetentionCandidate,

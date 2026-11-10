@@ -17,6 +17,10 @@ import type { AiFeatureServices } from './featureServices';
 import type { SelectedAiResolution } from './provider';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
+import { useColorScheme } from 'react-native';
+import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
+import { ConversationVisitQuestionCard } from './ConversationVisitQuestionCard';
+import { defaultVisitQuestionRouteOperations } from './visitQuestionsRouteOperations';
 
 export interface VisitQuestionsRenderInput {
   readonly readOnly?: boolean;
@@ -107,6 +111,7 @@ export function AiFeatureFlowScreen({
   );
   const intent = conversationIntentForRoute(route);
   const reminderRuntime = useAppointmentReminderRuntime();
+  const colorScheme = useColorScheme();
   // Navigation prepares a request; only an explicit Send can start inference or consent.
   const conversation = (
     <ConversationScreen
@@ -125,6 +130,32 @@ export function AiFeatureFlowScreen({
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
       resolveToolSource={services.resolveToolSource}
+      discoverManualVisits={services.conversationArtifacts}
+      prepareVisitQuestions={
+        services.prepareVisitQuestionTurn
+          ? (question, _history, signal, observer, context) =>
+              services.prepareVisitQuestionTurn!({
+                question,
+                context,
+                signal: signal ?? new AbortController().signal,
+                observer,
+                resolveSelectedAi,
+                confirmConsent,
+              })
+          : undefined
+      }
+      renderVisitQuestions={(message, sessionId, store, onRegenerate) => (
+        <ConversationVisitQuestionCard
+          message={message}
+          sessionId={sessionId}
+          store={store}
+          operations={defaultVisitQuestionRouteOperations}
+          services={services}
+          onOpenSource={onOpenSource}
+          theme={createNextVisitQuestionsTheme(colorScheme === 'dark')}
+          onRegenerate={onRegenerate}
+        />
+      )}
     />
   );
   if (intent !== null) return conversation;

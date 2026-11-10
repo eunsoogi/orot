@@ -15,6 +15,8 @@ import {
   type NavigationGlassSurfaceProps,
 } from './NavigationGlassSurface';
 import { settleNavigationRequest } from './nativeNavigationActions';
+import * as menuObservation from './navigationTestObservation';
+import { navigationPageOverflowAction } from './navigationPageOverflowAction';
 import {
   splitMeasuredPageActions,
   splitPageActions,
@@ -118,6 +120,11 @@ export function NavigationPageActionDock({
     settleNavigationRequest(Promise.resolve(action.onPress()));
   };
   const showOverflow = () => {
+    menuObservation.observePageMenuAttempt(
+      routeKey,
+      current.current,
+      alive.current,
+    );
     if (
       !alive.current ||
       current.current.routeKey !== routeKey ||
@@ -126,6 +133,7 @@ export function NavigationPageActionDock({
       return;
     const names = overflow.map(action => action.label);
     sheetOpen.current = true;
+    menuObservation.observeNavigationTest('menu-show-request', { routeKey });
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: [...names, navigationText.closeActionMenu],
@@ -141,14 +149,7 @@ export function NavigationPageActionDock({
       },
     );
   };
-  const more: NavigationRouteAction = {
-    id: 'overflow',
-    label: '더 보기',
-    accessibilityLabel: '화면 동작 더 보기',
-    testID: 'navigation-page-action-overflow',
-    systemImageName: 'ellipsis',
-    onPress: showOverflow,
-  };
+  const more = navigationPageOverflowAction(showOverflow);
   const shown = overflow.length ? [...visible, more] : visible;
   const describe = (action: NavigationRouteAction): NavigationGlassAction => ({
     id: `page:${action.id}`,

@@ -34,11 +34,17 @@ export type MedicalDocumentImportErrorCode =
   | 'EMPTY_DOCUMENT'
   | 'FILE_PROTECTION_UNAVAILABLE'
   | 'CLEANUP_FAILED'
+  | 'SAVE_FAILED'
+  | 'STALE_DOCUMENT'
+  | 'DUPLICATE_RECOVERY_FAILED'
   | 'NATIVE_UNAVAILABLE'
   | 'IMPORT_FAILED';
 
 export class MedicalDocumentImportError extends Error {
-  constructor(readonly code: MedicalDocumentImportErrorCode) {
+  constructor(
+    readonly code: MedicalDocumentImportErrorCode,
+    readonly originalError?: unknown,
+  ) {
     super(code);
     this.name = 'MedicalDocumentImportError';
   }
