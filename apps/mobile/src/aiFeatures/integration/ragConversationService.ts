@@ -27,6 +27,7 @@ import {
   loadConversationHistory,
 } from './conversationHistorySources';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
+import { guardHistory } from './conversationHistoryProviderGuard';
 
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
@@ -197,7 +198,11 @@ export function createRagConversationService({
           readHistoricalArtifact: (reference, readSignal) =>
             registry.readSource(reference, readSignal),
           workflow: {
-            ...execution,
+            ...guardHistory(
+              execution,
+              historyIsCurrent,
+              !!history.references.length,
+            ),
             execution: {
               ...execution.execution,
               budget: budgetAfterPublicSearch(
