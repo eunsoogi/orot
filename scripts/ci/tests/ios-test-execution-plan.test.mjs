@@ -46,11 +46,15 @@ test('independent feature suites have distinct jobs and preserve all registered 
   );
   // Debug shares six import journeys with Release, while the full graph schedules each case once.
   const uniqueOriginal = [...new Set(original)];
-  assert.equal(original.length, 198);
-  assert.equal(uniqueOriginal.length, 192);
+  assert.equal(original.length, 203);
+  assert.equal(uniqueOriginal.length, 197);
   assert.equal(actual.length, uniqueOriginal.length);
   assert.equal(new Set(actual).size, actual.length);
   assert.deepEqual(actual.slice().sort(), uniqueOriginal.slice().sort());
+  const toolEvents =
+    'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets';
+  assert.equal(original.filter((identifier) => identifier === toolEvents).length, 1);
+  assert.equal(actual.filter((identifier) => identifier === toolEvents).length, 1);
 });
 
 test('Questions partitions complete stateful cases into five independently scheduled jobs', () => {
@@ -72,7 +76,15 @@ test('Questions partitions complete stateful cases into five independently sched
     identifiers.slice().sort(),
     iosTestCohortTasks('questions')[0].identifiers.slice().sort(),
   );
-  assert.equal(new Set(identifiers).size, 12);
+  assert.equal(new Set(identifiers).size, 13);
+  assert.equal(
+    identifiers.filter(
+      (identifier) =>
+        identifier ===
+        'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+    ).length,
+    1,
+  );
   assert.equal(
     identifiers.filter(
       (id) =>

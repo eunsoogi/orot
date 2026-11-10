@@ -40,6 +40,7 @@ test.each([
       await records.put('appointment', appointment);
       await saveReviewedVisitQuestions({
         appointmentId: appointment.id,
+        expectedSavedQuestions: [],
         expectedAppointmentRevision: localEvidenceFingerprint(appointment),
         questions: [{ ...candidate, citations: [childCitation] }],
         evidence: {
@@ -66,7 +67,7 @@ test.each([
         now,
         revalidateEvidence: async () => true,
       });
-      const questionId = 'visit-question:appointment-1:1';
+      const questionId = 'synthetic-question-1';
       expect(await records.get('visit_question', questionId)).not.toBeNull();
       if (root === 'conversation')
         await conversations.deleteSession('parent-session');

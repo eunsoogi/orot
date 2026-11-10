@@ -6,6 +6,7 @@ import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
 import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
+import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 
 interface SettingsRouteProps {
@@ -164,7 +165,8 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 28,
+    // The outer route scroller already supplies the navigation gap.
+    paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 18 },

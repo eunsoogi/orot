@@ -12,6 +12,7 @@ const GeneratedArtifactSourceSchema = z
     type: z.enum([
       'symptom_summary',
       'disease_possibilities',
+      'daily_report',
       'conversation_turn',
       'research_publication',
       'research_web_explanation',
@@ -22,7 +23,9 @@ const GeneratedArtifactSourceSchema = z
   .refine(
     (source) =>
       (source.kind === 'generated_summary' &&
-        (source.type === 'symptom_summary' || source.type === 'disease_possibilities')) ||
+        (source.type === 'symptom_summary' ||
+          source.type === 'disease_possibilities' ||
+          source.type === 'daily_report')) ||
       (source.kind === 'generated_conversation' && source.type === 'conversation_turn') ||
       (source.kind === 'generated_research' &&
         (source.type === 'research_publication' || source.type === 'research_web_explanation')),

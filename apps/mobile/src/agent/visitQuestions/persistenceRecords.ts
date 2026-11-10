@@ -71,7 +71,7 @@ export function createReviewedVisitQuestionRecord(input: {
 
   // The local app has no user account ID; this marks an explicit on-device human review.
   return VisitQuestionCreateSchema.parse({
-    id: `visit-question:${input.appointmentId}:${input.position}`,
+    id: input.question.identity!.id,
     effectiveAt: input.appointment.effectiveAt,
     recordedAt: input.now,
     ingestedAt: input.now,

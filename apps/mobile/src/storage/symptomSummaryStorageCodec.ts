@@ -64,7 +64,7 @@ export function decodeSavedSymptomSummary(
         const ref = source.reference;
         const expectedTypes =
           source.kind === 'generated_summary'
-            ? ['symptom_summary', 'disease_possibilities']
+            ? ['symptom_summary', 'disease_possibilities', 'daily_report']
             : source.kind === 'generated_conversation'
               ? ['conversation_turn']
               : ['research_publication', 'research_web_explanation'];

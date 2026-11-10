@@ -106,7 +106,13 @@ test('rolls a failed period dependency insert back together with replacement of 
     await f.database.execute(
       "CREATE TRIGGER period_insert_failure BEFORE INSERT ON visit_question_periods BEGIN SELECT RAISE(ABORT, 'synthetic dependency failure'); END",
     );
-    await expect(f.save()).rejects.toThrow('synthetic dependency failure');
+    await expect(
+      f.save({
+        questions: [
+          { ...f.question, rationale: '다른 이유로 기록을 확인해요.' },
+        ],
+      }),
+    ).rejects.toThrow('synthetic dependency failure');
     expect(await f.records.list('visit_question')).toHaveLength(1);
     expect(
       (

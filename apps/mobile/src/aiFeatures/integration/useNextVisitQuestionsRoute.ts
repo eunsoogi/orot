@@ -202,6 +202,10 @@ export function useNextVisitQuestionsRoute(
       currentAppointment: Appointment,
       questions: readonly NextVisitQuestion<VisitQuestionEvidenceItem>[],
       caveats: readonly EvidenceCaveat[],
+      expectedSavedQuestions: readonly {
+        readonly id: string;
+        readonly revision: string;
+      }[],
     ): Promise<SaveReviewedQuestionsResult<VisitQuestionEvidenceItem>> => {
       setSaveNotice('');
       try {
@@ -209,6 +213,7 @@ export function useNextVisitQuestionsRoute(
           appointment: currentAppointment,
           questions,
           caveats,
+          expectedSavedQuestions,
           resolveSource,
           validateGeneratedArtifact: captureValidator() ?? undefined,
         });

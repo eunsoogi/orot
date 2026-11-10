@@ -7,11 +7,14 @@ import { captureConversationToolSources } from './captureConversationToolSources
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
 import { fingerprint } from './evidenceUtils';
 import { bindLiveConversationToolSources } from './bindLiveConversationToolSources';
+import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
+import type { AiFeatureServices } from './featureServices';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }): ConversationSessionOptions {
   let recovered: Promise<void> | undefined;
   const openStorage = async () => {
@@ -100,16 +103,36 @@ export function createConversationSessionOptions(input: {
           fingerprint(savedToolTurns)
       )
         throw new Error('Conversation content changed during restoration.');
-      const restored = turns.reverse().map(turn => ({
-        question: turn.question,
-        answer: turn.answer,
-        citations: turn.citations,
-        completion: turn.status,
-        toolMessageId: turn.id,
-        toolEvents:
-          toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
-            ?.toolEvents ?? [],
-      }));
+      const restored = await Promise.all(
+        turns.reverse().map(async turn => {
+          const visitQuestions =
+            turn.visitQuestions && input.loadSavedVisitQuestions
+              ? await restoreConversationVisitQuestions({
+                  appointmentId: turn.visitQuestions.appointmentId,
+                  candidates: turn.visitQuestions.candidates,
+                  ownerKey: `${sessionId}:${turn.id}`,
+                  loadSaved: input.loadSavedVisitQuestions,
+                  registry: input.registry,
+                  signal,
+                })
+              : undefined;
+          return {
+            question: turn.question,
+            answer: turn.answer,
+            citations: turn.citations,
+            completion: turn.status,
+            toolMessageId: turn.id,
+            toolEvents:
+              toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
+                ?.toolEvents ?? [],
+            ...(visitQuestions
+              ? { visitQuestions }
+              : turn.visitQuestions
+                ? { visitQuestionsUnavailable: true }
+                : {}),
+          };
+        }),
+      );
       // Interrupted tool-only turns have no validated prose, but remain visible and never running.
       for (const turn of toolTurns)
         if (!restored.some(item => item.toolMessageId === turn.messageId))
@@ -121,6 +144,12 @@ export function createConversationSessionOptions(input: {
             toolMessageId: turn.messageId,
             toolEvents: turn.toolEvents,
           });
+      // Visit restoration performs additional reads; recheck the session after those reads too.
+      if (
+        signal.aborted ||
+        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+      )
+        throw new Error('Conversation content changed during restoration.');
       const times = new Map([
         ...turns.map(turn => [turn.id, turn.createdAt] as const),
         ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),

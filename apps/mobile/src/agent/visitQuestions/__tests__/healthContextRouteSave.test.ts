@@ -60,6 +60,7 @@ async function routeFixture(detail: 'weekly' | 'daily') {
         appointment: f.prepared.appointment,
         questions: [{ ...f.question, questionText: text, citations: [item] }],
         caveats: [],
+        expectedSavedQuestions: [],
         resolveSource: () => item,
       },
       async () => ({

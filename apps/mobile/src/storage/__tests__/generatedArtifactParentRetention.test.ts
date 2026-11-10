@@ -93,11 +93,13 @@ test.each(['delete', 'invalidate', 'correct', 'upgrade'] as const)(
       const remember = jest.fn(async () => undefined);
       await saveReviewedVisitQuestions({
         appointmentId: appointment.id,
+        expectedSavedQuestions: [],
         expectedAppointmentRevision: localEvidenceFingerprint(appointment),
         questions: [
           { ...candidate, citations: [citation] },
           {
             ...candidate,
+            identity: { id: 'synthetic-question-2' },
             questionText: '다른 질문도 확인할까요?',
             citations: [citation],
           },
@@ -127,7 +129,7 @@ test.each(['delete', 'invalidate', 'correct', 'upgrade'] as const)(
         now,
         revalidateEvidence: async () => true,
       });
-      const questionId = 'visit-question:appointment-1:1';
+      const questionId = 'synthetic-question-1';
       expect(await records.get('visit_question', questionId)).toMatchObject({
         generatedArtifactSources: [
           { kind: 'generated_summary', id: 'parent-summary', revision },
@@ -172,7 +174,7 @@ test.each(['delete', 'invalidate', 'correct', 'upgrade'] as const)(
       }
       expect(await records.get('visit_question', questionId)).toBeNull();
       expect(
-        await records.get('visit_question', 'visit-question:appointment-1:2'),
+        await records.get('visit_question', 'synthetic-question-2'),
       ).toBeNull();
       expect(
         (
