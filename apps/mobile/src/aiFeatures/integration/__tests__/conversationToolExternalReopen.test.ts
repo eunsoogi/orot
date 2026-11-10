@@ -15,6 +15,7 @@ import { createResearchInputTracker } from '../researchInputTracker';
 import { captureConversationToolSources } from '../captureConversationToolSources';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
+import { expectUnavailableConversationToolSource } from '../testSupport/conversationToolSourceFailureAssertion';
 
 const at = '2026-11-06T00:00:00.000Z';
 const externalWeb = {
@@ -33,6 +34,8 @@ const externalPaper = {
   evidenceId: 'MED:123',
   evidenceRevision: `retrieved:${at}`,
 };
+
+afterEach(() => jest.restoreAllMocks());
 
 test.each([
   ['web', externalWeb, 'remove'],
@@ -195,6 +198,14 @@ test.each([
             id!,
           ],
         );
+      if (!turn!.toolMessageId || !turn!.toolEvents)
+        throw new Error('Expected restored tool event identity.');
+      await expectUnavailableConversationToolSource({
+        toolMessageId: turn!.toolMessageId,
+        toolEvents: turn!.toolEvents,
+        resolveToolSource: (reference, signal, scope) =>
+          fresh.resolveToolSource(reference, signal, scope),
+      });
       expect(
         await fresh.resolveToolSource(source, new AbortController().signal, {
           operationRunId: 'run',
