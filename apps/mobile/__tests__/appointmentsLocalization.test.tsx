@@ -49,13 +49,15 @@ test('localizes appointment list errors and retry', async () => {
     .mockResolvedValueOnce([]);
   await render(<AppointmentsScreen repository={store.repository} />);
 
-  expect(await screen.findByTestId('appointment-error')).toHaveTextContent(
+  expect(await screen.findByRole('alert')).toHaveTextContent(
     '예약을 불러오지 못했어요. 다시 시도해 주세요.',
   );
+  expect(screen.queryByTestId('appointments-empty')).toBeNull();
   await fireEvent.press(screen.getByTestId('appointments-retry'));
   expect(await screen.findByTestId('appointments-empty')).toHaveTextContent(
     '등록된 예약이 없어요.',
   );
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 test('shows localized validation messages without storing invalid input', async () => {
