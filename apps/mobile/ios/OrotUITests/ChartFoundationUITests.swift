@@ -78,11 +78,12 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         XCTAssertEqual(page.label, "1 / 3쪽")
         let started = Date()
         next.tap()
-        XCTAssertEqual(page.label, "2 / 3쪽")
+        // React commits the page update after the native tap returns.
+        UITestConditions.value(page, equals: "2 / 3쪽")
         print("CHART_PAGE_TAP_SECONDS \(Date().timeIntervalSince(started))")
         XCTAssertTrue(next.exists && next.isHittable, next.debugDescription)
         next.tap()
-        XCTAssertEqual(page.label, "3 / 3쪽")
+        UITestConditions.value(page, equals: "3 / 3쪽")
 
         let outlier = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "199회/분")).firstMatch
         UITestConditions.scrollTo(outlier, in: scroll)
