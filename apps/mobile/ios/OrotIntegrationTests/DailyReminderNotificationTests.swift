@@ -47,6 +47,7 @@ final class DailyReminderNotificationTests: XCTestCase {
         _ = await scheduler.save(preference)
         XCTAssertEqual(center.requests.count, 1)
         let request = try XCTUnwrap(center.requests[DailyReminderNotifications.requestIdentifier])
+        XCTAssertEqual(request.content.body, "오늘의 기록을 확인해 보세요.")
         XCTAssertEqual(request.content.userInfo as? [String: String], ["kind": "daily_report"])
         let trigger = try XCTUnwrap(request.trigger as? UNCalendarNotificationTrigger)
         XCTAssertTrue(trigger.repeats)

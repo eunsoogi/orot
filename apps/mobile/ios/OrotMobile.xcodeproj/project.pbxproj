@@ -207,6 +207,7 @@
 		BCAE2214CE9B75820591561B /* SettingsBackupDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		A11200000000000000000005 /* ReminderCopy.strings in Resources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000005 /* ReminderCopy.strings */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
 		B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
 		B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */; };
@@ -341,6 +342,7 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = OrotMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = OrotMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B11200000000000000000005 /* ReminderCopy.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ReminderCopy.strings; path = OrotMobile/ReminderCopy.strings; sourceTree = "<group>"; };
 		17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingFixtureUITestConditions.swift; sourceTree = "<group>"; };
 		193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.release.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.release.xcconfig"; sourceTree = "<group>"; };
 		1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RenderedTextUITestConditions.swift; sourceTree = "<group>"; };
@@ -749,6 +751,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				B11200000000000000000005 /* ReminderCopy.strings */,
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F94600000000000000000002 /* MenuPresentationTestObservation.swift */,
@@ -1149,6 +1152,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */,
+				A11200000000000000000005 /* ReminderCopy.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
