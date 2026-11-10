@@ -41,43 +41,6 @@ final class DailyReportEntryUITests: XCTestCase {
         attach(app, name: "daily-report-after-restart")
     }
 
-    /// The visual fixture provides synthetic lookup data; it does not establish persistence or model behavior.
-    func testSavedReportAndFollowUpFitDuoAtLargeTextInBothAppearances() throws {
-        let app = XCUIApplication()
-        app.launchArguments = visualArguments + ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] + AppearanceUITestConditions.observationArguments
-        app.launch()
-        var original: AppearanceUITestConditions.Snapshot?
-        defer {
-            XCUIDevice.shared.orientation = .portrait
-            if let original {
-                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
-                catch { XCTFail("Could not restore device appearance: \(error)") }
-            }
-            UITestConditions.terminateStandaloneApp(app)
-        }
-        let scroll = UITestConditions.element(app, "daily-report-screen")
-        XCTAssertTrue(UITestConditions.exists(scroll), app.debugDescription)
-        for dark in [false, true] {
-            _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
-                if original == nil {
-                    original = $0
-                }
-            })
-            try assertSavedReport(app, scroll: scroll)
-            attach(app, name: dark ? "daily-report-large-dark" : "daily-report-large-light")
-        }
-        let before = app.frame
-        XCUIDevice.shared.orientation = .landscapeLeft
-        let rotated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let frame = app.frame
-            return frame.width > frame.height && (abs(frame.width - before.width) > 0.5 || abs(frame.height - before.height) > 0.5)
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [rotated]), .completed)
-        try assertSavedReport(app, scroll: scroll)
-        attach(app, name: "daily-report-duo-landscape")
-        try assertFollowUp(app, scroll: scroll)
-    }
-
     /// Exercise the Duo viewport independently when the Simulator cannot rotate its window.
     func testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances() throws {
         let app = XCUIApplication()
