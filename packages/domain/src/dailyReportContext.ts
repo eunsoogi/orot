@@ -163,11 +163,15 @@ export const DailyReportContextSchema = z
         });
       }
       const { startInclusive, endExclusive } = record.occurrence;
-      const overlaps = endExclusive
-        ? compareTimestamps(startInclusive, effectiveCutoff) < 0 &&
-          compareTimestamps(endExclusive, interval.fromInclusive) > 0
-        : compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
-          compareTimestamps(startInclusive, effectiveCutoff) < 0;
+      // A zero-length available window cannot include a cross-midnight occurrence.
+      const hasAvailableWindow = compareTimestamps(effectiveCutoff, interval.fromInclusive) > 0;
+      const overlaps =
+        hasAvailableWindow &&
+        (endExclusive
+          ? compareTimestamps(startInclusive, effectiveCutoff) < 0 &&
+            compareTimestamps(endExclusive, interval.fromInclusive) > 0
+          : compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
+            compareTimestamps(startInclusive, effectiveCutoff) < 0);
       if (!overlaps) {
         context.addIssue({
           code: 'custom',

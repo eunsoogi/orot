@@ -157,7 +157,7 @@ test('requires the actual generation cutoff and source revisions to match the sn
   ).toBe(false);
 });
 
-test('rejects records outside the requested day and empty coverage without a successful read', () => {
+test('rejects records outside the available day window and empty coverage without a successful read', () => {
   const value = contextFixture();
   expect(
     DailyReportContextSchema.safeParse({
@@ -173,6 +173,22 @@ test('rejects records outside the requested day and empty coverage without a suc
       },
     }).success,
   ).toBe(false);
+  const emptyMidnightWindow = {
+    ...value,
+    generationCutoff: '2026-11-09T15:00:00.000Z',
+    effectiveCutoff: '2026-11-09T15:00:00.000Z',
+    sourceSnapshot: {
+      ...value.sourceSnapshot,
+      records: [
+        {
+          ...value.sourceSnapshot.records[0],
+          ingestedAt: '2026-11-09T15:00:00.000Z',
+        },
+      ],
+      coverage: [],
+    },
+  };
+  expect(DailyReportContextSchema.safeParse(emptyMidnightWindow).success).toBe(false);
   expect(
     DailyReportContextSchema.safeParse({
       ...value,
