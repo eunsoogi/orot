@@ -27,12 +27,14 @@ final class ChartConsumerAcceptanceUITests: OrotFailFastTestCase {
         let chart = UITestConditions.element(app, "home-metric-chart-sleep")
         XCTAssertTrue(chart.exists, app.debugDescription)
         // Scope the shared guidance to this card; the other Home metric has the same text.
-        let listNotice = chart.staticTexts.matching(identifier: "큰 글자에서는 아래 목록으로 값을 확인하세요.").firstMatch
+        let notice = NSPredicate(format: "label == %@", "큰 글자에서는 아래 목록으로 값을 확인하세요.")
+        let listNotice = try XCTUnwrap(HomeMetricGeometryConditions.texts(matching: notice, in: chart, app: app).first)
         let scroll = homeScroll.scrollViews.firstMatch
         XCTAssertTrue(scroll.exists)
         UITestConditions.scrollTo(listNotice, in: scroll)
         XCTAssertTrue(listNotice.exists && listNotice.isHittable, app.debugDescription)
-        let value = chart.staticTexts.matching(NSPredicate(format: "label MATCHES %@", #"\d{4}-\d{2}-\d{2}: [0-9].*출처:.*"#)).firstMatch
+        let recorded = NSPredicate(format: "label MATCHES %@", #"\d{4}-\d{2}-\d{2}: [0-9].*출처:.*"#)
+        let value = try XCTUnwrap(HomeMetricGeometryConditions.texts(matching: recorded, in: chart, app: app).first)
         UITestConditions.scrollTo(value, in: scroll)
         XCTAssertTrue(value.exists && value.isHittable, value.debugDescription)
         let screenshot = XCTAttachment(screenshot: app.screenshot())

@@ -91,8 +91,8 @@ enum HomeMetricGeometryConditions {
         let summary = UITestConditions.element(app, "home-metric-summary-\(metric)")
         XCTAssertFalse(summary.label.isEmpty)
         let chart = UITestConditions.element(app, "home-metric-chart-\(metric)")
-        let labels = Set(chart.staticTexts.allElementsBoundByIndex.map(\.label))
-        let entries = labels.filter { $0.range(of: #"^\d{4}-\d{2}-\d{2}: "#, options: .regularExpression) != nil }
+        let predicate = NSPredicate(format: "label MATCHES %@", #"\d{4}-\d{2}-\d{2}: .*"#)
+        let entries = Set(texts(matching: predicate, in: chart, app: app).map(\.label))
         XCTAssertEqual(entries.count, 7, chart.debugDescription)
         let values = entries.compactMap { $0.components(separatedBy: ": ").dropFirst().first }
         XCTAssertEqual(values.count, 7, chart.debugDescription)
@@ -104,6 +104,13 @@ enum HomeMetricGeometryConditions {
         attachment.name = "\(card.identifier)-readability"
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
+    }
+
+    /// React Native exposes chart labels as siblings, so associate them by their measured chart frame.
+    @MainActor
+    static func texts(matching predicate: NSPredicate, in chart: XCUIElement, app: XCUIApplication) -> [XCUIElement] {
+        let chartFrame = chart.frame
+        return app.staticTexts.matching(predicate).allElementsBoundByIndex.filter { chartFrame.contains($0.frame) }
     }
 
     /// Retains the existing scene/window rotation diagnostic independently of metric layout assertions.
