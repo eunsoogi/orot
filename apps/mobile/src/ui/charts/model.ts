@@ -5,7 +5,7 @@ export type ChartRow = {
   [key: string]: number | string | null;
 };
 
-/** Fail closed when the renderer cannot preserve the supplied series faithfully. */
+/** Internal row projection. Time rows contain positions only for lineSegments, which retains duplicates. */
 export function chartRows(data: ChartData, axis: 'time' | 'day'): ChartRow[] {
   if (new Set(data.series.map(item => item.unit)).size > 1) {
     throw new Error('A plot cannot combine different units');

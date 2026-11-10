@@ -20,6 +20,7 @@ const line: ChartData = {
   series: [
     {
       id: 'systolic',
+      style: 'primary',
       label: '수축기',
       unit: 'mmHg',
       points: [
@@ -30,6 +31,7 @@ const line: ChartData = {
     },
     {
       id: 'diastolic',
+      style: 'secondary',
       label: '이완기',
       unit: 'mmHg',
       points: [
@@ -46,6 +48,7 @@ const bars: ChartData = {
   series: [
     {
       id: 'steps',
+      style: 'primary',
       label: '걸음',
       unit: '걸음',
       points: [
@@ -56,6 +59,27 @@ const bars: ChartData = {
     },
   ],
 };
+const dense: ChartData = {
+  metric: 'heartRate',
+  coverage: {
+    requested: '201회 측정',
+    displayed: '201회 측정',
+    status: 'ready',
+  },
+  series: [
+    {
+      id: 'heartRate',
+      style: 'primary',
+      label: '심박수',
+      unit: 'count/min',
+      points: Array.from({ length: 201 }, (_, index) => ({
+        x: new Date(Date.UTC(2026, 0, 1, 0, index * 17)).toISOString(),
+        value: index === 200 ? 199 : 60 + (index % 30),
+        source: '합성 자료',
+      })),
+    },
+  ],
+};
 
 /** Synthetic local-only fixture for exercising the real native renderer. */
 function ChartFoundationFixture() {
@@ -63,10 +87,6 @@ function ChartFoundationFixture() {
   const shared = {
     width: width - 32,
     height: 220,
-    stateLabel: '일부 자료',
-    largeTextLabel: '큰 글자에서는 아래 목록으로 값을 확인하세요.',
-    formatPosition: (x: string) => x.slice(5, 16),
-    formatValue: (x: number, unit: string) => `${x} ${unit}`,
   };
   return (
     <SafeAreaProvider>
@@ -74,6 +94,7 @@ function ChartFoundationFixture() {
         <ScrollView contentContainerStyle={styles.content}>
           <ChartPlot {...shared} kind="line" title="혈압" data={line} />
           <ChartPlot {...shared} kind="bar" title="걸음" data={bars} />
+          <ChartPlot {...shared} kind="line" title="밀집 심박수" data={dense} />
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>

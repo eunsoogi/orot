@@ -1,5 +1,5 @@
 export { ChartPlot } from './ChartPlot';
-export { chartRows } from './model';
+export { formatChartPosition, formatChartValue } from './format';
 export type {
   ChartCoverage,
   ChartData,

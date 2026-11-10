@@ -7,6 +7,7 @@ const fixture: ChartData = {
   series: [
     {
       id: 'systolic',
+      style: 'primary',
       label: '수축기',
       unit: 'mmHg',
       points: [
@@ -22,6 +23,7 @@ const fixture: ChartData = {
     },
     {
       id: 'diastolic',
+      style: 'secondary',
       label: '이완기',
       unit: 'mmHg',
       points: [

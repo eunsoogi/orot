@@ -19,6 +19,8 @@ export type ChartSeries = {
   id: string;
   label: string;
   unit: string;
+  /** Stable across screens and independent of array order. */
+  style: 'primary' | 'secondary';
   points: readonly ChartPoint[];
 };
 export type ChartData = {

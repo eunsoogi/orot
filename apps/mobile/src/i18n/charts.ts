@@ -1,0 +1,21 @@
+/** Shared chart states and data descriptions use the same wording on every screen. */
+export const chartsKo = {
+  'chart.state.ready': '기록을 표시하고 있어요.',
+  'chart.state.loading': '기록을 불러오는 중이에요.',
+  'chart.state.permission': '건강 기록 접근 권한이 필요해요.',
+  'chart.state.empty': '표시할 기록이 없어요.',
+  'chart.state.error': '기록을 불러오지 못했어요.',
+  'chart.state.partial': '일부 기록만 표시하고 있어요.',
+  'chart.state.stale': '이전에 불러온 기록을 표시하고 있어요.',
+  'chart.coverage': '요청 범위: {requested} · 표시 범위: {displayed}',
+  'chart.missing': '측정되지 않음',
+  'chart.partialValue': '일부 기록',
+  'chart.source': '출처: {source}',
+  'chart.largeText': '큰 글자에서는 아래 목록으로 값을 확인하세요.',
+  'chart.page': '{page} / {count}쪽',
+  'chart.pageRange': '이 페이지 범위: {start} – {end}',
+  'chart.previous': '이전 기록',
+  'chart.next': '다음 기록',
+  'chart.solidLine': '실선',
+  'chart.dashedLine': '점선',
+} as const;
