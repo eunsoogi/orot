@@ -45,6 +45,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
+    /// Foreground reconciliation observes revoked permissions without prompting.
+    func sceneDidBecomeActive(_: UIScene) {
+        Task { _ = await DailyReminderNotifications.shared.reconcile() }
+    }
+
     func scene(
         _ scene: UIScene,
         willConnectTo _: UISceneSession,
