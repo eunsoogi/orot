@@ -13,6 +13,7 @@ import { RAG_CONVERSATION_BUDGET } from '../src/ragConversation/budget';
 import {
   createEuropePmcMockTransport,
   syntheticEuropePmcPayload,
+  SYNTHETIC_RETRIEVAL_TIME,
 } from '../e2e/europePmcMockTransport';
 import { RAG_WORKFLOW_PUBLIC_QUERY } from '../e2e/appleModelMockFixtures';
 
@@ -24,6 +25,7 @@ async function runPublicFixture(forceMissingAbstract = false) {
     syntheticEuropePmcPayload(forceMissingAbstract),
   );
   const service = createEuropePmcMedicalEvidenceService({
+    now: () => new Date(SYNTHETIC_RETRIEVAL_TIME),
     fetcher: async (url, init) => {
       requestedQuery = new URL(url).searchParams.get('query');
       return transport.fetcher(url, init);
@@ -120,7 +122,10 @@ test('public success fixture calls a tool then cites retrieved evidence', async 
   if (result.status !== 'result') throw new Error('Expected grounded result');
   expect(result.citations).toHaveLength(1);
   expect(result.citations[0].evidenceId).toBe('MED:100');
-  expect(result.value.answer).toContain('mock');
+  expect(result.value.answer).toContain(
+    'Synthetic public abstract for workflow verification.',
+  );
+  expect(result.value.completion).toBe('partial');
 });
 
 test('missing abstracts still reject the final answer despite the success query', async () => {

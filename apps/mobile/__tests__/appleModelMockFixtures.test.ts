@@ -107,10 +107,7 @@ test('visit fixture keeps supplied aliases and a delayed cancellation request', 
 test('literature fixture reads citation IDs from the prompt allowlist without a schema enum', () => {
   const script = appleModelMockScript('rag-workflow');
   expect(() => script[0](request([]))).toThrow('supplied publication tool');
-  const taskRequest = request([
-    'returned-publication-1',
-    'returned-publication-2',
-  ]);
+  const taskRequest = request(['MED:100', 'MED:101']);
   const taskSchema = taskRequest.responseFormat!.schema as {
     anyOf: readonly { properties?: { citations?: { items?: object } } }[];
   };
@@ -118,8 +115,15 @@ test('literature fixture reads citation IDs from the prompt allowlist without a 
     type: 'string',
   });
   const output = JSON.parse(script[1](taskRequest).text!);
-  expect(output.citations).toEqual(['returned-publication-1']);
+  expect(output.citations).toEqual(['MED:100']);
   expect(output.value.answer).toContain('mock');
+  expect(output.value.literature[0]).toMatchObject({
+    evidenceId: 'MED:100',
+    sourceRevision: 'retrieved:2026-10-07T03:00:00.000Z',
+    evidenceRevision: 'updated:2025-02-01',
+    resultSpan: 'Synthetic public abstract for workflow verification.',
+  });
+  expect(() => script[1](request(['MED:101']))).toThrow('synthetic source');
   expect(() => script[1](request([]))).toThrow('supplied citation IDs');
 });
 

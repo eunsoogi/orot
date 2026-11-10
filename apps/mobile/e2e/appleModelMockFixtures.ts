@@ -163,16 +163,39 @@ export function appleModelMockScript(
           }),
         };
       },
-      request =>
-        structuredReply(request, {
+      request => {
+        const ids = citationIds(request);
+        if (!ids.includes('MED:100'))
+          throw new Error(
+            'The literature fixture requires its synthetic source',
+          );
+        return structuredReply(request, {
           type: 'result',
           value: {
             answerKind: 'grounded',
             answer:
               '검색된 공개 문헌에서 성인의 수면 시간에 관한 자료를 확인했어요. 이 응답은 앱 흐름 검증을 위한 고정 mock 문구이며, 검색 결과 일부에 한정되고 개인의 진료를 대신하지 않아요.',
+            // Bind the scripted result to the exact synthetic adapter revision and abstract.
+            literature: [
+              {
+                evidenceId: 'MED:100',
+                sourceRevision: 'retrieved:2026-10-07T03:00:00.000Z',
+                evidenceRevision: 'updated:2025-02-01',
+                populationSpan:
+                  'Synthetic public abstract for workflow verification.',
+                resultSpan:
+                  'Synthetic public abstract for workflow verification.',
+                statisticSpan: '',
+                limitationSpan: '',
+                measure: 'qualitative',
+                value: '',
+                confidenceInterval: '',
+              },
+            ],
           },
-          citations: citationIds(request).slice(0, 1),
-        }),
+          citations: ['MED:100'],
+        });
+      },
     ];
   throw new Error('Unknown Foundation Models mock operation: ' + operation);
 }
