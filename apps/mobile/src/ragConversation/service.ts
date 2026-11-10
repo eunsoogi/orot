@@ -15,7 +15,7 @@ import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/dele
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { EvidenceSourceReadResult } from '../aiFeatures/integration/evidenceSourceDocument';
 import { historicalArtifactOutcome } from './historicalArtifactAnswer';
-import { boundedProviderHistory } from './conversationHistoryPayload';
+import { conversationWorkflowContext } from './conversationWorkflowContext';
 import { trackValidatedEvidence } from './conversationRetentionEvidence';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
@@ -34,6 +34,7 @@ import { failureFromWorkflow } from './outcome';
 import type { RagConversationOutcome } from './outcome';
 import type { ConversationIntent } from '../aiFeatures/integration/conversationIntent';
 import { includeConversationTarget } from './conversationTargetEvidence';
+import { bufferPossibilityStream } from './possibilityStreamBoundary';
 
 export type {
   RagConversationFailureKind,
@@ -47,6 +48,12 @@ export interface RagConversationRunOptions {
   readonly entryIntent?: ConversationIntent;
   readonly targetVisitEvidence?: EvidenceItem;
   readonly previousMessages: readonly RagConversationMessage[];
+  /** Locally revalidated prior turns; assistant text is dialogue context, not medical evidence. */
+  readonly validatedPriorTurns?: readonly {
+    question: string;
+    answer: string;
+  }[];
+  readonly priorDialogueOmitted?: boolean;
   readonly loadCurrentEvidence: (
     question: string,
     signal: AbortSignal,
@@ -121,17 +128,7 @@ export async function runRagConversationTurn(
       {
         ...options.workflow,
         request: question,
-        context: (options.entryIntent
-          ? {
-              history: boundedProviderHistory(options.previousMessages),
-              intent: options.entryIntent,
-              ...(options.targetVisitEvidence
-                ? { targetEvidenceId: options.targetVisitEvidence.evidenceId }
-                : {}),
-            }
-          : boundedProviderHistory(
-              options.previousMessages,
-            )) as unknown as import('@orot/model-runtime').JsonValue,
+        context: conversationWorkflowContext(options),
         task: ragConversationTask,
         initialEvidence,
         revalidateEvidence: (references, signal) =>
@@ -142,7 +139,7 @@ export async function runRagConversationTurn(
             options.resolveLocalEvidenceIdentity,
           ),
       },
-      invocation,
+      bufferPossibilityStream(options.entryIntent, invocation),
     );
     reportWorkflowOutcome(
       'rag',

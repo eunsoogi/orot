@@ -13,7 +13,14 @@ export function entryIntentSender(
   send: ConversationScreenProps['onSend'],
 ): ConversationSender {
   return async (question, history, signal, observer) => {
-    const context = conversationEntryForSession(store, id);
+    const selected = conversationEntryForSession(store, id);
+    // Restored possibility sessions retain their safety and grounding boundary on follow-up.
+    const context =
+      store.getSnapshot().sessions.find(item => item.id === id)?.entryIntent ===
+        'possibilities' &&
+      (!selected || selected.intent === 'conversation')
+        ? { intent: 'possibilities' as const, entryKey: 'restored' }
+        : selected;
     let committed = false;
     const scopedObserver = {
       ...observer,

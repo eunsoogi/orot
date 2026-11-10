@@ -19,6 +19,7 @@ export interface ConversationSessionOptions {
       answer: string;
       citations: readonly EvidenceReference[];
       completion?: 'complete' | 'partial';
+      entryIntent?: 'possibilities';
       toolMessageId?: string;
       toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
       healthSummary?: import('./healthSummary').HealthSummaryResult | null;
@@ -81,4 +82,5 @@ export interface ConversationSession {
   readonly quarantined?: boolean;
   readonly restoreAfterRetry?: boolean;
   readonly artifactContinuation?: ArtifactContinuation | null;
+  readonly entryIntent?: 'possibilities';
 }

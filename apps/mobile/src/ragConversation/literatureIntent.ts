@@ -25,3 +25,18 @@ export function requestsLiteratureExplanation(question: string): boolean {
     (englishSource.test(normalized) && englishAction.test(normalized))
   );
 }
+
+/** Only an explicit social response to a non-literature request may omit evidence. */
+export function isEvidenceIndependentConversation(
+  value: unknown,
+  input: { request: string },
+): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'answerKind' in value &&
+    value.answerKind === 'conversation' &&
+    !requestsLiteratureExplanation(input.request)
+  );
+}

@@ -126,6 +126,7 @@ export function createConversationSessionOptions(input: {
             answer: turn.answer,
             citations: turn.citations,
             completion: turn.status,
+            ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
             ...(turn.healthSummary
               ? {
                   healthSummary:

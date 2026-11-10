@@ -7,6 +7,7 @@ import { healthSummaryRetry } from './healthSummaryRetry';
 export function conversationCompletedAnswer(input: {
   id: number;
   messageId: number;
+  retainedTurnId?: string;
   copy: { noEvidence: string; insufficient: string };
   outcome: Exclude<
     RagConversationOutcome,
@@ -32,6 +33,9 @@ export function conversationCompletedAnswer(input: {
         role: 'assistant',
         content,
         ...activity.metadata(),
+        ...(input.retainedTurnId
+          ? { retainedTurnId: input.retainedTurnId }
+          : {}),
         ...(outcome.status === 'answer'
           ? {
               citations: outcome.citations,

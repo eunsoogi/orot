@@ -3,14 +3,13 @@ import { finishRagConversation } from './finishRagConversation';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
-import { boundRagConversationHistory } from './evidencePayload';
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import { operationRunId } from './featureRunIdentity';
 import { conversationGeneratedTools } from './conversationGeneratedTools';
 import { withProviderStage } from '../../providers/diagnostics';
-import { AiProviderSelectionError } from './provider';
+import { ragConversationFailure } from './ragConversationFailure';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { createResearchInputTracker } from './researchInputTracker';
@@ -23,6 +22,12 @@ import {
 import type { ConversationEntryContext } from './conversationIntent';
 import { resolveConversationEntryTarget } from './conversationVisitTarget';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
+import {
+  conversationHistoryIsCurrent,
+  loadConversationHistory,
+} from './conversationHistorySources';
+import { conversationFallbackOutcome } from './conversationFallbackOutcome';
+import { guardHistory } from './conversationHistoryProviderGuard';
 
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
@@ -81,6 +86,17 @@ export function createRagConversationService({
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
+      // User follow-ups may influence an answer, so retain their validated turn lineage.
+      const history = await loadConversationHistory({
+        messages: previousMessages,
+        session: observer?.retentionSession,
+        retainedHistory: observer?.retainedHistory,
+        data,
+        registry,
+        signal,
+      });
+      const historyIsCurrent = () =>
+        conversationHistoryIsCurrent(registry, history.references, signal);
       const researchInputs = createResearchInputTracker(
         registry,
         data,
@@ -139,6 +155,12 @@ export function createRagConversationService({
         question: normalizedQuestion,
         providerId: selected.provider.id,
         modelId: selected.modelId,
+        ...(entryContext?.intent === 'possibilities'
+          ? { entryIntent: 'possibilities' as const }
+          : {}),
+        priorDialogue: history.priorTurns,
+        priorUserReports: history.reports,
+        ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
         signal,
       });
       const execution = executionOptions({
@@ -151,13 +173,18 @@ export function createRagConversationService({
         external,
       });
       stage = 'workflow';
+      if (!(await historyIsCurrent()))
+        return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
         {
           question: normalizedQuestion,
           entryIntent: entryContext?.intent,
           targetVisitEvidence: target.evidence,
-          previousMessages: boundRagConversationHistory(previousMessages),
-          onValidatedEvidence: retention.onValidatedEvidence,
+          previousMessages: history.messages,
+          validatedPriorTurns: history.priorTurns,
+          priorDialogueOmitted: history.omitted,
+          onValidatedEvidence: references =>
+            retention.onValidatedEvidence([...references, ...history.sources]),
           loadCurrentEvidence: async () => ({
             batch: { items: [], coverage: [], conflicts: [] },
             chunks: [],
@@ -171,7 +198,11 @@ export function createRagConversationService({
           readHistoricalArtifact: (reference, readSignal) =>
             registry.readSource(reference, readSignal),
           workflow: {
-            ...execution,
+            ...guardHistory(
+              execution,
+              historyIsCurrent,
+              !!history.references.length,
+            ),
             execution: {
               ...execution.execution,
               budget: budgetAfterPublicSearch(
@@ -185,31 +216,24 @@ export function createRagConversationService({
         {
           onProgress: observer?.onProgress,
           onToolEvent: observer?.onToolEvent,
-          onTaskStreamEvent: observer?.onTaskStreamEvent,
+          // A changed history must not leak a draft before its lineage is rechecked.
+          onTaskStreamEvent: history.references.length
+            ? undefined
+            : observer?.onTaskStreamEvent,
           signal,
         },
       );
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
+      if (!(await historyIsCurrent()))
+        return { status: 'failure', kind: 'retrieval_failed' };
       const continuation = generated.choose(outcome);
       observer?.onArtifactContinuation?.(continuation);
-      if (
-        continuation &&
-        (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
-      )
-        return {
-          status: 'answer',
-          citations: [],
-          answer:
-            '아직 일치하는 결과를 찾지 못했어요. 더 이전 결과를 계속 찾아볼 수 있어요.',
-        };
-      if (
-        localRetrievalFailed &&
-        (outcome.status === 'no_evidence' ||
-          outcome.status === 'insufficient' ||
-          (outcome.status === 'failure' && outcome.kind === 'unavailable'))
-      ) {
-        return { status: 'failure', kind: 'retrieval_failed' };
-      }
+      const fallback = conversationFallbackOutcome(
+        outcome,
+        Boolean(continuation),
+        localRetrievalFailed,
+      );
+      if (fallback) return fallback;
       return await finishRagConversation({
         outcome,
         publicSearch,
@@ -218,30 +242,7 @@ export function createRagConversationService({
         continuation: Boolean(continuation),
       });
     } catch (error) {
-      if (
-        signal.aborted ||
-        (error instanceof Error && error.name === 'AbortError')
-      )
-        return { status: 'failure', kind: 'cancelled' };
-      if (error instanceof AiProviderSelectionError) {
-        // Selection exposes no safe reason code, so keep unavailable distinct without guessing auth.
-        return {
-          status: 'failure',
-          kind:
-            error.status === 'selection-required'
-              ? 'provider_configuration'
-              : 'provider_unavailable',
-        };
-      }
-      return {
-        status: 'failure',
-        kind:
-          stage === 'data'
-            ? 'retrieval_failed'
-            : stage === 'selection'
-              ? 'provider_unavailable'
-              : 'unavailable',
-      };
+      return ragConversationFailure(error, signal, stage);
     } finally {
       linked.dispose();
     }

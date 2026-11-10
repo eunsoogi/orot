@@ -17,9 +17,14 @@ import {
 } from './literatureSchema';
 import type { LiteratureIdentity } from './literatureCitationBinding';
 import { appointmentState, isObject, priorMessages } from './taskHistory';
-import { requestsLiteratureExplanation } from './literatureIntent';
+import {
+  isEvidenceIndependentConversation,
+  requestsLiteratureExplanation,
+} from './literatureIntent';
 import { projectConversationStream } from './taskStreaming';
 import { conversationEntryContext } from './conversationEntryContext';
+import { priorDialogue } from './priorDialogue';
+import { possibilityPrompt } from './possibilityPrompt';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -51,13 +56,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       return undefined;
     return 'Return the complete result envelope with citations as an array of exact current evidenceId strings used in the answer. Use each ID at most once and do not invent references. Preserve only facts supported by the supplied evidence; an evidence-independent conversation has an empty citations array.';
   },
-  isEvidenceIndependentResult(value, input) {
-    return (
-      isObject(value) &&
-      value.answerKind === 'conversation' &&
-      !requestsLiteratureExplanation(input.request)
-    );
-  },
+  isEvidenceIndependentResult: isEvidenceIndependentConversation,
   systemPrompt:
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
@@ -65,9 +64,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
-    // Possibility discussions need the same observation/inference boundary as the symptom summary.
-    'When asked about possible explanations for symptoms or changes, discuss reasonable tentative possibilities when the evidence supports them instead of a blanket refusal. Distinguish observed records and reported symptoms from possible explanations, and explain supporting and contradictory evidence with citations. Identify meaningful missing information and questions or appropriate next steps. ' +
-    'A registered medication alone does not establish its indication, a diagnosis, current use, causation or probability. Do not provide a definitive diagnosis, unsupported probability, or recommend starting, stopping or changing medication. If evidence is insufficient, explain the specific limitation without inventing a possibility. ' +
+    possibilityPrompt +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
@@ -109,6 +106,10 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
           temporalRequirements:
             'scheduled/rescheduled means planned, completed means finished, and cancelled means cancelled. An event title or consultation intention does not establish ongoing or completed care. Resolve relative times against the source record time, not today.',
           previousConversation: priorMessages(input.context),
+          priorDialogue: priorDialogue(input.context),
+          priorDialogueOmitted:
+            isObject(input.context) &&
+            input.context.priorDialogueOmitted === true,
           // The runtime restores full references locally; generation needs content and citation IDs only.
           evidence: input.evidence.items.map(item => ({
             evidenceId: item.evidenceId,

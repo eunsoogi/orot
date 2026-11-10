@@ -15,6 +15,13 @@ test('provides synthetic supporting and contrary records with the limits for a p
   };
   const input = {
     request: '피로의 가능한 원인을 설명해 주세요.',
+    context: {
+      intent: 'possibilities',
+      priorDialogue: [
+        { question: '피로를 살펴봐 주세요', answer: '언제부터 시작됐나요?' },
+      ],
+      history: [{ role: 'user', content: '지난주부터 시작됐어요' }],
+    },
     evidence: {
       items: [
         { ...reference, evidenceId: 'symptom', content: '피로를 보고함' },
@@ -33,6 +40,8 @@ test('provides synthetic supporting and contrary records with the limits for a p
   if (message.role !== 'user' || typeof message.content !== 'string')
     throw new Error('Expected a user message');
   const body = JSON.parse(message.content);
+  expect(body.priorDialogue[0].answer).toBe('언제부터 시작됐나요?');
+  expect(body.previousConversation[0].content).toBe('지난주부터 시작됐어요');
   expect(body.evidence).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -53,12 +62,17 @@ test('provides synthetic supporting and contrary records with the limits for a p
     'supporting and contradictory evidence',
   );
   expect(ragConversationTask.systemPrompt).toContain(
+    'historical AI text only to understand follow-up questions',
+  );
+  expect(ragConversationTask.systemPrompt).toContain(
     'registered medication alone does not establish',
   );
   expect(ragConversationTask.systemPrompt).toContain(
     'instead of a blanket refusal',
   );
-  expect(ragConversationTask.systemPrompt).toContain('unsupported probability');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'numeric disease probability',
+  );
 });
 
 test('rejects a definite diagnosis from medication evidence while allowing a tentative explanation', () => {
@@ -151,4 +165,47 @@ test('permits verbatim attributed diagnosis history but not an additional diagno
       input,
     ).status,
   ).toBe('invalid');
+});
+
+test('rejects numeric disease probabilities and medication changes while preserving recorded facts', () => {
+  const input = {
+    request: '가능성을 알려 주세요',
+    evidence: {
+      items: [
+        {
+          sourceKind: 'personal_record' as const,
+          sourceId: 'record',
+          sourceRevision: '1',
+          evidenceId: 'record',
+          evidenceRevision: '1',
+          locator: { kind: 'structured_record' as const, recordId: 'record' },
+          effectiveTime: null,
+          reviewState: 'reviewed' as const,
+          content: '기록',
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  for (const answer of ['당뇨일 확률은 70%입니다.', '약물 용량을 늘리세요.']) {
+    expect(ragConversationTask.validateResult({ answer }, input).status).toBe(
+      'invalid',
+    );
+    expect(
+      ragConversationTask.projectStreamedText?.(
+        JSON.stringify({ value: { answerKind: 'grounded', answer } }),
+        input,
+      ),
+    ).toBeUndefined();
+  }
+  for (const answer of [
+    '기록에 산소포화도 98%가 있어요.',
+    '기록에는 약 용량이 변경되었다고 적혀 있어요.',
+    '약을 임의로 중단하지 마세요.',
+  ]) {
+    expect(ragConversationTask.validateResult({ answer }, input).status).toBe(
+      'valid',
+    );
+  }
 });

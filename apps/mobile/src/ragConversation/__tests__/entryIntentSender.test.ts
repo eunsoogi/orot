@@ -1,6 +1,6 @@
 import { entryIntentSender } from '../entryIntentSender';
 import { consumeConversationEntryForSession } from '../useConversationEntryIntent';
-import type { ConversationSessions } from '../conversationSessions';
+import { createConversationSessions } from '../conversationSessions';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 jest.mock('../useConversationEntryIntent', () => ({
@@ -28,7 +28,7 @@ test.each([false, true])(
       observer?.onSummarySaveSettled?.(committed);
       return { status: 'no_evidence' };
     };
-    const store = {} as ConversationSessions;
+    const store = createConversationSessions();
     await entryIntentSender(store, 1, send)('summary', [], controller.signal, {
       onSummarySaveSettled: settled,
     });
@@ -36,5 +36,6 @@ test.each([false, true])(
     expect(consumeConversationEntryForSession).toHaveBeenCalledTimes(
       committed ? 1 : 0,
     );
+    store.dispose();
   },
 );

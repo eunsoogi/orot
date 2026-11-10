@@ -2,7 +2,7 @@ import { createConversationSessionRequests } from './conversationSessionRequests
 import type {
   ConversationSender,
   ConversationSession,
-} from './conversationSessionRequests';
+} from './conversationSessionTypes';
 import type {
   ConversationSessionOptions,
   ConversationSnapshot,

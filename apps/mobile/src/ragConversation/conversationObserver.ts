@@ -12,6 +12,10 @@ export type RagConversationObserver = Pick<
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
+  readonly retainedHistory?: readonly {
+    readonly id: string;
+    readonly question: string;
+  }[];
   readonly artifactContinuation?: ArtifactContinuation | null;
   readonly onArtifactContinuation?: (
     value: ArtifactContinuation | null,

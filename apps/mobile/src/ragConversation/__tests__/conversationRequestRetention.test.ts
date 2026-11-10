@@ -121,7 +121,13 @@ test('a failed write is visible and retries the same answer without calling the 
     expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(0);
     expect((await storage.read('id-2'))?.answer).toBe('answer');
     expect(sender).toHaveBeenCalledTimes(1);
-    expect(store.getSnapshot().sessions[0]?.messages).toEqual(beforeRetry);
+    const afterRetry = store.getSnapshot().sessions[0]!.messages;
+    expect(
+      afterRetry.map(({ retainedTurnId: _id, ...message }) => message),
+    ).toEqual(beforeRetry);
+    expect(
+      afterRetry.find(message => message.content === 'answer')?.retainedTurnId,
+    ).toBe('id-2');
   } finally {
     f.close();
   }

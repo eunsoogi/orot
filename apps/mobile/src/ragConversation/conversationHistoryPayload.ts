@@ -44,3 +44,29 @@ export function conversationHistoryPayload(
     )
     .map(providerHistoryMessage);
 }
+
+/** Keep durable identities local so deleted turns cannot be reused from memory. */
+export function retainedHistoryTurns(
+  messages: readonly DisplayMessage[],
+  retryQuestion: string,
+) {
+  const eligible = messages
+    .filter(
+      message =>
+        !message.incomplete &&
+        !(
+          message.failed &&
+          message.role === 'user' &&
+          message.content === retryQuestion
+        ),
+    )
+    .slice(-8);
+  return eligible.flatMap((message, index) => {
+    const answer = eligible[index + 1];
+    return message.role === 'user' &&
+      answer?.role === 'assistant' &&
+      answer.retainedTurnId
+      ? [{ question: message.content, id: answer.retainedTurnId }]
+      : [];
+  });
+}

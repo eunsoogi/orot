@@ -7,6 +7,7 @@ type RestoredTurn = {
   readonly answer: string;
   readonly citations: readonly EvidenceReference[];
   readonly completion?: 'complete' | 'partial';
+  readonly entryIntent?: 'possibilities';
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
@@ -48,6 +49,9 @@ export function createConversationSessionRestoreState(input: {
           content: turn.answer,
           citations: turn.citations,
           toolMessageId: turn.toolMessageId,
+          ...(turn.question && turn.toolMessageId
+            ? { retainedTurnId: turn.toolMessageId }
+            : {}),
           toolEvents: turn.toolEvents,
           ...(turn.healthSummary !== undefined
             ? { healthSummary: turn.healthSummary }
@@ -60,6 +64,10 @@ export function createConversationSessionRestoreState(input: {
       ]);
       input.update(id, {
         messages,
+        // Only validated retained turns can restore an exploration intent.
+        entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
+          ? 'possibilities'
+          : undefined,
         title:
           messages[0]?.content.slice(0, 36) ||
           getRagConversationCopy().newConversation,
