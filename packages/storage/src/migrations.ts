@@ -7,17 +7,9 @@ import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigration
 import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
+import { migrateSourceTimes, readUserVersion } from './sourceTimeMigration';
 
-export const CURRENT_SCHEMA_VERSION = 12;
-
-async function readUserVersion(database: SqlExecutor): Promise<number> {
-  const result = await database.execute('PRAGMA user_version');
-  const version = Number(result.rows[0]?.user_version ?? 0);
-  if (!Number.isSafeInteger(version) || version < 0) {
-    throw new Error('The database schema version is invalid.');
-  }
-  return version;
-}
+export const CURRENT_SCHEMA_VERSION = 13;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -245,6 +237,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await createHealthObservationLibraryIndex(transaction);
     await createHealthMedicationLibraryIndex(transaction);
     if (currentVersion < 12) await ensureSymptomDeletionFence(transaction);
-    await transaction.execute('PRAGMA user_version = 12');
+    if (currentVersion < 13) await migrateSourceTimes(transaction);
+    await transaction.execute('PRAGMA user_version = 13');
   });
 }
