@@ -13,6 +13,10 @@ export const navigationText = {
     accessibilityLabel: '현재 화면 닫기',
   },
   closeActionMenu: '동작 메뉴 닫기',
+  pageOverflow: {
+    label: '더 보기',
+    accessibilityLabel: '화면 동작 더 보기',
+  },
   save: '저장',
   saving: '저장 중',
   home: {
