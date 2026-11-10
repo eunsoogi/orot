@@ -1,7 +1,10 @@
 import { createEuropePmcEvidenceSearchTool } from '@orot/agent-runtime';
 import { providerSuccess } from '@orot/model-runtime';
 import { runRagConversationTurn } from '../service';
-import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
+import {
+  fixture,
+  response as fixtureResponse,
+} from '../testSupport/conversationEnvelopeFixtures';
 
 function streamingOptions(answer: string, invalidCitation = false) {
   const f = fixture();
@@ -108,7 +111,7 @@ test('publishes tool progress while the final answer is still pending', async ()
       expect(onToolEvent).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: 'completed' }),
       );
-      return response({
+      return fixtureResponse({
         type: 'result',
         value: { answerKind: 'conversation', answer: '함께 살펴볼 수 있어요.' },
         citations: [],
