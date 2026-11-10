@@ -3,6 +3,143 @@ import XCTest
 /// Verifies direct or overflow conversation actions in the measured Duo lane.
 @MainActor
 extension FeatureEntryDuoActionConditions {
+    struct SourceBaseline {
+        let sample: NavigationCurrentRouteObservation.Sample
+        let tappedAtMs: Double
+    }
+
+    /// Keep the current stack and its window identity before the source tap.
+    static func sourceTransitionBaseline(_ app: XCUIApplication, testCase: XCTestCase) throws -> SourceBaseline {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let markerStart = Date().timeIntervalSince1970 * 1000
+        let raw = marker.exists ? UITestConditions.text(marker) : "unavailable"
+        let markerEnd = Date().timeIntervalSince1970 * 1000
+        let markerAttachment = XCTAttachment(string: "startMs=\(markerStart) endMs=\(markerEnd)\n\(raw)")
+        markerAttachment.name = "duo-source-baseline-native"
+        markerAttachment.lifetime = .keepAlways
+        testCase.add(markerAttachment)
+        let snapshotStart = Date().timeIntervalSince1970 * 1000
+        let tree = try app.snapshot()
+        let snapshotEnd = Date().timeIntervalSince1970 * 1000
+        let attachment = XCTAttachment(string: "startMs=\(snapshotStart) endMs=\(snapshotEnd)\n\(snapshotEvidence(tree))")
+        attachment.name = "duo-source-baseline-snapshot"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        let liveStart = Date().timeIntervalSince1970 * 1000
+        let liveHierarchy = app.debugDescription
+        let liveEnd = Date().timeIntervalSince1970 * 1000
+        let liveAttachment = XCTAttachment(string: "startMs=\(liveStart) endMs=\(liveEnd)\n\(liveHierarchy)")
+        liveAttachment.name = "duo-source-baseline-live-hierarchy"
+        liveAttachment.lifetime = .keepAlways
+        testCase.add(liveAttachment)
+        let report = try XCTUnwrap((try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any])
+        let sample = try XCTUnwrap(NavigationCurrentRouteObservation.sample(report))
+        try assertMarkerWindow(tree, markerID: "rag-conversation-screen", report: report)
+        return SourceBaseline(sample: sample, tappedAtMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// Record public snapshot fields separately from any later live accessibility query.
+    static func snapshotEvidence(_ node: XCUIElementSnapshot, path: String = "0", parent: String = "none", window: String = "none") -> String {
+        let ancestor = node.elementType == .window ? path : window
+        let frame = node.frame
+        let current = "path=\(path) parent=\(parent) windowAncestor=\(window) type=\(node.elementType.rawValue) id=\(node.identifier) x=\(frame.minX) y=\(frame.minY) width=\(frame.width) height=\(frame.height)"
+        return ([current] + node.children.enumerated().map { index, child in
+            snapshotEvidence(child, path: "\(path).\(index)", parent: path, window: ancestor)
+        }).joined(separator: "\n")
+    }
+
+    /// Require the same live stack and a post-tap transition for its current source route.
+    static func waitForSourceTransition(_ app: XCUIApplication, baseline: SourceBaseline, testCase _: XCTestCase) throws {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let screen = UITestConditions.element(app, "ai-feature-source-detail")
+            guard screen.exists, let report = sourceObservation(app),
+                  NavigationCurrentRouteObservation.isSourceReady(report, baseline: baseline.sample, tappedAtMs: baseline.tappedAtMs),
+                  let navigation = report["navigation"] as? [[String: Any]],
+                  navigation.contains(where: { $0["visible"] as? Bool == true && ($0["depth"] as? Int ?? 0) >= 2 }),
+                  let geometry = report["windowGeometry"] as? [String: Any],
+                  let dock = geometry["dockControls"] as? [String: Any],
+                  let frame = dock["windowFrameInScreen"] as? [String: Double],
+                  let x = frame["x"], let y = frame["y"], let width = frame["width"], let height = frame["height"],
+                  !screen.frame.isEmpty, screen.frame.intersects(CGRect(x: x, y: y, width: width, height: height)) else { return false }
+            return true
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "The current source route must finish its own transition")
+    }
+
+    /// Join accessibility to the native window by its frame, never by route ancestry.
+    private static func assertMarkerWindow(_ tree: XCUIElementSnapshot, markerID: String, report: [String: Any]) throws {
+        var matches: [[XCUIElementSnapshot]] = []
+        func visit(_ node: XCUIElementSnapshot, ancestors: [XCUIElementSnapshot]) {
+            if node.identifier == markerID {
+                matches.append(ancestors.filter { $0.elementType == .window })
+            }
+            for child in node.children {
+                visit(child, ancestors: ancestors + [node])
+            }
+        }
+        visit(tree, ancestors: [])
+        XCTAssertEqual(matches.count, 1)
+        let windows = try XCTUnwrap(matches.first)
+        XCTAssertEqual(windows.count, 1)
+        let actual = try XCTUnwrap(windows.first).frame
+        let geometry = try XCTUnwrap(report["windowGeometry"] as? [String: Any])
+        let dock = try XCTUnwrap(geometry["dockControls"] as? [String: Any])
+        let frame = try XCTUnwrap(dock["windowFrameInScreen"] as? [String: Double])
+        for (key, value) in [("x", actual.minX), ("y", actual.minY), ("width", actual.width), ("height", actual.height)] {
+            XCTAssertEqual(try CGFloat(XCTUnwrap(frame[key])), value, accuracy: 0.5)
+        }
+    }
+
+    private static func sourceObservation(_ app: XCUIApplication) -> [String: Any]? {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        guard marker.exists else { return nil }
+        return (try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8))) as? [String: Any]
+    }
+
+    /// Capture one source-screen tree and the existing native observation before any Back gesture.
+    static func captureSourceBack(_ app: XCUIApplication, baseline: SourceBaseline, testCase: XCTestCase) throws {
+        let started = Date().timeIntervalSince1970 * 1000
+        let tree = try app.snapshot()
+        var back: [String] = []
+        var keyboards: [String] = []
+        func visit(_ node: XCUIElementSnapshot, ancestors: [XCUIElementSnapshot]) {
+            if node.identifier == "navigation-back" {
+                let windows = ancestors.filter { $0.elementType == .window }
+                back.append("type=\(node.elementType.rawValue) frame=\(node.frame) windows=\(windows.map(\.frame))")
+            }
+            if node.elementType == .keyboard {
+                keyboards.append("frame=\(node.frame)")
+            }
+            for child in node.children {
+                visit(child, ancestors: ancestors + [node])
+            }
+        }
+        visit(tree, ancestors: [])
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let native = marker.exists ? UITestConditions.text(marker) : "unavailable"
+        let ended = Date().timeIntervalSince1970 * 1000
+        let state = XCTAttachment(string: "sampleStartMs=\(started) sampleEndMs=\(ended) backCount=\(back.count)\n\(back.joined(separator: "\n"))\nkeyboardCount=\(keyboards.count)\n\(keyboards.joined(separator: "\n"))\nappFrame=\(app.frame)")
+        state.name = "duo-source-back-state"
+        state.lifetime = .keepAlways
+        testCase.add(state)
+        let nativeAttachment = XCTAttachment(string: native)
+        nativeAttachment.name = "duo-source-back-native"
+        nativeAttachment.lifetime = .keepAlways
+        testCase.add(nativeAttachment)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "duo-source-back-hierarchy"
+        hierarchy.lifetime = .keepAlways
+        testCase.add(hierarchy)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "duo-source-back-screen"
+        screenshot.lifetime = .keepAlways
+        testCase.add(screenshot)
+        let report = try XCTUnwrap((try? JSONSerialization.jsonObject(with: Data(native.utf8))) as? [String: Any])
+        XCTAssertTrue(NavigationCurrentRouteObservation.isSourceReady(report, baseline: baseline.sample, tappedAtMs: baseline.tappedAtMs))
+        try assertMarkerWindow(tree, markerID: "ai-feature-source-detail", report: report)
+        print("OROT_DUO_SOURCE_BACK_CAPTURED startMs=\(started) endMs=\(ended) backCount=\(back.count)")
+    }
+
     static func verify(_ app: XCUIApplication, toolbar: XCUIElement, viewport: CGRect) throws {
         let history = UITestConditions.element(app, "rag-conversation-sessions-toggle")
         let newSession = UITestConditions.element(app, "rag-conversation-new-session")

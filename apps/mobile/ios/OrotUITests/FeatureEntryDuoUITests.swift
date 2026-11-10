@@ -130,6 +130,9 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         }
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_MENU_DIAGNOSTIC"] == "1" {
+            app.launchArguments += ["-OROT_TEST_MENU_PRESENTATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES"]
+        }
         XCUIDevice.shared.orientation = .portrait
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
@@ -141,6 +144,10 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(input.isHittable)
         input.tap()
         input.typeText("history selection")
+        if ProcessInfo.processInfo.environment["OROT_TEST_DUO_MENU_DIAGNOSTIC"] == "1" {
+            try FoldedMenuDiagnostic.capture(app, testCase: self)
+            throw XCTSkip("Folded keyboard More observation captured")
+        }
         if ProcessInfo.processInfo.environment["OROT_TEST_DUO_KEYBOARD_DIAGNOSTIC"] == "1" {
             // Capture the real keyboard and controls before entering an action query that may have no target.
             let ids = ["navigation-tab-home", "navigation-home", "navigation-tab-ai", "navigation-page-action-overflow", "rag-conversation-sessions-toggle", "rag-conversation-new-session"]

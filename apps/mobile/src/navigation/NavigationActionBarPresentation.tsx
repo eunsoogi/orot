@@ -11,17 +11,17 @@ import type {
   NavigationSurface,
 } from './NavigationActionBar';
 import { navigationActionBarStyles as styles } from './navigationActionBarStyles';
-import {
-  NAVIGATION_ROOT_RAIL_WIDTH,
-  NavigationRootLayoutContext,
-} from './navigationRootLayout';
+import { NavigationRootLayoutContext } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
 import { NavigationPageActionDock } from './NavigationPageActionDock';
 import { NavigationBottomPageActions } from './NavigationBottomPageActions';
 import { useBottomNavigationRow } from './useBottomNavigationRow';
 import { useBottomActionMenu } from './useBottomActionMenu';
 import { NavigationBarHost } from './NavigationBarHost';
-import { navigationRailPresentation } from './navigationRailPresentation';
+import {
+  navigationRailFrameStyle,
+  navigationRailPresentation,
+} from './navigationRailPresentation';
 import { useNavigationAllocationObservation } from './useNavigationAllocationObservation';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
@@ -113,8 +113,10 @@ export function NavigationActionBarPresentation({
   });
   const showMore = useBottomActionMenu({
     routeKey,
-    navigation: row.overflowNavigation,
-    pages: row.overflowPages,
+    navigation: laneActions,
+    pages: taskActions,
+    overflowNavigationIds: row.overflowNavigation.map(action => action.id),
+    overflowPageIds: row.overflowPages.map(action => action.id),
     disabled: pageActionsDisabled,
     onNavigation: onAction,
   });
@@ -130,19 +132,7 @@ export function NavigationActionBarPresentation({
         ]
       : row.directNavigation
     : laneActions;
-  const railFrameStyle = rightLayout
-    ? {
-        bottom: 0,
-        height: railHeight,
-        position: 'absolute' as const,
-        ...(rightLayout.railSide === 'left' ? { left: 0 } : { right: 0 }),
-        // Content may already end before this lane; the native window host
-        // still needs the complete fixed-width rail and its trailing gap.
-        width:
-          (rightLayout.railWidth ?? NAVIGATION_ROOT_RAIL_WIDTH) +
-          rightLayout.railRightInset,
-      }
-    : undefined;
+  const railFrameStyle = navigationRailFrameStyle(rightLayout, railHeight);
   const surfaceTestID =
     Surface === NavigationGlassSurface && Platform.OS === 'ios'
       ? 'navigation-bar-native-surface'

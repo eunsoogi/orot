@@ -21,6 +21,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
             originalAppearance = $0
         }
         try openRecords(in: standard)
+        let defaultRecordingLabelHeight = try RecordingCaptureUITestConditions.renderedTitleHeight(in: standard, testCase: self)
         let defaultTitleHeight = UITestConditions.element(standard, "records-title").frame.height
         let record = UITestConditions.element(standard, "records-new-recording")
         record.tap()
@@ -62,6 +63,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
             XCUIDevice.shared.orientation = .portrait
         }
         try openRecords(in: largeText)
+        XCTAssertGreaterThan(try RecordingCaptureUITestConditions.renderedTitleHeight(in: largeText, testCase: self), defaultRecordingLabelHeight)
         XCTAssertGreaterThan(
             UITestConditions.element(largeText, "records-title").frame.height,
             defaultTitleHeight,
@@ -127,6 +129,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         app.launchArguments = [
             "-OROT_TEST_PROFILE",
             "core",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages",
             "(en)",
             "-AppleLocale",
@@ -159,6 +162,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         )
         let primary = UITestConditions.element(app, "records-new-recording")
         XCTAssertTrue(primary.exists && primary.isHittable)
+        try RecordingCaptureUITestConditions.verifyGeometry(in: app, testCase: self)
         XCTAssertEqual(rail.toolbar.frame.width, 48, accuracy: 0.5)
 
         // Compare to UIKit's rendered rail; a fixed device width would miss Split View and text scaling.

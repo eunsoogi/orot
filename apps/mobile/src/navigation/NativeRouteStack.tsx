@@ -15,6 +15,7 @@ import { appColors } from '../layout/appColors';
 import NativeRouteScreen from './NativeRouteScreen';
 import { useNativeRouteRemoval } from './useNativeRouteRemoval';
 import { observeNavigationTest } from './navigationTestObservation';
+import { useNavigationTestStateReader } from './useNavigationTestStateReader';
 import {
   NativeRouteRegistryContext,
   type NativeRouteParamList,
@@ -61,6 +62,11 @@ export function NativeRouteStack<Name extends string>({
     reduceMotion,
     onNativeRouteRemovalComplete,
   });
+  const testStackID = useNavigationTestStateReader(
+    controller,
+    ready,
+    getNativeRouteKeys,
+  );
 
   const registry = useMemo<NativeRouteRegistry>(
     () => ({
@@ -196,6 +202,7 @@ export function NativeRouteStack<Name extends string>({
               const routeKey = params?.routeKey;
               if (typeof routeKey === 'string') {
                 observeNavigationTest('transition-end', {
+                  stackID: testStackID.current,
                   routeKey,
                   closing: event.data.closing,
                 });

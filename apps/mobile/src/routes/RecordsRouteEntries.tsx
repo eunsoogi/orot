@@ -50,10 +50,13 @@ export function RecordsRouteEntries({
             style={styles.captureContent}
             testID="recording-capture-content"
           >
-            <View style={styles.captureIcon}>
+            <View style={styles.captureIcon} testID="recording-capture-icon">
               <AppSymbol name="mic.fill" color={appColors.primaryAction} />
             </View>
-            <Text style={styles.captureActionTitle}>
+            <Text
+              style={styles.captureActionTitle}
+              testID="recording-capture-title"
+            >
               {t('records.newRecording')}
             </Text>
           </View>
