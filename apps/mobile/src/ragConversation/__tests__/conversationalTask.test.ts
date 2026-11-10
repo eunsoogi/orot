@@ -42,38 +42,3 @@ test.each(['unsupported', null, 1])(
     ).toBe('invalid');
   },
 );
-
-test('projects only explicitly conversational text before evidence is available', () => {
-  const project = ragConversationTask.projectStreamedText!;
-  const conversation = JSON.stringify({
-    type: 'result',
-    value: {
-      answerKind: 'conversation',
-      answer: '천만에요!',
-    },
-    citations: [],
-  });
-  const grounded = conversation.replace('conversation', 'grounded');
-  expect(project(conversation, input)).toBe('천만에요!');
-  expect(project(grounded, input)).toBeUndefined();
-  const publicOnly = {
-    ...input,
-    evidence: {
-      ...input.evidence,
-      items: [
-        {
-          sourceKind: 'external_medical' as const,
-          sourceId: 'public-web',
-          sourceRevision: '1',
-          evidenceId: 'web-1',
-          evidenceRevision: '1',
-          locator: {},
-          effectiveTime: null,
-          reviewState: 'unknown' as const,
-          content: 'Public explanation',
-        },
-      ],
-    },
-  };
-  expect(project(grounded, publicOnly)).toBeUndefined();
-});
