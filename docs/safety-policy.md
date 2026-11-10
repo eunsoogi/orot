@@ -48,6 +48,24 @@ measurements, or free-text complaints. A result with no matched rule must not be
 used as reassurance or as a replacement for professional judgment. Graph
 ordering and user clarification belong to the consuming workflow in issue #29.
 
+## Treatment education release gate
+
+Treatment explanations must pass the closed claim and source checks in the
+[treatment context contract](treatment-context.md) before display, storage,
+reopening, or reuse in follow-up. Unclassifiable claims, missing or changed
+sources, false condition attribution, and unresolved verification must withhold
+the generated answer. Streaming must remain buffered until the complete answer
+passes. Existing emergency actions take precedence over treatment content.
+The narrow blood-pressure policy above is not comprehensive triage.
+
+The treatment workflow must demonstrate these boundaries with meaningful
+synthetic evaluations, source correction and deletion, cancellation, saved
+results, and follow-up. The app-owned educational statements and guidance need
+clinical review, and intended-provider behavior needs separate quality
+evidence. Until the explanation workflow enforces these checks and those
+requirements are met, treatment education is not release-ready. A disclaimer
+or a model's citation alone does not establish safety.
+
 ## Source and review
 
 - Source: [American Heart Association, When To Call 911 About High Blood
