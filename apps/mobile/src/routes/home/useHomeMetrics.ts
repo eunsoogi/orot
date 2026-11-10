@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { AppState } from 'react-native';
 import type { RecordRepository, SqlDatabase } from '@orot/storage';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../../storage/localDataClearEvents';
 import { loadHomeMetrics } from './metricLoader';
 import {
   defaultHomeMetrics,
@@ -30,9 +34,38 @@ export function useHomeMetrics() {
   >('loading');
   const [attempt, setAttempt] = useState(0);
   const selectionGeneration = useRef(0);
-  // Keep one successful local snapshot visible while a later foreground or midnight read is pending.
+  const loadGeneration = useRef(0);
+  // Keep the last snapshot only across recoverable retries such as midnight refreshes.
   const hasSnapshot = useRef(false);
-  const retry = useCallback(() => setAttempt(value => value + 1), []);
+  const retry = useCallback(() => {
+    // A newer read supersedes unresolved work without discarding a still-valid snapshot.
+    loadGeneration.current += 1;
+    setAttempt(value => value + 1);
+  }, []);
+  const invalidateSnapshot = useCallback(() => {
+    // A committed clear, source deletion, or OS return can invalidate retained health values.
+    hasSnapshot.current = false;
+    setMetrics({});
+    setQuantityTruncated(false);
+    setState('loading');
+    retry();
+  }, [retry]);
+  useEffect(() => {
+    const unsubscribeClear = subscribeLocalDataClear(invalidateSnapshot);
+    const unsubscribeSourceDeletion =
+      subscribeLocalSourceDeletion(invalidateSnapshot);
+    return () => {
+      unsubscribeClear();
+      unsubscribeSourceDeletion();
+    };
+  }, [invalidateSnapshot]);
+  useEffect(() => {
+    // Keep access revalidation active while another route is focused in Settings or Health.
+    const subscription = AppState.addEventListener('change', appState => {
+      if (appState === 'active') invalidateSnapshot();
+    });
+    return () => subscription.remove();
+  }, [invalidateSnapshot]);
   useEffect(() => {
     if (!focused) return;
     const now = new Date();
@@ -46,18 +79,13 @@ export function useHomeMetrics() {
       retry,
       Math.max(1, midnight.getTime() - now.getTime()),
     );
-    const subscription = AppState.addEventListener('change', appState => {
-      if (appState === 'active') retry();
-    });
-    return () => {
-      clearTimeout(timer);
-      subscription.remove();
-    };
-  }, [focused, attempt, retry]);
+    return () => clearTimeout(timer);
+  }, [focused, attempt, retry, invalidateSnapshot]);
   useEffect(() => {
     if (!focused) return;
     let active = true;
-    const readGeneration = selectionGeneration.current;
+    const selectionReadGeneration = selectionGeneration.current;
+    const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
     Promise.resolve()
       .then(() => {
@@ -70,8 +98,8 @@ export function useHomeMetrics() {
         ]);
       })
       .then(([nextSelection, nextMetrics]) => {
-        if (active) {
-          if (readGeneration === selectionGeneration.current)
+        if (active && currentLoadGeneration === loadGeneration.current) {
+          if (selectionReadGeneration === selectionGeneration.current)
             setSelection(nextSelection);
           setMetrics(nextMetrics.metrics);
           setQuantityTruncated(nextMetrics.quantityTruncated);
@@ -80,7 +108,8 @@ export function useHomeMetrics() {
         }
       })
       .catch(() => {
-        if (active) setState(hasSnapshot.current ? 'stale' : 'failed');
+        if (active && currentLoadGeneration === loadGeneration.current)
+          setState(hasSnapshot.current ? 'stale' : 'failed');
       });
     return () => {
       active = false;

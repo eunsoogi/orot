@@ -16,6 +16,7 @@ import { appColorPalettes } from '../../layout/appColors';
 import { t } from '../../i18n';
 import {
   formatChartPosition,
+  formatChartTick,
   formatChartTimeTick,
   formatChartValue,
 } from './format';
@@ -85,8 +86,9 @@ export function ChartPlot({
   const formatValue = (value: number, unit: string) =>
     formatChartValue(data.metric, value, unit);
   const xLabel = (value: string | number | Date) =>
-    formatPosition(
+    formatChartTick(
       typeof value === 'number' ? new Date(value).toISOString() : String(value),
+      axis,
     );
   const timeTick = (value: string | number | Date, index: number) =>
     index === 0 || index === rows.length - 1

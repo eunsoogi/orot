@@ -20,7 +20,7 @@ jest.mock('./metricLoader', () => ({
   })),
 }));
 
-test('refreshes the local window when the app returns to the foreground', async () => {
+test('revalidates the local window when the app returns to the foreground', async () => {
   jest.clearAllMocks();
   let callback: ((state: AppStateStatus) => void) | undefined;
   const subscription = jest
@@ -70,13 +70,9 @@ test('does not let an older refresh overwrite a later saved selection', async ()
 
 test('keeps the last successful metrics visible while refreshing and after a refresh failure', async () => {
   jest.clearAllMocks();
-  let callback: ((state: AppStateStatus) => void) | undefined;
   const subscription = jest
     .spyOn(AppState, 'addEventListener')
-    .mockImplementation((_event, listener) => {
-      callback = listener;
-      return { remove: jest.fn() };
-    });
+    .mockImplementation(() => ({ remove: jest.fn() }));
   const metric: HomeMetricProjection = {
     metric: 'steps',
     unit: 'count',
@@ -106,7 +102,7 @@ test('keeps the last successful metrics visible while refreshing and after a ref
   await waitFor(() => expect(hook.result.current.state).toBe('ready'));
   expect(hook.result.current.metrics.steps).toEqual(metric);
 
-  await act(async () => callback?.('active'));
+  await act(async () => hook.result.current.retry());
   await waitFor(() => expect(hook.result.current.state).toBe('refreshing'));
   expect(hook.result.current.metrics.steps).toEqual(metric);
 

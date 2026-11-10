@@ -1,5 +1,6 @@
 import { healthContextDays } from '../../healthEvidence/healthContext/window';
 import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
+import { homeMetricChartData } from './homeMetricChart';
 import { projectHomeMetric } from './metricProjection';
 
 test('keeps gaps and excludes the partial day from coverage-aware comparisons', () => {
@@ -98,7 +99,7 @@ test('includes a missing today slot even at local midnight', () => {
   });
 });
 
-test('keeps one source series and separates latest body mass from the daily-mean comparison', () => {
+test('plots the latest body-mass sample while comparing daily means', () => {
   const window = {
     fromInclusive: '2026-09-30T15:00:00Z',
     toExclusive: '2026-10-15T03:00:00Z',
@@ -118,6 +119,19 @@ test('keeps one source series and separates latest body mass from the daily-mean
     firstAt: date + 'T03:00:00Z',
     lastAt: date + 'T03:00:00Z',
   });
+  const bodyMassDays = dates.map((date, index) =>
+    index === 13
+      ? {
+          ...day(date, 80),
+          samples: 2,
+          minimum: 70,
+          sum: 150,
+          mean: 75,
+          firstAt: date + 'T01:00:00Z',
+          lastAt: date + 'T02:00:00Z',
+        }
+      : day(date, 70),
+  );
   const report: HealthContextReport = {
     window,
     days: healthContextDays(window),
@@ -126,7 +140,7 @@ test('keeps one source series and separates latest body mass from the daily-mean
         concept: 'body_mass',
         unit: 'kg',
         source: 'watch-series',
-        days: dates.map((date, index) => day(date, index === 13 ? 80 : 70)),
+        days: bodyMassDays,
       },
       {
         concept: 'body_mass',
@@ -149,12 +163,17 @@ test('keeps one source series and separates latest body mass from the daily-mean
   expect(result?.timeZone).toBe('Asia/Seoul');
   expect(result?.latest).toEqual({ date: '2026-10-14', value: 80 });
   expect(result?.comparison?.previous).toBe(70);
-  expect(result?.comparison?.recent).toBeCloseTo(71.428571, 5);
+  expect(result?.comparison?.recent).toBeCloseTo(70.714286, 5);
   expect(result?.days.at(-2)).toEqual({
     date: '2026-10-14',
     value: 80,
     partial: false,
   });
+  expect(result?.measuredAt).toBe('2026-10-14T02:00:00Z');
+  const plottedValues = homeMetricChartData(result!).series[0]?.points;
+  expect(plottedValues?.find(point => point.x === '2026-10-14')?.value).toBe(
+    80,
+  );
   expect(result?.days.at(-1)).toEqual({
     date: '2026-10-15',
     value: null,
