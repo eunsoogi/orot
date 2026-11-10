@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { RecordIdSchema, RecordMetadataSchema } from './common';
 import { RecapQuestionResultSchema, RecapResultSchema } from './recap';
+import { VisitQuestionSchema } from './visitQuestions';
 
 const AutomaticVisitQuestionSourceSchema = RecapResultSchema.omit({
   preparedQuestions: true,
@@ -13,6 +14,15 @@ export const VisitQuestionRecordSchema = RecordMetadataSchema.safeExtend({
   questionId: RecordIdSchema,
   questionText: z.string().trim().min(1),
   questionRevision: RecordIdSchema,
+  // Keep the original typed evidence even if the prepared question is later amended.
+  questionSources: z
+    .array(
+      z.object({
+        healthContextSources: VisitQuestionSchema.shape.healthContextSources,
+        generatedArtifactSources: VisitQuestionSchema.shape.generatedArtifactSources,
+      }),
+    )
+    .optional(),
   revision: z.number().int().positive(),
   sourceMethod: z.enum(['manual_confirmed', 'ai_generated']),
   editOrigin: z.enum(['manual_confirmation', 'ai_analysis', 'user_edit']),
