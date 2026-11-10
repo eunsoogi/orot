@@ -121,7 +121,7 @@ test('Duo remains opt-in with its own product compatibility and exact native tes
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
   assert.equal(duoInventory.length, 58);
   assert.deepEqual(duoInventory, [
-    'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitDuoAtLargeTextInBothAppearances',
+    'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances',
     'OrotUITests/DailyReportEntryUITests/testVoiceOverReadsSavedReportAndOpensFollowUp',
     'OrotUITests/DailyReportEntryUITests/testEncryptedSavedReportSurvivesRestartAcrossEntryPaths',
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
