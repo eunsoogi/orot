@@ -24,8 +24,11 @@ import RecordingGuidancePanel from './RecordingGuidancePanel';
 import RecordingScreenHeader from './RecordingScreenHeader';
 import RecordingTranscriptionFeedback from './RecordingTranscriptionFeedback';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
+import { OptionalRecordingVisitPicker } from './RecordingVisitPicker';
 
 interface RecordingControlsProps {
+  selectedVisit?: string | null;
+  onSelectVisit?: (id: string | null) => void;
   onBack: () => void;
   onOpenSavedRecordings?: () => void;
   stateReady: boolean;
@@ -60,6 +63,8 @@ interface RecordingControlsProps {
 }
 
 export default function RecordingControls({
+  selectedVisit,
+  onSelectVisit,
   onBack,
   onOpenSavedRecordings,
   stateReady,
@@ -141,6 +146,12 @@ export default function RecordingControls({
         onOpenSavedRecordings={onOpenSavedRecordings}
         sourceRetryPending={sourceRetryPending}
         stateReady={stateReady}
+        status={status}
+      />
+      <OptionalRecordingVisitPicker
+        selected={selectedVisit ?? null}
+        onSelect={onSelectVisit}
+        busy={controlsBusy}
         status={status}
       />
       {/* Keep capture and consent together in the page without restarting their state. */}

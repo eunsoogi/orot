@@ -1,4 +1,7 @@
 export { STORAGE_TABLES, isRecordKind, parseRecord } from './contracts';
+export { bindRecordingToVisit, readRecapBinding, unbindRecordingFromVisit } from './recapBinding';
+export { loadCurrentRecapInput } from './recapInput';
+export { cacheRecapResult, markRecapSaved, readCurrentRecapResult } from './recapResults';
 export type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
 export { CURRENT_SCHEMA_VERSION, runMigrations } from './migrations';
 export {

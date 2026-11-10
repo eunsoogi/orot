@@ -1,4 +1,6 @@
 import type { DisplayMessage } from './ConversationMessage';
+import { Fragment } from 'react';
+import { ConversationSavedRecaps } from './ConversationSavedRecaps';
 import { ManualVisitRecords } from './ManualVisitRecords';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import type { ConversationSessions } from './conversationSessions';
@@ -47,10 +49,10 @@ export function ManualVisitTargetPanels({
   return (
     <>
       {[...targets].map(([appointmentId, revision]) => (
-        <ManualVisitRecords
-          key={sessionId + ':' + appointmentId + ':' + revision}
-          appointmentId={appointmentId}
-        />
+        <Fragment key={sessionId + ':' + appointmentId + ':' + revision}>
+          <ConversationSavedRecaps appointmentId={appointmentId} />
+          <ManualVisitRecords appointmentId={appointmentId} />
+        </Fragment>
       ))}
       {available &&
       durableSessionId &&

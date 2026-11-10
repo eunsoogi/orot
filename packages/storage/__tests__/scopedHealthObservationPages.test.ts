@@ -177,7 +177,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
       'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
     ]);
     expect(statements.some((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))).toBe(false);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(15);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(16);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',

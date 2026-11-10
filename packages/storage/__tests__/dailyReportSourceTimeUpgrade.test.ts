@@ -113,7 +113,7 @@ test.each([12, 13, 14])(
           )
         ).rows,
       ).toHaveLength(1);
-      expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
+      expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
       expect(await repository.get('source_record', source.id)).toEqual(source);
       expect((await database.execute('SELECT * FROM daily_report_heads')).rows).toHaveLength(
         version >= 13 ? 1 : 0,
@@ -163,7 +163,7 @@ test('rolls back the partial version fourteen rebuild without changing version o
     const columns = await database.execute('PRAGMA table_info(source_records)');
     expect(columns.rows.find((row) => row.name === 'effective_at')?.notnull).toBe(1);
     await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
   } finally {
     await database.closeAsync?.();
   }
