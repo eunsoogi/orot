@@ -1,12 +1,8 @@
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
-import type {
-  EvidenceBatch,
-  EvidenceReference,
-  MultiAgentRunResult,
-} from '@orot/agent-runtime';
+import type { EvidenceBatch, EvidenceReference } from '@orot/agent-runtime';
 import type { EvidenceChunk } from '@orot/rag';
 import { runRagConversationTurn } from '../service';
-import type { GroundedRagAnswer } from '../task';
+import { result } from '../testSupport/serviceResult';
 
 jest.mock('@orot/agent-runtime', () => ({ runMultiAgentWorkflow: jest.fn() }));
 
@@ -45,19 +41,6 @@ function snapshot(reference: EvidenceReference) {
     conflicts: [],
   };
   return { batch, chunks: [chunk] };
-}
-
-function result(
-  reference: EvidenceReference,
-  answer: string,
-): MultiAgentRunResult<GroundedRagAnswer> {
-  return {
-    status: 'result',
-    value: { answer },
-    citations: [reference],
-    coverage: [],
-    checkpoint: {} as never,
-  };
 }
 
 test('loads a fresh snapshot for each turn and passes only E5-selected evidence to #117', async () => {
@@ -183,7 +166,7 @@ test('allows literature-only research and makes limited-search attribution visib
   jest.mocked(runMultiAgentWorkflow).mockClear();
   jest
     .mocked(runMultiAgentWorkflow)
-    .mockResolvedValueOnce(result(external, '문헌 답변'));
+    .mockResolvedValueOnce(result(external, '문헌 답변', [external]));
   const outcome = await runRagConversationTurn({
     question: '수면 관련 문헌은?',
     previousMessages: [],
