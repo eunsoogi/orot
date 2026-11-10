@@ -1,8 +1,27 @@
-import { providerSuccess } from '@orot/model-runtime';
+import { providerFailure, providerSuccess } from '@orot/model-runtime';
 import { extractTranscriptRecap } from '../src/recap/extract';
 import { extractionFixture, foundOutput, recapInput } from './recap-fixtures';
 
 describe('Recap validation and cancellation boundaries', () => {
+  it('preserves a plain text model refusal and rejects malformed JSON without retry', async () => {
+    const { options, generate } = extractionFixture();
+    options.provider = {
+      ...options.provider,
+      capabilities: { ...options.provider.capabilities, structuredOutput: false, streaming: false },
+    };
+    generate.mockResolvedValueOnce(
+      providerFailure({ code: 'safety_refusal', message: 'refused', retryable: false }) as never,
+    );
+    expect(await extractTranscriptRecap(options)).toEqual({
+      status: 'unavailable',
+      errorCode: 'safety_refusal',
+    });
+    generate.mockResolvedValueOnce(
+      providerSuccess({ text: '{invalid', toolCalls: [], finishReason: 'complete' }) as never,
+    );
+    expect(await extractTranscriptRecap(options)).toEqual({ status: 'invalid_output' });
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
   it.each([
     'foreign-visit',
     'foreign-recording',

@@ -10,6 +10,40 @@ jest.mock('../../aiFeatures/integration/provider', () => ({
 
 beforeEach(() => jest.clearAllMocks());
 
+it('uses the scoped plain transformation only for the selected Apple identity', async () => {
+  const input = recapInput();
+  jest
+    .mocked(extractTranscriptRecap)
+    .mockResolvedValueOnce({ status: 'no_questions' });
+  const completion = createRecapCompletion({
+    loadInput: async () => input,
+    loadCurrent: async () => input,
+    consent: { authorize: async () => 'authorized' },
+    resolveSelected: async () =>
+      ({
+        status: 'ready',
+        provider: { id: 'apple-foundation-models' },
+        modelId: 'system-default',
+        recipient: 'local',
+        remoteProcessing: false,
+      }) as never,
+    onOutcome: async () => undefined,
+  });
+  await completion(
+    input.recordingSourceId,
+    input.segments,
+    new AbortController().signal,
+  );
+  const options = jest.mocked(extractTranscriptRecap).mock.calls[0][0];
+  expect(options.provider.id).toBe('apple-foundation-models');
+  expect(options.provider.capabilities).toMatchObject({
+    streaming: false,
+    structuredOutput: false,
+    toolCalling: false,
+  });
+  expect(options.execution.modelId).toBe('system-default');
+});
+
 it('passes only the latest transcript revision and selected model to extraction', async () => {
   const input = recapInput();
   const corrected = createTranscriptCorrection(
