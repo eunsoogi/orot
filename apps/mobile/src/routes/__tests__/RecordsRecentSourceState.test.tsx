@@ -66,5 +66,5 @@ test('shows and retries a failed imported-document list read', async () => {
     expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();
   });
   expect(listDocuments).toHaveBeenCalledTimes(2);
-  expect(onRetryRecordings).toHaveBeenCalledTimes(1);
+  expect(onRetryRecordings).not.toHaveBeenCalled();
 });

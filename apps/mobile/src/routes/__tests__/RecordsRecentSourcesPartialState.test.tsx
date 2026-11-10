@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { RecordsRoute } from '../RecordsRoute';
 import type { RecordsRouteProps } from '../RecordsRoute';
 import type {
@@ -53,11 +53,13 @@ function routeProps(
 test('retains loaded documents and their destination when recordings fail', async () => {
   const document = medicalDocument('document-ready-1');
   const service = documentImportService([document]);
+  const retryRecordings = jest.fn();
   await render(
     <RecordsRoute
       {...routeProps({
         recordingState: 'failed',
         documentImportService: service,
+        onRetryRecordings: retryRecordings,
       })}
     />,
   );
@@ -69,6 +71,9 @@ test('retains loaded documents and their destination when recordings fail', asyn
   expect(screen.getByTestId('records-recent-sources-error')).toHaveTextContent(
     '녹음 목록을 불러오지 못했어요.',
   );
+  await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
+  expect(retryRecordings).toHaveBeenCalledTimes(1);
+  expect(service.listDocuments).toHaveBeenCalledTimes(1);
 });
 
 test('retains loaded documents while recordings load', async () => {
@@ -87,4 +92,31 @@ test('retains loaded documents while recordings load', async () => {
   expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
   expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
   expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
+});
+
+test('ignores an old document list when the current reader has already settled', async () => {
+  let resolveOld!: (rows: MedicalDocumentSourceRecord[]) => void;
+  const pending = new Promise<MedicalDocumentSourceRecord[]>(resolve => {
+    resolveOld = resolve;
+  });
+  const props = routeProps();
+  const route = await render(
+    <RecordsRoute
+      {...props}
+      documentImportService={{
+        ...documentImportService([]),
+        listDocuments: () => pending,
+      }}
+    />,
+  );
+  await route.rerender(
+    <RecordsRoute
+      {...props}
+      documentImportService={documentImportService([])}
+    />,
+  );
+  await screen.findByTestId('records-recent-sources-empty');
+  await act(async () => resolveOld([medicalDocument('obsolete')]));
+  expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();
+  expect(screen.queryByTestId('medical-document-source-0')).toBeNull();
 });

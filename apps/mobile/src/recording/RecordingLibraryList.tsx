@@ -3,6 +3,8 @@ import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackgro
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
+import { AppButton } from '../layout/AppButton';
+import { AppProgress } from '../layout/AppProgress';
 import { t } from '../i18n';
 import RecordingLibrarySummaryRow from './RecordingLibrarySummaryRow';
 import type { RecordingLibrarySummary } from './recordingLibraryService';
@@ -19,6 +21,7 @@ export default function RecordingLibraryList({
   onOpen,
   onDelete,
   onNewRecording,
+  onRetry,
 }: {
   readonly recordings: readonly RecordingLibrarySummary[];
   readonly loading: boolean;
@@ -27,6 +30,7 @@ export default function RecordingLibraryList({
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
   readonly onDelete: (source: RecordingSourceRecord) => void;
   readonly onNewRecording?: () => void;
+  readonly onRetry?: () => void;
 }) {
   const label = t('recording.start');
   const hasDock = useNavigationRouteActions(
@@ -70,13 +74,31 @@ export default function RecordingLibraryList({
       {onNewRecording ? (
         <Text style={styles.copy}>{t('recording.library.description')}</Text>
       ) : null}
-      {loading ? <Text>{t('recording.library.loading')}</Text> : null}
-      {loadError ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {t('recording.library.loadError')}
-        </Text>
+      {loading ? (
+        <View>
+          <AppProgress accessibilityElementsHidden />
+          <Text accessibilityLiveRegion="polite">
+            {t('recording.library.loading')}
+          </Text>
+        </View>
       ) : null}
-      {!loading && recordings.length === 0 ? (
+      {!loading && loadError ? (
+        <View>
+          <Text accessibilityRole="alert" style={styles.error}>
+            {t('recording.library.loadError')}
+          </Text>
+          {onRetry ? (
+            <AppButton
+              disabled={disabled}
+              onPress={onRetry}
+              testID="recording-library-retry"
+              title={t('appointments.retry')}
+              variant="secondary"
+            />
+          ) : null}
+        </View>
+      ) : null}
+      {!loading && !loadError && recordings.length === 0 ? (
         <Text style={styles.copy} testID="recording-library-empty">
           {t('recording.library.empty')}
         </Text>

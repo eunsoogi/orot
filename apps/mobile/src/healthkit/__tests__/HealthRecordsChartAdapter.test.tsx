@@ -139,8 +139,17 @@ test('retains duplicate instants and updates coverage and values on refresh', as
       loadState="failed"
     />,
   );
-  expect(read().coverage.status).toBe('error');
+  expect(read().coverage.status).toBe('stale');
   expect(read().series[0]?.points.map(point => point.value)).toEqual([180]);
+  await result.rerender(
+    <HealthRecordsLineChart
+      category="heart_rate"
+      observations={[]}
+      loadState="failed"
+    />,
+  );
+  expect(read().coverage.status).toBe('error');
+  expect(read().series).toEqual([]);
   await result.rerender(
     <HealthRecordsLineChart category="heart_rate" observations={[]} />,
   );

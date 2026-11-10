@@ -4,6 +4,7 @@ import { AppState, ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import { AppointmentListReadStatus } from './AppointmentListReadStatus';
 import { t } from '../i18n';
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import { AppointmentListItem } from './AppointmentListItem';
@@ -120,16 +121,15 @@ export default function AppointmentsScreen({
         {t('appointments.title')}
       </Text>
       <Text style={styles.message}>{t('appointments.description')}</Text>
-      {state.loading ? (
-        <Text testID="appointments-loading">{t('appointments.loading')}</Text>
-      ) : state.error && state.appointments.length === 0 ? (
-        <Button
-          onPress={() => state.reload()}
-          testID="appointments-retry"
-          title={t('appointments.retry')}
-        />
-      ) : state.appointments.length === 0 ? (
-        <Text testID="appointments-empty">{t('appointments.empty')}</Text>
+      <AppointmentListReadStatus
+        loading={state.loading}
+        failed={state.readError}
+        onRetry={state.reload}
+      />
+      {state.appointments.length === 0 ? (
+        !state.loading && !state.readError ? (
+          <Text testID="appointments-empty">{t('appointments.empty')}</Text>
+        ) : null
       ) : (
         <View style={styles.list} testID="appointments-list">
           {upcomingAppointments.length > 0 ? (

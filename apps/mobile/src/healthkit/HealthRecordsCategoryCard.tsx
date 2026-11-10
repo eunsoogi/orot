@@ -88,17 +88,19 @@ export function HealthRecordsCategoryCard({
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
-        <Text style={styles.count}>
-          {t(
-            hasMore
-              ? 'healthRecords.loadedCategoryPeriodSummary'
-              : 'healthRecords.categoryPeriodSummary',
-            {
-              count,
-              period: healthRecordPeriodTitle('month'),
-            },
-          )}
-        </Text>
+        {loadState === 'ready' || count > 0 || hasMore ? (
+          <Text style={styles.count}>
+            {t(
+              hasMore
+                ? 'healthRecords.loadedCategoryPeriodSummary'
+                : 'healthRecords.categoryPeriodSummary',
+              {
+                count,
+                period: healthRecordPeriodTitle('month'),
+              },
+            )}
+          </Text>
+        ) : null}
       </HealthRecordsCategoryHeading>
       {recentObservations.length === 0 ? (
         <Text

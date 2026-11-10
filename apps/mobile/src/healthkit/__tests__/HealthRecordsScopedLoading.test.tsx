@@ -1,4 +1,10 @@
-import { act, render, screen, fireEvent } from '@testing-library/react-native';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  within,
+} from '@testing-library/react-native';
 import type {
   HealthObservationPageFilter,
   HealthObservationPage,
@@ -51,6 +57,15 @@ test('loads each category directly and shows pressure while a Watch category rem
   expect(
     screen.getByTestId('health-record-category-empty-heart_rate'),
   ).toHaveTextContent('저장된 건강 기록을 불러오는 중…');
+  expect(
+    within(screen.getByTestId('health-record-category-heart_rate')).queryByText(
+      /^0개 기록/,
+    ),
+  ).toBeNull();
+  expect(
+    screen.getByTestId('health-record-chart-heart_rate').props
+      .accessibilityLabel,
+  ).toBe('기록을 불러오는 중이에요.');
   await fireEvent.press(screen.getByTestId('health-record-filter-sleep'));
   expect(loader).toHaveBeenCalledTimes(6);
   await act(async () => finishHeart({ records: [], nextCursor: null }));

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
 import { selectNextAppointment } from '../routes/nextAppointment';
+import { subscribeLocalDataClear } from '../storage/localDataClearEvents';
 import {
   toAppointmentTimestamp,
   toAppointmentTimestampForEdit,
@@ -38,6 +39,8 @@ export function useAppointmentsScreenState({
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [readError, setReadError] = useState(false);
+  const readGeneration = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -55,10 +58,13 @@ export function useAppointmentsScreenState({
 
   const reload = useCallback(
     async (preferredSelectionId?: string) => {
+      const generation = ++readGeneration.current;
       setLoading(true);
-      setError('');
+      setReadError(false);
       try {
         const nextAppointments = await repository.list();
+        // A refocus or mutation can start a newer read before this one finishes.
+        if (generation !== readGeneration.current) return;
         setAppointments(nextAppointments);
         // Keep an explicit choice while present; only an empty choice may adopt the newly saved row.
         setManualSelectionId(current => {
@@ -79,9 +85,9 @@ export function useAppointmentsScreenState({
           return null;
         });
       } catch {
-        setError(t('appointments.loadError'));
+        if (generation === readGeneration.current) setReadError(true);
       } finally {
-        setLoading(false);
+        if (generation === readGeneration.current) setLoading(false);
       }
     },
     [repository],
@@ -104,6 +110,18 @@ export function useAppointmentsScreenState({
   useEffect(() => {
     if (active) reload().catch(() => undefined);
   }, [active, reload]);
+  useEffect(() => {
+    const unsubscribe = subscribeLocalDataClear(() => {
+      // A local wipe invalidates the selection even if the replacement read fails.
+      setAppointments([]);
+      setManualSelectionId(null);
+      reload();
+    });
+    return () => {
+      readGeneration.current += 1;
+      unsubscribe();
+    };
+  }, [reload]);
 
   function startNewAppointment() {
     setEditing(null);
@@ -200,6 +218,7 @@ export function useAppointmentsScreenState({
     error,
     formOpen,
     loading,
+    readError,
     note,
     notice,
     saving,

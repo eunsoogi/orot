@@ -1,4 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppProgress } from '../layout/AppProgress';
+import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -21,12 +23,14 @@ export function RecordsRecentSourceState({
   if (state === 'loading') {
     return (
       <View style={styles.state} testID="records-recent-sources-loading">
-        <ActivityIndicator
-          accessibilityLabel={t('records.recent.loading')}
+        <AppProgress
+          accessibilityElementsHidden
           color={appColors.secondary}
           size="small"
         />
-        <Text>{t('records.recent.loading')}</Text>
+        <Text accessibilityLiveRegion="polite">
+          {t('records.recent.loading')}
+        </Text>
       </View>
     );
   }
@@ -37,14 +41,13 @@ export function RecordsRecentSourceState({
         <Text accessibilityRole="alert" testID="records-recent-sources-error">
           {errorMessage ?? t('records.recent.loadError')}
         </Text>
-        <Pressable
-          accessibilityRole="button"
+        <AppButton
           onPress={onRetry}
-          style={styles.retry}
           testID="records-recent-sources-retry"
-        >
-          <Text style={styles.retryTitle}>{t('appointments.retry')}</Text>
-        </Pressable>
+          title={t('appointments.retry')}
+          variant="secondary"
+          size="compact"
+        />
       </View>
     );
   }
@@ -67,17 +70,4 @@ export function RecordsRecentSourceState({
 const styles = StyleSheet.create({
   state: { alignItems: 'flex-start', gap: hubSpacing.item },
   empty: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
-  retry: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  retryTitle: {
-    color: appColors.primaryAction,
-    fontSize: 15,
-    fontWeight: '600',
-  },
 });

@@ -6,8 +6,27 @@ import {
 } from '../../navigation/useNavigationPrimaryAction';
 import RecordingScreenHeader from '../RecordingScreenHeader';
 import RecordingLibraryList from '../RecordingLibraryList';
+import RecordingLibraryPanel from '../RecordingLibraryPanel';
+import { t } from '../../i18n';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
+
+test('offers retry for a failed recording read before showing an empty library', async () => {
+  const list = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('read failed'))
+    .mockResolvedValue([]);
+  await render(
+    <RecordingLibraryPanel service={{ list, deleteRecording: jest.fn() }} />,
+  );
+  expect(
+    await screen.findByText(t('recording.library.loadError')),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('recording-library-empty')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-library-retry'));
+  expect(await screen.findByTestId('recording-library-empty')).toBeTruthy();
+  expect(list).toHaveBeenCalledTimes(2);
+});
 
 test('moves recording history and new-recording entry without changing busy guards', async () => {
   const history = jest.fn();

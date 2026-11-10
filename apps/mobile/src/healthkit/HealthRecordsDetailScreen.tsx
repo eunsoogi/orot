@@ -8,6 +8,10 @@ import type {
 } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppButton } from '../layout/AppButton';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -112,13 +116,22 @@ export function HealthRecordsDetailScreen({
   );
 
   useEffect(() => {
-    pending.current = false;
-    setObservations([]);
-    setCursor(null);
-    reload(null);
+    const reset = () => {
+      // A committed deletion invalidates both the visible page and its in-flight continuation.
+      generation.current += 1;
+      pending.current = false;
+      setObservations([]);
+      setCursor(null);
+      reload(null);
+    };
+    const unsubscribeClear = subscribeLocalDataClear(reset);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(reset);
+    reset();
     return () => {
       // Reject reads from the previous period before its rows can enter this list.
       generation.current += 1;
+      unsubscribeClear();
+      unsubscribeDeletion();
     };
   }, [reload]);
 
