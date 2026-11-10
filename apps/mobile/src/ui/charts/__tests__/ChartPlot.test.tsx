@@ -71,6 +71,20 @@ test('keeps blood-pressure line styles when series order changes', async () => {
   expect(series[1].strokeDasharray).toBeUndefined();
 });
 
+test('shows compact endpoint labels on the time axis while keeping full dates in the value list', async () => {
+  await render(<ChartPlot {...props} kind="line" />);
+  const chart = screen.getByTestId('line-renderer', {
+    includeHiddenElements: true,
+  });
+  const labels = chart.props.data.map((row: { x: number }, index: number) =>
+    chart.props.formatXLabel(row.x, index),
+  );
+  expect(labels[1]).toBe('');
+  expect(labels[0].length).toBeLessThan(16);
+  expect(labels[labels.length - 1].length).toBeLessThan(16);
+  expect(screen.getAllByText(/2026년/).length).toBeGreaterThan(0);
+});
+
 test('exposes one label per original series and its actual values while passing split segments to the renderer', async () => {
   await render(<ChartPlot {...props} kind="line" />);
   expect(screen.getAllByText('수축기 (실선)')).toHaveLength(1);
@@ -179,4 +193,41 @@ test('makes all dense observations reachable without dropping an outlier', async
   await fireEvent.press(screen.getByRole('button', { name: '다음 기록' }));
   expect(screen.getByText('2 / 2쪽')).toBeTruthy();
   expect(screen.getByText(/999,999걸음/)).toBeTruthy();
+});
+
+test('clamps the page after deletion and removes deleted observations', async () => {
+  const points = Array.from({ length: 101 }, (_, index) => ({
+    x: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+    value: index === 100 ? 999999 : index,
+    source: '합성',
+  }));
+  const dense = {
+    ...data,
+    metric: 'steps' as const,
+    series: [
+      {
+        id: 'steps',
+        style: 'primary' as const,
+        label: '걸음',
+        unit: 'count',
+        points,
+      },
+    ],
+  };
+  const view = await render(<ChartPlot {...props} data={dense} kind="bar" />);
+  await fireEvent.press(screen.getByRole('button', { name: '다음 기록' }));
+  expect(screen.getByText(/999,999걸음/)).toBeTruthy();
+  await view.rerender(
+    <ChartPlot
+      {...props}
+      data={{
+        ...dense,
+        series: [{ ...dense.series[0]!, points: points.slice(0, 1) }],
+      }}
+      kind="bar"
+    />,
+  );
+  expect(screen.queryByText(/999,999걸음/)).toBeNull();
+  expect(screen.getByText(/0걸음/)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '다음 기록' })).toBeNull();
 });

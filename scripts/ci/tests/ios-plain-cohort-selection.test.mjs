@@ -8,7 +8,7 @@ import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
 
 for (const [cohort, count] of [
-  ['core-ui', 5],
+  ['core-ui', 6],
   ['recording-evidence', 6],
 ]) {
   test(`${cohort} forwards its exact subset through native execution and result verification`, () => {

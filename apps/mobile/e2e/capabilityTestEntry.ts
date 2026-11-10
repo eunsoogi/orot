@@ -89,6 +89,9 @@ export function registerCapabilityTestEntry(
     case 'openai-tools':
       require('./openaiToolsProviderProbeEntry');
       break;
+    case 'chart-foundation':
+      require('./chartFoundationEntry');
+      break;
     default:
       return false;
   }

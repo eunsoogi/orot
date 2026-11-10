@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000002 /* ChartFoundationUITests.swift */; };
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
 		A11200000000000000000003 /* DailyReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000003 /* DailyReminderModule.m */; };
 		A11200000000000000000002 /* DailyReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000002 /* DailyReminderModule.swift */; };
@@ -320,6 +321,7 @@
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
+		A7C843720000000000000002 /* ChartFoundationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartFoundationUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryUITests.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
 		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
@@ -954,6 +956,7 @@
 				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
 				DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */,
 				CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */,
+				A7C843720000000000000002 /* ChartFoundationUITests.swift */,
 				a23c13bada0fd75e87404dfe /* ProviderSelectionDuoUITests.swift */,
 				7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
@@ -1449,6 +1452,7 @@
 				A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */,
 				DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */,
 				9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */,
+				A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */,
 				856e3b193f8769f1bc09bda3 /* ProviderSelectionDuoUITests.swift in Sources */,
 				BCAE2214CE9B75820591561B /* SettingsBackupDuoUITests.swift in Sources */,
 				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,

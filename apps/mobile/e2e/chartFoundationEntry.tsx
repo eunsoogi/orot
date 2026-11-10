@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import {
   AppRegistry,
+  Button,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -84,6 +86,7 @@ const dense: ChartData = {
 /** Synthetic local-only fixture for exercising the real native renderer. */
 function ChartFoundationFixture() {
   const { width } = useWindowDimensions();
+  const [showDense, setShowDense] = useState(true);
   const shared = {
     width: width - 32,
     height: 220,
@@ -94,7 +97,19 @@ function ChartFoundationFixture() {
         <ScrollView contentContainerStyle={styles.content}>
           <ChartPlot {...shared} kind="line" title="혈압" data={line} />
           <ChartPlot {...shared} kind="bar" title="걸음" data={bars} />
-          <ChartPlot {...shared} kind="line" title="밀집 심박수" data={dense} />
+          <Button
+            title={showDense ? '밀집 자료 닫기' : '밀집 자료 열기'}
+            onPress={() => setShowDense(!showDense)}
+          />
+          {showDense && (
+            <ChartPlot
+              {...shared}
+              kind="line"
+              title="밀집 심박수"
+              data={dense}
+              testID="dense-health-chart"
+            />
+          )}
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>

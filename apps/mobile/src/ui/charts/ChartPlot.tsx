@@ -14,7 +14,11 @@ import {
 import { AppText as Text } from '../../layout/AppText';
 import { appColorPalettes } from '../../layout/appColors';
 import { t } from '../../i18n';
-import { formatChartPosition, formatChartValue } from './format';
+import {
+  formatChartPosition,
+  formatChartTimeTick,
+  formatChartValue,
+} from './format';
 import { chartRows, lineSegments } from './model';
 import { chartWindows } from './window';
 import type { ChartData, ChartMetric } from './types';
@@ -24,6 +28,7 @@ type Props = {
   width: number;
   height: number;
   title: string;
+  testID?: string;
 };
 
 const token: Record<
@@ -43,6 +48,7 @@ export function ChartPlot({
   width,
   height,
   title,
+  testID,
   kind,
 }: Props & { kind: 'line' | 'bar' }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -82,9 +88,18 @@ export function ChartPlot({
     formatPosition(
       typeof value === 'number' ? new Date(value).toISOString() : String(value),
     );
+  const timeTick = (value: string | number | Date, index: number) =>
+    index === 0 || index === rows.length - 1
+      ? formatChartTimeTick(
+          value instanceof Date ? value.getTime() : Number(value),
+        )
+      : '';
   const unit = data.series[0]?.unit ?? '';
   return (
-    <View accessibilityState={{ busy: data.coverage.status === 'loading' }}>
+    <View
+      testID={testID}
+      accessibilityState={{ busy: data.coverage.status === 'loading' }}
+    >
       <Text accessibilityRole="header">{title}</Text>
       <Text accessibilityState={{ busy: data.coverage.status === 'loading' }}>
         {t(`chart.state.${data.coverage.status}`)}
@@ -92,7 +107,7 @@ export function ChartPlot({
       <Text>{t('chart.coverage', data.coverage)}</Text>
       {pages.length > 1 && rows.length > 0 && (
         <View>
-          <Text>
+          <Text testID={testID ? `${testID}-page` : undefined}>
             {t('chart.page', { page: page + 1, count: pages.length })}
           </Text>
           <Text>
@@ -103,6 +118,7 @@ export function ChartPlot({
           </Text>
           <Pressable
             accessibilityRole="button"
+            testID={testID ? `${testID}-previous` : undefined}
             accessibilityState={{ disabled: page === 0 }}
             disabled={page === 0}
             onPress={() => setPageIndex(page - 1)}
@@ -112,6 +128,7 @@ export function ChartPlot({
           </Pressable>
           <Pressable
             accessibilityRole="button"
+            testID={testID ? `${testID}-next` : undefined}
             accessibilityState={{ disabled: page === pages.length - 1 }}
             disabled={page === pages.length - 1}
             onPress={() => setPageIndex(page + 1)}
@@ -146,7 +163,7 @@ export function ChartPlot({
                 decimation={false}
                 showDots
                 interaction="none"
-                formatXLabel={xLabel}
+                formatXLabel={timeTick}
                 formatYLabel={value => formatValue(value, unit)}
               />
             ) : (
