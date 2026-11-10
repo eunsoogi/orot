@@ -65,14 +65,20 @@ export function useMedicalDocumentImport(
   );
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceMessage, setSourceMessage] = useState<string | null>(null);
+  const listGeneration = useRef(0);
 
   const loadSavedDocuments = useCallback(async () => {
+    const generation = ++listGeneration.current;
     setSavedDocumentsState('loading');
     setSavedDocumentsError(null);
     try {
-      setSavedDocuments(await service.listDocuments());
+      const documents = await service.listDocuments();
+      // A retry or a post-save read may finish before a superseded request.
+      if (generation !== listGeneration.current) return;
+      setSavedDocuments(documents);
       setSavedDocumentsState('ready');
     } catch {
+      if (generation !== listGeneration.current) return;
       setSavedDocumentsState('failed');
       setSavedDocumentsError(t('medicalDocument.source.loadError'));
     }
@@ -80,6 +86,9 @@ export function useMedicalDocumentImport(
 
   useEffect(() => {
     loadSavedDocuments().catch(() => undefined);
+    return () => {
+      listGeneration.current += 1;
+    };
   }, [loadSavedDocuments]);
 
   useNavigationLeaveStateRegistration({

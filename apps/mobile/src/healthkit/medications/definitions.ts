@@ -1,3 +1,4 @@
+import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { parseRecord } from '@orot/storage';
 import type { RecordMap } from '@orot/storage';
 import type { HealthKitMedicationQueryResult } from '../types';
@@ -60,7 +61,7 @@ export async function applyDefinitionSnapshot(
 
   let upserted = 0;
   let deleted = 0;
-  await repository.transaction(async writer => {
+  await commitHealthKitChanges(repository, async writer => {
     const existingRecords = await writer.list('medication_definition');
     for (const candidate of candidates) {
       const existing = await writer.get('medication_definition', candidate.id);
@@ -86,6 +87,7 @@ export async function applyDefinitionSnapshot(
         }
       }
     }
+    return deleted;
   });
   return {
     status: 'completed',

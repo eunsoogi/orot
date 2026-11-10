@@ -8,6 +8,7 @@ type RestoredTurn = {
   readonly question: string;
   readonly answer: string;
   readonly citations: readonly EvidenceReference[];
+  readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly completion?: 'complete' | 'partial';
   readonly entryIntent?: 'possibilities';
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
@@ -64,6 +65,7 @@ export function createConversationSessionRestoreState(input: {
           role: 'assistant' as const,
           content: turn.answer,
           citations: turn.citations,
+          healthSources: turn.healthSources,
           toolMessageId: turn.toolMessageId,
           ...(turn.question && turn.toolMessageId
             ? { retainedTurnId: turn.toolMessageId }

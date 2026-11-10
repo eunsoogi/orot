@@ -1,3 +1,5 @@
+import { commitHealthKitChanges } from '../../healthkit/commitHealthKitChanges';
+import { subscribeLocalSourceDeletion } from '../../storage/localDataClearEvents';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
@@ -8,41 +10,65 @@ import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { RetainedSourceInvalidError } from '../../aiFeatures/integration/retainedSourceError';
 
-test('a temporary source-capture failure can retry the same answer without generating it again', async () => {
-  const f = await healthContextFixture();
-  try {
-    const storage = createConversationArtifactStorage(f.database);
-    let sequence = 0;
-    const retention = createConversationSessionRetention({
-      openStorage: async () => storage,
-      createId: () => `id-${++sequence}`,
-      now: () => '2026-10-05T00:00:00.000Z',
-    });
-    const store = createConversationSessions({ retention });
-    const prepare = jest.fn(async () => ({
-      question: 'question',
-      answer: 'answer',
-      providerId: 'provider',
-      modelId: 'model',
-      sources: f.saved.sources,
-      citations: [f.saved.sources[0]!.reference],
-    }));
-    const sender = jest.fn(async (_q, _history, _signal, observer) => {
-      observer.onRetentionFailure(prepare);
-      return { status: 'answer' as const, answer: 'answer', citations: [] };
-    });
-    store.setDraft(1, 'question');
-    await store.send(1, sender);
-    expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(1);
-    await store.retrySave(1);
-    expect((await storage.read('id-2'))?.answer).toBe('answer');
-    expect(sender).toHaveBeenCalledTimes(1);
-    expect(prepare).toHaveBeenCalledTimes(1);
-    store.dispose();
-  } finally {
-    f.close();
-  }
-});
+test.each([false, true])(
+  'retries a temporary write failure without generating again (HealthKit deletion: %s)',
+  async deleteUnrelated => {
+    const f = await healthContextFixture();
+    try {
+      const storage = createConversationArtifactStorage(f.database);
+      let sequence = 0;
+      const retention = createConversationSessionRetention({
+        openStorage: async () => storage,
+        createId: () => `id-${++sequence}`,
+        now: () => '2026-10-05T00:00:00.000Z',
+      });
+      const store = createConversationSessions({ retention });
+      const prepare = jest.fn(async () => ({
+        question: 'question',
+        answer: 'answer',
+        providerId: 'provider',
+        modelId: 'model',
+        sources: deleteUnrelated ? [] : f.saved.sources,
+        citations: deleteUnrelated ? [] : [f.saved.sources[0]!.reference],
+      }));
+      const sender = jest.fn(async (_q, _history, _signal, observer) => {
+        observer.onRetentionFailure(prepare);
+        return {
+          status: 'answer' as const,
+          answer: 'answer',
+          citations: [],
+          healthSources: deleteUnrelated ? [] : (true as const),
+        };
+      });
+      store.setDraft(1, 'question');
+      await store.send(1, sender);
+      expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(1);
+      if (deleteUnrelated) {
+        const unsubscribe = subscribeLocalSourceDeletion(
+          store.refreshAfterSourceDeletion,
+        );
+        try {
+          await commitHealthKitChanges(f.repository, async writer =>
+            Number(await writer.delete('health_observation', f.inside.id)),
+          );
+        } finally {
+          unsubscribe();
+        }
+        expect(store.getSnapshot().sessions[0]?.unsavedCount).toBe(1);
+        expect(store.getSnapshot().sessions[0]?.messages.at(-1)?.content).toBe(
+          'answer',
+        );
+      }
+      await store.retrySave(1);
+      expect((await storage.read('id-2'))?.answer).toBe('answer');
+      expect(sender).toHaveBeenCalledTimes(1);
+      expect(prepare).toHaveBeenCalledTimes(1);
+      store.dispose();
+    } finally {
+      f.close();
+    }
+  },
+);
 
 test('a validated partial candidate retains its completion status', async () => {
   const f = await healthContextFixture();

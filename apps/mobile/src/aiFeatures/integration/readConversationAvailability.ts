@@ -38,5 +38,7 @@ export async function readConversationAvailability(
       history.length > 0,
     ),
     citations: [],
+    // Inventory and sync summaries describe a changing collection, not one cited row.
+    healthSources: true,
   };
 }

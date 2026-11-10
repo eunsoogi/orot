@@ -55,8 +55,9 @@ export function RecordsRecentSources({
   ].filter((message): message is string => message !== null);
 
   function retrySources() {
-    onRetryRecordings();
-    onRetryDocuments();
+    // Retry only the failed readers so successful and pending regions keep their state.
+    if (recordingState === 'failed') onRetryRecordings();
+    if (documentsState === 'failed') onRetryDocuments();
   }
 
   return (

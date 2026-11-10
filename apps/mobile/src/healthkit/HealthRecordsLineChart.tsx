@@ -45,24 +45,28 @@ export function HealthRecordsLineChart({
     const points = series
       .flatMap(item => item.points)
       .sort((a, b) => Date.parse(a.effectiveAt) - Date.parse(b.effectiveAt));
+    // Keep measured points and their coverage visible on a recoverable refresh failure.
+    const status =
+      loadState === 'loading'
+        ? 'loading'
+        : loadState === 'failed'
+          ? points.length
+            ? 'stale'
+            : 'error'
+          : hasMore
+            ? 'partial'
+            : points.length
+              ? 'ready'
+              : 'empty';
     const displayed = points.length
       ? `${formatRecordedAt(points[0]!.effectiveAt)} – ${formatRecordedAt(points[points.length - 1]!.effectiveAt)}`
-      : t('chart.state.empty');
+      : t(`chart.state.${status}`);
     return {
       metric: metrics[category] ?? 'heartRate',
       coverage: {
         requested: healthRecordPeriodTitle('month'),
         displayed,
-        status:
-          loadState === 'loading'
-            ? 'loading'
-            : loadState === 'failed'
-              ? 'error'
-              : hasMore
-                ? 'partial'
-                : points.length
-                  ? 'ready'
-                  : 'empty',
+        status,
       },
       series: series.map(item => ({
         // Keys remain stable when a pressure component is absent or changes order.
@@ -96,10 +100,11 @@ export function HealthRecordsLineChart({
       <View
         accessible
         accessibilityRole="image"
-        accessibilityLabel={healthChartSummary(
-          series,
-          healthRecordCategoryTitle(category),
-        )}
+        accessibilityLabel={
+          series.some(item => item.points.length > 0)
+            ? healthChartSummary(series, healthRecordCategoryTitle(category))
+            : t(`chart.state.${data.coverage.status}`)
+        }
         style={styles.summary}
         testID={'health-record-chart-' + category}
       />

@@ -114,14 +114,16 @@ export function HealthRecordsDetailHeader({
           <Text style={styles.summaryTitle}>
             {healthRecordCategoryTitle(selection.category) + ' 기록'}
           </Text>
-          <Text style={styles.count}>
-            {t(
-              hasMore
-                ? 'healthRecords.loadedRecordCount'
-                : 'healthRecords.recordCount',
-              { count: recordCount },
-            )}
-          </Text>
+          {loadState === 'ready' || observationCount > 0 || hasMore ? (
+            <Text style={styles.count}>
+              {t(
+                hasMore
+                  ? 'healthRecords.loadedRecordCount'
+                  : 'healthRecords.recordCount',
+                { count: recordCount },
+              )}
+            </Text>
+          ) : null}
         </View>
       </View>
       {loadState === 'loading' && observationCount === 0 && !hasMore ? (

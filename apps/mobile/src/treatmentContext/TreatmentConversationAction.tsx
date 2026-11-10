@@ -21,6 +21,7 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
     setOpen,
     result,
     pending,
+    submitFailed,
     mode,
     setMode,
     source,
@@ -68,7 +69,8 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
             </AppText>
             {pending ? (
               <AppText>{t('treatmentSafety.checking')}</AppText>
-            ) : result !== null ? (
+            ) : null}
+            {pending === 'other' ? null : result !== null ? (
               <TreatmentActionResult
                 answer={result.answer}
                 showLimits={result.verified && !publicTopic}
@@ -104,6 +106,11 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
               />
             ) : (
               <>
+                {submitFailed ? (
+                  <AppText accessibilityRole="alert">
+                    {t('treatmentSafety.withheld')}
+                  </AppText>
+                ) : null}
                 {source ? (
                   <AppText>
                     {treatmentSourceLabel(source)} · {source.label}
@@ -113,6 +120,7 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
                   <AppButton
                     variant="destructive"
                     title={t('treatmentSafety.deleteSaved')}
+                    disabled={pending === 'submit'}
                     onPress={() => remove(saved)}
                   />
                 ) : null}
@@ -124,22 +132,26 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
                     <AppButton
                       variant="secondary"
                       title={t('treatmentSafety.chooseHypertension')}
+                      disabled={pending === 'submit'}
                       onPress={() => setPublicTopic('hypertension')}
                     />
                     <AppButton
                       variant="secondary"
                       title={t('treatmentSafety.chooseSource')}
+                      disabled={pending === 'submit'}
                       onPress={() => setMode('sources')}
                     />
                     <AppButton
                       variant="secondary"
                       title={t('treatmentSafety.saved')}
+                      disabled={pending === 'submit'}
                       onPress={() => setMode('saved')}
                     />
                   </>
                 ) : null}
                 <TreatmentSafetyForm
                   onSubmit={submit}
+                  disabled={pending === 'submit'}
                   allowSave={Boolean(source || followUp)}
                 />
               </>

@@ -26,6 +26,7 @@ export function useRecordingLibraryReadState({
   const [deletedIds] = useState(() => new Set<string>());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const ownership = useMemo(
     () => ({ service, revision: 0, active: false }),
     [service],
@@ -78,6 +79,7 @@ export function useRecordingLibraryReadState({
       active = false;
     };
   }, [
+    attempt,
     automaticTranscription?.sourceId,
     automaticTranscription?.status,
     refreshKey,
@@ -114,6 +116,7 @@ export function useRecordingLibraryReadState({
     deletedIds,
     loading,
     loadError,
+    retry: () => setAttempt(value => value + 1),
     deletionTiming,
     refreshAfterDelete,
   };

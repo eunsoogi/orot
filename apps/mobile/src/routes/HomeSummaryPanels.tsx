@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppButton } from '../layout/AppButton';
+import { AppProgress } from '../layout/AppProgress';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
@@ -55,9 +56,24 @@ export function NextVisitPanel({
         <Text style={styles.sectionTitle}>{t('home.nextAppointment')}</Text>
       </View>
       {appointmentState === 'loading' ? (
-        <Text testID="home-appointment-loading">
-          {t('appointments.loading')}
-        </Text>
+        <View style={nextAppointment ? styles.refreshRow : styles.initialRead}>
+          {!nextAppointment ? (
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={styles.placeholder}
+            />
+          ) : null}
+          <View style={styles.refreshRow}>
+            <AppProgress accessibilityElementsHidden />
+            <Text
+              accessibilityLiveRegion="polite"
+              testID="home-appointment-loading"
+            >
+              {t('appointments.loading')}
+            </Text>
+          </View>
+        </View>
       ) : appointmentState === 'failed' ? (
         <View style={styles.inlineState}>
           <Text accessibilityRole="alert">{t('appointments.loadError')}</Text>
@@ -67,7 +83,8 @@ export function NextVisitPanel({
             title={t('appointments.retry')}
           />
         </View>
-      ) : nextAppointment ? (
+      ) : null}
+      {nextAppointment ? (
         <View style={styles.section} testID="home-next-appointment">
           <Text style={styles.appointmentTime}>
             {daysUntil === 0
@@ -94,7 +111,7 @@ export function NextVisitPanel({
             title={t('home.prepareVisit')}
           />
         </View>
-      ) : (
+      ) : appointmentState === 'ready' ? (
         <Pressable
           accessibilityRole="button"
           onPress={onOpenSchedule}
@@ -108,7 +125,7 @@ export function NextVisitPanel({
             color={appColors.secondary}
           />
         </Pressable>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -217,4 +234,12 @@ const styles = StyleSheet.create({
   recordingDate: { color: appColors.secondary, fontSize: 13 },
   emptyText: { color: appColors.secondary, fontSize: 15 },
   inlineState: { gap: 8 },
+  initialRead: { minHeight: 84, gap: 10, justifyContent: 'center' },
+  refreshRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  placeholder: {
+    width: '45%',
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: appColors.border,
+  },
 });

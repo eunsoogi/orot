@@ -49,6 +49,7 @@ export default function RecordingLibraryPanel({
     deletedIds,
     loading,
     loadError,
+    retry,
     deletionTiming,
     refreshAfterDelete,
   } = useRecordingLibraryReadState({
@@ -135,6 +136,7 @@ export default function RecordingLibraryPanel({
       <RecordingLibraryContent
         disabled={disabled}
         loadError={loadError}
+        onRetry={retry}
         loading={loading}
         onDelete={requestDelete}
         onNewRecording={onNewRecording}

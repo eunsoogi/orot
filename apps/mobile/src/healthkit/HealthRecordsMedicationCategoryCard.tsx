@@ -64,12 +64,14 @@ export function HealthRecordsMedicationCategoryCard({
         <Text accessibilityRole="header" style={styles.title}>
           {title + ' 기록'}
         </Text>
-        <Text style={styles.summary} testID="health-record-medications-count">
-          {t('healthRecords.medicationCountSummary', {
-            medications: medicationCount,
-            doseEvents: doseCount,
-          })}
-        </Text>
+        {status === 'ready' || medicationCount > 0 || doseCount > 0 ? (
+          <Text style={styles.summary} testID="health-record-medications-count">
+            {t('healthRecords.medicationCountSummary', {
+              medications: medicationCount,
+              doseEvents: doseCount,
+            })}
+          </Text>
+        ) : null}
       </HealthRecordsCategoryHeading>
       <Text
         accessibilityRole={status === 'failed' ? 'alert' : undefined}

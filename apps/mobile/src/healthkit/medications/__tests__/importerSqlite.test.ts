@@ -2,6 +2,7 @@ import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { healthKitAutoSyncCheckpointKey } from '../../autoSyncCheckpoint';
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import { syncHealthKitMedications } from '../importer';
 import type { MedicationSyncOptions } from '../importer';
 import { doseSample, now, page } from '../testSupport';
@@ -59,6 +60,48 @@ function failNextCheckpointWrite(database: SqlDatabase): () => void {
 }
 
 describe('HealthKit medication importer with SQLite storage', () => {
+  it('publishes a dose deletion only after its transaction commits', async () => {
+    const { database, close } = openSqliteTestDatabase(':memory:');
+    const observed: Promise<unknown>[] = [];
+    const doseId = 'healthkit-dose-event:new-event-id';
+    const repository = createRecordRepository(database);
+    const unsubscribe = subscribeLocalSourceDeletion(() => {
+      observed.push(
+        Promise.all([
+          repository.get('dose_event', doseId),
+          repository.getSyncCheckpoint(checkpointKey),
+        ]),
+      );
+    });
+    try {
+      await runMigrations(database);
+      const { healthKit, setResponse } = healthKitForDosePage();
+      const options = { healthKit, repository, now: () => now };
+      await syncHealthKitMedications(options);
+
+      setResponse(page([], 'anchor-2', ['new-event-id']));
+      const restore = failNextCheckpointWrite(database);
+      await expect(syncHealthKitMedications(options)).rejects.toThrow(
+        'simulated checkpoint persistence failure',
+      );
+      expect(await repository.get('dose_event', doseId)).not.toBeNull();
+      expect(observed).toHaveLength(0);
+      restore();
+
+      await syncHealthKitMedications(options);
+      expect(await Promise.all(observed)).toEqual([
+        [null, expect.objectContaining({ value: 'anchor-2' })],
+      ]);
+      await syncHealthKitMedications(options);
+      setResponse(page([], 'anchor-3'));
+      await syncHealthKitMedications(options);
+      expect(observed).toHaveLength(1);
+    } finally {
+      unsubscribe();
+      close();
+    }
+  });
+
   it('stores an observed dose without source recordedAt and replays it idempotently', async () => {
     const { database, close } = openSqliteTestDatabase(':memory:');
     try {

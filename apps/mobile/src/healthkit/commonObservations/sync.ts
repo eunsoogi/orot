@@ -1,3 +1,4 @@
+import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import {
   commonObservationRecordId,
@@ -5,13 +6,13 @@ import {
   toCommonObservationRecord,
 } from './mapper';
 import { preserveIngestedAt } from './syncIdentity';
-import type {
-  CommonObservationRepository,
-  CommonObservationSyncResult,
-  CommonObservationSyncStatus,
-  SyncCommonObservationChangesOptions,
+import {
+  measureCommonObservationOperation,
+  type CommonObservationRepository,
+  type CommonObservationSyncResult,
+  type CommonObservationSyncStatus,
+  type SyncCommonObservationChangesOptions,
 } from './syncOptions';
-import { measureCommonObservationOperation } from './syncOptions';
 import type { CommonObservationFeature } from './types';
 import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
 import { resolveHealthKitSyncAuthorization } from '../syncAuthorization';
@@ -148,7 +149,6 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned conflicting common observation identifiers.',
       );
     }
-
     const nextCursor = page.cursor ?? cursor;
     const pageHasChanges = candidates.length > 0 || deletedIds.size > 0;
     if (pageHasChanges && nextCursor === cursor) {
@@ -158,11 +158,12 @@ async function syncCommonObservationChangesExclusive(
     }
     const pageCursorAdvanced = nextCursor !== cursor;
     if (pageHasChanges || pageCursorAdvanced) {
-      await measureCommonObservationOperation(
+      deleted += await measureCommonObservationOperation(
         options.instrumentation,
         'persist',
         () =>
-          repository.transaction(async writer => {
+          commitHealthKitChanges(repository, async writer => {
+            let pageDeleted = 0;
             for (const candidate of candidates) {
               const existing = await writer.get(
                 'health_observation',
@@ -174,9 +175,8 @@ async function syncCommonObservationChangesExclusive(
                 upserted += 1;
               }
             }
-            for (const id of deletedIds) {
-              if (await writer.delete('health_observation', id)) deleted += 1;
-            }
+            for (const id of deletedIds)
+              if (await writer.delete('health_observation', id)) pageDeleted++;
             if (pageCursorAdvanced && nextCursor) {
               await writer.putSyncCheckpoint({
                 key: checkpointKey,
@@ -184,6 +184,7 @@ async function syncCommonObservationChangesExclusive(
                 updatedAt: now(),
               });
             }
+            return pageDeleted;
           }),
       );
     }

@@ -1,7 +1,17 @@
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import { parseRecord } from '@orot/storage';
 import type { MedicationSyncOptions } from '../importer';
 import { syncHealthKitMedications } from '../importer';
 import { createHarness, emptyPage, medication, now } from '../testSupport';
+
+const onDeletion = jest.fn();
+let unsubscribe: () => void;
+
+beforeEach(() => {
+  onDeletion.mockClear();
+  unsubscribe = subscribeLocalSourceDeletion(onDeletion);
+});
+afterEach(() => unsubscribe());
 
 describe('HealthKit medication definition reconciliation', () => {
   it('never removes definitions from an empty or incomplete snapshot', async () => {
@@ -48,12 +58,14 @@ describe('HealthKit medication definition reconciliation', () => {
 
     const empty = await syncHealthKitMedications(options);
     expect(empty.definitions.emptySnapshotPreserved).toBe(true);
+    expect(onDeletion).not.toHaveBeenCalled();
     expect(
       harness.records.get('medication_definition')?.has(oldDefinition.id),
     ).toBe(true);
     const incomplete = await syncHealthKitMedications(options);
     expect(incomplete.definitions.completeSnapshot).toBe(false);
     expect(incomplete.definitions.deleted).toBe(0);
+    expect(onDeletion).not.toHaveBeenCalled();
     expect(
       harness.records.get('medication_definition')?.has(oldDefinition.id),
     ).toBe(true);
@@ -121,6 +133,7 @@ describe('HealthKit medication definition reconciliation', () => {
     });
 
     expect(result.definitions.deleted).toBe(1);
+    expect(onDeletion).toHaveBeenCalledTimes(1);
     expect(
       harness.records
         .get('medication_definition')

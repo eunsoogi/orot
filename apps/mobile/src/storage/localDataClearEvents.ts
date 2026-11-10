@@ -1,6 +1,12 @@
 type Listener = () => void;
+export type LocalSourceDeletionOrigin = 'local' | 'healthkit';
+export type SourceDeletionEvent = Parameters<typeof notifyLocalSourceDeleted>;
+type SourceDeletionListener = (
+  origin: LocalSourceDeletionOrigin,
+  deletedRecordIds?: ReadonlySet<string>,
+) => void;
 const listeners = new Set<Listener>();
-const sourceListeners = new Set<Listener>();
+const sourceListeners = new Set<SourceDeletionListener>();
 
 /** Notify in-memory owners after the authoritative local-data transaction commits. */
 export function subscribeLocalDataClear(listener: Listener) {
@@ -22,17 +28,26 @@ export function notifyLocalDataCleared() {
 }
 
 /** Revalidate visible derived content after an individual source transaction commits. */
-export function subscribeLocalSourceDeletion(listener: Listener) {
-  sourceListeners.add(listener);
+export function subscribeLocalSourceDeletion(
+  listener: SourceDeletionListener,
+  onlyOrigin?: LocalSourceDeletionOrigin,
+) {
+  const subscription: SourceDeletionListener = (origin, ids) => {
+    if (!onlyOrigin || origin === onlyOrigin) listener(origin, ids);
+  };
+  sourceListeners.add(subscription);
   return () => {
-    sourceListeners.delete(listener);
+    sourceListeners.delete(subscription);
   };
 }
 
-export function notifyLocalSourceDeleted() {
+export function notifyLocalSourceDeleted(
+  origin: LocalSourceDeletionOrigin = 'local',
+  deletedRecordIds?: ReadonlySet<string>,
+) {
   for (const listener of sourceListeners) {
     try {
-      listener();
+      listener(origin, deletedRecordIds);
     } catch {
       /* A committed deletion cannot be rolled back by an observer. */
     }

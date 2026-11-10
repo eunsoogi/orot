@@ -4,6 +4,7 @@ export const duoTests = [
   'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances',
   'OrotUITests/DailyReportEntryUITests/testVoiceOverReadsSavedReportAndOpensFollowUp',
   'OrotUITests/DailyReportEntryUITests/testEncryptedSavedReportSurvivesRestartAcrossEntryPaths',
+  'OrotUITests/DailyReportLoadingUITests/testSavedReportRemainsUsableWhilePreviewFailsAndRetries',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
   'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',

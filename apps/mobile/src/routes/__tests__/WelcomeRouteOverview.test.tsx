@@ -93,3 +93,19 @@ test('shows unfinished preparation only after a successful empty read for a real
   await fireEvent.press(screen.getByTestId('home-questions-retry'));
   expect(await screen.findByTestId('home-preparation-pending')).toBeTruthy();
 });
+
+test('keeps the confirmed visit and preparation visible during a refresh and failure', async () => {
+  const input = props();
+  const route = await render(<WelcomeRoute {...input} />);
+  expect(await screen.findByText('저장한 질문 1개')).toBeTruthy();
+
+  await route.rerender(<WelcomeRoute {...input} appointmentState="loading" />);
+  expect(screen.getByTestId('home-appointment-loading')).toBeTruthy();
+  expect(screen.getByTestId('home-next-appointment-clinic')).toBeTruthy();
+  expect(screen.getByText('저장한 질문 1개')).toBeTruthy();
+
+  await route.rerender(<WelcomeRoute {...input} appointmentState="failed" />);
+  expect(screen.getByTestId('home-next-appointment-clinic')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('home-appointments-retry'));
+  expect(input.onRetryAppointments).toHaveBeenCalledTimes(1);
+});

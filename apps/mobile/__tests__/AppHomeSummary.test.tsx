@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,6 +9,7 @@ import type { Appointment } from '@orot/storage';
 import App from '../App';
 import { savedSource } from '../src/recording/recordingScreenSupport';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
+import { notifyLocalDataCleared } from '../src/storage/localDataClearEvents';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -89,6 +91,10 @@ test('keeps an ongoing calendar appointment visible and shows its end time', asy
     new RegExp(formatTime(new Date(endsAt))),
   );
   expect(screen.queryByTestId('home-empty-recordings')).toBeNull();
+  store.list.mockRejectedValue(new Error('read failed after clear'));
+  await act(async () => notifyLocalDataCleared());
+  expect(screen.queryByTestId('home-next-appointment')).toBeNull();
+  expect(screen.getByTestId('home-appointments-retry')).toBeTruthy();
 });
 
 test('recovers the appointment independently from recording load failure', async () => {

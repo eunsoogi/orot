@@ -9,6 +9,7 @@ import {
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
+import { notifyLocalDataCleared } from '../../storage/localDataClearEvents';
 
 const now = Date.parse('2026-10-20T12:00:00Z');
 
@@ -35,6 +36,65 @@ beforeEach(() => {
 });
 
 afterEach(() => jest.useRealTimers());
+
+test('keeps the selected list row during refresh and offers retry on failure', async () => {
+  const visit = appointment('retained', now + 60_000);
+  const store = createAppointmentStore([visit]);
+  let fail!: (error: Error) => void;
+  const pending = new Promise<Appointment[]>((_, reject) => {
+    fail = reject;
+  });
+  store.list.mockResolvedValueOnce([visit]).mockReturnValueOnce(pending);
+  const rendered = await render(
+    <AppointmentsScreen active repository={store.repository} />,
+  );
+  await screen.findByTestId('appointment-select-retained');
+  await rendered.rerender(
+    <AppointmentsScreen active={false} repository={store.repository} />,
+  );
+  await rendered.rerender(
+    <AppointmentsScreen active repository={store.repository} />,
+  );
+  expect(screen.getByTestId('appointments-loading')).toBeTruthy();
+  expect(
+    screen.getByTestId('appointment-select-retained').props.accessibilityState
+      .selected,
+  ).toBe(true);
+  await act(async () => fail(new Error('temporary read failure')));
+  expect(screen.getByTestId('appointment-select-retained')).toBeTruthy();
+  expect(screen.queryByTestId('appointments-empty')).toBeNull();
+  await fireEvent.press(screen.getByTestId('appointments-retry'));
+  expect(store.list).toHaveBeenCalledTimes(3);
+});
+
+test('ignores a pending list after a local data clear', async () => {
+  const visit = appointment('deleted', now + 60_000);
+  const store = createAppointmentStore([visit]);
+  let resolveOld!: (rows: Appointment[]) => void;
+  const pending = new Promise<Appointment[]>(resolve => {
+    resolveOld = resolve;
+  });
+  store.list
+    .mockResolvedValueOnce([visit])
+    .mockReturnValueOnce(pending)
+    .mockResolvedValueOnce([]);
+  const route = await render(
+    <AppointmentsScreen active repository={store.repository} />,
+  );
+  await screen.findByTestId('appointment-select-deleted');
+  await route.rerender(
+    <AppointmentsScreen active={false} repository={store.repository} />,
+  );
+  await route.rerender(
+    <AppointmentsScreen active repository={store.repository} />,
+  );
+  expect(screen.getByTestId('appointments-loading')).toBeTruthy();
+  await act(async () => notifyLocalDataCleared());
+  await screen.findByTestId('appointments-empty');
+  await act(async () => resolveOld([visit]));
+  expect(screen.queryByTestId('appointment-select-deleted')).toBeNull();
+  expect(screen.getByTestId('appointments-empty')).toBeTruthy();
+});
 
 test('keeps a manual history choice on re-entry and defaults after its removal', async () => {
   let appointments = [

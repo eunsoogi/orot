@@ -9,6 +9,7 @@ import { fingerprint } from './evidenceUtils';
 import { bindLiveConversationToolSources } from './bindLiveConversationToolSources';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import type { AiFeatureServices } from './featureServices';
+import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
@@ -127,6 +128,11 @@ export function createConversationSessionOptions(input: {
             question: turn.question,
             answer: turn.answer,
             citations: turn.citations,
+            healthSources: healthSourceDependencies(
+              turn.sources.map(
+                source => input.registry.resolve(source) ?? source,
+              ),
+            ),
             completion: turn.status,
             ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
             ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
@@ -160,6 +166,7 @@ export function createConversationSessionOptions(input: {
             question: '',
             answer: '',
             citations: [],
+            healthSources: [],
             completion: 'partial',
             toolMessageId: turn.messageId,
             toolEvents: turn.toolEvents,

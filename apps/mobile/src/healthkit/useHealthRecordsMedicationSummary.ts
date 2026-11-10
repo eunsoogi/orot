@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
+import {
   emptyHealthRecordsMedicationData,
   loadEmptyHealthRecordsMedicationData,
   type HealthRecordsMedicationLoader,
@@ -33,5 +37,19 @@ export function useHealthRecordsMedicationSummary(
       generation.current += 1;
     };
   }, [reload, refreshRevision]);
+  useEffect(() => {
+    const invalidate = () => {
+      // Never let an older read restore medication data after a deletion.
+      generation.current += 1;
+      setData(emptyHealthRecordsMedicationData);
+      reload();
+    };
+    const unsubscribeClear = subscribeLocalDataClear(invalidate);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(invalidate);
+    return () => {
+      unsubscribeClear();
+      unsubscribeDeletion();
+    };
+  }, [reload]);
   return { data, status, reload };
 }

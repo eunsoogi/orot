@@ -1,5 +1,5 @@
 import type { DisplayMessage } from './ConversationMessage';
-import { Fragment } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { ConversationSavedRecaps } from './ConversationSavedRecaps';
 import { ManualVisitRecords } from './ManualVisitRecords';
 import { conversationEntryForSession } from './useConversationEntryIntent';
@@ -9,18 +9,13 @@ import { AppText as Text } from '../layout/AppText';
 import { styles } from './ConversationScreen.styles';
 import { RetainedManualVisitTargets } from './RetainedManualVisitTargets';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
+import type { ManualVisitDrafts } from './useManualVisitDraft';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 
-/** Each restored panel follows an explicitly source-validated visit, never date inference. */
-export function ManualVisitTargetPanels({
-  store,
-  sessionId,
-  messages,
-  session,
-  compact,
-  disclaimer,
-  discover,
-  durableSessionId,
-}: {
+interface ManualVisitTargetPanelsProps {
   readonly store: ConversationSessions;
   readonly sessionId: number;
   readonly messages: readonly DisplayMessage[];
@@ -29,7 +24,33 @@ export function ManualVisitTargetPanels({
   readonly disclaimer: string;
   readonly discover?: AiFeatureServices['conversationArtifacts'];
   readonly durableSessionId?: string | null;
-}) {
+}
+
+/** Scope drafts to this session while source revalidation remounts its visit panels. */
+export function ManualVisitTargetPanels(props: ManualVisitTargetPanelsProps) {
+  return <ManualVisitSessionPanels key={props.sessionId} {...props} />;
+}
+
+function ManualVisitSessionPanels({
+  store,
+  sessionId,
+  messages,
+  session,
+  compact,
+  disclaimer,
+  discover,
+  durableSessionId,
+}: ManualVisitTargetPanelsProps) {
+  const [drafts] = useState<ManualVisitDrafts>(() => new Map());
+  useEffect(() => {
+    const discard = () => drafts.clear();
+    const clear = subscribeLocalDataClear(discard);
+    const deletion = subscribeLocalSourceDeletion(discard, 'local');
+    return () => {
+      clear();
+      deletion();
+    };
+  }, [drafts]);
   const targets = new Map<string, string>();
   const available =
     !session.restoring && !session.restoreFailed && !session.quarantined;
@@ -51,7 +72,7 @@ export function ManualVisitTargetPanels({
       {[...targets].map(([appointmentId, revision]) => (
         <Fragment key={sessionId + ':' + appointmentId + ':' + revision}>
           <ConversationSavedRecaps appointmentId={appointmentId} />
-          <ManualVisitRecords appointmentId={appointmentId} />
+          <ManualVisitRecords appointmentId={appointmentId} drafts={drafts} />
         </Fragment>
       ))}
       {available &&
@@ -62,6 +83,7 @@ export function ManualVisitTargetPanels({
           key={durableSessionId}
           sessionId={durableSessionId}
           discover={discover}
+          drafts={drafts}
           excluded={JSON.stringify([...targets.keys()])}
         />
       ) : null}

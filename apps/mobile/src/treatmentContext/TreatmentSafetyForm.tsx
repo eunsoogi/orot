@@ -34,6 +34,7 @@ function pressure(value: string) {
 export function TreatmentSafetyForm({
   onSubmit,
   allowSave,
+  disabled,
 }: {
   readonly onSubmit: (
     input: SafetyPolicyInput,
@@ -41,6 +42,7 @@ export function TreatmentSafetyForm({
     save?: boolean,
   ) => void;
   readonly allowSave?: boolean;
+  readonly disabled?: boolean;
 }) {
   const [systolic, setSystolic] = useState('');
   const [diastolic, setDiastolic] = useState('');
@@ -89,6 +91,7 @@ export function TreatmentSafetyForm({
           title={t(key)}
           variant={population === value ? 'primary' : 'neutral'}
           accessibilityState={{ selected: population === value }}
+          disabled={disabled}
           onPress={() => setPopulation(value)}
         />
       ))}
@@ -101,6 +104,7 @@ export function TreatmentSafetyForm({
         placeholderTextColor={appColors.secondary}
         style={styles.input}
         keyboardType="decimal-pad"
+        editable={!disabled}
         value={systolic}
         onChangeText={setSystolic}
       />
@@ -110,6 +114,7 @@ export function TreatmentSafetyForm({
         placeholderTextColor={appColors.secondary}
         style={styles.input}
         keyboardType="decimal-pad"
+        editable={!disabled}
         value={diastolic}
         onChangeText={setDiastolic}
       />
@@ -127,23 +132,27 @@ export function TreatmentSafetyForm({
           }
           variant={symptom === value ? 'primary' : 'neutral'}
           accessibilityState={{ selected: symptom === value }}
+          disabled={disabled}
           onPress={() => setSymptom(value)}
         />
       ))}
       <AppButton
         title={t('treatmentSafety.confirm')}
+        disabled={disabled}
         onPress={() => submit(false)}
       />
       {allowSave ? (
         <AppButton
           variant="secondary"
           title={t('treatmentSafety.saveAndConfirm')}
+          disabled={disabled}
           onPress={() => submit(false, true)}
         />
       ) : null}
       <AppButton
         variant="secondary"
         title={t('treatmentSafety.skip')}
+        disabled={disabled}
         onPress={() => submit(true)}
       />
     </View>

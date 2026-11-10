@@ -3,6 +3,10 @@ import type { Appointment, AppointmentRepository } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppState } from 'react-native';
 import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
+import {
   appointmentDisplayUntil,
   selectNextAppointment,
 } from './nextAppointment';
@@ -89,10 +93,26 @@ export function useAppHomeData(
     activeRef.current = true;
     refreshAppointments().catch(() => undefined);
     refreshRecordings().catch(() => undefined);
+    const invalidateRecordings = () => {
+      // The event does not name the source. Drop the snapshot until storage confirms surviving rows.
+      setRecordings([]);
+      refreshRecordings();
+    };
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(
+      invalidateRecordings,
+      'local',
+    );
+    const unsubscribeClear = subscribeLocalDataClear(() => {
+      setAppointments([]);
+      refreshAppointments();
+      invalidateRecordings();
+    });
     return () => {
       activeRef.current = false;
       appointmentRequest.current += 1;
       recordingRequest.current += 1;
+      unsubscribeClear();
+      unsubscribeDeletion();
     };
   }, [refreshAppointments, refreshRecordings]);
 

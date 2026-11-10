@@ -1,3 +1,4 @@
+import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import type { RecordRepository } from '@orot/storage';
 import type { HealthKitNativeModule, HealthKitSampleSnapshot } from '../types';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
@@ -127,29 +128,35 @@ export async function syncHealthKitSleep(
         mapSleepObservationToHealthRecord(sample, transactionTime),
       );
       let pageUpserted = 0;
-      let pageDeleted = 0;
-      await options.repository.transaction(async writer => {
-        for (const candidate of candidates) {
-          const existing = await writer.get('health_observation', candidate.id);
-          const next = preserveSleepIngestedAt(existing, candidate);
-          if (next !== existing) {
-            await writer.put('health_observation', next);
-            pageUpserted += 1;
+      deleted += await commitHealthKitChanges(
+        options.repository,
+        async writer => {
+          let pageDeleted = 0;
+          for (const candidate of candidates) {
+            const existing = await writer.get(
+              'health_observation',
+              candidate.id,
+            );
+            const next = preserveSleepIngestedAt(existing, candidate);
+            if (next !== existing) {
+              await writer.put('health_observation', next);
+              pageUpserted += 1;
+            }
           }
-        }
-        for (const id of deletedIds) {
-          if (await writer.delete('health_observation', id)) pageDeleted += 1;
-        }
-        if (advanced && nextCursor) {
-          await writer.putSyncCheckpoint({
-            key: SLEEP_SAMPLE_CHECKPOINT_KEY,
-            value: nextCursor,
-            updatedAt: transactionTime,
-          });
-        }
-      });
+          for (const id of deletedIds) {
+            if (await writer.delete('health_observation', id)) pageDeleted += 1;
+          }
+          if (advanced && nextCursor) {
+            await writer.putSyncCheckpoint({
+              key: SLEEP_SAMPLE_CHECKPOINT_KEY,
+              value: nextCursor,
+              updatedAt: transactionTime,
+            });
+          }
+          return pageDeleted;
+        },
+      );
       upserted += pageUpserted;
-      deleted += pageDeleted;
     }
 
     cursorAdvanced ||= advanced;

@@ -25,6 +25,8 @@ export type RagConversationOutcome =
       readonly answer: string;
       readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
+      /** Local input lineage may include sources omitted from visible citations. */
+      readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       readonly healthSummary?: import('./healthSummary').HealthSummaryResult;
       readonly retryHealthSummary?: () => Promise<
         import('./healthSummary').HealthSummaryResult | null

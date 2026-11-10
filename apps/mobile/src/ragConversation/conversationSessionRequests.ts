@@ -6,12 +6,12 @@ import {
 } from './conversationHistoryPayload';
 import { conversationCompletedAnswer } from './conversationCompletedAnswer';
 import { observeSummaryCommit } from './conversationSummaryCommit';
+import { prepareConversationRequest } from './conversationRequestStart';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import {
   retainPartial as retainFailedPartial,
   restoreFailedPrompt,
 } from './conversationFailedPrompt';
-
 import type {
   ConversationSender,
   ConversationSession,
@@ -98,51 +98,15 @@ export function createConversationSessionRequests(
     },
     async send(id: number, onSend: ConversationSender) {
       const session = find(id);
-      const question = session.draft.trim();
-      if (
-        !question ||
-        session.busy ||
-        session.restoring ||
-        session.retryingSave ||
-        (session.restoreAfterRetry && Boolean(session.unsavedCount)) ||
-        session.restoreFailed ||
-        session.quarantined
-      )
-        return;
-      const copy = getRagConversationCopy();
+      const start = prepareConversationRequest(session, () => ++messageId);
+      if (!start) return;
+      const { request, responseId, change, copy } = start;
+      const { question, userMessageId } = request;
       const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
       controllers.set(id, controller);
-      const userMessageId = ++messageId;
-      const responseId = ++messageId;
-      const request = {
-        question,
-        userMessageId,
-        saving: false,
-        committed: false,
-        summarySaving: false,
-        summaryCommitted: false,
-      };
       pendingTurns.set(id, request);
-      const messagesWithoutRetry = session.messages.filter(
-        message =>
-          !(
-            message.failed &&
-            message.role === 'user' &&
-            message.content === question
-          ),
-      );
-      update(id, {
-        draft: '',
-        title: session.messages.length ? session.title : question.slice(0, 36),
-        messages: [
-          ...messagesWithoutRetry,
-          { id: userMessageId, role: 'user', content: question },
-        ],
-        busy: true,
-        error: session.unsavedCount ? copy.unsavedAnswersRemain() : '',
-        pendingMessage: { id: responseId, content: '', activity: copy.loading },
-      });
+      update(id, change);
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
       let activity:
@@ -203,6 +167,7 @@ export function createConversationSessionRequests(
         }
         conversationCompletedAnswer({
           id,
+          userMessageId,
           messageId: outcome.status === 'answer' ? responseId : ++messageId,
           copy,
           outcome,

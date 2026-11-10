@@ -8,6 +8,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationSources } from './captureConversationSources';
 import { stableJson } from './evidenceUtils';
 import { RetainedSourceInvalidError } from './retainedSourceError';
+import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 
 /** Capture every input before saving; missing lineage never masquerades as a successful write. */
 export function createConversationRetentionBridge(input: {
@@ -31,13 +32,24 @@ export function createConversationRetentionBridge(input: {
       readonly outcome: RagConversationOutcome;
       readonly retained: boolean;
     }> {
+      const admitted = references;
+      if (outcome.status === 'answer' && admitted) {
+        // The admitted set also covers validated dialogue inherited from saved turns.
+        outcome = {
+          ...outcome,
+          healthSources: healthSourceDependencies(
+            [...admitted, ...outcome.citations].map(
+              reference => input.registry.resolve(reference) ?? reference,
+            ),
+          ),
+        };
+      }
       if (
         !input.observer?.onRetentionCandidate ||
         outcome.status !== 'answer' ||
         input.signal.aborted
       )
         return { outcome, retained: false };
-      const admitted = references;
       // Missing provenance and unsupported generated parents cannot be repaired by retrying a read.
       const retryable = Boolean(
         admitted &&

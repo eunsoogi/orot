@@ -27,6 +27,7 @@ export interface ConversationSessionOptions {
       question: string;
       answer: string;
       citations: readonly EvidenceReference[];
+      healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';
       entryIntent?: 'possibilities';
       dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
@@ -79,6 +80,8 @@ export interface ConversationSession {
     id: number;
     content: string;
     activity: string;
+    withholdHealthBody?: boolean;
+    deletedHealthIds?: ReadonlySet<string>;
     toolMessageId?: string;
     toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   } | null;

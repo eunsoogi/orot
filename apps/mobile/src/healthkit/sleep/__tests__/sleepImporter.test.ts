@@ -1,3 +1,4 @@
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import type { HealthKitSampleChangesQuery } from '../../types';
 import {
   SLEEP_SAMPLE_CHECKPOINT_KEY,
@@ -13,6 +14,15 @@ import {
   sleepRecordId,
   storedSample,
 } from '../sleepImporterFixtures';
+
+const onDeletion = jest.fn();
+let unsubscribe: () => void;
+
+beforeEach(() => {
+  onDeletion.mockClear();
+  unsubscribe = subscribeLocalSourceDeletion(onDeletion);
+});
+afterEach(() => unsubscribe());
 
 describe('HealthKit sleep importer', () => {
   it('commits each change page before fetching the next and persists source metadata', async () => {
@@ -36,6 +46,7 @@ describe('HealthKit sleep importer', () => {
           }
 
           expect(query.cursor).toBe('anchor-1');
+          expect(onDeletion).toHaveBeenCalledTimes(1);
           expect(store.checkpoint()?.value).toBe('anchor-1');
           expect(store.record(sleepRecordId('new-sample'))).toMatchObject({
             value: { kind: 'text', text: '1' },

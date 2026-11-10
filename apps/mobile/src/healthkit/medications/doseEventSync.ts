@@ -1,3 +1,4 @@
+import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import type { SyncCheckpoint } from '@orot/storage';
 import type { HealthKitNativeModule } from '../types';
 import {
@@ -102,7 +103,7 @@ async function applyDoseEventPage(
     return { upserted, deleted, cursorAdvanced: false };
   }
 
-  await repository.transaction(async writer => {
+  await commitHealthKitChanges(repository, async writer => {
     for (const candidate of candidates) {
       const existing = await writer.get('dose_event', candidate.id);
       const next = preserveIngestedAt(existing, candidate);
@@ -121,6 +122,7 @@ async function applyDoseEventPage(
         updatedAt: now(),
       });
     }
+    return deleted;
   });
   return { upserted, deleted, cursorAdvanced };
 }

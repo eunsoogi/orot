@@ -12,6 +12,7 @@ export default function RecordingLibraryContent({
   onDelete,
   onNewRecording,
   onOpen,
+  onRetry,
   recordings,
   selectionSummary,
 }: {
@@ -21,6 +22,7 @@ export default function RecordingLibraryContent({
   readonly onDelete: (source: RecordingSourceRecord) => void;
   readonly onNewRecording?: () => void;
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
+  readonly onRetry: () => void;
   readonly recordings: readonly RecordingLibrarySummary[];
   readonly selectionSummary?: RecordingLibrarySummary;
 }) {
@@ -32,6 +34,7 @@ export default function RecordingLibraryContent({
       loadError={loadError}
       disabled={disabled}
       onOpen={onOpen}
+      onRetry={onRetry}
       onDelete={onDelete}
     />
   );

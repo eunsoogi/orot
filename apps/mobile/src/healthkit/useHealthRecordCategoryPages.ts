@@ -9,6 +9,10 @@ import {
   healthRecordPeriodStart,
 } from './healthRecordsLibraryModel';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 
 export const observationCategories: readonly HealthObservationCategory[] = [
   'blood_pressure',
@@ -124,6 +128,22 @@ export function useHealthRecordCategoryPages(
     for (const category of observationCategories) reload(category);
     return () => {
       generation.current += 1;
+    };
+  }, [reload]);
+
+  useEffect(() => {
+    const invalidate = () => {
+      // A deletion invalidates the snapshot and any read begun before the commit.
+      generation.current += 1;
+      pending.current.clear();
+      setPages({});
+      for (const category of observationCategories) reload(category);
+    };
+    const unsubscribeClear = subscribeLocalDataClear(invalidate);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(invalidate);
+    return () => {
+      unsubscribeClear();
+      unsubscribeDeletion();
     };
   }, [reload]);
 

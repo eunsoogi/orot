@@ -114,12 +114,13 @@ export function createHarness(
     async getSyncCheckpoint() {
       return checkpoint;
     },
-    async transaction(
-      operation: (transactionWriter: RecordWriter) => Promise<unknown>,
+    async transaction<T>(
+      operation: (transactionWriter: RecordWriter) => Promise<T>,
     ) {
       events.push('begin');
-      await operation(writer);
+      const value = await operation(writer);
       events.push('commit');
+      return value;
     },
   } as MedicationSyncOptions['repository'];
   return {

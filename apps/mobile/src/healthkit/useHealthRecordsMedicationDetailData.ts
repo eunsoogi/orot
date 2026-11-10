@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { HealthObservationCursor } from '@orot/storage';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 import type { HealthRecordPeriod } from './healthRecordsLibraryModel';
 import { healthRecordPeriodStart } from './healthRecordsLibraryModel';
 import { buildHealthRecordsMedicationDetailRows } from './healthRecordsMedicationDetailModel';
@@ -84,11 +88,23 @@ export function useHealthRecordsMedicationDetailData(
   );
 
   useEffect(() => {
-    reload().catch(() => undefined);
+    const reset = () => {
+      // An invalidated page must not keep doses visible if the next read fails.
+      generation.current += 1;
+      pending.current = false;
+      setData(emptyHealthRecordsMedicationData);
+      setCursor(null);
+      reload();
+    };
+    const unsubscribeClear = subscribeLocalDataClear(reset);
+    const unsubscribeDeletion = subscribeLocalSourceDeletion(reset);
+    reset();
     return () => {
       // Ignore pages returned after this period's route has left the screen.
       generation.current += 1;
       pending.current = false;
+      unsubscribeClear();
+      unsubscribeDeletion();
     };
   }, [reload]);
 
