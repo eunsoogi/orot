@@ -45,7 +45,6 @@ function parseClaims(value: unknown): TreatmentClaim[] | null {
       !item.text.trim() ||
       item.text.length > 1000 ||
       !Array.isArray(item.citations) ||
-      !item.citations.length ||
       item.citations.length > 24 ||
       item.citations.some(
         ref => !ref || typeof ref !== 'object' || Array.isArray(ref),

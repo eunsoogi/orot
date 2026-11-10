@@ -44,7 +44,17 @@ and successful source freshness checks before and after verification. It fails
 closed on cancellation, source drift, missing verification, or an exception.
 The verifier must inspect the original source content and the claim in context;
 the supplied references and model classifications cannot prove semantic support.
-No such verifier is supplied here. `evaluateTreatmentOutput` accepts only a
+`createTreatmentClaimVerifier` implements a closed set of app-owned Korean
+statements: general treatment categories and benefit/risk uncertainty, a
+record-bound clinician discussion question, and carefully attributed
+condition-status statements. It rejects all other
+prose. Original diagnosis records must still exist with the same revision and
+correct origin; AI possibilities retain both supporting and contrary references.
+General app-owned text carries no citation, so an unrelated record or article
+is not presented as its support. This is a bounded verifier, not open-ended
+medical fact checking or evidence that a treatment fits a person.
+
+`evaluateTreatmentOutput` accepts only a
 complete, bounded claim envelope, screens recognizable directives and certainty,
 requires verification of each claim, and rechecks all citations at the end.
 It returns existing immediate-help actions ahead of generated claims. A missing
@@ -61,11 +71,20 @@ The typed app-owned fallback and immediate-help copy is exposed through
 policy action. The policy action consumer remains responsible for presenting
 non-emergency actions.
 
-The lexical screen does not detect every unsafe paraphrase or establish semantic
-support. A successful verifier call is only as reliable as the independent
-verifier and the source content it inspected. No treatment workflow currently
-connects these interfaces to generation, stored output, reopening, or follow-up.
-Do not use the preliminary boundary alone to display or persist explanations.
-An implemented and evaluated semantic verifier, end-to-end enforcement,
-clinical review of the guidance, and real provider quality evidence remain
+`createTreatmentSafetyService` binds this verifier to generation, validated
+save, and reopen operations. The save operation validates an immutable snapshot
+before the existing store checks source revisions in its transaction.
+`readValidatedTreatment` reads through the existing artifact storage and
+revalidates each saved line and any prior answers retained for follow-up. The
+existing artifact has one citation list for
+the whole turn, not separate lists per claim: when that loses a claim's exact
+binding, verification must withhold the result. A caller must use this path
+before displaying or using a saved treatment answer in a follow-up. Existing
+generic conversation restore is not an enforcement boundary for this feature.
+
+The lexical screen does not detect every unsafe paraphrase. The closed verifier
+must not be replaced with an always-true model or citation-presence check. No
+treatment workflow currently connects these interfaces to generation, saved
+output, reopening, or follow-up. End-to-end enforcement, clinical review of the
+app-owned statements and guidance, and real provider quality evidence remain
 release blockers. A disclaimer cannot replace these requirements.

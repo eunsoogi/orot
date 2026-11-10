@@ -35,7 +35,6 @@ export async function verifyTreatmentClaim(
       !verifier ||
       !parseTreatmentContext(request.context, request.sources) ||
       !claim.text.trim() ||
-      !claim.citations.length ||
       claim.citations.some(
         reference =>
           reference.sourceKind === 'generated_artifact' ||
