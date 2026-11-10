@@ -71,6 +71,23 @@ test.each([12, 13, 14])(
         });
       }
       await restoreOldSourceSchema(database);
+      if (version < 14) {
+        // Version 14 introduced these tables and their triggers; do not let newer schema mask creation.
+        const triggers = await database.execute(
+          "SELECT name FROM sqlite_master WHERE type = 'trigger' AND (sql LIKE '%visit_question_records%' OR sql LIKE '%visit_question_revisions%' OR sql LIKE '%visit_question_record_history%')",
+        );
+        for (const row of triggers.rows) await database.execute(`DROP TRIGGER "${row.name}"`);
+        await database.execute('DROP TABLE visit_question_record_history');
+        await database.execute('DROP TABLE visit_question_records');
+        await database.execute('DROP TABLE visit_question_revisions');
+        expect(
+          (
+            await database.execute(
+              "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'visit_question_records'",
+            )
+          ).rows,
+        ).toEqual([]);
+      }
       if (version >= 13) {
         await database.execute('INSERT INTO daily_report_heads VALUES (?, ?, ?, ?)', [
           'synthetic-day',
@@ -89,6 +106,13 @@ test.each([12, 13, 14])(
       }
       await database.execute(`PRAGMA user_version = ${version}`);
       await runMigrations(database);
+      expect(
+        (
+          await database.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'visit_question_record_history'",
+          )
+        ).rows,
+      ).toHaveLength(1);
       expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(15);
       expect(await repository.get('source_record', source.id)).toEqual(source);
       expect((await database.execute('SELECT * FROM daily_report_heads')).rows).toHaveLength(
