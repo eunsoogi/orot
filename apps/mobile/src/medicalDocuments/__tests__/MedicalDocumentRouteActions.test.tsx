@@ -7,8 +7,80 @@ import {
 } from '../../navigation/useNavigationPrimaryAction';
 import { MedicalDocumentImportAction } from '../MedicalDocumentImportAction';
 import { MedicalDocumentReview } from '../MedicalDocumentReview';
+import { NavigationRootLayoutContext } from '../../navigation/navigationRootLayout';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
+
+test('moves review actions into the document when the safe rail cannot hold them', async () => {
+  const save = jest.fn();
+  const cancel = jest.fn();
+  const compact = {
+    placement: 'right' as const,
+    reservedRightWidth: 72,
+    contentWidth: 400,
+    windowHeight: 340,
+    railTopInset: 20,
+    railBottomInset: 20,
+    railRightInset: 12,
+    systemBottomInset: 0,
+  };
+  function Fixture({
+    height,
+    busy = false,
+    name = 'Synthetic.pdf',
+  }: {
+    height: number;
+    busy?: boolean;
+    name?: string;
+  }) {
+    const { host, actions } = useNavigationPrimaryActionHost('records');
+    return (
+      <NavigationRootLayoutContext.Provider
+        value={{ ...compact, windowHeight: height }}
+      >
+        <NavigationPrimaryActionContext.Provider value={host}>
+          <MedicalDocumentReview
+            document={{
+              id: 'synthetic',
+              displayName: name,
+              contentHash: `sha256:${'a'.repeat(64)}`,
+              sections: [],
+            }}
+            busy={busy}
+            message={busy ? null : 'Synthetic retry'}
+            onSave={save}
+            onCancel={cancel}
+          />
+          {actions.map(action => (
+            <Button
+              key={action.id}
+              title={action.label}
+              testID={`dock-${action.id}`}
+              onPress={() => action.onPress()}
+            />
+          ))}
+        </NavigationPrimaryActionContext.Provider>
+      </NavigationRootLayoutContext.Provider>
+    );
+  }
+  const view = await render(<Fixture height={440} />);
+  expect(screen.getByTestId('dock-save-medical-document')).toBeTruthy();
+  await view.rerender(<Fixture height={340} />);
+  expect(screen.queryByTestId('dock-save-medical-document')).toBeNull();
+  expect(screen.getByText('Synthetic retry')).toBeTruthy();
+  await view.rerender(<Fixture height={340} busy />);
+  expect(screen.getByTestId('medical-document-save')).toBeDisabled();
+  expect(screen.getByTestId('medical-document-cancel')).toBeDisabled();
+  await view.rerender(<Fixture height={340} name="Reselected.pdf" />);
+  expect(screen.getByText('Reselected.pdf')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('medical-document-save'));
+  await fireEvent.press(screen.getByTestId('medical-document-cancel'));
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(cancel).toHaveBeenCalledTimes(1);
+  await view.rerender(<Fixture height={440} />);
+  expect(screen.queryByTestId('medical-document-save')).toBeNull();
+  expect(screen.getByTestId('dock-save-medical-document')).toBeTruthy();
+});
 
 test('keeps picker import in the Records body and review actions in the navigation dock', async () => {
   const select = jest.fn();

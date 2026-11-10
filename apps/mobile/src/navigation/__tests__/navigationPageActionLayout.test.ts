@@ -9,6 +9,39 @@ import {
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
   NAVIGATION_ROOT_RAIL_HEIGHT,
 } from '../navigationRootLayout';
+import { navigationRailPresentation } from '../navigationRailPresentation';
+
+test('keeps a safe root rail when the complete centered action group fits', () => {
+  const layout = {
+    placement: 'right' as const,
+    reservedRightWidth: 72,
+    contentWidth: 400,
+    windowHeight: 440,
+    railTopInset: 20,
+    railBottomInset: 20,
+    railRightInset: 12,
+    systemBottomInset: 0,
+  };
+  expect(
+    navigationRailPresentation(layout, 0, true, 5, 0).rightLayout,
+  ).toBeDefined();
+  const withActions = navigationRailPresentation(layout, 0, true, 5, 2);
+  expect(withActions.rightLayout).toEqual(layout);
+  expect(withActions.pageLayout?.capacity).toBe(2);
+  // 276pt tabs, an 8pt group gap, and two 48pt controls with a 12pt gap.
+  expect(
+    navigationRailPresentation({ ...layout, windowHeight: 432 }, 0, true, 5, 2)
+      .pageLayout?.capacity,
+  ).toBe(2);
+  expect(
+    navigationRailPresentation({ ...layout, windowHeight: 431 }, 0, true, 5, 2)
+      .pageLayout?.capacity,
+  ).toBe(1);
+  expect(
+    navigationRailPresentation({ ...layout, windowHeight: 300 }, 0, true, 5, 0)
+      .rightLayout,
+  ).toBeUndefined();
+});
 
 test('requires room for navigation and page actions together before placing one row', () => {
   const row = {

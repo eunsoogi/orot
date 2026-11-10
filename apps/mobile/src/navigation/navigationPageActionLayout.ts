@@ -54,13 +54,18 @@ export function pageActionRailLayout({
   const navHeight = rootTabs
     ? NAVIGATION_ROOT_RAIL_HEIGHT
     : navigationCount * step;
-  const pageSpace = rootTabs
-    ? (available - navHeight) / 2
-    : available - navHeight;
+  const pageSpace = available - navHeight;
   const railGapCount = rootTabs ? 1 : Math.min(navigationCount, 2);
+  // The centered root group can move as a whole; only its actual controls and
+  // gaps must fit, rather than reserving half the spare segment for each side.
   const capacity = Math.max(
     0,
-    Math.floor((pageSpace - railGapCount * groupGap) / step),
+    Math.floor(
+      (pageSpace -
+        railGapCount * groupGap +
+        (rootTabs ? NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING : 0)) /
+        step,
+    ),
   );
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);

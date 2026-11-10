@@ -1,4 +1,5 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { useContext } from 'react';
 import type { StagedMedicalDocument } from './medicalDocumentNativeBridge';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -6,6 +7,8 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { NavigationRootLayoutContext } from '../navigation/navigationRootLayout';
+import { pageActionRailLayout } from '../navigation/navigationPageActionLayout';
 
 interface MedicalDocumentReviewProps {
   readonly document: StagedMedicalDocument;
@@ -31,28 +34,44 @@ export function MedicalDocumentReview({
     ? t('medicalDocument.review.saving')
     : t('medicalDocument.review.save');
   const cancelLabel = t('medicalDocument.review.cancel');
-  const hasDock = useNavigationRouteActions([
-    {
-      id: 'save-medical-document',
-      label: saveLabel,
-      navigationLabel: busy ? navigationText.saving : navigationText.save,
-      accessibilityLabel: saveLabel,
-      testID: 'medical-document-save',
-      systemImageName: 'checkmark',
-      disabled: busy,
-      busy,
-      onPress: onSave,
-    },
-    {
-      id: 'cancel-medical-document',
-      label: cancelLabel,
-      accessibilityLabel: cancelLabel,
-      testID: 'medical-document-cancel',
-      systemImageName: 'xmark',
-      disabled: busy,
-      onPress: onCancel,
-    },
-  ]);
+  const layout = useContext(NavigationRootLayoutContext);
+  // When the measured side segment cannot expose both actions, the existing
+  // scrollable review owns them so Save stays direct and no rail is unsafe.
+  const useDock =
+    layout.placement !== 'right' ||
+    pageActionRailLayout({
+      height: layout.windowHeight,
+      top: layout.railTopInset,
+      bottom: layout.railBottomInset,
+      rootTabs: true,
+      navigationCount: 5,
+      actionCount: 2,
+    }).capacity >= 2;
+  const hasDock = useNavigationRouteActions(
+    [
+      {
+        id: 'save-medical-document',
+        label: saveLabel,
+        navigationLabel: busy ? navigationText.saving : navigationText.save,
+        accessibilityLabel: saveLabel,
+        testID: 'medical-document-save',
+        systemImageName: 'checkmark',
+        disabled: busy,
+        busy,
+        onPress: onSave,
+      },
+      {
+        id: 'cancel-medical-document',
+        label: cancelLabel,
+        accessibilityLabel: cancelLabel,
+        testID: 'medical-document-cancel',
+        systemImageName: 'xmark',
+        disabled: busy,
+        onPress: onCancel,
+      },
+    ],
+    useDock,
+  );
   return (
     <View style={styles.detailsPanel} testID="medical-document-review-details">
       <Text
