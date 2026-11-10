@@ -2,6 +2,16 @@ import Foundation
 @testable import Orot
 import XCTest
 
+/// Preserve the exact FileManager assertion when present and verify absent metadata through a fresh URL.
+func assertMedicalDocumentCompleteProtection(_ url: URL) throws {
+    let raw = try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey]
+    if let raw {
+        XCTAssertEqual(raw as? FileProtectionType, .complete)
+    } else {
+        XCTAssertEqual(try URL(fileURLWithPath: url.path).resourceValues(forKeys: [.fileProtectionKey]).fileProtection, .complete)
+    }
+}
+
 /// Verifies recovery preserves a retained original before duplicate cleanup can run.
 final class MedicalDocumentFileOperationsTests: XCTestCase {
     /// Requires actual protected-directory and file readback, including Simulator's URL metadata path.

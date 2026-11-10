@@ -182,8 +182,7 @@ final class MedicalDocumentImportTests: XCTestCase {
         try store.store(data: data, identifier: retainedID, fileExtension: "txt")
         try store.store(data: data, identifier: orphanID, fileExtension: "txt")
         let original = root.appendingPathComponent("\(retainedID).txt")
-        let attributes = try FileManager.default.attributesOfItem(atPath: original.path)
-        XCTAssertEqual(attributes[.protectionKey] as? FileProtectionType, .complete)
+        try assertMedicalDocumentCompleteProtection(original)
         XCTAssertTrue(try original.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
 
         try store.stage(retainedID)
