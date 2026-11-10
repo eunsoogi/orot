@@ -19,6 +19,9 @@ import type { createConversationArtifactDiscovery } from './conversationArtifact
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
+  readonly dailyReport?: ReturnType<
+    typeof import('./dailyReportFeature').createDailyReportFeature
+  >;
   prepareVisitQuestionTurn?: ReturnType<
     typeof import('./conversationVisitTurn').createConversationVisitTurn
   >;

@@ -68,6 +68,15 @@ export const healthkitSettingsKo = {
   'settings.healthData.loading': '저장한 동기화 설정을 불러오는 중…',
   'settings.healthData.loadError': '저장한 설정을 불러오지 못했어요.',
   'settings.dailyReminder.title': '일일 보고서 알림',
+  'dailyReminder.openTitle': '오늘의 기록',
+  'dailyReminder.openError':
+    '이 알림을 열 수 없어요. 앱에서 다시 확인해 주세요.',
+  'dailyReport.symptom': '증상: {description}{severity}, 상태: {status}',
+  'dailyReport.severity': ' (정도 {severity}/10)',
+  'dailyReport.dose': '복약 기록: {kind}{status}{dose}',
+  'dailyReport.doseStatus': ', 상태: {status}',
+  'dailyReport.doseAmount': ', 용량: {amount} {unit}',
+  'dailyReport.fact': '{detail} · 시각: {time} · 출처: {source} ({origin})',
   'settings.dailyReminder.description':
     '원하는 시각을 정해 매일 알림을 받을 수 있어요. 알림에는 건강 정보가 포함되지 않고, 알림을 열어도 AI가 자동으로 실행되지 않아요.',
   'settings.dailyReminder.enabled': '일일 보고서 알림 켜기',

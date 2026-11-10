@@ -32,6 +32,7 @@ import {
 import { diseaseTaskWithPublicContext } from './diseaseTaskWithPublicContext';
 import { publicSummaryTask } from './publicSummaryTask';
 import { createVisitQuestionFeatureServices } from './visitQuestionFeatureServices';
+import { createDailyReportFeature } from './dailyReportFeature';
 
 import type { AiFeatureServices } from './featureServiceTypes';
 export type { AiFeatureServices } from './featureServiceTypes';
@@ -204,6 +205,7 @@ export function createAiFeatureServices(
     registry,
   });
   return {
+    dailyReport: createDailyReportFeature(consent, dependencies),
     ...createConversationSummaryIntegration({
       consent,
       dependencies,

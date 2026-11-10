@@ -3,6 +3,11 @@
  * The feature adapter resolves it with `t()` so keys and placeholders stay typed.
  */
 export const medicalAppointmentsKo = {
+  'medicalAppointments.reminder.openTitle': '진료 준비',
+  'medicalAppointments.reminder.stale':
+    '예약이 바뀌었거나 취소되어 이 알림을 열 수 없어요. 일정에서 최신 예약을 확인해 주세요.',
+  'medicalAppointments.reminder.unavailable':
+    '예약을 확인하지 못했어요. 앱을 다시 열어 주세요.',
   'medicalAppointments.failure.configuration':
     'AI 호출 전 실행 설정 검증에 실패했어요.',
   'medicalAppointments.failure.input': '일정에서 AI 요청을 구성하지 못했어요.',

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Alert, AppState } from 'react-native';
+import { t } from '../i18n';
 import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
@@ -39,10 +40,7 @@ export function AppointmentReminderDeliveryHost({
         return (await controller.requestTabSwitch()) ? 'approved' : 'declined';
       },
       unavailable: () =>
-        Alert.alert(
-          '오늘의 기록',
-          '이 알림을 열 수 없어요. 앱에서 다시 확인해 주세요.',
-        ),
+        Alert.alert(t('dailyReminder.openTitle'), t('dailyReminder.openError')),
     });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
@@ -76,10 +74,10 @@ export function AppointmentReminderDeliveryHost({
       },
       onUnavailable: reason =>
         Alert.alert(
-          '진료 준비',
+          t('medicalAppointments.reminder.openTitle'),
           reason === 'stale'
-            ? '예약이 바뀌었거나 취소되어 이 알림을 열 수 없어요. 일정에서 최신 예약을 확인해 주세요.'
-            : '예약을 확인하지 못했어요. 앱을 다시 열어 주세요.',
+            ? t('medicalAppointments.reminder.stale')
+            : t('medicalAppointments.reminder.unavailable'),
         ),
     });
     // Serialize both families so two simultaneous taps cannot race leave guards.

@@ -2,6 +2,7 @@ import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEviden
 import type { DailyReportSourceRecord } from '@orot/domain';
 import { compareTimestamps } from '@orot/domain';
 import { stableJson } from './evidenceUtils';
+import { t } from '../../i18n';
 
 /** Keep differing same-instant measurements together, without deciding which source is correct. */
 export function conflictingDailyReportIndexes(
@@ -72,6 +73,7 @@ export function dailyReportFacts(
       throw new Error('Snapshot source mismatch.');
     const record = item.record;
     let detail: string;
+    let displayDetail: string;
     if (item.kind === 'health_observation') {
       const value = item.record.value;
       const rendered =
@@ -81,10 +83,34 @@ export function dailyReportFacts(
             ? value.text
             : String(value.value);
       detail = `${item.record.concept}: ${rendered}`;
+      displayDetail = detail;
     } else if (item.kind === 'symptom_entry') {
       detail = `증상: ${item.record.description}${item.record.severity === undefined ? '' : ` (정도 ${item.record.severity}/10)`}, 상태: ${item.record.status}`;
+      displayDetail = t('dailyReport.symptom', {
+        description: item.record.description,
+        severity:
+          item.record.severity === undefined
+            ? ''
+            : t('dailyReport.severity', { severity: item.record.severity }),
+        status: item.record.status,
+      });
     } else if (item.kind === 'dose_event') {
       detail = `복약 기록: ${item.record.eventKind}${item.record.eventKind === 'observed' ? `, 상태: ${item.record.observationStatus}` : ''}${item.record.dose ? `, 용량: ${item.record.dose.amount ?? ''} ${item.record.dose.unit}` : ''}`;
+      displayDetail = t('dailyReport.dose', {
+        kind: item.record.eventKind,
+        status:
+          item.record.eventKind === 'observed'
+            ? t('dailyReport.doseStatus', {
+                status: item.record.observationStatus,
+              })
+            : '',
+        dose: item.record.dose
+          ? t('dailyReport.doseAmount', {
+              amount: item.record.dose.amount ?? '',
+              unit: item.record.dose.unit,
+            })
+          : '',
+      });
     } else throw new Error('Unsupported daily report record.');
     const provenance = record.provenance.source;
     const sourceName =
@@ -93,7 +119,12 @@ export function dailyReportFacts(
       ? `${source.occurrence.startInclusive}–${source.occurrence.endExclusive}`
       : source.occurrence.startInclusive;
     return {
-      text: `${detail} · 시각: ${time} · 출처: ${sourceName} (${record.provenance.origin})`,
+      text: t('dailyReport.fact', {
+        detail: displayDetail,
+        time,
+        source: sourceName,
+        origin: record.provenance.origin,
+      }),
       modelText: `${detail} · 시각: ${time} · 기록 출처 유형: ${record.provenance.origin}`,
       sourceReferences: [{ source: source.source, recordId: source.recordId }],
     };
