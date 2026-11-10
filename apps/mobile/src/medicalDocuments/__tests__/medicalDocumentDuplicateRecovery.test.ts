@@ -125,7 +125,7 @@ test('retains staged duplicate bytes when canonical recovery fails', async () =>
   files.ensureOriginal.mockRejectedValue(recoveryFailure);
 
   await expect(service.saveDocument(stagedDocument)).rejects.toMatchObject({
-    code: 'IMPORT_FAILED',
+    code: 'DUPLICATE_RECOVERY_FAILED',
   });
 
   expect(files.discard).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ test('matching hashes on another source kind are not treated as document duplica
   const { files, service } = setup({ lookups: [incompatibleSource] });
 
   await expect(service.saveDocument(stagedDocument)).rejects.toMatchObject({
-    code: 'IMPORT_FAILED',
+    code: 'DUPLICATE_RECOVERY_FAILED',
   });
 
   expect(files.ensureOriginal).not.toHaveBeenCalled();
@@ -176,7 +176,7 @@ test('transaction-race hash collisions with another source kind remain failed im
   });
 
   await expect(service.saveDocument(stagedDocument)).rejects.toMatchObject({
-    code: 'IMPORT_FAILED',
+    code: 'DUPLICATE_RECOVERY_FAILED',
   });
 
   expect(files.ensureOriginal).not.toHaveBeenCalled();

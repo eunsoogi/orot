@@ -27,7 +27,7 @@ export function createDatabase(path = ':memory:'): SqlDatabase {
   const execute = async (query: string, parameters: SqlValue[] = []): Promise<SqlResult> => {
     const normalized = query.trim().toUpperCase();
     const statement = connection.prepare(query);
-    if (normalized.startsWith('SELECT') || /^PRAGMA [A-Z_]+$/.test(normalized)) {
+    if (normalized.startsWith('SELECT') || /^PRAGMA [A-Z_]+(?:\([^)]*\))?$/.test(normalized)) {
       return { rows: statement.all(...parameters) };
     }
     const result = statement.run(...parameters);

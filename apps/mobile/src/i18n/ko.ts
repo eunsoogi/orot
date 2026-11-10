@@ -12,6 +12,7 @@ import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
 import { homeOverviewKo } from './homeOverview';
 import { appointmentActionsKo } from './appointmentActionsKo';
+import { medicalDocumentSaveErrorsKo } from './medicalDocumentSaveErrors';
 
 export const ko = {
   ...homeOverviewKo,
@@ -245,4 +246,5 @@ export const ko = {
   ...providerAccountsKo,
   ...healthRecordsKo,
   ...healthkitSettingsKo,
+  ...medicalDocumentSaveErrorsKo,
 } as const;
