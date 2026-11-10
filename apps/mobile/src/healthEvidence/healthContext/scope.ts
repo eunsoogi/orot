@@ -37,13 +37,22 @@ export function parseHealthContextScope(
   if (
     Object.keys(w).some(
       key =>
-        !['fromInclusive', 'toExclusive', 'timeZone', 'doseHistory'].includes(
-          key,
-        ),
+        ![
+          'fromInclusive',
+          'toExclusive',
+          'timeZone',
+          'dataAvailableThrough',
+          'doseHistory',
+        ].includes(key),
     ) ||
     !['fromInclusive', 'toExclusive', 'timeZone'].every(
       key => typeof w[key] === 'string',
     )
+  )
+    return undefined;
+  if (
+    w.dataAvailableThrough !== undefined &&
+    typeof w.dataAvailableThrough !== 'string'
   )
     return undefined;
   try {
@@ -78,6 +87,9 @@ export function parseHealthContextScope(
         fromInclusive: w.fromInclusive as string,
         toExclusive: w.toExclusive as string,
         timeZone: w.timeZone as string,
+        ...(w.dataAvailableThrough
+          ? { dataAvailableThrough: w.dataAvailableThrough as string }
+          : {}),
         ...(w.doseHistory
           ? { doseHistory: w.doseHistory as HealthContextWindow['doseHistory'] }
           : {}),

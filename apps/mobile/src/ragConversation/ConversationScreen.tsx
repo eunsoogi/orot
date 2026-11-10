@@ -23,7 +23,10 @@ import { useNavigationOcclusion } from '../navigation/useNavigationContentInset'
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useNavigationActionPlacement } from '../navigation/useNavigationActionPlacement';
 import { conversationComposerLayout } from './conversationComposerLayout';
-import { useConversationEntryIntent } from './useConversationEntryIntent';
+import {
+  conversationEntryForSession,
+  useConversationEntryIntent,
+} from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
