@@ -2,6 +2,7 @@ import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createDailyReportStorage } from '../../../storage/dailyReportStorage';
+import { createLocalEvidenceData } from '../../localEvidenceData';
 import { createDailyReportCalendarWindow } from '../dailyReportWindow';
 import { readDailyReportSnapshot } from '../dailyReportSnapshot';
 
@@ -46,11 +47,10 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
     await put('future', { effectiveAt: '2035-01-01T12:00:00Z' });
     await put('late', { ingestedAt: '2035-01-01T12:01:00Z' });
     await put('other', {});
-    const scoped = await readDailyReportSnapshot(
-      connection.database,
-      calendar.context,
-      { sourceIds: ['sleep', 'future', 'late'] },
-    );
+    const scoped = await createLocalEvidenceData(connection.database)
+      .readDailyReportSnapshot!(calendar.context, {
+      sourceIds: ['sleep', 'future', 'late'],
+    });
     expect(
       scoped.sourceSnapshot.records.map(record => record.recordId),
     ).toEqual(['sleep']);
