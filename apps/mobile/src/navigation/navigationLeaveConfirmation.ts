@@ -65,7 +65,14 @@ export function confirmNavigationLeave<Name extends string>(
       copy.title,
       copy.message,
       [
-        { text: copy.cancel, style: 'cancel', onPress: () => finish(false) },
+        {
+          text: copy.cancel,
+          style: 'cancel',
+          onPress: () => {
+            request.onExplicitDecline?.();
+            finish(false);
+          },
+        },
         {
           text: copy.confirm,
           style: 'destructive',

@@ -78,6 +78,7 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
+            onOpenDailyReport={() => actions.push('daily-report')}
           />
         );
       case 'records':

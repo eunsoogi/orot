@@ -106,6 +106,7 @@ function isStatefulFeatureRoute(
   route: AiFeatureRouteName,
 ): route is
   | 'saved-analysis'
+  | 'daily-report'
   | 'entry'
   | 'health-summary'
   | 'visit-questions'
@@ -115,6 +116,7 @@ function isStatefulFeatureRoute(
   | 'source-detail' {
   return (
     route === 'entry' ||
+    route === 'daily-report' ||
     route === 'health-summary' ||
     route === 'visit-questions' ||
     route === 'saved-analysis' ||

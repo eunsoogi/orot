@@ -5,6 +5,7 @@ import {
   productionTestingEnvironment,
   verifyProductionTestSymbols,
   validateProductionInputs,
+  verifyDailyReportResult,
 } from '../production-ui-contract.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
@@ -62,6 +63,46 @@ test('explicit cancellation probe selects only a no-Send case with bounded runne
   });
   assert.throws(() => productionTestRun(input, { ...probe, port: 0 }));
   assert.throws(() => productionTestRun(input, { ...probe, token: 'invalid' }));
+});
+
+test('daily report entry selects exactly its opt-in test and rejects conflicting probe modes', () => {
+  const run = productionTestRun(input, undefined, true);
+  assert.deepEqual(run.OrotUITests.OnlyTestIdentifiers, [
+    'DailyReportEntryUITests/testDailyEntryAndConversationDateSurviveRestart',
+  ]);
+  assert.deepEqual(run.OrotUITests.TestingEnvironmentVariables, {
+    OROT_DAILY_REPORT_PRODUCTION_UI: 'YES',
+  });
+  assert.throws(() =>
+    productionTestRun(input, { port: 12345, token: '11111111-1111-4111-8111-111111111111' }, true),
+  );
+  assert.throws(() => verifyProductionTestSymbols('', '', false, true));
+  assert.doesNotThrow(() =>
+    verifyProductionTestSymbols(
+      'OrotUITests23DailyReportEntryUITests',
+      'testDailyEntryAndConversationDateSurviveRestartAndReturnError:',
+      false,
+      true,
+    ),
+  );
+});
+
+test('daily report evidence rejects skipped, missing, duplicate and retried executions', () => {
+  const item = {
+    nodeType: 'Test Case',
+    nodeIdentifier: 'DailyReportEntryUITests/testDailyEntryAndConversationDateSurviveRestart()',
+    result: 'Passed',
+  };
+  const report = (items) => ({
+    testNodes: [{ nodeType: 'UI test bundle', name: 'OrotUITests', children: items }],
+  });
+  assert.doesNotThrow(() => verifyDailyReportResult(report([item])));
+  assert.throws(() => verifyDailyReportResult(report([{ ...item, result: 'Skipped' }])));
+  assert.throws(() => verifyDailyReportResult(report([])));
+  assert.throws(() => verifyDailyReportResult(report([item, item])));
+  assert.throws(() =>
+    verifyDailyReportResult(report([{ ...item, children: [{ nodeType: 'Repetition' }] }])),
+  );
 });
 
 test('runner must expose the named test class and method', () => {

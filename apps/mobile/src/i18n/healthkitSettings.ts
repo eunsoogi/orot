@@ -68,6 +68,95 @@ export const healthkitSettingsKo = {
   'settings.healthData.loading': '저장한 동기화 설정을 불러오는 중…',
   'settings.healthData.loadError': '저장한 설정을 불러오지 못했어요.',
   'settings.dailyReminder.title': '일일 보고서 알림',
+  'dailyReminder.openTitle': '오늘의 기록',
+  'dailyReminder.openError':
+    '이 알림을 열 수 없어요. 앱에서 다시 확인해 주세요.',
+  'dailyReport.symptom': '증상: {description}{severity}, 상태: {status}',
+  'dailyReport.severity': ' (정도 {severity}/10)',
+  'dailyReport.dose': '복약 기록: {kind}{status}{dose}',
+  'dailyReport.doseStatus': ', 상태: {status}',
+  'dailyReport.doseAmount': ', 용량: {amount} {unit}',
+  'dailyReport.fact': '{detail} · 시각: {time} · 출처: {source} ({origin})',
+  'dailyReport.title': '일일 보고서',
+  'dailyReport.back': '뒤로',
+  'dailyReport.backAccessibility': '이전 화면으로 돌아가기',
+  'dailyReport.date': '{date} · {zone}',
+  'dailyReport.reminderZone':
+    '알림을 확인한 시점의 시간대예요. 알림이 전달된 당시의 시간대는 확인할 수 없어요.',
+  'dailyReport.preparing': '기록과 저장된 보고서를 확인하고 있어요.',
+  'dailyReport.preview': '{time}까지 확인한 기록 {count}건',
+  'dailyReport.latest': '가장 최근 기록 시각: {time}',
+  'dailyReport.partial':
+    '오늘이 끝나기 전까지의 기록이에요. 이후 기록은 포함되지 않아요.',
+  'dailyReport.coverage':
+    '자료의 동기화 상태와 누락 여부는 확인되지 않았어요. 확인된 기록만 사용해요.',
+  'dailyReport.coverageLine': '{source}: {status}',
+  'dailyReport.source.health': '건강 측정',
+  'dailyReport.source.symptom': '증상',
+  'dailyReport.source.dose': '복약',
+  'dailyReport.source.calendar': '하루 범위',
+  'dailyReport.source.selection': '보고서에 고른 기록',
+  'dailyReport.source.conflict': '서로 다른 기록',
+  'dailyReport.source.other': '기타 자료',
+  'dailyReport.status.available': '확인됨',
+  'dailyReport.status.empty': '확인된 기록 없음',
+  'dailyReport.status.partial': '일부만 포함',
+  'dailyReport.status.stale': '최신 상태 확인 필요',
+  'dailyReport.status.failed': '확인 실패',
+  'dailyReport.status.unknown': '동기화 상태 미확인',
+  'dailyReport.limit.partial':
+    '자료가 많거나 범위가 제한되어 일부 기록만 포함됐을 수 있어요.',
+  'dailyReport.limit.sync': '원본 자료가 최신인지 확인되지 않았어요.',
+  'dailyReport.limit.medication': '복약 기록의 약 이름은 확인하지 않았어요.',
+  'dailyReport.limit.selection': '확인된 기록 중 일부를 골랐어요.',
+  'dailyReport.limit.conflict':
+    '같은 시각에 서로 다른 기록이나 비교할 수 없는 단위가 있어요.',
+  'dailyReport.limit.other': '자료에 추가 제한이 있어요.',
+  'dailyReport.sourceTime': '자료 확인 기준: {time}',
+  'dailyReport.sources': '기록 출처 확인',
+  'dailyReport.sourceLink': '기록 출처 {number} 열기',
+  'dailyReport.sourceError':
+    '기록이 바뀌었거나 출처를 확인하지 못했어요. 보고서를 다시 확인해 주세요.',
+  'dailyReport.empty':
+    '이 날짜에 사용할 기록을 찾지 못했어요. 건강 기록을 확인하거나 가져온 뒤 다시 시도해 주세요.',
+  'dailyReport.consent':
+    '선택한 외부 AI로 기록을 보내야 할 때에는 요청을 확인하고 동의를 받아요.',
+  'dailyReport.generate': '오늘 요약하기',
+  'dailyReport.regenerate': '다시 요약하기',
+  'dailyReport.selectToday': '오늘 선택하기',
+  'dailyReport.selectionError':
+    '선택한 날짜를 저장하지 못했어요. 다시 시도해 주세요.',
+  'dailyReport.loading': '보고서를 만들고 있어요.',
+  'dailyReport.cancel': '생성 취소',
+  'dailyReport.failure':
+    '보고서를 만들지 못했어요. AI 선택과 기록을 확인한 뒤 다시 시도해 주세요.',
+  'dailyReport.cancelled': '보고서 생성을 취소했어요.',
+  'dailyReport.stale':
+    '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
+  'dailyReport.missingOld':
+    '이 날짜에 저장된 보고서가 없어요. 오늘을 선택해 새로운 보고서를 만들 수 있어요.',
+  'dailyReport.lookupError':
+    '저장된 보고서를 확인하지 못했어요. 다시 시도해 주세요.',
+  'dailyReport.retry': '다시 확인',
+  'dailyReport.generatedAt': '생성 시각: {time}',
+  'dailyReport.reportCutoff': '기록 확인 기준 시각: {time}',
+  'dailyReport.observations': '확인된 기록',
+  'dailyReport.reportCaution':
+    'AI가 고른 기록이며, 독립적인 의학적 사실이나 진단이 아니에요.',
+  'dailyReport.chat': '이 보고서에 관해 대화하기',
+  'dailyReport.chatNote': '보고서 내용은 대화에 자동으로 전달되지 않아요.',
+  'dailyReport.followUpIdentity': '선택한 보고서: {date} · {zone}',
+  'dailyReport.openFromChat': '오늘의 보고서 요청하기',
+  'dailyReport.entryError':
+    '보고서 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.',
+  'conversationIntent.healthSummary':
+    '최근 건강 기록을 날짜와 근거 출처와 함께 요약해 주세요.',
+  'conversationIntent.possibilities':
+    '건강 기록에서 검토할 가능성을 지지·반대 근거와 불확실성을 구분해 설명해 주세요.',
+  'conversationIntent.visitQuestions':
+    '다음 진료에서 물어볼 질문을 기록과 근거를 바탕으로 준비해 주세요.',
+  'conversationIntent.medicalLiterature':
+    '관련 의학 문헌을 찾아 출처를 확인할 수 있게 설명해 주세요.',
   'settings.dailyReminder.description':
     '원하는 시각을 정해 매일 알림을 받을 수 있어요. 알림에는 건강 정보가 포함되지 않고, 알림을 열어도 AI가 자동으로 실행되지 않아요.',
   'settings.dailyReminder.enabled': '일일 보고서 알림 켜기',

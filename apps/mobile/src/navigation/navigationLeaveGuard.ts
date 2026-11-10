@@ -32,6 +32,7 @@ export interface NavigationLeaveConfirmation<
 > extends NavigationTransition<Name> {
   readonly reasons: readonly NavigationLeaveReason[];
   readonly ongoingOperationKind?: NavigationLeaveOperationKind;
+  readonly onExplicitDecline?: () => void;
 }
 
 export interface NavigationLeaveGuardOptions<Name extends string> {
@@ -46,7 +47,7 @@ export interface NavigationLeaveGuardOptions<Name extends string> {
 export function createNavigationLeaveGuard<Name extends string>(
   options: NavigationLeaveGuardOptions<Name>,
 ): NavigationLeaveGuard<Name> {
-  return async transition => {
+  return async (transition, onExplicitDecline) => {
     const initial = options.readState();
     if (initial.canLeave === false) return false;
     const reasons: NavigationLeaveReason[] = [];
@@ -59,6 +60,7 @@ export function createNavigationLeaveGuard<Name extends string>(
       ...transition,
       reasons,
       ongoingOperationKind: initial.ongoingOperationKind,
+      ...(onExplicitDecline ? { onExplicitDecline } : {}),
     });
     if (!approved) return false;
 

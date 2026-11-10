@@ -20,6 +20,7 @@ export interface ConversationScreenProps {
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
   readonly onOpenHistory?: () => void;
+  readonly onOpenDailyReport?: () => void;
   readonly onSend: (
     question: string,
     previousMessages: readonly RagConversationMessage[],

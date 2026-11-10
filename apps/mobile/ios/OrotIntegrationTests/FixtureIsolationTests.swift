@@ -72,7 +72,12 @@ final class FixtureIsolationTests: OrotFailFastTestCase {
         let paths = try XCTUnwrap(state["paths"] as? [String: Bool])
         let keys = try XCTUnwrap(state["keys"] as? [String: Bool])
         XCTAssertEqual(paths.count, 6)
-        XCTAssertEqual(keys.count, 5)
+        XCTAssertEqual(Set(keys.keys), Set([
+            "com.orot.mobile.database-encryption-key.v1", "com.orot.mobile.database-initialization.v1",
+            "com.orot.mobile.provider-selection.v1", "com.orot.provider.openai.credentials",
+            "com.orot.provider.openai.simulator-fixture", "com.orot.mobile.daily-reminder-intent.v1",
+            "com.orot.mobile.daily-conversation-intent.v1",
+        ]))
         XCTAssertTrue(paths.values.allSatisfy { !$0 })
         XCTAssertTrue(keys.values.allSatisfy { !$0 })
         // Both startup and current snapshots must prove absence of the declared keys; unrelated React preferences may remain.

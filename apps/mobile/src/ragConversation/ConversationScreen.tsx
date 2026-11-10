@@ -18,12 +18,16 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
+import { DailyReportConversationHeader } from './DailyReportConversationHeader';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useConversationSessionActions } from './useConversationSessionActions';
 import { conversationComposerLayout } from './conversationComposerLayout';
-import { useConversationEntryIntent } from './useConversationEntryIntent';
+import {
+  useConversationEntryIntent,
+  conversationEntryForSession,
+} from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
@@ -37,6 +41,7 @@ export function ConversationScreen({
   onNavigationStateChange,
   onBack,
   onOpenHistory,
+  onOpenDailyReport,
   onSend,
   onOpenSource,
   resolveToolSource,
@@ -60,6 +65,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const selectedReport = conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
@@ -130,6 +136,10 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      <DailyReportConversationHeader
+        report={selectedReport}
+        onRequest={onOpenDailyReport}
+      />
     </View>
   );
 

@@ -1,4 +1,5 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { DailyReportFlowScreen } from './DailyReportFlowScreen';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
@@ -17,6 +18,7 @@ import type { AiFeatureServices } from './featureServices';
 import type { SelectedAiResolution } from './provider';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
+import type { ConversationEntryContext } from './conversationIntent';
 import { useColorScheme } from 'react-native';
 import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
 import { ConversationVisitQuestionCard } from './ConversationVisitQuestionCard';
@@ -67,6 +69,11 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenVisitQuestions?: () => void;
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
+  readonly onOpenDailyReport?: () => void;
+  readonly onOpenDailyReportChat?: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => void;
+  readonly reportOwnsOperation?: boolean;
   readonly onOpenExternalEvidence: () => void;
   readonly onOpenConversationHistory?: () => void;
   readonly onOpenProviderSelection: () => void;
@@ -95,6 +102,10 @@ export function AiFeatureFlowScreen({
   onBack,
   onOpenProviderSelection,
   onOpenConversationHistory,
+  onOpenRagConversation,
+  onOpenDailyReport,
+  onOpenDailyReportChat,
+  reportOwnsOperation,
   onOpenSource,
   resolveSelectedAi,
   confirmConsent,
@@ -111,6 +122,9 @@ export function AiFeatureFlowScreen({
   );
   const intent = conversationIntentForRoute(route);
   const reminderRuntime = useAppointmentReminderRuntime();
+  const followUp = reminderRuntime?.dailyReportFollowUps.get(
+    navigationRouteKey ?? '',
+  );
   const colorScheme = useColorScheme();
   // Navigation prepares a request; only an explicit Send can start inference or consent.
   const conversation = (
@@ -121,12 +135,14 @@ export function AiFeatureFlowScreen({
         appointmentId: reminderRuntime?.homePreparationTargets.get(
           navigationRouteKey ?? '',
         ),
+        ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
       navigationRouteKey={navigationRouteKey}
       onNavigationStateChange={onFeatureNavigationStateChange}
       onBack={onBack}
       onOpenHistory={onOpenConversationHistory}
+      onOpenDailyReport={onOpenDailyReport}
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
       resolveToolSource={services.resolveToolSource}
@@ -161,6 +177,20 @@ export function AiFeatureFlowScreen({
   if (intent !== null) return conversation;
 
   switch (route) {
+    case 'daily-report':
+      return (
+        <DailyReportFlowScreen
+          services={services}
+          routeKey={navigationRouteKey}
+          providerSelection={providerSelection}
+          onBack={onBack}
+          onChat={onOpenDailyReportChat ?? onOpenRagConversation}
+          onOpenSource={onOpenSource}
+          onNavigationStateChange={onFeatureNavigationStateChange}
+          ownsOperation={reportOwnsOperation}
+          fallback={conversation}
+        />
+      );
     case 'saved-visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({
