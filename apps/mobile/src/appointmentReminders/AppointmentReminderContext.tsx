@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import type { AppointmentRepository } from '@orot/storage';
+import type { DailyReportContextRequest } from '@orot/domain';
 import { AppointmentReminderCoordinator } from './reminderCoordinator';
 import { appointmentReminderPort } from './nativeReminderBridge';
 import { withAppointmentReminders } from './reminderRepository';
@@ -29,6 +30,14 @@ export function createAppointmentReminderRuntime(load: Loader) {
     homePreparationTargets: new Map<string, string>(),
     // The exact observed day is retained for this route, including provider detours.
     dailyReportTargets: new Map<string, DailyReminderEntry>(),
+    dailyReportSelection: {
+      selectReminder: null as
+        | null
+        | ((
+            entryKey: string,
+            request: DailyReportContextRequest,
+          ) => Promise<DailyReminderEntry>),
+    },
     dailyConversationTargets: new Map<
       string,
       {

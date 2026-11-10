@@ -124,6 +124,8 @@ export const healthkitSettingsKo = {
   'dailyReport.generate': '오늘 요약하기',
   'dailyReport.regenerate': '다시 요약하기',
   'dailyReport.selectToday': '오늘 선택하기',
+  'dailyReport.selectionError':
+    '선택한 날짜를 저장하지 못했어요. 다시 시도해 주세요.',
   'dailyReport.loading': '보고서를 만들고 있어요.',
   'dailyReport.cancel': '생성 취소',
   'dailyReport.failure':

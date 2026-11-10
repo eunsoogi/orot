@@ -1,4 +1,6 @@
 import type { DailyReminderEntry } from './dailyReminderDelivery';
+import { DailyReportContextRequestSchema } from '@orot/domain';
+import type { DailyReportContextRequest } from '@orot/domain';
 
 export interface SavedDailyReminderEntry {
   readonly entry: DailyReminderEntry;
@@ -70,6 +72,18 @@ export function createDailyReminderDestination(port: {
         const previous = await port.read();
         if (previous?.active && previous.entry.entryKey === entryKey)
           await port.write({ ...previous, active: false });
+      }),
+    select: (entryKey: string, request: DailyReportContextRequest) =>
+      serial(async () => {
+        const previous = await port.read();
+        if (!previous?.active || previous.entry.entryKey !== entryKey)
+          throw new Error('Daily reminder is no longer active');
+        const entry = {
+          ...previous.entry,
+          selectedRequest: DailyReportContextRequestSchema.parse(request),
+        };
+        await port.write({ entry, active: true });
+        return entry;
       }),
     alreadyHandled: (entry: DailyReminderEntry) =>
       serial(async () => {

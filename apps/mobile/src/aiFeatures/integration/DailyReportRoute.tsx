@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { createDailyReportIdentity } from '@orot/domain';
 import type { DailyReportIdentity } from '@orot/domain';
+import type { DailyReportContextRequest } from '@orot/domain';
 import { currentDailyReportContextRequest } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { AppButton } from '../../layout/AppButton';
 import { AppText } from '../../layout/AppText';
@@ -14,6 +15,7 @@ import type { createDailyReportFeature } from './dailyReportFeature';
 import { useDailyReportRoute } from './useDailyReportRoute';
 import { DailyReportCoverage } from './DailyReportCoverage';
 import { DailyReportSavedSection } from './DailyReportSavedSection';
+import { DailyReportSelectToday } from './DailyReportSelectToday';
 import type { AiFeatureServices } from './featureServices';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from './conversationIntent';
@@ -40,6 +42,7 @@ export function DailyReportRoute({
   reminder,
   providerSelection,
   onBack,
+  onSelectToday,
   onChat,
   resolveSources,
   onOpenSource,
@@ -55,6 +58,9 @@ export function DailyReportRoute({
   readonly reminder?: boolean;
   readonly providerSelection: ReactNode;
   readonly onBack: () => void;
+  readonly onSelectToday?: (
+    request: DailyReportContextRequest,
+  ) => Promise<void>;
   readonly onChat: (
     target: NonNullable<ConversationEntryContext['dailyReport']>,
   ) => void;
@@ -65,6 +71,8 @@ export function DailyReportRoute({
   readonly ownsOperation?: boolean;
 }) {
   const navigationInset = useNavigationContentInset();
+  const initialDate = initialIdentity?.localDate;
+  const initialZone = initialIdentity?.timeZone;
   const today = todayIdentity();
   const [identity, setIdentity] = useState(initialIdentity ?? today);
   const [chosenToday, setChosenToday] = useState(
@@ -88,9 +96,14 @@ export function DailyReportRoute({
   );
   useEffect(() => {
     const current = todayIdentity();
-    setIdentity(initialIdentity ?? current);
-    setChosenToday(!initialIdentity || initialIdentity.key === current?.key);
-  }, [initialIdentity]);
+    const next =
+      initialDate && initialZone
+        ? createDailyReportIdentity(initialDate, initialZone)
+        : current;
+    setIdentity(previous => (previous?.key === next?.key ? previous : next));
+    setChosenToday(!initialDate || next?.key === current?.key);
+    // Identity keys encode the date and zone; equivalent objects must not release an active operation.
+  }, [initialDate, initialZone]);
   const isToday = identity?.key === today?.key;
   const canGenerate = Boolean(
     isToday && chosenToday && state.lookup && state.lookup.status !== 'error',
@@ -179,10 +192,10 @@ export function DailyReportRoute({
         </>
       ) : null}
       {!chosenToday || !isToday ? (
-        <AppButton
-          title={t('dailyReport.selectToday')}
-          onPress={() => {
-            setIdentity(todayIdentity());
+        <DailyReportSelectToday
+          persist={onSelectToday}
+          onSelected={selected => {
+            setIdentity(selected);
             setChosenToday(true);
           }}
         />

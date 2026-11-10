@@ -1,4 +1,5 @@
 import { createDailyReportIdentity } from '@orot/domain';
+import type { DailyReportContextRequest } from '@orot/domain';
 
 /** The delivery instant does not establish the timezone at delivery. */
 export interface DailyReminderEntry {
@@ -8,6 +9,8 @@ export interface DailyReminderEntry {
   readonly observedTimeZone: string;
   readonly dateInObservedTimeZone: string;
   readonly deliveryTimeZone: 'unknown';
+  /** An explicit later selection does not rewrite the notification's observed delivery date. */
+  readonly selectedRequest?: DailyReportContextRequest;
 }
 
 /**

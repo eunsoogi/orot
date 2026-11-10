@@ -18,7 +18,8 @@ export function createDailyConversationRouteCleanup(input: {
         .then(() => {
           if (
             !input.routeExists(key) &&
-            input.runtime.dailyConversationTargets.get(key) === target
+            input.runtime.dailyConversationTargets.get(key)?.intent.entryKey ===
+              target.intent.entryKey
           )
             input.runtime.dailyConversationTargets.delete(key);
         })

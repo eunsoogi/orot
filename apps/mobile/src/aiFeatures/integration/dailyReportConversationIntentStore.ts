@@ -5,6 +5,7 @@ import {
 } from 'react-native-keychain';
 import { DailyReportContextRequestSchema } from '@orot/domain';
 import type { DailyReportConversationIntent } from './conversationIntent';
+import type { DailyReportContextRequest } from '@orot/domain';
 
 interface SavedIntent {
   readonly intent: DailyReportConversationIntent;
@@ -46,6 +47,23 @@ export function createDailyReportConversationIntentStore(port: {
       serial(async () => {
         await port.write({ intent, active: true });
         version += 1;
+      }),
+    select: (entryKey: string, request: DailyReportContextRequest) =>
+      serial(async () => {
+        const saved = await port.read();
+        if (
+          !saved?.active ||
+          saved.intent.entryKey !== entryKey ||
+          pendingDismissals.has(entryKey)
+        )
+          throw new Error('Daily conversation entry is no longer active');
+        const intent = {
+          ...saved.intent,
+          request: DailyReportContextRequestSchema.parse(request),
+        };
+        await port.write({ intent, active: true });
+        version += 1;
+        return intent;
       }),
     dismiss,
     hasPendingDismissal: (entryKey: string) => pendingDismissals.has(entryKey),

@@ -13,6 +13,11 @@ import {
 import { createDailyReminderDestination } from './dailyReminderDestination';
 import { createReminderNavigationDecisions } from './reminderNavigationDecisions';
 import { dailyReminderIntentStore } from './dailyReminderIntentStore';
+import {
+  createDailyReminderRouteCleanup,
+  pruneClosedReminderRoutes,
+} from './dailyReminderRouteCleanup';
+import { createDailyReminderDrain } from './dailyReminderDrain';
 import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
 import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
 import { createDailyConversationRouteCleanup } from '../aiFeatures/integration/dailyConversationRouteCleanup';
@@ -75,6 +80,7 @@ export function AppointmentReminderDeliveryHost({
         return 'opened';
       },
     });
+    runtime.dailyReportSelection.selectReminder = destination.select;
     const unregisterDaily = registerDailyReminderConsumer(destination.accept);
     const reconcile = () =>
       runtime.coordinator.reconcile().catch(() => undefined);
@@ -127,9 +133,7 @@ export function AppointmentReminderDeliveryHost({
     });
     // Inbox storage is independent; only navigation decisions share a queue.
     let appointmentQueue = Promise.resolve();
-    let dailyQueue = Promise.resolve();
     let conversationQueue = Promise.resolve();
-    let restorePending = true;
     let conversationRestorePending = true;
     let conversationRestoreDeferred = false;
     const cleanupConversation = createDailyConversationRouteCleanup({
@@ -137,45 +141,57 @@ export function AppointmentReminderDeliveryHost({
       routeExists: key =>
         controller.getSnapshot().routes.some(route => route.key === key),
     });
-    const drain = () => {
-      appointmentQueue = appointmentQueue
-        .then(async () => {
-          await deliver();
-        })
-        .catch(() => undefined);
+    const cleanupDaily = createDailyReminderRouteCleanup({
+      runtime,
+      routeExists: key =>
+        controller.getSnapshot().routes.some(route => route.key === key),
+      dismiss: destination.dismiss,
+    });
+    const drainConversation = () => {
       conversationQueue = conversationQueue
         .then(async () => {
-          await dailyReportConversationIntentStore.retryDismissals();
+          // A locked dismissal is retried by the next lifecycle, not by navigation guard publications.
+          try {
+            await dailyReportConversationIntentStore.retryDismissals();
+          } catch {
+            return;
+          }
           if (!conversationRestorePending) return;
           const result = await restoreDailyReportConversation({
             controller,
             runtime,
             confirm: navigationDecisions.conversation,
           });
-          if (result === 'busy') retryWhenNavigationAvailable = true;
-          else {
+          if (result === 'busy') {
+            // A daily route blocks restoration until its durable dismissal succeeds.
+            if (!runtime.dailyReportTargets.size)
+              retryWhenNavigationAvailable = true;
+          } else {
             conversationRestorePending = false;
             conversationRestoreDeferred = result === 'deferred';
           }
         })
-        .catch(() => {
-          retryWhenNavigationAvailable = true;
-        });
-      dailyQueue = dailyQueue
+        // A storage read or write failure is retried on a later lifecycle event.
+        .catch(() => undefined);
+    };
+    const retryNavigation = () => {
+      retryWhenNavigationAvailable = true;
+    };
+    const drainDaily = createDailyReminderDrain({
+      cleanup: cleanupDaily,
+      restore: destination.restore,
+      deliver: deliverDaily,
+      onBusy: retryNavigation,
+      onClosed: drainConversation,
+    });
+    const drain = () => {
+      appointmentQueue = appointmentQueue
         .then(async () => {
-          if (restorePending) {
-            const restored = await destination.restore();
-            if (restored === 'busy') {
-              retryWhenNavigationAvailable = true;
-              return;
-            }
-            restorePending = false;
-          }
-          await deliverDaily();
+          await deliver();
         })
-        .catch(() => {
-          retryWhenNavigationAvailable = true;
-        });
+        .catch(() => undefined);
+      drainConversation();
+      drainDaily();
     };
     let unsubscribe = () => {};
     try {
@@ -194,34 +210,32 @@ export function AppointmentReminderDeliveryHost({
         drain();
       }
     });
+    let routeKeys = controller
+      .getSnapshot()
+      .routes.map(route => route.key)
+      .join('|');
     const navigation = controller.subscribe(() => {
       const snapshot = controller.getSnapshot();
-      // Route lifetime, not a rendered view's mount, owns targets through provider/source detours.
-      for (const targets of [
-        runtime.targets,
-        runtime.homePreparationTargets,
-        runtime.dailyReportFollowUps,
-      ]) {
-        for (const key of targets.keys()) {
-          if (!snapshot.routes.some(route => route.key === key))
-            targets.delete(key);
-        }
-      }
+      const nextRouteKeys = snapshot.routes.map(route => route.key).join('|');
+      const routesChanged = routeKeys !== nextRouteKeys;
+      routeKeys = nextRouteKeys;
+      pruneClosedReminderRoutes(runtime, key =>
+        snapshot.routes.some(route => route.key === key),
+      );
       cleanupConversation();
-      for (const [key, entry] of runtime.dailyReportTargets) {
-        if (!snapshot.routes.some(route => route.key === key)) {
-          runtime.dailyReportTargets.delete(key);
-          destination.dismiss(entry.entryKey).catch(() => undefined);
-        }
-      }
+      const dailyRouteClosed = [...runtime.dailyReportTargets.keys()].some(
+        key => !snapshot.routes.some(route => route.key === key),
+      );
       if (retryWhenNavigationAvailable && !snapshot.isTransitioning) {
         retryWhenNavigationAvailable = false;
         drain();
-      }
+      } else if (dailyRouteClosed && routesChanged) drainDaily();
     });
     reconcile().catch(() => undefined);
     drain();
     return () => {
+      if (runtime.dailyReportSelection.selectReminder === destination.select)
+        runtime.dailyReportSelection.selectReminder = null;
       unregisterDaily();
       unsubscribe();
       subscription.remove();

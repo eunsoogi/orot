@@ -3,7 +3,10 @@ import {
   getGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
-import { createDailyReportIdentity } from '@orot/domain';
+import {
+  createDailyReportIdentity,
+  DailyReportContextRequestSchema,
+} from '@orot/domain';
 import type { SavedDailyReminderEntry } from './dailyReminderDestination';
 
 const service = 'com.orot.mobile.daily-reminder-intent.v1';
@@ -30,6 +33,8 @@ export const dailyReminderIntentStore = {
       entry.dateInObservedTimeZone,
       entry.observedTimeZone,
     );
+    if (entry.selectedRequest !== undefined)
+      DailyReportContextRequestSchema.parse(entry.selectedRequest);
     return value;
   },
   async write(value: SavedDailyReminderEntry): Promise<void> {

@@ -7,6 +7,7 @@ import type { AiFeatureServices } from './featureServices';
 import { DailyReportRoute } from './DailyReportRoute';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import type { ConversationEntryContext } from './conversationIntent';
+import { dailyReportConversationIntentStore } from './dailyReportConversationIntentStore';
 
 /** Resolves a route-bound reminder or typed conversation request without changing its date. */
 export function DailyReportFlowScreen({
@@ -39,8 +40,9 @@ export function DailyReportFlowScreen({
     () =>
       reminder
         ? createDailyReportIdentity(
-            reminder.dateInObservedTimeZone,
-            reminder.observedTimeZone,
+            reminder.selectedRequest?.localDate ??
+              reminder.dateInObservedTimeZone,
+            reminder.selectedRequest?.timeZone ?? reminder.observedTimeZone,
           )
         : conversation
           ? createDailyReportIdentity(
@@ -55,7 +57,45 @@ export function DailyReportFlowScreen({
       feature={services.dailyReport}
       initialIdentity={identity}
       initialOperation={conversation?.operation}
-      reminder={Boolean(reminder)}
+      onSelectToday={
+        reminder || conversation
+          ? async request => {
+              if (!runtime || !routeKey)
+                throw new Error('Daily report route unavailable');
+              if (reminder) {
+                const select = runtime.dailyReportSelection.selectReminder;
+                if (
+                  !select ||
+                  runtime.dailyReportTargets.get(routeKey)?.entryKey !==
+                    reminder.entryKey
+                )
+                  throw new Error('Daily reminder route unavailable');
+                const entry = await select(reminder.entryKey, request);
+                if (
+                  runtime.dailyReportTargets.get(routeKey)?.entryKey ===
+                  reminder.entryKey
+                )
+                  runtime.dailyReportTargets.set(routeKey, entry);
+              } else if (conversation) {
+                if (
+                  runtime.dailyConversationTargets.get(routeKey)?.intent
+                    .entryKey !== conversation.intent.entryKey
+                )
+                  throw new Error('Daily conversation route unavailable');
+                const intent = await dailyReportConversationIntentStore.select(
+                  conversation.intent.entryKey,
+                  request,
+                );
+                if (
+                  runtime.dailyConversationTargets.get(routeKey)?.intent
+                    .entryKey === conversation.intent.entryKey
+                )
+                  runtime.dailyConversationTargets.set(routeKey, { intent });
+              }
+            }
+          : undefined
+      }
+      reminder={Boolean(reminder && !reminder.selectedRequest)}
       providerSelection={providerSelection}
       onBack={onBack}
       onChat={onChat}
