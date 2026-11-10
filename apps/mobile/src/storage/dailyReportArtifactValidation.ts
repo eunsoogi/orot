@@ -5,7 +5,7 @@ import { parseDailyReportLineage } from './dailyReportLineage';
 import { validateDailyReportCompletion } from './dailyReportValidation';
 import { visibleSummary } from './symptomSummaryQuarantine';
 
-/** Validate the active pointer, generation and every source in one database snapshot. */
+/** Validate the active pointer and every retained source in one database snapshot. */
 export async function validateDailyReportArtifact(
   tx: SqlExecutor,
   id: string,
