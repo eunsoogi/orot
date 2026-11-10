@@ -196,9 +196,5 @@ export const homeMetricStyles = StyleSheet.create({
   },
   number: { color: appColors.text, fontSize: 20, fontWeight: '700' },
   detail: { color: appColors.secondary, fontSize: 12 },
-  chart: { flexDirection: 'row', gap: 3 },
-  column: { flex: 1, alignItems: 'center' },
-  barSpace: { height: 36, width: '80%', justifyContent: 'flex-end' },
-  bar: { backgroundColor: appColors.secondary, width: '100%' },
-  date: { color: appColors.secondary, fontSize: 9 },
+  chart: { width: '100%' },
 });

@@ -127,8 +127,8 @@ test.each([2, 3, 4])(
     expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
       expect(
-        within(screen.getByTestId(`home-metric-${metric}`)).getAllByText(
-          /^10\/(0[8-9]|1[0-4])$/,
+        within(screen.getByTestId(`home-metric-chart-${metric}`)).getAllByText(
+          /^2026-10-(0[8-9]|1[0-4]):/,
         ),
       ).toHaveLength(7);
     }
