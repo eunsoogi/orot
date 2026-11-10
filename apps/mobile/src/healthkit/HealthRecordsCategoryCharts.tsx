@@ -7,9 +7,13 @@ import { HealthRecordsLineChart } from './HealthRecordsLineChart';
 export function HealthRecordsCategoryCharts({
   category,
   observations,
+  hasMore,
+  loadState,
 }: {
   readonly category: HealthObservationCategory;
   readonly observations: readonly HealthObservation[];
+  readonly hasMore: boolean;
+  readonly loadState: 'loading' | 'ready' | 'failed';
 }) {
   const units = new Map<string, HealthObservation[]>();
   for (const observation of observations) {
@@ -21,11 +25,16 @@ export function HealthRecordsCategoryCharts({
   }
   return (
     <View style={styles.charts}>
-      {[...units].map(([unit, records]) => (
+      {(units.size
+        ? [...units]
+        : [['', []] as [string, HealthObservation[]]]
+      ).map(([unit, records]) => (
         <HealthRecordsLineChart
           key={unit}
           category={category}
           observations={records}
+          hasMore={hasMore}
+          loadState={loadState}
         />
       ))}
     </View>

@@ -9,6 +9,6 @@ module.exports = {
     path.resolve(__dirname, 'test-support/navigationMotionMock.js'),
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(?:((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens)/|\\.pnpm/(?:react-native@|@react-native(?:-community)?\\+|@react-navigation\\+|react-native-screens@)[^/]+/node_modules/))',
+    'node_modules/(?!(?:((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-chart-kit)/|\\.pnpm/(?:react-native@|@react-native(?:-community)?\\+|@react-navigation\\+|react-native-screens@|react-native-chart-kit@)[^/]+/node_modules/))',
   ],
 };
