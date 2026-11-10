@@ -18,7 +18,8 @@ async function readPeriod(
 ) {
   const parsed = VisitQuestionHealthContextSourceSchema.safeParse(source);
   const scope = parsed.success && parseHealthContextScope(parsed.data.scope);
-  if (!scope) throw new SavedVisitQuestionsReadError('changed_health_context');
+  // Invalid persisted provenance does not establish that health data changed.
+  if (!scope) throw new SavedVisitQuestionsReadError('invalid_question');
   // A missing reader cannot establish a source change; keep the stored list and offer retry.
   if (!read)
     throw new SavedVisitQuestionsReadError('health_context_reader_unavailable');
