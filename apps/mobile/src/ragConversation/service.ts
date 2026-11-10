@@ -29,6 +29,7 @@ import { failureFromWorkflow } from './outcome';
 import type { RagConversationOutcome } from './outcome';
 import type { ConversationIntent } from '../aiFeatures/integration/conversationIntent';
 import { includeConversationTarget } from './conversationTargetEvidence';
+import { bufferPossibilityStream } from './possibilityStreamBoundary';
 
 export type {
   RagConversationFailureKind,
@@ -163,7 +164,7 @@ export async function runRagConversationTurn(
             options.resolveLocalEvidenceIdentity,
           ),
       },
-      invocation,
+      bufferPossibilityStream(options.entryIntent, invocation),
     );
     reportWorkflowOutcome(
       'rag',

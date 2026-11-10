@@ -166,3 +166,46 @@ test('permits verbatim attributed diagnosis history but not an additional diagno
     ).status,
   ).toBe('invalid');
 });
+
+test('rejects numeric disease probabilities and medication changes while preserving recorded facts', () => {
+  const input = {
+    request: '가능성을 알려 주세요',
+    evidence: {
+      items: [
+        {
+          sourceKind: 'personal_record' as const,
+          sourceId: 'record',
+          sourceRevision: '1',
+          evidenceId: 'record',
+          evidenceRevision: '1',
+          locator: { kind: 'structured_record' as const, recordId: 'record' },
+          effectiveTime: null,
+          reviewState: 'reviewed' as const,
+          content: '기록',
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  for (const answer of ['당뇨일 확률은 70%입니다.', '약물 용량을 늘리세요.']) {
+    expect(ragConversationTask.validateResult({ answer }, input).status).toBe(
+      'invalid',
+    );
+    expect(
+      ragConversationTask.projectStreamedText?.(
+        JSON.stringify({ value: { answerKind: 'grounded', answer } }),
+        input,
+      ),
+    ).toBeUndefined();
+  }
+  for (const answer of [
+    '기록에 산소포화도 98%가 있어요.',
+    '기록에는 약 용량이 변경되었다고 적혀 있어요.',
+    '약을 임의로 중단하지 마세요.',
+  ]) {
+    expect(ragConversationTask.validateResult({ answer }, input).status).toBe(
+      'valid',
+    );
+  }
+});
