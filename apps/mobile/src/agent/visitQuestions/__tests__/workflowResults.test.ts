@@ -80,6 +80,38 @@ describe('visit-question workflow result mapping', () => {
     expect(result.status).toBe('rejected_output');
   });
 
+  it.each([
+    [
+      'safety_refusal',
+      '선택한 AI 서비스가 이 요청에 답하지 않았어요. 질문을 바꿔 다시 시도해 주세요.',
+    ],
+    [
+      'unsupported_capability',
+      '선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.',
+    ],
+    [
+      'unsupported_input',
+      '선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.',
+    ],
+    ['provider_unavailable', '선택한 AI 제공자를 사용할 수 없어요.'],
+  ] as const)(
+    'reports %s without inventing a network failure',
+    async (code, message) => {
+      const prepared = preparedContext();
+      const result = await mapVisitQuestionWorkflowResult({
+        result: {
+          status: 'unavailable',
+          reason: 'synthetic',
+          providerErrorCode: code,
+          checkpoint: {} as never,
+        },
+        aliases: createVisitQuestionEvidenceAliases(prepared.evidence.batch),
+        prepared,
+      });
+      expect(result).toMatchObject({ status: 'unavailable', message });
+    },
+  );
+
   it('reports a closed citation-alias code when a provider reference cannot be restored', async () => {
     const prepared = preparedContext();
     const aliases = createVisitQuestionEvidenceAliases(prepared.evidence.batch);

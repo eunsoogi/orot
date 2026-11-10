@@ -10,6 +10,7 @@ import { registerHealthContextEvidence } from './healthContextEvidence';
 import { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 import { completeVisitHealthContextFacts } from '../../agent/visitQuestions/healthContextFacts';
 import { fingerprint } from './evidenceUtils';
+import { t } from '../../i18n';
 
 async function readPeriod(
   source: VisitQuestionHealthContextSource,
@@ -17,8 +18,10 @@ async function readPeriod(
 ) {
   const parsed = VisitQuestionHealthContextSourceSchema.safeParse(source);
   const scope = parsed.success && parseHealthContextScope(parsed.data.scope);
-  if (!scope || !read)
-    throw new SavedVisitQuestionsReadError('changed_health_context');
+  if (!scope) throw new SavedVisitQuestionsReadError('changed_health_context');
+  // A missing reader cannot establish a source change; keep the stored list and offer retry.
+  if (!read)
+    throw new SavedVisitQuestionsReadError('health_context_reader_unavailable');
   const report = await read(scope.window, [scope.topic]);
   return { scope, report, read };
 }
@@ -87,8 +90,7 @@ export async function restoreVisitQuestionPeriodForHistory(
         reviewState: 'unknown',
       },
       // Do not attach today's facts to an older revision or reconstruct an original from model prose.
-      content:
-        '생성 당시의 건강 근거가 바뀌었어요. 최신 기록으로 질문을 다시 생성해 주세요.',
+      content: t('visitQuestions.restore.historicalSourceChanged'),
       readSource: async () => ({ status: 'changed' }),
       validate: async () => false,
     }),

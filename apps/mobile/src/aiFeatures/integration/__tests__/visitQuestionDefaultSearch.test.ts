@@ -4,6 +4,7 @@ import { runVisitQuestionWorkflow } from '../../../agent/visitQuestions/workflow
 import { preparedContext } from '../../../agent/visitQuestions/testing/workflowFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import { providerFailure } from '@orot/model-runtime';
+import { visitQuestionPublicSearch } from '../visitQuestionPublicSearch';
 
 jest.mock('../visitQuestionsContextLoader', () => ({
   loadVisitQuestionsContext: jest.fn(),
@@ -12,6 +13,24 @@ jest.mock('../../../agent/visitQuestions/workflow', () => ({
   runVisitQuestionWorkflow: jest.fn(),
 }));
 beforeEach(() => jest.clearAllMocks());
+
+test('does not send a public request or ask for consent with a local-only selection', async () => {
+  const run = publicEvidenceFixture();
+  const confirm = jest.fn(async () => true);
+  const result = await visitQuestionPublicSearch({
+    selected: { ...run.selected, remoteProcessing: false },
+    confirm,
+    query: 'Synthetic blood pressure',
+    signal: run.controller.signal,
+  });
+  expect(run.search).not.toHaveBeenCalled();
+  expect(confirm).not.toHaveBeenCalled();
+  expect(result).toMatchObject({
+    result: { status: 'unavailable' },
+    caveat: 'public_search_unavailable',
+    spentModelCall: false,
+  });
+});
 
 function setup(allow = true) {
   const run = publicEvidenceFixture();

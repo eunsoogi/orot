@@ -1,4 +1,5 @@
 import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
+import { t } from '../../i18n';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
@@ -213,22 +214,25 @@ export async function loadSavedVisitQuestionState(input: {
     const message =
       error instanceof SavedVisitQuestionsReadError &&
       error.reason === 'missing_citation_source'
-        ? '질문에 연결된 원문 근거를 찾을 수 없어 저장 목록을 불러오지 못했어요.'
+        ? t('visitQuestions.restore.missingSource')
         : error instanceof SavedVisitQuestionsReadError &&
             error.reason === 'changed_generated_source'
-          ? '이전 AI 결과가 바뀌었거나 삭제되어 저장된 질문을 불러오지 못했어요. 다시 생성해 주세요.'
+          ? t('visitQuestions.restore.changedGeneratedSource')
           : error instanceof SavedVisitQuestionsReadError &&
               error.reason === 'changed_saved_questions'
-            ? '저장된 질문 목록이 바뀌었어요. 다시 불러와 주세요.'
+            ? t('visitQuestions.restore.changedList')
             : error instanceof SavedVisitQuestionsReadError &&
-                error.reason === 'changed_health_context'
-              ? '건강 기록이 바뀌었거나 근거를 확인할 수 없어 저장된 질문을 불러오지 못했어요. 다시 생성해 주세요.'
+                error.reason === 'health_context_reader_unavailable'
+              ? t('visitQuestions.restore.readerUnavailable')
               : error instanceof SavedVisitQuestionsReadError &&
-                  error.reason === 'stale_artifact'
-                ? '녹취 내용이 수정되어 저장된 질문의 원문 근거를 불러오지 못했어요.'
-                : error instanceof SavedVisitQuestionsReadError
-                  ? '저장된 질문의 정보가 올바르지 않아 불러오지 못했어요.'
-                  : '저장된 질문을 불러오지 못했어요. 다시 시도해 주세요.';
+                  error.reason === 'changed_health_context'
+                ? t('visitQuestions.restore.changedHealthContext')
+                : error instanceof SavedVisitQuestionsReadError &&
+                    error.reason === 'stale_artifact'
+                  ? t('visitQuestions.restore.staleTranscript')
+                  : error instanceof SavedVisitQuestionsReadError
+                    ? t('visitQuestions.restore.invalidQuestion')
+                    : t('visitQuestions.restore.retry');
     return {
       status: 'error',
       appointmentId,
