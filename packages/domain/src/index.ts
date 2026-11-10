@@ -144,3 +144,4 @@ export {
   RecapSourceSchema,
 } from './recap';
 export { RecapModelOutputSchema, recapModelJsonSchema } from './recapModel';
+export { RecapReferenceOutputSchema, recapReferenceJsonSchema } from './recapReferenceModel';

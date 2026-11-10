@@ -35,6 +35,7 @@ it('uses the scoped plain transformation only for the selected Apple identity', 
     new AbortController().signal,
   );
   const options = jest.mocked(extractTranscriptRecap).mock.calls[0][0];
+  expect(options.evidenceMode).toBe('references');
   expect(options.provider.id).toBe('apple-foundation-models');
   expect(options.provider.capabilities).toMatchObject({
     streaming: false,

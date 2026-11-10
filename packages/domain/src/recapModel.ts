@@ -39,7 +39,7 @@ export const RecapModelOutputSchema = z.strictObject({
 
 // Apple guided generation cannot express scalar length or numeric bounds; the full
 // Zod schema and source checks still enforce them after every model response.
-function guidedSchema(value: Record<string, unknown>): Record<string, unknown> {
+export function guidedSchema(value: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
     if (

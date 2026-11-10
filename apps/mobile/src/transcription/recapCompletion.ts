@@ -104,6 +104,9 @@ export function createRecapCompletion(ports: RecapCompletionPorts) {
         outcome = { status: 'unavailable', errorCode: 'provider_unavailable' };
       else
         outcome = await extractTranscriptRecap({
+          ...(selected.value.provider.id === APPLE_PROVIDER_ID
+            ? { evidenceMode: 'references' as const }
+            : {}),
           input: parsed.data,
           provider:
             selected.value.provider.id === APPLE_PROVIDER_ID
