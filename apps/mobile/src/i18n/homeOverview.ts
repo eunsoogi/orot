@@ -19,6 +19,13 @@ export const homeOverviewKo = {
   'home.metricUnit.minutes': '분',
   'home.metricUnit.countPerMinute': '회/분',
   'home.metricUnit.steps': '걸음',
+  'home.metricChartTitle': '최근 날짜별 기록',
+  'home.metricChartDailySeries': '일별 집계',
+  'home.metricChartSource': '건강 기록',
+  'home.metricChartWindow': '최근 7일',
+  'home.metricChartCoverage': '기록 {recorded}일 / 전체 {total}일',
+  'home.metricStale':
+    '기록을 새로 불러오지 못해 이전 데이터를 표시하고 있어요.',
   'home.dailyMean': '해당 날짜 측정 평균',
   'home.dailyLatest': '해당 날짜 마지막 측정',
   'home.dailySum': '해당 날짜 기록 합계',

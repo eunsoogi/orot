@@ -25,9 +25,13 @@ export function useHomeMetrics() {
     Partial<Record<HomeMetric, HomeMetricProjection>>
   >({});
   const [quantityTruncated, setQuantityTruncated] = useState(false);
-  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [state, setState] = useState<
+    'loading' | 'ready' | 'refreshing' | 'stale' | 'failed'
+  >('loading');
   const [attempt, setAttempt] = useState(0);
   const selectionGeneration = useRef(0);
+  // Keep one successful local snapshot visible while a later foreground or midnight read is pending.
+  const hasSnapshot = useRef(false);
   const retry = useCallback(() => setAttempt(value => value + 1), []);
   useEffect(() => {
     if (!focused) return;
@@ -54,7 +58,7 @@ export function useHomeMetrics() {
     if (!focused) return;
     let active = true;
     const readGeneration = selectionGeneration.current;
-    setState('loading');
+    setState(hasSnapshot.current ? 'refreshing' : 'loading');
     Promise.resolve()
       .then(() => {
         const storage = require('../../storage/secureDatabase');
@@ -71,11 +75,12 @@ export function useHomeMetrics() {
             setSelection(nextSelection);
           setMetrics(nextMetrics.metrics);
           setQuantityTruncated(nextMetrics.quantityTruncated);
+          hasSnapshot.current = true;
           setState('ready');
         }
       })
       .catch(() => {
-        if (active) setState('failed');
+        if (active) setState(hasSnapshot.current ? 'stale' : 'failed');
       });
     return () => {
       active = false;

@@ -97,3 +97,118 @@ test('includes a missing today slot even at local midnight', () => {
     partial: true,
   });
 });
+
+test('keeps one source series and separates latest body mass from the daily-mean comparison', () => {
+  const window = {
+    fromInclusive: '2026-09-30T15:00:00Z',
+    toExclusive: '2026-10-15T03:00:00Z',
+    timeZone: 'Asia/Seoul',
+  };
+  const dates = Array.from({ length: 14 }, (_, index) =>
+    new Date(Date.UTC(2026, 9, index + 1)).toISOString().slice(0, 10),
+  );
+  const day = (date: string, value: number) => ({
+    date,
+    samples: 1,
+    minimum: value,
+    maximum: value,
+    mean: value,
+    sum: value,
+    latest: value,
+    firstAt: date + 'T03:00:00Z',
+    lastAt: date + 'T03:00:00Z',
+  });
+  const report: HealthContextReport = {
+    window,
+    days: healthContextDays(window),
+    quantities: [
+      {
+        concept: 'body_mass',
+        unit: 'kg',
+        source: 'watch-series',
+        days: dates.map((date, index) => day(date, index === 13 ? 80 : 70)),
+      },
+      {
+        concept: 'body_mass',
+        unit: 'kg',
+        source: 'phone-series',
+        days: dates.map((date, index) => day(date, index === 13 ? 600 : 500)),
+      },
+    ],
+    sleep: [],
+    medications: [],
+    symptoms: { entryCount: 0, recordedDays: 0, latest: [] },
+    limitations: [],
+    mutationGeneration: 0,
+    deletionGeneration: 0,
+  };
+
+  const result = projectHomeMetric(report, 'bodyMass', 'Selected Watch');
+
+  expect(result?.source).toBe('Selected Watch');
+  expect(result?.timeZone).toBe('Asia/Seoul');
+  expect(result?.latest).toEqual({ date: '2026-10-14', value: 80 });
+  expect(result?.comparison?.previous).toBe(70);
+  expect(result?.comparison?.recent).toBeCloseTo(71.428571, 5);
+  expect(result?.days.at(-2)).toEqual({
+    date: '2026-10-14',
+    value: 80,
+    partial: false,
+  });
+  expect(result?.days.at(-1)).toEqual({
+    date: '2026-10-15',
+    value: null,
+    partial: true,
+  });
+});
+
+test('keeps an actual zero separate from an unmeasured calendar day', () => {
+  const window = {
+    fromInclusive: '2026-09-30T15:00:00Z',
+    toExclusive: '2026-10-15T03:00:00Z',
+    timeZone: 'Asia/Seoul',
+  };
+  const report: HealthContextReport = {
+    window,
+    days: healthContextDays(window),
+    quantities: [
+      {
+        concept: 'step_count',
+        unit: 'count',
+        source: 'watch-series',
+        days: [
+          {
+            date: '2026-10-14',
+            samples: 1,
+            minimum: 0,
+            maximum: 0,
+            mean: 0,
+            sum: 0,
+            latest: 0,
+            firstAt: '2026-10-14T03:00:00Z',
+            lastAt: '2026-10-14T03:00:00Z',
+          },
+        ],
+      },
+    ],
+    sleep: [],
+    medications: [],
+    symptoms: { entryCount: 0, recordedDays: 0, latest: [] },
+    limitations: [],
+    mutationGeneration: 0,
+    deletionGeneration: 0,
+  };
+
+  const result = projectHomeMetric(report, 'steps', 'Selected Watch');
+
+  expect(result?.days.at(-2)).toEqual({
+    date: '2026-10-14',
+    value: 0,
+    partial: false,
+  });
+  expect(result?.days.at(-3)).toEqual({
+    date: '2026-10-13',
+    value: null,
+    partial: false,
+  });
+});

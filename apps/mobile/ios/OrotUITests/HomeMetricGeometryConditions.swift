@@ -8,6 +8,7 @@ enum HomeMetricGeometryConditions {
             "home-health-overview-section", "home-health-overview-heading", "home-metric-grid",
             "home-recent-changes-section", "home-recent-changes-heading", "home-recent-changes-content",
             "home-metric-sleep", "home-metric-heartRate",
+            "home-metric-chart-sleep", "home-metric-chart-heartRate",
         ]
         var frames: [String: CGRect] = [:]
         for identifier in identifiers {
@@ -20,7 +21,20 @@ enum HomeMetricGeometryConditions {
         guard let overview = frames[identifiers[0]], let overviewHeading = frames[identifiers[1]],
               let grid = frames[identifiers[2]], let recent = frames[identifiers[3]],
               let recentHeading = frames[identifiers[4]], let recentContent = frames[identifiers[5]],
-              let first = frames[identifiers[6]], let second = frames[identifiers[7]] else { return }
+              let first = frames[identifiers[6]], let second = frames[identifiers[7]],
+              let firstChart = frames[identifiers[8]], let secondChart = frames[identifiers[9]] else { return }
+
+        // The merged chart facade must keep its measured plots inside the visible metric cards.
+        for (chart, card, identifier) in [
+            (firstChart, first, "sleep"), (secondChart, second, "heartRate"),
+        ] {
+            XCTAssertGreaterThan(chart.width, 0, "\(identifier) chart width")
+            XCTAssertGreaterThan(chart.height, 0, "\(identifier) chart height")
+            XCTAssertGreaterThanOrEqual(chart.minX, card.minX - 1, "\(identifier) chart left edge")
+            XCTAssertLessThanOrEqual(chart.maxX, card.maxX + 1, "\(identifier) chart right edge")
+            XCTAssertGreaterThanOrEqual(chart.minY, card.minY - 1, "\(identifier) chart top edge")
+            XCTAssertLessThanOrEqual(chart.maxY, card.maxY + 1, "\(identifier) chart bottom edge")
+        }
 
         let largeText = app.launchArguments.contains("UICTContentSizeCategoryAccessibilityXXXL")
         // UIKit frame conversion can report nominal layout targets a few floating-point ULPs below their boundary.
@@ -72,8 +86,16 @@ enum HomeMetricGeometryConditions {
 
     @MainActor
     static func captureCard(_ card: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) {
-        // Preserve the grouped card's accessibility contract; seven chart dates are inspected in the image.
+        // Keep Home's grouped VoiceOver card and prove its seven daily values remain available.
         XCTAssertFalse(card.label.isEmpty)
+        let dailyEntries = card.label.components(separatedBy: "; ")
+        XCTAssertEqual(dailyEntries.count, 7, card.label)
+        let values = dailyEntries.compactMap { $0.components(separatedBy: ": ").last }
+        XCTAssertEqual(values.count, 7, card.label)
+        XCTAssertTrue(
+            values.contains { $0.range(of: #"\d+"#, options: .regularExpression) != nil },
+            "At least one daily value must remain in the native accessibility label.",
+        )
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "\(card.identifier)-readability"
         attachment.lifetime = .keepAlways

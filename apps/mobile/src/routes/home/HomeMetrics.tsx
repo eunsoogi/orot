@@ -3,10 +3,15 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
+import type { ChartStatus } from '../../ui/charts';
 import type { HomeMetric } from './metricSelection';
 import { useHomeMetrics } from './useHomeMetrics';
 import { homeMetricStyles as styles } from './homeMetricStyles';
-import { HomeMetricCard, homeMetricTitle as title } from './HomeMetricCard';
+import {
+  HomeMetricCard,
+  HomeMetricChartPlaceholder,
+  homeMetricTitle as title,
+} from './HomeMetricCard';
 import {
   resolveHomeMetricGridLayout,
   resolveHomeRecentChangeLayout,
@@ -62,6 +67,27 @@ export function HomeMetrics() {
     gridWidth,
     fontScale,
   );
+  const placeholderStatus: Extract<
+    ChartStatus,
+    'loading' | 'stale' | 'error' | 'empty'
+  > =
+    data.state === 'loading' || data.state === 'refreshing'
+      ? 'loading'
+      : data.state === 'failed'
+        ? 'error'
+        : data.state === 'stale'
+          ? 'stale'
+          : 'empty';
+  const chartStatus =
+    data.state === 'refreshing'
+      ? 'loading'
+      : data.state === 'stale'
+        ? 'stale'
+        : undefined;
+  const canShowComparisons =
+    data.state === 'ready' ||
+    data.state === 'refreshing' ||
+    data.state === 'stale';
   return (
     <View style={styles.sections} testID="home-health-sections">
       <View style={styles.section} testID="home-health-overview-section">
@@ -83,49 +109,51 @@ export function HomeMetrics() {
             <Text>{t('home.metricEdit')}</Text>
           </Pressable>
         </View>
-        {data.state === 'loading' ? (
-          <Text>{t('home.preparationLoading')}</Text>
-        ) : data.state === 'failed' ? (
+        {data.state === 'failed' ? (
           <>
             <Text accessibilityRole="alert">{t('home.metricError')}</Text>
             <AppButton title={t('appointments.retry')} onPress={data.retry} />
           </>
-        ) : (
-          <View
-            style={styles.grid}
-            testID="home-metric-grid"
-            onLayout={event => {
-              const { width } = event.nativeEvent.layout;
-              setGridWidth(current => (current === width ? current : width));
-            }}
-          >
-            {data.selection.map(metric =>
-              data.metrics[metric] ? (
-                <HomeMetricCard
-                  key={metric}
-                  metric={data.metrics[metric]!}
-                  width={gridLayout.cardWidth}
-                />
-              ) : (
-                <View
-                  key={metric}
-                  style={[
-                    styles.card,
-                    styles.gridCard,
-                    { width: gridLayout.cardWidth },
-                  ]}
-                >
-                  <Text style={styles.cardTitle}>{title(metric)}</Text>
-                  <Text>
-                    {metric !== 'sleep' && data.quantityTruncated
-                      ? t('home.metricTruncated')
-                      : t('home.metricWindowEmpty')}
-                  </Text>
-                </View>
-              ),
-            )}
-          </View>
+        ) : null}
+        {data.state === 'stale' && (
+          <>
+            <Text accessibilityRole="alert">{t('home.metricStale')}</Text>
+            <AppButton title={t('appointments.retry')} onPress={data.retry} />
+          </>
         )}
+        <View
+          style={styles.grid}
+          testID="home-metric-grid"
+          onLayout={event => {
+            const { width } = event.nativeEvent.layout;
+            setGridWidth(current => (current === width ? current : width));
+          }}
+        >
+          {data.selection.map(metric =>
+            data.metrics[metric] ? (
+              <HomeMetricCard
+                key={metric}
+                metric={data.metrics[metric]!}
+                width={gridLayout.cardWidth}
+                chartStatus={chartStatus}
+              />
+            ) : (
+              <HomeMetricChartPlaceholder
+                key={metric}
+                metric={metric}
+                status={placeholderStatus}
+                width={gridLayout.cardWidth}
+                emptyMessage={
+                  data.state === 'ready'
+                    ? metric !== 'sleep' && data.quantityTruncated
+                      ? t('home.metricTruncated')
+                      : t('home.metricWindowEmpty')
+                    : undefined
+                }
+              />
+            ),
+          )}
+        </View>
         {draft && (
           <HomeMetricSelectionEditor
             canSave={draft.length >= 2 && draft.length <= 4}
@@ -150,7 +178,7 @@ export function HomeMetrics() {
           </Text>
         </View>
         <View style={styles.section} testID="home-recent-changes-content">
-          {data.state === 'ready' &&
+          {canShowComparisons &&
             (comparisons.length ? (
               comparisons.map(metric => (
                 <HomeRecentHealthChange
