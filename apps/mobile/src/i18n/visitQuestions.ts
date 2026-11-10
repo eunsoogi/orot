@@ -64,6 +64,7 @@ export const visitQuestionsKo = {
   'visitQuestions.inline.actions.saving': '저장 중',
   'visitQuestions.inline.actions.save': '선택한 질문 저장',
   'visitQuestions.saved.count': '{count}개',
+  'visitQuestions.saved.emptyForVisit': '이 진료에 저장된 질문이 없어요.',
   'visitQuestions.conversation.restorationNotice':
     '저장된 질문과 처음 생성된 후보를 불러왔어요. 저장하지 않은 편집은 반영되지 않았을 수 있어요.',
   'visitQuestions.conversation.save.conflict':

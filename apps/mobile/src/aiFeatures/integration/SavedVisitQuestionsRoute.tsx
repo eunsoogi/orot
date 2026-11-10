@@ -1,6 +1,7 @@
 import { useColorScheme, ScrollView, View } from 'react-native';
 import { useMemo } from 'react';
 import { AppText as Text } from '../../layout/AppText';
+import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { SavedQuestionsSection } from '../../nextVisitQuestions/SavedQuestionsSection';
 import { AppointmentSection } from '../../nextVisitQuestions/NextVisitComponents';
@@ -36,7 +37,7 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
       <View style={styles.container}>
         {/* The stable heading identity distinguishes this native element from its nested text node. */}
         <Text accessibilityRole="header" testID="saved-visit-questions-title">
-          저장된 진료 질문
+          {t('ragConversation.history.savedVisitQuestions')}
         </Text>
         <AppointmentSection
           appointment={route.appointment}
@@ -57,7 +58,7 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
           theme={theme}
         />
         {saved.savedStatus === 'ready' && saved.savedQuestions.length === 0 ? (
-          <Text>이 진료에 저장된 질문이 없어요.</Text>
+          <Text>{t('visitQuestions.saved.emptyForVisit')}</Text>
         ) : null}
       </View>
     </ScrollView>
