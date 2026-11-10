@@ -1,3 +1,4 @@
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import { applyBloodPressureChanges } from '../importChanges';
 import type { BloodPressureChangePage } from '../types';
 import {
@@ -21,6 +22,15 @@ function page(
     hasMore: false,
   };
 }
+
+const onDeletion = jest.fn();
+let unsubscribe: () => void;
+
+beforeEach(() => {
+  onDeletion.mockClear();
+  unsubscribe = subscribeLocalSourceDeletion(onDeletion);
+});
+afterEach(() => unsubscribe());
 
 describe('applyBloodPressureChanges', () => {
   it('stores both readings and advances the cursor in one transaction', async () => {
@@ -102,6 +112,7 @@ describe('applyBloodPressureChanges', () => {
       now,
     );
     expect(store.observations()).toHaveLength(4);
+    expect(onDeletion).not.toHaveBeenCalled();
 
     const partial = correlation('keep');
     await applyBloodPressureChanges(
@@ -122,6 +133,7 @@ describe('applyBloodPressureChanges', () => {
       now,
     );
     expect(store.observations()).toHaveLength(3);
+    expect(onDeletion).toHaveBeenCalledTimes(1);
     expect(
       store
         .observations()
@@ -135,6 +147,7 @@ describe('applyBloodPressureChanges', () => {
       now,
     );
     expect(deletion.deleted).toBe(2);
+    expect(onDeletion).toHaveBeenCalledTimes(2);
     expect(store.observations()).toHaveLength(1);
     await applyBloodPressureChanges(
       store.repository,
@@ -167,6 +180,7 @@ describe('applyBloodPressureChanges', () => {
       ),
     ).rejects.toThrow('simulated checkpoint write failure');
     expect(failedStore.observations()).toHaveLength(0);
+    expect(onDeletion).not.toHaveBeenCalled();
     expect(
       failedStore.checkpoint('healthkit:bloodPressure:bloodPressure'),
     ).toBeNull();

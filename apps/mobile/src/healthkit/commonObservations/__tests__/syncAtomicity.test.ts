@@ -1,3 +1,4 @@
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import type { HealthKitNativeModule } from '../../types';
 import { healthKitSampleChangesCheckpointKey } from '../../sampleChangesCheckpoint';
 import { syncCommonObservationChanges } from '../sync';
@@ -5,6 +6,15 @@ import { healthKitSample, MemoryObservationRepository } from '../testSupport';
 import { healthKit, observedAt, page } from '../testSyncSupport';
 
 const key = healthKitSampleChangesCheckpointKey('heartRate', 'heartRate');
+
+const onDeletion = jest.fn();
+let unsubscribe: () => void;
+
+beforeEach(() => {
+  onDeletion.mockClear();
+  unsubscribe = subscribeLocalSourceDeletion(onDeletion);
+});
+afterEach(() => unsubscribe());
 
 describe('common observation change transaction boundaries', () => {
   it('applies sample-ID deletions and the new cursor in the same transaction', async () => {
@@ -34,6 +44,7 @@ describe('common observation change transaction boundaries', () => {
     });
 
     expect(result).toMatchObject({ status: 'complete', deleted: 1 });
+    expect(onDeletion).toHaveBeenCalledTimes(1);
     expect(repository.read('healthkit:heartRate:sample-1')).toBeNull();
     expect(await repository.getSyncCheckpoint(key)).toMatchObject({
       value: 'a4',
@@ -57,6 +68,7 @@ describe('common observation change transaction boundaries', () => {
     expect(repository.read('healthkit:heartRate:sample-1')).toBeNull();
     expect(await repository.getSyncCheckpoint(key)).toBeNull();
     expect(repository.transactionsCommitted).toBe(0);
+    expect(onDeletion).not.toHaveBeenCalled();
   });
 
   it('keeps authorization opaque and does not advance past unsupported data', async () => {
@@ -94,6 +106,7 @@ describe('common observation change transaction boundaries', () => {
     });
     expect(malformed.status).toBe('unsupportedData');
     expect(malformed.skipped).toBe(1);
+    expect(onDeletion).not.toHaveBeenCalled();
     expect(await repository.getSyncCheckpoint(key)).toBeNull();
   });
 });

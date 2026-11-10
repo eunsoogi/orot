@@ -1,3 +1,4 @@
+import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import { mapBloodPressureCorrelation } from './mapper';
 import {
@@ -49,7 +50,7 @@ export async function applyBloodPressureChanges(
 
   let upserted = 0;
   let deleted = 0;
-  await repository.transaction(async writer => {
+  await commitHealthKitChanges(repository, async writer => {
     for (const correlation of correlations) {
       const expectedIds = new Set(correlation.observations.map(({ id }) => id));
       for (const observation of correlation.observations) {
@@ -95,6 +96,7 @@ export async function applyBloodPressureChanges(
         updatedAt: ingestedAt,
       });
     }
+    return deleted;
   });
 
   return { upserted, deleted, cursorAdvanced };
