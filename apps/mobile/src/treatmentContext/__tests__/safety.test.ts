@@ -91,3 +91,28 @@ test('allows an independently supported claim after both freshness checks', asyn
   ).toBe(true);
   expect(revalidate).toHaveBeenCalledTimes(2);
 });
+
+test('does not treat a generated artifact as independent evidence', async () => {
+  const generated = { ...reference, sourceKind: 'generated_artifact' as const };
+  const candidate = {
+    ...request(),
+    sources: [
+      {
+        kind: 'generated_conversation',
+        reference: generated,
+        id: 'synthetic',
+        revision: '1',
+      },
+    ],
+  } as unknown as TreatmentExplanationRequest;
+  const verifier = { verify: jest.fn().mockResolvedValue(true) };
+  expect(
+    await verifyTreatmentClaim(
+      { text: 'Synthetic claim', citations: [generated] },
+      candidate,
+      verifier,
+      new AbortController().signal,
+    ),
+  ).toBe(false);
+  expect(verifier.verify).not.toHaveBeenCalled();
+});

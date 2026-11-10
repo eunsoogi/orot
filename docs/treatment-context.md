@@ -37,16 +37,28 @@ follow-up UI do not yet project this field: the explanation owner must wire it
 from the validated storage read and apply the treatment safety boundary before
 display. No additional storage or permission is introduced by this contract.
 
-## Preliminary claim verification boundary
+## Treatment safety boundary and release blockers
 
 `verifyTreatmentClaim` requires a source-bound claim, an independent verifier,
 and successful source freshness checks before and after verification. It fails
 closed on cancellation, source drift, missing verification, or an exception.
 The verifier must inspect the original source content and the claim in context;
 the supplied references and model classifications cannot prove semantic support.
-No such verifier is supplied here. A successful call is not a complete treatment
-safety decision: it does not identify medication instructions, unsupported
-diagnoses, urgent symptoms, contraindications, or unsafe streaming prefixes.
-Do not use this preliminary function alone to display or persist treatment
-explanations. The complete safety boundary, urgent routing, stream buffering,
-synthetic evaluation and stored-result enforcement remain release blockers.
+No such verifier is supplied here. `evaluateTreatmentOutput` accepts only a
+complete, bounded claim envelope, screens recognizable directives and certainty,
+requires verification of each claim, and rechecks all citations at the end.
+It returns existing immediate-help actions ahead of generated claims. A missing
+policy action is not proof that the person is safe: the current policy is narrow
+and does not perform comprehensive triage. `bufferTreatmentStream` disables
+the task stream callback; consumers must use it before starting generation and
+must never project the raw response through another channel.
+
+The lexical screen does not detect every unsafe paraphrase or establish semantic
+support. A successful verifier call is only as reliable as the independent
+verifier and the source content it inspected. No treatment workflow currently
+connects these interfaces to generation, stored output, reopening, or follow-up.
+Do not use the preliminary boundary alone to display or persist explanations.
+An implemented and evaluated semantic verifier, end-to-end enforcement,
+clinically reviewed emergency guidance, useful bounded alternatives, and real
+provider quality evidence remain release blockers. A disclaimer cannot replace
+these requirements.

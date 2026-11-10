@@ -3,7 +3,12 @@ import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import type { TreatmentExplanationRequest } from './interfaces';
 import { parseTreatmentContext } from './validation';
 
-/** A verifier must inspect original source content, not just model-supplied labels. */
+/**
+ * The verifier must inspect the claim and original source contents, including
+ * condition status, contrary evidence, conflicts and missing context. It must
+ * reject advice and unsupported claims even when a citation resolves. Model
+ * labels, generated artifacts, and public papers alone are not personal proof.
+ */
 export interface TreatmentClaimVerifier {
   verify(
     claim: TreatmentClaim,
@@ -24,21 +29,22 @@ export async function verifyTreatmentClaim(
   verifier: TreatmentClaimVerifier | undefined,
   signal: AbortSignal,
 ): Promise<boolean> {
-  if (
-    signal.aborted ||
-    !verifier ||
-    !parseTreatmentContext(request.context, request.sources) ||
-    !claim.text.trim() ||
-    !claim.citations.length ||
-    claim.citations.some(
-      reference =>
-        !request.sources.some(
-          source => stableJson(source.reference) === stableJson(reference),
-        ),
-    )
-  )
-    return false;
   try {
+    if (
+      signal.aborted ||
+      !verifier ||
+      !parseTreatmentContext(request.context, request.sources) ||
+      !claim.text.trim() ||
+      !claim.citations.length ||
+      claim.citations.some(
+        reference =>
+          reference.sourceKind === 'generated_artifact' ||
+          !request.sources.some(
+            source => stableJson(source.reference) === stableJson(reference),
+          ),
+      )
+    )
+      return false;
     if (!(await request.revalidateEvidence(claim.citations, signal)))
       return false;
     if (signal.aborted || !(await verifier.verify(claim, request, signal)))
