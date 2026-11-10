@@ -215,6 +215,7 @@
 		B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */; };
 		BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */; };
 		DA117E000000000000000001 /* DailyReportEntryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA117E000000000000000002 /* DailyReportEntryUITests.swift */; };
+		DA117E000000000000000003 /* DailyReportLoadingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA117E000000000000000004 /* DailyReportLoadingUITests.swift */; };
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
 		C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */; };
@@ -414,6 +415,7 @@
 		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
 		A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VisitQuestionConsentUITests.swift; sourceTree = "<group>"; };
 		DA117E000000000000000002 /* DailyReportEntryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReportEntryUITests.swift; sourceTree = "<group>"; };
+		DA117E000000000000000004 /* DailyReportLoadingUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReportLoadingUITests.swift; sourceTree = "<group>"; };
 		A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportUITests.swift; sourceTree = "<group>"; };
 		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
 		DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsPortraitNavigationUITests.swift; sourceTree = "<group>"; };
@@ -991,6 +993,7 @@
 				828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */,
 				A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */,
 				DA117E000000000000000002 /* DailyReportEntryUITests.swift */,
+				DA117E000000000000000004 /* DailyReportLoadingUITests.swift */,
 				9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */,
 				39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */,
 				4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */,
@@ -1489,6 +1492,7 @@
 				C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */,
 				BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */,
 				DA117E000000000000000001 /* DailyReportEntryUITests.swift in Sources */,
+				DA117E000000000000000003 /* DailyReportLoadingUITests.swift in Sources */,
 				2594B796D49220F636D98934 /* DebugUITestConditions.swift in Sources */,
 				E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */,
 				0C2288C598E4BFD070081E6E /* PagedHealthRecordsUITests.swift in Sources */,

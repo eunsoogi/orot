@@ -209,6 +209,8 @@ function DailyReportVisualEntry() {
     NativeModules.SettingsManager?.getConstants?.().settings ??
     {};
   const mode = settings.OROT_DAILY_REPORT_PERSISTENCE;
+  if (settings.OROT_DAILY_REPORT_PREVIEW === 'controlled')
+    return <DailyReportLoadingProbe />;
   return mode === 'seed' || mode === 'read' ? (
     <DailyReportPersistenceProbe mode={mode} />
   ) : (
