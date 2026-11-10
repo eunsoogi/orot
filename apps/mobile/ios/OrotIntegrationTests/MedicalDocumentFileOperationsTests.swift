@@ -47,10 +47,14 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
         let retained = root.appendingPathComponent("\(retainedID).txt")
         XCTAssertEqual(try Data(contentsOf: retained), bytes)
         XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("\(stagedID).txt")), bytes)
-        XCTAssertEqual(
-            try FileManager.default.attributesOfItem(atPath: retained.path)[.protectionKey] as? FileProtectionType,
-            .complete,
-        )
+        let protection = try FileManager.default.attributesOfItem(atPath: retained.path)[.protectionKey]
+        if let protection {
+            XCTAssertEqual(protection as? FileProtectionType, .complete)
+        } else {
+            // Simulator can omit FileManager metadata; require a fresh, exact URL value instead.
+            let freshURL = URL(fileURLWithPath: retained.path)
+            XCTAssertEqual(try freshURL.resourceValues(forKeys: [.fileProtectionKey]).fileProtection, .complete)
+        }
         XCTAssertTrue(try retained.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
     }
 
