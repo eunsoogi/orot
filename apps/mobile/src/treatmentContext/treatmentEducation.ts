@@ -5,12 +5,19 @@ import type {
 import type { SafetyPolicyAction } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
 import { treatmentSafetyKo } from '../i18n/treatmentSafety';
+import { hypertensionEducationReferences } from './hypertensionEducation';
 import type { TreatmentEvidenceRequest } from './interfaces';
 import { createTreatmentSafetyService } from './treatmentSafetyService';
 import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 
 export type TreatmentEducationSelection =
-  | { readonly kind: 'general_options' | 'benefits_risks' | 'discuss_options' }
+  | {
+      readonly kind:
+        | 'general_options'
+        | 'benefits_risks'
+        | 'discuss_options'
+        | 'hypertension_overview';
+    }
   | {
       readonly kind: 'condition' | 'record_question' | 'source_question';
       readonly index: number;
@@ -37,7 +44,10 @@ export async function explainTreatmentEducation(
         text = treatmentSafetyKo['treatmentSafety.benefitsRisks'];
       else if (selection.kind === 'discuss_options')
         text = treatmentSafetyKo['treatmentSafety.discussOptions'];
-      else if ('index' in selection) {
+      else if (selection.kind === 'hypertension_overview') {
+        text = treatmentSafetyKo['treatmentSafety.hypertensionOverview'];
+        citations = [...hypertensionEducationReferences];
+      } else if ('index' in selection) {
         const condition = request.context.conditions[selection.index];
         if (!condition || !Number.isInteger(selection.index)) return null;
         if (condition.status === 'ai_possibility') {

@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { hypertensionEducationPublication } from './hypertensionEducation';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import type { VerifiedTreatmentSource } from './treatmentSourceLinks';
@@ -25,14 +26,22 @@ export function TreatmentActionResult({
     <>
       <AppText accessibilityRole="alert">{answer}</AppText>
       {onOpenSource
-        ? sources?.map((link, index) => (
-            <AppButton
-              key={link.source.reference.evidenceId}
-              variant="secondary"
-              title={t('treatmentSafety.openSource', { index: index + 1 })}
-              onPress={() => onOpenSource(link)}
-            />
-          ))
+        ? sources?.map((link, index) => {
+            const ref = link.source.reference;
+            const title = hypertensionEducationPublication(ref)?.title;
+            return (
+              <AppButton
+                key={ref.evidenceId}
+                variant="secondary"
+                title={
+                  title
+                    ? t('treatmentSafety.openPublicSource', { title })
+                    : t('treatmentSafety.openSource', { index: index + 1 })
+                }
+                onPress={() => onOpenSource(link)}
+              />
+            );
+          })
         : null}
       {general?.length ? (
         <>

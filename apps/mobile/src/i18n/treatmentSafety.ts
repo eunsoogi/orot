@@ -32,6 +32,11 @@ export const treatmentSafetyKo = {
   'treatmentSafety.sourceLimits':
     '이 근거로는 치료 목적, 모니터링 방법, 의료진 계획의 내용을 확인할 수 없어요.',
   'treatmentSafety.openSource': '원본 출처 {index} 열기',
+  'treatmentSafety.chooseHypertension': '고혈압 일반 치료 정보 선택',
+  'treatmentSafety.hypertensionTopic': '선택한 공개 주제 · 고혈압',
+  'treatmentSafety.openPublicSource': '{title} 원문 열기',
+  'treatmentSafety.hypertensionOverview':
+    '임신 중이 아닌 성인의 고혈압에 관한 일반 정보예요. 식습관을 개선하고 신체 활동을 늘리는 방법과, 의료진이 필요하다고 판단할 때 약을 쓰는 방법이 있어요. 혈압을 관리해 심장병과 뇌졸중, 콩팥 손상 위험을 낮추는 것이 목적이에요. 치료 효과와 부작용은 치료 방법과 개인 상황에 따라 달라질 수 있어요. 집에서 잰 혈압을 기록해 진료 때 보여 주면 의료진이 치료 효과를 살피는 데 도움이 돼요. 아래 공개 자료는 개인 진단이나 치료 계획의 근거로 쓰이지 않아요.',
   'treatmentSafety.generalEducation': '일반 치료 정보',
   'treatmentSafety.open': '치료 선택지 알아보기',
   'treatmentSafety.confirmation': '치료 설명 전 확인',

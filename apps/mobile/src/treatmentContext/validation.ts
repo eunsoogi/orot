@@ -51,6 +51,7 @@ export function parseTreatmentContext(
     !object(value) ||
     !fields(value, [
       'version',
+      'publicTopic',
       'conditions',
       'clinicianPlans',
       'publicEvidence',
@@ -58,6 +59,7 @@ export function parseTreatmentContext(
       'conflicts',
     ]) ||
     value.version !== 1 ||
+    (value.publicTopic !== undefined && value.publicTopic !== 'hypertension') ||
     !Array.isArray(value.conditions) ||
     value.conditions.length > 24 ||
     !Array.isArray(value.publicEvidence) ||

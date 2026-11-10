@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { Linking } from 'react-native';
+import { stableJson } from '../aiFeatures/integration/evidenceUtils';
+import { treatmentPublicSourceUrl } from '../aiFeatures/integration/treatmentPublicSourceUrl';
+import { hypertensionEducation } from './hypertensionEducation';
 import type { SafetyPolicyInput } from '@orot/domain';
 import { t } from '../i18n';
 import { dispatchExplicitTreatmentAction } from '../ragConversation/conversationVisitDispatch';
@@ -35,6 +39,7 @@ export function useTreatmentConversationAction({
   const [source, setSource] = useState<TreatmentSourceChoice | null>(null);
   const [saved, setSaved] = useState<SavedTreatmentChoice | null>(null);
   const [followUp, setFollowUp] = useState(false);
+  const [publicTopic, setPublicTopic] = useState<'hypertension' | null>(null);
   const active = useRef<AbortController | null>(null);
   useEffect(() => () => active.current?.abort(), []);
 
@@ -46,6 +51,7 @@ export function useTreatmentConversationAction({
     setSource(null);
     setSaved(null);
     setFollowUp(false);
+    setPublicTopic(null);
     setMode('form');
     setOpen(false);
   };
@@ -106,14 +112,23 @@ export function useTreatmentConversationAction({
             kind: 'request',
             selection: source
               ? { kind: 'condition', index: 0 }
-              : { kind: 'general_options' },
+              : {
+                  kind: publicTopic
+                    ? 'hypertension_overview'
+                    : 'general_options',
+                },
           };
       const outcome = await dispatchExplicitTreatmentAction(
         treatmentConversationSender({
           database: openTreatmentDatabase,
           action,
           request:
-            source?.request ?? (saved ? savedEducation : generalEducation),
+            source?.request ??
+            (saved
+              ? savedEducation
+              : publicTopic
+                ? hypertensionEducation
+                : generalEducation),
           safetyInput,
           skipEducation,
           presentation: {
@@ -165,17 +180,31 @@ export function useTreatmentConversationAction({
 
   const openSource = (link: VerifiedTreatmentSource) =>
     run(async signal => {
-      const reference = await ownership.resolveSource?.(link, signal);
-      if (signal.aborted || !ownership.isActive(sessionId)) return;
-      if (!reference) {
-        setResult({
-          answer: t('ragConversation.conversation.sourceOpenFailed'),
-          verified: false,
-        });
-        return;
+      try {
+        const reference = await ownership.resolveSource?.(link, signal);
+        if (signal.aborted || !ownership.isActive(sessionId)) return;
+        if (!reference) throw new Error('Source is unavailable.');
+        if (link.source.reference.sourceKind === 'external_medical') {
+          // The verified citation is the only public destination this tap may open.
+          const url = treatmentPublicSourceUrl(reference);
+          if (
+            !url ||
+            stableJson(reference) !== stableJson(link.source.reference)
+          )
+            throw new Error('Public source changed.');
+          await Linking.openURL(url);
+          if (!signal.aborted) close();
+          return;
+        }
+        close();
+        onOpenSource(reference);
+      } catch {
+        if (!signal.aborted && ownership.isActive(sessionId))
+          setResult({
+            answer: t('ragConversation.conversation.sourceOpenFailed'),
+            verified: false,
+          });
       }
-      close();
-      onOpenSource(reference);
     });
 
   return {
@@ -191,6 +220,8 @@ export function useTreatmentConversationAction({
     setSaved,
     followUp,
     setFollowUp,
+    publicTopic,
+    setPublicTopic,
     setResult,
     close,
     submit,

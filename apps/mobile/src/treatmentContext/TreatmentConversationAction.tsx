@@ -29,6 +29,8 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
     setSaved,
     followUp,
     setFollowUp,
+    publicTopic,
+    setPublicTopic,
     setResult,
     close,
     submit,
@@ -69,7 +71,7 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
             ) : result !== null ? (
               <TreatmentActionResult
                 answer={result.answer}
-                showLimits={result.verified}
+                showLimits={result.verified && !publicTopic}
                 general={result.general}
                 sources={result.links}
                 onOpenSource={
@@ -114,8 +116,16 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
                     onPress={() => remove(saved)}
                   />
                 ) : null}
-                {!source && !saved ? (
+                {publicTopic ? (
+                  <AppText>{t('treatmentSafety.hypertensionTopic')}</AppText>
+                ) : null}
+                {!source && !saved && !publicTopic ? (
                   <>
+                    <AppButton
+                      variant="secondary"
+                      title={t('treatmentSafety.chooseHypertension')}
+                      onPress={() => setPublicTopic('hypertension')}
+                    />
                     <AppButton
                       variant="secondary"
                       title={t('treatmentSafety.chooseSource')}

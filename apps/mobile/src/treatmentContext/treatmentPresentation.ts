@@ -9,6 +9,7 @@ import type { TreatmentSafetyResult } from './treatmentSafetyBoundary';
 import { verifiedTreatmentSources } from './treatmentSourceLinks';
 import type { VerifiedTreatmentSource } from './treatmentSourceLinks';
 import { explainTreatmentEducation } from './treatmentEducation';
+import { treatmentSafetyKo } from '../i18n/treatmentSafety';
 
 export interface TreatmentPresentation {
   readonly ownerIsCurrent?: () => boolean;
@@ -60,9 +61,13 @@ export async function presentTreatment(input: {
     );
   };
   const general: string[] = [];
-  const kinds = bound.context.conditions.length
-    ? (['general_options', 'benefits_risks'] as const)
-    : (['benefits_risks'] as const);
+  const kinds =
+    result.claims[0]?.text ===
+    treatmentSafetyKo['treatmentSafety.hypertensionOverview']
+      ? []
+      : bound.context.conditions.length
+        ? (['general_options', 'benefits_risks'] as const)
+        : (['benefits_risks'] as const);
   for (const kind of kinds) {
     const education = await explainTreatmentEducation(
       database,

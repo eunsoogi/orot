@@ -4,6 +4,10 @@ import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { treatmentSafetyKo } from '../i18n/treatmentSafety';
 import { assertRetainedEvidenceCurrent } from '../storage/retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from './attribution';
+import {
+  hypertensionEducation,
+  hypertensionEducationReferences,
+} from './hypertensionEducation';
 import { parseTreatmentContext } from './validation';
 import type { TreatmentClaimVerifier } from './safety';
 
@@ -55,7 +59,20 @@ export function createTreatmentClaimVerifier(
           );
         // App-owned general education has no source attribution; attaching an
         // unrelated record or paper would misleadingly imply it supported it.
-        if (!condition && !recordQuestion && !(general && cited.length === 0))
+        // Public-topic copy requires the exact reviewed bundle, with no personal context.
+        const publicEducation =
+          claim.text ===
+            treatmentSafetyKo['treatmentSafety.hypertensionOverview'] &&
+          sameReferences(hypertensionEducationReferences) &&
+          stableJson(context) === stableJson(hypertensionEducation.context) &&
+          stableJson(request.sources) ===
+            stableJson(hypertensionEducation.sources);
+        if (
+          !condition &&
+          !recordQuestion &&
+          !publicEducation &&
+          !(general && cited.length === 0)
+        )
           return false;
         const history = createManualHistoryRepository(database);
         await database.transaction(async tx => {

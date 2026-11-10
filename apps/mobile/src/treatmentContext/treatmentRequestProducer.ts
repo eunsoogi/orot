@@ -145,6 +145,7 @@ export async function produceTreatmentRequest(
       !selection ||
       ![
         'general_options',
+        'hypertension_overview',
         'benefits_risks',
         'discuss_options',
         'condition',
