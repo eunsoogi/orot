@@ -1,5 +1,37 @@
 import XCTest
 
+/// The picker can expose Korean labels alongside English VoiceOver time units.
+private enum DailyReminderWheelText {
+    static func isHour(_ value: String) -> Bool {
+        value.contains("시") || value.lowercased().contains("o’clock") || value.lowercased().contains("o'clock")
+    }
+
+    static func isMinute(_ value: String) -> Bool {
+        value.contains("분") || value.lowercased().contains("minute")
+    }
+
+    static func replacingNumber(_ value: String, with number: Int) throws -> String {
+        let expression = try NSRegularExpression(pattern: "[0-9]+")
+        let matches = expression.matches(in: value, range: NSRange(value.startIndex..., in: value))
+        guard matches.count == 1, let digits = Range(matches[0].range, in: value) else {
+            throw NSError(domain: "DailyReminderSetup", code: 4, userInfo: [NSLocalizedDescriptionKey: "Unrecognized time wheel: \(value)"])
+        }
+        let original = value[digits]
+        let width = original.count > 1 && original.first == "0" ? original.count : 1
+        let replacement = String(format: "%0*d", width, number)
+        var result = value.replacingCharacters(in: digits, with: replacement)
+        // English accessibility values distinguish one minute from other minute values.
+        if result.hasSuffix(" minutes") {
+            result.removeLast(" minutes".count)
+            result += number == 1 ? " minute" : " minutes"
+        } else if result.hasSuffix(" minute") {
+            result.removeLast(" minute".count)
+            result += number == 1 ? " minute" : " minutes"
+        }
+        return result
+    }
+}
+
 /// Schedule through the real Settings UI, then observe the system banner and tap.
 /// This requires a disposable installation and does not simulate delivery or permission.
 @MainActor
@@ -28,8 +60,10 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         attach(app, name: "daily-reminder-scheduled")
 
         if mode == "cold" { app.terminate() } else { XCUIDevice.shared.press(.home) }
-        let expected: XCUIApplication.State = mode == "cold" ? .notRunning : .runningBackground
-        let background = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == expected }, object: nil)
+        let background = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let state = app.state
+            return mode == "cold" ? state == .notRunning : state == .runningBackground || state == .runningBackgroundSuspended
+        }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [background]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let notification = springboard.staticTexts["오늘의 기록을 확인해 보세요."]
@@ -48,7 +82,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         attach(app, name: "daily-reminder-preparation")
     }
 
-    /// Use the app's actual Korean picker values; unrecognized AX wheels fail rather than select a guessed control.
+    /// Use observed localized picker values; unknown AX wheels fail rather than select a guessed control.
     private func scheduleReminder(_ app: XCUIApplication, status: XCUIElement) throws {
         let toggle = UITestConditions.element(app, "settings-daily-reminder-switch")
         UITestConditions.scrollTo(toggle, in: app.scrollViews.firstMatch)
@@ -74,13 +108,13 @@ final class DailyReminderDeliveryUITests: XCTestCase {
                 return match(value)
             }
             guard matches.count == 1 else {
-                throw NSError(domain: "DailyReminderSetup", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unrecognized Korean time picker: \(picker.debugDescription)"])
+                throw NSError(domain: "DailyReminderSetup", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unrecognized time picker: \(picker.debugDescription)"])
             }
             return matches[0]
         }
         let period = try onlyWheel { $0.contains("오전") || $0.contains("오후") }
-        let hour = try onlyWheel { $0.contains("시") }
-        let minute = try onlyWheel { $0.contains("분") }
+        let hour = try onlyWheel(DailyReminderWheelText.isHour)
+        let minute = try onlyWheel(DailyReminderWheelText.isMinute)
         guard wheels.count == 3, period !== hour, period !== minute, hour !== minute else {
             throw NSError(domain: "DailyReminderSetup", code: 5, userInfo: [NSLocalizedDescriptionKey: "Time picker does not expose three distinct wheels: \(picker.debugDescription)"])
         }
@@ -133,17 +167,10 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         XCTAssertTrue(UITestConditions.text(status).contains(successText), status.debugDescription)
     }
 
-    /// Preserve the actual wheel's Korean suffix and padding instead of assuming its display string.
+    /// Preserve the observed wheel's suffix and padding when selecting the requested value.
     private func adjust(_ wheel: XCUIElement, number: Int) throws {
         let value = try XCTUnwrap(wheel.value as? String)
-        let expression = try NSRegularExpression(pattern: "[0-9]+")
-        let range = NSRange(value.startIndex..., in: value)
-        let matches = expression.matches(in: value, range: range)
-        guard matches.count == 1, let digits = Range(matches[0].range, in: value) else {
-            throw NSError(domain: "DailyReminderSetup", code: 4, userInfo: [NSLocalizedDescriptionKey: "Unrecognized time wheel: \(wheel.debugDescription)"])
-        }
-        let replacement = String(format: "%0*d", value[digits].count, number)
-        wheel.adjust(toPickerWheelValue: value.replacingCharacters(in: digits, with: replacement))
+        wheel.adjust(toPickerWheelValue: try DailyReminderWheelText.replacingNumber(value, with: number))
     }
 
     private func attach(_ app: XCUIApplication, name: String) {
