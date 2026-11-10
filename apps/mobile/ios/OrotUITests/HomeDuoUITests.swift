@@ -169,12 +169,7 @@ final class HomeDuoUITests: OrotFailFastTestCase {
     /// The test marker keeps UIKit scene geometry separate from XCTest application and window frames.
     @MainActor
     private func logHomeRotationGeometry(_ app: XCUIApplication, phase: String) {
-        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "home-rotation-\(phase)")
-        let geometry = snapshot?["windowGeometry"] as? [String: Any] ?? [:]
-        let fields = geometry.filter { ["sceneOrientation", "orientationPolicy", "windowBounds", "sampleStartedAtMs", "sampleEndedAtMs"].contains($0.key) }
-        if let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]), let json = String(data: data, encoding: .utf8) {
-            print("OROT_HOME_ROTATION_GEOMETRY phase=\(phase) observedAtMs=\(Date().timeIntervalSince1970 * 1000) geometry=\(json)")
-        }
+        HomeMetricGeometryConditions.logRotation(app, phase: phase, testCase: self)
     }
 
     /// Reflow metric checkboxes and Home actions, keeping every native target reachable with larger text.
@@ -193,17 +188,13 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             throw error
         }
         XCTAssertTrue(navigation.control.isSelected)
-        for identifier in ["home-metric-sleep", "home-metric-heartRate"] {
-            let card = UITestConditions.element(app, identifier)
-            XCTAssertTrue(card.waitForAppearance())
-            // Metric cards have no activation handler; XCTest attempts to reveal the selected element.
-            card.tap()
-            XCTAssertTrue(card.exists && card.isHittable, identifier)
-            if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
-                XCTAssertLessThanOrEqual(card.frame.maxX, navigation.toolbar.frame.minX + 1, identifier)
-            }
-        }
+        let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
+        XCTAssertTrue(homeScroll.waitForAppearance())
+        HomeMetricScrollUITestConditions.revealAndCaptureCards(
+            in: app, homeScroll: homeScroll, navigation: navigation, testCase: self,
+        )
         XCTAssertTrue(navigation.control.isSelected)
+        HomeMetricGeometryConditions.verify(app, testCase: self)
         var previousY: CGFloat = -1
         for identifier in ["home-prepare-visit", "home-metrics-edit"] {
             let action = UITestConditions.element(app, identifier)
@@ -228,10 +219,10 @@ final class HomeDuoUITests: OrotFailFastTestCase {
             if identifier == "home-metrics-edit" {
                 XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
                 XCTAssertTrue(action.exists && action.isHittable, identifier)
-                let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
-                XCTAssertTrue(homeScroll.waitForAppearance())
                 for metric in ["sleep", "heartRate", "bodyMass", "steps"] {
-                    UITestConditions.toggleCheckboxAndAssertState(app, identifier: "home-metric-selection-\(metric)", in: homeScroll)
+                    HomeMetricScrollUITestConditions.toggleCheckboxAndAssertState(
+                        app, identifier: "home-metric-selection-\(metric)", in: homeScroll,
+                    )
                 }
                 UITestConditions.scrollToAndTap(UITestConditions.element(app, "home-metric-selection-cancel"), in: homeScroll)
             } else {
