@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationSession } from './conversationSessionTypes';
 import { getRagConversationCopy } from './copy';
@@ -9,6 +10,7 @@ type RestoredTurn = {
   readonly citations: readonly EvidenceReference[];
   readonly completion?: 'complete' | 'partial';
   readonly entryIntent?: 'possibilities';
+  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly toolMessageId?: string;
   readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
@@ -34,6 +36,16 @@ export function createConversationSessionRestoreState(input: {
     try {
       const turns = await input.read(entry.durableId, controller.signal);
       if (sessions.get(id) !== entry || controller.signal.aborted) return;
+      const reports = turns.flatMap(turn =>
+        turn.dailyReport ? [turn.dailyReport] : [],
+      );
+      // A session must never silently switch to a different report revision.
+      if (
+        reports.some(
+          report => JSON.stringify(report) !== JSON.stringify(reports[0]),
+        )
+      )
+        throw new Error('Conflicting report targets.');
       const messages = turns.flatMap((turn, index) => [
         ...(turn.question
           ? [
@@ -65,6 +77,7 @@ export function createConversationSessionRestoreState(input: {
       ]);
       input.update(id, {
         messages,
+        dailyReport: reports[0],
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
           ? 'possibilities'
@@ -73,7 +86,8 @@ export function createConversationSessionRestoreState(input: {
           messages[0]?.content.slice(0, 36) ||
           getRagConversationCopy().newConversation,
         error: '',
-        restoreFailed: false,
+        // A tool-only or empty restore has no committed target to authorize a follow-up.
+        restoreFailed: !turns.some(turn => turn.question && turn.answer),
         restoring: false,
       });
       sessions.delete(id);

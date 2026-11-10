@@ -152,9 +152,7 @@ export function createRagConversationService({
         question: normalizedQuestion,
         providerId: selected.provider.id,
         modelId: selected.modelId,
-        ...(entryContext?.intent === 'possibilities'
-          ? { entryIntent: 'possibilities' as const }
-          : {}),
+        entryContext,
         priorDialogue: history.priorTurns,
         priorUserReports: history.reports,
         ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),

@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from './conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type {
   RagConversationObserver,
@@ -15,7 +16,7 @@ export function createConversationRetentionBridge(input: {
   readonly question: string;
   readonly providerId: string;
   readonly modelId: string;
-  readonly entryIntent?: 'possibilities';
+  readonly entryContext?: ConversationEntryContext;
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
   readonly priorDialogueOmitted?: true;
@@ -88,7 +89,12 @@ export function createConversationRetentionBridge(input: {
             : {}),
           providerId: input.providerId,
           modelId: input.modelId,
-          ...(input.entryIntent ? { entryIntent: input.entryIntent } : {}),
+          ...(input.entryContext?.intent === 'possibilities'
+            ? { entryIntent: 'possibilities' as const }
+            : {}),
+          ...(input.entryContext?.dailyReport
+            ? { dailyReport: input.entryContext.dailyReport }
+            : {}),
           ...(input.priorDialogue?.length
             ? { priorDialogue: input.priorDialogue }
             : {}),

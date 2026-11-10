@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { DisplayMessage } from './ConversationMessage';
 import type { RagConversationMessage } from './task';
 import type {
@@ -20,6 +21,7 @@ export interface ConversationSessionOptions {
       citations: readonly EvidenceReference[];
       completion?: 'complete' | 'partial';
       entryIntent?: 'possibilities';
+      dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
       toolMessageId?: string;
       toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
       healthSummary?: import('./healthSummary').HealthSummaryResult | null;
@@ -83,4 +85,5 @@ export interface ConversationSession {
   readonly restoreAfterRetry?: boolean;
   readonly artifactContinuation?: ArtifactContinuation | null;
   readonly entryIntent?: 'possibilities';
+  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
 }

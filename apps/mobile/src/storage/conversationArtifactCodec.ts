@@ -1,3 +1,5 @@
+import { validConversationReportTarget } from './conversationReportTarget';
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import { isRecordKind } from '@orot/storage';
 import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -22,6 +24,7 @@ export interface ConversationArtifact {
   readonly providerId: string;
   readonly modelId: string;
   readonly entryIntent?: 'possibilities';
+  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
   readonly priorDialogueOmitted?: true;
@@ -66,6 +69,8 @@ export function decodeConversationArtifact(
       (value.status !== 'complete' && value.status !== 'partial') ||
       (value.entryIntent !== undefined &&
         value.entryIntent !== 'possibilities') ||
+      (value.dailyReport !== undefined &&
+        !validConversationReportTarget(value.dailyReport)) ||
       (value.priorDialogue !== undefined &&
         (!Array.isArray(value.priorDialogue) ||
           value.priorDialogue.length > 4 ||

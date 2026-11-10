@@ -1,3 +1,4 @@
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from './conversationArtifactSources';
 import type { HealthSummaryReference } from './healthSummary';
@@ -10,6 +11,7 @@ export interface ConversationRetentionCandidate {
   readonly modelId: string;
   /** Preserve the selected exploration mode without persisting route identifiers. */
   readonly entryIntent?: 'possibilities';
+  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   /** Bounded dialogue context is stored with the same protected turn. */
   readonly priorDialogue?: readonly { question: string; answer: string }[];
   readonly priorUserReports?: readonly string[];
