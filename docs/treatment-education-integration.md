@@ -42,8 +42,9 @@ current blood pressure, population and symptoms. The existing policy validates
 those inputs before the local dispatcher can open storage for education.
 Skipping ends the education request and preserves any guidance already triggered
 by the inputs. The form unmounts on submission. The raw input and transient
-result stay outside the draft, transcript, model context and retention. This entry offers
-the fixed general-options statement. The separate source picker offers current
+result stay outside the draft, transcript, model context and retention. With no
+topic or source selected, the entry offers the fixed general-options statement.
+The source picker offers current
 diagnosis records and saved possibilities with complete lineage. A possibility
 retains its supporting and contrary references, plus the saved run revision as
 an invalidation dependency. The run itself is never a clinical citation.
@@ -55,21 +56,47 @@ source revisions. Ordinary conversation restoration and model discovery
 exclude treatment turns. Deleting the conversation, a source or a saved
 parent revokes dependent outputs through the existing storage guards.
 
-Verified citations open the original local source through the existing
-source detail route. Source registration rechecks the treatment context and
-saved answer revision. An external reference without a local source is
-unavailable through this route. The screen separates checked, app-owned
-general options and benefits and risks from cited record statements.
-Treatment purpose, monitoring and clinician plan contents remain unavailable
-where the closed verifier has no supporting claim.
+Verified local citations open through the existing source detail route. An
+explicit tap on a public citation rechecks the owning conversation, saved
+answer revision when present, treatment claim and exact retained reference.
+The public route opens the original canonical article URL, a single validated
+public web result URL, or an exact reviewed education URL. Missing or changed
+retained evidence, invalid locators and ambiguous web result lists fail
+closed. The app does not fetch a public page to check its current contents
+before handing the URL to the operating system.
 
-The verifier only accepts its fixed statements. It cannot validate a clinician
-plan's contents, personalized advice, condition-specific options, purpose,
-monitoring, public-paper findings, or arbitrary model prose. Missing, stale or
-conflicting details are not resolved by these statements. The current artifact
+The source picker and the public hypertension topic are separate. The app
+offers the hypertension overview only after the user selects that topic and
+passes the same local safety confirmation. Conversation text, measurements
+and selected records do not select the topic. The verifier requires the
+fixed Korean overview and the exact three public references with their
+reviewed metadata:
+
+- [WHO hypertension fact sheet](https://www.who.int/news-room/fact-sheets/detail/hypertension)
+  (September 25, 2025) supports healthier eating, physical activity, clinician-led
+  medication decisions and the purpose of reducing cardiovascular and kidney harm.
+- [WHO guideline for adults with hypertension](https://www.who.int/publications/i/item/9789240033986)
+  (August 24, 2021) supports the scope of nonpregnant adults and the discussion
+  of treatment benefits and harms.
+- [AHA home blood pressure monitoring](https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings/monitoring-your-blood-pressure-at-home)
+  (reviewed August 14, 2025) supports recording home readings for a clinician
+  to review how treatment is working.
+
+The overview is transient. These public references support general education,
+and cannot establish a person's diagnosis, treatment choice, dose, blood
+pressure target or clinician plan. Record-bound results present verified
+record statements separately from app-owned general options and benefits and
+risks. They withhold purpose, monitoring and plan contents where the verifier
+has no supporting claim.
+
+The verifier only accepts its fixed statements and the explicitly selected
+public hypertension overview. It cannot validate a clinician plan's contents,
+personalized advice, claims outside the reviewed public profile, or arbitrary
+model prose. Missing, stale or conflicting details are not resolved by these
+statements. The current artifact
 format has one citation list per turn, so combining general and separately
 source-bound statements cannot safely round-trip in general. Per-claim
 provenance and semantic verification require a coordinated contract change;
-do not weaken validation to work around this limit. Existing app-owned copy
-and guidance still require external clinical review. Real-model quality and
-native UI behavior require separate verification.
+do not weaken validation to work around this limit. App-owned copy and
+guidance, including the reviewed-source overview, still require clinical
+review. Real-model quality and native UI behavior require separate verification.
