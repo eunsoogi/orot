@@ -1,6 +1,7 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationSession } from './conversationSessionTypes';
 import { getRagConversationCopy } from './copy';
+import { t } from '../i18n';
 
 type RestoredTurn = {
   readonly question: string;
@@ -79,7 +80,7 @@ export function createConversationSessionRestoreState(input: {
     } catch {
       if (sessions.get(id) === entry && !controller.signal.aborted)
         input.update(id, {
-          error: '저장된 대화를 불러오지 못했어요.',
+          error: t('ragConversation.history.restoreFailed'),
           restoreFailed: true,
         });
     } finally {

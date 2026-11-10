@@ -106,4 +106,88 @@ export const ragConversationKo = {
   'ragConversation.tool.sourceKind.reviewedMemory': '검토한 메모',
   'ragConversation.tool.sourceKind.generatedArtifact': '저장된 AI 결과',
   'ragConversation.tool.sourceKind.externalMedical': '공개 의학 문헌',
+  'ragConversation.sourceKind.healthRecord': '건강 기록',
+  'ragConversation.sourceKind.previousAiOutput': '이전 AI 결과',
+  'ragConversation.history.today': '오늘',
+  'ragConversation.history.yesterday': '어제',
+  'ragConversation.history.savedAnalysis': '저장된 요약과 가능성',
+  'ragConversation.history.savedVisitQuestions': '저장된 진료 질문',
+  'ragConversation.history.title': '대화 기록',
+  'ragConversation.history.newConversation': '새 대화',
+  'ragConversation.history.count': '{count}개의 대화',
+  'ragConversation.history.deleteAction': '삭제',
+  'ragConversation.history.deleted': '대화를 삭제했어요.',
+  'ragConversation.history.undoDelete': '실행 취소',
+  'ragConversation.history.previewTitle': '대화 미리보기',
+  'ragConversation.history.previewEmpty': '이 대화에는 아직 메시지가 없어요.',
+  'ragConversation.history.retryRestore': '대화 다시 불러오기',
+  'ragConversation.history.restoreFailed': '저장된 대화를 불러오지 못했어요.',
+  'ragConversation.conversation.continuationNoMatch':
+    '아직 일치하는 결과를 찾지 못했어요. 더 이전 결과를 계속 찾아볼 수 있어요.',
+  'ragConversation.conversation.historicalArtifactNotice':
+    '이전에 생성된 AI 결과를 찾았어요. 아래 출처에서 생성 시각, 불확실성과 현재 출처 상태를 확인해 주세요. 독립적으로 확인된 의료 사실은 아니에요.',
+  'ragConversation.conversation.healthSummary.generated':
+    '건강 기록을 요약했어요.',
+  'ragConversation.conversation.savedSummaryUnavailable':
+    '저장된 요약을 확인할 수 없어요.',
+  'ragConversation.conversation.savedVisitQuestionsUnavailable':
+    '저장된 진료 질문을 다시 불러올 수 없어요. 예약과 질문 목록을 확인해 주세요.',
+  'ragConversation.conversation.sourceOpenFailed':
+    '출처를 열지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.conversation.retrySave': '답변 저장 다시 시도',
+  'ragConversation.conversation.unsavedAnswersRemain':
+    '저장하지 못한 답변이 남아 있어요.',
+  'ragConversation.conversation.answerSaveFailed': '답변을 저장하지 못했어요.',
+  'ragConversation.conversation.answerSaveSourceUnavailable':
+    '원본을 확인할 수 없어 답변을 저장하지 못했어요.',
+  'ragConversation.conversation.answerSaveRetry':
+    '답변을 저장하지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.conversation.answerSaveSourceChanged':
+    '원본이 변경되어 답변을 저장할 수 없어요.',
+  'ragConversation.conversation.deleteFailed':
+    '대화를 삭제하지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.conversation.restoreFailed':
+    '대화를 복원하지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.conversation.toolActivitySaveFailed':
+    '도구 실행 기록을 저장하지 못했어요.',
+  'ragConversation.conversation.linkEvidenceSource':
+    '원문 근거 열기 · {title}{provenance}{date}',
+  'ragConversation.conversation.moreEvidence': '근거 {count}개 더 보기',
+  'ragConversation.conversation.healthSummary.title': '건강 기록 요약',
+  'ragConversation.conversation.healthSummary.dateRange':
+    '{from} 이상 · {to} 미만 ({timeZone})',
+  'ragConversation.conversation.healthSummary.prescriptionReview':
+    '이 요약의 처방 여부 표현은 다시 확인이 필요해요. 약의 일정 등록만으로 처방 여부를 알 수는 없어요.',
+  'ragConversation.conversation.healthSummary.sleepCountReview':
+    '이 요약의 수면 횟수 표현은 다시 확인이 필요해요. 수면 단계 값은 횟수가 아니에요.',
+  'ragConversation.conversation.healthSummary.sleepDurationReview':
+    '이 요약의 수면 구간 길이는 원문과 맞지 않을 수 있어요. 원문의 시작·종료 시각을 확인해 주세요.',
+  'ragConversation.conversation.healthSummary.stepCountReview':
+    '이 요약의 걸음 수 단위는 다시 확인이 필요해요. 걸음 수를 횟수로 읽지 않도록 원문을 확인해 주세요.',
+  'ragConversation.conversation.healthSummary.sourceChanged':
+    '원본이 변경된 이전 요약',
+  'ragConversation.conversation.healthSummary.saved': '저장됨',
+  'ragConversation.conversation.healthSummary.sourceUnavailable':
+    '원본을 확인하지 못해 저장하지 못했어요.',
+  'ragConversation.conversation.healthSummary.saveFailed': '저장하지 못했어요.',
+  'ragConversation.conversation.healthSummary.saveStatusUnknown':
+    '저장 상태를 확인할 수 없어요.',
+  'ragConversation.conversation.healthSummary.retrySave': '저장 다시 시도',
+  'ragConversation.mixed.directComparisonUnavailable':
+    '기록과 문헌의 직접적인 비교는 확인하지 못했어요.',
+  'ragConversation.mixed.recordComparisonUnavailable':
+    '기록과의 비교는 확인하지 못했어요.',
+  'ragConversation.mixed.literatureAndComparisonUnavailable':
+    '요청하신 문헌은 확인하지 못했고 기록과의 비교도 확인하지 못했어요.',
+  'ragConversation.literature.requestEvidenceUnavailable':
+    '문헌 질문에 대한 근거를 확인하지 못했어요.',
+  'ragConversation.literature.statisticsSourceMismatch':
+    '문헌의 통계와 출처가 일치하는지 확인하지 못했어요.',
+  'ragConversation.literature.explanationSourceMismatch':
+    '문헌의 설명과 출처가 일치하는지 확인하지 못했어요.',
+  'ragConversation.literature.recordSourceText': '기록 원문: {span}',
+  'ragConversation.literature.historicalRankedEvidence':
+    '원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.',
+  'ragConversation.literature.historicalEvidence':
+    '원문 기록 당시의 내용을 바탕으로 한 답변이에요.',
 } as const;

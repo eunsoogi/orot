@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { t } from '../i18n';
 import { AppSymbol } from '../layout/AppSymbol';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { EvidenceCaveats } from './EvidenceCaveats';
@@ -85,7 +86,9 @@ export function SavedQuestionsSection<
             <Text accessibilityRole="header" style={styles.sectionHeading}>
               {copy.saved.heading}
             </Text>
-            <Text style={styles.muted}>{questions.length}개</Text>
+            <Text style={styles.muted}>
+              {t('visitQuestions.saved.count', { count: questions.length })}
+            </Text>
             <View style={styles.savedStatus}>
               <AppSymbol
                 name="checkmark.circle.fill"

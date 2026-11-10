@@ -8,6 +8,7 @@ import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLink
 import { styles } from './ConversationScreen.styles';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
 import { PublicWebSourceLinks } from '../externalMedicalEvidence/PublicWebSourceLinks';
+import { t } from '../i18n';
 
 /** Compact citations retain access to every actual source and its external provenance. */
 export function ConversationSources({
@@ -49,19 +50,19 @@ export function ConversationSources({
         const title = external
           ? typeof locator?.title === 'string'
             ? locator.title
-            : 'Europe PMC 문헌'
+            : t('externalMedicalEvidence.source.literatureFallbackTitle')
           : reference.sourceKind === 'reviewed_memory'
-            ? '검토한 메모'
+            ? t('ragConversation.tool.sourceKind.reviewedMemory')
             : reference.sourceKind === 'generated_artifact'
-              ? '이전 AI 결과'
-              : '건강 기록';
+              ? t('ragConversation.sourceKind.previousAiOutput')
+              : t('ragConversation.sourceKind.healthRecord');
         const date = reference.effectiveTime?.slice(0, 10);
         const retrievedAt =
           typeof locator?.retrievedAt === 'string'
             ? locator.retrievedAt.slice(0, 10)
             : undefined;
         const provenance = external
-          ? `Europe PMC · 공개 의학 문헌${retrievedAt ? ` · 조회 ${retrievedAt}` : ''}`
+          ? `${t('externalMedicalEvidence.source.provenance')}${retrievedAt ? t('externalMedicalEvidence.source.retrievedAtInline', { date: retrievedAt }) : ''}`
           : undefined;
         const compactTitle =
           external && title.length > 22 ? `${title.slice(0, 21)}…` : title;
@@ -69,8 +70,19 @@ export function ConversationSources({
           <Pressable
             key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
             accessibilityRole="button"
-            accessibilityLabel={`원문 근거 열기 · ${title}${provenance ? ` · ${provenance}` : ''}${date ? ` · ${date}` : ''}`}
-            accessibilityHint={external ? '문헌 원문 열기' : undefined}
+            accessibilityLabel={t(
+              'ragConversation.conversation.linkEvidenceSource',
+              {
+                title,
+                provenance: provenance ? ` · ${provenance}` : '',
+                date: date ? ` · ${date}` : '',
+              },
+            )}
+            accessibilityHint={
+              external
+                ? t('externalMedicalEvidence.source.openHint')
+                : undefined
+            }
             style={styles.source}
             onPress={() => {
               if (!external) {
@@ -95,7 +107,7 @@ export function ConversationSources({
             />
             <Text numberOfLines={1} style={styles.sourceText}>
               {external
-                ? `Europe PMC${retrievedAt ? ` · 조회 ${retrievedAt}` : ''}`
+                ? `${t('externalMedicalEvidence.source.providerCompact')}${retrievedAt ? t('externalMedicalEvidence.source.retrievedAtInline', { date: retrievedAt }) : ''}`
                 : compactTitle}
               {!external && date ? ` · ${date}` : ''}
             </Text>
@@ -105,7 +117,9 @@ export function ConversationSources({
       {!expanded && references.length > 2 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`근거 ${references.length - 2}개 더 보기`}
+          accessibilityLabel={t('ragConversation.conversation.moreEvidence', {
+            count: references.length - 2,
+          })}
           onPress={() => setExpanded(true)}
           style={styles.source}
         >

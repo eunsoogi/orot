@@ -51,7 +51,15 @@
       "format": "prettier"
     },
     "xml": {
-      "extensions": [".xml", ".plist", ".entitlements", ".storyboard", ".xcprivacy", ".svg"],
+      "extensions": [
+        ".xml",
+        ".plist",
+        ".entitlements",
+        ".storyboard",
+        ".strings",
+        ".xcprivacy",
+        ".svg"
+      ],
       "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier"

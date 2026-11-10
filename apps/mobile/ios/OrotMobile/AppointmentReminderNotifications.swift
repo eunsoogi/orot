@@ -38,7 +38,11 @@ struct AppointmentReminderNotificationPlan {
     func request() -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = "Orot"
-        content.body = "준비할 내용을 확인해 보세요."
+        content.body = NSLocalizedString(
+            "appointmentReminder.body",
+            tableName: "ReminderCopy",
+            comment: "Appointment preparation reminder body",
+        )
         content.userInfo = ["appointmentId": appointmentId, "timeKey": timeKey]
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = floating ? .current : TimeZone(secondsFromGMT: 0)!

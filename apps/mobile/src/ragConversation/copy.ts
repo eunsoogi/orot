@@ -26,6 +26,8 @@ export function getRagConversationCopy() {
     insufficient: t('ragConversation.insufficient'),
     unavailable: t('ragConversation.unavailable'),
     speakerUser: t('ragConversation.speakerUser'),
+    unsavedAnswersRemain: () =>
+      t('ragConversation.conversation.unsavedAnswersRemain'),
     source: (sourceId: string) => t('ragConversation.source', { sourceId }),
   };
 }

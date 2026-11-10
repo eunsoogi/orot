@@ -24,7 +24,12 @@ struct DailyReminderPreference {
     func request() -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = "Orot"
-        content.body = "오늘의 기록을 확인해 보세요."
+        // Native reconciliation can run before the React Native catalog is available.
+        content.body = NSLocalizedString(
+            "dailyReportReminder.body",
+            tableName: "ReminderCopy",
+            comment: "Daily report reminder body",
+        )
         content.userInfo = ["kind": "daily_report"]
         // No fixed timezone: the selected civil time follows the device when traveling.
         var components = DateComponents()
