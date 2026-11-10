@@ -1,11 +1,18 @@
+import { useState } from 'react';
 import { View } from 'react-native';
+import { ChartPlot } from '../../ui/charts';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
 import { formatDateTime, t } from '../../i18n';
+import type { ChartData, ChartStatus } from '../../ui/charts';
 import type { HomeMetric } from './metricSelection';
 import type { HomeMetricProjection } from './metricProjection';
 import { homeMetricStyles as styles } from './homeMetricStyles';
+import {
+  homeMetricChartData,
+  homeMetricChartPlaceholderData,
+} from './homeMetricChart';
 import {
   formatHomeMetricDaySummary,
   formatHomeMetricValue,
@@ -20,29 +27,80 @@ export const homeMetricTitle = (metric: HomeMetric) =>
     steps: t('home.metricSteps'),
   })[metric];
 
-/** Renders a metric and chart without exposing source or time-zone metadata on the overview. */
-export function HomeMetricCard({
-  metric,
-  width,
-}: {
-  readonly metric: HomeMetricProjection;
-  readonly width: number | '100%';
-}) {
-  const accent =
-    metric.metric === 'sleep'
-      ? appColors.purple
-      : metric.metric === 'heartRate'
-        ? appColors.pink
-        : metric.metric === 'bodyMass'
-          ? appColors.primaryText
-          : appColors.green;
-  const symbol = {
+const homeMetricAccent = (metric: HomeMetric) =>
+  ({
+    sleep: appColors.purple,
+    heartRate: appColors.pink,
+    bodyMass: appColors.primaryText,
+    steps: appColors.green,
+  })[metric];
+
+const homeMetricSymbol = (metric: HomeMetric) =>
+  ({
     sleep: 'moon',
     heartRate: 'heart',
     bodyMass: 'scalemass',
     steps: 'figure.walk',
-  }[metric.metric];
-  const maximum = Math.max(1, ...metric.days.map(day => day.value ?? 0));
+  })[metric];
+
+/** Keeps metric identity visible in both loaded cards and reserved chart placeholders. */
+function HomeMetricHeading({ metric }: { readonly metric: HomeMetric }) {
+  return (
+    <View style={styles.metricHeading}>
+      <View style={styles.metricIcon}>
+        <AppSymbol
+          name={homeMetricSymbol(metric)}
+          color={homeMetricAccent(metric)}
+        />
+      </View>
+      <Text style={styles.cardTitle}>{homeMetricTitle(metric)}</Text>
+    </View>
+  );
+}
+
+/** Uses local calendar bars so daily buckets do not become instants on a timezone-aware line axis. */
+function MeasuredHomeMetricChart({
+  metric,
+  data,
+}: {
+  readonly metric: HomeMetric;
+  readonly data: ChartData;
+}) {
+  const [chartWidth, setChartWidth] = useState(0);
+  return (
+    <View
+      style={styles.chart}
+      testID={`home-metric-chart-container-${metric}`}
+      onLayout={event => {
+        const measuredWidth = event.nativeEvent.layout.width;
+        setChartWidth(current =>
+          current === measuredWidth ? current : measuredWidth,
+        );
+      }}
+    >
+      <ChartPlot
+        data={data}
+        height={112}
+        kind="bar"
+        testID={`home-metric-chart-${metric}`}
+        title={t('home.metricChartTitle')}
+        width={chartWidth}
+      />
+    </View>
+  );
+}
+
+/** Renders a metric with the shared daily chart while keeping source and time-zone metadata private. */
+export function HomeMetricCard({
+  metric,
+  width,
+  chartStatus,
+}: {
+  readonly metric: HomeMetricProjection;
+  readonly width: number | '100%';
+  readonly chartStatus?: Extract<ChartStatus, 'loading' | 'stale'>;
+}) {
+  const chartData = homeMetricChartData(metric, chartStatus);
   const statistic = homeMetricStatistic(metric.metric);
   const latestValue = formatHomeMetricValue(
     metric.metric,
@@ -57,6 +115,7 @@ export function HomeMetricCard({
       ? formatDateTime(new Date(metric.measuredAt))
       : t('home.measurementUnknown'),
     summary,
+    ...(chartStatus ? [t(`chart.state.${chartStatus}`)] : []),
   ].join('. ');
   return (
     <View
@@ -65,12 +124,7 @@ export function HomeMetricCard({
       accessibilityLabel={accessibilityLabel}
       accessible
     >
-      <View style={styles.metricHeading}>
-        <View style={styles.metricIcon}>
-          <AppSymbol name={symbol} color={accent} />
-        </View>
-        <Text style={styles.cardTitle}>{homeMetricTitle(metric.metric)}</Text>
-      </View>
+      <HomeMetricHeading metric={metric.metric} />
       <Text style={styles.number}>{latestValue}</Text>
       <Text style={styles.detail}>
         {metric.latest.date} · {statistic}
@@ -80,32 +134,47 @@ export function HomeMetricCard({
           ? formatDateTime(new Date(metric.measuredAt))
           : t('home.measurementUnknown')}
       </Text>
-      <Text style={styles.detail}>
-        0 – {formatHomeMetricValue(metric.metric, maximum, metric.unit)}
-      </Text>
-      <View style={styles.chart} testID={`home-metric-chart-${metric.metric}`}>
-        {metric.days.map(day => (
-          <View key={day.date} style={styles.column}>
-            <View style={styles.barSpace}>
-              {day.value !== null && (
-                <View
-                  style={[
-                    styles.bar,
-                    { backgroundColor: accent },
-                    { height: `${(day.value / maximum) * 100}%` },
-                  ]}
-                />
-              )}
-            </View>
-            <Text style={styles.date}>
-              {day.date.slice(5).replace('-', '/')}
-            </Text>
-          </View>
-        ))}
-      </View>
+      <MeasuredHomeMetricChart metric={metric.metric} data={chartData} />
       {metric.days.at(-1)?.partial && (
         <Text style={styles.detail}>{t('home.partialToday')}</Text>
       )}
+    </View>
+  );
+}
+
+/** Keeps the chart frame in place until Home has a usable local snapshot. */
+export function HomeMetricChartPlaceholder({
+  metric,
+  width,
+  status,
+  emptyMessage,
+}: {
+  readonly metric: HomeMetric;
+  readonly width: number | '100%';
+  readonly status: Extract<
+    ChartStatus,
+    'loading' | 'stale' | 'error' | 'empty'
+  >;
+  readonly emptyMessage?: string;
+}) {
+  const accessibilityLabel = `${homeMetricTitle(metric)}. ${t(`chart.state.${status}`)}`;
+  return (
+    <View
+      style={[styles.card, styles.gridCard, { width }]}
+      testID={`home-metric-${metric}`}
+      accessibilityLabel={accessibilityLabel}
+      accessible
+    >
+      <HomeMetricHeading metric={metric} />
+      {/* Keep the chart's vertical position stable while local metric values are unavailable. */}
+      <Text style={styles.number}>{'\u00a0'}</Text>
+      <Text style={styles.detail}>{'\u00a0'}</Text>
+      <Text style={styles.detail}>{'\u00a0'}</Text>
+      <MeasuredHomeMetricChart
+        metric={metric}
+        data={homeMetricChartPlaceholderData(metric, status)}
+      />
+      {emptyMessage && <Text style={styles.detail}>{emptyMessage}</Text>}
     </View>
   );
 }

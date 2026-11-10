@@ -11,6 +11,7 @@ import type { HomeMetric } from './metricSelection';
 import type { HomeMetricProjection } from './metricProjection';
 
 jest.mock('./useHomeMetrics');
+jest.mock('../../ui/charts', () => ({ ChartPlot: jest.fn(() => null) }));
 const mocked = jest.mocked(useHomeMetrics);
 
 test.each([

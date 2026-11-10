@@ -1,4 +1,8 @@
-import { formatChartPosition, formatChartValue } from '../format';
+import {
+  formatChartPosition,
+  formatChartTick,
+  formatChartValue,
+} from '../format';
 
 test('formats canonical health units consistently without rounding measurements', () => {
   expect(formatChartValue('steps', 1234, 'count')).toBe('1,234걸음');
@@ -11,4 +15,5 @@ test('formats canonical health units consistently without rounding measurements'
 
 test('keeps calendar-day identity instead of converting it through UTC', () => {
   expect(formatChartPosition('2026-01-01', 'day')).toBe('2026-01-01');
+  expect(formatChartTick('2026-01-01', 'day')).toBe('01/01');
 });

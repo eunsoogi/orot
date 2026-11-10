@@ -15,7 +15,14 @@ export function formatChartPosition(
   return axis === 'day' ? value : formatDateTime(new Date(value));
 }
 
-/** The axis uses shorter local labels; the adjacent values retain full dates and times. */
+/** Compact daily ticks fit the plot while the separate value list keeps the full date. */
+export function formatChartTick(value: string, axis: 'time' | 'day'): string {
+  return axis === 'day'
+    ? value.slice(5).replace('-', '/')
+    : formatChartPosition(value, axis);
+}
+
+/** Time ticks stay compact while the value list retains complete dates and times. */
 export function formatChartTimeTick(value: number): string {
   const instant = new Date(value);
   return `${formatDate(instant, { month: 'numeric', day: 'numeric' })} ${formatTime(instant)}`;
