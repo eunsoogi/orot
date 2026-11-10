@@ -41,7 +41,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 197);
+  assert.equal(actual.size, 198);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(
     scheduled.filter(
@@ -107,7 +107,7 @@ test('two Release destinations partition the original work exactly once and pres
   // Appointment selection stays inside Calendar and expands only the Release UI destination.
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [119, 48],
+    [120, 48],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',
