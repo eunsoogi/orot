@@ -108,7 +108,8 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), originalProcess)
         UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-saved-list")), app.debugDescription)
-        let saved = app.staticTexts["합성 질문을 진료에서 확인할까요?"]
+        // Fabric exposes the same rendered text as nested accessibility elements.
+        let saved = app.staticTexts.matching(identifier: "합성 질문을 진료에서 확인할까요?").firstMatch
         _ = FormUITestConditions.reveal(saved, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
         XCTAssertTrue(saved.exists, app.debugDescription)
         let edit = node(app, "next-visit-saved-edit")
@@ -128,7 +129,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "visit-persistence-ready")), app.debugDescription)
         XCTAssertNotEqual(UITestConditions.text(node(app, "visit-persistence-process")), editedProcess)
         UITestConditions.value(node(app, "visit-persistence-snapshot"), equals: originalIDs)
-        let edited = app.staticTexts["수정한 합성 질문을 확인할까요?"]
+        let edited = app.staticTexts.matching(identifier: "수정한 합성 질문을 확인할까요?").firstMatch
         _ = FormUITestConditions.reveal(edited, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
         XCTAssertTrue(edited.exists, app.debugDescription)
         let changeVisit = node(app, "visit-persistence-switch")
