@@ -75,24 +75,36 @@ final class DailyReportEntryUITests: XCTestCase {
         XCTAssertEqual(UITestConditions.wait(for: [rotated]), .completed)
         try assertSavedReport(app, scroll: scroll)
         attach(app, name: "daily-report-duo-landscape")
-        let chat = app.buttons["이 보고서에 관해 대화하기"]
-        UITestConditions.scrollTo(chat, in: scroll)
-        XCTAssertTrue(chat.exists && chat.isHittable, chat.debugDescription)
-        XCTAssertGreaterThanOrEqual(chat.frame.height, 44)
-        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
-        XCTAssertLessThanOrEqual(chat.frame.maxX, rail.frame.minX + 0.5)
-        chat.tap()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch))
-        let input = UITestConditions.element(app, "rag-conversation-input")
-        XCTAssertTrue(input.exists && input.isHittable, input.debugDescription)
-        input.tap()
-        input.typeText("Synthetic question")
-        let send = app.buttons["rag-conversation-send"]
-        XCTAssertTrue(send.exists && send.isHittable, send.debugDescription)
-        send.tap()
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 보고서 대화 연결을 확인했어요."]), app.debugDescription)
-        attach(app, name: "daily-report-follow-up")
+        try assertFollowUp(app, scroll: scroll)
+    }
+
+    /// Exercise the Duo viewport independently when the Simulator cannot rotate its window.
+    func testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances() throws {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = visualArguments + ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var original: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let original {
+                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
+                catch { XCTFail("Could not restore device appearance: \(error)") }
+            }
+            UITestConditions.terminateStandaloneApp(app)
+        }
+        XCTAssertLessThan(app.frame.width, app.frame.height)
+        let scroll = UITestConditions.element(app, "daily-report-screen")
+        XCTAssertTrue(UITestConditions.exists(scroll), app.debugDescription)
+        for dark in [false, true] {
+            _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
+                if original == nil {
+                    original = $0
+                }
+            })
+            try assertSavedReport(app, scroll: scroll)
+            attach(app, name: dark ? "daily-report-portrait-dark" : "daily-report-portrait-light")
+        }
+        try assertFollowUp(app, scroll: scroll)
     }
 
     /// Actual spoken output and next-element navigation are distinct from the AX label checks above.
@@ -188,6 +200,28 @@ final class DailyReportEntryUITests: XCTestCase {
         XCTAssertTrue(scroll.frame.insetBy(dx: -1, dy: -1).contains(observation.frame), observation.debugDescription)
         XCTAssertLessThanOrEqual(observation.frame.maxX, rail.frame.minX + 0.5)
         XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "건강 측정: 일부만 포함")).firstMatch))
+    }
+
+    /// Follow the saved report into the synthetic conversation and exercise its input.
+    private func assertFollowUp(_ app: XCUIApplication, scroll: XCUIElement) throws {
+        let chat = app.buttons["이 보고서에 관해 대화하기"]
+        UITestConditions.scrollTo(chat, in: scroll)
+        XCTAssertTrue(chat.exists && chat.isHittable, chat.debugDescription)
+        XCTAssertGreaterThanOrEqual(chat.frame.height, 44)
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
+        XCTAssertLessThanOrEqual(chat.frame.maxX, rail.frame.minX + 0.5)
+        chat.tap()
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch))
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        XCTAssertTrue(input.exists && input.isHittable, input.debugDescription)
+        input.tap()
+        input.typeText("Synthetic question")
+        let send = app.buttons["rag-conversation-send"]
+        XCTAssertTrue(send.exists && send.isHittable, send.debugDescription)
+        send.tap()
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 보고서 대화 연결을 확인했어요."]), app.debugDescription)
+        attach(app, name: "daily-report-follow-up")
     }
 
     private func attach(_ app: XCUIApplication, name: String) {
