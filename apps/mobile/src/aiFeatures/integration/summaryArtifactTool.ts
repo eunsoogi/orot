@@ -67,7 +67,7 @@ export function createSummaryArtifactTool(
     sourceKind: 'generated_artifact',
     execution: 'local_read_only',
     description:
-      'Find previously saved AI summaries or disease possibilities. These are historical generated interpretations, not verified medical facts. Use the returned continuation token to inspect older pages.',
+      'Find previously saved AI summaries, daily reports, or disease possibilities. These are historical generated interpretations, not verified medical facts. Use the returned continuation token to inspect older pages.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,

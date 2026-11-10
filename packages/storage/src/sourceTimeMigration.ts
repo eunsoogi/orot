@@ -1,15 +1,5 @@
 import type { SqlExecutor } from './sql';
 
-/** Reject malformed versions before choosing any migration path. */
-export async function readUserVersion(database: SqlExecutor): Promise<number> {
-  const result = await database.execute('PRAGMA user_version');
-  const version = Number(result.rows[0]?.user_version ?? 0);
-  if (!Number.isSafeInteger(version) || version < 0) {
-    throw new Error('The database schema version is invalid.');
-  }
-  return version;
-}
-
 /** Preserve all existing integrity rules while allowing unknown clinical times in imported sources. */
 export async function migrateSourceTimes(transaction: SqlExecutor): Promise<void> {
   const tables = ['source_records', 'evidence_spans'];
@@ -44,13 +34,13 @@ export async function migrateSourceTimes(transaction: SqlExecutor): Promise<void
   }
   for (const table of tables) {
     await transaction.execute(
-      `CREATE TABLE ${table}_v13 (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT, recorded_at TEXT, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))`,
+      `CREATE TABLE ${table}_v14 (id TEXT PRIMARY KEY NOT NULL, effective_at TEXT, recorded_at TEXT, ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))`,
     );
     await transaction.execute(
-      `INSERT INTO ${table}_v13 SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM ${table}`,
+      `INSERT INTO ${table}_v14 SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM ${table}`,
     );
     await transaction.execute(`DROP TABLE ${table}`);
-    await transaction.execute(`ALTER TABLE ${table}_v13 RENAME TO ${table}`);
+    await transaction.execute(`ALTER TABLE ${table}_v14 RENAME TO ${table}`);
   }
   for (const row of schema.rows) {
     if (typeof row.sql !== 'string') throw new Error('Invalid database schema definition.');

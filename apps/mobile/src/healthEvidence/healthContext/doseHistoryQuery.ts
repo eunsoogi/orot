@@ -6,7 +6,7 @@ import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
 import type { HealthContextWindow, HealthDoseHistory } from './types';
 
-/** Pages event instants in a half-open range; a schedule is not evidence of intake. */
+/** Page observed event times in a half-open range and bound linked rows to the same snapshot cutoff. */
 export async function readDoseHistory(
   executor: SqlExecutor,
   window: HealthContextWindow,
@@ -26,20 +26,39 @@ export async function readDoseHistory(
   )
     throw new RangeError('Invalid dose history selection.');
   const time = localQueryTimestampKeyExpression('d.effective_at');
+  const definitionCutoff = window.dataAvailableThrough
+    ? `AND ${localQueryTimestampKeyExpression('m.ingested_at')} <= ?`
+    : '';
+  const assertionCutoff = window.dataAvailableThrough
+    ? `AND ${localQueryTimestampKeyExpression('a.ingested_at')} <= ?`
+    : '';
+  const eventCutoff = window.dataAvailableThrough
+    ? `AND ${localQueryTimestampKeyExpression('d.ingested_at')} <= ?`
+    : '';
   const name =
     "coalesce(json_extract(m.payload_json, '$.displayText'), json_extract(a.payload_json, '$.medicationName'))";
-  const parameters: SqlValue[] = [
+  const parameters: SqlValue[] = [];
+  if (window.dataAvailableThrough)
+    parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
+  if (window.dataAvailableThrough)
+    parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
+  parameters.push(
     localQueryTimestampKey(window.fromInclusive),
     localQueryTimestampKey(window.toExclusive),
-  ];
+  );
+  if (window.dataAvailableThrough)
+    parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
   if (selection.medicationName !== undefined)
     parameters.push(selection.medicationName);
   parameters.push(selection.pageSize + 1, selection.page * selection.pageSize);
   const result = await executor.execute(
     `SELECT d.payload_json AS payload, ${name} AS name FROM dose_events d
-    LEFT JOIN medication_definitions m ON m.id = json_extract(d.payload_json, '$.medicationDefinitionId') AND ${currentEvidenceCondition('medication_definition').replaceAll('r.id', 'm.id')}
-    LEFT JOIN medication_assertions a ON a.id = json_extract(d.payload_json, '$.medicationAssertionId') AND ${currentEvidenceCondition('medication_assertion').replaceAll('r.id', 'a.id')}
-    WHERE ${time} >= ? AND ${time} < ? AND ${currentEvidenceCondition('dose_event').replaceAll('r.id', 'd.id')}
+    LEFT JOIN medication_definitions m ON m.id = json_extract(d.payload_json, '$.medicationDefinitionId')
+      AND ${currentEvidenceCondition('medication_definition').replaceAll('r.id', 'm.id')} ${definitionCutoff}
+    LEFT JOIN medication_assertions a ON a.id = json_extract(d.payload_json, '$.medicationAssertionId')
+      AND ${currentEvidenceCondition('medication_assertion').replaceAll('r.id', 'a.id')} ${assertionCutoff}
+    WHERE ${time} >= ? AND ${time} < ?
+      AND ${currentEvidenceCondition('dose_event').replaceAll('r.id', 'd.id')} ${eventCutoff}
     ${selection.medicationName === undefined ? '' : `AND ${name} = ? COLLATE NOCASE`}
     ORDER BY ${time}, d.id LIMIT ? OFFSET ?`,
     parameters,

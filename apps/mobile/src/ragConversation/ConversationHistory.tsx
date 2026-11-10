@@ -7,6 +7,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
+import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 
 /** Owns the transcript viewport and keeps each answer's citations beside it. */
 export function ConversationHistory({
@@ -24,6 +25,8 @@ export function ConversationHistory({
   onRetrySave,
   restoreFailed = false,
   onRetryRestore,
+  toolSourceSessionId,
+  resolveToolSource,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
@@ -43,6 +46,8 @@ export function ConversationHistory({
   readonly onRetrySave?: () => void;
   readonly restoreFailed?: boolean;
   readonly onRetryRestore?: () => void;
+  readonly toolSourceSessionId?: string | null;
+  readonly resolveToolSource?: ResolveConversationToolSource;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -186,6 +191,8 @@ export function ConversationHistory({
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}
             compact={compact}
+            toolSourceSessionId={toolSourceSessionId}
+            resolveToolSource={resolveToolSource}
           />
         ))}
         {error ? (
