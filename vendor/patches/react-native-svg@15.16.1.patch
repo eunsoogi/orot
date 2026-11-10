@@ -1,0 +1,767 @@
+diff --git a/apple/Elements/RNSVGClipPath.mm b/apple/Elements/RNSVGClipPath.mm
+index b37dac61e3ddc86285053798d570db8e43e0e7d4..b8b20a10161e2b5fc73588819cd97c5ea47d82a2 100644
+--- a/apple/Elements/RNSVGClipPath.mm
++++ b/apple/Elements/RNSVGClipPath.mm
+@@ -45,9 +45,12 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGClipPathProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGClipPathProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+   setCommonNodeProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGClipPathProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGForeignObject.mm b/apple/Elements/RNSVGForeignObject.mm
+index 09ba5263e21cfa64a1c4681a464633cd361c6e07..8bd8826506521572939ca2e58215eee900baad7e 100644
+--- a/apple/Elements/RNSVGForeignObject.mm
++++ b/apple/Elements/RNSVGForeignObject.mm
+@@ -47,7 +47,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGForeignObjectProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGForeignObjectProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -67,7 +71,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGForeignObjectProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGGroup.mm b/apple/Elements/RNSVGGroup.mm
+index 3d026d0cfc1f5f5ba1ba9ffbcdbd9d9cff1224de..e3fe5dfc7f820b843ec5bf1f7588b3d93e140448 100644
+--- a/apple/Elements/RNSVGGroup.mm
++++ b/apple/Elements/RNSVGGroup.mm
+@@ -49,10 +49,13 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGGroupProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGGroupProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGGroupProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGImage.mm b/apple/Elements/RNSVGImage.mm
+index e58ddbac763cd6539f840c635c37fbb53d17bb25..314d70cca9801798e1c1f84e195918768b145705 100644
+--- a/apple/Elements/RNSVGImage.mm
++++ b/apple/Elements/RNSVGImage.mm
+@@ -78,7 +78,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGImageProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGImageProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -100,9 +104,7 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.meetOrSlice = intToRNSVGVBMOS(newProps.meetOrSlice);
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGImageProps const>(props);
+ 
+-  [super updateProps:props oldProps:oldProps];
+ }
+ 
+ - (void)updateState:(State::Shared const &)state oldState:(State::Shared const &)oldState
+diff --git a/apple/Elements/RNSVGLinearGradient.mm b/apple/Elements/RNSVGLinearGradient.mm
+index ffaae2008c288f1c21eb2129f1dc32d6f465f3b2..c7324abb6fe788677db356eb52aa3cdbdc0c18cf 100644
+--- a/apple/Elements/RNSVGLinearGradient.mm
++++ b/apple/Elements/RNSVGLinearGradient.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGLinearGradientProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGLinearGradientProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x1 = RNSVGConvertFollyDynamicToId(newProps.x1);
+   if (x1 != nil) {
+@@ -83,7 +87,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonNodeProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGLinearGradientProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGMarker.mm b/apple/Elements/RNSVGMarker.mm
+index bd026400ec5abe943bcacf64af1d0464b99cc05b..e219d439ee64c5765cc5637990d72927f3acdb6e 100644
+--- a/apple/Elements/RNSVGMarker.mm
++++ b/apple/Elements/RNSVGMarker.mm
+@@ -48,7 +48,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGMarkerProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGMarkerProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id refX = RNSVGConvertFollyDynamicToId(newProps.refX);
+   if (refX != nil) {
+@@ -77,7 +81,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.meetOrSlice = intToRNSVGVBMOS(newProps.meetOrSlice);
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGMarkerProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGMask.mm b/apple/Elements/RNSVGMask.mm
+index f5abdec28c9295e2507a7bcf3491646a1f9b2bd8..fa8a7ff8f06f997c9788836921531ecc1213e72c 100644
+--- a/apple/Elements/RNSVGMask.mm
++++ b/apple/Elements/RNSVGMask.mm
+@@ -47,7 +47,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGMaskProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGMaskProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -71,7 +75,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.maskType = newProps.maskType == 0 ? kRNSVGMaskTypeLuminance : kRNSVGMaskTypeAlpha;
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGMaskProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGPath.mm b/apple/Elements/RNSVGPath.mm
+index c85a78a5e0428d15771bf30db2339fd623e0ea2d..f13e34d5f1bbec866f54793708e0876de96bf217 100644
+--- a/apple/Elements/RNSVGPath.mm
++++ b/apple/Elements/RNSVGPath.mm
+@@ -47,11 +47,14 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGPathProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGPathProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+   self.d = [[RNSVGPathParser alloc] initWithPathString:RCTNSStringFromString(newProps.d)];
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGPathProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGPattern.mm b/apple/Elements/RNSVGPattern.mm
+index d43992ed7c38cbde38916163d69c837ae7147075..bc9345f4b8e9d768224b0e6951f77d65e5afb820 100644
+--- a/apple/Elements/RNSVGPattern.mm
++++ b/apple/Elements/RNSVGPattern.mm
+@@ -47,7 +47,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGPatternProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGPatternProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -85,7 +89,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.meetOrSlice = intToRNSVGVBMOS(newProps.meetOrSlice);
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGPatternProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGRadialGradient.mm b/apple/Elements/RNSVGRadialGradient.mm
+index 589ef0530ef304361d5eb2d20f5f047794484983..faa8f45e971d6cc9db1d1ab88c9b6a2851984b07 100644
+--- a/apple/Elements/RNSVGRadialGradient.mm
++++ b/apple/Elements/RNSVGRadialGradient.mm
+@@ -44,7 +44,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGRadialGradientProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGRadialGradientProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id fx = RNSVGConvertFollyDynamicToId(newProps.fx);
+   if (fx != nil) {
+@@ -89,7 +93,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonNodeProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGRadialGradientProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGSvgView.mm b/apple/Elements/RNSVGSvgView.mm
+index 030578325ad3d9a6f11a4af0ad7a5dd042fae5f1..d46d47539052b1dc793911fdf8a6ecf55631c1d5 100644
+--- a/apple/Elements/RNSVGSvgView.mm
++++ b/apple/Elements/RNSVGSvgView.mm
+@@ -34,6 +34,11 @@ @implementation RNSVGSvgView {
+   bool rendered;
+ }
+ 
++#ifdef RCT_NEW_ARCH_ENABLED
++// Fabric supplies the inherited hit-test inset accessors.
++@dynamic hitTestEdgeInsets;
++#endif
++
+ #if TARGET_OS_OSX && defined(RCT_NEW_ARCH_ENABLED)
+ // RCTViewComponentView opts into updateLayer; we render in drawRect:, so opt back out.
+ - (BOOL)wantsUpdateLayer
+diff --git a/apple/Elements/RNSVGSymbol.mm b/apple/Elements/RNSVGSymbol.mm
+index b1fbd4a651caa4581e96e6fbfbf44cd34440776b..bba877c47625d725ce5122ca0b481d3ad805f807 100644
+--- a/apple/Elements/RNSVGSymbol.mm
++++ b/apple/Elements/RNSVGSymbol.mm
+@@ -45,7 +45,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGSymbolProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGSymbolProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.minX = newProps.minX;
+   self.minY = newProps.minY;
+@@ -55,7 +59,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.meetOrSlice = intToRNSVGVBMOS(newProps.meetOrSlice);
+ 
+   setCommonGroupProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGSymbolProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Elements/RNSVGUse.mm b/apple/Elements/RNSVGUse.mm
+index 925a7e74ea6e3ea29d45add3f6fcde9c29def04d..8e7e2318f01d9c007b01633c4c05ffedbc384a64 100644
+--- a/apple/Elements/RNSVGUse.mm
++++ b/apple/Elements/RNSVGUse.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGUseProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGUseProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -67,7 +71,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.href = RCTNSStringFromStringNilIfEmpty(newProps.href);
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGUseProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeBlend.mm b/apple/Filters/RNSVGFeBlend.mm
+index 95966e95699e44bf99d266a426f2b0e78e6d1f51..1f47d408c27265637a4d50f48708bb1474748261 100644
+--- a/apple/Filters/RNSVGFeBlend.mm
++++ b/apple/Filters/RNSVGFeBlend.mm
+@@ -38,14 +38,17 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeBlendProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeBlendProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.in1 = RCTNSStringFromStringNilIfEmpty(newProps.in1);
+   self.in2 = RCTNSStringFromStringNilIfEmpty(newProps.in2);
+   self.mode = [RNSVGConvert RNSVGBlendModeFromCppEquivalent:newProps.mode];
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeBlendProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeColorMatrix.mm b/apple/Filters/RNSVGFeColorMatrix.mm
+index 826b26178f71d31b5f06b275af5a10cc7580c6e8..a304a73e1122fc3a8a8d0c222985201cdd7d57fc 100644
+--- a/apple/Filters/RNSVGFeColorMatrix.mm
++++ b/apple/Filters/RNSVGFeColorMatrix.mm
+@@ -38,7 +38,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeColorMatrixProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeColorMatrixProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.in1 = RCTNSStringFromStringNilIfEmpty(newProps.in1);
+   if (newProps.values.size() > 0) {
+@@ -51,7 +55,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.type = [RNSVGConvert RNSVGColorMatrixTypeFromCppEquivalent:newProps.type];
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeColorMatrixProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeComposite.mm b/apple/Filters/RNSVGFeComposite.mm
+index d414a4d41d5ece02b3d38195e50888b04b4ce16e..c5d31b47d303f96e1566f8fff3e451d6ba50895b 100644
+--- a/apple/Filters/RNSVGFeComposite.mm
++++ b/apple/Filters/RNSVGFeComposite.mm
+@@ -42,7 +42,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeCompositeProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeCompositeProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.in1 = RCTNSStringFromStringNilIfEmpty(newProps.in1);
+   self.in2 = RCTNSStringFromStringNilIfEmpty(newProps.in2);
+@@ -53,7 +57,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.operator1 = [RNSVGConvert RNSVGRNSVGCompositeOperatorFromCppEquivalent:newProps.operator1];
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeCompositeProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeFlood.mm b/apple/Filters/RNSVGFeFlood.mm
+index 9b5955bfa5f6c6edea4a64fe198679453597a4ba..2a38b428dda06414bb6139f564558ceca9e18fa4 100644
+--- a/apple/Filters/RNSVGFeFlood.mm
++++ b/apple/Filters/RNSVGFeFlood.mm
+@@ -38,7 +38,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeFloodProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeFloodProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id floodColor = RNSVGConvertFollyDynamicToId(newProps.floodColor);
+   if (floodColor != nil) {
+@@ -47,7 +51,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.floodOpacity = newProps.floodOpacity;
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeFloodProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeGaussianBlur.mm b/apple/Filters/RNSVGFeGaussianBlur.mm
+index 4fa00c9ca1cad5f6de6b69a3efa0f5ab49f6bf53..0d8bb07b7c5b628c96b073a168bf099ca6686cb4 100644
+--- a/apple/Filters/RNSVGFeGaussianBlur.mm
++++ b/apple/Filters/RNSVGFeGaussianBlur.mm
+@@ -39,7 +39,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeGaussianBlurProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeGaussianBlurProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.in1 = RCTNSStringFromStringNilIfEmpty(newProps.in1);
+   self.stdDeviationX = [NSNumber numberWithFloat:newProps.stdDeviationX];
+@@ -47,7 +51,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.edgeMode = [RNSVGConvert RNSVGEdgeModeFromCppEquivalent:newProps.edgeMode];
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeGaussianBlurProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeMerge.mm b/apple/Filters/RNSVGFeMerge.mm
+index 41c326df97de7abddf7c633d555a2367749d95e5..c490a50dbd56dd7c0a087bfbe7401b0acd40c279 100644
+--- a/apple/Filters/RNSVGFeMerge.mm
++++ b/apple/Filters/RNSVGFeMerge.mm
+@@ -37,7 +37,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeMergeProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeMergeProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   if (newProps.nodes.size() > 0) {
+     NSMutableArray<NSString *> *nodesArray = [NSMutableArray new];
+@@ -47,7 +51,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+     self.nodes = nodesArray;
+   }
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeMergeProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFeOffset.mm b/apple/Filters/RNSVGFeOffset.mm
+index df4fb2523d0ad73e15db005f7defbda8d16cc0fd..fef8a58af7b3710ff73dd5a2c7800788c0941198 100644
+--- a/apple/Filters/RNSVGFeOffset.mm
++++ b/apple/Filters/RNSVGFeOffset.mm
+@@ -40,7 +40,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFeOffsetProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFeOffsetProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.in1 = RCTNSStringFromStringNilIfEmpty(newProps.in1);
+   id dx = RNSVGConvertFollyDynamicToId(newProps.dx);
+@@ -53,7 +57,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonFilterProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGFeOffsetProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Filters/RNSVGFilter.mm b/apple/Filters/RNSVGFilter.mm
+index 105065508d660f845c15b293c67abdd949a863af..f274c9e4340c997c313bdd38025f8c1d64b52e60 100644
+--- a/apple/Filters/RNSVGFilter.mm
++++ b/apple/Filters/RNSVGFilter.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGFilterProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGFilterProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.name = RCTNSStringFromStringNilIfEmpty(newProps.name);
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+@@ -68,7 +72,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   self.filterUnits = [RNSVGConvert RNSVGUnitsFromFilterUnitsCppEquivalent:newProps.filterUnits];
+   self.primitiveUnits = [RNSVGConvert RNSVGUnitsFromPrimitiveUnitsCppEquivalent:newProps.primitiveUnits];
+ 
+-  _props = std::static_pointer_cast<RNSVGFilterProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Shapes/RNSVGCircle.mm b/apple/Shapes/RNSVGCircle.mm
+index 29ed330984e1e29b4984245ebd80c3d08eaa6be1..b9c858ac0bd0e10346c658827de4c8dfbbeb96e8 100644
+--- a/apple/Shapes/RNSVGCircle.mm
++++ b/apple/Shapes/RNSVGCircle.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGCircleProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGCircleProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id cx = RNSVGConvertFollyDynamicToId(newProps.cx);
+   if (cx != nil) {
+@@ -62,7 +66,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGCircleProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Shapes/RNSVGEllipse.mm b/apple/Shapes/RNSVGEllipse.mm
+index 9da51641f5c567f0f6be174b63772cc38fec2eb4..de1a7e20c1e573600f9c71ff8d4e0f52dcb00e20 100644
+--- a/apple/Shapes/RNSVGEllipse.mm
++++ b/apple/Shapes/RNSVGEllipse.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGEllipseProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGEllipseProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id cx = RNSVGConvertFollyDynamicToId(newProps.cx);
+   if (cx != nil) {
+@@ -66,7 +70,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGEllipseProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Shapes/RNSVGLine.mm b/apple/Shapes/RNSVGLine.mm
+index 79d0a7e6fcc4adfef3e6d08b6e523dbc75f4e582..2f83f8163afd4e09938c5193c11a73d1bc848d9a 100644
+--- a/apple/Shapes/RNSVGLine.mm
++++ b/apple/Shapes/RNSVGLine.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGLineProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGLineProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x1 = RNSVGConvertFollyDynamicToId(newProps.x1);
+   if (x1 != nil) {
+@@ -66,7 +70,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGLineProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Shapes/RNSVGRect.mm b/apple/Shapes/RNSVGRect.mm
+index e98ff87074967456b0437ddb80a2bd65fa8a9c6d..d2291701d5f9a4a9c57cb7c63256851db484ee50 100644
+--- a/apple/Shapes/RNSVGRect.mm
++++ b/apple/Shapes/RNSVGRect.mm
+@@ -46,7 +46,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGRectProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGRectProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   id x = RNSVGConvertFollyDynamicToId(newProps.x);
+   if (x != nil) {
+@@ -74,7 +78,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonRenderableProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGRectProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Text/RNSVGTSpan.mm b/apple/Text/RNSVGTSpan.mm
+index 16fb14c954d793202110c29dfef9a3b86bce43e9..9ecf87f814e4b165c71f1fdc38c5faf09babf21c 100644
+--- a/apple/Text/RNSVGTSpan.mm
++++ b/apple/Text/RNSVGTSpan.mm
+@@ -6,6 +6,7 @@
+  * LICENSE file in the root directory of this source tree.
+  */
+ #import "RNSVGTSpan.h"
++#include <vector>
+ #import "RNSVGFontData.h"
+ #import "RNSVGPathMeasure.h"
+ #import "RNSVGText.h"
+@@ -65,12 +66,15 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGTSpanProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGTSpanProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.content = RCTNSStringFromStringNilIfEmpty(newProps.content);
+ 
+   setCommonTextProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGTSpanProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+@@ -932,22 +936,25 @@ A negative value is an error (see Error processing).
+   for (CFIndex ri = 0; ri < runEnd; ri++) {
+     CTRunRef run = (CTRunRef)CFArrayGetValueAtIndex(runs, ri);
+     CFIndex runGlyphCount = CTRunGetGlyphCount(run);
+-    CFIndex indices[runGlyphCount];
+-    CGSize advances[runGlyphCount];
+-    CGGlyph glyphs[runGlyphCount];
++    if (runGlyphCount == 0) continue;
++    std::vector<CFIndex> indices(runGlyphCount);
++    std::vector<CGSize> advances(runGlyphCount);
++    std::vector<CGGlyph> glyphs(runGlyphCount);
+ 
+     // Grab the glyphs and font
+-    CTRunGetGlyphs(run, CFRangeMake(0, 0), glyphs);
+-    CTRunGetStringIndices(run, CFRangeMake(0, 0), indices);
++    CTRunGetGlyphs(run, CFRangeMake(0, 0), glyphs.data());
++    CTRunGetStringIndices(run, CFRangeMake(0, 0), indices.data());
+     CTFontRef runFont = (CTFontRef)CFDictionaryGetValue(CTRunGetAttributes(run), kCTFontAttributeName);
+-    CTFontGetAdvancesForGlyphs(runFont, kCTFontOrientationHorizontal, glyphs, advances, runGlyphCount);
++    CTFontGetAdvancesForGlyphs(runFont, kCTFontOrientationHorizontal, glyphs.data(), advances.data(), runGlyphCount);
+     CFIndex nextOrEndRunIndex = n;
+     if (ri + 1 < runEnd) {
+       CTRunRef nextRun = (CTRunRef)CFArrayGetValueAtIndex(runs, ri + 1);
+       CFIndex nextRunGlyphCount = CTRunGetGlyphCount(nextRun);
+-      CFIndex nextIndices[nextRunGlyphCount];
+-      CTRunGetStringIndices(nextRun, CFRangeMake(0, 0), nextIndices);
+-      nextOrEndRunIndex = nextIndices[0];
++      if (nextRunGlyphCount > 0) {
++        std::vector<CFIndex> nextIndices(nextRunGlyphCount);
++        CTRunGetStringIndices(nextRun, CFRangeMake(0, 0), nextIndices.data());
++        nextOrEndRunIndex = nextIndices[0];
++      }
+     }
+ 
+     for (CFIndex g = 0; g < runGlyphCount; g++) {
+diff --git a/apple/Text/RNSVGText.mm b/apple/Text/RNSVGText.mm
+index 42cfe22c2b2a2602674c56779e09cb9a4353254f..b593184b4d9d04901a89061933e7a892d6ddf210 100644
+--- a/apple/Text/RNSVGText.mm
++++ b/apple/Text/RNSVGText.mm
+@@ -55,10 +55,13 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGTextProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGTextProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   setCommonTextProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGTextProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Text/RNSVGTextPath.mm b/apple/Text/RNSVGTextPath.mm
+index a6296d73c32b747a0fc3922b76affe3592732209..1259b79a2ad2ae28bb30de0e52a081c19b32ba75 100644
+--- a/apple/Text/RNSVGTextPath.mm
++++ b/apple/Text/RNSVGTextPath.mm
+@@ -45,7 +45,11 @@ + (ComponentDescriptorProvider)componentDescriptorProvider
+ 
+ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
+ {
+-  const auto &newProps = static_cast<const RNSVGTextPathProps &>(*props);
++  // Fabric subclasses have distinct final Props types despite Objective-C inheritance.
++  [super updateProps:props oldProps:oldProps];
++  const auto *specificProps = dynamic_cast<const RNSVGTextPathProps *>(props.get());
++  if (!specificProps) return;
++  const auto &newProps = *specificProps;
+ 
+   self.href = RCTNSStringFromStringNilIfEmpty(newProps.href);
+   self.side = RCTNSStringFromStringNilIfEmpty(newProps.side);
+@@ -58,7 +62,6 @@ - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &
+   }
+ 
+   setCommonTextProps(newProps, self);
+-  _props = std::static_pointer_cast<RNSVGTextPathProps const>(props);
+ }
+ 
+ - (void)prepareForRecycle
+diff --git a/apple/Utils/RCTConvert+RNSVG.mm b/apple/Utils/RCTConvert+RNSVG.mm
+index b65cae7d6e41c10ccaed1bf8a4fa08635ed199e8..25b2d95e1094578fc0ddd8939a9dec5953e82d6a 100644
+--- a/apple/Utils/RCTConvert+RNSVG.mm
++++ b/apple/Utils/RCTConvert+RNSVG.mm
+@@ -7,6 +7,7 @@
+  */
+ 
+ #import "RCTConvert+RNSVG.h"
++#include <vector>
+ 
+ #import <React/RCTFont.h>
+ #import <React/RCTLog.h>
+@@ -236,9 +237,10 @@ + (CGGradientRef)RNSVGCGGradient:(id)json
+ {
+   NSArray *arr = [self NSArray:json];
+   NSUInteger count = arr.count / 2;
++  if (count == 0) return nil;
+   NSUInteger values = count * 5;
+   NSUInteger offsetIndex = values - count;
+-  CGFloat colorsAndOffsets[values];
++  std::vector<CGFloat> colorsAndOffsets(values);
+   for (NSUInteger i = 0; i < count; i++) {
+     NSUInteger stopIndex = i * 2;
+     CGFloat offset = (CGFloat)[arr[stopIndex] doubleValue];
+@@ -260,7 +262,7 @@ + (CGGradientRef)RNSVGCGGradient:(id)json
+ 
+   CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+   CGGradientRef gradient =
+-      CGGradientCreateWithColorComponents(rgb, colorsAndOffsets, colorsAndOffsets + offsetIndex, count);
++      CGGradientCreateWithColorComponents(rgb, colorsAndOffsets.data(), colorsAndOffsets.data() + offsetIndex, count);
+   CGColorSpaceRelease(rgb);
+   return (CGGradientRef)CFAutorelease(gradient);
+ }
+diff --git a/apple/Utils/RNSVGFabricConversions.h b/apple/Utils/RNSVGFabricConversions.h
+index 66203341a33b034fdb81fb418ba59dd3d07b0803..612950c88d89df55dd1e68d44e8b4c75602e6b33 100644
+--- a/apple/Utils/RNSVGFabricConversions.h
++++ b/apple/Utils/RNSVGFabricConversions.h
+@@ -14,7 +14,7 @@
+ #import <folly/dynamic.h>
+ 
+ // copied from RCTFollyConvert
+-static id RNSVGConvertFollyDynamicToId(const folly::dynamic &dyn)
++static inline id RNSVGConvertFollyDynamicToId(const folly::dynamic &dyn)
+ {
+   // I could imagine an implementation which avoids copies by wrapping the
+   // dynamic in a derived class of NSDictionary.  We can do that if profiling
+@@ -243,7 +243,7 @@ void setCommonTextProps(const T &textProps, RNSVGText *textNode)
+   textNode.alignmentBaseline = RCTNSStringFromStringNilIfEmpty(textProps.alignmentBaseline);
+ }
+ 
+-static RNSVGVBMOS intToRNSVGVBMOS(int value)
++static inline RNSVGVBMOS intToRNSVGVBMOS(int value)
+ {
+   switch (value) {
+     case 0:

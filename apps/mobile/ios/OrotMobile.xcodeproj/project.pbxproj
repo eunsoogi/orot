@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000002 /* ChartFoundationUITests.swift */; };
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
 		A11200000000000000000003 /* DailyReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000003 /* DailyReminderModule.m */; };
 		A11200000000000000000002 /* DailyReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000002 /* DailyReminderModule.swift */; };
@@ -144,6 +145,7 @@
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
 		A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */; };
+		A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */; };
 		A20400000000000000000001 /* AppProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000001 /* AppProgressView.swift */; };
 		A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */; };
 		A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */; };
@@ -320,6 +322,7 @@
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
+		A7C843720000000000000002 /* ChartFoundationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartFoundationUITests.swift; sourceTree = "<group>"; };
 		D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryUITests.swift; sourceTree = "<group>"; };
 		B68F00000000000000000001 /* AppointmentReminderTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentReminderTestObservation.swift; path = OrotMobile/AppointmentReminderTestObservation.swift; sourceTree = "<group>"; };
 		B93E7116C46F4A96B65832CF /* AppointmentReminderDiagnosticTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/AppointmentReminderDiagnosticTrace.swift; sourceTree = "<group>"; };
@@ -402,6 +405,7 @@
 		AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationMeasuredReservation.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
+		A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; path = SVGFoundationIntegrationTests.mm; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
 		D40E9817CB8A4FAF92E6B211 /* EncounterReviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncounterReviewUITests.swift; sourceTree = "<group>"; };
 		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
@@ -859,6 +863,7 @@
 				E71F9C4B106A43E6B9A2D311 /* EncounterReviewPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
 				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
+				A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */,
 				B37000000000000000000005 /* MedicalDocumentImportTests.swift */,
 				B37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift */,
 				ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */,
@@ -954,6 +959,7 @@
 				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
 				DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */,
 				CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */,
+				A7C843720000000000000002 /* ChartFoundationUITests.swift */,
 				a23c13bada0fd75e87404dfe /* ProviderSelectionDuoUITests.swift */,
 				7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
@@ -1449,6 +1455,7 @@
 				A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */,
 				DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */,
 				9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */,
+				A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */,
 				856e3b193f8769f1bc09bda3 /* ProviderSelectionDuoUITests.swift in Sources */,
 				BCAE2214CE9B75820591561B /* SettingsBackupDuoUITests.swift in Sources */,
 				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
@@ -1556,6 +1563,7 @@
 				E71F9C4B106A43E6B9A2D310 /* EncounterReviewPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
+				A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */,
 				A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */,
 				A37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift in Sources */,
 				98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */,

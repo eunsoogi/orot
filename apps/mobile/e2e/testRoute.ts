@@ -24,6 +24,8 @@ export const capabilityScenarios = [
   'settings-provider-layout',
   'visit-questions',
   'openai-tools',
+  'chart-foundation',
+  'svg-foundation',
 ] as const;
 
 export type TestRoute =
