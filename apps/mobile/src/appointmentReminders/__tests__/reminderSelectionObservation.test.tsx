@@ -1,5 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
+import { appColors } from '../../layout/appColors';
 import { appointment } from '../../nextVisitQuestions/testSupport/fixtures';
 import { AppointmentReminderControls } from '../AppointmentReminderControls';
 import {
@@ -44,5 +52,120 @@ it.each([false, true])(
       stop();
       select.mockRestore();
     }
+  },
+);
+
+it('announces the selected lead time and keeps opt-out outside the action row', async () => {
+  const store = createAppointmentStore([appointment]);
+  const runtime = createAppointmentReminderRuntime(
+    async () => store.repository,
+  );
+  const snapshot = {
+    selection: { appointmentId: appointment.id, leadMinutes: 60 },
+    status: 'scheduled',
+    busy: false,
+  } as const;
+  jest.spyOn(runtime.coordinator, 'getSnapshot').mockReturnValue(snapshot);
+
+  await render(
+    <AppointmentReminderProvider runtime={runtime}>
+      <AppointmentReminderControls appointment={appointment} />
+    </AppointmentReminderProvider>,
+  );
+
+  const actionRow = screen.getByTestId('appointment-reminder-actions');
+  const actions = within(actionRow);
+  const oneHour = actions.getByTestId(
+    `appointment-reminder-${appointment.id}-60`,
+  );
+  const oneDay = actions.getByTestId(
+    `appointment-reminder-${appointment.id}-1440`,
+  );
+  expect(oneHour.props.accessibilityState).toMatchObject({
+    selected: true,
+    disabled: false,
+  });
+  expect(oneDay.props.accessibilityState).toMatchObject({
+    selected: false,
+    disabled: false,
+  });
+  expect(StyleSheet.flatten(oneHour.props.style)).toMatchObject({
+    backgroundColor: appColors.primaryAction,
+  });
+  expect(screen.getByText('알림이 설정되었어요.')).toBeTruthy();
+  expect(
+    screen.getByTestId(`appointment-reminder-off-${appointment.id}`),
+  ).toBeTruthy();
+  expect(
+    actions.queryByTestId(`appointment-reminder-off-${appointment.id}`),
+  ).toBeNull();
+});
+
+it('keeps reminder and opt-out controls disabled while an update is pending', async () => {
+  const store = createAppointmentStore([appointment]);
+  const runtime = createAppointmentReminderRuntime(
+    async () => store.repository,
+  );
+  const snapshot = {
+    selection: { appointmentId: appointment.id, leadMinutes: 60 },
+    status: 'scheduled',
+    busy: true,
+  } as const;
+  jest.spyOn(runtime.coordinator, 'getSnapshot').mockReturnValue(snapshot);
+
+  await render(
+    <AppointmentReminderProvider runtime={runtime}>
+      <AppointmentReminderControls appointment={appointment} />
+    </AppointmentReminderProvider>,
+  );
+
+  const pendingActionIDs = [
+    `appointment-reminder-${appointment.id}-60`,
+    `appointment-reminder-${appointment.id}-1440`,
+    `appointment-reminder-off-${appointment.id}`,
+  ];
+  for (const id of pendingActionIDs) {
+    const action = screen.getByTestId(id);
+    expect(action.props.accessibilityState).toMatchObject({
+      busy: false,
+      disabled: true,
+    });
+  }
+});
+
+it.each([
+  ['denied', '알림 권한이 없어요. 설정에서 Orot 알림을 허용해 주세요.'],
+  ['error', '알림을 갱신하지 못했어요. 다시 설정하거나 꺼 주세요.'],
+] as const)(
+  'keeps the %s reminder failure visible beside the choices',
+  async (status, message) => {
+    const store = createAppointmentStore([appointment]);
+    const runtime = createAppointmentReminderRuntime(
+      async () => store.repository,
+    );
+    const snapshot = {
+      selection:
+        status === 'denied'
+          ? null
+          : { appointmentId: appointment.id, leadMinutes: 60 as const },
+      status,
+      busy: false,
+    } as const;
+    jest.spyOn(runtime.coordinator, 'getSnapshot').mockReturnValue(snapshot);
+
+    await render(
+      <AppointmentReminderProvider runtime={runtime}>
+        <AppointmentReminderControls appointment={appointment} />
+      </AppointmentReminderProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    const row = within(screen.getByTestId('appointment-reminder-actions'));
+    expect(
+      row.getByTestId(`appointment-reminder-${appointment.id}-60`),
+    ).toBeTruthy();
+    expect(
+      row.getByTestId(`appointment-reminder-${appointment.id}-1440`),
+    ).toBeTruthy();
   },
 );

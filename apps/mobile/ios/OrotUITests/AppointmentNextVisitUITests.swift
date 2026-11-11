@@ -66,6 +66,30 @@ extension AppointmentsUITests {
         XCTAssertTrue(appointmentRow.label.contains(initialClinic), app.debugDescription)
         XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
 
+        let appointmentID = String(appointmentRowIdentifier.dropFirst("appointment-select-".count))
+        let reminderRow = UITestConditions.element(app, "appointment-reminder-actions")
+        let oneHourReminder = UITestConditions.element(app, "appointment-reminder-\(appointmentID)-60")
+        let oneDayReminder = UITestConditions.element(app, "appointment-reminder-\(appointmentID)-1440")
+        let cancelAction = UITestConditions.element(app, "appointment-cancel-\(appointmentID)")
+        let headerEdit = UITestConditions.element(app, "appointment-edit-\(appointmentID)")
+        let header = UITestConditions.element(app, "appointment-header-\(appointmentID)")
+        XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(header.exists && header.frame.contains(headerEdit.frame), app.debugDescription)
+        // Standard text keeps equal-height detail actions on one native row with full touch targets.
+        for action in [oneHourReminder, oneDayReminder, cancelAction] {
+            XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, app.debugDescription)
+        }
+        XCTAssertEqual(oneHourReminder.frame.width, oneDayReminder.frame.width, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.width, cancelAction.frame.width, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneHourReminder.frame.height, oneDayReminder.frame.height, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.height, cancelAction.frame.height, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneHourReminder.frame.midY, oneDayReminder.frame.midY, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.midY, cancelAction.frame.midY, accuracy: 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(oneHourReminder.frame.maxX, oneDayReminder.frame.minX + 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(oneDayReminder.frame.maxX, cancelAction.frame.minX + 1, app.debugDescription)
+
         let edit = app.buttons["수정"]
         XCTAssertTrue(edit.exists && edit.isHittable)
         edit.tap()

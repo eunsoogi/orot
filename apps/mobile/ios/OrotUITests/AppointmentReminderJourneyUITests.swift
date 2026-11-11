@@ -123,6 +123,10 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
             try ReminderJourneyObservation.allowFirstNotification(app, testCase: self)
         }
         try ReminderJourneyObservation.assertPending(app, id: id, start: originalTime, stage: "initial-schedule", testCase: self)
+        XCTAssertFalse(app.alerts.firstMatch.exists, "Choosing a reminder must not open appointment cancellation confirmation")
+        let appointmentStatus = UITestConditions.element(app, "appointment-status-\(id)")
+        XCTAssertTrue(appointmentStatus.exists, app.debugDescription)
+        XCTAssertTrue(appointmentStatus.label.contains("예정"), app.debugDescription)
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if originalAppearance == nil {
@@ -207,6 +211,7 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         let firstReminderAction = UITestConditions.element(app, "appointment-reminder-\(id)-60")
         XCTAssertTrue(UITestConditions.exists(privacyPreview))
         XCTAssertTrue(UITestConditions.exists(firstReminderAction))
+        XCTAssertTrue(firstReminderAction.isSelected, app.debugDescription)
         XCTAssertFalse(privacyPreview.frame.intersects(firstReminderAction.frame))
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {

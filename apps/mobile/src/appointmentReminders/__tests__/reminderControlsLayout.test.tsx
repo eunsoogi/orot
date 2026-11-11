@@ -23,6 +23,13 @@ function choiceDirection(): string | undefined {
   )?.flexDirection;
 }
 
+function actionCellMinWidth(minutes: 60 | 1440): number | undefined {
+  const action = screen.getByTestId(
+    `appointment-reminder-${appointment.id}-${minutes}`,
+  );
+  return StyleSheet.flatten(action.parent?.props.style)?.minWidth;
+}
+
 it('reflows the reminder preview within its measured width and system text scale', async () => {
   const store = createAppointmentStore([appointment]);
   const runtime = createAppointmentReminderRuntime(
@@ -45,6 +52,8 @@ it('reflows the reminder preview within its measured width and system text scale
 
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
+    expect(actionCellMinWidth(60)).toBe(92);
+    expect(actionCellMinWidth(1440)).toBe(92);
     expect(screen.getByTestId('appointment-reminder-title')).toHaveTextContent(
       '진료 준비 알림',
     );
@@ -81,6 +90,8 @@ it('reflows the reminder preview within its measured width and system text scale
     );
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
+    expect(actionCellMinWidth(60)).toBe(92);
+    expect(actionCellMinWidth(1440)).toBe(92);
 
     await act(async () => {
       Dimensions.set({ window: { ...originalWindow, fontScale: 1.5 } });
@@ -95,6 +106,8 @@ it('reflows the reminder preview within its measured width and system text scale
     );
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
+    expect(actionCellMinWidth(60)).toBe(138);
+    expect(actionCellMinWidth(1440)).toBe(138);
   } finally {
     unmount?.();
     Dimensions.set({ window: originalWindow });
