@@ -58,10 +58,12 @@ extension RootNavigationUITests {
         let app = XCUIApplication()
         defer { app.terminate() }
         let arguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ViewportObservation.arguments
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        ViewportObservation.captureIfEnabled(app, entry: "core-home", stage: "before-settings-action", testCase: self)
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        ViewportObservation.captureIfEnabled(app, entry: "core-settings", stage: "after-settings-action", testCase: self)
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
         FormUITestConditions.reveal(UITestConditions.element(app, "settings-open-health-data"), in: app, scrollID: "navigation-route-scroll")

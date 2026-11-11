@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F9ABA0000000000000000001 /* ViewportObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9ABA0000000000000000002 /* ViewportObservation.swift */; };
 		A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000002 /* ChartFoundationUITests.swift */; };
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
 		256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */; };
@@ -324,6 +325,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F9ABA0000000000000000002 /* ViewportObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewportObservation.swift; sourceTree = "<group>"; };
 		B11200000000000000000004 /* DailyReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderNotificationTests.swift; sourceTree = "<group>"; };
 		6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderSystemCenterTests.swift; sourceTree = "<group>"; };
 		B11200000000000000000003 /* DailyReminderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DailyReminderModule.m; path = OrotMobile/DailyReminderModule.m; sourceTree = "<group>"; };
@@ -998,6 +1000,7 @@
 				B68F00000000000000000005 /* ReminderJourneyForm.swift */,
 				B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */,
 				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
+				F9ABA0000000000000000002 /* ViewportObservation.swift */,
 				89FDE65A9F504246A94295CB /* AppointmentNextVisitUITests.swift */,
 				1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */,
 				22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */,
@@ -1500,6 +1503,7 @@
 				A68F00000000000000000005 /* ReminderJourneyForm.swift in Sources */,
 				A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */,
 				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
+				F9ABA0000000000000000001 /* ViewportObservation.swift in Sources */,
 				0CEE70841F2C4CD7AD262796 /* AppointmentNextVisitUITests.swift in Sources */,
 				D6165760823C41C2B78A1A55 /* AppointmentTextSelectionUITests.swift in Sources */,
 				29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */,
