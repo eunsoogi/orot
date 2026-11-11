@@ -1,12 +1,14 @@
 import XCTest
 
-/// Reads the existing test-only UIKit snapshot because decorative children stay grouped inside one accessible button.
+/// Measures the production Records action from UIKit geometry without splitting its VoiceOver group.
 @MainActor
 enum RecordingCaptureUITestConditions {
     @discardableResult
     static func verifyGeometry(in app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         let button = UITestConditions.element(app, "records-new-recording")
         XCTAssertTrue(button.exists && button.isHittable)
+        let subtitle = UITestConditions.element(app, "records-subtitle")
+        XCTAssertTrue(subtitle.exists && !subtitle.frame.isEmpty)
         let marker = UITestConditions.element(app, "navigation-test-observation")
         var observed: [String: CGRect]?
         // Correlate to the currently rendered button, so a previous orientation's receipt cannot pass.
@@ -37,12 +39,37 @@ enum RecordingCaptureUITestConditions {
         let target = try XCTUnwrap(frames["records-new-recording"])
         let icon = try XCTUnwrap(frames["recording-capture-icon"])
         let title = try XCTUnwrap(frames["recording-capture-title"])
+        // Preserve the real-route screenshot before assertions can stop a baseline spacing failure.
+        let routeScreenshot = XCTAttachment(screenshot: app.screenshot())
+        routeScreenshot.name = "records-recording-entry-route"
+        routeScreenshot.lifetime = .keepAlways
+        testCase.add(routeScreenshot)
+        let measurements = """
+        coordinateUnits=points
+        records-subtitle=\(subtitle.frame.debugDescription)
+        records-new-recording=\(target.debugDescription)
+        recording-capture-icon=\(icon.debugDescription)
+        recording-capture-title=\(title.debugDescription)
+        subtitle-to-action-gap=\(target.minY - subtitle.frame.maxY)
+        leading-icon-inset=\(icon.minX - target.minX)
+        icon-title-gap=\(title.minX - icon.maxX)
+        """
+        // Keep numeric deltas beside the route screenshot on both passing and failing revisions.
+        let geometryAttachment = XCTAttachment(string: measurements)
+        geometryAttachment.name = "records-recording-entry-geometry"
+        geometryAttachment.lifetime = .keepAlways
+        testCase.add(geometryAttachment)
         try NavigationUITestConditions.panelSnapshot(app, frames: frames, testCase: testCase)
         XCTAssertGreaterThanOrEqual(target.width, 44)
         XCTAssertGreaterThanOrEqual(target.height, 44)
+        XCTAssertEqual(target.minY - subtitle.frame.maxY, 16, accuracy: 1,
+                       "The Records item gap is the sole space before the capture action.")
+        XCTAssertEqual(icon.minX - target.minX, 16, accuracy: 1,
+                       "The capture action uses the Records item inset.")
         XCTAssertTrue(target.insetBy(dx: -0.5, dy: -0.5).contains(icon))
         XCTAssertTrue(target.insetBy(dx: -0.5, dy: -0.5).contains(title))
-        XCTAssertLessThanOrEqual(icon.maxX, title.minX)
+        XCTAssertEqual(title.minX - icon.maxX, 12, accuracy: 1,
+                       "The icon and label use the neighboring Records row gap.")
         XCTAssertEqual(icon.midY, title.midY, accuracy: 1, "The icon and wrapping label must share a horizontal row")
         return title
     }
