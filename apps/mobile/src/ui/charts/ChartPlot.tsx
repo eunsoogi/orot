@@ -1,28 +1,12 @@
 import { useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import {
-  BarChart,
-  ChartKitProvider,
-  LineChart,
-} from 'react-native-chart-kit/v2';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
-import { appColorPalettes } from '../../layout/appColors';
 import { t } from '../../i18n';
-import {
-  formatChartPosition,
-  formatChartTick,
-  formatChartTimeTick,
-  formatChartValue,
-} from './format';
-import { chartRows, lineSegments } from './model';
+import { ChartPointSelection } from './ChartPointSelection';
+import { ChartRenderer } from './ChartRenderer';
+import { formatChartTick } from './format';
 import { chartWindows } from './window';
-import type { ChartData, ChartMetric } from './types';
+import type { ChartData } from './types';
 
 type Props = {
   data: ChartData;
@@ -30,73 +14,53 @@ type Props = {
   height: number;
   title: string;
   testID?: string;
+  selectedPointTestID?: string;
+  kind: 'line' | 'bar';
 };
 
-const token: Record<
-  ChartMetric,
-  'purple' | 'pink' | 'primaryText' | 'green' | 'danger'
-> = {
-  sleep: 'purple',
-  heartRate: 'pink',
-  bodyMass: 'primaryText',
-  steps: 'green',
-  bloodPressure: 'danger',
-};
+function comparePositions(left: number | string, right: number | string) {
+  if (typeof left === 'number' && typeof right === 'number')
+    return left - right;
+  return String(left).localeCompare(String(right));
+}
 
-/** The visible value list remains accessible without requiring a chart gesture. */
+/** Shares chart status, paging, unit-aware rendering, and one selected measurement across feature surfaces. */
 export function ChartPlot({
   data,
   width,
   height,
   title,
   testID,
+  selectedPointTestID,
   kind,
-}: Props & { kind: 'line' | 'bar' }) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const { fontScale } = useWindowDimensions();
-  const palette = appColorPalettes[scheme];
+}: Props) {
+  const axis = kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
   const canShow =
     data.coverage.status !== 'permission' && data.coverage.status !== 'empty';
-  const axis = kind === 'line' ? 'time' : 'day';
   const pages = canShow ? chartWindows(data, axis) : [];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const visible = pages[page];
-  const line = visible && kind === 'line' ? lineSegments(visible) : undefined;
-  const rows =
-    line?.rows ?? (visible && kind === 'bar' ? chartRows(visible, 'day') : []);
-  const baseSeries = data.series.map(item => ({
-    yKey: item.id,
-    label: item.label,
-    color:
-      item.style === 'primary'
-        ? palette[token[data.metric]]
-        : palette.primaryText,
-    ...(item.style === 'secondary' ? { strokeDasharray: [5, 3] } : {}),
-  }));
-  const series = line
-    ? line.segments.map(segment => ({
-        ...baseSeries[
-          data.series.findIndex(item => item.id === segment.seriesId)
-        ]!,
-        yKey: segment.id,
-      }))
-    : baseSeries;
-  const formatPosition = (value: string) => formatChartPosition(value, axis);
-  const formatValue = (value: number, unit: string) =>
-    formatChartValue(data.metric, value, unit);
-  const xLabel = (value: string | number | Date) =>
+  const positions = visible
+    ? [
+        ...new Set(
+          visible.series.flatMap(series =>
+            series.points.map(point =>
+              axis === 'time' ? Date.parse(point.x) : point.x,
+            ),
+          ),
+        ),
+      ].sort(comparePositions)
+    : [];
+  const formatPosition = (value: number | string) =>
     formatChartTick(
-      typeof value === 'number' ? new Date(value).toISOString() : String(value),
+      typeof value === 'number' ? new Date(value).toISOString() : value,
       axis,
     );
-  const timeTick = (value: string | number | Date, index: number) =>
-    index === 0 || index === rows.length - 1
-      ? formatChartTimeTick(
-          value instanceof Date ? value.getTime() : Number(value),
-        )
-      : '';
-  const unit = data.series[0]?.unit ?? '';
+  const changePage = (nextPage: number) => {
+    setPageIndex(nextPage);
+  };
+
   return (
     <View
       testID={testID}
@@ -107,15 +71,15 @@ export function ChartPlot({
         {t(`chart.state.${data.coverage.status}`)}
       </Text>
       <Text>{t('chart.coverage', data.coverage)}</Text>
-      {pages.length > 1 && rows.length > 0 && (
+      {pages.length > 1 && positions.length > 0 && (
         <View>
           <Text testID={testID ? `${testID}-page` : undefined}>
             {t('chart.page', { page: page + 1, count: pages.length })}
           </Text>
           <Text>
             {t('chart.pageRange', {
-              start: xLabel(rows[0]!.x),
-              end: xLabel(rows[rows.length - 1]!.x),
+              start: formatPosition(positions[0]!),
+              end: formatPosition(positions[positions.length - 1]!),
             })}
           </Text>
           <Pressable
@@ -123,7 +87,7 @@ export function ChartPlot({
             testID={testID ? `${testID}-previous` : undefined}
             accessibilityState={{ disabled: page === 0 }}
             disabled={page === 0}
-            onPress={() => setPageIndex(page - 1)}
+            onPress={() => changePage(page - 1)}
             style={styles.pageButton}
           >
             <Text>{t('chart.previous')}</Text>
@@ -133,86 +97,51 @@ export function ChartPlot({
             testID={testID ? `${testID}-next` : undefined}
             accessibilityState={{ disabled: page === pages.length - 1 }}
             disabled={page === pages.length - 1}
-            onPress={() => setPageIndex(page + 1)}
+            onPress={() => changePage(page + 1)}
             style={styles.pageButton}
           >
             <Text>{t('chart.next')}</Text>
           </Pressable>
         </View>
       )}
-      {fontScale > 1.6 && rows.length > 0 ? (
-        <Text>{t('chart.largeText')}</Text>
-      ) : rows.length > 0 && width > 0 ? (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <ChartKitProvider
-            mode={scheme}
-            theme={{ typography: { axisLabelSize: 11 * fontScale } }}
-          >
-            {kind === 'line' ? (
-              <LineChart
-                data={rows}
-                xKey="x"
-                series={series}
-                width={width}
-                height={height}
-                theme={scheme}
-                curve="linear"
-                connectNulls
-                legend={false}
-                decimation={false}
-                showDots
-                interaction="none"
-                formatXLabel={timeTick}
-                formatYLabel={value => formatValue(value, unit)}
-              />
-            ) : (
-              <BarChart
-                data={rows}
-                xKey="x"
-                series={series}
-                width={width}
-                height={height}
-                theme={scheme}
-                interaction="none"
-                selectionAnimation={false}
-                formatXLabel={xLabel}
-                formatYLabel={value => formatValue(value, unit)}
-              />
-            )}
-          </ChartKitProvider>
+      {visible && (
+        <View style={styles.legend}>
+          {visible.series
+            .filter(series => series.points.length > 0)
+            .map(series => (
+              <Text key={series.id}>
+                {series.label}
+                {kind === 'line' && data.series.length > 1
+                  ? ` (${t(series.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
+                  : ''}
+                {series.unit ? ` · ${series.unit}` : ''}
+              </Text>
+            ))}
         </View>
+      )}
+      {visible && positions.length > 0 && width > 0 ? (
+        <ChartRenderer
+          data={visible}
+          width={width}
+          height={height}
+          kind={kind}
+        />
       ) : (
         <View style={{ height }} />
       )}
-      {visible &&
-        visible.series.map(item => (
-          <View key={item.id}>
-            <Text>
-              {item.label}
-              {kind === 'line' && data.series.length > 1
-                ? ` (${t(item.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
-                : ''}
-            </Text>
-            {item.points.map((point, index) => (
-              <Text key={`${point.x}-${index}`}>
-                {formatPosition(point.x)}:{' '}
-                {point.value === null
-                  ? t('chart.missing')
-                  : formatValue(point.value, item.unit)}
-                {point.partial ? ` · ${t('chart.partialValue')}` : ''}
-                {' · '}
-                {t('chart.source', { source: point.source })}
-              </Text>
-            ))}
-          </View>
-        ))}
+      <ChartPointSelection
+        data={visible}
+        axis={axis}
+        testID={
+          selectedPointTestID ??
+          (testID ? `${testID}-selected-point` : undefined)
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pageButton: { minHeight: 44, justifyContent: 'center' },
 });

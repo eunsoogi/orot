@@ -31,7 +31,7 @@ test.each([
   ['bodyMass', '해당 날짜 마지막 측정', 'kg', 70.25, '70.3 kg', null],
   ['steps', '해당 날짜 기록 합계', 'count', 70.6, '71걸음', 'count'],
 ] as const)(
-  'formats the %s metric in Korean and hides overview provenance',
+  'formats the %s metric in Korean and keeps chart units separate from projection provenance',
   async (
     metric: HomeMetric,
     statistic: string,
@@ -71,9 +71,12 @@ test.each([
     );
     expect(summary.props.accessibilityLabel).not.toContain('Asia/Seoul');
     expect(screen.getByText(formattedValue)).toBeTruthy();
+    expect(screen.getByText(`일별 집계 · ${unit}`)).toBeTruthy();
     expect(
-      screen.queryByText(/Synthetic Watch App|Asia\/Seoul|count|min/u),
-    ).toBeNull();
+      screen.getByTestId(`home-metric-chart-${metric}-selected-point`).props
+        .accessibilityLabel,
+    ).toContain('출처: 건강 기록');
+    expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
     expect(projection).toMatchObject({
       unit,
       source: 'Synthetic Watch App',
@@ -164,9 +167,14 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
     save,
   });
   await render(<HomeMetrics />);
-  expect(
-    screen.getByText('2026-10-15: 측정되지 않음 · 일부 기록 · 출처: 건강 기록'),
-  ).toBeTruthy();
+  const selected = screen.getByTestId(
+    'home-metric-chart-heartRate-selected-point',
+  );
+  expect(selected.props.accessibilityLabel).toContain('2026-10-15');
+  expect(selected.props.accessibilityLabel).toContain('측정되지 않음');
+  expect(selected.props.accessibilityLabel).toContain('일부 기록');
+  expect(selected.props.accessibilityLabel).toContain('출처: 건강 기록');
+  expect(selected.props.accessibilityLabel).not.toContain('2026-10-14');
   expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -11,10 +11,7 @@ import {
   healthRecordCategoryTitle,
   healthRecordPeriodTitle,
 } from './healthRecordsLibraryModel';
-import {
-  buildHealthChartSeries,
-  healthChartSummary,
-} from './healthRecordsChartModel';
+import { buildHealthChartSeries } from './healthRecordsChartModel';
 
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
@@ -97,17 +94,6 @@ export function HealthRecordsLineChart({
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
       testID="health-record-chart-plot-row"
     >
-      <View
-        accessible
-        accessibilityRole="image"
-        accessibilityLabel={
-          series.some(item => item.points.length > 0)
-            ? healthChartSummary(series, healthRecordCategoryTitle(category))
-            : t(`chart.state.${data.coverage.status}`)
-        }
-        style={styles.summary}
-        testID={'health-record-chart-' + category}
-      />
       <ChartPlot
         data={data}
         width={width}
@@ -115,10 +101,9 @@ export function HealthRecordsLineChart({
         title={healthRecordCategoryTitle(category)}
         kind="line"
         testID={'health-record-chart-values-' + category}
+        selectedPointTestID={'health-record-chart-' + category}
       />
       <Text>{t('healthRecords.measuredOnly')}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({ summary: { width: 1, height: 1 } });

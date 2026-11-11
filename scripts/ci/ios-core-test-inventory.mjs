@@ -77,6 +77,8 @@ export const coreTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/ChartFoundationUITests/testDenseChartPagesAndVoiceOverValues',
   'OrotUITests/ChartFoundationUITests/testSVGPropertyUpdatesAndRemount',
+  'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
+  'OrotUITests/ChartConsumerAcceptanceUITests/testBloodPressureValuesAndDiastolicVoiceOver',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',

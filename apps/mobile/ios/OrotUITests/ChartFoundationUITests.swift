@@ -50,9 +50,18 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
 
-        // Start with a visible actual value: enabling VoiceOver resets this fixture's viewport.
-        let pressure = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "120 mmHg")).firstMatch
-        try voiceOver.assertSpeech(from: pressure, expected: "120", forbiddenTerms: [], phase: "chart-value", testCase: self)
+        let scroll = app.scrollViews.firstMatch
+        let selected = UITestConditions.element(app, "synthetic-pressure-chart-selected-point")
+        let previous = UITestConditions.element(app, "synthetic-pressure-chart-selected-point-previous")
+        UITestConditions.scrollTo(previous, in: scroll)
+        for _ in 0 ..< 3 {
+            XCTAssertTrue(previous.exists && previous.isHittable, previous.debugDescription)
+            previous.tap()
+        }
+        XCTAssertTrue(selected.label.contains("120 mmHg"), selected.label)
+        XCTAssertTrue(selected.label.contains("80 mmHg"), selected.label)
+        try voiceOver.assertSpeech(from: selected, expected: "120", forbiddenTerms: [], phase: "selected-systolic-value", testCase: self)
+        try voiceOver.assertSpeech(from: selected, expected: "80", forbiddenTerms: [], phase: "selected-diastolic-value", testCase: self)
         try voiceOver.prepareForStandardInteraction()
         verifyDenseChartPages(in: app)
     }
@@ -85,8 +94,9 @@ final class ChartFoundationUITests: OrotFailFastTestCase {
         next.tap()
         UITestConditions.value(page, equals: "3 / 3쪽")
 
-        let outlier = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "199회/분")).firstMatch
-        UITestConditions.scrollTo(outlier, in: scroll)
-        XCTAssertTrue(outlier.exists && outlier.isHittable, outlier.debugDescription)
+        let selected = UITestConditions.element(app, "dense-health-chart-selected-point")
+        UITestConditions.scrollTo(selected, in: scroll)
+        XCTAssertTrue(selected.exists && selected.isHittable, selected.debugDescription)
+        XCTAssertTrue(selected.label.contains("199회/분"), selected.label)
     }
 }
