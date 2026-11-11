@@ -83,7 +83,13 @@ test('shows a saved local time and current denied permission state after reopeni
     ).toBeTruthy();
     expect(screen.getByText('09:05')).toBeTruthy();
     expect(
-      screen.getByTestId('settings-daily-reminder-switch').props.value,
+      screen.getByTestId('settings-daily-reminder-switch').props
+        .accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      screen.getByTestId('settings-daily-reminder-switch-visual', {
+        includeHiddenElements: true,
+      }).props.value,
     ).toBe(true);
     expect(
       screen.queryByText(
@@ -176,6 +182,10 @@ test('keeps a scheduling failure visible and allows an explicit retry', async ()
 test('uses accessible controls and keeps reminder card spacing', async () => {
   await render(<SettingsDailyReminderSection />);
   const toggle = await screen.findByTestId('settings-daily-reminder-switch');
+  const visualSwitch = screen.getByTestId(
+    'settings-daily-reminder-switch-visual',
+    { includeHiddenElements: true },
+  );
   const card = StyleSheet.flatten(
     screen.getByTestId('settings-daily-reminder-card').props.style,
   );
@@ -197,6 +207,13 @@ test('uses accessible controls and keeps reminder card spacing', async () => {
   expect(toggle.props.accessibilityLabel).toBe(
     t('settings.dailyReminder.enabled'),
   );
+  expect(toggle.props.accessibilityState).toMatchObject({
+    checked: false,
+    disabled: false,
+  });
+  expect(visualSwitch.props.accessible).toBe(false);
+  expect(visualSwitch.props.pointerEvents).toBe('none');
+  expect(visualSwitch.props.value).toBe(false);
   expect(description).toMatchObject({
     paddingHorizontal: 16,
     paddingTop: 16,

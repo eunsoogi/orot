@@ -73,6 +73,15 @@ beforeEach(() => {
   );
 });
 
+function expectReminderSwitchState(enabled: boolean) {
+  const target = screen.getByTestId('settings-daily-reminder-switch');
+  const visual = screen.getByTestId('settings-daily-reminder-switch-visual', {
+    includeHiddenElements: true,
+  });
+  expect(target.props.accessibilityState.checked).toBe(enabled);
+  expect(visual.props.value).toBe(enabled);
+}
+
 test('formats the saved wall-clock time in the app locale and keeps picker fields local', () => {
   expect(formatDailyReminderTime(9, 5)).toBe('09:05');
 
@@ -93,40 +102,53 @@ test('starts from the saved opt-in state without asking for permission on entry'
   expect(native.read).toHaveBeenCalledTimes(1);
   expect(native.reconcile).toHaveBeenCalledTimes(1);
   expect(native.save).not.toHaveBeenCalled();
-  expect(screen.getByTestId('settings-daily-reminder-switch').props.value).toBe(
-    false,
-  );
+  expectReminderSwitchState(false);
   expect(
     screen.getByTestId('settings-daily-reminder-time').props.accessibilityRole,
   ).toBe('button');
 });
 
-test('extends the switch hit area from its measured native frame', async () => {
+test('keeps the native and accessible switch targets disabled while loading', async () => {
+  native.read.mockImplementation(() => new Promise(() => {}));
+  native.reconcile.mockImplementation(() => new Promise(() => {}));
   await render(<SettingsDailyReminderSection />);
-  const toggle = await screen.findByTestId('settings-daily-reminder-switch');
-  // Synthetic dimensions check the inset calculation, not UIKit geometry.
+
+  const toggle = screen.getByTestId('settings-daily-reminder-switch');
+  const visualSwitch = screen.getByTestId(
+    'settings-daily-reminder-switch-visual',
+    { includeHiddenElements: true },
+  );
+
+  expect(toggle.props.accessibilityState.disabled).toBe(true);
+  expect(visualSwitch.props.disabled).toBe(true);
+  await fireEvent.press(toggle);
+  expect(
+    screen.queryByTestId('settings-daily-reminder-picker-sheet'),
+  ).toBeNull();
+  expect(native.save).not.toHaveBeenCalled();
+});
+
+test('sizes the switch target from its measured native frame', async () => {
+  await render(<SettingsDailyReminderSection />);
+  const toggle = screen.getByTestId('settings-daily-reminder-switch');
+  const visualSwitch = screen.getByTestId(
+    'settings-daily-reminder-switch-visual',
+    { includeHiddenElements: true },
+  );
+  // Synthetic dimensions check the measured target arithmetic, not UIKit geometry.
   const measuredWidth = 31;
   const measuredHeight = 31;
 
-  await fireEvent(toggle, 'layout', {
+  await fireEvent(visualSwitch, 'layout', {
     nativeEvent: {
       layout: { height: measuredHeight, width: measuredWidth, x: 0, y: 0 },
     },
   });
 
-  expect(
-    measuredWidth + toggle.props.hitSlop.left + toggle.props.hitSlop.right,
-  ).toBe(44);
-  expect(toggle.props.hitSlop.left).toBe(toggle.props.hitSlop.right);
-  expect(
-    measuredHeight + toggle.props.hitSlop.top + toggle.props.hitSlop.bottom,
-  ).toBe(44);
-  expect(toggle.props.hitSlop.top).toBe(toggle.props.hitSlop.bottom);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('settings-daily-reminder-toggle-control').props.style,
-    ),
-  ).toMatchObject({
+  const targetStyle = StyleSheet.flatten(toggle.props.style);
+  expect(measuredWidth + 2 * targetStyle.paddingHorizontal).toBe(44);
+  expect(measuredHeight + 2 * targetStyle.paddingVertical).toBe(44);
+  expect(targetStyle).toMatchObject({
     minHeight: 44,
     minWidth: 44,
     alignItems: 'center',
@@ -138,7 +160,7 @@ test('requires an explicit time confirmation before first enablement', async () 
   await render(<SettingsDailyReminderSection />);
   const toggle = await screen.findByTestId('settings-daily-reminder-switch');
 
-  await fireEvent(toggle, 'valueChange', true);
+  await fireEvent.press(toggle);
   expect(
     screen.getByTestId('settings-daily-reminder-picker-sheet'),
   ).toBeTruthy();
@@ -156,6 +178,7 @@ test('requires an explicit time confirmation before first enablement', async () 
       minute: 15,
     }),
   );
+  expect(native.save).toHaveBeenCalledTimes(1);
   expect(
     await screen.findByText(
       t('settings.dailyReminder.scheduled', { time: '20:15' }),
@@ -171,9 +194,7 @@ test('canceling the time picker leaves the saved setting unchanged', async () =>
   await fireEvent.press(screen.getByTestId('settings-daily-reminder-cancel'));
 
   expect(native.save).not.toHaveBeenCalled();
-  expect(screen.getByTestId('settings-daily-reminder-switch').props.value).toBe(
-    false,
-  );
+  expectReminderSwitchState(false);
   expect(screen.getByText(t('settings.dailyReminder.disabled'))).toBeTruthy();
 });
 
@@ -187,7 +208,7 @@ test('disabling a saved reminder preserves its time in the native preference', a
   await render(<SettingsDailyReminderSection />);
   const toggle = await screen.findByTestId('settings-daily-reminder-switch');
 
-  await fireEvent(toggle, 'valueChange', false);
+  await fireEvent.press(toggle);
 
   await waitFor(() =>
     expect(native.save).toHaveBeenCalledWith({
@@ -199,7 +220,8 @@ test('disabling a saved reminder preserves its time in the native preference', a
   expect(
     await screen.findByText(t('settings.dailyReminder.disabled')),
   ).toBeTruthy();
-  expect(toggle.props.value).toBe(false);
+  expect(native.save).toHaveBeenCalledTimes(1);
+  expectReminderSwitchState(false);
 });
 
 test('changing the time while reminders are off keeps them disabled', async () => {

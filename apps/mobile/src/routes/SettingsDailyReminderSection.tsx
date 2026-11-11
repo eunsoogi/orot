@@ -15,7 +15,11 @@ import { SettingsDailyReminderTimePicker } from './SettingsDailyReminderTimePick
 
 const MINIMUM_SWITCH_TOUCH_TARGET = 44;
 
-/** Connects the opt-in to native scheduling and measures its switch target. */
+/** Returns equal wrapper padding that brings a measured dimension to 44 points. */
+const measuredPadding = (size: number) =>
+  size > 0 ? Math.max(0, (MINIMUM_SWITCH_TOUCH_TARGET - size) / 2) : 0;
+
+/** Connects reminder opt-in to native scheduling and owns its measured target. */
 export function SettingsDailyReminderSection() {
   const { refresh, save, state } = useDailyReminderSettings();
   const preference = state.pendingPreference ?? state.preference;
@@ -23,16 +27,11 @@ export function SettingsDailyReminderSection() {
   const [pickerValue, setPickerValue] = useState(() => new Date());
   const [enableAfterPicker, setEnableAfterPicker] = useState(false);
   const [switchFrame, setSwitchFrame] = useState({ height: 0, width: 0 });
-  const switchHorizontalHitSlop = Math.max(
-    0,
-    (MINIMUM_SWITCH_TOUCH_TARGET - switchFrame.width) / 2,
-  );
-  const switchVerticalHitSlop = Math.max(
-    0,
-    (MINIMUM_SWITCH_TOUCH_TARGET - switchFrame.height) / 2,
-  );
-  const isUnavailable = state.loading || state.loadError;
-  const isBusy = isUnavailable || state.saving;
+  const isBusy = state.loading || state.loadError || state.saving;
+  const switchTargetPadding = {
+    paddingHorizontal: measuredPadding(switchFrame.width),
+    paddingVertical: measuredPadding(switchFrame.height),
+  };
 
   function openPicker(enableWhenConfirmed = false) {
     setPickerValue(dailyReminderPickerDate(preference));
@@ -75,7 +74,7 @@ export function SettingsDailyReminderSection() {
     }
   }
 
-  // Expand only short measured dimensions so the native switch target reaches 44 points.
+  // The wrapper owns activation and accessibility; its padding follows the measured frame.
   function measureSwitch(event: LayoutChangeEvent) {
     const { height, width } = event.nativeEvent.layout;
     setSwitchFrame(current =>
@@ -112,27 +111,30 @@ export function SettingsDailyReminderSection() {
               {t('settings.dailyReminder.enabled')}
             </Text>
           </View>
-          <View
-            style={styles.toggleControlTarget}
-            testID="settings-daily-reminder-toggle-control"
+          <Pressable
+            accessibilityHint={t('settings.dailyReminder.toggleHint')}
+            accessibilityLabel={t('settings.dailyReminder.enabled')}
+            accessibilityRole="switch"
+            accessibilityState={{
+              checked: preference?.enabled ?? false,
+              disabled: isBusy,
+            }}
+            disabled={isBusy}
+            onPress={() => toggleReminder(!(preference?.enabled ?? false))}
+            style={[styles.toggleControlTarget, switchTargetPadding]}
+            testID="settings-daily-reminder-switch"
           >
+            {/* The Pressable owns the full target; Switch supplies its native appearance only. */}
             <Switch
-              accessibilityHint={t('settings.dailyReminder.toggleHint')}
-              accessibilityLabel={t('settings.dailyReminder.enabled')}
-              accessibilityRole="switch"
+              accessible={false}
               disabled={isBusy}
-              hitSlop={{
-                bottom: switchVerticalHitSlop,
-                left: switchHorizontalHitSlop,
-                right: switchHorizontalHitSlop,
-                top: switchVerticalHitSlop,
-              }}
+              importantForAccessibility="no-hide-descendants"
               onLayout={measureSwitch}
-              onValueChange={toggleReminder}
-              testID="settings-daily-reminder-switch"
+              pointerEvents="none"
+              testID="settings-daily-reminder-switch-visual"
               value={preference?.enabled ?? false}
             />
-          </View>
+          </Pressable>
         </View>
         <View style={styles.divider} />
         <Pressable
