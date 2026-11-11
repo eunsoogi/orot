@@ -104,15 +104,20 @@ test('starts from the saved opt-in state without asking for permission on entry'
 test('extends the switch hit area from its measured native frame', async () => {
   await render(<SettingsDailyReminderSection />);
   const toggle = await screen.findByTestId('settings-daily-reminder-switch');
-  // This synthetic layout checks the inset calculation, not UIKit geometry.
+  // Synthetic dimensions check the inset calculation, not UIKit geometry.
+  const measuredWidth = 31;
   const measuredHeight = 31;
 
   await fireEvent(toggle, 'layout', {
     nativeEvent: {
-      layout: { height: measuredHeight, width: 51, x: 0, y: 0 },
+      layout: { height: measuredHeight, width: measuredWidth, x: 0, y: 0 },
     },
   });
 
+  expect(
+    measuredWidth + toggle.props.hitSlop.left + toggle.props.hitSlop.right,
+  ).toBe(44);
+  expect(toggle.props.hitSlop.left).toBe(toggle.props.hitSlop.right);
   expect(
     measuredHeight + toggle.props.hitSlop.top + toggle.props.hitSlop.bottom,
   ).toBe(44);

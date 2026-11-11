@@ -22,10 +22,14 @@ export function SettingsDailyReminderSection() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerValue, setPickerValue] = useState(() => new Date());
   const [enableAfterPicker, setEnableAfterPicker] = useState(false);
-  const [switchHeight, setSwitchHeight] = useState(0);
+  const [switchFrame, setSwitchFrame] = useState({ height: 0, width: 0 });
+  const switchHorizontalHitSlop = Math.max(
+    0,
+    (MINIMUM_SWITCH_TOUCH_TARGET - switchFrame.width) / 2,
+  );
   const switchVerticalHitSlop = Math.max(
     0,
-    (MINIMUM_SWITCH_TOUCH_TARGET - switchHeight) / 2,
+    (MINIMUM_SWITCH_TOUCH_TARGET - switchFrame.height) / 2,
   );
   const isUnavailable = state.loading || state.loadError;
   const isBusy = isUnavailable || state.saving;
@@ -71,11 +75,13 @@ export function SettingsDailyReminderSection() {
     }
   }
 
-  // Expand only the unused portion of the measured native frame to 44 points.
+  // Expand only short measured dimensions so the native switch target reaches 44 points.
   function measureSwitch(event: LayoutChangeEvent) {
-    const measuredHeight = event.nativeEvent.layout.height;
-    setSwitchHeight(current =>
-      current === measuredHeight ? current : measuredHeight,
+    const { height, width } = event.nativeEvent.layout;
+    setSwitchFrame(current =>
+      current.height === height && current.width === width
+        ? current
+        : { height, width },
     );
   }
 
@@ -117,8 +123,8 @@ export function SettingsDailyReminderSection() {
               disabled={isBusy}
               hitSlop={{
                 bottom: switchVerticalHitSlop,
-                left: 0,
-                right: 0,
+                left: switchHorizontalHitSlop,
+                right: switchHorizontalHitSlop,
                 top: switchVerticalHitSlop,
               }}
               onLayout={measureSwitch}
