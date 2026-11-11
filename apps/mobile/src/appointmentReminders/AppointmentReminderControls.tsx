@@ -1,11 +1,5 @@
 import { useState, useSyncExternalStore } from 'react';
-import {
-  StyleSheet,
-  View,
-  useWindowDimensions,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { ReactNode } from 'react';
 import type { Appointment } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
@@ -16,11 +10,13 @@ import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import type { AppointmentReminderRuntime } from './AppointmentReminderContext';
 import { appointmentStartTime } from '../calendar/appointmentTime';
 import { beginReminderAction } from './reminderActionObservation';
+import {
+  AppointmentReminderActionCell as ActionCell,
+  AppointmentReminderActionRow as ActionRow,
+} from './AppointmentReminderActionRow';
 
 /** Side-by-side panels need room for the reminder copy and its choice row. */
 const REMINDER_TWO_PANEL_MIN_WIDTH = 480;
-// Split Korean labels and compact-button padding still fit on a narrow iPhone card.
-const REMINDER_ACTION_MIN_WIDTH = 92;
 
 /** Permission is requested only by an explicit card action; default is off. */
 export function AppointmentReminderControls({
@@ -40,8 +36,12 @@ export function AppointmentReminderControls({
     appointmentStartTime(appointment) <= Date.now()
   ) {
     return additionalAction ? (
-      <ActionRow>
-        <ActionCell textScale={textScale}>{additionalAction}</ActionCell>
+      <ActionRow textScale={textScale}>
+        {minimumCellWidth => (
+          <ActionCell minimumWidth={minimumCellWidth}>
+            {additionalAction}
+          </ActionCell>
+        )}
       </ActionRow>
     ) : null;
   }
@@ -115,29 +115,39 @@ function Controls({
         <AppText>진료 준비 알림 · 한 예약에만 설정할 수 있어요.</AppText>
         <AppText>잠금 화면에는 예약 내용 없이 준비 안내만 표시해요.</AppText>
       </View>
-      <ActionRow style={horizontal && styles.horizontalPanel}>
-        {([60, 1440] as const).map(minutes => {
-          const label = minutes === 60 ? '1시간 전 알림' : '하루 전 알림';
-          const isSelected =
-            selected && state.selection?.leadMinutes === minutes;
-          return (
-            <ActionCell key={minutes} textScale={textScale}>
-              <AppButton
-                accessibilityLabel={label}
-                accessibilityState={{ selected: isSelected }}
-                disabled={state.busy}
-                onPress={() => select(minutes)}
-                size="compact"
-                testID={`appointment-reminder-${appointment.id}-${minutes}`}
-                title={label.replace(' ', '\n')}
-                variant={isSelected ? 'primary' : 'secondary'}
-              />
-            </ActionCell>
-          );
-        })}
-        {additionalAction ? (
-          <ActionCell textScale={textScale}>{additionalAction}</ActionCell>
-        ) : null}
+      <ActionRow
+        style={horizontal && styles.horizontalPanel}
+        textScale={textScale}
+      >
+        {minimumCellWidth => (
+          <>
+            {([60, 1440] as const).map(minutes => {
+              const label = minutes === 60 ? '1시간 전 알림' : '하루 전 알림';
+              const isSelected =
+                selected && state.selection?.leadMinutes === minutes;
+              return (
+                <ActionCell key={minutes} minimumWidth={minimumCellWidth}>
+                  <AppButton
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected: isSelected }}
+                    disabled={state.busy}
+                    onPress={() => select(minutes)}
+                    size="compact"
+                    style={isSelected ? styles.selectedReminder : undefined}
+                    testID={`appointment-reminder-${appointment.id}-${minutes}`}
+                    title={label.replace(' ', '\n')}
+                    variant={isSelected ? 'primary' : 'secondary'}
+                  />
+                </ActionCell>
+              );
+            })}
+            {additionalAction ? (
+              <ActionCell minimumWidth={minimumCellWidth}>
+                {additionalAction}
+              </ActionCell>
+            ) : null}
+          </>
+        )}
       </ActionRow>
       {selected ? (
         <View style={styles.feedback}>
@@ -167,54 +177,15 @@ function Controls({
   );
 }
 
-function ActionRow({
-  children,
-  style,
-}: {
-  readonly children: ReactNode;
-  readonly style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View style={[styles.actions, style]} testID="appointment-reminder-actions">
-      {children}
-    </View>
-  );
-}
-
-/** Scaled minimums wrap whole controls before text or touch targets can shrink. */
-function ActionCell({
-  children,
-  textScale,
-}: {
-  readonly children: ReactNode;
-  readonly textScale: number;
-}) {
-  return (
-    <View
-      style={[
-        styles.actionCell,
-        { minWidth: REMINDER_ACTION_MIN_WIDTH * textScale },
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flexDirection: 'column', gap: 12, minWidth: 0 },
   horizontal: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   preview: { gap: 8, minWidth: 0 },
   title: { color: appColors.text, fontSize: 16, fontWeight: '700' },
-  // Wrap compact choices instead of shrinking their minimum native hit areas.
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'stretch',
-    gap: 8,
-    minWidth: 0,
+  selectedReminder: {
+    borderColor: appColors.primaryAction,
+    borderWidth: 1,
   },
-  actionCell: { flexBasis: 0, flexGrow: 1, flexShrink: 0 },
   feedback: {
     flexDirection: 'row',
     flexWrap: 'wrap',

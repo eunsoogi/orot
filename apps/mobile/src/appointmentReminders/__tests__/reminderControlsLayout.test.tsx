@@ -30,6 +30,37 @@ function actionCellMinWidth(minutes: 60 | 1440): number | undefined {
   return StyleSheet.flatten(action.parent?.props.style)?.minWidth;
 }
 
+it('caps scaled action cells at the measured row width when space is insufficient', async () => {
+  const store = createAppointmentStore([appointment]);
+  const runtime = createAppointmentReminderRuntime(
+    async () => store.repository,
+  );
+
+  Dimensions.set({ window: { ...originalWindow, fontScale: 3 } });
+  let unmount: (() => void) | undefined;
+  try {
+    const rendered = await render(
+      <View style={{ padding: 16, width: 282 }}>
+        <AppointmentReminderProvider runtime={runtime}>
+          <AppointmentReminderControls appointment={appointment} />
+        </AppointmentReminderProvider>
+      </View>,
+    );
+    unmount = rendered.unmount;
+
+    const actionRow = screen.getByTestId('appointment-reminder-actions');
+    await fireEvent(actionRow, 'layout', {
+      nativeEvent: { layout: { width: 250, height: 200, x: 0, y: 0 } },
+    });
+
+    expect(actionCellMinWidth(60)).toBe(250);
+    expect(actionCellMinWidth(1440)).toBe(250);
+  } finally {
+    unmount?.();
+    Dimensions.set({ window: originalWindow });
+  }
+});
+
 it('reflows the reminder preview within its measured width and system text scale', async () => {
   const store = createAppointmentStore([appointment]);
   const runtime = createAppointmentReminderRuntime(
@@ -49,9 +80,14 @@ it('reflows the reminder preview within its measured width and system text scale
     const rendered = await render(view(600));
     unmount = rendered.unmount;
     const controls = screen.getByTestId('appointment-reminder-controls');
+    const actionRow = screen.getByTestId('appointment-reminder-actions');
 
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
+    expect(actionCellMinWidth(60)).toBe(44);
+    await fireEvent(actionRow, 'layout', {
+      nativeEvent: { layout: { width: 568, height: 44, x: 0, y: 0 } },
+    });
     expect(actionCellMinWidth(60)).toBe(92);
     expect(actionCellMinWidth(1440)).toBe(92);
     expect(screen.getByTestId('appointment-reminder-title')).toHaveTextContent(
@@ -88,6 +124,9 @@ it('reflows the reminder preview within its measured width and system text scale
         nativeEvent: { layout: { width: 432, height: 300, x: 0, y: 0 } },
       },
     );
+    await fireEvent(actionRow, 'layout', {
+      nativeEvent: { layout: { width: 432, height: 44, x: 0, y: 0 } },
+    });
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
     expect(actionCellMinWidth(60)).toBe(92);
@@ -104,6 +143,9 @@ it('reflows the reminder preview within its measured width and system text scale
         nativeEvent: { layout: { width: 568, height: 360, x: 0, y: 0 } },
       },
     );
+    await fireEvent(actionRow, 'layout', {
+      nativeEvent: { layout: { width: 432, height: 44, x: 0, y: 0 } },
+    });
     expect(direction()).toBe('column');
     expect(choiceDirection()).toBe('row');
     expect(actionCellMinWidth(60)).toBe(138);

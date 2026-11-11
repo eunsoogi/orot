@@ -1,4 +1,9 @@
-import { render, screen, within } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
@@ -66,6 +71,11 @@ test('balances reminder and cancellation actions while keeping edit in the heade
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  });
+  await fireEvent(actionRow, 'layout', {
+    nativeEvent: {
+      layout: { width: minActionWidth * 3 + 16, height: 44, x: 0, y: 0 },
+    },
   });
   const actions = within(actionRow);
   const oneHourReminder = actions.getByTestId(

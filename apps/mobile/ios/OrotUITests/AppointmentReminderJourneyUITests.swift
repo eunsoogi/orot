@@ -127,6 +127,17 @@ final class AppointmentReminderJourneyUITests: OrotFailFastTestCase {
         let appointmentStatus = UITestConditions.element(app, "appointment-status-\(id)")
         XCTAssertTrue(appointmentStatus.exists, app.debugDescription)
         XCTAssertTrue(appointmentStatus.label.contains("예정"), app.debugDescription)
+        let selectedReminder = UITestConditions.element(app, "appointment-reminder-\(id)-60")
+        let alternateReminder = UITestConditions.element(app, "appointment-reminder-\(id)-1440")
+        let cancelAction = UITestConditions.element(app, "appointment-cancel-\(id)")
+        for action in [selectedReminder, alternateReminder, cancelAction] {
+            XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, app.debugDescription)
+        }
+        // Selected and idle controls share a frame so toggling a reminder does not shift adjacent targets.
+        XCTAssertEqual(selectedReminder.frame.height, alternateReminder.frame.height, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(alternateReminder.frame.height, cancelAction.frame.height, accuracy: 1, app.debugDescription)
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if originalAppearance == nil {

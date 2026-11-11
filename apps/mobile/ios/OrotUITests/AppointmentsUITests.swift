@@ -92,7 +92,10 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(actionStack.exists && !actionStack.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
         XCTAssertLessThan(edit.frame.width, actionStack.frame.width, app.debugDescription)
-        XCTAssertLessThan(cancel.frame.width, actionStack.frame.width, app.debugDescription)
+        for action in [oneHourReminder, oneDayReminder, cancel] {
+            XCTAssertGreaterThanOrEqual(action.frame.minX, actionStack.frame.minX - 1, app.debugDescription)
+            XCTAssertLessThanOrEqual(action.frame.maxX, actionStack.frame.maxX + 1, app.debugDescription)
+        }
         XCTAssertTrue(cancel.label.contains(longClinic), app.debugDescription)
         let reminderFrames = [oneHourReminder.frame, oneDayReminder.frame, cancel.frame]
         for firstIndex in reminderFrames.indices {

@@ -91,6 +91,8 @@ it('announces the selected lead time and keeps opt-out outside the action row', 
   });
   expect(StyleSheet.flatten(oneHour.props.style)).toMatchObject({
     backgroundColor: appColors.primaryAction,
+    borderColor: appColors.primaryAction,
+    borderWidth: 1,
   });
   expect(screen.getByText('알림이 설정되었어요.')).toBeTruthy();
   expect(
