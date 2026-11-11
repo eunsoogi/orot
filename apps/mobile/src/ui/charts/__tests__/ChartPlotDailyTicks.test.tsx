@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ChartPlot } from '../ChartPlot';
 import type { ChartData } from '../types';
 
@@ -37,7 +37,14 @@ test('passes compact daily ticks while keeping full dates in keys and values', a
     .mockReturnValue({ width: 390, height: 800, scale: 3, fontScale: 1 });
 
   await render(
-    <ChartPlot data={data} width={320} height={112} title="걸음" kind="bar" />,
+    <ChartPlot
+      data={data}
+      width={320}
+      height={112}
+      title="걸음"
+      kind="bar"
+      testID="daily-chart"
+    />,
   );
 
   const chart = screen.getByTestId('bar-renderer', {
@@ -52,5 +59,14 @@ test('passes compact daily ticks while keeping full dates in keys and values', a
     '10/08',
     '10/09',
   ]);
-  expect(screen.getByText(/2026-10-08:.*1걸음/u)).toBeTruthy();
+  const selected = screen.getByTestId('daily-chart-selected-point');
+  expect(selected.props.accessibilityLabel).toContain('2026-10-09');
+  expect(selected.props.accessibilityLabel).toContain('2걸음');
+  expect(selected.props.accessibilityLabel).not.toContain('2026-10-08');
+  await fireEvent.press(
+    screen.getByTestId('daily-chart-selected-point-previous'),
+  );
+  const previous = screen.getByTestId('daily-chart-selected-point');
+  expect(previous.props.accessibilityLabel).toContain('2026-10-08');
+  expect(previous.props.accessibilityLabel).toContain('1걸음');
 });

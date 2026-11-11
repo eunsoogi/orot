@@ -1,15 +1,15 @@
 # Chart integration source inventory
 
-This ledger covers the chart consumers after the loading-state migration.
-Runtime observations and their source revision are recorded in
-[iOS validation coverage](ios-validation.md).
+This ledger covers the chart consumers after the loading-state migration and
+the selected-measurement presentation in issue #731. Runtime observations and
+their source revision are recorded in [iOS validation coverage](ios-validation.md).
 
 ## Revision and scope
 
-The inventory was checked against the loading candidate and the merged
-loading-state tree at `f2ec6b28170aa2f05a3166d9b8d095543c14fc2d`.
-The common acceptance candidate `7713852c0a26fff283284ab9733a5c76f2282b34`
-preserves the same chart, Home, health-record and dependency files.
+The loading-state behavior was checked against the merged tree at
+`f2ec6b28170aa2f05a3166d9b8d095543c14fc2d`. Issue #731 starts from
+`04881277a2bfc7459173d06eca6c7694d5a642ae`; its chart change keeps the existing
+Home and saved-observation adapters and updates the shared presentation.
 
 ## Production consumers
 
@@ -26,7 +26,7 @@ proof that later changes cannot introduce another consumer.
 
 ## Facade, dependencies and search result
 
-Production `ChartPlot.tsx` is the only app source importing
+Production `ChartRenderer.tsx` is the only app source importing
 `react-native-chart-kit/v2`. Its line and bar components use
 `react-native-chart-kit` 7.0.4; `react-native-svg` 15.16.1 is its declared peer
 and appears as `RNSVG` in `apps/mobile/ios/Podfile.lock`. Do not remove SVG
@@ -39,9 +39,11 @@ code and the final dependency graph before claiming cleanup is complete.
 
 `ui/charts/window.ts` partitions observations into windows with a default limit
 of 100 entries; it does not decimate. Very large groups at one timestamp may
-span windows. `ChartPlot` provides page controls, value text and source labels;
-large font scale switches from the plot to a value-list presentation. These are
-source observations, not native interaction or performance results.
+span windows. `ChartPlot` provides page controls and one selected point's exact
+date, value, unit and source. Visible previous and next buttons and adjustable
+VoiceOver actions change the selected point without requiring a graph drag. The
+native plot remains rendered at large text sizes with scaled labels and height.
+These are source observations, not native interaction or performance results.
 
 ## Loading, deletion and lifecycle
 
@@ -70,8 +72,14 @@ loss is a separate observation from committed deletion.
   mocked facade. `healthRecordsChartModel.test.ts` checks saved pressure series.
   `healthRecordsChartGeometry.test.js` exercises library scale/label helpers.
 - `ui/charts/__tests__/ChartPlot.test.tsx`, `model.test.ts` and `window.test.ts`
-  cover shared data and window behavior. Mocked renderers do not establish
-  native drawing, gestures, VoiceOver speech, geometry, or memory usage.
+  cover selected detail navigation, source, zero versus missing, partial values,
+  mixed units, large-text rendering and window behavior. Mocked renderers do not
+  establish native drawing, gestures, VoiceOver speech, geometry, or memory use.
+- `ChartFoundationUITests` covers the synthetic native plot, selected-detail
+  paging and VoiceOver speech. `ChartConsumerAcceptanceUITests` covers Home on
+  ordinary iPhone and Duo at XXXL, plus saved blood-pressure values and source
+  speech under dark appearance. Registered tests identify required coverage;
+  their presence alone does not establish a passing native run.
 - Historical [records PR](https://github.com/eunsoogi/orot/pull/717) reports
   scoped passes and direct synthetic-device observations, but its failed or
   interrupted native runs do not prove value or diastolic speech. Historical
@@ -79,16 +87,17 @@ loss is a separate observation from committed deletion.
   its landscape request did not produce a changed app window. The two Home
   `.xcresult` bundles and supporting logs formerly in the archived `/4264/orot`
   checkout are unavailable. PR summaries do not replace those originals.
-- Pending on the final common revision: old-to-new assertion mapping and
-  regression sensitivity; loading, refresh, deletion, permission and late-result
-  checks; real native values and VoiceOver; ordinary iPhone, Duo portrait and
-  measured expanded/narrow windows; XXXL chart values; representative appearance
-  and Reduce Motion; and dense synthetic data responsiveness and memory with
-  dataset, environment and measurement limits recorded. Preserve first failures.
-- Xcode registers both the Home XXXL values case and the blood-pressure
-  VoiceOver case. Home is in the Duo inventory, and the blood-pressure speech
-  case is available as an explicitly selected Duo diagnostic. The validation
-  record distinguishes their native outcomes and fixture bounds.
+- Pending on the final common revision: runtime results for the registered
+  iPhone, Duo and VoiceOver chart cases; measured expanded and narrow windows;
+  loading, refresh, deletion, permission and late-result behavior; and dense
+  synthetic-data responsiveness and memory with dataset, environment and
+  measurement limits recorded. Preserve first failures and keep those outcomes
+  separate from source-level component evidence.
+- The ordinary iPhone `core-ui` cohort registers the Home XXXL case and the
+  synthetic chart VoiceOver case. The Duo profile selects the Home XXXL case.
+  Saved blood-pressure detail and speech remain an explicitly selected Duo
+  diagnostic outside the default cohort. Test source and inventory prove
+  selection only; exact run artifacts remain the evidence for native behavior.
 
 ## Reproduce the source inventory
 

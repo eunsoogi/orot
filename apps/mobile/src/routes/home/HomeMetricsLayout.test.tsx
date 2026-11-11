@@ -126,11 +126,20 @@ test.each([2, 3, 4])(
     // An ordinary iPhone's measured content must keep each metric on its own row.
     expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
+      const chart = within(screen.getByTestId(`home-metric-chart-${metric}`));
+      const selectedPointID = `home-metric-chart-${metric}-selected-point`;
+      const selectedPoint = chart.getByTestId(selectedPointID);
+      expect(selectedPoint.props.accessibilityLabel).toContain('2026-10-14');
+      expect(selectedPoint.props.accessibilityLabel).toContain(
+        '출처: 건강 기록',
+      );
+      expect(selectedPoint.props.accessibilityLabel).not.toContain(
+        '2026-10-13',
+      );
+      await fireEvent.press(chart.getByTestId(`${selectedPointID}-previous`));
       expect(
-        within(screen.getByTestId(`home-metric-chart-${metric}`)).getAllByText(
-          /^2026-10-(0[8-9]|1[0-4]):/,
-        ),
-      ).toHaveLength(7);
+        chart.getByTestId(selectedPointID).props.accessibilityLabel,
+      ).toContain('2026-10-13');
     }
   },
 );

@@ -62,8 +62,8 @@ test('keeps blood-pressure line styles when series order changes', async () => {
       kind="line"
     />,
   );
-  expect(screen.getByText('이완기 (점선)')).toBeTruthy();
-  expect(screen.getByText('수축기 (실선)')).toBeTruthy();
+  expect(screen.getByText(/이완기 \(점선\)/)).toBeTruthy();
+  expect(screen.getByText(/수축기 \(실선\)/)).toBeTruthy();
   const series = screen.getByTestId('line-renderer', {
     includeHiddenElements: true,
   }).props.series;
@@ -71,8 +71,8 @@ test('keeps blood-pressure line styles when series order changes', async () => {
   expect(series[1].strokeDasharray).toBeUndefined();
 });
 
-test('shows compact endpoint labels on the time axis while keeping full dates in the value list', async () => {
-  await render(<ChartPlot {...props} kind="line" />);
+test('shows compact endpoint labels and keeps a full date in selected details', async () => {
+  await render(<ChartPlot {...props} kind="line" testID="pressure-chart" />);
   const chart = screen.getByTestId('line-renderer', {
     includeHiddenElements: true,
   });
@@ -82,23 +82,9 @@ test('shows compact endpoint labels on the time axis while keeping full dates in
   expect(labels[1]).toBe('');
   expect(labels[0].length).toBeLessThan(16);
   expect(labels[labels.length - 1].length).toBeLessThan(16);
-  expect(screen.getAllByText(/2026년/).length).toBeGreaterThan(0);
-});
-
-test('exposes one label per original series and its actual values while passing split segments to the renderer', async () => {
-  await render(<ChartPlot {...props} kind="line" />);
-  expect(screen.getAllByText('수축기 (실선)')).toHaveLength(1);
-  expect(screen.getAllByText('이완기 (점선)')).toHaveLength(1);
-  expect(screen.getByText(/: 0 mmHg/)).toBeTruthy();
-  expect(screen.getByText(/측정되지 않음/)).toBeTruthy();
-  expect(
-    screen.getByTestId('line-renderer', { includeHiddenElements: true }).props
-      .series,
-  ).toHaveLength(3);
-  expect(
-    screen.getByTestId('line-renderer', { includeHiddenElements: true }).props
-      .connectNulls,
-  ).toBe(true);
+  const selection = screen.getByTestId('pressure-chart-selected-point');
+  expect(selection.props.accessibilityLabel).toContain('2026년');
+  expect(selection.props.accessibilityLabel).toContain('출처: synthetic');
 });
 
 test('does not expose stale data after permission is revoked', async () => {
@@ -111,45 +97,6 @@ test('does not expose stale data after permission is revoked', async () => {
   );
   expect(screen.queryByText('수축기 (실선)')).toBeNull();
   expect(screen.queryByTestId('line-renderer')).toBeNull();
-});
-
-test('uses the full value list instead of a clipped plot at large text sizes', async () => {
-  Dimensions.set({
-    window: { width: 390, height: 844, scale: 3, fontScale: 3 },
-  });
-  await render(<ChartPlot {...props} kind="line" />);
-  expect(
-    screen.getByText('큰 글자에서는 아래 목록으로 값을 확인하세요.'),
-  ).toBeTruthy();
-  expect(screen.getByText(/: 0 mmHg/)).toBeTruthy();
-  expect(
-    screen.queryByTestId('line-renderer', { includeHiddenElements: true }),
-  ).toBeNull();
-});
-
-test('shows partial coverage, source and localized missing and partial values', async () => {
-  const partial = {
-    ...data,
-    coverage: {
-      requested: '1월',
-      displayed: '1월 1일',
-      status: 'partial' as const,
-    },
-    series: [
-      {
-        ...data.series[0]!,
-        points: [
-          { x: '2026-01-01', value: 0, source: '합성 기기', partial: true },
-          { x: '2026-01-02', value: null, source: '합성 기기' },
-        ],
-      },
-    ],
-  };
-  await render(<ChartPlot {...props} data={partial} kind="bar" />);
-  expect(screen.getByText('일부 기록만 표시하고 있어요.')).toBeTruthy();
-  expect(screen.getByText(/요청 범위: 1월.*표시 범위: 1월 1일/)).toBeTruthy();
-  expect(screen.getByText(/0 mmHg.*일부 기록.*합성 기기/)).toBeTruthy();
-  expect(screen.getByText(/측정되지 않음.*합성 기기/)).toBeTruthy();
 });
 
 test.each([
@@ -187,12 +134,18 @@ test('makes all dense observations reachable without dropping an outlier', async
       },
     ],
   };
-  await render(<ChartPlot {...props} data={dense} kind="bar" />);
+  await render(
+    <ChartPlot {...props} data={dense} kind="bar" testID="dense-chart" />,
+  );
   expect(screen.getByText('1 / 2쪽')).toBeTruthy();
-  expect(screen.queryByText(/999,999걸음/)).toBeNull();
+  expect(
+    screen.getByTestId('dense-chart-selected-point').props.accessibilityLabel,
+  ).not.toContain('999,999걸음');
   await fireEvent.press(screen.getByRole('button', { name: '다음 기록' }));
   expect(screen.getByText('2 / 2쪽')).toBeTruthy();
-  expect(screen.getByText(/999,999걸음/)).toBeTruthy();
+  expect(
+    screen.getByTestId('dense-chart-selected-point').props.accessibilityLabel,
+  ).toContain('999,999걸음');
 });
 
 test('clamps the page after deletion and removes deleted observations', async () => {
@@ -214,7 +167,9 @@ test('clamps the page after deletion and removes deleted observations', async ()
       },
     ],
   };
-  const view = await render(<ChartPlot {...props} data={dense} kind="bar" />);
+  const view = await render(
+    <ChartPlot {...props} data={dense} kind="bar" testID="dense-chart" />,
+  );
   await fireEvent.press(screen.getByRole('button', { name: '다음 기록' }));
   expect(screen.getByText(/999,999걸음/)).toBeTruthy();
   await view.rerender(
@@ -225,6 +180,7 @@ test('clamps the page after deletion and removes deleted observations', async ()
         series: [{ ...dense.series[0]!, points: points.slice(0, 1) }],
       }}
       kind="bar"
+      testID="dense-chart"
     />,
   );
   expect(screen.queryByText(/999,999걸음/)).toBeNull();

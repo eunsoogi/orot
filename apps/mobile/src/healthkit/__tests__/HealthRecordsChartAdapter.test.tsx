@@ -35,7 +35,7 @@ test.each([
   },
 );
 
-test('preserves distinct labeled pressure series with non-color line styles', async () => {
+test('preserves labeled pressure series with unit-qualified identities and non-color line styles', async () => {
   const observations = mapBloodPressureCorrelation(
     correlation('pressure'),
     '2026-10-01T00:00:00Z',
@@ -69,8 +69,8 @@ test('preserves distinct labeled pressure series with non-color line styles', as
     screen.getByTestId('chart-data').props.children,
   ) as ChartData;
   expect(reversed.series.map(series => [series.label, series.id])).toEqual([
-    ['이완기', 'diastolic'],
-    ['수축기', 'systolic'],
+    ['이완기', 'diastolic-mmHg'],
+    ['수축기', 'systolic-mmHg'],
   ]);
 });
 

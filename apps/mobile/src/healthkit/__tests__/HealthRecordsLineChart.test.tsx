@@ -21,13 +21,13 @@ beforeEach(() => {
 });
 
 test.each([
-  ['blood_pressure', 'blood pressure systolic'],
-  ['heart_rate', 'heart_rate'],
-  ['steps', 'step_count'],
-  ['body_mass', 'body_mass'],
+  ['blood_pressure', 'blood pressure systolic', '120 mmHg'],
+  ['heart_rate', 'heart_rate', '72회/분'],
+  ['steps', 'step_count', '72걸음'],
+  ['body_mass', 'body_mass', '72 kg'],
 ] as const)(
-  'passes all %s measurements to the library with visible dots',
-  async (category, concept) => {
+  'keeps the selected %s observation exact and passes all measurements to the library',
+  async (category, concept, expectedValue) => {
     const observations = Array.from({ length: 100 }, (_, index) =>
       healthObservation(
         `sample-${index}`,
@@ -65,6 +65,10 @@ test.each([
     );
     expect(chart().props.data).toHaveLength(100);
     expect(chart().props.decimation).toBe(false);
+    const selected = screen.getByTestId('health-record-chart-' + category);
+    expect(selected.props.accessibilityLabel).toContain(expectedValue);
+    expect(selected.props.accessibilityLabel).toContain('출처: 건강 앱');
+    expect(selected.props.accessibilityLabel).toContain('2026년');
   },
 );
 
@@ -107,7 +111,60 @@ test('passes irregular instants to the scale and exposes both pressure values', 
   ).toContain('80 mmHg');
 });
 
-test('keeps measured values accessible when large text replaces the plot', async () => {
+test('keeps mixed blood-pressure units on separate scales and in the selected detail', async () => {
+  const observations = mapBloodPressureCorrelation(
+    correlation('mixed-pressure-units'),
+    '2026-10-12T00:00:00Z',
+  ).observations;
+  const systolic = observations.find(item => item.concept.endsWith('systolic'));
+  const diastolic = observations.find(item =>
+    item.concept.endsWith('diastolic'),
+  );
+  if (
+    !systolic ||
+    systolic.value.kind !== 'quantity' ||
+    !diastolic ||
+    diastolic.value.kind !== 'quantity'
+  ) {
+    throw new Error('Expected both synthetic blood-pressure components.');
+  }
+  const kPa = {
+    ...systolic,
+    id: 'systolic-kPa',
+    effectiveAt: '2026-10-13T09:00:00.000Z',
+    value: { ...systolic.value, amount: 16, unit: 'kPa' },
+  };
+  await render(
+    <HealthRecordsLineChart
+      category="blood_pressure"
+      observations={[systolic, diastolic, kPa]}
+    />,
+  );
+  await fireEvent(
+    screen.getByTestId('health-record-chart-plot-row'),
+    'layout',
+    { nativeEvent: { layout: { width: 320 } } },
+  );
+
+  const plots = screen.getAllByTestId('line-renderer', {
+    includeHiddenElements: true,
+  });
+  expect(plots).toHaveLength(2);
+  expect(plots.map(plot => plot.props.series[0].label)).toEqual([
+    '수축기',
+    '수축기',
+  ]);
+  const selected = screen.getByTestId('health-record-chart-blood_pressure');
+  expect(selected.props.accessibilityLabel).toContain('16 kPa');
+  expect(selected.props.accessibilityLabel).not.toContain('16 mmHg');
+  await fireEvent.press(
+    screen.getByTestId('health-record-chart-blood_pressure-previous'),
+  );
+  expect(selected.props.accessibilityLabel).toContain('120 mmHg');
+  expect(selected.props.accessibilityLabel).toContain('80 mmHg');
+});
+
+test('keeps the native plot and exact selected values at large text', async () => {
   const original = Dimensions.get('window');
   Dimensions.set({ window: { ...original, fontScale: 2 } });
   const observations = mapBloodPressureCorrelation(
@@ -120,10 +177,21 @@ test('keeps measured values accessible when large text replaces the plot', async
       observations={observations}
     />,
   );
-  expect(screen.getByText(/큰 글자에서는/)).toBeTruthy();
-  expect(screen.getByText(/수축기 \(실선\)/)).toBeTruthy();
-  expect(screen.getByText(/이완기 \(점선\)/)).toBeTruthy();
-  expect(screen.getByText(/120 mmHg/)).toBeTruthy();
-  expect(screen.getByText(/80 mmHg/)).toBeTruthy();
+  await fireEvent(
+    screen.getByTestId('health-record-chart-plot-row'),
+    'layout',
+    { nativeEvent: { layout: { width: 320, height: 200 } } },
+  );
+  expect(screen.queryByText(/큰 글자에서는/)).toBeNull();
+  expect(screen.getByText(/수축기 \(실선\) · mmHg/)).toBeTruthy();
+  expect(screen.getByText(/이완기 \(점선\) · mmHg/)).toBeTruthy();
+  const chart = screen.getByTestId('line-renderer', {
+    includeHiddenElements: true,
+  });
+  expect(chart.props.height).toBe(400);
+  const selected = screen.getByTestId('health-record-chart-blood_pressure');
+  expect(selected.props.accessibilityLabel).toContain('120 mmHg');
+  expect(selected.props.accessibilityLabel).toContain('80 mmHg');
+  expect(selected.props.accessibilityLabel).toContain('출처:');
   await act(() => Dimensions.set({ window: original }));
 });

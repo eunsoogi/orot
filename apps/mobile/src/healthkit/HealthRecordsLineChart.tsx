@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -11,10 +11,7 @@ import {
   healthRecordCategoryTitle,
   healthRecordPeriodTitle,
 } from './healthRecordsLibraryModel';
-import {
-  buildHealthChartSeries,
-  healthChartSummary,
-} from './healthRecordsChartModel';
+import { buildHealthChartSeries } from './healthRecordsChartModel';
 
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
@@ -23,7 +20,7 @@ const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   body_mass: 'bodyMass',
 };
 
-/** Adapts saved observations without aggregation, unit conversion, or filling gaps. */
+/** Adapts saved observations without aggregation or conversion, grouping plotted lines by recorded unit. */
 export function HealthRecordsLineChart({
   category,
   observations,
@@ -68,28 +65,38 @@ export function HealthRecordsLineChart({
         displayed,
         status,
       },
-      series: series.map(item => ({
-        // Keys remain stable when a pressure component is absent or changes order.
-        id:
-          category === 'blood_pressure'
-            ? item.key.endsWith('diastolic')
-              ? 'diastolic'
-              : 'systolic'
-            : (metrics[category] ?? 'measurement'),
-        label: item.label,
-        unit: item.points[0]?.unit ?? '',
-        style:
-          category === 'blood_pressure' && item.key.endsWith('diastolic')
-            ? 'secondary'
-            : 'primary',
-        points: item.points.map(point => ({
-          x: point.effectiveAt,
-          value: point.amount,
-          source: records.get(point.id)
-            ? provenanceLabel(records.get(point.id)!)
-            : t('healthRecords.sourceUnavailable'),
-        })),
-      })),
+      series: series.flatMap(item => {
+        const pointsByUnit = new Map<string, (typeof item.points)[number][]>();
+        for (const point of item.points) {
+          const unitPoints = pointsByUnit.get(point.unit) ?? [];
+          unitPoints.push(point);
+          pointsByUnit.set(point.unit, unitPoints);
+        }
+        const isDiastolic = item.key.endsWith('diastolic');
+        return [...pointsByUnit].map(([unit, unitPoints]) => ({
+          // Separate units keep both plotted scales and selected details faithful to each record.
+          id: `${
+            category === 'blood_pressure'
+              ? isDiastolic
+                ? 'diastolic'
+                : 'systolic'
+              : (metrics[category] ?? 'measurement')
+          }-${encodeURIComponent(unit)}`,
+          label: item.label,
+          unit,
+          style:
+            category === 'blood_pressure' && isDiastolic
+              ? 'secondary'
+              : 'primary',
+          points: unitPoints.map(point => ({
+            x: point.effectiveAt,
+            value: point.amount,
+            source: records.get(point.id)
+              ? provenanceLabel(records.get(point.id)!)
+              : t('healthRecords.sourceUnavailable'),
+          })),
+        }));
+      }),
     };
   }, [category, observations, series, hasMore, loadState]);
   return (
@@ -97,17 +104,6 @@ export function HealthRecordsLineChart({
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
       testID="health-record-chart-plot-row"
     >
-      <View
-        accessible
-        accessibilityRole="image"
-        accessibilityLabel={
-          series.some(item => item.points.length > 0)
-            ? healthChartSummary(series, healthRecordCategoryTitle(category))
-            : t(`chart.state.${data.coverage.status}`)
-        }
-        style={styles.summary}
-        testID={'health-record-chart-' + category}
-      />
       <ChartPlot
         data={data}
         width={width}
@@ -115,10 +111,9 @@ export function HealthRecordsLineChart({
         title={healthRecordCategoryTitle(category)}
         kind="line"
         testID={'health-record-chart-values-' + category}
+        selectedPointTestID={'health-record-chart-' + category}
       />
       <Text>{t('healthRecords.measuredOnly')}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({ summary: { width: 1, height: 1 } });

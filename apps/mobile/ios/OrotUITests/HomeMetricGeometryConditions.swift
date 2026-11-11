@@ -1,6 +1,6 @@
 import XCTest
 
-/// Measures production Home after native layout; screenshots retain chart text for visual inspection.
+/// Measures production Home after native layout and keeps chart details attached to their card.
 enum HomeMetricGeometryConditions {
     @MainActor
     static func verify(_ app: XCUIApplication, testCase: XCTestCase) {
@@ -86,31 +86,26 @@ enum HomeMetricGeometryConditions {
 
     @MainActor
     static func captureCard(_ card: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) {
-        // The summary stays grouped while each dated chart row remains individually discoverable.
+        // The summary stays grouped; the chart exposes one exact selected observation at a time.
         let metric = String(card.identifier.dropFirst("home-metric-".count))
         let summary = UITestConditions.element(app, "home-metric-summary-\(metric)")
         XCTAssertFalse(summary.label.isEmpty)
         let chart = UITestConditions.element(app, "home-metric-chart-\(metric)")
-        let predicate = NSPredicate(format: "label MATCHES %@", #"\d{4}-\d{2}-\d{2}: .*"#)
-        let entries = Set(texts(matching: predicate, in: chart, app: app).map(\.label))
-        XCTAssertEqual(entries.count, 7, chart.debugDescription)
-        let values = entries.compactMap { $0.components(separatedBy: ": ").dropFirst().first }
-        XCTAssertEqual(values.count, 7, chart.debugDescription)
+        let selected = UITestConditions.element(app, "home-metric-chart-\(metric)-selected-point")
+        XCTAssertTrue(selected.waitForAppearance(), selected.debugDescription)
+        XCTAssertTrue(selected.label.contains("출처: 건강 기록"), selected.label)
+        let dateCount = (try? NSRegularExpression(pattern: #"\d{4}-\d{2}-\d{2}"#))?
+            .numberOfMatches(in: selected.label, range: NSRange(selected.label.startIndex..., in: selected.label)) ?? 0
+        XCTAssertEqual(dateCount, 1, selected.label)
+        XCTAssertEqual(selected.label.components(separatedBy: "출처:").count - 1, 1, selected.label)
         XCTAssertTrue(
-            values.contains { $0.range(of: #"^\d+"#, options: .regularExpression) != nil },
-            "At least one daily row must expose its recorded value through native accessibility.",
+            UITestConditions.element(app, "home-metric-chart-\(metric)-selected-point-previous").exists,
+            chart.debugDescription,
         )
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "\(card.identifier)-readability"
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
-    }
-
-    /// React Native exposes chart labels as siblings, so associate them by their measured chart frame.
-    @MainActor
-    static func texts(matching predicate: NSPredicate, in chart: XCUIElement, app: XCUIApplication) -> [XCUIElement] {
-        let chartFrame = chart.frame
-        return app.staticTexts.matching(predicate).allElementsBoundByIndex.filter { chartFrame.contains($0.frame) }
     }
 
     /// Retains the existing scene/window rotation diagnostic independently of metric layout assertions.

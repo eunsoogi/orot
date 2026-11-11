@@ -39,7 +39,7 @@ test('shows imported pressure as a chart-first category and opens a separate per
   ).toBeTruthy();
   expect(screen.queryByTestId('health-record-category-heart_rate')).toBeNull();
   const chart = screen.getByTestId('health-record-chart-blood_pressure');
-  expect(chart.props.accessibilityRole).toBe('image');
+  expect(chart.props.accessibilityRole).toBe('text');
   expect(chart.props.accessibilityLabel).toContain('120 mmHg');
   expect(chart.props.accessibilityLabel).toContain('80 mmHg');
   expect(screen.queryByText(chart.props.accessibilityLabel)).toBeNull();
