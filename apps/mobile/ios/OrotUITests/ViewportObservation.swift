@@ -21,6 +21,22 @@ enum ViewportObservation {
         capture(app, entry: entry, stage: stage, testCase: testCase)
     }
 
+    /// Preserve the existing navigation path while sampling before its route wait can fail.
+    static func openSettings(_ app: XCUIApplication, testCase: XCTestCase) throws {
+        guard enabled else {
+            try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+            return
+        }
+        capture(app, entry: "core-home", stage: "before-settings-action", testCase: testCase)
+        if try NavigationPageActionUITestConditions.openOverflowTab(app, tab: "settings") {
+            capture(app, entry: "core-home", stage: "overflow-settings-action-returned", testCase: testCase)
+        } else {
+            try NavigationUITestConditions.tapNavigation(app, "navigation-tab-settings")
+            capture(app, entry: "core-home", stage: "toolbar-settings-tap-returned", testCase: testCase)
+        }
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+    }
+
     static func rect(_ frame: CGRect) -> [String: Double] {
         ["x": frame.origin.x, "y": frame.origin.y, "width": frame.width, "height": frame.height]
     }

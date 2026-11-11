@@ -61,14 +61,7 @@ extension RootNavigationUITests {
         app.launchArguments = arguments + ViewportObservation.arguments
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        ViewportObservation.captureIfEnabled(app, entry: "core-home", stage: "before-settings-action", testCase: self)
-        if try NavigationPageActionUITestConditions.openOverflowTab(app, tab: "settings") {
-            ViewportObservation.captureIfEnabled(app, entry: "core-home", stage: "overflow-settings-action-returned", testCase: self)
-        } else {
-            try NavigationUITestConditions.tapNavigation(app, "navigation-tab-settings")
-            ViewportObservation.captureIfEnabled(app, entry: "core-home", stage: "toolbar-settings-tap-returned", testCase: self)
-        }
-        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        try ViewportObservation.openSettings(app, testCase: self)
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
         FormUITestConditions.reveal(UITestConditions.element(app, "settings-open-health-data"), in: app, scrollID: "navigation-route-scroll")

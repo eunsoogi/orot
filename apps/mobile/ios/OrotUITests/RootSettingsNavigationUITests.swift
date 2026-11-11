@@ -102,7 +102,7 @@ extension RootNavigationUITests {
     func verifySettingsRoutes() throws {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
-        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        try ViewportObservation.openSettings(app, testCase: self)
         for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
             let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.isHittable)
