@@ -13,6 +13,7 @@ import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import { useDailyReportRoute } from './useDailyReportRoute';
+import { dailyReportFailureMessage } from './dailyReportFailurePresentation';
 import { DailyReportCoverage } from './DailyReportCoverage';
 import { DailyReportSavedSection } from './DailyReportSavedSection';
 import { DailyReportSelectToday } from './DailyReportSelectToday';
@@ -106,7 +107,11 @@ export function DailyReportRoute({
   }, [initialDate, initialZone]);
   const isToday = identity?.key === today?.key;
   const canGenerate = Boolean(
-    isToday && chosenToday && state.lookup && state.lookup.status !== 'error',
+    isToday &&
+    chosenToday &&
+    state.lookup &&
+    state.lookup.status !== 'error' &&
+    state.failure !== 'report_read_failed',
   );
   const saved = state.lookup?.status === 'saved' ? state.lookup : null;
   const lookup = state.lookup;
@@ -186,7 +191,9 @@ export function DailyReportRoute({
         />
       ) : null}
       {lookupNotice ? <AppText>{t(lookupNotice)}</AppText> : null}
-      {state.lookup?.status === 'error' || state.preview?.status === 'error' ? (
+      {state.lookup?.status === 'error' ||
+      state.preview?.status === 'error' ||
+      state.failure === 'report_read_failed' ? (
         <>
           <AppText accessibilityRole="alert">
             {t('dailyReport.lookupError')}
@@ -217,13 +224,9 @@ export function DailyReportRoute({
           />
         </>
       ) : null}
-      {state.failure ? (
+      {state.failure && state.failure !== 'report_read_failed' ? (
         <AppText accessibilityRole="alert">
-          {t(
-            state.failure === 'cancelled'
-              ? 'dailyReport.cancelled'
-              : 'dailyReport.failure',
-          )}
+          {dailyReportFailureMessage(state.failure, Boolean(saved))}
         </AppText>
       ) : null}
       {canGenerate && !state.busy ? (

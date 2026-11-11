@@ -1,5 +1,6 @@
 import { createDailyReportIdentity } from '@orot/domain';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
+import type { SqlDatabase } from '@orot/storage';
 import { currentDailyReportContextRequest } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { createDailyReportStorage } from '../../storage/dailyReportStorage';
 import { createDailyReportService } from './dailyReportService';
@@ -9,6 +10,7 @@ import { previewDailyReport } from './dailyReportPreview';
 import { operationRunId } from './featureRunIdentity';
 import { resolveSelectedAiProvider } from './provider';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
+import { providerDiagnostic } from '../../providers/diagnostics';
 
 /** Reuses the encrypted store and consent-aware generator across all report entries. */
 export function createDailyReportFeature(
@@ -43,15 +45,25 @@ export function createDailyReportFeature(
           identity,
         );
       } catch {
+        providerDiagnostic('daily_report', 'persistence', 'failed');
         return { status: 'error' as const };
       }
     },
     run: (identity, mode, signal) =>
       boundedDailyReport(signal, 90_000, async operationSignal => {
+        let db: SqlDatabase;
         try {
-          const db = await database();
+          db = await database();
+        } catch {
           if (operationSignal.aborted)
             return { status: 'failed' as const, code: 'cancelled' };
+          // The saved-report lookup cannot run until the encrypted store opens.
+          providerDiagnostic('daily_report', 'persistence', 'failed');
+          return { status: 'failed' as const, code: 'report_read_failed' };
+        }
+        if (operationSignal.aborted)
+          return { status: 'failed' as const, code: 'cancelled' };
+        try {
           // Capture the cutoff after the database opens, and bind generation to that same day.
           const cutoff = new Date().toISOString();
           if (currentIdentity(identity.timeZone, cutoff)?.key !== identity.key)
@@ -78,9 +90,12 @@ export function createDailyReportFeature(
             signal: operationSignal,
           });
         } catch {
+          if (operationSignal.aborted)
+            return { status: 'failed' as const, code: 'cancelled' };
+          providerDiagnostic('daily_report', 'workflow', 'other');
           return {
             status: 'failed' as const,
-            code: operationSignal.aborted ? 'cancelled' : 'source_unavailable',
+            code: 'error',
           };
         }
       }),

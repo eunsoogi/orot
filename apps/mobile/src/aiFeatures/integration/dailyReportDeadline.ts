@@ -1,11 +1,11 @@
+import { providerDiagnostic } from '../../providers/diagnostics';
+
 /** Bound preparation as well as inference; a late operation cannot publish after abort. */
 export async function boundedDailyReport<T>(
   signal: AbortSignal,
   timeoutMs: number,
   work: (signal: AbortSignal) => Promise<T>,
-): Promise<
-  T | { status: 'failed'; code: 'cancelled' | 'timeout' | 'source_unavailable' }
-> {
+): Promise<T | { status: 'failed'; code: 'cancelled' | 'timeout' | 'error' }> {
   if (signal.aborted) return { status: 'failed', code: 'cancelled' };
   const controller = new AbortController();
   let timedOut = false;
@@ -36,13 +36,13 @@ export async function boundedDailyReport<T>(
         ? { status: 'failed', code: 'cancelled' }
         : result;
   } catch {
+    if (timedOut) return { status: 'failed', code: 'timeout' };
+    if (signal.aborted) return { status: 'failed', code: 'cancelled' };
+    // Do not label an unclassified exception as missing health data.
+    providerDiagnostic('daily_report', 'workflow', 'other');
     return {
       status: 'failed',
-      code: timedOut
-        ? 'timeout'
-        : signal.aborted
-          ? 'cancelled'
-          : 'source_unavailable',
+      code: 'error',
     };
   } finally {
     clearTimeout(timer);

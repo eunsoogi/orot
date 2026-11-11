@@ -1,11 +1,34 @@
 import { NativeModules } from 'react-native';
-import { reportWorkflowOutcome } from '../diagnostics';
+import {
+  providerDiagnostic,
+  reportProviderException,
+  reportWorkflowOutcome,
+} from '../diagnostics';
 
 jest.mock('react-native', () => ({
   NativeModules: { OrotProviderDiagnostics: { report: jest.fn() } },
 }));
 
 beforeEach(() => jest.clearAllMocks());
+
+test('forwards only the closed daily-report persistence stage', () => {
+  providerDiagnostic('daily_report', 'persistence', 'failed');
+  expect(NativeModules.OrotProviderDiagnostics.report).toHaveBeenCalledWith(
+    'daily_report',
+    'persistence',
+    'failed',
+  );
+});
+
+test('reports daily-report provider exceptions by class without forwarding messages', () => {
+  reportProviderException(
+    'daily_report',
+    new Error('synthetic private provider response'),
+  );
+  expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+    ['daily_report', 'provider_error', 'other'],
+  ]);
+});
 
 test('identifies a skipped required source without exposing source or query content', () => {
   reportWorkflowOutcome(

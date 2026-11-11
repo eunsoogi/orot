@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { createDailyReportFeature } from './dailyReportFeature';
+import type { DailyReportFailureCode } from './dailyReportTypes';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -34,7 +35,7 @@ export function useDailyReportRoute(
   const [lookupRevision, setLookupRevision] = useState(0);
   const [previewRevision, setPreviewRevision] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<DailyReportFailureCode | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
   const identityRef = useRef(identity?.key);
   identityRef.current = identity?.key;
@@ -60,6 +61,10 @@ export function useDailyReportRoute(
     // A transient failure in one region does not invalidate a valid sibling result.
     if (lookup?.status === 'error') refreshLookup();
     if (preview?.status === 'error') refreshPreview();
+    if (failure === 'report_read_failed') {
+      setFailure(null);
+      refreshLookup();
+    }
   };
   const identityKey = identity?.key;
   useEffect(() => {
