@@ -157,6 +157,7 @@ export const healthkitSettingsKo = {
   'dailyReport.chatNote': '보고서 내용은 대화에 자동으로 전달되지 않아요.',
   'dailyReport.followUpIdentity': '선택한 보고서: {date} · {zone}',
   'dailyReport.openFromChat': '오늘의 보고서 요청하기',
+  'dailyReport.useLatestSaved': '최신 저장 보고서 연결하기',
   'dailyReport.entryError':
     '보고서 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.',
   'conversationIntent.healthSummary':

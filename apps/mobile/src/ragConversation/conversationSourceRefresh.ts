@@ -16,6 +16,8 @@ export function refreshConversationSources(input: {
   options: ConversationSessionOptions;
   requests: ReturnType<typeof createConversationSessionRequests>;
   restoration: ReturnType<typeof createConversationSessionRestoreState>;
+  refreshTasks: (id: number, durableId: string) => Promise<void>;
+  retryTaskIds: ReadonlySet<number>;
   update: (id: number, change: Partial<ConversationSession>) => void;
   apply: (change: Partial<ConversationSnapshot>) => void;
 }) {
@@ -69,6 +71,11 @@ export function refreshConversationSources(input: {
       const durableId = options.retention?.activeIdentity(session.id);
       if (session.restoring && durableId)
         restoration.start(session.id, durableId).catch(() => {});
+      else if (
+        durableId &&
+        (!session.restoreFailed || input.retryTaskIds.has(session.id))
+      )
+        input.refreshTasks(session.id, durableId).catch(() => {});
     }
     return;
   }

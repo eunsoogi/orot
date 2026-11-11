@@ -21,6 +21,7 @@ import { conversationTreatmentOwnership } from './conversationTreatmentOwnership
 import { createConversationTaskState } from './conversationTaskState';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
+import { createConversationTaskRefresh } from './conversationTaskRefresh';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
@@ -54,6 +55,12 @@ export function createConversationSessions(
   };
   const find = (id: number) =>
     snapshot.sessions.find(session => session.id === id)!;
+  const taskRefresh = createConversationTaskRefresh({
+    options,
+    find: id => snapshot.sessions.find(session => session.id === id),
+    update,
+    valid: () => !disposed,
+  });
   const taskState = createConversationTaskState({
     retention: options.retention,
     find: id => snapshot.sessions.find(session => session.id === id),
@@ -139,16 +146,28 @@ export function createConversationSessions(
     },
     retrySave,
     retryRestore: (id: number) =>
-      disposed ? Promise.resolve() : restoration.retry(id),
+      disposed
+        ? Promise.resolve()
+        : taskRefresh.has(id)
+          ? taskRefresh.retry(id)
+          : restoration.retry(id),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
       taskState.invalidateWrites();
+      const retryTaskIds = new Set(
+        snapshot.sessions
+          .filter(session => taskRefresh.has(session.id))
+          .map(session => session.id),
+      );
+      taskRefresh.invalidate();
       refreshConversationSources({
         snapshot,
         event,
         options,
         requests,
         restoration,
+        refreshTasks: taskRefresh.start,
+        retryTaskIds,
         update,
         apply: change => apply({ ...snapshot, ...change }),
       });
@@ -157,6 +176,7 @@ export function createConversationSessions(
       if (disposed) return;
       lifecycle++;
       taskState.invalidate();
+      taskRefresh.invalidate();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();
@@ -170,6 +190,7 @@ export function createConversationSessions(
       disposed = true;
       lifecycle++;
       taskState.invalidate();
+      taskRefresh.invalidate();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();

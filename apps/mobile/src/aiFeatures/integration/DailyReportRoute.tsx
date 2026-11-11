@@ -14,6 +14,7 @@ import { DailyReportPreview } from './DailyReportPreviewSection';
 import { useRetainExistingReport } from './useRetainExistingReport';
 import { dailyReportLookupNotice } from './dailyReportLookupNotice';
 import { DailyReportSavedSection } from './DailyReportSavedSection';
+import { DailyReportResultRecovery } from './DailyReportResultRecovery';
 import { DailyReportSelectToday } from './DailyReportSelectToday';
 import { useReportTaskPersistence } from './useReportTaskPersistence';
 
@@ -87,7 +88,8 @@ export function DailyReportRoute({
     state.lookup.status !== 'error' &&
     state.failure !== 'report_read_failed' &&
     taskPersistence.status === 'ready' &&
-    resultPersistence.status === 'ready',
+    resultPersistence.status === 'ready' &&
+    !state.resultSaveFailed,
   );
   // A restored conversation points to one exact revision; a replacement is not that result.
   const revisionChanged = Boolean(
@@ -161,6 +163,12 @@ export function DailyReportRoute({
         />
       ) : null}
       {lookupNotice ? <AppText>{t(lookupNotice)}</AppText> : null}
+      <DailyReportResultRecovery
+        state={state}
+        identity={identity}
+        revisionChanged={revisionChanged}
+        enabled={Boolean(onTaskResult)}
+      />
       {state.lookup?.status === 'error' ||
       state.preview?.status === 'error' ||
       state.failure === 'report_read_failed' ? (

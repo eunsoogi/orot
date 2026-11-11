@@ -11,8 +11,9 @@ export async function retainDailyReportResult(
   runId: string,
   retain?: (target: Target) => Promise<void>,
 ) {
-  if (!retain) return;
+  if (!retain) return true;
   const current = await feature.lookup(identity);
-  if (current.status === 'saved' && current.runId === runId)
-    await retain({ identity, runId, revision: current.revision });
+  if (current.status !== 'saved' || current.runId !== runId) return false;
+  await retain({ identity, runId, revision: current.revision });
+  return true;
 }
