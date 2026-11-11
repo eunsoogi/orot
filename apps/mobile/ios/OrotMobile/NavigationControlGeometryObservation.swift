@@ -96,6 +96,9 @@
                     "windowID": identity(window), "sceneID": identity(scene), "screenID": identity(window.screen),
                     "orientation": orientation,
                     "windowBounds": NavigationGeometryTestObservation.finiteRect(window.bounds),
+                    // The app window's traits, not the test runner's, determine this text-size lower bound.
+                    "bodyLineHeight": Double(UIFont.preferredFont(forTextStyle: .body, compatibleWith: window.traitCollection).lineHeight),
+                    "contentSizeCategory": window.traitCollection.preferredContentSizeCategory.rawValue,
                     "windowFrameInScene": NavigationGeometryTestObservation.finiteRect(windowSceneFrame),
                     "windowFrameInScreen": NavigationGeometryTestObservation.finiteRect(windowScreenFrame),
                     "screenCoordinateSpace": "UIKit-screen-base", "sceneCoordinateSpace": "UIWindowScene.coordinateSpace",

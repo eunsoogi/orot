@@ -102,7 +102,7 @@ extension RootNavigationUITests {
     func verifySettingsRoutes() throws {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
-        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        try ViewportObservation.openSettings(app, testCase: self)
         for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
             let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.isHittable)
@@ -115,7 +115,7 @@ extension RootNavigationUITests {
         XCTAssertTrue(medication.exists && medication.isHittable)
         XCTAssertGreaterThanOrEqual(medication.frame.height, 44)
         XCTAssertFalse(app.buttons["unified-import-start"].exists)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll", "health-data-status-scroll"], name: "settings-health-data-boundary", testCase: self)
+        try verifyHealthDataStatusViewport(app)
         capture(app, "settings-health-data-light")
         try backToSettings(app)
         tap(app, "settings-open-sync-status")

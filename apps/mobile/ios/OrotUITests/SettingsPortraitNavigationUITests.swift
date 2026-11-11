@@ -1,6 +1,25 @@
 import XCTest
 
 extension RootNavigationUITests {
+    /// The single Health Data page must expose its status content within the same navigable viewport.
+    @MainActor
+    func verifyHealthDataStatusViewport(_ app: XCUIApplication) throws {
+        let page = UITestConditions.element(app, "health-data-scroll")
+        XCTAssertTrue(page.exists && !page.frame.isEmpty)
+        // React Native's tagged container wraps the native scrolling element.
+        XCTAssertEqual(page.descendants(matching: .scrollView).count, 1, "Health Data uses one native scrolling page")
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll"], name: "settings-health-data-boundary", testCase: self)
+        for identifier in ["health-data-connection-status", "health-data-permission-status", "health-data-last-sync-status"] {
+            let status = page.descendants(matching: .any).matching(identifier: identifier).firstMatch
+            XCTAssertTrue(status.exists)
+            // Static status text needs viewport containment, not a tap target.
+            let frame = try XCTUnwrap(FormUITestConditions.reveal(status, in: app, scrollID: "health-data-scroll", requireHittable: false, keyboardMayBeVisible: false))
+            let viewport = page.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, viewport.minX - 0.5)
+            XCTAssertLessThanOrEqual(frame.maxX, viewport.maxX + 0.5)
+        }
+    }
+
     /// Uses XCTest's target-based reveal to observe large-text reachability without a repeated drag journey.
     @MainActor
     func testSettingsLargeTextTargetsRemainReachableBesideDuoRail() throws {
@@ -58,10 +77,10 @@ extension RootNavigationUITests {
         let app = XCUIApplication()
         defer { app.terminate() }
         let arguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ViewportObservation.arguments
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        try ViewportObservation.openSettings(app, testCase: self)
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
         FormUITestConditions.reveal(UITestConditions.element(app, "settings-open-health-data"), in: app, scrollID: "navigation-route-scroll")

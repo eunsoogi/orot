@@ -1,6 +1,23 @@
 import XCTest
 
 final class TestHostConnectionTests: OrotFailFastTestCase {
+    /// The exported geometry must not carry labels or other content from the native marker.
+    @MainActor
+    func testViewportObservationFiltersNativeMarker() {
+        let geometry: [String: Any] = ["windowBounds": ["x": 0, "y": 0, "width": 320, "height": 700, "label": "private"], "safeAreaInsets": ["top": 44, "right": 0, "bottom": 0, "left": 0],
+                                       "sceneOrientation": 1, "sampleStartedAtMs": 1, "sampleEndedAtMs": 2,
+                                       "timestampUnits": "unix-milliseconds", "label": "private"]
+        let filtered = ViewportObservation.nativeGeometry(["windowGeometry": geometry, "private": "content"])
+        XCTAssertEqual(filtered["status"] as? String, "sampled")
+        XCTAssertNil(filtered["label"])
+        XCTAssertNil(filtered["private"])
+        XCTAssertNil((filtered["windowBounds"] as? [String: Any])?["label"])
+        XCTAssertTrue(Set(["navigation-keyboard-avoiding-root", "navigation-content-region", "navigation-root-tabs-glass-backdrop"]).isSubset(of: Set(ViewportObservation.identifiers)))
+        XCTAssertEqual(Set(ViewportObservation.identifiers).count, ViewportObservation.identifiers.count)
+        XCTAssertEqual(ViewportObservation.nativeGeometry([:])["status"] as? String, "unavailable")
+        XCTAssertEqual(ViewportObservation.nativeGeometry(["windowGeometry": [:]])["status"] as? String, "incomplete")
+    }
+
     /// Compare the same device request with Safari's public XCUI window, without reading browser content.
     @MainActor
     func testSystemBrowserRotationControl() throws {
