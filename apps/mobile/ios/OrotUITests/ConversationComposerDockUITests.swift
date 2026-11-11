@@ -85,7 +85,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testDockRemainsReachableAcrossConversationStates() {
+    func testDockRemainsReachableAcrossConversationStates() throws {
         let app = XCUIApplication()
         let observationSession = UUID().uuidString
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
