@@ -24,6 +24,7 @@ export type TreatmentRequestAction =
   | {
       readonly kind: 'follow_up';
       readonly artifactId: string;
+      readonly expectedArtifactRevision?: string;
       readonly sessionId?: string;
       readonly sessionVersion?: number;
       readonly selection: TreatmentEducationSelection;
@@ -31,6 +32,7 @@ export type TreatmentRequestAction =
   | {
       readonly kind: 'reopen';
       readonly artifactId: string;
+      readonly expectedArtifactRevision?: string;
       readonly sessionId?: string;
       readonly sessionVersion?: number;
     };
@@ -102,6 +104,8 @@ export async function produceTreatmentRequest(
       if (signal.aborted) return { status: 'withheld', reason: 'cancelled' };
       if (
         !original?.treatmentContext ||
+        (chosen.expectedArtifactRevision !== undefined &&
+          fingerprint(original) !== chosen.expectedArtifactRevision) ||
         (chosen.sessionId && chosen.sessionId !== original.sessionId) ||
         (saved && saved.sessionId !== original.sessionId)
       )

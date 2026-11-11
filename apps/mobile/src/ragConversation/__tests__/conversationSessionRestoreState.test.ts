@@ -2,6 +2,32 @@ import { createConversationSessionRestoreState } from '../conversationSessionRes
 import { createConversationSessions } from '../conversationSessions';
 import { createDailyReportIdentity } from '@orot/domain';
 
+test('a task restoration failure cancels the concurrent transcript read', async () => {
+  let signal: AbortSignal | undefined;
+  let finish!: () => void;
+  const update = jest.fn();
+  const state = createConversationSessionRestoreState({
+    update,
+    read: async (_id, current) => {
+      signal = current;
+      await new Promise<void>(resolve => {
+        finish = resolve;
+      });
+      return [];
+    },
+    readTasks: async () => {
+      throw new Error('Synthetic failure');
+    },
+  });
+  await state.start(1, 'saved');
+  expect(signal?.aborted).toBe(true);
+  expect(update).toHaveBeenCalledWith(
+    1,
+    expect.objectContaining({ restoreFailed: true }),
+  );
+  finish();
+});
+
 test('disposing while a restore is pending aborts it and suppresses its late content', async () => {
   let finish!: (
     turns: { question: string; answer: string; citations: [] }[],

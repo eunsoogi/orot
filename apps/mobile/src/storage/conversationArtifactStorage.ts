@@ -22,6 +22,10 @@ import {
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
+import {
+  appendTreatmentTaskCard,
+  createConversationTaskCardStorage,
+} from './conversationTaskCards';
 
 async function generation(tx: SqlExecutor): Promise<number> {
   const result = await tx.execute(
@@ -46,6 +50,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationTaskCardStorage(database, ensure),
     ...createConversationToolEventStorage(database, ensure),
     ...createFilteredToolPeriodStorage(database, ensure),
     ...createConversationSessionVisibility(database, ensure),
@@ -149,6 +154,8 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           'INSERT INTO conversation_artifacts (id, session_id, created_at, result_json) VALUES (?, ?, ?, ?)',
           [decoded.id, decoded.sessionId, decoded.createdAt, serialized],
         );
+        if (decoded.treatmentContext)
+          await appendTreatmentTaskCard(tx, decoded);
         for (const source of decoded.sources) {
           if (
             isGeneratedSummarySource(source) ||

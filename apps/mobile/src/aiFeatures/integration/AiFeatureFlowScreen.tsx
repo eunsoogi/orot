@@ -1,5 +1,6 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
+import { DailyReportRoute } from './DailyReportRoute';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
@@ -102,9 +103,7 @@ export function AiFeatureFlowScreen({
   onBack,
   onOpenProviderSelection,
   onOpenConversationHistory,
-  onOpenRagConversation,
   onOpenDailyReport,
-  onOpenDailyReportChat,
   reportOwnsOperation,
   onOpenSource,
   resolveSelectedAi,
@@ -138,6 +137,43 @@ export function AiFeatureFlowScreen({
         ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
+      renderSavedReport={
+        services.dailyReport
+          ? (report, onChat) => (
+              <DailyReportRoute
+                key={report.identity.key}
+                feature={services.dailyReport!}
+                initialIdentity={report.identity}
+                expectedReport={report}
+                providerSelection={null}
+                onBack={onBack}
+                onChat={onChat}
+                resolveSources={services.dailyReportSources}
+                onOpenSource={onOpenSource}
+                ownsOperation={reportOwnsOperation}
+                inline
+              />
+            )
+          : undefined
+      }
+      renderReportTask={
+        route === 'daily-report'
+          ? (onChat, onTaskIdentity) => (
+              <DailyReportFlowScreen
+                services={services}
+                routeKey={navigationRouteKey}
+                providerSelection={null}
+                onBack={onBack}
+                onChat={onChat}
+                onTaskIdentity={onTaskIdentity}
+                onOpenSource={onOpenSource}
+                ownsOperation={reportOwnsOperation}
+                fallback={null}
+                inline
+              />
+            )
+          : undefined
+      }
       navigationRouteKey={navigationRouteKey}
       onNavigationStateChange={onFeatureNavigationStateChange}
       onBack={onBack}
@@ -178,19 +214,7 @@ export function AiFeatureFlowScreen({
 
   switch (route) {
     case 'daily-report':
-      return (
-        <DailyReportFlowScreen
-          services={services}
-          routeKey={navigationRouteKey}
-          providerSelection={providerSelection}
-          onBack={onBack}
-          onChat={onOpenDailyReportChat ?? onOpenRagConversation}
-          onOpenSource={onOpenSource}
-          onNavigationStateChange={onFeatureNavigationStateChange}
-          ownsOperation={reportOwnsOperation}
-          fallback={conversation}
-        />
-      );
+      return conversation;
     case 'saved-visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({

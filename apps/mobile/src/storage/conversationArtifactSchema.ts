@@ -16,6 +16,7 @@ import {
   ensureTypedDeletionMarkers,
   markerMatchesArtifactSource,
 } from './typedDeletionMarkers';
+import { setupConversationTaskCards } from './conversationTaskCards';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {
@@ -47,6 +48,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifacts (id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, created_at TEXT NOT NULL, result_json TEXT NOT NULL)',
   );
+  await setupConversationTaskCards(tx);
   await tx.execute(
     'CREATE INDEX IF NOT EXISTS conversation_artifacts_order ON conversation_artifacts (session_id, created_at DESC, id DESC)',
   );

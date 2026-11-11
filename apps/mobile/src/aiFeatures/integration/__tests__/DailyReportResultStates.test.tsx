@@ -7,6 +7,37 @@ import type { createDailyReportFeature } from '../dailyReportFeature';
 type Feature = ReturnType<typeof createDailyReportFeature>;
 type Identity = ReturnType<typeof createDailyReportIdentity>;
 
+test('a restored report reference never displays a replacement revision as its saved result', async () => {
+  const identity = createDailyReportIdentity('2023-11-15', 'Asia/Seoul');
+  const feature = fixture(current => ({
+    status: 'saved',
+    runId: 'replacement',
+    revision: 4,
+    context: { identity: current, generationCutoff: '2023-11-15T03:00:00Z' },
+    report: {
+      generatedAt: '2023-11-15T03:01:00Z',
+      observations: [{ text: 'replacement content' }],
+      supportedContext: [],
+      followUpQuestions: [],
+      coverage: [],
+    },
+  }));
+  await render(
+    <DailyReportRoute
+      feature={feature as unknown as Feature}
+      initialIdentity={identity}
+      expectedReport={{ identity, runId: 'original', revision: 3 }}
+      providerSelection={null}
+      onBack={jest.fn()}
+      onChat={jest.fn()}
+      inline
+    />,
+  );
+  expect(await screen.findByText(t('dailyReport.stale'))).toBeTruthy();
+  expect(screen.queryByText('replacement content')).toBeNull();
+  expect(feature.start).not.toHaveBeenCalled();
+});
+
 function fixture(lookup: (identity: Identity) => unknown) {
   return {
     lookup: jest.fn(async (identity: Identity) => lookup(identity)),

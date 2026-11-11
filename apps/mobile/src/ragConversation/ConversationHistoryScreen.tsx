@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationHistoryLayout } from './ConversationHistoryLayout';
 import { AppButton as Button } from '../layout/AppButton';
@@ -26,7 +26,7 @@ function dayLabel(value: string) {
       : key(date);
 }
 
-/** Shows only app-owned conversation state; the preview never resolves evidence or starts inference. */
+/** Loads retained sessions locally; opening history never starts inference. */
 export function ConversationHistoryScreen({
   onBack,
   onOpenSavedAnalysis,
@@ -37,17 +37,32 @@ export function ConversationHistoryScreen({
   readonly onOpenSavedVisitQuestions?: () => void;
 }) {
   const store = useConversationSessions();
+  const [attempt, setAttempt] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  useEffect(() => {
+    let current = true;
+    setLoadFailed(false);
+    store.loadHistory().catch(() => {
+      if (current) setLoadFailed(true);
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, attempt]);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const rows = [...state.sessions].reverse().map(session => ({
-    id: session.id,
-    title: session.title,
-    selected: session.id === state.activeId,
-    time: new Intl.DateTimeFormat('ko-KR', {
-      hour: 'numeric',
-      minute: '2-digit',
-    }).format(new Date(session.createdAt)),
-    section: dayLabel(session.createdAt),
-  }));
+  // Restored sessions can arrive newest first, so insertion order is not chronology.
+  const rows = [...state.sessions]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
+    .map(session => ({
+      id: session.id,
+      title: session.title,
+      selected: session.id === state.activeId,
+      time: new Intl.DateTimeFormat('ko-KR', {
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(session.createdAt)),
+      section: dayLabel(session.createdAt),
+    }));
   const selectedSession = state.sessions.find(
     session => session.id === state.activeId,
   );
@@ -58,6 +73,17 @@ export function ConversationHistoryScreen({
   return (
     <>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
+      {loadFailed ? (
+        <>
+          <Text accessibilityRole="alert">
+            {t('ragConversation.history.restoreFailed')}
+          </Text>
+          <Button
+            title={t('ragConversation.history.retryRestore')}
+            onPress={() => setAttempt(value => value + 1)}
+          />
+        </>
+      ) : null}
       <ConversationHistoryLayout
         header={
           <>

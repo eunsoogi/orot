@@ -1,4 +1,3 @@
-import { createDailyReportIdentity } from '@orot/domain';
 import { currentDailyReportContextRequest } from '../../healthEvidence/healthContext/dailyReportWindow';
 import type { AppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import type { AiFeatureServices } from './featureServices';
@@ -11,7 +10,7 @@ export const hasPendingDailyConversationEntry = (
   runtime: AppointmentReminderRuntime,
 ) => pending.has(runtime);
 
-/** A typed, explicit conversation action starts the same shared report operation once. */
+/** Select a durable report task; only its later confirmation can start generation. */
 export async function requestDailyReportFromConversation(input: {
   feature?: AiFeatureServices['dailyReport'];
   runtime: AppointmentReminderRuntime | null;
@@ -51,12 +50,6 @@ export async function requestDailyReportFromConversation(input: {
       return 'unavailable' as const;
     }
     runtime.dailyConversationTargets.set(target.key, { intent });
-    const identity = createDailyReportIdentity(
-      intent.request.localDate,
-      intent.request.timeZone,
-    );
-    const operation = feature.start(identity, { kind: 'reuse_or_generate' });
-    runtime.dailyConversationTargets.set(target.key, { intent, operation });
     return 'opened' as const;
   } catch {
     if (!target) await store.dismiss(intent.entryKey).catch(() => undefined);

@@ -3,6 +3,7 @@ import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests_
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { TreatmentExplanationRequest } from '../interfaces';
 import { produceTreatmentRequest } from '../treatmentRequestProducer';
+import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 
 test('withholds a follow-up when the retained session is hidden during verification', async () => {
   const db = openSqliteTestDatabase(':memory:');
@@ -39,6 +40,36 @@ test('withholds a follow-up when the retained session is hidden during verificat
         },
       ),
     ).toMatchObject({ status: 'validated' });
+    const artifact = await store.read('first');
+    expect((await store.readTaskCards('session', 0))[0]?.task).toMatchObject({
+      artifactRevision: fingerprint(artifact),
+    });
+    expect(
+      await produceTreatmentRequest(
+        db.database,
+        {
+          kind: 'reopen',
+          artifactId: 'first',
+          expectedArtifactRevision: fingerprint(artifact),
+        },
+        request,
+        signal,
+        [],
+      ),
+    ).toMatchObject({ status: 'validated' });
+    expect(
+      await produceTreatmentRequest(
+        db.database,
+        {
+          kind: 'reopen',
+          artifactId: 'first',
+          expectedArtifactRevision: 'wrong',
+        },
+        request,
+        signal,
+        [],
+      ),
+    ).toEqual({ status: 'withheld', reason: 'unsupported' });
     const cancelled = new AbortController();
     expect(
       await produceTreatmentRequest(

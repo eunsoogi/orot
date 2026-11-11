@@ -24,6 +24,10 @@ export function refreshConversationSources(input: {
   if (origin === 'healthkit') {
     const restrict = (session: ConversationSession) => ({
       messages: filterHealthDerivedMessages(session.messages, deletedIds),
+      // A treatment card may depend on a deleted health source; its result must be reopened and revalidated.
+      taskCards: session.taskCards?.filter(
+        card => card.task.kind !== 'treatment',
+      ),
       artifactContinuation: null,
       ...(session.pendingMessage
         ? {
@@ -75,6 +79,7 @@ export function refreshConversationSources(input: {
     const durableId = options.retention?.activeIdentity(session.id);
     update(session.id, {
       messages: [],
+      taskCards: [],
       title: createEmptyConversation(session.id).title,
       pendingMessage: null,
       unsavedCount: 0,

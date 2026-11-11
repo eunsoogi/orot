@@ -17,6 +17,7 @@ import { dailyReportFailureMessage } from './dailyReportFailurePresentation';
 import { DailyReportCoverage } from './DailyReportCoverage';
 import { DailyReportSavedSection } from './DailyReportSavedSection';
 import { DailyReportSelectToday } from './DailyReportSelectToday';
+import { useReportTaskPersistence } from './useReportTaskPersistence';
 import type { AiFeatureServices } from './featureServices';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from './conversationIntent';
@@ -50,6 +51,9 @@ export function DailyReportRoute({
   navigationRouteKey,
   onNavigationStateChange,
   ownsOperation = true,
+  inline = false,
+  expectedReport,
+  onTaskIdentity,
 }: {
   readonly feature: ReturnType<typeof createDailyReportFeature>;
   readonly initialIdentity?: DailyReportIdentity;
@@ -70,12 +74,18 @@ export function DailyReportRoute({
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly ownsOperation?: boolean;
+  readonly inline?: boolean;
+  readonly expectedReport?: NonNullable<
+    ConversationEntryContext['dailyReport']
+  >;
+  readonly onTaskIdentity?: (identity: DailyReportIdentity) => Promise<void>;
 }) {
   const navigationInset = useNavigationContentInset();
   const initialDate = initialIdentity?.localDate;
   const initialZone = initialIdentity?.timeZone;
   const today = todayIdentity();
   const [identity, setIdentity] = useState(initialIdentity ?? today);
+  const taskPersistence = useReportTaskPersistence(identity, onTaskIdentity);
   const [chosenToday, setChosenToday] = useState(
     !initialIdentity || initialIdentity.key === today?.key,
   );
@@ -111,13 +121,23 @@ export function DailyReportRoute({
     chosenToday &&
     state.lookup &&
     state.lookup.status !== 'error' &&
-    state.failure !== 'report_read_failed',
+    state.failure !== 'report_read_failed' &&
+    taskPersistence.status === 'ready',
   );
-  const saved = state.lookup?.status === 'saved' ? state.lookup : null;
+  // A restored conversation points to one exact revision; a replacement is not that result.
+  const revisionChanged = Boolean(
+    expectedReport &&
+    state.lookup?.status === 'saved' &&
+    (state.lookup.runId !== expectedReport.runId ||
+      state.lookup.revision !== expectedReport.revision),
+  );
+  const saved =
+    state.lookup?.status === 'saved' && !revisionChanged ? state.lookup : null;
   const lookup = state.lookup;
   // An invalidated or unreadable report has a known state distinct from a missing day.
-  const lookupNotice =
-    lookup?.status === 'stale'
+  const lookupNotice = revisionChanged
+    ? 'dailyReport.stale'
+    : lookup?.status === 'stale'
       ? 'sourceStatus' in lookup && lookup.sourceStatus === 'deleted'
         ? 'dailyReport.deletedSource'
         : 'dailyReport.stale'
@@ -126,12 +146,9 @@ export function DailyReportRoute({
         : !isToday && lookup?.status === 'missing'
           ? 'dailyReport.missingOld'
           : null;
-  return (
-    <ScrollView
-      contentContainerStyle={[styles.content, navigationInset]}
-      testID="daily-report-screen"
-    >
-      {!navigationRouteKey ? (
+  const content = (
+    <>
+      {!navigationRouteKey && !inline ? (
         <AppButton
           title={t('dailyReport.back')}
           accessibilityLabel={t('dailyReport.backAccessibility')}
@@ -156,6 +173,18 @@ export function DailyReportRoute({
       {providerSelection}
       <AppText>{t('dailyReport.consent')}</AppText>
       {state.loading ? <AppText>{t('dailyReport.preparing')}</AppText> : null}
+      {taskPersistence.status === 'failed' ? (
+        <>
+          <AppText accessibilityRole="alert">
+            {t('dailyReport.lookupError')}
+          </AppText>
+          <AppButton
+            title={t('dailyReport.retry')}
+            variant="secondary"
+            onPress={taskPersistence.retry}
+          />
+        </>
+      ) : null}
       {state.preview?.status === 'ready' ? (
         <View style={styles.group}>
           <AppText>
@@ -232,13 +261,25 @@ export function DailyReportRoute({
       {canGenerate && !state.busy ? (
         <AppButton
           title={t(
-            saved || state.lookup?.status === 'stale'
+            saved || revisionChanged || state.lookup?.status === 'stale'
               ? 'dailyReport.regenerate'
               : 'dailyReport.generate',
           )}
           onPress={state.generate}
         />
       ) : null}
+    </>
+  );
+  return inline ? (
+    <View style={styles.content} testID="inline-daily-report-task">
+      {content}
+    </View>
+  ) : (
+    <ScrollView
+      contentContainerStyle={[styles.content, navigationInset]}
+      testID="daily-report-screen"
+    >
+      {content}
     </ScrollView>
   );
 }

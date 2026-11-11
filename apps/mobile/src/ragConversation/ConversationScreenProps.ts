@@ -16,6 +16,30 @@ export interface ConversationScreenProps {
   readonly discoverManualVisits?: import('../aiFeatures/integration/featureServiceTypes').AiFeatureServices['conversationArtifacts'];
   readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
+  /** Structured task content is rendered inside the conversation viewport. */
+  readonly renderReportTask?: (
+    onChat: (
+      target: NonNullable<ConversationEntryContext['dailyReport']>,
+    ) => void,
+    onTaskIdentity: (
+      identity: import('@orot/domain').DailyReportIdentity,
+    ) => Promise<void>,
+  ) => ReactNode;
+  readonly renderSavedReport?: (
+    report: NonNullable<ConversationEntryContext['dailyReport']>,
+    onChat: (
+      target: NonNullable<ConversationEntryContext['dailyReport']>,
+    ) => void,
+  ) => ReactNode;
+  readonly renderStoredReportTask?: (
+    card: import('./conversationTaskState').RetainedConversationTask,
+    onChat: (
+      target: NonNullable<ConversationEntryContext['dailyReport']>,
+    ) => void,
+    onTaskIdentity: (
+      identity: import('@orot/domain').DailyReportIdentity,
+    ) => Promise<void>,
+  ) => ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;

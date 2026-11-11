@@ -16,22 +16,30 @@ export function createConversationSessionAttachment(input: {
   apply: (snapshot: ConversationSnapshot) => void;
   valid: () => boolean;
 }) {
-  return async (durableId: string, version: number, updatedAt: string) => {
+  return async (
+    durableId: string,
+    version: number,
+    updatedAt: string,
+    select = true,
+  ) => {
     if (!input.retention || !input.canRestore || !input.valid())
       throw new Error('Conversation restoration is unavailable.');
     if (!Number.isFinite(Date.parse(updatedAt)))
       throw new Error('Conversation session date is invalid.');
     const session = input.empty();
     await input.retention.attachExisting(session.id, durableId, version);
-    if (!input.valid())
+    if (
+      !input.valid() ||
+      input.retention.activeIdentity(session.id) !== durableId
+    )
       throw new Error('Conversation restoration was cancelled.');
-    input.apply(
-      addConversation(input.snapshot(), {
-        ...session,
-        createdAt: updatedAt,
-        restoring: true,
-      }),
-    );
+    const previous = input.snapshot();
+    const next = addConversation(previous, {
+      ...session,
+      createdAt: updatedAt,
+      restoring: true,
+    });
+    input.apply(select ? next : { ...next, activeId: previous.activeId });
     // Listeners may clear or delete the session synchronously during publication.
     const stillAttached = () =>
       input.valid() &&

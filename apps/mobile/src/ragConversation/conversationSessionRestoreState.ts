@@ -22,6 +22,7 @@ type RestoredTurn = {
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
+  readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
   const sessions = new Map<
@@ -35,7 +36,11 @@ export function createConversationSessionRestoreState(input: {
     entry.controller = controller;
     input.update(id, { restoring: true, restoreFailed: false });
     try {
-      const turns = await input.read(entry.durableId, controller.signal);
+      const [turns, taskCards] = await Promise.all([
+        input.read(entry.durableId, controller.signal),
+        input.readTasks?.(entry.durableId, controller.signal) ??
+          Promise.resolve([]),
+      ]);
       if (sessions.get(id) !== entry || controller.signal.aborted) return;
       const reports = turns.flatMap(turn =>
         turn.dailyReport ? [turn.dailyReport] : [],
@@ -82,6 +87,7 @@ export function createConversationSessionRestoreState(input: {
       ]);
       input.update(id, {
         messages,
+        taskCards,
         dailyReport: reports[0],
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
@@ -89,6 +95,11 @@ export function createConversationSessionRestoreState(input: {
           : undefined,
         title:
           messages[0]?.content.slice(0, 36) ||
+          (taskCards[0]?.task.kind === 'treatment'
+            ? t('treatmentSafety.saved')
+            : taskCards.length
+              ? t('dailyReport.title')
+              : '') ||
           getRagConversationCopy().newConversation,
         error: '',
         restoreFailed: false,
@@ -96,11 +107,14 @@ export function createConversationSessionRestoreState(input: {
       });
       sessions.delete(id);
     } catch {
-      if (sessions.get(id) === entry && !controller.signal.aborted)
+      if (sessions.get(id) === entry && !controller.signal.aborted) {
+        // A failed sibling read must not keep restoring private data in the background.
+        controller.abort();
         input.update(id, {
           error: t('ragConversation.history.restoreFailed'),
           restoreFailed: true,
         });
+      }
     } finally {
       if (sessions.get(id) === entry) {
         entry.controller = undefined;
