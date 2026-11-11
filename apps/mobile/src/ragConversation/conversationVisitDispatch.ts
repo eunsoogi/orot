@@ -78,6 +78,7 @@ export function sendConversationMessage(
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const entry = conversationEntryForSession(store, id);
+  const sendEntry = entryIntentSender(store, id, onSend);
   if (
     prepare &&
     session?.draft.trim() &&
@@ -86,6 +87,7 @@ export function sendConversationMessage(
     !session.retryingSave &&
     !session.restoreFailed &&
     !session.quarantined &&
+    !session.dailyReport &&
     !(session.restoreAfterRetry && session.unsavedCount) &&
     entry &&
     shouldPrepareVisitQuestions(
@@ -97,6 +99,11 @@ export function sendConversationMessage(
     visitPreparationSender(store, id, prepare, entry);
   }
   return store.send(id, (question, history, signal, observer) => {
+    // An explicitly selected report owns this turn instead of an earlier visit entry.
+    if (session?.dailyReport) {
+      pendingVisits.get(store)?.delete(id);
+      return sendEntry(question, history, signal, observer);
+    }
     const context =
       pendingVisits.get(store)?.get(id) ??
       conversationEntryForSession(store, id);
@@ -113,11 +120,6 @@ export function sendConversationMessage(
         observer,
         context,
       );
-    return entryIntentSender(store, id, onSend)(
-      question,
-      history,
-      signal,
-      observer,
-    );
+    return sendEntry(question, history, signal, observer);
   });
 }

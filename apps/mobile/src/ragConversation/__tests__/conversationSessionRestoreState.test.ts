@@ -121,7 +121,7 @@ test.each([
   },
 );
 
-test('rejects conflicting saved report targets', async () => {
+test('restores different report revisions on their own turns and selects the latest target', async () => {
   const report = {
     identity: createDailyReportIdentity('2026-11-10', 'Asia/Seoul'),
     runId: 'report',
@@ -143,7 +143,17 @@ test('rejects conflicting saved report targets', async () => {
   await state.start(1, 'saved');
   expect(update).toHaveBeenCalledWith(
     1,
-    expect.objectContaining({ restoreFailed: true }),
+    expect.objectContaining({
+      restoreFailed: false,
+      dailyReport: { ...report, revision: 2 },
+      messages: expect.arrayContaining([
+        expect.objectContaining({ content: 'answer', dailyReport: report }),
+        expect.objectContaining({
+          content: 'answer',
+          dailyReport: { ...report, revision: 2 },
+        }),
+      ]),
+    }),
   );
 });
 

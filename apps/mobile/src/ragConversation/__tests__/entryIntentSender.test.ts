@@ -39,3 +39,34 @@ test.each([false, true])(
     store.dispose();
   },
 );
+
+test('keeps the report selected when the turn was dispatched', async () => {
+  const store = createConversationSessions();
+  const first = {
+    identity: {
+      kind: 'daily_report' as const,
+      key: 'first',
+      localDate: '2026-11-10',
+      timeZone: 'Asia/Seoul',
+    },
+    runId: 'first-run',
+    revision: 1,
+  };
+  const second = {
+    identity: {
+      kind: 'daily_report' as const,
+      key: 'second',
+      localDate: '2026-11-11',
+      timeZone: 'Asia/Seoul',
+    },
+    runId: 'second-run',
+    revision: 2,
+  };
+  store.selectDailyReport(1, first);
+  const send = jest.fn().mockResolvedValue({ status: 'no_evidence' });
+  const pending = entryIntentSender(store, 1, send);
+  store.selectDailyReport(1, second);
+  await pending('question', []);
+  expect(send.mock.calls[0][4]).toMatchObject({ dailyReport: first });
+  store.dispose();
+});

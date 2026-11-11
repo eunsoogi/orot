@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import type { DailyReportFailureCode } from './dailyReportTypes';
+import type { ConversationEntryContext } from './conversationIntent';
+import { retainDailyReportResult } from './retainDailyReportResult';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -17,7 +19,12 @@ export function useDailyReportRoute(
   identity: DailyReportIdentity | null,
   initialOperation?: ReturnType<Feature['start']>,
   ownsOperation = true,
+  onTaskResult?: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => Promise<void>,
 ) {
+  const resultHandler = useRef(onTaskResult);
+  resultHandler.current = onTaskResult;
   const [lookupResult, setLookup] = useState<{
     key: string;
     value: Lookup;
@@ -101,8 +108,16 @@ export function useDailyReportRoute(
     }
     setBusy(true);
     cancelRef.current = operation.cancel;
+    const retain = resultHandler.current;
     operation.result.then(
       result => {
+        if (result.status !== 'failed' && identity)
+          retainDailyReportResult(
+            feature,
+            identity,
+            result.runId,
+            retain,
+          ).catch(() => {});
         if (!current) return;
         setBusy(false);
         cancelRef.current = null;
@@ -180,10 +195,18 @@ export function useDailyReportRoute(
       return;
     }
     cancelRef.current = operation.cancel;
+    const retain = resultHandler.current;
     setBusy(true);
     setFailure(null);
     operation.result.then(
       result => {
+        if (result.status !== 'failed')
+          retainDailyReportResult(
+            feature,
+            identity,
+            result.runId,
+            retain,
+          ).catch(() => {});
         if (!isCurrent()) return;
         setBusy(false);
         cancelRef.current = null;

@@ -114,6 +114,8 @@ export function createConversationSessions(
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
+    setEntryPrompt: (id: number, entryPrompt?: string) =>
+      update(id, { entryPrompt }),
     saveTaskCard: taskState.save,
     forgetTaskCard: taskState.forgetTaskCard,
     setError: (id: number, error: string) => update(id, { error }),

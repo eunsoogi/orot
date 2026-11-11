@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
+import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import { t } from '../i18n';
 import { TreatmentConversationAction } from '../treatmentContext/TreatmentConversationAction';
 import type { SavedTreatmentChoice } from '../treatmentContext/treatmentSavedLibrary';
@@ -36,9 +37,13 @@ function treatmentActions(store: ConversationSessions, id: number) {
 }
 function reportActions(
   store: ConversationSessions,
-  id: number,
+  session: ConversationSession,
   cardId: string,
 ) {
+  const { id } = session;
+  const revision = session.taskCards?.find(
+    card => card.id === cardId,
+  )?.revision;
   return {
     select: (target: Report) => {
       store
@@ -55,6 +60,24 @@ function reportActions(
     },
     identity: (identity: Report['identity']) =>
       store.saveTaskCard(id, cardId, { kind: 'daily_report', identity }),
+    result: async (target: Report) => {
+      if (revision === undefined) return;
+      try {
+        await store.saveTaskCard(
+          id,
+          cardId,
+          {
+            kind: 'daily_report',
+            identity: target.identity,
+            report: target,
+          },
+          revision,
+        );
+      } catch {
+        store.setError(id, t('ragConversation.conversation.restoreFailed'));
+        throw new Error('Unable to retain the report task.');
+      }
+    },
   };
 }
 
@@ -78,25 +101,62 @@ export function ConversationTaskHeader({
   renderSavedReport?: ConversationScreenProps['renderSavedReport'];
 }) {
   const { id } = session;
-  const report = reportActions(store, id, routeKey ?? 'daily-report');
+  const report = reportActions(store, session, routeKey ?? 'daily-report');
+  const routeCard = session.taskCards?.find(
+    card => card.id === (routeKey ?? 'daily-report'),
+  );
+  const requestInOtherSession = () => {
+    const identity = todayIdentity();
+    if (!identity) {
+      store.setError(id, t('dailyReport.entryError'));
+      return;
+    }
+    store
+      .saveTaskCard(id, 'daily-report', { kind: 'daily_report', identity })
+      .catch(() =>
+        store.setError(id, t('ragConversation.conversation.restoreFailed')),
+      );
+  };
+  const hasStoredReport = Boolean(
+    selectedReport &&
+    session.taskCards?.some(
+      card =>
+        card.task.kind === 'daily_report' &&
+        card.task.report?.identity.key === selectedReport.identity.key &&
+        card.task.report?.runId === selectedReport.runId &&
+        card.task.report?.revision === selectedReport.revision,
+    ),
+  );
   return (
     <>
-      {!selectedReport ? (
-        <TreatmentConversationAction
-          key={id}
-          sessionId={id}
-          ownership={store.treatment}
-          onOpenSource={onOpenSource}
-          {...treatmentActions(store, id)}
-        />
-      ) : null}
+      <TreatmentConversationAction
+        key={id}
+        sessionId={id}
+        ownership={store.treatment}
+        onOpenSource={onOpenSource}
+        {...treatmentActions(store, id)}
+      />
       <DailyReportConversationHeader
         report={selectedReport}
-        onRequest={renderReportTask ? undefined : onOpenDailyReport}
+        onRequest={
+          renderReportTask
+            ? reportOwner !== null && reportOwner !== id
+              ? requestInOtherSession
+              : undefined
+            : onOpenDailyReport
+        }
       />
       {renderReportTask && (reportOwner === null || reportOwner === id)
-        ? renderReportTask(report.select, report.identity)
-        : selectedReport && renderSavedReport
+        ? renderReportTask(
+            report.select,
+            report.identity,
+            report.result,
+            routeCard?.task.kind === 'daily_report'
+              ? routeCard.task.report
+              : undefined,
+            routeCard?.revision,
+          )
+        : selectedReport && renderSavedReport && !hasStoredReport
           ? renderSavedReport(selectedReport, target =>
               store.selectDailyReport(id, target),
             )
@@ -125,13 +185,14 @@ export function ConversationStoredTaskCards({
         ?.filter(card => card.id !== routeKey)
         .map(card => {
           if (card.task.kind === 'daily_report') {
-            const actions = reportActions(store, id, card.id);
+            const actions = reportActions(store, session, card.id);
             return (
               <Fragment key={card.id}>
                 {renderStoredReportTask?.(
                   card,
                   actions.select,
                   actions.identity,
+                  actions.result,
                 )}
               </Fragment>
             );

@@ -116,6 +116,7 @@ export interface ConversationSession {
   readonly restoreAfterRetry?: boolean;
   readonly artifactContinuation?: ArtifactContinuation | null;
   readonly entryIntent?: 'possibilities';
+  readonly entryPrompt?: string;
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly taskCards?: readonly import('./conversationTaskState').RetainedConversationTask[];
 }

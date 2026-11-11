@@ -1,41 +1,21 @@
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { createDailyReportIdentity } from '@orot/domain';
-import type { DailyReportIdentity } from '@orot/domain';
-import type { DailyReportContextRequest } from '@orot/domain';
-import { currentDailyReportContextRequest } from '../../healthEvidence/healthContext/dailyReportWindow';
+import { todayIdentity } from './dailyReportTodayIdentity';
+import type { DailyReportRouteProps } from './DailyReportRouteProps';
 import { AppButton } from '../../layout/AppButton';
 import { AppText } from '../../layout/AppText';
 import { t } from '../../i18n';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
-import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
-import type { createDailyReportFeature } from './dailyReportFeature';
 import { useDailyReportRoute } from './useDailyReportRoute';
 import { dailyReportFailureMessage } from './dailyReportFailurePresentation';
-import { DailyReportCoverage } from './DailyReportCoverage';
+import { DailyReportPreview } from './DailyReportPreviewSection';
+import { useRetainExistingReport } from './useRetainExistingReport';
+import { dailyReportLookupNotice } from './dailyReportLookupNotice';
 import { DailyReportSavedSection } from './DailyReportSavedSection';
 import { DailyReportSelectToday } from './DailyReportSelectToday';
 import { useReportTaskPersistence } from './useReportTaskPersistence';
-import type { AiFeatureServices } from './featureServices';
-import type { EvidenceReference } from '@orot/agent-runtime';
-import type { ConversationEntryContext } from './conversationIntent';
-
-/** Displays an exact saved day; only the explicit action may invoke generation. */
-function todayIdentity() {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const request = currentDailyReportContextRequest(
-    new Date().toISOString(),
-    zone,
-  );
-  return request.status === 'ready'
-    ? createDailyReportIdentity(
-        request.request.localDate,
-        request.request.timeZone,
-      )
-    : null;
-}
 
 export function DailyReportRoute({
   feature,
@@ -54,32 +34,9 @@ export function DailyReportRoute({
   inline = false,
   expectedReport,
   onTaskIdentity,
-}: {
-  readonly feature: ReturnType<typeof createDailyReportFeature>;
-  readonly initialIdentity?: DailyReportIdentity;
-  readonly initialOperation?: ReturnType<
-    ReturnType<typeof createDailyReportFeature>['start']
-  >;
-  readonly reminder?: boolean;
-  readonly providerSelection: ReactNode;
-  readonly onBack: () => void;
-  readonly onSelectToday?: (
-    request: DailyReportContextRequest,
-  ) => Promise<void>;
-  readonly onChat: (
-    target: NonNullable<ConversationEntryContext['dailyReport']>,
-  ) => void;
-  readonly resolveSources?: AiFeatureServices['dailyReportSources'];
-  readonly onOpenSource?: (source: EvidenceReference) => void;
-  readonly navigationRouteKey?: string;
-  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
-  readonly ownsOperation?: boolean;
-  readonly inline?: boolean;
-  readonly expectedReport?: NonNullable<
-    ConversationEntryContext['dailyReport']
-  >;
-  readonly onTaskIdentity?: (identity: DailyReportIdentity) => Promise<void>;
-}) {
+  onTaskResult,
+  taskRevision,
+}: DailyReportRouteProps) {
   const navigationInset = useNavigationContentInset();
   const initialDate = initialIdentity?.localDate;
   const initialZone = initialIdentity?.timeZone;
@@ -94,6 +51,13 @@ export function DailyReportRoute({
     identity,
     identity?.key === initialIdentity?.key ? initialOperation : undefined,
     ownsOperation,
+    onTaskResult,
+  );
+  const resultPersistence = useRetainExistingReport(
+    state.lookup,
+    expectedReport,
+    taskRevision,
+    onTaskResult,
   );
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -122,7 +86,8 @@ export function DailyReportRoute({
     state.lookup &&
     state.lookup.status !== 'error' &&
     state.failure !== 'report_read_failed' &&
-    taskPersistence.status === 'ready',
+    taskPersistence.status === 'ready' &&
+    resultPersistence.status === 'ready',
   );
   // A restored conversation points to one exact revision; a replacement is not that result.
   const revisionChanged = Boolean(
@@ -135,17 +100,11 @@ export function DailyReportRoute({
     state.lookup?.status === 'saved' && !revisionChanged ? state.lookup : null;
   const lookup = state.lookup;
   // An invalidated or unreadable report has a known state distinct from a missing day.
-  const lookupNotice = revisionChanged
-    ? 'dailyReport.stale'
-    : lookup?.status === 'stale'
-      ? 'sourceStatus' in lookup && lookup.sourceStatus === 'deleted'
-        ? 'dailyReport.deletedSource'
-        : 'dailyReport.stale'
-      : lookup?.status === 'deleted'
-        ? 'dailyReport.deleted'
-        : !isToday && lookup?.status === 'missing'
-          ? 'dailyReport.missingOld'
-          : null;
+  const lookupNotice = dailyReportLookupNotice(
+    lookup,
+    revisionChanged,
+    isToday,
+  );
   const content = (
     <>
       {!navigationRouteKey && !inline ? (
@@ -173,7 +132,8 @@ export function DailyReportRoute({
       {providerSelection}
       <AppText>{t('dailyReport.consent')}</AppText>
       {state.loading ? <AppText>{t('dailyReport.preparing')}</AppText> : null}
-      {taskPersistence.status === 'failed' ? (
+      {taskPersistence.status === 'failed' ||
+      resultPersistence.status === 'failed' ? (
         <>
           <AppText accessibilityRole="alert">
             {t('dailyReport.lookupError')}
@@ -181,34 +141,15 @@ export function DailyReportRoute({
           <AppButton
             title={t('dailyReport.retry')}
             variant="secondary"
-            onPress={taskPersistence.retry}
+            onPress={
+              taskPersistence.status === 'failed'
+                ? taskPersistence.retry
+                : resultPersistence.retry
+            }
           />
         </>
       ) : null}
-      {state.preview?.status === 'ready' ? (
-        <View style={styles.group}>
-          <AppText>
-            {t('dailyReport.preview', {
-              time: state.preview.cutoff,
-              count: state.preview.count,
-            })}
-          </AppText>
-          {state.preview.latestSourceTime ? (
-            <AppText>
-              {t('dailyReport.latest', {
-                time: state.preview.latestSourceTime,
-              })}
-            </AppText>
-          ) : null}
-          {state.preview.partial ? (
-            <AppText>{t('dailyReport.partial')}</AppText>
-          ) : null}
-          <DailyReportCoverage coverage={state.preview.coverage} />
-          {!state.preview.count ? (
-            <AppText>{t('dailyReport.empty')}</AppText>
-          ) : null}
-        </View>
-      ) : null}
+      <DailyReportPreview preview={state.preview} />
       {saved ? (
         <DailyReportSavedSection
           saved={saved}
@@ -287,5 +228,4 @@ export function DailyReportRoute({
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 16 },
   heading: { fontSize: 26, fontWeight: '700' },
-  group: { gap: 8 },
 });

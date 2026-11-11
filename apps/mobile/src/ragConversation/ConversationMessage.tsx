@@ -13,6 +13,9 @@ import type { RagConversationMessage } from './task';
 
 export interface DisplayMessage extends RagConversationMessage {
   readonly id: number;
+  readonly dailyReport?: NonNullable<
+    import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']
+  >;
   readonly citations?: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly activity?: string;
@@ -82,6 +85,18 @@ export function ConversationMessage({
   const activityBeforeText = compact && message.streaming;
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
+      {!user && message.dailyReport ? (
+        <Text>
+          {t('dailyReport.followUpIdentity', {
+            date: message.dailyReport.identity.localDate,
+            zone: message.dailyReport.identity.timeZone,
+          })}{' '}
+          ·{' '}
+          {t('dailyReport.savedRevision', {
+            revision: message.dailyReport.revision,
+          })}
+        </Text>
+      ) : null}
       <View
         style={
           !user && [

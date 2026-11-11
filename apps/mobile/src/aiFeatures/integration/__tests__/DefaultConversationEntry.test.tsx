@@ -48,7 +48,7 @@ test('a report entry presents the task in conversation without starting inferenc
   expect(start).not.toHaveBeenCalled();
 });
 
-/** Entry prepares editable text and keeps its typed purpose after editing. */
+/** Entry selects a task without filling the draft or invoking its sender. */
 test.each([
   ['entry', 'conversation'],
   ['rag-conversation', 'conversation'],
@@ -93,9 +93,19 @@ test.each([
     expect(screen.queryByTestId('external-evidence-search')).toBeNull();
     expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
       'value',
-      conversationIntentRequests[intent],
+      '',
     );
     expect(send).not.toHaveBeenCalled();
+    if (intent !== 'conversation') {
+      await fireEvent.press(
+        screen.getByTestId('conversation-intent-use-suggestion'),
+      );
+      expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+        'value',
+        conversationIntentRequests[intent],
+      );
+      expect(send).not.toHaveBeenCalled();
+    }
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '수정한 요청',

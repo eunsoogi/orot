@@ -90,3 +90,33 @@ test('a failed save remains retryable and an invalidated in-flight result cannot
   await expect(retry).rejects.toThrow('Conversation changed');
   expect(session.taskCards).toBeUndefined();
 });
+
+test('a late report result cannot replace a newer task selection', async () => {
+  const first = createDailyReportIdentity('2026-11-10', 'Asia/Seoul');
+  const second = createDailyReportIdentity('2026-11-11', 'Asia/Seoul');
+  let session = createEmptyConversation(1);
+  const state = createConversationTaskState({
+    find: () => session,
+    update: (_id, change) => {
+      session = { ...session, ...change };
+    },
+    valid: () => true,
+    activeId: () => 1,
+  });
+  await state.save(1, 'card', { kind: 'daily_report', identity: first });
+  await state.save(1, 'card', { kind: 'daily_report', identity: second });
+  await state.save(
+    1,
+    'card',
+    {
+      kind: 'daily_report',
+      identity: first,
+      report: { identity: first, runId: 'old-run', revision: 1 },
+    },
+    1,
+  );
+  expect(session.taskCards?.[0]?.task).toEqual({
+    kind: 'daily_report',
+    identity: second,
+  });
+});

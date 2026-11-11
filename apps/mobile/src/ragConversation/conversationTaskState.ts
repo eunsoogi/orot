@@ -57,7 +57,12 @@ export function createConversationTaskState(input: {
           taskCards: session.taskCards?.filter(card => card.id !== cardId),
         });
     },
-    save(sessionId: number, cardId: string, task: ConversationTaskCard) {
+    save(
+      sessionId: number,
+      cardId: string,
+      task: ConversationTaskCard,
+      expectedCardRevision?: number,
+    ) {
       // Freeze the requested identifiers before queued asynchronous work can start.
       const requested = JSON.parse(
         JSON.stringify(task),
@@ -79,6 +84,12 @@ export function createConversationTaskState(input: {
           )
             throw new Error('Conversation is unavailable.');
           const previous = session.taskCards?.find(card => card.id === cardId);
+          // A completed operation must not replace a card changed while it ran.
+          if (
+            expectedCardRevision !== undefined &&
+            previous?.revision !== expectedCardRevision
+          )
+            return;
           // Revisiting the same day must not erase a retained result identity.
           const nextTask =
             (requested.kind === 'daily_report' &&

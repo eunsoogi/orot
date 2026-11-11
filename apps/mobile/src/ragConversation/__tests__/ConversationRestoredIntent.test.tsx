@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { ConversationScreen } from '../ConversationScreen';
 import {
   ConversationSessionsProvider,
@@ -6,6 +12,7 @@ import {
 } from '../ConversationSessionsContext';
 import type { ConversationSessions } from '../conversationSessions';
 import { AppButton } from '../../layout/AppButton';
+import { t } from '../../i18n';
 
 test('a report task remains with its original session when history changes selection', async () => {
   let store!: ConversationSessions;
@@ -20,6 +27,9 @@ test('a report task remains with its original session when history changes selec
         renderReportTask={() => (
           <AppButton title="Report task" onPress={jest.fn()} />
         )}
+        renderStoredReportTask={card => (
+          <AppButton title={`Stored task ${card.id}`} onPress={jest.fn()} />
+        )}
       />
     );
   }
@@ -31,8 +41,23 @@ test('a report task remains with its original session when history changes selec
   expect(screen.getByRole('button', { name: 'Report task' })).toBeTruthy();
   await act(() => store.create());
   expect(screen.queryByRole('button', { name: 'Report task' })).toBeNull();
+  await fireEvent.press(screen.getByTestId('daily-report-request'));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Stored task daily-report' }),
+    ).toBeTruthy(),
+  );
+  expect(
+    store.getSnapshot().sessions.find(session => session.id === 2)?.taskCards,
+  ).toHaveLength(1);
+  expect(
+    store.getSnapshot().sessions.find(session => session.id === 1)?.taskCards,
+  ).toBeUndefined();
   await act(() => store.select(1));
   expect(screen.getByRole('button', { name: 'Report task' })).toBeTruthy();
+  expect(
+    screen.queryByRole('button', { name: 'Stored task daily-report' }),
+  ).toBeNull();
 });
 
 test('selecting a report attaches its revision without sending', async () => {
@@ -62,6 +87,9 @@ test('selecting a report attaches its revision without sending', async () => {
     screen.getByRole('button', { name: 'Continue report' }),
   );
   expect(send).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('button', { name: t('treatmentSafety.open') }),
+  ).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
@@ -194,8 +222,8 @@ test.each([false, true])(
       await store.attachExisting('saved', 0, '2026-10-05T00:00:00.000Z');
     });
     expect(
-      screen.getByText(/선택한 보고서: 2026-11-10 · Asia\/Seoul/),
-    ).toBeTruthy();
+      screen.getAllByText(/선택한 보고서: 2026-11-10 · Asia\/Seoul/).length,
+    ).toBeGreaterThan(0);
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '이어서',

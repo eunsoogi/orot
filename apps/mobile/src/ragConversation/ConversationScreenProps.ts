@@ -24,6 +24,11 @@ export interface ConversationScreenProps {
     onTaskIdentity: (
       identity: import('@orot/domain').DailyReportIdentity,
     ) => Promise<void>,
+    onTaskResult: (
+      target: NonNullable<ConversationEntryContext['dailyReport']>,
+    ) => Promise<void>,
+    expectedReport?: NonNullable<ConversationEntryContext['dailyReport']>,
+    taskRevision?: number,
   ) => ReactNode;
   readonly renderSavedReport?: (
     report: NonNullable<ConversationEntryContext['dailyReport']>,
@@ -38,6 +43,9 @@ export interface ConversationScreenProps {
     ) => void,
     onTaskIdentity: (
       identity: import('@orot/domain').DailyReportIdentity,
+    ) => Promise<void>,
+    onTaskResult: (
+      target: NonNullable<ConversationEntryContext['dailyReport']>,
     ) => Promise<void>,
   ) => ReactNode;
   readonly navigationRouteKey?: string;

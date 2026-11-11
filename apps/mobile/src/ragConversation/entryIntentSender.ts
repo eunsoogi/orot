@@ -12,9 +12,10 @@ export function entryIntentSender(
   id: number,
   send: ConversationScreenProps['onSend'],
 ): ConversationSender {
+  // Freeze the selected source before storage preflight can yield to another selection.
+  const selected = conversationEntryForSession(store, id);
+  const restored = store.getSnapshot().sessions.find(item => item.id === id);
   return async (question, history, signal, observer) => {
-    const selected = conversationEntryForSession(store, id);
-    const restored = store.getSnapshot().sessions.find(item => item.id === id);
     // Restored targets are revalidated by the same guard used for the original entry.
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
     const context = restored?.dailyReport
@@ -42,8 +43,10 @@ export function entryIntentSender(
       (!signal?.aborted || committed) &&
       outcome.status !== 'failure' &&
       outcome.status !== 'unavailable'
-    )
+    ) {
       consumeConversationEntryForSession(store, id);
+      store.setEntryPrompt(id, undefined);
+    }
     return outcome;
   };
 }

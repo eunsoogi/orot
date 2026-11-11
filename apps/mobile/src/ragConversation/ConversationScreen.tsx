@@ -121,6 +121,17 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
+      {session.entryPrompt ? (
+        <Button
+          title={t('conversationIntent.useSuggestion', {
+            question: session.entryPrompt,
+          })}
+          testID="conversation-intent-use-suggestion"
+          disabled={Boolean(draft) || busy}
+          variant="secondary"
+          onPress={() => store.setDraft(id, session.entryPrompt!)}
+        />
+      ) : null}
       <ConversationTaskHeader
         store={store}
         session={session}

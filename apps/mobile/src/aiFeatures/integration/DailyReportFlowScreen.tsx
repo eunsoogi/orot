@@ -22,6 +22,9 @@ export function DailyReportFlowScreen({
   fallback,
   inline = false,
   onTaskIdentity,
+  onTaskResult,
+  expectedReport,
+  taskRevision,
 }: {
   services: AiFeatureServices;
   routeKey?: string;
@@ -38,6 +41,11 @@ export function DailyReportFlowScreen({
   onTaskIdentity?: (
     identity: import('@orot/domain').DailyReportIdentity,
   ) => Promise<void>;
+  onTaskResult?: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => Promise<void>;
+  expectedReport?: NonNullable<ConversationEntryContext['dailyReport']>;
+  taskRevision?: number;
 }) {
   const runtime = useAppointmentReminderRuntime();
   const reminder = runtime?.dailyReportTargets.get(routeKey ?? '');
@@ -63,6 +71,9 @@ export function DailyReportFlowScreen({
       feature={services.dailyReport}
       inline={inline}
       onTaskIdentity={onTaskIdentity}
+      onTaskResult={onTaskResult}
+      expectedReport={expectedReport}
+      taskRevision={taskRevision}
       initialIdentity={identity}
       initialOperation={conversation?.operation}
       onSelectToday={
