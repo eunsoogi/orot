@@ -115,7 +115,7 @@ extension RootNavigationUITests {
         XCTAssertTrue(medication.exists && medication.isHittable)
         XCTAssertGreaterThanOrEqual(medication.frame.height, 44)
         XCTAssertFalse(app.buttons["unified-import-start"].exists)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll", "health-data-status-scroll"], name: "settings-health-data-boundary", testCase: self)
+        try verifyHealthDataStatusViewport(app)
         capture(app, "settings-health-data-light")
         try backToSettings(app)
         tap(app, "settings-open-sync-status")

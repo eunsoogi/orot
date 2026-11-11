@@ -1,6 +1,21 @@
 import XCTest
 
 extension RootNavigationUITests {
+    /// The single Health Data page must expose its status content within the same navigable viewport.
+    @MainActor
+    func verifyHealthDataStatusViewport(_ app: XCUIApplication) throws {
+        let page = UITestConditions.element(app, "health-data-scroll")
+        XCTAssertTrue(page.exists && !page.frame.isEmpty)
+        XCTAssertEqual(page.descendants(matching: .scrollView).count, 0, "Health Data uses one vertical page")
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll"], name: "settings-health-data-boundary", testCase: self)
+        for identifier in ["health-data-connection-status", "health-data-permission-status", "health-data-last-sync-status"] {
+            let status = UITestConditions.element(app, identifier)
+            XCTAssertTrue(status.exists)
+            // Static status text needs viewport containment, not a tap target.
+            XCTAssertNotNil(FormUITestConditions.reveal(status, in: app, scrollID: "health-data-scroll", requireHittable: false, keyboardMayBeVisible: false))
+        }
+    }
+
     /// Uses XCTest's target-based reveal to observe large-text reachability without a repeated drag journey.
     @MainActor
     func testSettingsLargeTextTargetsRemainReachableBesideDuoRail() throws {
