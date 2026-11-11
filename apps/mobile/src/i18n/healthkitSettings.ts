@@ -1,3 +1,5 @@
+import { dailyReportFailuresKo } from './dailyReportFailuresKo';
+
 export const healthkitSettingsKo = {
   'settings.integrations': '연동',
   'settings.healthData': '건강 데이터',
@@ -129,7 +131,8 @@ export const healthkitSettingsKo = {
   'dailyReport.loading': '보고서를 만들고 있어요.',
   'dailyReport.cancel': '생성 취소',
   'dailyReport.failure':
-    '보고서를 만들지 못했어요. AI 선택과 기록을 확인한 뒤 다시 시도해 주세요.',
+    '요청을 완료하지 못했어요. 잠시 후 다시 요약해 주세요.',
+  ...dailyReportFailuresKo,
   'dailyReport.cancelled': '보고서 생성을 취소했어요.',
   'dailyReport.stale':
     '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',

@@ -133,8 +133,8 @@ final class OrotProviderDiagnostics: NSObject {
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
-              ["rag", "disease", "visit"].contains(feature),
-              ["selection", "data", "workflow", "provider_error", "validation"].contains(stage),
+              ["rag", "disease", "visit", "daily_report"].contains(feature),
+              ["selection", "data", "workflow", "provider_error", "validation", "persistence"].contains(stage),
               ["started", "completed", "failed", "result", "invalid_output", "needs_clarification",
                "cancelled", "consent_required", "provider_unavailable", "budget_exhausted",
                "unavailable", "budget_exceeded", "stale_evidence", "other",
