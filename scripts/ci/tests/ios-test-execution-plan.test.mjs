@@ -20,12 +20,12 @@ test('core UI navigation and recording evidence have separate jobs without split
     return tasks[0];
   });
   const actual = tasks.flatMap((task) => task.identifiers);
-  assert.equal(actual.length, 14);
-  assert.equal(new Set(actual).size, 14);
+  assert.equal(actual.length, 15);
+  assert.equal(new Set(actual).size, 15);
   assert.deepEqual(actual.slice().sort(), iosTestInventory('core', 'ui').slice().sort());
   assert.deepEqual(
     tasks.map((task) => task.identifiers.length),
-    [8, 6],
+    [9, 6],
   );
   assert.deepEqual(
     new Set(tasks[1].identifiers.map((identifier) => identifier.split('/')[1])),
@@ -46,8 +46,8 @@ test('independent feature suites have distinct jobs and preserve all registered 
   );
   // Debug shares seven import journeys with Release, while the full graph schedules each case once.
   const uniqueOriginal = [...new Set(original)];
-  assert.equal(original.length, 214);
-  assert.equal(uniqueOriginal.length, 207);
+  assert.equal(original.length, 215);
+  assert.equal(uniqueOriginal.length, 208);
   assert.equal(actual.length, uniqueOriginal.length);
   assert.equal(new Set(actual).size, actual.length);
   assert.deepEqual(actual.slice().sort(), uniqueOriginal.slice().sort());
