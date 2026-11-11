@@ -33,9 +33,9 @@ function assertTestMethodDeclared(identifier) {
 
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
-  // Core UI includes the selected-detail Home and blood-pressure chart regressions.
+  // Home selection coverage runs in Core; blood-pressure speech stays explicitly selectable on Duo.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 80, 15],
+    ['core', 80, 14],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);

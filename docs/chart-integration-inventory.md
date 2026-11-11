@@ -93,10 +93,11 @@ loss is a separate observation from committed deletion.
   synthetic-data responsiveness and memory with dataset, environment and
   measurement limits recorded. Preserve first failures and keep those outcomes
   separate from source-level component evidence.
-- The ordinary iPhone `core-ui` cohort registers both consumer tests and the
+- The ordinary iPhone `core-ui` cohort registers the Home XXXL case and the
   synthetic chart VoiceOver case. The Duo profile selects the Home XXXL case.
-  Their test source and inventory prove selection only; exact run artifacts
-  remain the evidence for native behavior.
+  Saved blood-pressure detail and speech remain an explicitly selected Duo
+  diagnostic outside the default cohort. Test source and inventory prove
+  selection only; exact run artifacts remain the evidence for native behavior.
 
 ## Reproduce the source inventory
 

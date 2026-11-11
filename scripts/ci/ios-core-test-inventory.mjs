@@ -77,8 +77,8 @@ export const coreTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/ChartFoundationUITests/testDenseChartPagesAndVoiceOverValues',
   'OrotUITests/ChartFoundationUITests/testSVGPropertyUpdatesAndRemount',
+  // Saved blood-pressure speech remains an explicitly selected Duo diagnostic.
   'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
-  'OrotUITests/ChartConsumerAcceptanceUITests/testBloodPressureValuesAndDiastolicVoiceOver',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
