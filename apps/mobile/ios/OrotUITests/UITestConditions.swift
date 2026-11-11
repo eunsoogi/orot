@@ -55,6 +55,38 @@ enum UITestConditions {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
+    /// Bind a synthetic clinic to its actual saved record, rejecting ambiguous matches.
+    static func appointmentIdentity(_ app: XCUIApplication, clinic: String) throws -> String {
+        let prefix = "appointment-select-"
+        let matches = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", prefix, "\(clinic), ",
+        ))
+        XCTAssertTrue(matches.firstMatch.waitForAppearance())
+        XCTAssertEqual(matches.count, 1, "Expected exactly one saved appointment for the synthetic clinic")
+        let identifier = matches.element(boundBy: 0).identifier
+        let identity = String(identifier.dropFirst(prefix.count))
+        XCTAssertFalse(identity.isEmpty)
+        XCTAssertFalse(identity.hasPrefix("manual-"), "The native repository must use its generated identity")
+        return identity
+    }
+
+    static func waitForWindowBoundsChange(in app: XCUIApplication, from previous: CGRect) {
+        var current = CGRect.zero
+        let boundsChanged = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                current = app.frame
+                return abs(current.width - previous.width) > 0.5 ||
+                    abs(current.height - previous.height) > 0.5
+            },
+            object: nil,
+        )
+        XCTAssertEqual(
+            UITestConditions.wait(for: [boundsChanged]),
+            .completed,
+            "Appointments must observe the device's updated UIKit bounds.",
+        )
+    }
+
     /// React Native exposes a checkbox's VoiceOver state through its localized accessibility value.
     static func checkboxIsChecked(_ element: XCUIElement) -> Bool {
         let value = (element.value as? String)?.lowercased() ?? ""

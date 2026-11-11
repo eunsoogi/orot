@@ -27,19 +27,22 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         try launch(app, extra: AppearanceUITestConditions.observationArguments)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        let firstIdentity = try UITestConditions.appointmentIdentity(app, clinic: "Cardiology clinic")
         createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15")
+        let identity = try UITestConditions.appointmentIdentity(app, clinic: "Neurology clinic")
+        XCTAssertNotEqual(firstIdentity, identity)
 
-        let selection = UITestConditions.element(app, "appointment-select-manual-2")
+        let selection = UITestConditions.element(app, "appointment-select-\(identity)")
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         selection.tap()
         XCTAssertTrue(selection.isSelected, app.debugDescription)
-        let clinic = UITestConditions.element(app, "appointment-clinic-manual-2")
+        let clinic = UITestConditions.element(app, "appointment-clinic-\(identity)")
         XCTAssertTrue(clinic.waitForAppearance(), app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
 
         let portraitBounds = app.frame
         XCUIDevice.shared.orientation = .landscapeLeft
-        waitForWindowBoundsChange(in: app, from: portraitBounds)
+        UITestConditions.waitForWindowBoundsChange(in: app, from: portraitBounds)
         let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app)
         XCTAssertTrue(expandedUsesTwoColumns, "Expanded Duo geometry should place the list and details side by side")
         XCTAssertTrue(selection.isSelected, app.debugDescription)
@@ -50,13 +53,13 @@ final class AppointmentsUITests: OrotFailFastTestCase {
 
         let landscapeBounds = app.frame
         XCUIDevice.shared.orientation = .portrait
-        waitForWindowBoundsChange(in: app, from: landscapeBounds)
+        UITestConditions.waitForWindowBoundsChange(in: app, from: landscapeBounds)
         let compactUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
         XCTAssertFalse(compactUsesTwoColumns)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
         capture(app, "appointments-duo-light-compact-selection")
-        tap(app, "appointment-edit-manual-2")
+        tap(app, "appointment-edit-\(identity)")
         ReminderJourneyForm.assertAppointmentForm(app, clinic: "Neurology clinic")
     }
 
@@ -72,15 +75,16 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         try launch(app, largeText: true)
         let longClinic = "Cardiology and Neurology appointment center"
         createAppointment(app, clinic: longClinic, date: "2027-06-02", time: "09:45")
-        let selection = UITestConditions.element(app, "appointment-select-manual-1")
+        let identity = try UITestConditions.appointmentIdentity(app, clinic: longClinic)
+        let selection = UITestConditions.element(app, "appointment-select-\(identity)")
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
 
-        let actionStack = UITestConditions.element(app, "appointment-actions-manual-1")
-        let oneHourReminder = UITestConditions.element(app, "appointment-reminder-manual-1-60")
-        let oneDayReminder = UITestConditions.element(app, "appointment-reminder-manual-1-1440")
-        let edit = UITestConditions.element(app, "appointment-edit-manual-1")
-        let cancel = UITestConditions.element(app, "appointment-cancel-manual-1")
+        let actionStack = UITestConditions.element(app, "appointment-actions-\(identity)")
+        let oneHourReminder = UITestConditions.element(app, "appointment-reminder-\(identity)-60")
+        let oneDayReminder = UITestConditions.element(app, "appointment-reminder-\(identity)-1440")
+        let edit = UITestConditions.element(app, "appointment-edit-\(identity)")
+        let cancel = UITestConditions.element(app, "appointment-cancel-\(identity)")
         let reminderRow = UITestConditions.element(app, "appointment-reminder-actions")
         // Portrait at accessibility text size covers narrow-width native reachability.
         for action in [oneHourReminder, oneDayReminder, edit, cancel] {
@@ -121,12 +125,12 @@ final class AppointmentsUITests: OrotFailFastTestCase {
 
         let portraitBounds = app.frame
         XCUIDevice.shared.orientation = .landscapeLeft
-        waitForWindowBoundsChange(in: app, from: portraitBounds)
+        UITestConditions.waitForWindowBoundsChange(in: app, from: portraitBounds)
         let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
         XCTAssertFalse(expandedUsesTwoColumns, "Large text must keep both panels in one readable column")
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         XCTAssertEqual(
-            UITestConditions.text(UITestConditions.element(app, "appointment-clinic-manual-1")),
+            UITestConditions.text(UITestConditions.element(app, "appointment-clinic-\(identity)")),
             longClinic,
         )
         FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
@@ -192,24 +196,6 @@ final class AppointmentsUITests: OrotFailFastTestCase {
             XCTAssertLessThanOrEqual(max(primaryFrame.maxX, secondaryFrame.maxX), navigation.toolbar.frame.minX + 1)
         }
         return sideBySide
-    }
-
-    @MainActor
-    private func waitForWindowBoundsChange(in app: XCUIApplication, from previous: CGRect) {
-        var current = CGRect.zero
-        let boundsChanged = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in
-                current = app.frame
-                return abs(current.width - previous.width) > 0.5 ||
-                    abs(current.height - previous.height) > 0.5
-            },
-            object: nil,
-        )
-        XCTAssertEqual(
-            UITestConditions.wait(for: [boundsChanged]),
-            .completed,
-            "Appointments must observe the device's updated UIKit bounds.",
-        )
     }
 
     @MainActor
