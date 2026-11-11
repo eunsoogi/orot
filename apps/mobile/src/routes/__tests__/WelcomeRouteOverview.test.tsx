@@ -81,6 +81,26 @@ test('shows saved questions without a symptom journal shortcut', async () => {
   expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
 });
 
+test('keeps Home preparation explicit and compact within the filled visit card', async () => {
+  const input = props();
+  await render(<WelcomeRoute {...input} />);
+
+  const action = screen.getByTestId('home-prepare-visit');
+  expect(action.props.accessibilityRole).toBe('button');
+  expect(action.props.accessibilityLabel).toBe('진료 준비하기');
+  expect(StyleSheet.flatten(action.props.style)).toMatchObject({
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  });
+
+  await fireEvent.press(action);
+  expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
+});
+
 test('shows unfinished preparation only after a successful empty read for a real visit', async () => {
   const loadSavedVisitQuestions = jest
     .fn()

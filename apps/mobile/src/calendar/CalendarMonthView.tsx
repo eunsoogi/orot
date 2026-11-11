@@ -27,6 +27,7 @@ import {
 } from './CalendarMonthCells';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarEvent } from './types';
+import { calendarEventsEqual } from './calendarSnapshot';
 
 interface CalendarMonthViewProps {
   appointmentsLoading: boolean;
@@ -34,6 +35,8 @@ interface CalendarMonthViewProps {
   events: readonly CalendarEvent[];
   initialDate?: Date;
   linkedAppointment: Appointment | null;
+  selectedEvent?: CalendarEvent | null;
+  selectionDisabled?: boolean;
   onSelectEvent: (event: CalendarEvent) => void;
   queryWindow: CalendarQueryWindow | null;
   resultsMayBeIncomplete: boolean;
@@ -53,6 +56,8 @@ export function CalendarMonthView({
   events,
   initialDate = new Date(),
   linkedAppointment,
+  selectedEvent = null,
+  selectionDisabled = false,
   onSelectEvent,
   queryWindow,
   resultsMayBeIncomplete,
@@ -207,13 +212,21 @@ export function CalendarMonthView({
           </>
         ) : null}
         <View testID="calendar-events-for-selected-date">
-          {eventsOnSelectedDate.map(item => (
-            <CalendarMonthEventRow
-              item={item}
-              key={item.rowKey}
-              onSelectEvent={onSelectEvent}
-            />
-          ))}
+          {eventsOnSelectedDate.map(item => {
+            // A selected recurring event is one exact snapshot, not every matching calendar identifier.
+            const selected =
+              selectedEvent !== null &&
+              calendarEventsEqual(item.event, selectedEvent);
+            return (
+              <CalendarMonthEventRow
+                item={item}
+                key={item.rowKey}
+                onSelectEvent={onSelectEvent}
+                selected={selected}
+                selectionDisabled={selectionDisabled}
+              />
+            );
+          })}
         </View>
         {candidatesLoaded &&
         eventsOnSelectedDate.some(item => item.canSelect) ? (
