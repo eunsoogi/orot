@@ -40,6 +40,8 @@ extension AppointmentsUITests {
         let homeClinicExists = homeClinic?.exists ?? false
         let homeClinicIsHittable = homeClinicExists && (homeClinic?.isHittable ?? false)
         let homeClinicLabel = homeClinic?.label
+        let homeAppointmentCard = UITestConditions.element(app, "home-next-appointment")
+        let prepareVisitAction = UITestConditions.element(app, "home-prepare-visit")
 
         // Capture both Home queries before assertions because this journey stops at its first failure.
         let recordLabelOnlyQuery = {
@@ -57,6 +59,12 @@ extension AppointmentsUITests {
         guard homeClinic != nil, let homeClinicLabel else { return }
         XCTAssertEqual(homeClinicLabel, initialClinic, app.debugDescription)
         XCTAssertTrue(homeClinicExists && homeClinicIsHittable, app.debugDescription)
+        XCTAssertTrue(homeAppointmentCard.exists && !homeAppointmentCard.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(prepareVisitAction.exists && prepareVisitAction.isHittable, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(prepareVisitAction.frame.width, 44, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(prepareVisitAction.frame.height, 44, app.debugDescription)
+        // At default text size the explicit Home action remains content-sized inside its appointment card.
+        XCTAssertLessThan(prepareVisitAction.frame.width, homeAppointmentCard.frame.width, app.debugDescription)
         app.terminate()
         try launch(app)
         visible(app, initialClinic)

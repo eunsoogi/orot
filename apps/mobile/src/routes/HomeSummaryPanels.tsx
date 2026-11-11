@@ -28,7 +28,7 @@ interface RecentRecordsPanelProps {
   readonly onOpenRecords: () => void;
 }
 
-/** Keeps visit details, saved-question guidance and recovery before the existing preparation action. */
+/** Keeps visit details, saved-question guidance and recovery before the explicit compact preparation action. */
 export function NextVisitPanel({
   children,
   appointment,
@@ -107,6 +107,8 @@ export function NextVisitPanel({
           <AppButton
             onPress={onPrepareVisit}
             variant="text"
+            size="compact"
+            style={styles.preparationAction}
             testID="home-prepare-visit"
             title={t('home.prepareVisit')}
           />
@@ -209,6 +211,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 18,
   },
+  preparationAction: { alignSelf: 'flex-start', maxWidth: '100%' },
   appointmentTime: { color: appColors.text, fontSize: 20, fontWeight: '700' },
   appointmentClinic: { color: appColors.secondary, fontSize: 14 },
   emptyAppointment: {
