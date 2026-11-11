@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
+import { ComposerGlassBackground } from '../ComposerGlassBackground';
 import { ConversationGlassAction } from '../ConversationGlassAction';
 
 jest.mock('react-native', () => {
@@ -19,6 +21,25 @@ jest.mock('react-native', () => {
     value: () => NativeSymbol,
   });
   return mockedReactNative;
+});
+
+test('uses an opaque passive surface when native Glass is unavailable', async () => {
+  await render(
+    <ComposerGlassBackground testID="rag-conversation-composer-glass" />,
+  );
+  const surface = screen.getByTestId('rag-conversation-composer-glass');
+  expect(surface.props.pointerEvents).toBe('none');
+  expect(StyleSheet.flatten(surface.props.style)).toMatchObject({
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: appColors.surface,
+  });
+  expect(StyleSheet.flatten(surface.props.style).backgroundColor).not.toBe(
+    'transparent',
+  );
 });
 
 test('uses the shared compact icon size and preserves fallback action states', async () => {

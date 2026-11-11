@@ -5,16 +5,15 @@ import UIKit
 /// It never consumes touches or becomes an accessibility element.
 final class ComposerGlassSurfaceView: UIVisualEffectView {
     init() {
-        let material: UIVisualEffect = if #available(iOS 26.0, *) {
-            UIGlassEffect(style: .regular)
-        } else {
-            UIBlurEffect(style: .systemMaterial)
-        }
-        super.init(effect: material)
+        super.init(effect: nil)
         isUserInteractionEnabled = false
         isAccessibilityElement = false
         layer.cornerCurve = .continuous
         clipsToBounds = true
+        updateMaterial(reduceTransparencyEnabled: UIAccessibility.isReduceTransparencyEnabled)
+        NotificationCenter.default.addObserver(self, selector: #selector(reduceTransparencyPreferenceChanged),
+                                               name: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
+                                               object: nil)
     }
 
     @available(*, unavailable)
@@ -26,6 +25,31 @@ final class ComposerGlassSurfaceView: UIVisualEffectView {
         super.layoutSubviews()
         // Multiline input grows vertically while keeping the same rounded capsule ends.
         layer.cornerRadius = min(28, bounds.height / 2)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    /// Reduced Transparency replaces translucent effects with a dynamic, opaque system surface.
+    func updateMaterial(reduceTransparencyEnabled: Bool) {
+        guard !reduceTransparencyEnabled else {
+            effect = nil
+            backgroundColor = .secondarySystemBackground
+            return
+        }
+
+        backgroundColor = .clear
+        if #available(iOS 26.0, *) {
+            effect = UIGlassEffect(style: .regular)
+        } else {
+            effect = UIBlurEffect(style: .systemMaterial)
+        }
+    }
+
+    /// Applies accessibility changes after UIKit broadcasts a Reduce Transparency setting update.
+    @objc private func reduceTransparencyPreferenceChanged() {
+        updateMaterial(reduceTransparencyEnabled: UIAccessibility.isReduceTransparencyEnabled)
     }
 }
 
@@ -40,8 +64,7 @@ final class ComposerGlassViewManager: RCTViewManager {
     }
 }
 
-/// UIKit lays out the material and action together; React overlays its editable text in the input region.
-/// Keeping Glass children native avoids legacy interop reparenting their frames to zero.
+/// A pass-through host keeps the native action aligned with the trailing edge of React's growing field.
 final class ComposerGlassActionView: UIView {
     @objc var busy = false {
         didSet { update() }
@@ -63,26 +86,14 @@ final class ComposerGlassActionView: UIView {
     @objc var onComposerPress: RCTDirectEventBlock?
     private let button = UIButton(type: .system)
     private let icon = UIImageView()
-    private let inputMaterial = ComposerGlassSurfaceView()
-    private let group: UIVisualEffectView
 
     override init(frame: CGRect) {
-        let effect: UIVisualEffect? = if #available(iOS 26.0, *) {
-            { let value = UIGlassContainerEffect(); value.spacing = 6; return value }()
-        } else {
-            nil
-        }
-        group = UIVisualEffectView(effect: effect)
         super.init(frame: frame)
         backgroundColor = .clear
         isAccessibilityElement = false
-        group.frame = bounds
-        group.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        addSubview(group)
-        inputMaterial.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
-        group.contentView.addSubview(inputMaterial)
-        group.contentView.addSubview(button)
+        button.backgroundColor = .clear
+        addSubview(button)
         icon.translatesAutoresizingMaskIntoConstraints = false
         icon.contentMode = .scaleAspectFit
         icon.tintColor = .label
@@ -94,26 +105,22 @@ final class ComposerGlassActionView: UIView {
         button.configurationUpdateHandler = { [weak self] button in
             self?.updateIconTint(for: button)
         }
-        // These 44pt action / 8pt gap dimensions match React's reserved action slot.
+        // Keep the action at 44pt while anchoring it to the bottom-right of the multiline field.
         NSLayoutConstraint.activate([
-            button.trailingAnchor.constraint(equalTo: group.contentView.trailingAnchor),
-            button.bottomAnchor.constraint(equalTo: group.contentView.bottomAnchor),
+            button.trailingAnchor.constraint(equalTo: trailingAnchor),
+            button.bottomAnchor.constraint(equalTo: bottomAnchor),
             button.widthAnchor.constraint(equalToConstant: 44),
             button.heightAnchor.constraint(equalToConstant: 44),
             icon.widthAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
             icon.heightAnchor.constraint(equalToConstant: AppSymbolSizing.compactPointSize),
             icon.centerXAnchor.constraint(equalTo: button.centerXAnchor),
             icon.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            inputMaterial.leadingAnchor.constraint(equalTo: group.contentView.leadingAnchor),
-            inputMaterial.topAnchor.constraint(equalTo: group.contentView.topAnchor),
-            inputMaterial.bottomAnchor.constraint(equalTo: group.contentView.bottomAnchor),
-            inputMaterial.trailingAnchor.constraint(equalTo: button.leadingAnchor, constant: -8),
         ])
         button.addAction(UIAction { [weak self] _ in self?.onComposerPress?([:]) }, for: .touchUpInside)
         update()
     }
 
-    /// The material is transparent to touches; only the native action consumes them.
+    /// The overlay consumes only button touches, letting other input gestures reach React's text field.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
         return hit is UIControl ? hit : nil
@@ -125,15 +132,10 @@ final class ComposerGlassActionView: UIView {
     }
 
     private func update() {
-        var configuration: UIButton.Configuration = if #available(iOS 26.0, *) {
-            .glass()
-        } else {
-            .gray()
-        }
-        configuration.cornerStyle = .capsule
+        var configuration = UIButton.Configuration.plain()
         configuration.contentInsets = .zero
         configuration.image = nil
-        // Keep the rendered glyph in the shared 18pt aspect-fit canvas, independent of the button target.
+        // Keep one uninterrupted field material behind the icon instead of layering a second Glass button.
         icon.image = UIImage(
             systemName: busy ? "stop.fill" : "arrow.up",
             withConfiguration: AppSymbolSizing.configuration(),

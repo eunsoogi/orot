@@ -15,6 +15,8 @@
 		A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000001 /* DailyReminderNotifications.swift */; };
 		A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000003 /* NavigationContextualActionContent.swift */; };
 		A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */; };
+		3764758C59E941778E562901 /* AppSymbolSizingTestAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D87333E1E424782A10615CC /* AppSymbolSizingTestAssertions.swift */; };
+		41902629670B426388A081DB /* ComposerGlassSurfaceTestAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA85052B52B46F3A951B8B9 /* ComposerGlassSurfaceTestAssertions.swift */; };
 		29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */; };
 		A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000002 /* ConversationHitUITestObservation.swift */; };
 		9AE051D51EED4CA09F5220D7 /* NavigationVoiceOverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */; };
@@ -328,6 +330,8 @@
 		B11200000000000000000002 /* DailyReminderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderModule.swift; path = OrotMobile/DailyReminderModule.swift; sourceTree = "<group>"; };
 		B11200000000000000000001 /* DailyReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderNotifications.swift; path = OrotMobile/DailyReminderNotifications.swift; sourceTree = "<group>"; };
 		A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingIntegrationTests.swift; sourceTree = "<group>"; };
+		6D87333E1E424782A10615CC /* AppSymbolSizingTestAssertions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingTestAssertions.swift; sourceTree = "<group>"; };
+		CFA85052B52B46F3A951B8B9 /* ComposerGlassSurfaceTestAssertions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ComposerGlassSurfaceTestAssertions.swift; sourceTree = "<group>"; };
 		22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationPageActionUITestConditions.swift; sourceTree = "<group>"; };
 		A49300000000000000000002 /* ConversationHitUITestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHitUITestObservation.swift; sourceTree = "<group>"; };
 		CC6C6DE138A14FCF985E4115 /* NavigationVoiceOverUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationVoiceOverUITests.swift; sourceTree = "<group>"; };
@@ -856,6 +860,8 @@
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */,
+				6D87333E1E424782A10615CC /* AppSymbolSizingTestAssertions.swift */,
+				CFA85052B52B46F3A951B8B9 /* ComposerGlassSurfaceTestAssertions.swift */,
 				D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */,
 				624BCD81A97449138708ACDB /* NavigationFocusObservationTests.swift */,
 				4CC3A1946F0241E5AD043C87 /* NavigationViewportFrameIntegrationTests.swift */,
@@ -1569,6 +1575,8 @@
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */,
+				3764758C59E941778E562901 /* AppSymbolSizingTestAssertions.swift in Sources */,
+				41902629670B426388A081DB /* ComposerGlassSurfaceTestAssertions.swift in Sources */,
 				CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */,
 				026FA02E3DF24624A885119D /* NavigationFocusObservationTests.swift in Sources */,
 				44AEB747A2594CF8970EA120 /* NavigationViewportFrameIntegrationTests.swift in Sources */,

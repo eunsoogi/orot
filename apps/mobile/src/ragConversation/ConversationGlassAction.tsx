@@ -22,11 +22,10 @@ const NativeGlassAction =
     ? requireNativeComponent<NativeProps>('ComposerGlassActionView')
     : null;
 const webStyles = StyleSheet.create({
-  material: { right: 52, backgroundColor: appColors.surface, borderRadius: 28 },
   sendPosition: { position: 'absolute', right: 0, bottom: 0 },
 });
 
-/** UIKit owns the grouped input material and action; React text stays above its matching input region. */
+/** UIKit owns the trailing action target while the field bridge supplies its single material surface. */
 export function ConversationGlassAction({
   busy,
   disabled,
@@ -53,10 +52,6 @@ export function ConversationGlassAction({
     />
   ) : (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, webStyles.material]}
-      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
