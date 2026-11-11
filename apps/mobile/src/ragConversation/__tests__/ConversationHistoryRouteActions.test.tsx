@@ -6,7 +6,7 @@ import {
 } from '../../navigation/useNavigationPrimaryAction';
 import { ConversationHistoryListPane } from '../ConversationHistoryListPane';
 
-test('moves creation to the dock and tells the native list to hide its duplicate button', async () => {
+test('moves creation to the dock and hides the duplicate page button', async () => {
   const create = jest.fn();
   function Fixture() {
     const { host, actions } = useNavigationPrimaryActionHost('history');
@@ -37,9 +37,8 @@ test('moves creation to the dock and tells the native list to hide its duplicate
     );
   }
   await render(<Fixture />);
-  expect(
-    screen.getByTestId('conversation-history-list').props.showsNewSession,
-  ).toBe(false);
+  expect(screen.queryByTestId('conversation-history-new')).toBeNull();
+  expect(screen.getByTestId('conversation-history-header')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('dock-new-history-session'));
   expect(create).toHaveBeenCalledTimes(1);
 });

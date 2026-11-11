@@ -116,7 +116,9 @@ test('uses the production history route lane for a selected Duo preview and comp
       list.props.rows.find((row: { id: number }) => row.id === 1).selected,
     ).toBe(true);
 
-    await fireEvent(list, 'createSession', { nativeEvent: {} });
+    await act(async () => {
+      store.create();
+    });
     expect(controller.getSnapshot().currentRoute.name).toBe(
       'conversation-history',
     );
