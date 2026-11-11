@@ -4,6 +4,7 @@ import { formatDateTime, t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
+import { useNavigationBackAction } from '../navigation/useNavigationPrimaryAction';
 import type { SavedMedicalDocument } from './medicalDocumentImportService';
 
 interface MedicalDocumentSourceViewProps {
@@ -16,6 +17,7 @@ export function MedicalDocumentSourceView({
   document,
   onBack,
 }: MedicalDocumentSourceViewProps) {
+  const hasSharedBack = useNavigationBackAction(onBack);
   return (
     <AdaptiveColumns
       primary={
@@ -24,16 +26,18 @@ export function MedicalDocumentSourceView({
             style={[styles.panel, styles.summaryContent]}
             testID="medical-document-source-view"
           >
-            <Pressable
-              accessibilityRole="button"
-              onPress={onBack}
-              style={styles.backButton}
-              testID="medical-document-source-back"
-            >
-              <Text style={styles.backText}>
-                {t('medicalDocument.source.back')}
-              </Text>
-            </Pressable>
+            {hasSharedBack ? null : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onBack}
+                style={styles.backButton}
+                testID="medical-document-source-back"
+              >
+                <Text style={styles.backText}>
+                  {t('medicalDocument.source.back')}
+                </Text>
+              </Pressable>
+            )}
             <Text
               accessibilityRole="header"
               style={styles.title}

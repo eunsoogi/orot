@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { useLayoutEffect } from 'react';
-import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
+import { useLayoutEffect, useState } from 'react';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
+import type { NavigationSurfaceProps } from '../NavigationActionBar';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
+import { useNavigationBackAction } from '../useNavigationPrimaryAction';
 import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
@@ -55,6 +57,10 @@ function RegisterLeaveState({
 }) {
   useLayoutEffect(() => register(source), [register, source]);
   return null;
+}
+
+function FallbackSurface({ children, testID }: NavigationSurfaceProps) {
+  return <View testID={testID}>{children}</View>;
 }
 
 describe('app navigation route adapter', () => {
@@ -115,6 +121,47 @@ describe('app navigation route adapter', () => {
       screen.getByRole('button', { name: '이전 화면으로 돌아가기' }),
     );
     expect(controller.getSnapshot().currentRoute.name).toBe('editor');
+  });
+
+  it('routes an in-place detail Back through the shared navigation host', async () => {
+    const controller = createNavigationController<'records'>('records');
+    const leaveState = {
+      readState: () => ({
+        canLeave: true,
+        hasUnsavedChanges: false,
+        isRecording: false,
+        hasOngoingOperation: false,
+        revision: 0,
+        inputRevision: 0,
+      }),
+    };
+    function SavedDetail({ onBack }: { onBack: () => void }) {
+      useNavigationBackAction(onBack);
+      return <Text testID="saved-document-detail">Synthetic saved detail</Text>;
+    }
+    function RecordsScreen() {
+      const [showDetail, setShowDetail] = useState(true);
+      return showDetail ? (
+        <SavedDetail onBack={() => setShowDetail(false)} />
+      ) : (
+        <Text testID="records-list">Synthetic records list</Text>
+      );
+    }
+
+    await render(
+      <NavigationRouteAdapter
+        controller={controller}
+        leaveState={leaveState}
+        surface={FallbackSurface}
+      >
+        {() => <RecordsScreen />}
+      </NavigationRouteAdapter>,
+    );
+
+    expect(screen.getByTestId('saved-document-detail')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    expect(screen.getByTestId('records-list')).toBeTruthy();
+    expect(screen.queryByTestId('navigation-back')).toBeNull();
   });
 
   it('lets each route delegate content insets to its own safe-area owner', async () => {

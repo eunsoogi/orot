@@ -136,6 +136,41 @@ describe('native bottom navigation toolbar', () => {
     );
   });
 
+  it('places a route-owned Back first in the native Duo toolbar and dispatches it', async () => {
+    const controller = createNavigationController<'home'>('home');
+    const requestBack = jest.spyOn(controller, 'requestBack');
+    const closeDetail = jest.fn();
+    await render(
+      <NavigationActionBar
+        controller={controller}
+        routeBackAction={{ onPress: closeDetail }}
+        rootTabs={{ activeTab: 'records', onSelect: jest.fn() }}
+        safeAreaHandledByParent
+      />,
+    );
+
+    const toolbar = screen.getByTestId('navigation-bar-native-surface');
+    const actions = toolbar.props.actions as Array<Record<string, unknown>>;
+    expect(actions[0]).toEqual(
+      expect.objectContaining({
+        id: 'back',
+        label: '뒤로',
+        accessibilityLabel: '이전 화면으로 돌아가기',
+        testID: 'navigation-back',
+        systemImageName: 'chevron.backward',
+        showsTitleWithSystemImage: true,
+      }),
+    );
+    expect(actions.slice(1).every(action => action.rootTab === true)).toBe(
+      true,
+    );
+    await act(async () => {
+      toolbar.props.onAction({ nativeEvent: { id: 'back' } });
+    });
+    expect(closeDetail).toHaveBeenCalledTimes(1);
+    expect(requestBack).not.toHaveBeenCalled();
+  });
+
   it('keeps native back disabled while leaving the current route is blocked', async () => {
     const controller = createNavigationController<'home' | 'details'>('home');
     controller.push('details');

@@ -1,5 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+import { useState } from 'react';
+import { Button, Text } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import {
+  NavigationPrimaryActionContext,
+  useNavigationPrimaryActionHost,
+} from '../../navigation/useNavigationPrimaryAction';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
 import { MedicalDocumentSourceView } from '../MedicalDocumentSourceView';
 import { savedSourceDocument } from '../testSupport/medicalDocumentSourceViewFixtures';
@@ -66,4 +77,76 @@ test('keeps an empty saved extracted-source detail distinct from original-file s
   );
   expect(screen.getByTestId('medical-document-source-evidence')).toBeTruthy();
   expect(screen.queryByText(/원본 파일|PDF 파일 상태|하이라이트/)).toBeNull();
+});
+
+test('omits the content Back link when the shared navigation host is present', async () => {
+  function HostedSource() {
+    const { host, routeBackAction } = useNavigationPrimaryActionHost('records');
+    return (
+      <NavigationPrimaryActionContext.Provider value={host}>
+        <MedicalDocumentSourceView
+          document={savedSourceDocument()}
+          onBack={onBack}
+        />
+        {routeBackAction ? (
+          <Button
+            onPress={() => routeBackAction.onPress()}
+            testID="shared-navigation-back"
+            title="Back"
+          />
+        ) : null}
+      </NavigationPrimaryActionContext.Provider>
+    );
+  }
+
+  const onBack = jest.fn();
+  await render(<HostedSource />);
+
+  expect(screen.queryByTestId('medical-document-source-back')).toBeNull();
+  await waitFor(() => {
+    expect(screen.getByTestId('shared-navigation-back')).toBeTruthy();
+  });
+  await fireEvent.press(screen.getByTestId('shared-navigation-back'));
+  expect(onBack).toHaveBeenCalledTimes(1);
+});
+
+test('unregisters the shared Back action when saved detail closes', async () => {
+  const onBack = jest.fn();
+  function HostedRecord() {
+    const { host, routeBackAction } = useNavigationPrimaryActionHost('records');
+    const [showDetail, setShowDetail] = useState(true);
+    const closeDetail = () => {
+      onBack();
+      setShowDetail(false);
+    };
+    return (
+      <NavigationPrimaryActionContext.Provider value={host}>
+        {showDetail ? (
+          <MedicalDocumentSourceView
+            document={savedSourceDocument()}
+            onBack={closeDetail}
+          />
+        ) : (
+          <Text testID="records-list">Synthetic records list</Text>
+        )}
+        {routeBackAction ? (
+          <Button
+            onPress={() => routeBackAction.onPress()}
+            testID="shared-navigation-back"
+            title="Back"
+          />
+        ) : null}
+      </NavigationPrimaryActionContext.Provider>
+    );
+  }
+
+  await render(<HostedRecord />);
+  await waitFor(() => {
+    expect(screen.getByTestId('shared-navigation-back')).toBeTruthy();
+  });
+  await fireEvent.press(screen.getByTestId('shared-navigation-back'));
+
+  expect(onBack).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('records-list')).toBeTruthy();
+  expect(screen.queryByTestId('shared-navigation-back')).toBeNull();
 });

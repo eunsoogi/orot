@@ -38,7 +38,11 @@ describe('ManualHistoryScreen draft state', () => {
   it('hides local Back when the shared route-action host is present', async () => {
     const view = await render(
       <NavigationPrimaryActionContext.Provider
-        value={{ routeKey: 'manual-history', register: () => () => undefined }}
+        value={{
+          routeKey: 'manual-history',
+          register: () => () => undefined,
+          registerBackAction: () => () => undefined,
+        }}
       >
         <ManualHistoryScreen
           onBack={jest.fn()}

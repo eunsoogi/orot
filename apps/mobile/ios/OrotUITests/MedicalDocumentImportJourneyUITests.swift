@@ -74,20 +74,19 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(savedSource.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(savedSource).contains("MedicalDocumentTextFixture.pdf"))
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-with-provenance")
-        tap(app, "medical-document-source-back")
-        FormUITestConditions.reveal(savedSource, in: app, scroll: recordsPage(app))
-        XCTAssertTrue(savedSource.exists && savedSource.isHittable, app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        XCTAssertTrue(savedSource.waitForAppearance() && savedSource.isHittable, app.debugDescription)
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
 
         app.terminate()
         app.launch()
         XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-after-relaunch")
     }
 
@@ -190,8 +189,9 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func assertSavedSource(_ app: XCUIApplication) {
+    private func assertSavedSource(_ app: XCUIApplication) throws {
         // Verify the production native UI exposes each stable detail region after entry or relaunch.
+        try MedicalDocumentNavigationUITestConditions.assertSharedSavedSourceBack(app)
         XCTAssertTrue(node(app, "medical-document-source-detail-layout-primary").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-source-evidence").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-source-title").waitForAppearance(), app.debugDescription)
