@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   type ButtonProps,
+  type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
@@ -35,12 +36,15 @@ interface AppButtonProps extends ButtonProps {
   readonly summary?: string;
   /** Optional visual chevron or other non-interactive content for a list row. */
   readonly trailingContent?: ReactNode;
+  /** Optional caller framing for a feature-specific control state. */
+  readonly style?: StyleProp<ViewStyle>;
 }
 
 /**
  * Shared action control for filled, neutral-surface, list and text treatments.
  * The primary default preserves existing callers; new secondary actions should
  * opt into an explicit variant so the action hierarchy remains clear.
+ * Caller styles add feature-local framing without replacing the shared target geometry.
  */
 export function AppButton({
   title,
@@ -53,6 +57,7 @@ export function AppButton({
   accessibilityState,
   variant = 'primary',
   size = 'regular',
+  style: callerStyle,
   busy,
   leadingContent,
   summary,
@@ -84,6 +89,7 @@ export function AppButton({
         styles.button,
         variantStyles[variant],
         size === 'compact' && styles.compact,
+        callerStyle,
         color ? { backgroundColor: color } : null,
         isDisabled && styles.disabled,
       ]}

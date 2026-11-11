@@ -70,7 +70,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
             XCUIDevice.shared.orientation = .portrait
         }
         try launch(app, largeText: true)
-        createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        let longClinic = "Cardiology and Neurology appointment center"
+        createAppointment(app, clinic: longClinic, date: "2027-06-02", time: "09:45")
         let selection = UITestConditions.element(app, "appointment-select-manual-1")
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
@@ -80,14 +81,35 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let oneDayReminder = UITestConditions.element(app, "appointment-reminder-manual-1-1440")
         let edit = UITestConditions.element(app, "appointment-edit-manual-1")
         let cancel = UITestConditions.element(app, "appointment-cancel-manual-1")
+        let reminderRow = UITestConditions.element(app, "appointment-reminder-actions")
         // Portrait at accessibility text size covers narrow-width native reachability.
         for action in [oneHourReminder, oneDayReminder, edit, cancel] {
             FormUITestConditions.reveal(action, in: app, scrollID: "appointments-scroll")
             XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, app.debugDescription)
         }
         XCTAssertTrue(actionStack.exists && !actionStack.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
         XCTAssertLessThan(edit.frame.width, actionStack.frame.width, app.debugDescription)
-        XCTAssertEqual(cancel.frame.width, actionStack.frame.width, accuracy: 1, app.debugDescription)
+        for action in [oneHourReminder, oneDayReminder, cancel] {
+            XCTAssertGreaterThanOrEqual(action.frame.minX, actionStack.frame.minX - 1, app.debugDescription)
+            XCTAssertLessThanOrEqual(action.frame.maxX, actionStack.frame.maxX + 1, app.debugDescription)
+        }
+        XCTAssertTrue(cancel.label.contains(longClinic), app.debugDescription)
+        let reminderFrames = [oneHourReminder.frame, oneDayReminder.frame, cancel.frame]
+        for firstIndex in reminderFrames.indices {
+            for secondIndex in reminderFrames.indices where secondIndex > firstIndex {
+                XCTAssertFalse(
+                    reminderFrames[firstIndex].intersects(reminderFrames[secondIndex]),
+                    app.debugDescription,
+                )
+            }
+        }
+        let allActionsShareOneRow =
+            abs(oneHourReminder.frame.midY - oneDayReminder.frame.midY) <= 1 &&
+            abs(oneDayReminder.frame.midY - cancel.frame.midY) <= 1
+        XCTAssertFalse(allActionsShareOneRow, "Accessibility text should wrap action cells without shrinking targets")
 
         cancel.tap()
         let confirmation = app.alerts.firstMatch
@@ -105,12 +127,12 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         XCTAssertEqual(
             UITestConditions.text(UITestConditions.element(app, "appointment-clinic-manual-1")),
-            "Cardiology clinic",
+            longClinic,
         )
         FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
         capture(app, "appointments-large-text-details")
         edit.tap()
-        ReminderJourneyForm.assertAppointmentForm(app, clinic: "Cardiology clinic")
+        ReminderJourneyForm.assertAppointmentForm(app, clinic: longClinic)
     }
 
     @MainActor

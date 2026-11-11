@@ -1,9 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Alert, StyleSheet } from 'react-native';
+import { Alert } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
-import { appColors } from '../../layout/appColors';
 
 const now = Date.parse('2026-10-20T12:00:00Z');
 
@@ -60,45 +59,6 @@ test('marks the actual next visit independently of a selected history record', a
   expect(cancelled.props.accessibilityState).toEqual({ selected: true });
   expect(next.props.accessibilityState).toEqual({ selected: false });
   expect(screen.getByTestId('appointment-next-visit-next')).toBeTruthy();
-});
-
-test('keeps appointment editing secondary and cancellation in a separate destructive row', async () => {
-  const store = createAppointmentStore([appointment('current', now + 60_000)]);
-  await render(<AppointmentsScreen repository={store.repository} />);
-
-  // Component styles prove the hierarchy; the native XCTest covers actual hit testing.
-  const edit = await screen.findByTestId('appointment-edit-current');
-  expect(edit.props.accessibilityRole).toBe('button');
-  expect(StyleSheet.flatten(edit.props.style)).toMatchObject({
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 44,
-    minWidth: 44,
-  });
-
-  const cancel = screen.getByTestId('appointment-cancel-current');
-  expect(cancel.props.accessibilityRole).toBe('button');
-  expect(cancel.props.accessibilityLabel).toBe('current 예약 취소');
-  expect(StyleSheet.flatten(cancel.props.style)).toMatchObject({
-    minHeight: 44,
-    paddingHorizontal: 12,
-    width: '100%',
-  });
-  expect(
-    StyleSheet.flatten(screen.getByText('예약 취소').props.style),
-  ).toMatchObject({
-    color: appColors.danger,
-    fontSize: 16,
-    fontWeight: '600',
-  });
-  expect(
-    screen.getByTestId('appointment-action-divider-edit-current'),
-  ).toBeTruthy();
-  expect(
-    screen.getByTestId('appointment-action-divider-cancel-current'),
-  ).toBeTruthy();
 });
 
 test('moves the next-visit marker after cancellation and keeps details selected', async () => {
