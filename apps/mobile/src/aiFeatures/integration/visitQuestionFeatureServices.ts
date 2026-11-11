@@ -5,8 +5,9 @@ import { conversationGeneratedTools } from './conversationGeneratedTools';
 import { loadSavedVisitQuestionState } from './savedVisitQuestions';
 import { createVisitQuestionSourceService } from './visitQuestionSourceRegistration';
 import { createConversationVisitTurn } from './conversationVisitTurn';
+import { savedVisitQuestionLoadFailure } from './savedVisitQuestionFailure';
 
-/** Assemble the visit-specific adapters around the shared source registry. */
+/** Assemble visit adapters and convert database setup failures to safe read codes. */
 export function createVisitQuestionFeatureServices(input: {
   loadLocalData: () => Promise<AiFeatureLocalData>;
   privateLocalData: () => Promise<AiFeatureLocalData>;
@@ -25,16 +26,24 @@ export function createVisitQuestionFeatureServices(input: {
   };
   const loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'] =
     async appointmentId => {
-      const data = await input.loadLocalData();
-      const { openLocalStorage } = await import('../../storage/secureDatabase');
-      return loadSavedVisitQuestionState({
-        appointmentId,
-        records: await openLocalStorage(),
-        sourceReader: data.repository,
-        registry: input.registry,
-        readHealthContext: data.readHealthContext,
-        data,
-      });
+      try {
+        const data = await input.loadLocalData();
+        const { openLocalStorage } =
+          await import('../../storage/secureDatabase');
+        return await loadSavedVisitQuestionState({
+          appointmentId,
+          records: await openLocalStorage(),
+          sourceReader: data.repository,
+          registry: input.registry,
+          readHealthContext: data.readHealthContext,
+          data,
+        });
+      } catch {
+        return savedVisitQuestionLoadFailure(
+          appointmentId,
+          'storage_read_failed',
+        );
+      }
     };
   const source = createVisitQuestionSourceService(
     input.registry,
