@@ -1,6 +1,7 @@
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
 import type { ProviderErrorCode } from '@orot/model-runtime';
 import type { GroundedRagAnswer } from './task';
+import type { VisitQuestionPreflightRecovery } from '../nextVisitQuestions/savedQuestionRecovery';
 
 export type RagConversationFailureKind =
   | 'provider_authentication'
@@ -37,6 +38,8 @@ export type RagConversationOutcome =
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;
+      /** Safe retry, refresh, or evidence-review guidance for a saved-question preflight failure. */
+      readonly visitQuestionRecovery?: VisitQuestionPreflightRecovery;
     }
   | { readonly status: 'unavailable' };
 

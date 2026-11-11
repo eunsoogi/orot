@@ -1,4 +1,5 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
+import type { SavedQuestionReadFailureReason } from '../../nextVisitQuestions/savedQuestionRecovery';
 
 export interface RestoredVisitQuestion {
   readonly identity: { readonly id: string; readonly expectedRevision: string };
@@ -27,4 +28,6 @@ export type SavedVisitQuestionsLoadState =
       readonly appointmentId: string;
       readonly questions: readonly [];
       readonly message: string;
+      /** Closed reason code lets callers offer recovery without exposing stored text. */
+      readonly failureReason: SavedQuestionReadFailureReason;
     };
