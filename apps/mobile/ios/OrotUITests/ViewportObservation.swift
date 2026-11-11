@@ -64,18 +64,25 @@ enum ViewportObservation {
     /// UIKit and AX are separate samples; matching geometry before and after bounds their use, not atomicity.
     static func verifyAppointmentViewport(_ app: XCUIApplication, scroll: XCUIElement, title: XCUIElement,
                                           add: XCUIElement, action: NavigationUITestConditions.NavigationAction,
-                                          testCase: XCTestCase) throws
+                                          launchedAt: Double, testCase: XCTestCase) throws
     {
         func sample() throws -> [String: Any] {
             let marker = UITestConditions.element(app, "navigation-test-observation")
             XCTAssertTrue(marker.exists)
             let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any])
-            let geometry = nativeGeometry(raw)
+            var geometry = nativeGeometry(raw)
             XCTAssertEqual(geometry["status"] as? String, "sampled")
+            let reference = try XCTUnwrap(raw["windowGeometry"] as? [String: Any])
+            let dock = try XCTUnwrap(reference["dockControls"] as? [String: Any])
+            for key in ["windowID", "sceneID", "visibleKeyWindowCount", "windowFrameInScreen", "bodyLineHeight", "contentSizeCategory"] {
+                geometry[key] = dock[key]
+            }
             return geometry
         }
         let before = try sample()
+        let axStarted = Date().timeIntervalSince1970 * 1000
         let application = app.frame, window = app.windows.firstMatch
+        XCTAssertEqual(app.windows.count, 1)
         XCTAssertTrue(window.exists)
         let windowFrame = window.frame, scrollFrame = scroll.frame, titleFrame = title.frame
         let toolbarFrame = action.toolbar.frame, addFrame = add.frame, backFrame = action.control.frame
@@ -90,15 +97,36 @@ enum ViewportObservation {
         let afterBounds = try XCTUnwrap(after["windowBounds"] as? [String: Double])
         let beforeInsets = try XCTUnwrap(before["safeAreaInsets"] as? [String: Double])
         let afterInsets = try XCTUnwrap(after["safeAreaInsets"] as? [String: Double])
+        let beforeWindow = try XCTUnwrap(before["windowID"] as? String), afterWindow = try XCTUnwrap(after["windowID"] as? String)
+        let scene = try XCTUnwrap(before["sceneID"] as? String)
+        let firstStart = try XCTUnwrap(before["sampleStartedAtMs"] as? Double), firstEnd = try XCTUnwrap(before["sampleEndedAtMs"] as? Double)
+        let secondStart = try XCTUnwrap(after["sampleStartedAtMs"] as? Double), secondEnd = try XCTUnwrap(after["sampleEndedAtMs"] as? Double)
+        XCTAssertTrue(AppointmentViewportGeometry.samplesBracketAX(launch: launchedAt, axStart: axStarted, firstStart: firstStart, firstEnd: firstEnd,
+                                                                   secondStart: secondStart, secondEnd: secondEnd, firstWindow: beforeWindow, secondWindow: afterWindow))
+        XCTAssertEqual(before["visibleKeyWindowCount"] as? Int, 1)
+        XCTAssertEqual(after["visibleKeyWindowCount"] as? Int, 1)
+        XCTAssertFalse(scene.isEmpty)
+        XCTAssertEqual(after["sceneID"] as? String, scene)
+        let screenFrame = try XCTUnwrap(before["windowFrameInScreen"] as? [String: Double])
+        XCTAssertEqual(screenFrame, after["windowFrameInScreen"] as? [String: Double])
+        let bodyLineHeight = try XCTUnwrap(before["bodyLineHeight"] as? Double)
+        let category = try XCTUnwrap(before["contentSizeCategory"] as? String)
+        XCTAssertFalse(category.isEmpty)
+        XCTAssertEqual(after["contentSizeCategory"] as? String, category)
+        XCTAssertEqual(after["bodyLineHeight"] as? Double, bodyLineHeight)
         XCTAssertEqual(beforeBounds, afterBounds)
         XCTAssertEqual(beforeInsets, afterInsets)
         XCTAssertEqual(before["sceneOrientation"] as? Int, after["sceneOrientation"] as? Int)
         XCTAssertEqual(windowFrame, application)
+        XCTAssertEqual(windowFrame.minX, try XCTUnwrap(screenFrame["x"]), accuracy: 0.5)
+        XCTAssertEqual(windowFrame.minY, try XCTUnwrap(screenFrame["y"]), accuracy: 0.5)
+        XCTAssertEqual(windowFrame.width, try XCTUnwrap(screenFrame["width"]), accuracy: 0.5)
+        XCTAssertEqual(windowFrame.height, try XCTUnwrap(screenFrame["height"]), accuracy: 0.5)
         XCTAssertEqual(windowFrame.width, try XCTUnwrap(beforeBounds["width"]), accuracy: 0.5)
         XCTAssertEqual(windowFrame.height, try XCTUnwrap(beforeBounds["height"]), accuracy: 0.5)
         let insets = try AppointmentViewportGeometry.Insets(top: XCTUnwrap(beforeInsets["top"]), right: XCTUnwrap(beforeInsets["right"]),
                                                             bottom: XCTUnwrap(beforeInsets["bottom"]), left: XCTUnwrap(beforeInsets["left"]))
-        XCTAssertTrue(AppointmentViewportGeometry.accepts(window: windowFrame, insets: insets, scroll: scrollFrame, title: titleFrame, toolbar: toolbarFrame),
+        XCTAssertTrue(AppointmentViewportGeometry.accepts(window: windowFrame, insets: insets, scroll: scrollFrame, title: titleFrame, toolbar: toolbarFrame, minimumTitleHeight: bodyLineHeight),
                       "Scroll and title must remain inside the native safe viewport and clear navigation")
         XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(addFrame, hittable: addHittable), "Add must remain a hittable 44-point target")
         XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(backFrame, hittable: backHittable), "Back must remain a hittable 44-point target")

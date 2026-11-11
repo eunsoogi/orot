@@ -21,10 +21,11 @@ enum AppointmentViewportGeometry {
         return valid(safe) ? safe : nil
     }
 
-    /// Empty, clipped, unsafe, or navigation-overlapping regions fail independently of visual padding.
-    static func accepts(window: CGRect, insets: Insets, scroll: CGRect, title: CGRect, toolbar: CGRect) -> Bool {
+    /// Reject regions outside their measured bounds; glyph-level or horizontal text truncation is not established here.
+    static func accepts(window: CGRect, insets: Insets, scroll: CGRect, title: CGRect, toolbar: CGRect, minimumTitleHeight: CGFloat) -> Bool {
         guard let safe = safeFrame(window: window, insets: insets),
-              valid(scroll), valid(title), valid(toolbar) else { return false }
+              valid(scroll), valid(title), valid(toolbar), minimumTitleHeight.isFinite,
+              minimumTitleHeight > 0, title.height >= minimumTitleHeight else { return false }
         let tolerance: CGFloat = 0.5
         func contains(_ outer: CGRect, _ inner: CGRect) -> Bool {
             inner.minX >= outer.minX - tolerance && inner.minY >= outer.minY - tolerance &&
@@ -37,6 +38,15 @@ enum AppointmentViewportGeometry {
     /// Hit-target requirements are independent of the standalone probe's safe-area geometry.
     static func isUsableTarget(_ frame: CGRect, hittable: Bool) -> Bool {
         valid(frame) && frame.width >= 44 && frame.height >= 44 && hittable
+    }
+
+    /// Cached duplicates and samples from a previous launch cannot establish a current window.
+    static func samplesBracketAX(launch: Double, axStart: Double, firstStart: Double, firstEnd: Double,
+                                 secondStart: Double, secondEnd: Double, firstWindow: String, secondWindow: String) -> Bool
+    {
+        [launch, axStart, firstStart, firstEnd, secondStart, secondEnd].allSatisfy(\.isFinite) &&
+            !firstWindow.isEmpty && firstWindow == secondWindow && launch <= firstStart && firstStart <= firstEnd &&
+            firstEnd <= axStart && axStart <= secondStart && secondStart <= secondEnd && secondStart > firstStart
     }
 
     private static func valid(_ frame: CGRect) -> Bool {

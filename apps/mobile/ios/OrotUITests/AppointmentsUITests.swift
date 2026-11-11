@@ -137,7 +137,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
 
     @MainActor
     func launch(_ app: XCUIApplication, largeText: Bool = false, extra: [String] = []) throws {
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
+        let launchedAt = Date().timeIntervalSince1970 * 1000
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "appointments-title"), equals: "예약")
         let add = UITestConditions.element(app, "appointment-add")
@@ -153,7 +154,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         }
         ViewportObservation.captureIfEnabled(app, entry: "appointments-probe", stage: "before-scroll-44pt-guard", testCase: self)
         let action = try NavigationUITestConditions.navigationAction(app, "appointments-back")
-        try ViewportObservation.verifyAppointmentViewport(app, scroll: scroll, title: title, add: add, action: action, testCase: self)
+        try ViewportObservation.verifyAppointmentViewport(app, scroll: scroll, title: title, add: add, action: action, launchedAt: launchedAt, testCase: self)
         XCTAssertGreaterThanOrEqual(action.control.frame.minY, action.toolbar.frame.minY)
         XCTAssertLessThanOrEqual(action.control.frame.maxY, action.toolbar.frame.maxY)
         XCTAssertFalse(UITestConditions.element(app, "appointments-top-back").exists)
