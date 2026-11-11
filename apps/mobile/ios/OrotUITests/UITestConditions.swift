@@ -55,18 +55,18 @@ enum UITestConditions {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
-    /// Bind a synthetic clinic to its actual saved record, rejecting ambiguous matches.
-    static func appointmentIdentity(_ app: XCUIApplication, clinic: String) throws -> String {
-        let prefix = "appointment-select-"
-        let matches = app.buttons.matching(NSPredicate(
-            format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", prefix, "\(clinic), ",
-        ))
+    /// Read the successful create result and require one native selection for that exact record.
+    static func appointmentIdentity(_ app: XCUIApplication, previous: String = "") -> String {
+        let marker = element(app, "appointment-created-identity")
+        var identity = ""
+        let updated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            identity = marker.label
+            return identity.hasPrefix("appointment-") && identity != previous
+        }, object: nil)
+        XCTAssertEqual(wait(for: [updated]), .completed)
+        let matches = app.buttons.matching(identifier: "appointment-select-\(identity)")
         XCTAssertTrue(matches.firstMatch.waitForAppearance())
-        XCTAssertEqual(matches.count, 1, "Expected exactly one saved appointment for the synthetic clinic")
-        let identifier = matches.element(boundBy: 0).identifier
-        let identity = String(identifier.dropFirst(prefix.count))
-        XCTAssertFalse(identity.isEmpty)
-        XCTAssertFalse(identity.hasPrefix("manual-"), "The native repository must use its generated identity")
+        XCTAssertEqual(matches.count, 1, "Expected one selection control for the created appointment")
         return identity
     }
 

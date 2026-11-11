@@ -27,9 +27,9 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         try launch(app, extra: AppearanceUITestConditions.observationArguments)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
-        let firstIdentity = try UITestConditions.appointmentIdentity(app, clinic: "Cardiology clinic")
+        let firstIdentity = UITestConditions.appointmentIdentity(app)
         createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15")
-        let identity = try UITestConditions.appointmentIdentity(app, clinic: "Neurology clinic")
+        let identity = UITestConditions.appointmentIdentity(app, previous: firstIdentity)
         XCTAssertNotEqual(firstIdentity, identity)
 
         let selection = UITestConditions.element(app, "appointment-select-\(identity)")
@@ -75,7 +75,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         try launch(app, largeText: true)
         let longClinic = "Cardiology and Neurology appointment center"
         createAppointment(app, clinic: longClinic, date: "2027-06-02", time: "09:45")
-        let identity = try UITestConditions.appointmentIdentity(app, clinic: longClinic)
+        let identity = UITestConditions.appointmentIdentity(app)
         let selection = UITestConditions.element(app, "appointment-select-\(identity)")
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
