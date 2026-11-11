@@ -11,6 +11,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         let input = UITestConditions.element(app, "rag-conversation-input")
+        assertComposerGlassMatchesField(in: app)
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
@@ -88,16 +89,45 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         let observationSession = UUID().uuidString
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments += AppearanceUITestConditions.observationArguments
         app.launch()
-        defer { UITestConditions.terminateStandaloneApp(app) }
+        var originalAppearance: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let originalAppearance {
+                do {
+                    try AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
+                } catch {
+                    XCTFail("Could not restore the owned device appearance: \(error)")
+                }
+            }
+            UITestConditions.terminateStandaloneApp(app)
+        }
         let history = UITestConditions.element(app, "rag-conversation-history")
         let composer = UITestConditions.element(app, "rag-conversation-composer")
+        assertComposerGlassMatchesField(in: app)
         let input = UITestConditions.element(app, "rag-conversation-input")
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(history))
         XCTAssertTrue(UITestConditions.exists(composer))
         XCTAssertTrue(input.isHittable)
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
+        _ = try AppearanceUITestConditions.select(
+            false,
+            returningTo: app,
+            testCase: self,
+            captureOriginal: { originalAppearance = $0 },
+        )
+        assertComposerGlassMatchesField(in: app)
+        let lightCapture = XCTAttachment(screenshot: app.screenshot())
+        lightCapture.name = "conversation-composer-glass-light"
+        lightCapture.lifetime = .keepAlways
+        add(lightCapture)
+        _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
+        assertComposerGlassMatchesField(in: app)
+        let darkCapture = XCTAttachment(screenshot: app.screenshot())
+        darkCapture.name = "conversation-composer-glass-dark"
+        darkCapture.lifetime = .keepAlways
+        add(darkCapture)
         let baselineHeight = UITestConditions.element(app, "rag-conversation-composer-field").frame.height
         input.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
@@ -107,6 +137,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         typeOnKeyboard("a", in: app)
         tapKey(app.keyboards.firstMatch.keys["delete"], in: app)
         XCTAssertEqual(input.value as? String, multiline)
+        assertComposerGlassMatchesField(in: app)
         XCTAssertGreaterThan(UITestConditions.element(app, "rag-conversation-composer-field").frame.height, baselineHeight)
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
@@ -155,6 +186,18 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(keyboard.exists && key.exists && key.isHittable)
         XCTAssertTrue(keyboard.frame.contains(key.frame))
         key.tap()
+    }
+
+    /// Confirms the passive native material view covers the rounded field at its current height.
+    @MainActor
+    private func assertComposerGlassMatchesField(in app: XCUIApplication) {
+        let field = UITestConditions.element(app, "rag-conversation-composer-field")
+        let glass = UITestConditions.element(app, "rag-conversation-composer-glass")
+        XCTAssertTrue(UITestConditions.exists(field) && UITestConditions.exists(glass), app.debugDescription)
+        XCTAssertEqual(glass.frame.minX, field.frame.minX, accuracy: 1)
+        XCTAssertEqual(glass.frame.minY, field.frame.minY, accuracy: 1)
+        XCTAssertEqual(glass.frame.width, field.frame.width, accuracy: 1)
+        XCTAssertEqual(glass.frame.height, field.frame.height, accuracy: 1)
     }
 }
 

@@ -7,10 +7,12 @@ private enum CompactSymbolAcceptance {
     static let pointSize: CGFloat = 18
 }
 
-/// Captures actual glyph bounds in UIKit body, navigation and composer controls; touch targets stay larger.
+/// Captures UIKit symbol geometry and composer material policy while keeping touch targets larger than glyphs.
 final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testCompactSymbolsMatchAcrossBodyNavigationAndComposerInBothAppearances() throws {
+    func testCompactSymbolsAndComposerGlassRespectNativeAppearanceAndTransparency() throws {
+        ComposerGlassSurfaceTestAssertions.assertReduceTransparencyFallback()
+
         let symbols = ["plus", "sparkles", "pencil", "gearshape", "doc.text", "arrow.up", "stop.fill"]
         var sizesByAppearance: [String: [String: CGSize]] = [:]
 
@@ -120,7 +122,7 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
             for (index, name) in symbols.enumerated() {
                 let bodyIcon = try XCTUnwrap(bodyIcons[name])
                 let rootButton = rootButtons[index]
-                let rootIcon = try XCTUnwrap(firstImageView(in: rootButton))
+                let rootIcon = try XCTUnwrap(AppSymbolSizingTestAssertions.firstImageView(in: rootButton))
                 let target = try XCTUnwrap(bodyIcon.superview as? UIButton)
                 XCTAssertEqual(bodyIcon.pointSize, NSNumber(value: Double(CompactSymbolAcceptance.pointSize)))
                 XCTAssertGreaterThanOrEqual(target.bounds.width, 44)
@@ -134,8 +136,8 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
                 XCTAssertFalse(rootIcon.isAccessibilityElement)
 
                 // A point-size request can differ from the rendered glyph mask; measure the pixels UIKit draws.
-                let bodyBounds = try XCTUnwrap(visibleGlyphBounds(in: bodyIcon))
-                let rootBounds = try XCTUnwrap(visibleGlyphBounds(in: rootIcon))
+                let bodyBounds = try XCTUnwrap(AppSymbolSizingTestAssertions.visibleGlyphBounds(in: bodyIcon))
+                let rootBounds = try XCTUnwrap(AppSymbolSizingTestAssertions.visibleGlyphBounds(in: rootIcon))
                 XCTAssertGreaterThan(bodyBounds.width, 0, "UIKit did not draw \(name)")
                 XCTAssertGreaterThan(bodyBounds.height, 0, "UIKit did not draw \(name)")
                 XCTAssertLessThanOrEqual(bodyBounds.width, CompactSymbolAcceptance.pointSize + 0.5)
@@ -147,9 +149,9 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
                     composer.busy = name == "stop.fill"
                     controller.view.addSubview(composer)
                     composer.layoutIfNeeded()
-                    let button = try XCTUnwrap((composer.subviews.first as? UIVisualEffectView)?.contentView.subviews.compactMap { $0 as? UIButton }.first)
-                    let icon = try XCTUnwrap(firstImageView(in: button))
-                    let composerBounds = try XCTUnwrap(visibleGlyphBounds(in: icon))
+                    let button = try XCTUnwrap(composer.subviews.compactMap { $0 as? UIButton }.first)
+                    let icon = try XCTUnwrap(AppSymbolSizingTestAssertions.firstImageView(in: button))
+                    let composerBounds = try XCTUnwrap(AppSymbolSizingTestAssertions.visibleGlyphBounds(in: icon))
                     XCTAssertTrue(button.isEnabled && button.bounds.size == CGSize(width: 44, height: 44), "\(name) remains enabled with its native hit target")
                     XCTAssertLessThanOrEqual(max(abs(composerBounds.width - bodyBounds.width), abs(composerBounds.height - bodyBounds.height)), 0.5, "\(name): composer \(composerBounds) differs from body \(bodyBounds)")
                     if name == "arrow.up" {
@@ -176,10 +178,10 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
                 XCTAssertEqual(button.accessibilityTraits.contains(.notEnabled), index != 0)
             }
             for (index, name) in ["plus", "pencil"].enumerated() {
-                let icon = try XCTUnwrap(firstImageView(in: actionButtons[index]))
+                let icon = try XCTUnwrap(AppSymbolSizingTestAssertions.firstImageView(in: actionButtons[index]))
                 let bodyIcon = try XCTUnwrap(bodyIcons[name])
-                let bodyBounds = try XCTUnwrap(visibleGlyphBounds(in: bodyIcon))
-                let actionBounds = try XCTUnwrap(visibleGlyphBounds(in: icon))
+                let bodyBounds = try XCTUnwrap(AppSymbolSizingTestAssertions.visibleGlyphBounds(in: bodyIcon))
+                let actionBounds = try XCTUnwrap(AppSymbolSizingTestAssertions.visibleGlyphBounds(in: icon))
                 XCTAssertEqual(bodyBounds.width, actionBounds.width, accuracy: 0.5, "Body and contextual \(name) glyph widths should match")
                 XCTAssertEqual(bodyBounds.height, actionBounds.height, accuracy: 0.5, "Body and contextual \(name) glyph heights should match")
                 measurements[name]?["actionWidth"] = Double(actionBounds.width)
@@ -206,44 +208,6 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
             let dark = try XCTUnwrap(sizesByAppearance["dark"]?[name])
             XCTAssertEqual(light.width, dark.width, accuracy: 0.5, "\(name) should keep its glyph width across appearances")
             XCTAssertEqual(light.height, dark.height, accuracy: 0.5, "\(name) should keep its glyph height across appearances")
-        }
-    }
-
-    private func firstImageView(in view: UIView) -> UIImageView? {
-        if let imageView = view as? UIImageView, imageView.image != nil {
-            return imageView
-        }
-        for subview in view.subviews {
-            if let imageView = firstImageView(in: subview) {
-                return imageView
-            }
-        }
-        return nil
-    }
-
-    private func visibleGlyphBounds(in imageView: UIImageView) -> CGRect? {
-        let scale: CGFloat = 3
-        let width = Int((imageView.bounds.width * scale).rounded(.up))
-        let height = Int((imageView.bounds.height * scale).rounded(.up))
-        guard width > 0, height > 0 else { return nil }
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        return pixels.withUnsafeMutableBytes { buffer -> CGRect? in
-            let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue).union(.byteOrder32Big)
-            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
-                                          bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                          bitmapInfo: bitmapInfo.rawValue) else { return nil }
-            context.scaleBy(x: scale, y: scale)
-            imageView.layer.render(in: context)
-            let values = buffer.bindMemory(to: UInt8.self)
-            var minX = width, minY = height, maxX = -1, maxY = -1
-            for pixel in 0 ..< (width * height) where values[pixel * 4 + 3] > 8 {
-                let x = pixel % width, y = pixel / width
-                minX = min(minX, x); minY = min(minY, y)
-                maxX = max(maxX, x); maxY = max(maxY, y)
-            }
-            guard maxX >= minX, maxY >= minY else { return nil }
-            return CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale,
-                          width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
         }
     }
 }

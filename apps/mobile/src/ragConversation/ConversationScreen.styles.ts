@@ -146,6 +146,7 @@ export const styles = StyleSheet.create({
   },
   composerField: {
     flex: 1,
+    position: 'relative',
     borderWidth: 0,
     // Text is a sibling overlay of the native material and needs the same rounded viewport.
     borderRadius: 28,
@@ -159,6 +160,8 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     paddingHorizontal: 14,
+    // Leave room for the trailing 44pt Send or Stop target and a 14pt text gap.
+    paddingRight: 58,
     paddingTop: 11,
     paddingBottom: 11,
   },
