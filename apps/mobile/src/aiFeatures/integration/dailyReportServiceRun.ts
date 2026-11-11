@@ -18,9 +18,16 @@ export async function runDailyReport(
   request: DailyReportServiceRequest,
 ) {
   const fail = (code: DailyReportFailureCode) => {
-    providerDiagnostic('daily_report', 'workflow', reportFailureOutcome(code));
+    // A timed-out operation also aborts its child signal; keep that cleanup from logging a user cancel.
+    if (!input.deadlineContext.timedOut)
+      providerDiagnostic(
+        'daily_report',
+        'workflow',
+        reportFailureOutcome(code),
+      );
     return { status: 'failed' as const, code };
   };
+  input.deadlineContext.stage = 'workflow';
   providerDiagnostic('daily_report', 'workflow', 'started');
   if (request.signal.aborted) return fail('cancelled');
   if (request.scope.timeRange) return fail('invalid_context');
@@ -32,6 +39,7 @@ export async function runDailyReport(
   const calendar = createDailyReportCalendarWindow(requested.request);
   if (calendar.status !== 'ready') return fail('invalid_context');
 
+  input.deadlineContext.stage = 'report_read';
   providerDiagnostic('daily_report', 'persistence', 'started');
   let existing: Awaited<ReturnType<typeof input.storage.lookup>>;
   try {
@@ -47,6 +55,7 @@ export async function runDailyReport(
     return fail('report_read_failed');
   }
   providerDiagnostic('daily_report', 'persistence', 'completed');
+  input.deadlineContext.stage = 'workflow';
 
   if (request.mode.kind === 'reuse_or_generate') {
     if (existing.status === 'saved') {
@@ -57,6 +66,7 @@ export async function runDailyReport(
           requestedAt: existing.context.generationCutoff,
         });
         if (priorWindow.status !== 'ready') return fail('invalid_context');
+        input.deadlineContext.stage = 'source_read';
         providerDiagnostic('daily_report', 'data', 'started');
         let permitted: Awaited<
           ReturnType<NonNullable<typeof input.data.readDailyReportSnapshot>>
@@ -75,6 +85,7 @@ export async function runDailyReport(
           );
         }
         providerDiagnostic('daily_report', 'data', 'completed');
+        input.deadlineContext.stage = 'workflow';
         const allowed = new Set(
           permitted.sourceSnapshot.records.map(row =>
             stableJson([row.source, row.recordId, row.revision]),
@@ -90,6 +101,7 @@ export async function runDailyReport(
         )
           return fail('source_unavailable');
 
+        input.deadlineContext.stage = 'report_read';
         providerDiagnostic('daily_report', 'persistence', 'started');
         let current: Awaited<ReturnType<typeof input.storage.lookup>>;
         try {
@@ -105,6 +117,7 @@ export async function runDailyReport(
           return fail('report_read_failed');
         }
         providerDiagnostic('daily_report', 'persistence', 'completed');
+        input.deadlineContext.stage = 'workflow';
         if (
           current.status !== 'saved' ||
           current.runId !== existing.runId ||
@@ -120,5 +133,6 @@ export async function runDailyReport(
     if (existing.status !== 'missing') return fail('source_unavailable');
   }
 
+  input.deadlineContext.stage = 'workflow';
   return generateDailyReport(input, request, calendar);
 }

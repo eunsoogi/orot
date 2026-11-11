@@ -25,6 +25,22 @@ export type DailyReportFailureCode =
   | 'persistence_failed'
   | 'error';
 
+export type DailyReportDeadlineStage =
+  | 'workflow'
+  | 'report_read'
+  | 'source_read'
+  | 'provider_selection'
+  | 'consent'
+  | 'provider'
+  | 'validation'
+  | 'save';
+
+/** Keeps the failing stage and distinguishes timeout aborts from user cancellation. */
+export interface DailyReportDeadlineContext {
+  stage: DailyReportDeadlineStage;
+  timedOut: boolean;
+}
+
 export interface DailyReportServiceInput {
   readonly database: SqlDatabase;
   readonly consent: ExecutionConsentPort;
@@ -38,6 +54,7 @@ export interface DailyReportServiceInput {
 export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
   readonly data: LocalEvidenceData;
   readonly storage: ReturnType<typeof createDailyReportStorage>;
+  readonly deadlineContext: DailyReportDeadlineContext;
 };
 
 export interface DailyReportServiceRequest {

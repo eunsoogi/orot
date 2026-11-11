@@ -13,7 +13,10 @@ import {
   providerDiagnostic,
   reportProviderException,
 } from '../../providers/diagnostics';
-import type { DailyReportFailureCode } from './dailyReportTypes';
+import type {
+  DailyReportDeadlineContext,
+  DailyReportFailureCode,
+} from './dailyReportTypes';
 
 type Selected = Extract<SelectedAiResolution, { status: 'ready' }>;
 type Failure = Extract<
@@ -36,12 +39,14 @@ export async function selectDailyReportFacts(input: {
   facts: readonly { text: string }[];
   signal: AbortSignal;
   timeoutMs: number;
+  deadlineContext: DailyReportDeadlineContext;
   revalidate: (signal: AbortSignal) => Promise<boolean>;
 }): Promise<
   | { status: 'selected'; indexes: number[] }
   | { status: 'failed'; code: Failure }
 > {
   if (input.signal.aborted) return { status: 'failed', code: 'cancelled' };
+  input.deadlineContext.stage = 'workflow';
   const controller = new AbortController();
   let timeout = false;
   const stop = () => controller.abort();
@@ -94,6 +99,7 @@ export async function selectDailyReportFacts(input: {
       return { status: 'failed', code: 'provider_unavailable' };
     }
     if (input.selected.remoteProcessing) {
+      input.deadlineContext.stage = 'consent';
       let decision: ConsentDecision;
       try {
         decision = await wait(
@@ -125,6 +131,7 @@ export async function selectDailyReportFacts(input: {
     }
     if (controller.signal.aborted) return cancelled();
     // Consent can remain open while records change; never transmit the old snapshot.
+    input.deadlineContext.stage = 'source_read';
     let current = false;
     try {
       current = await wait(input.revalidate(controller.signal));
@@ -161,6 +168,7 @@ export async function selectDailyReportFacts(input: {
         : {}),
     };
     let response;
+    input.deadlineContext.stage = 'provider';
     providerDiagnostic('daily_report', 'provider_error', 'started');
     try {
       response = await wait(
@@ -182,6 +190,7 @@ export async function selectDailyReportFacts(input: {
           sawEvent && !completed ? 'partial_stream' : 'provider_unavailable',
       };
     }
+    input.deadlineContext.stage = 'validation';
     if (response.finishReason !== 'complete' || response.toolCalls.length) {
       providerDiagnostic('daily_report', 'validation', 'invalid_output');
       return response.finishReason === 'length_limit'
@@ -216,6 +225,7 @@ export async function selectDailyReportFacts(input: {
     )
       return invalidOutput();
     providerDiagnostic('daily_report', 'validation', 'completed');
+    input.deadlineContext.stage = 'workflow';
     return { status: 'selected', indexes };
   } catch (error) {
     if (!controller.signal.aborted) {

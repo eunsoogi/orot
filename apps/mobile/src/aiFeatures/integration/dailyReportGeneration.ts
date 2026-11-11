@@ -31,10 +31,17 @@ export async function generateDailyReport(
   calendar: ReadyCalendar,
 ) {
   const fail = (code: DailyReportFailureCode) => {
-    providerDiagnostic('daily_report', 'workflow', reportFailureOutcome(code));
+    // The deadline already reports the active stage; do not add a second cause for its abort.
+    if (!input.deadlineContext.timedOut)
+      providerDiagnostic(
+        'daily_report',
+        'workflow',
+        reportFailureOutcome(code),
+      );
     return { status: 'failed' as const, code };
   };
 
+  input.deadlineContext.stage = 'provider_selection';
   providerDiagnostic('daily_report', 'selection', 'started');
   let selected: SelectedAiResolution;
   try {
@@ -45,6 +52,7 @@ export async function generateDailyReport(
     return fail('provider_unavailable');
   }
   if (request.signal.aborted) return fail('cancelled');
+  input.deadlineContext.stage = 'workflow';
   if (selected.status !== 'ready') {
     providerDiagnostic('daily_report', 'selection', 'unavailable');
     return fail('provider_unavailable');
@@ -59,6 +67,7 @@ export async function generateDailyReport(
   let providerFacts: Awaited<ReturnType<typeof dailyReportProviderFacts>>;
   let sourceSnapshot: Snapshot['sourceSnapshot'];
   let required: number[];
+  input.deadlineContext.stage = 'source_read';
   providerDiagnostic('daily_report', 'data', 'started');
   try {
     snapshot = await input.data.readDailyReportSnapshot!(
@@ -120,6 +129,7 @@ export async function generateDailyReport(
     return fail('source_read_failed');
   }
   providerDiagnostic('daily_report', 'data', 'completed');
+  input.deadlineContext.stage = 'workflow';
 
   const context = createDailyReportContext(calendar.context, sourceSnapshot, {
     providerId: selected.provider.id,
@@ -133,7 +143,9 @@ export async function generateDailyReport(
     facts: providerFacts,
     signal: request.signal,
     timeoutMs: input.timeoutMs ?? 90_000,
+    deadlineContext: input.deadlineContext,
     revalidate: async signal => {
+      input.deadlineContext.stage = 'source_read';
       providerDiagnostic('daily_report', 'data', 'started');
       let current: Snapshot;
       try {
@@ -148,12 +160,14 @@ export async function generateDailyReport(
         throw error;
       }
       providerDiagnostic('daily_report', 'data', 'completed');
+      input.deadlineContext.stage = 'workflow';
       return (
         stableJson(current.sourceSnapshot) ===
         stableJson(snapshot.sourceSnapshot)
       );
     },
   });
+  input.deadlineContext.stage = 'workflow';
   if (selection.status === 'failed') return fail(selection.code);
 
   const report = {
@@ -171,6 +185,7 @@ export async function generateDailyReport(
     followUpQuestions: [],
   };
   const result = { status: 'completed' as const, report };
+  input.deadlineContext.stage = 'validation';
   providerDiagnostic('daily_report', 'validation', 'started');
   if (!validateDailyReportCompletion(context, result)) {
     providerDiagnostic('daily_report', 'validation', 'invalid_output');
@@ -179,6 +194,7 @@ export async function generateDailyReport(
   providerDiagnostic('daily_report', 'validation', 'completed');
   if (request.signal.aborted) return fail('cancelled');
 
+  input.deadlineContext.stage = 'save';
   providerDiagnostic('daily_report', 'persistence', 'started');
   let saved: Awaited<ReturnType<typeof input.storage.save>>;
   try {
@@ -194,19 +210,23 @@ export async function generateDailyReport(
       request.signal,
     );
   } catch {
-    providerDiagnostic(
-      'daily_report',
-      'persistence',
-      request.signal.aborted ? 'cancelled' : 'failed',
-    );
+    input.deadlineContext.stage = 'workflow';
+    if (!input.deadlineContext.timedOut)
+      providerDiagnostic(
+        'daily_report',
+        'persistence',
+        request.signal.aborted ? 'cancelled' : 'failed',
+      );
     return fail(request.signal.aborted ? 'cancelled' : 'persistence_failed');
   }
+  input.deadlineContext.stage = 'workflow';
   if (saved.status !== 'saved' && saved.status !== 'reused') {
-    providerDiagnostic(
-      'daily_report',
-      'persistence',
-      saved.status === 'cancelled' ? 'cancelled' : 'failed',
-    );
+    if (!input.deadlineContext.timedOut)
+      providerDiagnostic(
+        'daily_report',
+        'persistence',
+        saved.status === 'cancelled' ? 'cancelled' : 'failed',
+      );
     return fail(
       saved.status === 'cancelled'
         ? 'cancelled'
