@@ -4,6 +4,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import {
   dailyReminderPickerDate,
   formatDailyReminderTime,
@@ -98,6 +99,34 @@ test('starts from the saved opt-in state without asking for permission on entry'
   expect(
     screen.getByTestId('settings-daily-reminder-time').props.accessibilityRole,
   ).toBe('button');
+});
+
+test('extends the switch hit area from its measured native frame', async () => {
+  await render(<SettingsDailyReminderSection />);
+  const toggle = await screen.findByTestId('settings-daily-reminder-switch');
+  // This synthetic layout checks the inset calculation, not UIKit geometry.
+  const measuredHeight = 31;
+
+  await fireEvent(toggle, 'layout', {
+    nativeEvent: {
+      layout: { height: measuredHeight, width: 51, x: 0, y: 0 },
+    },
+  });
+
+  expect(
+    measuredHeight + toggle.props.hitSlop.top + toggle.props.hitSlop.bottom,
+  ).toBe(44);
+  expect(toggle.props.hitSlop.top).toBe(toggle.props.hitSlop.bottom);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('settings-daily-reminder-toggle-control').props.style,
+    ),
+  ).toMatchObject({
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  });
 });
 
 test('requires an explicit time confirmation before first enablement', async () => {

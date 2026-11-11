@@ -173,16 +173,46 @@ test('keeps a scheduling failure visible and allows an explicit retry', async ()
   expect(native.save).toHaveBeenCalledTimes(2);
 });
 
-test('uses accessible controls and shared appearance colors', async () => {
+test('uses accessible controls and keeps reminder card spacing', async () => {
   await render(<SettingsDailyReminderSection />);
   const toggle = await screen.findByTestId('settings-daily-reminder-switch');
   const card = StyleSheet.flatten(
     screen.getByTestId('settings-daily-reminder-card').props.style,
+  );
+  const description = StyleSheet.flatten(
+    screen.getByTestId('settings-daily-reminder-description').props.style,
+  );
+  const toggleRow = StyleSheet.flatten(
+    screen.getByTestId('settings-daily-reminder-toggle-row').props.style,
+  );
+  const labelTarget = StyleSheet.flatten(
+    screen.getByTestId('settings-daily-reminder-toggle-label-target').props
+      .style,
+  );
+  const statusContent = StyleSheet.flatten(
+    screen.getByTestId('settings-daily-reminder-status-content').props.style,
   );
 
   expect(toggle.props.accessibilityRole).toBe('switch');
   expect(toggle.props.accessibilityLabel).toBe(
     t('settings.dailyReminder.enabled'),
   );
+  expect(description).toMatchObject({
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  });
+  expect(toggleRow).toMatchObject({
+    alignItems: 'center',
+    minHeight: 60,
+    paddingHorizontal: 16,
+  });
+  expect(labelTarget).toMatchObject({ flex: 1, minHeight: 44 });
+  expect(statusContent).toMatchObject({
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  });
   expect(card?.backgroundColor).toBe(appColors.surface);
 });

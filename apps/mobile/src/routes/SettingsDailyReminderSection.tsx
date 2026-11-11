@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 import type { DailyReminderPreference } from '../dailyReminders/nativeDailyReminder';
 import {
   dailyReminderPickerDate,
@@ -12,13 +13,20 @@ import { t } from '../i18n';
 import { SettingsDailyReminderStatus } from './SettingsDailyReminderStatus';
 import { SettingsDailyReminderTimePicker } from './SettingsDailyReminderTimePicker';
 
-/** Connects the Settings opt-in to the scheduler's persisted native contract. */
+const MINIMUM_SWITCH_TOUCH_TARGET = 44;
+
+/** Connects the opt-in to native scheduling and measures its switch target. */
 export function SettingsDailyReminderSection() {
   const { refresh, save, state } = useDailyReminderSettings();
   const preference = state.pendingPreference ?? state.preference;
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerValue, setPickerValue] = useState(() => new Date());
   const [enableAfterPicker, setEnableAfterPicker] = useState(false);
+  const [switchHeight, setSwitchHeight] = useState(0);
+  const switchVerticalHitSlop = Math.max(
+    0,
+    (MINIMUM_SWITCH_TOUCH_TARGET - switchHeight) / 2,
+  );
   const isUnavailable = state.loading || state.loadError;
   const isBusy = isUnavailable || state.saving;
 
@@ -63,28 +71,62 @@ export function SettingsDailyReminderSection() {
     }
   }
 
+  // Expand only the unused portion of the measured native frame to 44 points.
+  function measureSwitch(event: LayoutChangeEvent) {
+    const measuredHeight = event.nativeEvent.layout.height;
+    setSwitchHeight(current =>
+      current === measuredHeight ? current : measuredHeight,
+    );
+  }
+
   return (
     <View style={styles.section} testID="settings-section-daily-reminders">
       <Text accessibilityRole="header" style={styles.sectionTitle}>
         {t('settings.dailyReminder.title')}
       </Text>
       <View style={styles.card} testID="settings-daily-reminder-card">
-        <Text style={styles.description}>
+        <Text
+          style={styles.description}
+          testID="settings-daily-reminder-description"
+        >
           {t('settings.dailyReminder.description')}
         </Text>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>
-            {t('settings.dailyReminder.enabled')}
-          </Text>
-          <Switch
-            accessibilityHint={t('settings.dailyReminder.toggleHint')}
-            accessibilityLabel={t('settings.dailyReminder.enabled')}
-            accessibilityRole="switch"
-            disabled={isBusy}
-            onValueChange={toggleReminder}
-            testID="settings-daily-reminder-switch"
-            value={preference?.enabled ?? false}
-          />
+        <View
+          style={styles.toggleRow}
+          testID="settings-daily-reminder-toggle-row"
+        >
+          <View
+            style={styles.toggleLabelTarget}
+            testID="settings-daily-reminder-toggle-label-target"
+          >
+            <Text
+              style={styles.toggleLabel}
+              testID="settings-daily-reminder-toggle-label"
+            >
+              {t('settings.dailyReminder.enabled')}
+            </Text>
+          </View>
+          <View
+            style={styles.toggleControlTarget}
+            testID="settings-daily-reminder-toggle-control"
+          >
+            <Switch
+              accessibilityHint={t('settings.dailyReminder.toggleHint')}
+              accessibilityLabel={t('settings.dailyReminder.enabled')}
+              accessibilityRole="switch"
+              disabled={isBusy}
+              hitSlop={{
+                bottom: switchVerticalHitSlop,
+                left: 0,
+                right: 0,
+                top: switchVerticalHitSlop,
+              }}
+              onLayout={measureSwitch}
+              onValueChange={toggleReminder}
+              testID="settings-daily-reminder-switch"
+              value={preference?.enabled ?? false}
+            />
+          </View>
         </View>
         <View style={styles.divider} />
         <Pressable
@@ -158,6 +200,7 @@ const styles = StyleSheet.create({
   description: {
     color: appColors.secondary,
     fontSize: 15,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     paddingTop: 16,
   },
@@ -169,7 +212,14 @@ const styles = StyleSheet.create({
     minHeight: 60,
     paddingHorizontal: 16,
   },
-  toggleLabel: { color: appColors.text, flex: 1, fontSize: 17 },
+  toggleLabelTarget: { flex: 1, justifyContent: 'center', minHeight: 44 },
+  toggleLabel: { color: appColors.text, fontSize: 17 },
+  toggleControlTarget: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: MINIMUM_SWITCH_TOUCH_TARGET,
+    minWidth: MINIMUM_SWITCH_TOUCH_TARGET,
+  },
   divider: {
     backgroundColor: appColors.border,
     height: StyleSheet.hairlineWidth,
