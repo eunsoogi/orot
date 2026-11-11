@@ -113,7 +113,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.text(duplicateStatus).contains("같은 문서가 이미 저장되어 있어요."))
         XCTAssertTrue(node(app, "medical-document-source-0").exists)
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-after-duplicate-import")
     }
 
