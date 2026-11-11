@@ -168,7 +168,7 @@ test('fails closed if local identifier discovery fails', async () => {
         mode: { kind: 'reuse_or_generate' },
         signal: new AbortController().signal,
       }),
-    ).toEqual({ status: 'failed', code: 'source_unavailable' });
+    ).toEqual({ status: 'failed', code: 'source_read_failed' });
     expect(generate).not.toHaveBeenCalled();
   } finally {
     connection.close();

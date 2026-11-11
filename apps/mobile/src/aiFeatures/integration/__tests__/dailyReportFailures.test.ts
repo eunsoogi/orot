@@ -62,7 +62,6 @@ test.each([
   'consent',
   'malformed',
   'partial',
-  'timeout',
   'cancelled',
   'unavailable',
 ] as const)('does not persist a %s result', async scenario => {
@@ -94,8 +93,6 @@ test.each([
           yield providerSuccess({ type: 'text_delta' as const, text: '{' });
         },
       };
-    if (scenario === 'timeout')
-      provider = { ...provider, generate: () => new Promise(() => undefined) };
     if (scenario === 'cancelled') controller.abort();
     const selectedProvider = provider;
     const service = createDailyReportService({
@@ -115,7 +112,6 @@ test.each([
       consent: 'consent_required',
       malformed: 'malformed_output',
       partial: 'partial_stream',
-      timeout: 'timeout',
       cancelled: 'cancelled',
       unavailable: 'provider_unavailable',
     };

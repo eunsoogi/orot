@@ -1,7 +1,12 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
-export type Feature = 'rag' | 'disease' | 'visit';
+export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report';
 export type Stage =
-  'selection' | 'data' | 'workflow' | 'provider_error' | 'validation';
+  | 'selection'
+  | 'data'
+  | 'workflow'
+  | 'provider_error'
+  | 'validation'
+  | 'persistence';
 export type Outcome =
   | 'started'
   | 'completed'
