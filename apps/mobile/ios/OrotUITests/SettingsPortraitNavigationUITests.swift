@@ -6,13 +6,17 @@ extension RootNavigationUITests {
     func verifyHealthDataStatusViewport(_ app: XCUIApplication) throws {
         let page = UITestConditions.element(app, "health-data-scroll")
         XCTAssertTrue(page.exists && !page.frame.isEmpty)
-        XCTAssertEqual(page.descendants(matching: .scrollView).count, 0, "Health Data uses one vertical page")
+        // React Native's tagged container wraps the native scrolling element.
+        XCTAssertEqual(page.descendants(matching: .scrollView).count, 1, "Health Data uses one native scrolling page")
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll"], name: "settings-health-data-boundary", testCase: self)
         for identifier in ["health-data-connection-status", "health-data-permission-status", "health-data-last-sync-status"] {
-            let status = UITestConditions.element(app, identifier)
+            let status = page.descendants(matching: .any).matching(identifier: identifier).firstMatch
             XCTAssertTrue(status.exists)
             // Static status text needs viewport containment, not a tap target.
-            XCTAssertNotNil(FormUITestConditions.reveal(status, in: app, scrollID: "health-data-scroll", requireHittable: false, keyboardMayBeVisible: false))
+            let frame = try XCTUnwrap(FormUITestConditions.reveal(status, in: app, scrollID: "health-data-scroll", requireHittable: false, keyboardMayBeVisible: false))
+            let viewport = page.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, viewport.minX - 0.5)
+            XCTAssertLessThanOrEqual(frame.maxX, viewport.maxX + 0.5)
         }
     }
 
