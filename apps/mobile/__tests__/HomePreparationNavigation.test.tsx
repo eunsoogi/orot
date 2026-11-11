@@ -173,6 +173,13 @@ test('a valid future Calendar visit opens an editable conversation request witho
     expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
     expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
       'value',
+      '',
+    );
+    await fireEvent.press(
+      screen.getByTestId('conversation-intent-use-suggestion'),
+    );
+    expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+      'value',
       conversationIntentRequests['visit-questions'],
     );
     expect(screen.queryByTestId('next-visit-generate')).toBeNull();

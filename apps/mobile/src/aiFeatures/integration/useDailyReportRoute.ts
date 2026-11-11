@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import type { DailyReportFailureCode } from './dailyReportTypes';
+import type { ConversationEntryContext } from './conversationIntent';
+import { useReportResultCommit } from './useReportResultCommit';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -17,7 +19,12 @@ export function useDailyReportRoute(
   identity: DailyReportIdentity | null,
   initialOperation?: ReturnType<Feature['start']>,
   ownsOperation = true,
+  onTaskResult?: (
+    target: NonNullable<ConversationEntryContext['dailyReport']>,
+  ) => Promise<void>,
 ) {
+  const resultCommit = useReportResultCommit(feature, onTaskResult);
+  const { capture, beginCaptured } = resultCommit;
   const [lookupResult, setLookup] = useState<{
     key: string;
     value: Lookup;
@@ -101,8 +108,11 @@ export function useDailyReportRoute(
     }
     setBusy(true);
     cancelRef.current = operation.cancel;
+    const retain = capture();
     operation.result.then(
       result => {
+        if (result.status !== 'failed' && identity)
+          beginCaptured(identity, result.runId, retain);
         if (!current) return;
         setBusy(false);
         cancelRef.current = null;
@@ -125,7 +135,15 @@ export function useDailyReportRoute(
       generationRef.current += 1;
       release?.();
     };
-  }, [feature, identity, initialOperation, ownsOperation, refresh]);
+  }, [
+    feature,
+    identity,
+    initialOperation,
+    ownsOperation,
+    refresh,
+    capture,
+    beginCaptured,
+  ]);
   useEffect(() => {
     const generation = ++lookupGenerationRef.current;
     setLookup(null);
@@ -180,10 +198,13 @@ export function useDailyReportRoute(
       return;
     }
     cancelRef.current = operation.cancel;
+    const retain = capture();
     setBusy(true);
     setFailure(null);
     operation.result.then(
       result => {
+        if (result.status !== 'failed')
+          beginCaptured(identity, result.runId, retain);
         if (!isCurrent()) return;
         setBusy(false);
         cancelRef.current = null;
@@ -205,7 +226,10 @@ export function useDailyReportRoute(
     lookup,
     preview,
     loading: Boolean(identity && (!lookup || !preview)),
-    busy,
+    busy: busy || resultCommit.status === 'pending',
+    resultSaveFailed: resultCommit.status === 'failed',
+    retryResult: resultCommit.retry,
+    retainResult: resultCommit.begin,
     failure,
     generate,
     refresh,

@@ -4,11 +4,13 @@ import { t } from '../i18n';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { treatmentArtifactPredicate } from '../storage/treatmentSessionIdentity';
 import type { TreatmentRetention } from './treatmentRequestProducer';
+import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 
 export interface SavedTreatmentChoice {
   readonly id: string;
   readonly sessionId: string;
   readonly createdAt: string;
+  readonly artifactRevision?: string;
 }
 export interface TreatmentSessionLease {
   readonly id: string;
@@ -23,8 +25,23 @@ export async function listSavedTreatment(
   const store = createConversationArtifactStorage(database);
   if ((await store.activeSessionVersion(lease.id)) !== lease.version) return [];
   const page = await store.list(lease.id, undefined, 50, 'treatment');
+  const artifacts = await store.readSessionMany(
+    lease.id,
+    lease.version,
+    page.items.map(item => item.id),
+  );
   if ((await store.activeSessionVersion(lease.id)) !== lease.version) return [];
-  return page.items.map(item => ({ ...item, sessionId: lease.id }));
+  return page.items.flatMap((item, index) =>
+    artifacts[index]
+      ? [
+          {
+            ...item,
+            sessionId: lease.id,
+            artifactRevision: fingerprint(artifacts[index]),
+          },
+        ]
+      : [],
+  );
 }
 
 /** The conversation owns the durable identity and storage checks its lease at commit. */
@@ -49,13 +66,23 @@ export async function deleteSavedTreatment(
   item: SavedTreatmentChoice,
   lease: TreatmentSessionLease,
 ) {
-  if (item.sessionId !== lease.id) return;
-  await database.execute(
-    `DELETE FROM conversation_artifacts AS a WHERE a.id = ? AND a.session_id = ?
-      AND ${treatmentArtifactPredicate}
-      AND EXISTS (SELECT 1 FROM conversation_artifact_sessions s
-      JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
-      WHERE s.id = a.session_id AND s.hidden = 0 AND s.version = ?)`,
-    [item.id, lease.id, lease.version],
-  );
+  if (item.sessionId !== lease.id)
+    throw new Error('Treatment session changed.');
+  await database.transaction(async tx => {
+    // A stale lease must not be reported as a successful deletion.
+    const current = await tx.execute(
+      `SELECT a.id FROM conversation_artifacts AS a WHERE a.id = ? AND a.session_id = ?
+        AND ${treatmentArtifactPredicate}
+        AND EXISTS (SELECT 1 FROM conversation_artifact_sessions s
+        JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
+        WHERE s.id = a.session_id AND s.hidden = 0 AND s.version = ?)`,
+      [item.id, lease.id, lease.version],
+    );
+    if (!current.rows.length)
+      throw new Error('Treatment output is unavailable.');
+    await tx.execute(
+      'DELETE FROM conversation_artifacts WHERE id = ? AND session_id = ?',
+      [item.id, lease.id],
+    );
+  });
 }

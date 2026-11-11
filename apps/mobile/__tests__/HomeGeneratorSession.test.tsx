@@ -39,6 +39,10 @@ function captureConversationSends() {
 async function enterHomeConversation() {
   await fireEvent.press(await screen.findByTestId('home-prepare-visit'));
   expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
+  await fireEvent.press(
+    screen.getByTestId('conversation-intent-use-suggestion'),
+  );
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
     conversationIntentRequests['visit-questions'],
   );

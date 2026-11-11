@@ -1,5 +1,4 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
-import { t } from '../i18n';
 import type {
   ConversationSender,
   ConversationSession,
@@ -16,15 +15,13 @@ import { createConversationVisitReviewUpdater } from './conversationVisitReviewU
 import {
   createEmptyConversation,
   initialConversationSnapshot,
-  quarantineConversation,
 } from './conversationEmptySession';
-import {
-  createConversationNavigation,
-  removeConversation,
-  undoMemoryConversation,
-  undoRetainedConversation,
-} from './conversationSessionTransitions';
+import { createConversationNavigation } from './conversationSessionTransitions';
 import { conversationTreatmentOwnership } from './conversationTreatmentOwnership';
+import { createConversationTaskState } from './conversationTaskState';
+import { createConversationHistoryLoader } from './conversationHistoryLoader';
+import { createConversationSessionRemoval } from './conversationSessionRemoval';
+import { createConversationTaskRefresh } from './conversationTaskRefresh';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
@@ -58,6 +55,19 @@ export function createConversationSessions(
   };
   const find = (id: number) =>
     snapshot.sessions.find(session => session.id === id)!;
+  const taskRefresh = createConversationTaskRefresh({
+    options,
+    find: id => snapshot.sessions.find(session => session.id === id),
+    update,
+    valid: () => !disposed,
+  });
+  const taskState = createConversationTaskState({
+    retention: options.retention,
+    find: id => snapshot.sessions.find(session => session.id === id),
+    update,
+    valid: () => !disposed,
+    activeId: () => snapshot.activeId,
+  });
   const requests = createConversationSessionRequests(
     find,
     update,
@@ -66,7 +76,24 @@ export function createConversationSessions(
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
+    readTasks: options.restoreTasks,
     update,
+  });
+  const attachExisting = createConversationSessionAttachment({
+    retention: options.retention,
+    restoration,
+    canRestore: Boolean(options.restoreSession),
+    empty,
+    snapshot: () => snapshot,
+    apply,
+    valid: () => !disposed,
+  });
+  const loadHistory = createConversationHistoryLoader({
+    options,
+    attach: attachExisting,
+    snapshot: () => snapshot,
+    lifecycle: () => lifecycle,
+    disposed: () => disposed,
   });
   const retrySave = createConversationRetrySave({
     find: id => snapshot.sessions.find(session => session.id === id),
@@ -76,104 +103,31 @@ export function createConversationSessions(
     restoration,
     options,
   });
-  let deleting = false;
-  const quarantinedDrafts = new Map<number, string>();
-  const removeRetained = async (id: number) => {
-    const exists = snapshot.sessions.some(session => session.id === id);
-    if (disposed || deleting || !exists) return;
-    if (!quarantinedDrafts.has(id)) quarantinedDrafts.set(id, find(id).draft);
-    const started = lifecycle;
-    deleting = true;
-    options.retention!.prepareRemoval(id);
-    requests.abandon(id);
-    restoration.forget(id);
-    update(id, quarantineConversation());
-    try {
-      if (snapshot.deleted?.handle !== undefined) {
-        await options.retention!.finalize(snapshot.deleted.handle);
-        if (lifecycle !== started) return;
-        snapshot = { ...snapshot, deleted: null };
-        emit();
-      }
-      const handle = await options.retention!.hide(id);
-      if (disposed) {
-        await options.retention!.finalize(handle);
-        return;
-      }
-      if (lifecycle !== started) return;
-      quarantinedDrafts.delete(id);
-      requests.forgetSaves(id);
-      update(id, { ...quarantineConversation(), busy: false });
-      apply(removeConversation(snapshot, id, empty, handle));
-    } catch {
-      if (lifecycle !== started) return;
-      let activeId: string | null = null;
-      try {
-        activeId = await options.retention!.resumeIfActive(id);
-      } catch {
-        /* Unknown state remains quarantined. */
-      }
-      if (lifecycle !== started) return;
-      if (activeId && !disposed) {
-        update(id, {
-          quarantined: false,
-          draft: find(id).draft || quarantinedDrafts.get(id) || '',
-          restoreAfterRetry: true,
-        });
-        quarantinedDrafts.delete(id);
-        if (options.restoreSession) await restoration.start(id, activeId);
-        else update(id, { restoreFailed: true });
-        if (lifecycle !== started) return;
-        requests.resumeSaves(id);
-        update(id, { restoreAfterRetry: Boolean(find(id).unsavedCount) });
-      }
-      update(id, {
-        busy: false,
-        error: t('ragConversation.conversation.deleteFailed'),
-        deletionError: t('ragConversation.conversation.deleteFailed'),
-      });
-    } finally {
-      if (lifecycle === started) deleting = false;
-    }
-  };
-  const undoRetained = async () => {
-    const deleted = snapshot.deleted;
-    if (disposed || deleting || !deleted || deleted.handle === undefined)
-      return;
-    const started = lifecycle;
-    deleting = true;
-    try {
-      if (deleted.handle?.version != null && !options.restoreSession)
-        throw new Error('Conversation restoration is unavailable.');
-      await options.retention!.undo(deleted.session.id, deleted.handle);
-      if (disposed || lifecycle !== started) return;
-      apply(undoRetainedConversation(snapshot, deleted));
-      if (deleted.handle?.version != null)
-        await restoration.start(deleted.session.id, deleted.handle.id);
-    } catch {
-      if (lifecycle !== started) return;
-      update(snapshot.activeId, {
-        error: t('ragConversation.conversation.restoreFailed'),
-        deletionError: t('ragConversation.conversation.restoreFailed'),
-      });
-    } finally {
-      if (lifecycle === started) deleting = false;
-    }
-  };
+  const removal = createConversationSessionRemoval({
+    options,
+    snapshot: () => snapshot,
+    apply,
+    update,
+    empty,
+    find,
+    requests,
+    restoration,
+    disposed: () => disposed,
+    lifecycle: () => lifecycle,
+  });
   return {
-    attachExisting: createConversationSessionAttachment({
-      retention: options.retention,
-      restoration,
-      canRestore: Boolean(options.restoreSession),
-      empty,
-      snapshot: () => snapshot,
-      apply,
-      valid: () => !disposed,
-    }),
+    attachExisting,
+    loadHistory,
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
+    setEntryPrompt: (id: number, entryPrompt?: string) =>
+      update(id, { entryPrompt }),
+    saveTaskCard: taskState.save,
+    forgetTaskCard: taskState.forgetTaskCard,
     setError: (id: number, error: string) => update(id, { error }),
+    reportTaskOwner: taskState.reportTaskOwner,
+    selectDailyReport: taskState.selectDailyReport,
     updateVisitQuestionReview: createConversationVisitReviewUpdater(
       () => snapshot,
       update,
@@ -185,34 +139,35 @@ export function createConversationSessions(
       empty,
       disposed: () => disposed,
     }),
-    remove(id: number) {
-      if (disposed) return;
-      if (options.retention) return removeRetained(id);
-      const index = snapshot.sessions.findIndex(session => session.id === id);
-      if (index < 0) return;
-      requests.cancel(id);
-      requests.forgetSaves(id);
-      apply(removeConversation(snapshot, id, empty));
-    },
-    undoRemove() {
-      if (disposed) return;
-      if (options.retention) return undoRetained();
-      apply(undoMemoryConversation(snapshot));
-    },
+    remove: removal.remove,
+    undoRemove: removal.undo,
     cancel: (id: number) => {
       if (!disposed) requests.cancel(id);
     },
     retrySave,
     retryRestore: (id: number) =>
-      disposed ? Promise.resolve() : restoration.retry(id),
+      disposed
+        ? Promise.resolve()
+        : taskRefresh.has(id)
+          ? taskRefresh.retry(id)
+          : restoration.retry(id),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
+      taskState.invalidateWrites();
+      const retryTaskIds = new Set(
+        snapshot.sessions
+          .filter(session => taskRefresh.has(session.id))
+          .map(session => session.id),
+      );
+      taskRefresh.invalidate();
       refreshConversationSources({
         snapshot,
         event,
         options,
         requests,
         restoration,
+        refreshTasks: taskRefresh.start,
+        retryTaskIds,
         update,
         apply: change => apply({ ...snapshot, ...change }),
       });
@@ -220,11 +175,12 @@ export function createConversationSessions(
     invalidateAll() {
       if (disposed) return;
       lifecycle++;
+      taskState.invalidate();
+      taskRefresh.invalidate();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();
-      quarantinedDrafts.clear();
-      deleting = false;
+      removal.invalidate();
       const session = empty();
       snapshot = { activeId: session.id, sessions: [session], deleted: null };
       emit();
@@ -233,10 +189,12 @@ export function createConversationSessions(
     dispose() {
       disposed = true;
       lifecycle++;
+      taskState.invalidate();
+      taskRefresh.invalidate();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();
-      quarantinedDrafts.clear();
+      removal.invalidate();
       if (snapshot.deleted?.handle !== undefined)
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
     },

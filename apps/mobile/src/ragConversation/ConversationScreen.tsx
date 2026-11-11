@@ -1,16 +1,13 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
-import { useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
-import { AppSymbol } from '../layout/AppSymbol';
 import { ConversationComposer } from './ConversationComposer';
-import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -18,7 +15,6 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
-import { DailyReportConversationHeader } from './DailyReportConversationHeader';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
@@ -32,13 +28,19 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { t } from '../i18n';
-import { TreatmentConversationAction } from '../treatmentContext/TreatmentConversationAction';
+import {
+  ConversationTaskHeader,
+  ConversationStoredTaskCards,
+} from './ConversationTaskPanels';
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   entryContext,
   navigationRouteKey,
   providerSelection,
+  renderReportTask,
+  renderSavedReport,
+  renderStoredReportTask,
   onNavigationStateChange,
   onBack,
   onOpenHistory,
@@ -62,6 +64,14 @@ export function ConversationScreen({
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const hasReportTask = Boolean(renderReportTask);
+  const reportOwner = useMemo(
+    () =>
+      hasReportTask && navigationRouteKey
+        ? store.reportTaskOwner(navigationRouteKey)
+        : null,
+    [store, hasReportTask, navigationRouteKey],
+  );
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
@@ -99,56 +109,39 @@ export function ConversationScreen({
           title={navigationText.back.label}
         />
       )}
-      <View style={styles.titleRow}>
-        <Text accessibilityRole="header" style={styles.heading}>
-          {copy.title}
-        </Text>
-        {showSessionActionsInHeader ? (
-          <View style={styles.sessionActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.sessions}
-              disabled={!onOpenHistory}
-              onPress={onOpenHistory}
-              style={[styles.sessionAction, !onOpenHistory && styles.disabled]}
-              testID="rag-conversation-sessions-toggle"
-            >
-              <ComposerGlassBackground testID="rag-conversation-history-glass" />
-              <AppSymbol
-                name="clock.arrow.circlepath"
-                color={appColors.primaryText}
-              />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.newConversation}
-              onPress={() => {
-                store.create();
-              }}
-              style={styles.sessionAction}
-              testID="rag-conversation-new-session"
-            >
-              <ComposerGlassBackground testID="rag-conversation-new-glass" />
-              <AppSymbol name="plus" color={appColors.primaryText} />
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
+      <ConversationHeaderTitle
+        title={copy.title}
+        historyLabel={copy.sessions}
+        newLabel={copy.newConversation}
+        showActions={showSessionActionsInHeader}
+        onHistory={onOpenHistory}
+        onNew={store.create}
+      />
       {providerSelection ? (
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      {!selectedReport ? (
-        <TreatmentConversationAction
-          key={id}
-          sessionId={id}
-          ownership={store.treatment}
-          onOpenSource={onOpenSource}
+      {session.entryPrompt ? (
+        <Button
+          title={t('conversationIntent.useSuggestion', {
+            question: session.entryPrompt,
+          })}
+          testID="conversation-intent-use-suggestion"
+          disabled={Boolean(draft) || busy}
+          variant="secondary"
+          onPress={() => store.setDraft(id, session.entryPrompt!)}
         />
       ) : null}
-      <DailyReportConversationHeader
-        report={selectedReport}
-        onRequest={onOpenDailyReport}
+      <ConversationTaskHeader
+        store={store}
+        session={session}
+        onOpenSource={onOpenSource}
+        selectedReport={selectedReport}
+        routeKey={navigationRouteKey}
+        reportOwner={reportOwner}
+        onOpenDailyReport={onOpenDailyReport}
+        renderReportTask={renderReportTask}
+        renderSavedReport={renderSavedReport}
       />
     </View>
   );
@@ -204,16 +197,26 @@ export function ConversationScreen({
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
               footer={
-                <ManualVisitTargetPanels
-                  store={store}
-                  sessionId={id}
-                  durableSessionId={toolSourceSessionId}
-                  discover={discoverManualVisits}
-                  messages={messages}
-                  session={session}
-                  compact={composerLayout.compact}
-                  disclaimer={copy.disclaimer}
-                />
+                <>
+                  <ManualVisitTargetPanels
+                    store={store}
+                    sessionId={id}
+                    durableSessionId={toolSourceSessionId}
+                    discover={discoverManualVisits}
+                    messages={messages}
+                    session={session}
+                    compact={composerLayout.compact}
+                    disclaimer={copy.disclaimer}
+                  />
+                  <ConversationStoredTaskCards
+                    store={store}
+                    session={session}
+                    onOpenSource={onOpenSource}
+                    routeKey={navigationRouteKey}
+                    durableSessionId={toolSourceSessionId}
+                    renderStoredReportTask={renderStoredReportTask}
+                  />
+                </>
               }
             />
             <ConversationComposer

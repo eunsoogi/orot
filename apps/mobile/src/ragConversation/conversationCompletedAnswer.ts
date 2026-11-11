@@ -12,6 +12,7 @@ export function conversationCompletedAnswer(input: {
   messageId: number;
   userMessageId: number;
   retainedTurnId?: string;
+  dailyReport?: ConversationSession['dailyReport'];
   copy: { noEvidence: string; insufficient: string };
   outcome: Exclude<
     RagConversationOutcome,
@@ -59,6 +60,7 @@ export function conversationCompletedAnswer(input: {
         id: messageId,
         role: 'assistant',
         content,
+        ...(input.dailyReport ? { dailyReport: input.dailyReport } : {}),
         ...activity.metadata(session.pendingMessage?.withholdHealthBody),
         ...(input.retainedTurnId
           ? { retainedTurnId: input.retainedTurnId }

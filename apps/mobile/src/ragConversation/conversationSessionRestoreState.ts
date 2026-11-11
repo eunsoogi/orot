@@ -22,6 +22,7 @@ type RestoredTurn = {
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
+  readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
   const sessions = new Map<
@@ -35,21 +36,16 @@ export function createConversationSessionRestoreState(input: {
     entry.controller = controller;
     input.update(id, { restoring: true, restoreFailed: false });
     try {
-      const turns = await input.read(entry.durableId, controller.signal);
+      const [turns, taskCards] = await Promise.all([
+        input.read(entry.durableId, controller.signal),
+        input.readTasks?.(entry.durableId, controller.signal) ??
+          Promise.resolve([]),
+      ]);
       if (sessions.get(id) !== entry || controller.signal.aborted) return;
       const reports = turns.flatMap(turn =>
         turn.dailyReport ? [turn.dailyReport] : [],
       );
-      // Canonical identity keys and revision identify a report regardless of JSON key order.
-      if (
-        reports.some(
-          report =>
-            report.identity.key !== reports[0]!.identity.key ||
-            report.runId !== reports[0]!.runId ||
-            report.revision !== reports[0]!.revision,
-        )
-      )
-        throw new Error('Conflicting report targets.');
+      // Each turn retains its own exact report; only the latest turn sets the next follow-up target.
       const messages = turns.flatMap((turn, index) => [
         ...(turn.question
           ? [
@@ -76,19 +72,26 @@ export function createConversationSessionRestoreState(input: {
             : {}),
           visitQuestions: turn.visitQuestions,
           visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
+          ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
           ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },
       ]);
       input.update(id, {
         messages,
-        dailyReport: reports[0],
+        taskCards,
+        dailyReport: reports.at(-1),
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
           ? 'possibilities'
           : undefined,
         title:
           messages[0]?.content.slice(0, 36) ||
+          (taskCards[0]?.task.kind === 'treatment'
+            ? t('treatmentSafety.saved')
+            : taskCards.length
+              ? t('dailyReport.title')
+              : '') ||
           getRagConversationCopy().newConversation,
         error: '',
         restoreFailed: false,
@@ -96,11 +99,14 @@ export function createConversationSessionRestoreState(input: {
       });
       sessions.delete(id);
     } catch {
-      if (sessions.get(id) === entry && !controller.signal.aborted)
+      if (sessions.get(id) === entry && !controller.signal.aborted) {
+        // A failed sibling read must not keep restoring private data in the background.
+        controller.abort();
         input.update(id, {
           error: t('ragConversation.history.restoreFailed'),
           restoreFailed: true,
         });
+      }
     } finally {
       if (sessions.get(id) === entry) {
         entry.controller = undefined;

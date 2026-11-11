@@ -11,6 +11,7 @@ import { restoreConversationVisitQuestions } from './restoreConversationVisitQue
 import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 import { createTreatmentSourceResolver } from './resolveTreatmentSource';
+import { restoreConversationTaskCards } from './restoreConversationTaskCards';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -37,6 +38,11 @@ export function createConversationSessionOptions(input: {
     return storage;
   };
   return {
+    listSessions: async cursor => (await openStorage()).listSessions(cursor),
+    restoreTasks: async (sessionId, signal) => {
+      const storage = await openStorage();
+      return restoreConversationTaskCards(storage, sessionId, signal);
+    },
     resolveTreatmentSource: createTreatmentSourceResolver(input),
     retention: createConversationSessionRetention({
       openStorage,

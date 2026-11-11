@@ -170,16 +170,11 @@ test('viewing app and reminder routes does not dispatch; explicit generation cro
       store: { activate: async () => {}, dismiss: async () => {} },
     });
     expect(result).toBe('opened');
-    const operation = runtime.dailyConversationTargets.get(
-      'conversation-report',
-    )?.operation;
-    if (!operation || operation.status !== 'started')
-      throw new Error('Expected report reuse');
-    expect(await operation.result).toMatchObject({
-      status: 'reused',
-      runId: 'synthetic-run',
-      revision: 1,
-    });
+    expect(
+      runtime.dailyConversationTargets.get('conversation-report')?.operation,
+    ).toBeUndefined();
+    expect(model).toHaveBeenCalledTimes(1);
+    expect(authorize).toHaveBeenCalledTimes(1);
     const conversation = await render(
       <AppointmentReminderProvider runtime={runtime}>
         <DailyReportFlowScreen

@@ -16,9 +16,29 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly listSessions?: (cursor?: {
+    readonly updatedAt: string;
+    readonly id: string;
+  }) => Promise<{
+    readonly items: readonly {
+      readonly id: string;
+      readonly updatedAt: string;
+      readonly version: number;
+    }[];
+    readonly nextCursor: {
+      readonly updatedAt: string;
+      readonly id: string;
+    } | null;
+  }>;
+  readonly restoreTasks?: (
+    id: string,
+    signal: AbortSignal,
+  ) => Promise<
+    readonly import('./conversationTaskState').RetainedConversationTask[]
+  >;
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
-  readonly retention?: Omit<Retention, 'beginSession'> &
-    Partial<Pick<Retention, 'beginSession'>>;
+  readonly retention?: Omit<Retention, 'beginSession' | 'saveTaskCard'> &
+    Partial<Pick<Retention, 'beginSession' | 'saveTaskCard'>>;
   readonly restoreSession?: (
     id: string,
     signal: AbortSignal,
@@ -96,5 +116,7 @@ export interface ConversationSession {
   readonly restoreAfterRetry?: boolean;
   readonly artifactContinuation?: ArtifactContinuation | null;
   readonly entryIntent?: 'possibilities';
+  readonly entryPrompt?: string;
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
+  readonly taskCards?: readonly import('./conversationTaskState').RetainedConversationTask[];
 }

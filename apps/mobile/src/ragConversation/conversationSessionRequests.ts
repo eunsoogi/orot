@@ -171,6 +171,7 @@ export function createConversationSessionRequests(
           messageId: outcome.status === 'answer' ? responseId : ++messageId,
           copy,
           outcome,
+          dailyReport: session.dailyReport,
           activity,
           retainedTurnId:
             request.committed && retained ? retained.toolMessageId : undefined,
