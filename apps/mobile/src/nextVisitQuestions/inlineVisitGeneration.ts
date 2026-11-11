@@ -4,8 +4,12 @@ import type {
   NextVisitEvidenceReference,
   SavedQuestionsState,
 } from './types';
+import {
+  recoveryForSavedQuestionReadFailure,
+  type VisitQuestionPreflightRecovery,
+} from './savedQuestionRecovery';
 
-/** A message owns its generation and saved-list snapshot; late results cannot move to another message. */
+/** A message owns its saved snapshot; preflight failures retain safe recovery codes and never mutate another review. */
 export async function generateInlineVisitReview<
   T extends NextVisitEvidenceReference,
   TResult extends GenerationOutcome<T>,
@@ -22,13 +26,48 @@ export async function generateInlineVisitReview<
 }) {
   const current = () => !input.signal.aborted && input.isCurrentOwner();
   if (!current()) return { status: 'cancelled' as const };
-  const saved = await input.loadSaved(input.appointmentId);
+  let saved: SavedQuestionsState<T>;
+  try {
+    saved = await input.loadSaved(input.appointmentId);
+  } catch {
+    if (!current()) return { status: 'cancelled' as const };
+    return {
+      status: 'saved_unavailable' as const,
+      recovery: recoveryForSavedQuestionReadFailure('storage_read_failed'),
+    };
+  }
   if (!current()) return { status: 'cancelled' as const };
-  if (
-    saved &&
-    (saved.status !== 'ready' || saved.appointmentId !== input.appointmentId)
-  )
-    return { status: 'saved_unavailable' as const };
+  if (!saved) {
+    return {
+      status: 'saved_unavailable' as const,
+      recovery: recoveryForSavedQuestionReadFailure('unknown_read_failure'),
+    };
+  }
+  if (saved.status === 'loading') {
+    return {
+      status: 'saved_unavailable' as const,
+      recovery: {
+        status: 'loading',
+        action: 'retry_saved_question_read',
+      } satisfies VisitQuestionPreflightRecovery,
+    };
+  }
+  if (saved.status === 'error') {
+    const failureReason = saved.failureReason ?? 'unknown_read_failure';
+    return {
+      status: 'saved_unavailable' as const,
+      recovery: recoveryForSavedQuestionReadFailure(failureReason),
+    };
+  }
+  if (saved.appointmentId !== input.appointmentId) {
+    return {
+      status: 'saved_unavailable' as const,
+      recovery: {
+        status: 'appointment_mismatch',
+        action: 'refresh_appointment',
+      } satisfies VisitQuestionPreflightRecovery,
+    };
+  }
   const outcome = await input.generate();
   if (!current()) return { status: 'cancelled' as const };
   if (outcome.status !== 'ready')
@@ -36,7 +75,7 @@ export async function generateInlineVisitReview<
   const generation = outcome as Extract<TResult, { status: 'ready' }>;
   const fresh = createInlineVisitReview(
     input.ownerKey,
-    saved?.status === 'ready' ? saved.questions : [],
+    saved.questions,
     outcome.questions,
     outcome.caveats,
     input.createId,

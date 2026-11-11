@@ -117,6 +117,8 @@ export default function CalendarLinkingScreen({
       onSelectEvent={calendar.selectEvent}
       queryWindow={queryWindow}
       resultsMayBeIncomplete={calendarSync.query?.complete === false}
+      selectedEvent={calendar.selectedEvent}
+      selectionDisabled={calendar.saving}
     />
   );
 

@@ -38,7 +38,9 @@ export function RecordsRouteEntries({
       >
         {t('records.title')}
       </Text>
-      <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
+      <Text style={styles.subtitle} testID="records-subtitle">
+        {t('records.subtitle')}
+      </Text>
       <View style={styles.captureActions} testID="records-capture-actions">
         <Pressable
           accessibilityRole="button"

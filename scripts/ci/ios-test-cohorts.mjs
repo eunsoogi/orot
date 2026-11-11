@@ -36,6 +36,7 @@ const cohorts = {
       'TestHostConnectionTests',
       'FormScrollGeometryUITests',
       'ChartFoundationUITests',
+      'ChartConsumerAcceptanceUITests',
     ],
   },
   'recording-evidence': {

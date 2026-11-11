@@ -2,6 +2,7 @@ import type { Appointment } from '@orot/domain';
 import type { TextStyle } from 'react-native';
 import type { ProviderSelection } from '../providers/selection/types';
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
+import type { SavedQuestionReadFailureReason } from './savedQuestionRecovery';
 
 /** A UI projection of an evidence link; the opaque citation remains intact for save and open callbacks. */
 export interface NextVisitEvidenceReference {
@@ -140,6 +141,8 @@ export type SavedQuestionsState<TReference extends NextVisitEvidenceReference> =
       readonly appointmentId: string;
       readonly questions: readonly [];
       readonly message?: string;
+      /** Safe reason code for retry or source-revalidation guidance. */
+      readonly failureReason?: SavedQuestionReadFailureReason;
     };
 
 export type EvidenceCaveat =

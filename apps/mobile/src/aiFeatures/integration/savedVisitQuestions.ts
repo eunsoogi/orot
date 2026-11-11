@@ -1,5 +1,4 @@
 import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
-import { t } from '../../i18n';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
@@ -20,6 +19,7 @@ import {
   registerSavedCitation,
   SavedVisitQuestionsReadError,
 } from './savedVisitQuestionCitation';
+import { savedVisitQuestionLoadFailure } from './savedVisitQuestionFailure';
 export { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
 
 import type {
@@ -206,33 +206,10 @@ export async function loadSavedVisitQuestionState(input: {
       ...(await restoreSavedVisitQuestions({ ...input, appointmentId })),
     };
   } catch (error) {
-    const message =
-      error instanceof SavedVisitQuestionsReadError &&
-      error.reason === 'missing_citation_source'
-        ? t('visitQuestions.restore.missingSource')
-        : error instanceof SavedVisitQuestionsReadError &&
-            error.reason === 'changed_generated_source'
-          ? t('visitQuestions.restore.changedGeneratedSource')
-          : error instanceof SavedVisitQuestionsReadError &&
-              error.reason === 'changed_saved_questions'
-            ? t('visitQuestions.restore.changedList')
-            : error instanceof SavedVisitQuestionsReadError &&
-                error.reason === 'health_context_reader_unavailable'
-              ? t('visitQuestions.restore.readerUnavailable')
-              : error instanceof SavedVisitQuestionsReadError &&
-                  error.reason === 'changed_health_context'
-                ? t('visitQuestions.restore.changedHealthContext')
-                : error instanceof SavedVisitQuestionsReadError &&
-                    error.reason === 'stale_artifact'
-                  ? t('visitQuestions.restore.staleTranscript')
-                  : error instanceof SavedVisitQuestionsReadError
-                    ? t('visitQuestions.restore.invalidQuestion')
-                    : t('visitQuestions.restore.retry');
-    return {
-      status: 'error',
-      appointmentId,
-      questions: [],
-      message,
-    };
+    const failureReason =
+      error instanceof SavedVisitQuestionsReadError
+        ? error.reason
+        : 'storage_read_failed';
+    return savedVisitQuestionLoadFailure(appointmentId, failureReason);
   }
 }

@@ -78,6 +78,12 @@ test('does not generate against a failed or different saved visit', async () => 
     signal: new AbortController().signal,
   });
   expect(result.status).toBe('saved_unavailable');
+  expect(result).toMatchObject({
+    recovery: {
+      status: 'appointment_mismatch',
+      action: 'refresh_appointment',
+    },
+  });
   expect(generate).not.toHaveBeenCalled();
 });
 

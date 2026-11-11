@@ -51,8 +51,8 @@ export const coreTests = [
   'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
   'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandWaitsForCancellation',
   'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
-  // Compare actual body, navigation and composer glyph bounds in both appearances.
-  'OrotIntegrationTests/AppSymbolSizingIntegrationTests/testCompactSymbolsMatchAcrossBodyNavigationAndComposerInBothAppearances',
+  // Compare UIKit glyph bounds and composer material policy across native appearances and accessibility settings.
+  'OrotIntegrationTests/AppSymbolSizingIntegrationTests/testCompactSymbolsAndComposerGlassRespectNativeAppearanceAndTransparency',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
@@ -77,6 +77,8 @@ export const coreTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/ChartFoundationUITests/testDenseChartPagesAndVoiceOverValues',
   'OrotUITests/ChartFoundationUITests/testSVGPropertyUpdatesAndRemount',
+  // Saved blood-pressure speech remains an explicitly selected Duo diagnostic.
+  'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',

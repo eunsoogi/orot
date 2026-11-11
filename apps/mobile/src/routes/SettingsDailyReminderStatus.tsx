@@ -14,7 +14,7 @@ interface SettingsDailyReminderStatusProps {
   readonly state: DailyReminderSettingsState;
 }
 
-/** Shows scheduler output and offers the matching permission or retry action. */
+/** Shows reminder state in the padded card footer with recovery actions. */
 export function SettingsDailyReminderStatus({
   onRetry,
   preference,
@@ -58,7 +58,10 @@ export function SettingsDailyReminderStatus({
   }
 
   return (
-    <View>
+    <View
+      style={styles.content}
+      testID="settings-daily-reminder-status-content"
+    >
       <Text
         accessibilityLiveRegion="polite"
         style={
@@ -100,22 +103,22 @@ export function SettingsDailyReminderStatus({
 }
 
 const styles = StyleSheet.create({
+  content: {
+    gap: 4,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
   statusText: {
     color: appColors.primaryText,
     fontSize: 14,
-    paddingHorizontal: 16,
-    paddingTop: 12,
   },
   statusError: {
     color: appColors.danger,
     fontSize: 14,
-    paddingHorizontal: 16,
-    paddingTop: 12,
   },
   statusDetail: {
     color: appColors.secondary,
     fontSize: 13,
-    paddingHorizontal: 16,
-    paddingTop: 4,
   },
 });

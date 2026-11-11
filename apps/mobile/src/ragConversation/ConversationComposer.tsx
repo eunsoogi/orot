@@ -8,6 +8,7 @@ import {
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { ConversationGlassAction } from './ConversationGlassAction';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
@@ -58,16 +59,11 @@ export function ConversationComposer({
       onLayout={onLayout}
     >
       <View style={styles.composer}>
-        <ConversationGlassAction
-          busy={busy}
-          label={busy ? copy.cancel : copy.send}
-          disabled={!busy && (disabled || !value.trim())}
-          onPress={busy ? onCancel : onSend}
-        />
         <View
           style={styles.composerField}
           testID="rag-conversation-composer-field"
         >
+          <ComposerGlassBackground testID="rag-conversation-composer-glass" />
           <Text
             pointerEvents="none"
             accessible={false}
@@ -108,12 +104,13 @@ export function ConversationComposer({
             testID="rag-conversation-input"
             value={value}
           />
+          <ConversationGlassAction
+            busy={busy}
+            label={busy ? copy.cancel : copy.send}
+            disabled={!busy && (disabled || !value.trim())}
+            onPress={busy ? onCancel : onSend}
+          />
         </View>
-        <View
-          pointerEvents="none"
-          style={styles.send}
-          testID="rag-conversation-action-slot"
-        />
       </View>
       {!compact ? (
         <Text style={[styles.disclaimer, styles.composerDisclaimer]}>

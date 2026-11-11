@@ -135,7 +135,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         XCTAssertTrue(chart.exists, app.debugDescription)
         XCTAssertTrue(chart.label.contains("\(systolic) mmHg"), chart.label)
         XCTAssertTrue(chart.label.contains("80 mmHg"), chart.label)
-        // The accessible image keeps its full summary, while visible card copy stays concise.
+        // The selected point keeps its source and values accessible, while visible card copy stays concise.
         XCTAssertFalse(
             app.staticTexts.matching(NSPredicate(format: "label == %@", chart.label)).firstMatch.exists,
             app.debugDescription,

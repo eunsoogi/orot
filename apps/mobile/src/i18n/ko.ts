@@ -201,6 +201,7 @@ export const ko = {
   'calendar.candidateHint':
     '목록의 일정은 모두 후보예요. 오롯 앱은 의료 일정으로 판단하지 않아요.',
   'calendar.selectEvent': '이 일정 선택',
+  'calendar.selectedEvent': '선택됨',
   'calendar.confirmPrompt': '이 일정을 다음 외래 방문으로 확인할까요?',
   'calendar.reconfirmPrompt': '변경된 일정 정보를 확인한 뒤 다시 저장할까요?',
   'calendar.confirm': '다음 외래 방문으로 확인',
