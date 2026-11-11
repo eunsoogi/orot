@@ -16,7 +16,7 @@ import { prepareConversationVisitRetention } from './prepareConversationVisitRet
 import { RetainedSourceInvalidError } from './retainedSourceError';
 import { t } from '../../i18n';
 
-/** Retain the visit reference separately from the user's explicit prepared-question save. */
+/** Retain visit references while exposing reason-coded saved-question recovery to conversation surfaces. */
 export function createConversationVisitTurn(deps: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
@@ -76,7 +76,13 @@ export function createConversationVisitTurn(deps: {
                       result.status === 'refresh_required'
                     ? 'stale_evidence'
                     : 'validation_failed';
-      return { status: 'failure', kind };
+      return {
+        status: 'failure',
+        kind,
+        ...(result.status === 'saved_unavailable'
+          ? { visitQuestionRecovery: result.recovery }
+          : {}),
+      };
     }
     const answer = t('visitQuestions.conversation.answer.ready');
     if (input.observer?.onRetentionCandidate) {

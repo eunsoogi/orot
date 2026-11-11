@@ -6,18 +6,18 @@ import { fingerprint } from './evidenceUtils';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { isCurrentTranscriptArtifactStale } from './transcriptInvalidations';
+import type { SavedQuestionReadFailureReason } from '../../nextVisitQuestions/savedQuestionRecovery';
 
+type SavedVisitQuestionRestoreFailureReason = Exclude<
+  SavedQuestionReadFailureReason,
+  'storage_read_failed' | 'unknown_read_failure'
+>;
+
+/** Typed internal rejection for invalidated or incomplete saved-question evidence. */
 export class SavedVisitQuestionsReadError extends Error {
-  readonly reason:
-    | 'invalid_question'
-    | 'missing_citation_source'
-    | 'stale_artifact'
-    | 'changed_saved_questions'
-    | 'changed_health_context'
-    | 'health_context_reader_unavailable'
-    | 'changed_generated_source';
+  readonly reason: SavedVisitQuestionRestoreFailureReason;
 
-  constructor(reason: SavedVisitQuestionsReadError['reason']) {
+  constructor(reason: SavedVisitQuestionRestoreFailureReason) {
     super(
       reason === 'invalid_question'
         ? 'A saved visit question is incomplete.'
