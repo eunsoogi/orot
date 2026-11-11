@@ -13,7 +13,6 @@ export const styles = StyleSheet.create({
     alignItems: 'stretch',
     flexDirection: 'row',
     gap: hubSpacing.item,
-    marginTop: 4,
   },
   stackedActions: { flexDirection: 'column' },
   captureAction: {
@@ -23,12 +22,9 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
-    flexDirection: 'column',
-    gap: 10,
-    minHeight: 76,
     minWidth: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: hubSpacing.item,
+    paddingVertical: hubSpacing.item,
   },
   captureIcon: {
     alignItems: 'center',
@@ -39,12 +35,12 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  // Keep capture consistent with the library rows while letting scaled text grow vertically.
+  // Match the neighboring Records rows while letting scaled labels wrap and grow.
   captureContent: {
     alignItems: 'center',
     alignSelf: 'stretch',
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   captureActionTitle: {
     color: appColors.text,

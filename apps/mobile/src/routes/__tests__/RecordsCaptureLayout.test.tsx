@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
+import { hubSpacing } from '../../layout/hubSpacing';
 import { RecordsRouteEntries } from '../RecordsRouteEntries';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
@@ -8,6 +9,35 @@ const original = {
   screen: Dimensions.get('screen'),
 };
 afterEach(() => Dimensions.set(original));
+
+test('keeps the recording entry in the Records spacing rhythm', async () => {
+  await render(
+    <RecordsRouteEntries
+      onOpenRecording={jest.fn()}
+      onOpenSavedRecordings={jest.fn()}
+      onOpenHealthLibrary={jest.fn()}
+      onOpenManualHistory={jest.fn()}
+      medicalDocumentOpening={false}
+      medicalDocumentDisabled={false}
+      onImportMedicalDocument={jest.fn()}
+      onImportMedicalPhoto={jest.fn()}
+    />,
+  );
+
+  const captureActions = screen.getByTestId('records-capture-actions');
+  const recordingAction = screen.getByRole('button', { name: '새 상담 녹음' });
+
+  // The route container already adds one 16pt item gap before the action group.
+  expect(captureActions).not.toHaveStyle({ marginTop: 4 });
+  expect(recordingAction).toHaveStyle({
+    paddingHorizontal: hubSpacing.item,
+    paddingVertical: hubSpacing.item,
+  });
+  // My Data rows use a 12pt space between their icon and title.
+  expect(screen.getByTestId('recording-capture-content')).toHaveStyle({
+    gap: 12,
+  });
+});
 
 test.each([1, 1.5, 3.571])(
   'retains recording at text scale %s without a journal action',

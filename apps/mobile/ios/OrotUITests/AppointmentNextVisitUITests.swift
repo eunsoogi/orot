@@ -40,6 +40,8 @@ extension AppointmentsUITests {
         let homeClinicExists = homeClinic?.exists ?? false
         let homeClinicIsHittable = homeClinicExists && (homeClinic?.isHittable ?? false)
         let homeClinicLabel = homeClinic?.label
+        let homeAppointmentCard = UITestConditions.element(app, "home-next-appointment")
+        let prepareVisitAction = UITestConditions.element(app, "home-prepare-visit")
 
         // Capture both Home queries before assertions because this journey stops at its first failure.
         let recordLabelOnlyQuery = {
@@ -57,6 +59,12 @@ extension AppointmentsUITests {
         guard homeClinic != nil, let homeClinicLabel else { return }
         XCTAssertEqual(homeClinicLabel, initialClinic, app.debugDescription)
         XCTAssertTrue(homeClinicExists && homeClinicIsHittable, app.debugDescription)
+        XCTAssertTrue(homeAppointmentCard.exists && !homeAppointmentCard.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(prepareVisitAction.exists && prepareVisitAction.isHittable, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(prepareVisitAction.frame.width, 44, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(prepareVisitAction.frame.height, 44, app.debugDescription)
+        // At default text size the explicit Home action remains content-sized inside its appointment card.
+        XCTAssertLessThan(prepareVisitAction.frame.width, homeAppointmentCard.frame.width, app.debugDescription)
         app.terminate()
         try launch(app)
         visible(app, initialClinic)
@@ -65,6 +73,30 @@ extension AppointmentsUITests {
         XCTAssertTrue(appointmentRow.exists && appointmentRow.isHittable, app.debugDescription)
         XCTAssertTrue(appointmentRow.label.contains(initialClinic), app.debugDescription)
         XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
+
+        let appointmentID = String(appointmentRowIdentifier.dropFirst("appointment-select-".count))
+        let reminderRow = UITestConditions.element(app, "appointment-reminder-actions")
+        let oneHourReminder = UITestConditions.element(app, "appointment-reminder-\(appointmentID)-60")
+        let oneDayReminder = UITestConditions.element(app, "appointment-reminder-\(appointmentID)-1440")
+        let cancelAction = UITestConditions.element(app, "appointment-cancel-\(appointmentID)")
+        let headerEdit = UITestConditions.element(app, "appointment-edit-\(appointmentID)")
+        let header = UITestConditions.element(app, "appointment-header-\(appointmentID)")
+        XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
+        XCTAssertTrue(header.exists && header.frame.contains(headerEdit.frame), app.debugDescription)
+        // Standard text keeps equal-height detail actions on one native row with full touch targets.
+        for action in [oneHourReminder, oneDayReminder, cancelAction] {
+            XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44, app.debugDescription)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, app.debugDescription)
+        }
+        XCTAssertEqual(oneHourReminder.frame.width, oneDayReminder.frame.width, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.width, cancelAction.frame.width, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneHourReminder.frame.height, oneDayReminder.frame.height, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.height, cancelAction.frame.height, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneHourReminder.frame.midY, oneDayReminder.frame.midY, accuracy: 1, app.debugDescription)
+        XCTAssertEqual(oneDayReminder.frame.midY, cancelAction.frame.midY, accuracy: 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(oneHourReminder.frame.maxX, oneDayReminder.frame.minX + 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(oneDayReminder.frame.maxX, cancelAction.frame.minX + 1, app.debugDescription)
 
         let edit = app.buttons["수정"]
         XCTAssertTrue(edit.exists && edit.isHittable)

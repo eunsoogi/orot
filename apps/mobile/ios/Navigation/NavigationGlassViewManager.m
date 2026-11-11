@@ -23,7 +23,7 @@ RCT_EXPORT_VIEW_PROPERTY(onContentHeightChange, RCTDirectEventBlock)
 @interface RCT_EXTERN_MODULE (ComposerGlassViewManager, RCTViewManager)
 @end
 
-// UIKit owns the interactive Glass control; React owns the current Send/Stop action.
+// UIKit owns the Send/Stop target; the adjacent ComposerGlassView supplies the field material.
 @interface RCT_EXTERN_MODULE (ComposerGlassActionViewManager, RCTViewManager)
 RCT_EXPORT_VIEW_PROPERTY(busy, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(disabled, BOOL)

@@ -108,7 +108,13 @@ function ChartFoundationContent() {
   return (
     <SafeAreaView style={styles.fill}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ChartPlot {...shared} kind="line" title="혈압" data={line} />
+        <ChartPlot
+          {...shared}
+          kind="line"
+          title="혈압"
+          data={line}
+          testID="synthetic-pressure-chart"
+        />
         <ChartPlot {...shared} kind="bar" title="걸음" data={bars} />
         <Button
           title={showDense ? '밀집 자료 닫기' : '밀집 자료 열기'}

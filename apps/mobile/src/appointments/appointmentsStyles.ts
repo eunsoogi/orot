@@ -63,30 +63,15 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 16,
   },
-  clinic: { color: appColors.text, fontSize: 18, fontWeight: '600' },
-  actions: { minWidth: 0 },
-  // Keep Edit compact and leading-aligned while the destructive row spans the card.
-  editAction: { alignSelf: 'flex-start' },
-  actionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: appColors.border,
-    // Extend separators to the card's inner edge while preserving its content padding.
-    marginHorizontal: -16,
-    marginVertical: 6,
-  },
-  // The unfilled destructive row keeps a 44-point native hit area at large text sizes.
-  cancelAction: {
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 12,
-    width: '100%',
+    gap: 8,
+    minWidth: 0,
   },
-  cancelActionText: {
-    color: appColors.danger,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  cardHeaderClinic: { flex: 1, minWidth: 0 },
+  clinic: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  actions: { gap: 8, minWidth: 0 },
   form: {
     alignSelf: 'center',
     backgroundColor: appColors.surface,

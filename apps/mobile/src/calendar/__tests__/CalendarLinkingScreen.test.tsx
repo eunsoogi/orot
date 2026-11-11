@@ -76,6 +76,11 @@ describe('Calendar linking screen', () => {
     );
 
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('calendar-candidate-selected-event').props
+        .accessibilityState,
+    ).toMatchObject({ selected: true, disabled: false });
+    expect(screen.getByText('선택됨')).toBeTruthy();
     expect(screen.getByTestId('calendar-selection')).toBeTruthy();
     expect(
       screen.queryByTestId('schedule-adaptive-columns-secondary'),

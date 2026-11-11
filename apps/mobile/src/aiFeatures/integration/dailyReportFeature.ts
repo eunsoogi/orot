@@ -5,7 +5,11 @@ import { currentDailyReportContextRequest } from '../../healthEvidence/healthCon
 import { createDailyReportStorage } from '../../storage/dailyReportStorage';
 import { createDailyReportService } from './dailyReportService';
 import { createDailyReportRequests } from './dailyReportRequests';
-import { boundedDailyReport } from './dailyReportDeadline';
+import {
+  boundedDailyReport,
+  createDailyReportDeadlineContext,
+  dailyReportDeadlineFailure,
+} from './dailyReportDeadline';
 import { previewDailyReport } from './dailyReportPreview';
 import { operationRunId } from './featureRunIdentity';
 import { resolveSelectedAiProvider } from './provider';
@@ -49,56 +53,85 @@ export function createDailyReportFeature(
         return { status: 'error' as const };
       }
     },
-    run: (identity, mode, signal) =>
-      boundedDailyReport(signal, 90_000, async operationSignal => {
-        let db: SqlDatabase;
-        try {
-          db = await database();
-        } catch {
+    run: (identity, mode, signal) => {
+      // The feature deadline begins before storage opens, so share its stage with the service bound.
+      const deadlineContext = createDailyReportDeadlineContext('report_read');
+      return boundedDailyReport(
+        signal,
+        90_000,
+        async operationSignal => {
+          let db: SqlDatabase;
+          try {
+            db = await database();
+          } catch {
+            if (operationSignal.aborted)
+              return {
+                status: 'failed' as const,
+                code: 'cancelled' as const,
+              };
+            // The saved-report lookup cannot run until the encrypted store opens.
+            providerDiagnostic('daily_report', 'persistence', 'failed');
+            return {
+              status: 'failed' as const,
+              code: 'report_read_failed' as const,
+            };
+          }
           if (operationSignal.aborted)
-            return { status: 'failed' as const, code: 'cancelled' };
-          // The saved-report lookup cannot run until the encrypted store opens.
-          providerDiagnostic('daily_report', 'persistence', 'failed');
-          return { status: 'failed' as const, code: 'report_read_failed' };
-        }
-        if (operationSignal.aborted)
-          return { status: 'failed' as const, code: 'cancelled' };
-        try {
-          // Capture the cutoff after the database opens, and bind generation to that same day.
-          const cutoff = new Date().toISOString();
-          if (currentIdentity(identity.timeZone, cutoff)?.key !== identity.key)
-            return { status: 'failed', code: 'day_changed' };
-          let first = true;
-          const run = createDailyReportService({
-            database: db,
-            consent,
-            now: () => {
-              if (first) {
-                first = false;
-                return cutoff;
-              }
-              return new Date().toISOString();
-            },
-            createRunId: dependencies.createOperationRunId ?? operationRunId,
-            resolveSelected: () =>
-              resolveSelectedAiProvider(dependencies.selectedAi),
-          });
-          return await run({
-            timeZone: identity.timeZone,
-            scope: {},
-            mode,
-            signal: operationSignal,
-          });
-        } catch {
-          if (operationSignal.aborted)
-            return { status: 'failed' as const, code: 'cancelled' };
-          providerDiagnostic('daily_report', 'workflow', 'other');
-          return {
-            status: 'failed' as const,
-            code: 'error',
-          };
-        }
-      }),
+            return {
+              status: 'failed' as const,
+              code: 'cancelled' as const,
+            };
+          try {
+            // Capture the cutoff after the database opens, and bind generation to that same day.
+            const cutoff = new Date().toISOString();
+            if (
+              currentIdentity(identity.timeZone, cutoff)?.key !== identity.key
+            )
+              return {
+                status: 'failed' as const,
+                code: 'day_changed' as const,
+              };
+            let first = true;
+            const run = createDailyReportService(
+              {
+                database: db,
+                consent,
+                now: () => {
+                  if (first) {
+                    first = false;
+                    return cutoff;
+                  }
+                  return new Date().toISOString();
+                },
+                createRunId:
+                  dependencies.createOperationRunId ?? operationRunId,
+                resolveSelected: () =>
+                  resolveSelectedAiProvider(dependencies.selectedAi),
+              },
+              deadlineContext,
+            );
+            return await run({
+              timeZone: identity.timeZone,
+              scope: {},
+              mode,
+              signal: operationSignal,
+            });
+          } catch {
+            if (operationSignal.aborted)
+              return {
+                status: 'failed' as const,
+                code: 'cancelled' as const,
+              };
+            providerDiagnostic('daily_report', 'workflow', 'other');
+            return {
+              status: 'failed' as const,
+              code: 'error' as const,
+            };
+          }
+        },
+        () => dailyReportDeadlineFailure(deadlineContext),
+      );
+    },
   });
   return {
     ...requests,

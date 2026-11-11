@@ -15,7 +15,7 @@ beforeEach(() =>
 );
 afterEach(() => Dimensions.set({ window: originalDimensions }));
 
-test('uses borderless native Glass surfaces and one action control for Send and Stop', async () => {
+test('keeps the borderless Glass field and one native action for Send and Stop', async () => {
   const props = {
     value: '합성 질문',
     onChangeText: jest.fn(),
@@ -23,12 +23,14 @@ test('uses borderless native Glass surfaces and one action control for Send and 
     onCancel: jest.fn(),
   };
   const view = await render(<ConversationComposer {...props} busy={false} />);
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-composer-field').props.style,
-    ),
-  ).toMatchObject({ borderWidth: 0, borderRadius: 28, overflow: 'hidden' });
+  const field = screen.getByTestId('rag-conversation-composer-field');
+  expect(StyleSheet.flatten(field.props.style)).toMatchObject({
+    borderWidth: 0,
+    borderRadius: 28,
+    overflow: 'hidden',
+  });
   const send = screen.getByTestId('rag-conversation-send');
+  expect(within(field).getByTestId('rag-conversation-send')).toBe(send);
   // Exercise the native event directly; a generic press can bubble to the public wrapper and hide a broken bridge.
   expect(send.props.onPress).toBeUndefined();
   expect(send.props.onComposerPress).toEqual(expect.any(Function));
@@ -39,15 +41,6 @@ test('uses borderless native Glass surfaces and one action control for Send and 
     busy: false,
     disabled: false,
     actionTestID: 'rag-conversation-send',
-  });
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-action-slot').props.style,
-    ),
-  ).toMatchObject({
-    backgroundColor: 'transparent',
-    minWidth: 44,
-    minHeight: 44,
   });
   await fireEvent(send, 'composerPress');
   expect(props.onSend).toHaveBeenCalledTimes(1);
@@ -65,6 +58,37 @@ test('uses borderless native Glass surfaces and one action control for Send and 
     <ConversationComposer {...props} value="" busy={false} />,
   );
   expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
+});
+
+test('mounts one passive Glass surface behind the multiline field', async () => {
+  await render(
+    <ConversationComposer
+      value={'첫 줄\n둘째 줄'}
+      busy={false}
+      onChangeText={jest.fn()}
+      onSend={jest.fn()}
+      onCancel={jest.fn()}
+    />,
+  );
+
+  const field = screen.getByTestId('rag-conversation-composer-field');
+  const surfaces = within(field).getAllByTestId(
+    'rag-conversation-composer-glass',
+  );
+  expect(surfaces).toHaveLength(1);
+  expect(surfaces[0].type).toBe('ComposerGlassView');
+  expect(surfaces[0].props.pointerEvents).toBe('none');
+  expect(StyleSheet.flatten(surfaces[0].props.style)).toMatchObject({
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  });
+  expect(
+    StyleSheet.flatten(screen.getByTestId('rag-conversation-input').props.style)
+      .backgroundColor,
+  ).toBe('transparent');
 });
 
 test('keeps the composer outside the conversation scroll', async () => {
@@ -104,12 +128,8 @@ test('shares a 44pt single-line baseline and grows without flex compressing the 
     paddingBottom: 11,
   });
   expect(StyleSheet.flatten(input().props.style).flex).toBeUndefined();
+  expect(StyleSheet.flatten(input().props.style).paddingRight).toBe(58);
   expect(StyleSheet.flatten(input().props.style).height).toBeUndefined();
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-action-slot').props.style,
-    ).marginBottom ?? 0,
-  ).toBe(0);
   await view.rerender(
     <ConversationComposer {...props} value={'one\ntwo\nthree'} />,
   );

@@ -62,10 +62,7 @@ test('loads each category directly and shows pressure while a Watch category rem
       /^0개 기록/,
     ),
   ).toBeNull();
-  expect(
-    screen.getByTestId('health-record-chart-heart_rate').props
-      .accessibilityLabel,
-  ).toBe('기록을 불러오는 중이에요.');
+  expect(screen.getByText('기록을 불러오는 중이에요.')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('health-record-filter-sleep'));
   expect(loader).toHaveBeenCalledTimes(6);
   await act(async () => finishHeart({ records: [], nextCursor: null }));

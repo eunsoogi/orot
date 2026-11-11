@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { formatCalendarEventRange } from './dateTime';
@@ -127,11 +128,15 @@ export function CalendarDayCell({
 
 interface CalendarMonthEventRowProps {
   item: CalendarMonthDisplayEvent;
+  selected: boolean;
+  selectionDisabled: boolean;
   onSelectEvent: (event: CalendarEvent) => void;
 }
 
 export function CalendarMonthEventRow({
   item,
+  selected,
+  selectionDisabled,
   onSelectEvent,
 }: CalendarMonthEventRowProps) {
   // The shared wrapper supplies an appearance-aware color for the unstyled event time.
@@ -166,17 +171,19 @@ export function CalendarMonthEventRow({
         {time}
       </Text>
       {item.canSelect ? (
-        <Pressable
-          accessibilityLabel={`${title}, ${time}, ${t('calendar.selectEvent')}`}
-          accessibilityRole="button"
+        <Button
+          accessibilityLabel={`${title}, ${time}, ${t(selected ? 'calendar.selectedEvent' : 'calendar.selectEvent')}`}
+          accessibilityState={{ selected }}
+          disabled={selectionDisabled}
           onPress={() => onSelectEvent(item.event)}
+          size="compact"
           style={styles.calendarSelectEventButton}
           testID={`calendar-candidate-${item.event.calendarEventIdentifier}`}
-        >
-          <Text style={styles.calendarSelectEventLabel}>
-            {t('calendar.selectEvent')}
-          </Text>
-        </Pressable>
+          title={t(
+            selected ? 'calendar.selectedEvent' : 'calendar.selectEvent',
+          )}
+          variant={selected ? 'primary' : 'secondary'}
+        />
       ) : null}
     </View>
   );
