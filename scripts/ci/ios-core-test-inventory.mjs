@@ -75,6 +75,7 @@ export const coreTests = [
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAutomaticPhoneTranscriptShareKeepsItsWindowAndFileUntilDismissal',
   ...windowPresentationAnchorTests,
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
+  'OrotUITests/TestHostConnectionTests/testViewportObservationFiltersNativeMarker',
   'OrotUITests/ChartFoundationUITests/testDenseChartPagesAndVoiceOverValues',
   'OrotUITests/ChartFoundationUITests/testSVGPropertyUpdatesAndRemount',
   // Saved blood-pressure speech remains an explicitly selected Duo diagnostic.

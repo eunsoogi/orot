@@ -12,6 +12,8 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         XCTAssertNil(filtered["label"])
         XCTAssertNil(filtered["private"])
         XCTAssertNil((filtered["windowBounds"] as? [String: Any])?["label"])
+        XCTAssertTrue(Set(["navigation-keyboard-avoiding-root", "navigation-content-region", "navigation-root-tabs-glass-backdrop"]).isSubset(of: Set(ViewportObservation.identifiers)))
+        XCTAssertEqual(Set(ViewportObservation.identifiers).count, ViewportObservation.identifiers.count)
         XCTAssertEqual(ViewportObservation.nativeGeometry([:])["status"] as? String, "unavailable")
         XCTAssertEqual(ViewportObservation.nativeGeometry(["windowGeometry": [:]])["status"] as? String, "incomplete")
     }

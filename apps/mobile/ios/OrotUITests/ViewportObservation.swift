@@ -5,10 +5,16 @@ import XCTest
 enum ViewportObservation {
     static let identifiers = ["safe-area-root", "appointments-keyboard-root", "appointments-scroll", "appointments-title",
                               "appointments-back", "navigation-toolbar", "navigation-tab-settings", "navigation-route-scroll",
-                              "welcome-title", "settings-title"]
+                              "welcome-title", "settings-title", "navigation-keyboard-avoiding-root", "navigation-content-region",
+                              "navigation-root-tabs-glass-backdrop"]
 
-    static var enabled: Bool { ProcessInfo.processInfo.environment["OROT_TEST_VIEWPORT_OBSERVATION"] == "YES" }
-    static var arguments: [String] { enabled ? ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [] }
+    static var enabled: Bool {
+        ProcessInfo.processInfo.environment["OROT_TEST_VIEWPORT_OBSERVATION"] == "YES"
+    }
+
+    static var arguments: [String] {
+        enabled ? ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : []
+    }
 
     static func captureIfEnabled(_ app: XCUIApplication, entry: String, stage: String, testCase: XCTestCase) {
         guard enabled else { return }
@@ -28,7 +34,9 @@ enum ViewportObservation {
             result[key] = values.filter { fields.contains($0.key) && $0.value is NSNumber }
         }
         for key in ["sceneOrientation", "sampleStartedAtMs", "sampleEndedAtMs"] {
-            if let value = geometry[key] as? NSNumber { result[key] = value }
+            if let value = geometry[key] as? NSNumber {
+                result[key] = value
+            }
         }
         result["timestampUnits"] = "unix-milliseconds"
         let bounds = result["windowBounds"] as? [String: Any] ?? [:]
