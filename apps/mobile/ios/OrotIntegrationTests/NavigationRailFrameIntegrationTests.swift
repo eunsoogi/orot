@@ -48,17 +48,18 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.railAvailableHeight = 669
         surface.layoutMode = "right"
         surface.railRightInset = 12
-        surface.railTopInset = 192
+        surface.railTopInset = 192 + NavigationRootGlassBar.contextualBackGroupHeight // Match the React Back-plus-tabs offset.
         surface.railBottomInset = 46
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
-        // The production rail's fixed height belongs to exactly five 52pt tabs.
-        surface.actions = [("home", "house.fill"), ("records", "doc.text"),
-                           ("schedule", "calendar"), ("ai", "sparkles"), ("settings", "gearshape")].map { pair -> [String: Any] in
-            let (tab, symbol) = pair
-            return ["id": "tab-\(tab)", "label": tab, "accessibilityLabel": "\(tab) tab",
-                    "testID": "navigation-tab-\(tab)", "rootTab": true, "selected": tab == "home",
-                    "systemImageName": symbol]
+        surface.actions = [ // Keep contextual Back separate from the fixed five-tab surface.
+            ("back", "chevron.backward", false), ("home", "house.fill", true),
+            ("records", "doc.text", true), ("schedule", "calendar", true),
+            ("ai", "sparkles", true), ("settings", "gearshape", true),
+        ].map { tab, symbol, isRootTab -> [String: Any] in
+            return ["id": isRootTab ? "tab-\(tab)" : tab, "label": tab, "accessibilityLabel": "\(tab) tab",
+                    "testID": isRootTab ? "navigation-tab-\(tab)" : "navigation-back",
+                    "rootTab": isRootTab, "selected": isRootTab && tab == "home", "systemImageName": symbol]
         } as NSArray
         surface.layoutIfNeeded()
         let portal = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? NavigationWindowRailHost }.first)
@@ -68,7 +69,15 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
         // The root stack is centered below the real indicator, independently of its fixed hit targets.
-        XCTAssertEqual(rootFrame.midY, (192 + 669 - 46) / 2, accuracy: 0.5)
+        let rootCenter = (192 + 669 - 46) / 2 + NavigationRootGlassBar.contextualBackGroupHeight / 2
+        XCTAssertEqual(rootFrame.midY, rootCenter, accuracy: 0.5)
+        let backStack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first { $0.accessibilityIdentifier == "navigation-toolbar" })
+        let backButton = try XCTUnwrap(backStack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+        let backFrame = backButton.convert(backButton.bounds, to: window)
+        XCTAssertEqual(backFrame.size, CGSize(width: 48, height: 48))
+        XCTAssertEqual(rootFrame.minY - backFrame.maxY, 4, accuracy: 0.5)
+        verify(backFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
+        XCTAssertTrue(window.hitTest(CGPoint(x: backFrame.midX, y: backFrame.midY), with: nil) === backButton)
         let selection = try XCTUnwrap(root.contentView.subviews.first {
             $0.accessibilityIdentifier == "navigation-root-selection-indicator"
         })
@@ -101,6 +110,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         portal.layoutIfNeeded()
 
         measuredPayload = nil
+        surface.railTopInset = 192
         surface.actions = [
             ["id": "back", "label": "Back", "accessibilityLabel": "Back", "testID": "navigation-back"],
             ["id": "home", "label": "Home", "accessibilityLabel": "Home", "testID": "navigation-home"],

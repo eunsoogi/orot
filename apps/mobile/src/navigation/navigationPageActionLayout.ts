@@ -1,6 +1,7 @@
 import {
   NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT,
   NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING,
+  NAVIGATION_ROOT_BACK_GROUP_HEIGHT,
   NAVIGATION_ROOT_RAIL_HEIGHT,
 } from './navigationRootLayout';
 
@@ -42,6 +43,7 @@ export function pageActionRailLayout({
   rootTabs,
   navigationCount,
   actionCount,
+  hasContextualBack = false,
 }: {
   height: number;
   top: number;
@@ -49,10 +51,13 @@ export function pageActionRailLayout({
   rootTabs: boolean;
   navigationCount: number;
   actionCount: number;
+  hasContextualBack?: boolean;
 }) {
   const available = Math.max(0, height - top - bottom);
+  // The fixed root surface stays five tabs tall; shared Back gets its own 48pt target and 4pt gap.
   const navHeight = rootTabs
-    ? NAVIGATION_ROOT_RAIL_HEIGHT
+    ? NAVIGATION_ROOT_RAIL_HEIGHT +
+      (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0)
     : navigationCount * step;
   const pageSpace = available - navHeight;
   const railGapCount = rootTabs ? 1 : Math.min(navigationCount, 2);
@@ -79,7 +84,11 @@ export function pageActionRailLayout({
     capacity,
     pageTopInset,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset: rootTabs ? top + actionGroupHeight : top,
+    navigationTopInset: rootTabs
+      ? top +
+        actionGroupHeight +
+        (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0)
+      : top,
   };
 }
 

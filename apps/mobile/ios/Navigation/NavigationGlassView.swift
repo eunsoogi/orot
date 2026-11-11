@@ -31,7 +31,10 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     @objc var layoutMode: String = "bottom" {
-        didSet { updatePresentation() }
+        didSet {
+            updatePresentation()
+            renderCurrentComposition(animated: false)
+        }
     }
 
     @objc var railTopInset: CGFloat = 0 {
@@ -61,11 +64,13 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     let innerActions = UIStackView()
-    private let innerActionsSpacer = UIView()
+    // The shared renderer keeps its flexible gap behind root tabs when Back is split out.
+    let innerActionsSpacer = UIView()
     var renderedActions: [NavigationActionDescriptor] = []
-    private var contextualButtons: [String: UIButton] = [:]
-    private var contextualButtonWidthConstraints: [String: NSLayoutConstraint] = [:]
-    private var contextualButtonFixedWidthConstraints: [String: NSLayoutConstraint] = [:]
+    private var actionDispatcher: ((String) -> Void)?
+    var contextualButtons: [String: UIButton] = [:]
+    var contextualButtonWidthConstraints: [String: NSLayoutConstraint] = [:]
+    var contextualButtonFixedWidthConstraints: [String: NSLayoutConstraint] = [:]
     private var bottomPlacementConstraints: [NSLayoutConstraint] = []
     private var railPlacementConstraints: [NSLayoutConstraint] = []
 
@@ -134,22 +139,40 @@ final class NavigationGlassSurfaceView: UIView {
         let animated = !renderedActions.isEmpty
         renderedActions = descriptors
         let dispatch: (String) -> Void = { [weak self] id in self?.onAction?(["id": id]) }
+        actionDispatcher = dispatch
         // Selection updates retain the same indicator rather than fading recreated button backgrounds.
         if wasRoot, isRoot {
             updatePresentation()
-            rootBar.render(descriptors, animated: animated, onAction: dispatch)
+            renderCurrentComposition(animated: animated)
             finishRendering()
             return
         }
         NavigationToolbarTransition.apply(to: self, animated: animated) {
             self.updatePresentation()
-            if isRoot {
-                self.rootBar.render(descriptors, animated: false, onAction: dispatch)
-            } else {
-                self.renderInnerActions(descriptors, onAction: dispatch)
-            }
+            self.renderCurrentComposition(animated: false)
             self.finishRendering()
         }
+    }
+
+    /// Keeps the contextual Back target outside the fixed root-tab stack on the side rail.
+    private func renderCurrentComposition(animated: Bool) {
+        guard let actionDispatcher else { return }
+        let hasRootTabs = renderedActions.contains(where: \.rootTab)
+        guard hasRootTabs else {
+            renderInnerActions(renderedActions, onAction: actionDispatcher)
+            return
+        }
+
+        guard layoutMode != "bottom" else {
+            rootBar.render(renderedActions, animated: animated, onAction: actionDispatcher)
+            renderInnerActions([], onAction: actionDispatcher)
+            return
+        }
+
+        let contextualBack = renderedActions.filter { $0.id == "back" }
+        let rootActions = renderedActions.filter { $0.id != "back" }
+        rootBar.render(rootActions, animated: animated, onAction: actionDispatcher)
+        renderInnerActions(contextualBack, onAction: actionDispatcher)
     }
 
     /// Reparents existing controls into a window-coordinate host without changing action identity.
@@ -176,7 +199,18 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints[3].constant = (railTopInset - railBottomInset) / 2
         railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
         railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
-        railPlacementConstraints[6].constant = railTopInset
+        if usesRightRail,
+           renderedActions.contains(where: \.rootTab),
+           renderedActions.contains(where: { $0.id == "back" })
+        {
+            // Anchor Back 4pt above the uncompressed root bar, including any page-action offset.
+            let rootCenterY = host.bounds.midY + (railTopInset - railBottomInset) / 2
+            railPlacementConstraints[6].constant =
+                rootCenterY - NavigationRootGlassBar.railHeight / 2 -
+                NavigationRootGlassBar.contextualBackGroupHeight
+        } else {
+            railPlacementConstraints[6].constant = railTopInset
+        }
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
         rootBar.setBottomHeight(max(60, bottomHeight))
@@ -187,57 +221,16 @@ final class NavigationGlassSurfaceView: UIView {
             NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: usesRightRail)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }
-        rootBar.isHidden = !renderedActions.contains(where: \.rootTab)
-        innerActions.isHidden = rootBar.isHidden == false
+        let hasRootTabs = renderedActions.contains(where: \.rootTab)
+        let showsRailBack = usesRightRail && hasRootTabs && renderedActions.contains(where: { $0.id == "back" })
+        rootBar.isHidden = !hasRootTabs
+        innerActions.isHidden = !showsRailBack && rootBar.isHidden == false
+        if showsRailBack {
+            // The full-height Back stack overlaps the rail, so keep tab targets above its spacer.
+            host.bringSubviewToFront(rootBar)
+        }
         host.setNeedsLayout()
         setNeedsLayout()
-    }
-
-    /// Reconciles by stable action ID so state-only updates do not detach an active control.
-    private func renderInnerActions(_ descriptors: [NavigationActionDescriptor], onAction: @escaping (String) -> Void) {
-        let back = descriptors.first { $0.id == "back" }
-        let actions = descriptors.filter { $0.id != "back" }
-        let desiredIDs = Set(descriptors.map(\.id))
-        let removedIDs = contextualButtons.keys.filter { !desiredIDs.contains($0) }
-        for id in removedIDs {
-            guard let button = contextualButtons.removeValue(forKey: id) else { continue }
-            innerActions.removeArrangedSubview(button)
-            button.removeFromSuperview()
-            contextualButtonWidthConstraints.removeValue(forKey: id)?.isActive = false
-            contextualButtonFixedWidthConstraints.removeValue(forKey: id)?.isActive = false
-        }
-
-        for action in descriptors {
-            let button: UIButton
-            if let existing = contextualButtons[action.id] {
-                button = existing
-                NavigationGlassButton.update(button, for: action)
-            } else {
-                button = NavigationGlassButton.make(for: action, onAction: onAction)
-                contextualButtons[action.id] = button
-            }
-            NavigationGlassButton.updateMinimumWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonWidthConstraints)
-            NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonFixedWidthConstraints)
-            NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: layoutMode != "bottom")
-        }
-
-        var orderedViews: [UIView] = []
-        if let back, let button = contextualButtons[back.id] {
-            orderedViews.append(button)
-        }
-        orderedViews.append(innerActionsSpacer)
-        orderedViews.append(contentsOf: actions.compactMap { contextualButtons[$0.id] })
-        for (index, view) in orderedViews.enumerated() {
-            if innerActions.arrangedSubviews.indices.contains(index),
-               innerActions.arrangedSubviews[index] === view
-            {
-                continue
-            }
-            if innerActions.arrangedSubviews.contains(where: { $0 === view }) {
-                innerActions.removeArrangedSubview(view)
-            }
-            innerActions.insertArrangedSubview(view, at: index)
-        }
     }
 
     /// Only mounted buttons consume touches; the gaps remain available to the route underneath.

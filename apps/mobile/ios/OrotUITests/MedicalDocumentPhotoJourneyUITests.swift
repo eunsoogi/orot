@@ -92,6 +92,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "medical-document-source-back").exists, app.debugDescription)
         XCTAssertEqual(documentBackFrame.width, referenceBackFrame.width, accuracy: 0.5, app.debugDescription)
         XCTAssertEqual(documentBackFrame.height, referenceBackFrame.height, accuracy: 0.5, app.debugDescription)
+        XCTAssertEqual(documentBackFrame.midY, referenceBackFrame.midY, accuracy: 1, app.debugDescription)
         if isDuoPhotoValidation {
             // Compare the measured rail lane and visible Back target against the same native control.
             XCTAssertEqual(referenceToolbarFrame.width, 48, accuracy: 0.5, app.debugDescription)
