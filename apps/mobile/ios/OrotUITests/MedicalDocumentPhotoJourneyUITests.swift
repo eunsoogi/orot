@@ -92,14 +92,22 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "medical-document-source-back").exists, app.debugDescription)
         XCTAssertEqual(documentBackFrame.width, referenceBackFrame.width, accuracy: 0.5, app.debugDescription)
         XCTAssertEqual(documentBackFrame.height, referenceBackFrame.height, accuracy: 0.5, app.debugDescription)
-        XCTAssertEqual(documentBackFrame.midY, referenceBackFrame.midY, accuracy: 1, app.debugDescription)
         if isDuoPhotoValidation {
             // Compare the measured rail lane and visible Back target against the same native control.
+            let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
             XCTAssertEqual(referenceToolbarFrame.width, 48, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBack.toolbar.frame.width, referenceToolbarFrame.width, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.width, 48, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.height, referenceBackFrame.height, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.midX, referenceBackFrame.midX, accuracy: 1, app.debugDescription)
+            XCTAssertEqual(records.toolbar.frame.minY - documentBackFrame.maxY, 4, accuracy: 1, app.debugDescription)
+        } else {
+            // Bottom Back shares the tab row; the Duo rail instead anchors it above the tab material.
+            let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
+            XCTAssertEqual(documentBackFrame.midY, referenceBackFrame.midY, accuracy: 1, app.debugDescription)
+            XCTAssertEqual(documentBackFrame.midY, records.control.frame.midY, accuracy: 1, app.debugDescription)
+            XCTAssertEqual(records.toolbar.frame.minX - documentBackFrame.maxX, 12, accuracy: 1, app.debugDescription)
+            XCTAssertTrue(records.control.isHittable, app.debugDescription)
         }
         app.terminate()
         app.launch()

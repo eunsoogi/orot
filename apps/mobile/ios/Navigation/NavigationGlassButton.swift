@@ -2,9 +2,15 @@ import UIKit
 
 /// Builds native controls while keeping persistent selection exclusive to root tabs.
 enum NavigationGlassButton {
-    /// The measured bottom height grows with text; rail targets keep their existing size.
+    /// Back uses its own text size; the taller root-tab surface must not inflate the contextual target.
     static func setHeight(_ height: CGFloat, for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool) {
-        let target = usesRightRail ? (action.rootTab ? 52 : 48) : max(action.rootTab ? 52 : 48, height - (action.rootTab ? 8 : 0))
+        let target = if usesRightRail {
+            action.rootTab ? 52 : 48
+        } else if action.id == "back" {
+            NavigationTextMetrics.height(for: action, traits: button.traitCollection)
+        } else {
+            max(action.rootTab ? 52 : 48, height - (action.rootTab ? 8 : 0))
+        }
         button.constraints.first { $0.identifier == "navigation-control-height" }?.constant = target
     }
 

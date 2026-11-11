@@ -154,18 +154,12 @@ final class NavigationGlassSurfaceView: UIView {
         }
     }
 
-    /// Keeps the contextual Back target outside the fixed root-tab stack on the side rail.
+    /// Keeps contextual Back sizing separate from the shared root-tab material in every layout.
     private func renderCurrentComposition(animated: Bool) {
         guard let actionDispatcher else { return }
         let hasRootTabs = renderedActions.contains(where: \.rootTab)
         guard hasRootTabs else {
             renderInnerActions(renderedActions, onAction: actionDispatcher)
-            return
-        }
-
-        guard layoutMode != "bottom" else {
-            rootBar.render(renderedActions, animated: animated, onAction: actionDispatcher)
-            renderInnerActions([], onAction: actionDispatcher)
             return
         }
 
@@ -178,8 +172,16 @@ final class NavigationGlassSurfaceView: UIView {
     /// Reparents existing controls into a window-coordinate host without changing action identity.
     private func updatePresentation() {
         let usesRightRail = layoutMode != "bottom"
+        let hasRootTabs = renderedActions.contains(where: \.rootTab)
+        let backAction = renderedActions.first { $0.id == "back" }
+        let showsBottomBack = !usesRightRail && hasRootTabs && backAction != nil
         NSLayoutConstraint.deactivate(bottomPlacementConstraints + railPlacementConstraints)
         NavigationRailConstraints.configureBottomInsets(bottomPlacementConstraints, isPageDock: isPageDock)
+        // Reserve the measured contextual target and normal toolbar gap before the tab material.
+        let measuredBackWidth = backAction.flatMap {
+            NavigationGlassButton.fixedWidth(for: $0, usesRightRail: false, traits: traitCollection)
+        } ?? 48
+        bottomPlacementConstraints[0].constant = 16 + (showsBottomBack ? measuredBackWidth + innerActions.spacing : 0)
         bottomPlacementConstraints[3].constant = max(60, bottomHeight)
         bottomPlacementConstraints[7].constant = max(48, bottomHeight)
         let host = usesRightRail ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) ?? self : self
@@ -221,12 +223,12 @@ final class NavigationGlassSurfaceView: UIView {
             NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: usesRightRail)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }
-        let hasRootTabs = renderedActions.contains(where: \.rootTab)
         let showsRailBack = usesRightRail && hasRootTabs && renderedActions.contains(where: { $0.id == "back" })
+        let showsContextualBack = hasRootTabs && backAction != nil
         rootBar.isHidden = !hasRootTabs
-        innerActions.isHidden = !showsRailBack && rootBar.isHidden == false
-        if showsRailBack {
-            // The full-height Back stack overlaps the rail, so keep tab targets above its spacer.
+        innerActions.isHidden = !showsContextualBack && rootBar.isHidden == false
+        if showsContextualBack {
+            // Keep root targets above the flexible contextual gap, which overlaps their material.
             host.bringSubviewToFront(rootBar)
         }
         host.setNeedsLayout()
