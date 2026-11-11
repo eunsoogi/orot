@@ -26,7 +26,7 @@ proof that later changes cannot introduce another consumer.
 
 ## Facade, dependencies and search result
 
-Production `ChartPlot.tsx` is the only app source importing
+Production `ChartRenderer.tsx` is the only app source importing
 `react-native-chart-kit/v2`. Its line and bar components use
 `react-native-chart-kit` 7.0.4; `react-native-svg` 15.16.1 is its declared peer
 and appears as `RNSVG` in `apps/mobile/ios/Podfile.lock`. Do not remove SVG
