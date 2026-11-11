@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { t } from '../../i18n';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { ConversationScreen } from '../ConversationScreen';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -59,7 +60,7 @@ function holdStorageRead() {
     act(async () => rejectOpen(new Error('Synthetic storage failure')));
 }
 
-test('a failed submit keeps the local form for retry until the sheet closes', async () => {
+test('a failed submit keeps the local form for retry until the task closes', async () => {
   const rejectOpen = holdStorageRead();
   await openAndSubmit();
   expect(screen.getByText(t('treatmentSafety.checking'))).toBeTruthy();
@@ -105,4 +106,33 @@ test('closing a pending submit clears the local input and ignores its late rejec
     'accessibilityState',
     expect.objectContaining({ selected: false }),
   );
+});
+
+test('source deletion closes a pending treatment action and withholds its late result', async () => {
+  const rejectOpen = holdStorageRead();
+  await openAndSubmit();
+  await act(async () => notifyLocalSourceDeleted('local'));
+  expect(screen.queryByTestId('inline-treatment-task')).toBeNull();
+  await rejectOpen();
+  expect(screen.queryByRole('alert')).toBeNull();
+  await openTreatment();
+  expect(screen.getByLabelText(t('treatmentSafety.systolic')).props.value).toBe(
+    '',
+  );
+});
+
+test('treatment selection remains in the conversation without sending a message', async () => {
+  const onSend = jest.fn();
+  await render(
+    <ConversationScreen
+      onSend={onSend}
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+    />,
+  );
+  await openTreatment();
+  expect(screen.getByTestId('inline-treatment-task')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(onSend).not.toHaveBeenCalled();
+  expect(openDatabase).not.toHaveBeenCalled();
 });

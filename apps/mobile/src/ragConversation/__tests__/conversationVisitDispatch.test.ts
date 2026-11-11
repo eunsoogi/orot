@@ -10,6 +10,7 @@ import { healthContextFixture } from '../../aiFeatures/integration/testSupport/h
 
 jest.mock('../useConversationEntryIntent', () => ({
   conversationEntryForSession: jest.fn(),
+  consumeConversationEntryForSession: jest.fn(),
 }));
 
 test('visit entry prepares only its first turn, while follow-ups stay conversation turns', () => {
@@ -30,6 +31,37 @@ test('visit entry prepares only its first turn, while follow-ups stay conversati
       [],
     ),
   ).toBe(false);
+});
+
+test('explicit report selection takes precedence over an earlier visit entry', async () => {
+  jest.mocked(conversationEntryForSession).mockReturnValue({
+    intent: 'visit-questions',
+    entryKey: 'visit',
+    appointmentId: 'visit-a',
+  });
+  const store = createConversationSessions();
+  const report = {
+    identity: {
+      kind: 'daily_report' as const,
+      localDate: '2026-11-10',
+      timeZone: 'Asia/Seoul',
+      key: 'daily-report:2026-11-10@Asia/Seoul',
+    },
+    runId: 'run',
+    revision: 2,
+  };
+  store.selectDailyReport(1, report);
+  store.setDraft(1, '보고서에 대해 질문');
+  const send = jest.fn().mockResolvedValue({ status: 'no_evidence' });
+  const prepare = jest.fn();
+  await sendConversationMessage(store, 1, send, prepare);
+  expect(prepare).not.toHaveBeenCalled();
+  expect(send.mock.calls[0][4]).toMatchObject({ dailyReport: report });
+  expect(store.getSnapshot().sessions[0]?.messages.at(-1)).toMatchObject({
+    role: 'assistant',
+    dailyReport: report,
+  });
+  store.dispose();
 });
 
 test('storage preflight failure retains visit intent for an edited retry', async () => {

@@ -1,6 +1,7 @@
 import { HealthObservationSchema } from '@orot/domain';
 import { InMemoryFakeLanguageModelProvider } from '@orot/model-runtime';
 import { createRecordRepository, runMigrations } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createDailyReportStorage } from '../../../storage/dailyReportStorage';
 import { createDailyReportService } from '../dailyReportService';
@@ -136,6 +137,68 @@ test('rejects a source correction made while the provider is generating', async 
         )
       ).rows,
     ).toHaveLength(0);
+  } finally {
+    connection.close();
+  }
+});
+
+test('a failed regeneration write keeps the previous encrypted report revision', async () => {
+  const connection = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(connection.database);
+    await createRecordRepository(connection.database).put(
+      'health_observation',
+      record,
+    );
+    const service = createDailyReportService({
+      database: connection.database,
+      consent: { authorize: async () => 'authorized' },
+      now: () => '2035-01-01T12:00:00Z',
+      createRunId: () => 'run-before-failure',
+      resolveSelected: async () => selected(),
+    });
+    const initial = await service(request());
+    if (initial.status !== 'completed')
+      throw new Error(JSON.stringify(initial));
+
+    // A failed insert must exercise the real transaction and leave its active pointer untouched.
+    const failingDatabase: SqlDatabase = {
+      execute: (query, parameters) =>
+        connection.database.execute(query, parameters),
+      transaction: operation =>
+        connection.database.transaction(tx =>
+          operation({
+            ...tx,
+            async execute(query, parameters) {
+              if (query.startsWith('INSERT INTO symptom_summary_runs'))
+                throw new Error('private persistence diagnostic');
+              return tx.execute(query, parameters);
+            },
+          }),
+        ),
+    };
+    const regenerate = createDailyReportService({
+      database: failingDatabase,
+      consent: { authorize: async () => 'authorized' },
+      now: () => '2035-01-01T12:10:00Z',
+      createRunId: () => 'run-after-failure',
+      resolveSelected: async () => selected(),
+    });
+    const result = await regenerate({
+      ...request(),
+      mode: { kind: 'revise', expectedRunId: initial.runId },
+    });
+    expect(result).toEqual({ status: 'failed', code: 'persistence_failed' });
+
+    const saved = await createDailyReportStorage(connection.database).lookup(
+      initial.context.identity,
+    );
+    expect(saved).toMatchObject({
+      status: 'saved',
+      runId: 'run-before-failure',
+      revision: 1,
+      report: { observations: [{ text: expect.stringContaining('72') }] },
+    });
   } finally {
     connection.close();
   }

@@ -2,7 +2,7 @@ import { createAppointmentReminderRuntime } from '../../../appointmentReminders/
 import { requestDailyReportFromConversation } from '../dailyReportConversationEntry';
 import type { createDailyReportFeature } from '../dailyReportFeature';
 
-test('an explicit conversation action starts one shared report request and retains its typed date', async () => {
+test('selecting the report task retains its date without starting generation', async () => {
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
@@ -33,17 +33,12 @@ test('an explicit conversation action starts one shared report request and retai
     requestDailyReportFromConversation(input),
   ]);
   expect(navigate).toHaveBeenCalledTimes(1);
-  expect(start).toHaveBeenCalledTimes(1);
-  expect(start).toHaveBeenCalledWith(
-    expect.objectContaining({
-      localDate: '2026-11-10',
-      timeZone: 'Asia/Seoul',
+  expect(start).not.toHaveBeenCalled();
+  expect(runtime.dailyConversationTargets.get('route-2')).toEqual({
+    intent: expect.objectContaining({
+      kind: 'daily-report',
+      request: expect.objectContaining({ localDate: '2026-11-10' }),
     }),
-    { kind: 'reuse_or_generate' },
-  );
-  expect(runtime.dailyConversationTargets.get('route-2')).toMatchObject({
-    intent: { kind: 'daily-report', request: { localDate: '2026-11-10' } },
-    operation,
   });
 });
 

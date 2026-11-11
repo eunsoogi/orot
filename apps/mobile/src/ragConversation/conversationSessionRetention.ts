@@ -141,6 +141,38 @@ export function createConversationSessionRetention(input: {
       const { current, version } = await ensureSession(id, signal);
       return { id: current.id, version };
     },
+    async saveTaskCard(
+      id: number,
+      card: {
+        id: string;
+        createdAt: string;
+        expectedRevision: number | null;
+        task: import('../storage/conversationTaskCards').ConversationTaskCard;
+      },
+      signal: AbortSignal,
+    ) {
+      const { storage, current, version } = await ensureSession(id, signal);
+      if (card.task.kind === 'treatment' && card.expectedRevision === null) {
+        // The treatment producer already committed this card with its artifact.
+        const saved = (await storage.readTaskCards(current.id, version)).find(
+          item => item.id === card.id,
+        );
+        if (signal.aborted) throw new Error('Conversation task was cancelled.');
+        if (
+          saved?.task.kind === 'treatment' &&
+          saved.task.artifactId === card.task.artifactId &&
+          (card.task.artifactRevision === undefined ||
+            saved.task.artifactRevision === card.task.artifactRevision)
+        )
+          return saved;
+      }
+      return storage.writeTaskCard({
+        ...card,
+        sessionId: current.id,
+        sessionVersion: version,
+        signal,
+      });
+    },
     async beginTurn(id: number, signal: AbortSignal) {
       const { storage, current, version } = await ensureSession(id, signal);
       const turn = createConversationTurnRetention({

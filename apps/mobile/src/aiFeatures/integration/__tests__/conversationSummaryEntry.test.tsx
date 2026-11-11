@@ -111,6 +111,9 @@ test('renders a validated summary in the existing conversation', async () => {
       />
     </AiFeatureSharedNavigationStateProvider>,
   );
+  await fireEvent.press(
+    screen.getByTestId('conversation-intent-use-suggestion'),
+  );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByTestId('health-summary-card')).toBeTruthy();
   expect(screen.getByText('수면 기록이에요.')).toBeTruthy();
@@ -151,6 +154,9 @@ test.each([
           onOpenArticle={jest.fn()}
         />
       </AiFeatureSharedNavigationStateProvider>,
+    );
+    await fireEvent.press(
+      screen.getByTestId('conversation-intent-use-suggestion'),
     );
     await fireEvent.press(screen.getByTestId('rag-conversation-send'));
     await waitFor(() =>

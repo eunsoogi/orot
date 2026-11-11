@@ -33,6 +33,10 @@ test('visit-question legacy links prepare conversation without requiring the ret
     <AiFeatureRoute initialRoute="visit-questions" onBack={jest.fn()} />,
   );
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
+  await fireEvent.press(
+    screen.getByTestId('conversation-intent-use-suggestion'),
+  );
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
     'value',
     expect.stringContaining('다음 진료'),

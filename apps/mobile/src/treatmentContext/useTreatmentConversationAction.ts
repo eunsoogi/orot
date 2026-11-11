@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { treatmentPublicSourceUrl } from '../aiFeatures/integration/treatmentPublicSourceUrl';
@@ -17,46 +17,50 @@ import type { SavedTreatmentChoice } from './treatmentSavedLibrary';
 import type { TreatmentSourceChoice } from './treatmentSourceChoices';
 import type { TreatmentRequestAction } from './treatmentRequestProducer';
 
-import type { ConversationSessions } from '../ragConversation/conversationSessions';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VerifiedTreatmentSource } from './treatmentSourceLinks';
+import type {
+  TreatmentActionProps,
+  TreatmentActionResultState,
+} from './treatmentActionProps';
+import { useTreatmentSourceInvalidation } from './useTreatmentSourceInvalidation';
 
 /** Keeps the treatment interaction out of the composer and model history. */
 export function useTreatmentConversationAction({
   ownership,
   sessionId,
   onOpenSource,
+  initialSaved,
+  onSavedItem,
+  onDeletedItem,
 }: TreatmentActionProps) {
   const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<{
-    answer: string;
-    verified: boolean;
-    links?: readonly VerifiedTreatmentSource[];
-    general?: readonly string[];
-  } | null>(null);
+  const [result, setResult] = useState<TreatmentActionResultState | null>(null);
   const [pending, setPending] = useState<'submit' | 'other' | null>(null);
   const [submitFailed, setSubmitFailed] = useState(false);
   const [mode, setMode] = useState<'form' | 'sources' | 'saved'>('form');
   const [source, setSource] = useState<TreatmentSourceChoice | null>(null);
-  const [saved, setSaved] = useState<SavedTreatmentChoice | null>(null);
+  const [saved, setSaved] = useState<SavedTreatmentChoice | null>(
+    initialSaved ?? null,
+  );
   const [followUp, setFollowUp] = useState(false);
   const [publicTopic, setPublicTopic] = useState<'hypertension' | null>(null);
   const active = useRef<AbortController | null>(null);
   useEffect(() => () => active.current?.abort(), []);
 
-  const close = () => {
+  const close = useCallback(() => {
     active.current?.abort();
     active.current = null;
     setPending(null);
     setResult(null);
     setSource(null);
-    setSaved(null);
+    setSaved(initialSaved ?? null);
     setFollowUp(false);
     setPublicTopic(null);
     setMode('form');
     setSubmitFailed(false);
     setOpen(false);
-  };
+  }, [initialSaved]);
+  useTreatmentSourceInvalidation(close);
 
   const run = async (
     perform: (signal: AbortSignal) => Promise<void>,
@@ -107,6 +111,7 @@ export function useTreatmentConversationAction({
           ? {
               kind: 'follow_up',
               artifactId: saved.id,
+              expectedArtifactRevision: saved.artifactRevision,
               sessionId: saved.sessionId,
               sessionVersion: lease?.version ?? -1,
               selection: { kind: 'source_question', index: 0 },
@@ -114,6 +119,7 @@ export function useTreatmentConversationAction({
           : {
               kind: 'reopen',
               artifactId: saved.id,
+              expectedArtifactRevision: saved.artifactRevision,
               sessionId: saved.sessionId,
               sessionVersion: lease?.version ?? -1,
             }
@@ -155,6 +161,8 @@ export function useTreatmentConversationAction({
                   return prepareTreatmentRetention(lease, saved ?? undefined);
                 },
                 onSaved: item => {
+                  // Once the artifact commits, retain its card even if the view has closed.
+                  onSavedItem?.(item);
                   if (!signal.aborted) setSaved(item);
                 },
               }
@@ -182,6 +190,7 @@ export function useTreatmentConversationAction({
       if (signal.aborted || !lease) return;
       await deleteSavedTreatment(database, item, lease);
       if (signal.aborted) return;
+      onDeletedItem?.(item);
       setSaved(null);
       setFollowUp(false);
       setMode('saved');
@@ -238,10 +247,4 @@ export function useTreatmentConversationAction({
     remove,
     openSource,
   };
-}
-
-export interface TreatmentActionProps {
-  readonly ownership: ConversationSessions['treatment'];
-  readonly sessionId: number;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
 }

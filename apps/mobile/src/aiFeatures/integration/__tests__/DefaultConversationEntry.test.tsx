@@ -4,13 +4,51 @@ import { AiFeatureFlowScreen } from '../AiFeatureFlowScreen';
 import { conversationIntentRequests } from '../conversationIntent';
 import { AiFeatureSharedNavigationStateProvider } from '../AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from '../featureServices';
+import type { AiFeatureServices } from '../featureServices';
 
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-/** Entry prepares editable text and keeps its typed purpose after editing. */
+test('a report entry presents the task in conversation without starting inference', async () => {
+  const start = jest.fn();
+  const services = createAiFeatureServices({ authorize: jest.fn() });
+  const dailyReport = {
+    lookup: jest.fn(async () => ({ status: 'missing' as const })),
+    preview: jest.fn(async () => ({ status: 'not_today' as const })),
+    start,
+    active: jest.fn(() => null),
+    retain: jest.fn(() => () => {}),
+  } as unknown as NonNullable<AiFeatureServices['dailyReport']>;
+  await render(
+    <AiFeatureSharedNavigationStateProvider>
+      <AiFeatureFlowScreen
+        route="daily-report"
+        navigationRouteKey="report-entry"
+        onRouteStateChange={jest.fn()}
+        onBack={jest.fn()}
+        onOpenDiseaseHypotheses={jest.fn()}
+        onOpenRagConversation={jest.fn()}
+        onOpenExternalEvidence={jest.fn()}
+        onOpenProviderSelection={jest.fn()}
+        onOpenSource={jest.fn()}
+        resolveSelectedAi={async () => ({ status: 'selection-required' })}
+        confirmConsent={jest.fn()}
+        selectedAiRevision={0}
+        services={{ ...services, dailyReport }}
+        onOpenArticle={jest.fn()}
+      />
+    </AiFeatureSharedNavigationStateProvider>,
+  );
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('inline-daily-report-task')).toBeTruthy();
+  expect(screen.queryByTestId('daily-report-screen')).toBeNull();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
+  expect(start).not.toHaveBeenCalled();
+});
+
+/** Entry selects a task without filling the draft or invoking its sender. */
 test.each([
   ['entry', 'conversation'],
   ['rag-conversation', 'conversation'],
@@ -55,9 +93,19 @@ test.each([
     expect(screen.queryByTestId('external-evidence-search')).toBeNull();
     expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
       'value',
-      conversationIntentRequests[intent],
+      '',
     );
     expect(send).not.toHaveBeenCalled();
+    if (intent !== 'conversation') {
+      await fireEvent.press(
+        screen.getByTestId('conversation-intent-use-suggestion'),
+      );
+      expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+        'value',
+        conversationIntentRequests[intent],
+      );
+      expect(send).not.toHaveBeenCalled();
+    }
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '수정한 요청',

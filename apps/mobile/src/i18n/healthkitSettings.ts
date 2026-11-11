@@ -1,3 +1,5 @@
+import { dailyReportFailuresKo } from './dailyReportFailuresKo';
+
 export const healthkitSettingsKo = {
   'settings.integrations': '연동',
   'settings.healthData': '건강 데이터',
@@ -129,7 +131,8 @@ export const healthkitSettingsKo = {
   'dailyReport.loading': '보고서를 만들고 있어요.',
   'dailyReport.cancel': '생성 취소',
   'dailyReport.failure':
-    '보고서를 만들지 못했어요. AI 선택과 기록을 확인한 뒤 다시 시도해 주세요.',
+    '요청을 완료하지 못했어요. 잠시 후 다시 요약해 주세요.',
+  ...dailyReportFailuresKo,
   'dailyReport.cancelled': '보고서 생성을 취소했어요.',
   'dailyReport.stale':
     '기록이 바뀌어 저장된 보고서를 표시할 수 없어요. 오늘을 선택해 다시 요약할 수 있어요.',
@@ -154,6 +157,7 @@ export const healthkitSettingsKo = {
   'dailyReport.chatNote': '보고서 내용은 대화에 자동으로 전달되지 않아요.',
   'dailyReport.followUpIdentity': '선택한 보고서: {date} · {zone}',
   'dailyReport.openFromChat': '오늘의 보고서 요청하기',
+  'dailyReport.useLatestSaved': '최신 저장 보고서 연결하기',
   'dailyReport.entryError':
     '보고서 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.',
   'conversationIntent.healthSummary':
@@ -164,6 +168,7 @@ export const healthkitSettingsKo = {
     '다음 진료에서 물어볼 질문을 기록과 근거를 바탕으로 준비해 주세요.',
   'conversationIntent.medicalLiterature':
     '관련 의학 문헌을 찾아 출처를 확인할 수 있게 설명해 주세요.',
+  'conversationIntent.useSuggestion': '추천 질문 사용: {question}',
   'settings.dailyReminder.description':
     '원하는 시각을 정해 매일 알림을 받을 수 있어요. 알림에는 건강 정보가 포함되지 않고, 알림을 열어도 AI가 자동으로 실행되지 않아요.',
   'settings.dailyReminder.enabled': '일일 보고서 알림 켜기',

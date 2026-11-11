@@ -68,6 +68,7 @@ export function useConversationEntryIntent(
     // A plain entry must not relabel an existing conversation selected in history.
     if (context.dailyReport || request || !entries.has(id))
       entries.set(id, context);
-    if (request) store.setDraft(id, request);
+    if (context.dailyReport) store.selectDailyReport(id, context.dailyReport);
+    if (request) store.setEntryPrompt(id, request);
   }, [context, store]);
 }

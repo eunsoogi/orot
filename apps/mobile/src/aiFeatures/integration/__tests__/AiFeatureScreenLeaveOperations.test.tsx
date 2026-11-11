@@ -83,6 +83,10 @@ test('retains a possibilities request on leave and ignores its late result after
       serviceDependencies={routeDependencies({ ragRunner })}
     />,
   );
+  expect(route.getByTestId('rag-conversation-input')).toHaveProp('value', '');
+  await fireEvent.press(
+    route.getByTestId('conversation-intent-use-suggestion'),
+  );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
   await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));

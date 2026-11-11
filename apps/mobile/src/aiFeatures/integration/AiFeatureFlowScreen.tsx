@@ -1,91 +1,24 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
+import { DailyReportRoute } from './DailyReportRoute';
+import { ConversationReportTask } from './ConversationReportTask';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
-import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
-import type { ReactElement } from 'react';
-import type {
-  EvidenceItem,
-  EvidenceReference,
-  OutboundProcessingRequest,
-} from '@orot/agent-runtime';
 import { DiseaseHypothesesScreen } from '../../diseaseHypotheses/DiseaseHypothesesScreen';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import { ConversationHistoryScreen } from '../../ragConversation/ConversationHistoryScreen';
-import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
-import type { AiFeatureServices } from './featureServices';
-import type { SelectedAiResolution } from './provider';
-import type { FeatureScreenRoute } from './aiFeatureNavigation';
-import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
-import type { ConversationEntryContext } from './conversationIntent';
 import { useColorScheme } from 'react-native';
 import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
 import { ConversationVisitQuestionCard } from './ConversationVisitQuestionCard';
 import { defaultVisitQuestionRouteOperations } from './visitQuestionsRouteOperations';
 
-export interface VisitQuestionsRenderInput {
-  readonly readOnly?: boolean;
-  readonly navigationRouteKey?: string;
-  readonly onBack: () => void;
-  readonly onOpenProviderSelection: () => void;
-  readonly onOpenSource: (reference: EvidenceItem) => void;
-  readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
-  readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
-  readonly confirmConsent: (
-    request: OutboundProcessingRequest,
-  ) => Promise<boolean>;
-  readonly resolveSource: AiFeatureServices['resolveSource'];
-  readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
-  readonly registerVisitQuestionSource: AiFeatureServices['registerVisitQuestionSource'];
-  readonly selectedAiRevision: number;
-  readonly loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'];
-}
-
-/** Carries draft and save revisions back to navigation so stale prompts cannot leave. */
-export interface VisitQuestionsRouteState {
-  readonly hasUnsavedChanges: boolean;
-  readonly isSaving: boolean;
-  /** Reports activity for presentation; the retained visit owner survives navigation. */
-  readonly isGenerating: boolean;
-  readonly revision: number;
-}
-
-export interface AiFeatureFlowScreenProps {
-  readonly articleOpenError?: boolean;
-  readonly onOpenSavedAnalysis?: () => void;
-  readonly onOpenSavedVisitQuestions?: () => void;
-  readonly onOpenSummaryHistory?: () => void;
-  readonly onRestoreSummary?: (value: DiseaseHypothesisAnalysis) => void;
-  readonly restoredSummary?: DiseaseHypothesisAnalysis;
-  readonly route: FeatureScreenRoute;
-  readonly navigationRouteKey?: string;
-  readonly onFeatureNavigationStateChange?: AiFeatureNavigationStateChange;
-  readonly renderVisitQuestions?: (
-    input: VisitQuestionsRenderInput,
-  ) => ReactElement;
-  readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
-  readonly onBack: () => void;
-  readonly onOpenVisitQuestions?: () => void;
-  readonly onOpenDiseaseHypotheses: () => void;
-  readonly onOpenRagConversation: () => void;
-  readonly onOpenDailyReport?: () => void;
-  readonly onOpenDailyReportChat?: (
-    target: NonNullable<ConversationEntryContext['dailyReport']>,
-  ) => void;
-  readonly reportOwnsOperation?: boolean;
-  readonly onOpenExternalEvidence: () => void;
-  readonly onOpenConversationHistory?: () => void;
-  readonly onOpenProviderSelection: () => void;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-  readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
-  readonly confirmConsent: (
-    request: OutboundProcessingRequest,
-  ) => Promise<boolean>;
-  readonly selectedAiRevision: number;
-  readonly services: AiFeatureServices;
-  readonly onOpenArticle: (publication: ExternalMedicalPublication) => void;
-}
+export type {
+  VisitQuestionsRenderInput,
+  VisitQuestionsRouteState,
+  AiFeatureFlowScreenProps,
+} from './AiFeatureFlowScreenTypes';
+import type { AiFeatureFlowScreenProps } from './AiFeatureFlowScreenTypes';
 
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
@@ -102,9 +35,7 @@ export function AiFeatureFlowScreen({
   onBack,
   onOpenProviderSelection,
   onOpenConversationHistory,
-  onOpenRagConversation,
   onOpenDailyReport,
-  onOpenDailyReportChat,
   reportOwnsOperation,
   onOpenSource,
   resolveSelectedAi,
@@ -138,6 +69,64 @@ export function AiFeatureFlowScreen({
         ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
+      renderStoredReportTask={(card, onChat, onTaskIdentity, onTaskResult) => (
+        <ConversationReportTask
+          card={card}
+          services={services}
+          onChat={onChat}
+          onTaskIdentity={onTaskIdentity}
+          onTaskResult={onTaskResult}
+          onBack={onBack}
+          onOpenSource={onOpenSource}
+          ownsOperation={reportOwnsOperation}
+        />
+      )}
+      renderSavedReport={
+        services.dailyReport
+          ? (report, onChat) => (
+              <DailyReportRoute
+                key={report.identity.key}
+                feature={services.dailyReport!}
+                initialIdentity={report.identity}
+                expectedReport={report}
+                providerSelection={null}
+                onBack={onBack}
+                onChat={onChat}
+                resolveSources={services.dailyReportSources}
+                onOpenSource={onOpenSource}
+                ownsOperation={reportOwnsOperation}
+                inline
+              />
+            )
+          : undefined
+      }
+      renderReportTask={
+        route === 'daily-report'
+          ? (
+              onChat,
+              onTaskIdentity,
+              onTaskResult,
+              expectedReport,
+              taskRevision,
+            ) => (
+              <DailyReportFlowScreen
+                services={services}
+                routeKey={navigationRouteKey}
+                providerSelection={null}
+                onBack={onBack}
+                onChat={onChat}
+                onTaskIdentity={onTaskIdentity}
+                onTaskResult={onTaskResult}
+                expectedReport={expectedReport}
+                taskRevision={taskRevision}
+                onOpenSource={onOpenSource}
+                ownsOperation={reportOwnsOperation}
+                fallback={null}
+                inline
+              />
+            )
+          : undefined
+      }
       navigationRouteKey={navigationRouteKey}
       onNavigationStateChange={onFeatureNavigationStateChange}
       onBack={onBack}
@@ -178,19 +167,7 @@ export function AiFeatureFlowScreen({
 
   switch (route) {
     case 'daily-report':
-      return (
-        <DailyReportFlowScreen
-          services={services}
-          routeKey={navigationRouteKey}
-          providerSelection={providerSelection}
-          onBack={onBack}
-          onChat={onOpenDailyReportChat ?? onOpenRagConversation}
-          onOpenSource={onOpenSource}
-          onNavigationStateChange={onFeatureNavigationStateChange}
-          ownsOperation={reportOwnsOperation}
-          fallback={conversation}
-        />
-      );
+      return conversation;
     case 'saved-visit-questions':
       return renderVisitQuestions
         ? renderVisitQuestions({

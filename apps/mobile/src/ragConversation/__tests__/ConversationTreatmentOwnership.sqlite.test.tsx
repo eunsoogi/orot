@@ -182,7 +182,11 @@ test('saves selected record provenance, reopens and follows up locally, then wit
         owner!.updatedAt,
       );
     });
-    await reopenSaved();
+    await fireEvent.press(
+      await screen.findByRole('button', { name: /^저장한 치료 설명 ·/ }),
+    );
+    await enterSafety();
+    await press(t('treatmentSafety.confirm'));
     await press(t('treatmentSafety.openSource', { index: 1 }));
     const reopenedReference = onOpenSource.mock.calls[1]![0];
     expect(
