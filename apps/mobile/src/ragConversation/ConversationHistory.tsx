@@ -10,7 +10,6 @@ import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
-import { t } from '../i18n';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({

@@ -232,7 +232,6 @@ export function createConversationSessions(
             undefined,
             photoDrafts.get(id).status !== 'empty',
           ),
-    /** Adds an explicit turn to the transcript without moving its prompt into the composer. */
     sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend, prompt),
     /** Binds cancellation and committed completion to one explicit request. */
