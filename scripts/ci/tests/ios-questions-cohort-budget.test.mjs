@@ -60,8 +60,8 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 219);
-  assert.equal(new Set(actual).size, 219);
+  assert.equal(actual.length, 221);
+  assert.equal(new Set(actual).size, 221);
 
   const jobs = cohortJobs(workflow('.github/workflows/e2e-test.yml').jobs);
   for (const cohort of cohorts) {
@@ -116,6 +116,6 @@ test('Summary and Literature own separate complete methods and hosted budgets', 
   const all = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(all.length, 219);
-  assert.equal(new Set(all).size, 219);
+  assert.equal(all.length, 221);
+  assert.equal(new Set(all).size, 221);
 });

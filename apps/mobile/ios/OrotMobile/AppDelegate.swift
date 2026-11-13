@@ -45,6 +45,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
+    #if OROT_TESTS
+        /// The test probe observes current scene geometry without changing production orientation policy.
+        @available(iOS 26.0, *)
+        func windowScene(_ windowScene: UIWindowScene, didUpdateEffectiveGeometry _: UIWindowScene.Geometry) {
+            guard UserDefaults.standard.string(forKey: "OROT_TEST_ROTATION_GEOMETRY_SESSION") != nil else { return }
+            NavigationRotationProbe.shared.geometryChanged(windowScene)
+        }
+    #endif
+
     /// Foreground reconciliation observes revoked permissions without prompting.
     func sceneDidBecomeActive(_: UIScene) {
         Task { _ = await DailyReminderNotifications.shared.reconcile() }

@@ -35,7 +35,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   // Home selection coverage runs in Core; blood-pressure speech stays explicitly selectable on Duo.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 84, 15],
+    ['core', 86, 15],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -65,6 +65,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   ]);
   assert.ok(authentication.every((identifier) => !iosTestInventory('core').includes(identifier)));
   for (const identifier of [
+    'OrotIntegrationTests/RotationGeometryGuardTests/testDuplicateRequestsAndForeignPhasesAreRejected',
     'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',

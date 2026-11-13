@@ -89,9 +89,9 @@ test('full integration execution preserves profile observations and every regist
   );
   // Nine host regressions run outside iOS; seven picker journeys still repeat across cohorts.
   // Visit preparation adds one native accessibility fixture to the full schedule.
-  assert.equal(scheduled.length, 226);
+  assert.equal(scheduled.length, 228);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 219);
+  assert.equal(identifiers.size, 221);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

@@ -25,7 +25,8 @@ enum FormUITestConditions {
             // Read-only stages can skip this global AX snapshot when no action can present a keyboard.
             let keyboard = keyboardMayBeVisible ? app.keyboards.firstMatch : nil
             // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
-            let applicationFrame = app.frame
+            guard let window = FormWindowOwnership.resolve(app, scroll: scroll, target: target) else { return nil }
+            let applicationFrame = window.frame
             let scrollFrame = scroll.frame
             let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil
             let targetFrame = target.exists ? target.frame : nil
@@ -58,7 +59,7 @@ enum FormUITestConditions {
             guard let gesture = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
             let gestureReference = (targetFrame, geometry.viewport)
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
-            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let origin = window.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(gesture.start)
             let end = origin.withOffset(gesture.end)
             // Slow down only for an intersecting target; containment and the gesture budget still apply.
@@ -181,7 +182,8 @@ enum FormUITestConditions {
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
         let scroll = UITestConditions.element(app, scrollID)
-        let applicationFrame = app.frame
+        guard let window = FormWindowOwnership.resolve(app, scroll: scroll, target: input) else { return nil }
+        let applicationFrame = window.frame
         let scrollFrame = scroll.frame
         let inputFrame = input.frame
         guard let geometry = FormScrollGeometry.current(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame, input: nil, referenceSize: referenceSize) else {
@@ -198,7 +200,8 @@ enum FormUITestConditions {
             input.tap()
         }
         let actualKeyboardFrame = keyboard.exists ? keyboard.frame : nil
-        let actualApplicationFrame = app.frame
+        guard let actualWindow = FormWindowOwnership.resolve(app, scroll: scroll, target: input) else { return nil }
+        let actualApplicationFrame = actualWindow.frame
         let actualScrollFrame = scroll.frame
         guard let actual = FormScrollGeometry(application: actualApplicationFrame, scroll: actualScrollFrame, keyboard: actualKeyboardFrame) else {
             XCTFail("The refocused input has no finite keyboard viewport")
