@@ -1,28 +1,6 @@
 import CoreFoundation
 import XCTest
 
-/// Darwin notifications only wake the host; protected database readback remains the oracle.
-private final class BackgroundCommitSignal {
-    private let lock = NSLock()
-    private var value = false
-    private var finished = false
-    func receive(_ success: Bool) {
-        lock.lock()
-        guard !finished else { lock.unlock(); return }
-        finished = true
-        value = success
-        lock.unlock()
-    }
-
-    var succeeded: Bool {
-        lock.lock(); defer { lock.unlock() }; return value
-    }
-
-    var received: Bool {
-        lock.lock(); defer { lock.unlock() }; return finished
-    }
-}
-
 /// The sender is synthetic; navigation, protected storage and app lifecycle are real.
 @MainActor
 final class ConversationRetentionUITests: OrotFailFastTestCase {
@@ -40,7 +18,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, label.debugDescription)
     }
 
-    private func send(_ app: XCUIApplication, question: String = "Synthetic retention question", waitForPartial: Bool = true) {
+    private func send(_ app: XCUIApplication, question: String = "Synthetic retention question", waitForPartial: Bool = true) -> Bool {
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
@@ -48,8 +26,23 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         XCTAssertEqual(input.value as? String, question)
         app.buttons["rag-conversation-send"].tap()
         if waitForPartial {
+            let partial = app.staticTexts["Synthetic partial response"]
+            let error = UITestConditions.element(app, "rag-conversation-error")
+            // A terminal error prevents a preview from appearing for this request.
+            let outcome = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in partial.exists || error.exists || app.state == .notRunning }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [outcome]), .completed)
+            guard app.state != .notRunning else {
+                XCTFail("Application terminated before the synthetic preview")
+                return false
+            }
+            guard !error.exists else {
+                let status = app.staticTexts["retention-probe-status"]
+                XCTFail("Synthetic request failed before preview; \(status.exists ? status.label : "stage unavailable")")
+                return false
+            }
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
         }
+        return true
     }
 
     /// The keyboard can move the real conversation header above its scroll viewport.
@@ -69,7 +62,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
     func testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart() {
         let app = launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        send(app)
+        guard send(app) else { return }
         observe(app, "dispatches:1 completions:0 previews:1 interrupted:0")
         app.buttons["retention-probe-tab"].tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "retention-probe-other-tab")))
@@ -100,7 +93,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
     func testCompletionCommitsOnceWhileAnotherConversationIsVisible() {
         let app = launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        send(app)
+        guard send(app) else { return }
         observe(app, "dispatches:1 completions:0 previews:1 interrupted:0")
         conversationAction(app, id: "rag-conversation-new-session", label: "새 대화")
         app.buttons["retention-probe-release"].tap()
@@ -120,7 +113,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-lease-release", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        send(app, question: question)
+        guard send(app, question: question) else { return }
         observe(app, "lease:active")
         if stop {
             let action = app.buttons["rag-conversation-cancel"]
@@ -215,7 +208,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-background-retention", "-OROT_TEST_BACKGROUND_TOKEN", token]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        send(app, question: "Synthetic background question", waitForPartial: false)
+        guard send(app, question: "Synthetic background question", waitForPartial: false) else { return }
         let status = app.staticTexts["retention-probe-status"]
         let errorElement = UITestConditions.element(app, "rag-conversation-error")
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in

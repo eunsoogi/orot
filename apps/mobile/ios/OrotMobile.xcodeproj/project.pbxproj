@@ -98,6 +98,7 @@
 		88FB7164A1DEA04EF469C5FB /* HealthKitReadAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */; };
 		A1BC2D3E4F5061728394A5B6 /* ConversationComposerDockUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */; };
 		F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */; };
+		F186C37142B34DA58E9A1472 /* BackgroundCommitSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */; };
 		A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */; };
 		B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */; };
 		A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */; };
@@ -634,6 +635,7 @@
 		A77400000000000000000006 /* FormWindowOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormWindowOwnership.swift; sourceTree = "<group>"; };
 		B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationComposerDockUITests.swift; sourceTree = "<group>"; };
 		F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationRetentionUITests.swift; sourceTree = "<group>"; };
+		F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackgroundCommitSignal.swift; sourceTree = "<group>"; };
 		A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHealthSummaryUITests.swift; sourceTree = "<group>"; };
 		2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationVisitPreparationUITests.swift; sourceTree = "<group>"; };
 		A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationToolEventsUITests.swift; sourceTree = "<group>"; };
@@ -1049,6 +1051,7 @@
 				7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */,
 				B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */,
 				F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */,
+				F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */,
 				A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */,
 				2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */,
 				A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */,
@@ -1560,6 +1563,7 @@
 				E8CD30C28EBA26EB15F6597C /* AutomaticTranscriptionUITests.swift in Sources */,
 				A1BC2D3E4F5061728394A5B6 /* ConversationComposerDockUITests.swift in Sources */,
 				F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */,
+				F186C37142B34DA58E9A1472 /* BackgroundCommitSignal.swift in Sources */,
 				A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */,
 				B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */,
 				A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */,
