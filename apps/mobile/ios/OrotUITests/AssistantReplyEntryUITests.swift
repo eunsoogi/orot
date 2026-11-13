@@ -11,12 +11,14 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         let enable = app.buttons["assistant-reply-enable"]
         XCTAssertTrue(UITestConditions.exists(enable), app.debugDescription)
         XCTAssertTrue(enable.isHittable)
+        guard enable.isHittable else { return }
         enable.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let permission = springboard.alerts.firstMatch
         XCTAssertTrue(UITestConditions.exists(permission), springboard.debugDescription)
         let allow = permission.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "허용"])).firstMatch
         XCTAssertTrue(allow.exists && allow.isHittable, permission.debugDescription)
+        guard allow.exists, allow.isHittable else { return }
         allow.tap()
         let star = app.descendants(matching: .any).matching(identifier: "별").firstMatch
         XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
@@ -26,6 +28,7 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(banner.body), springboard.debugDescription)
         XCTAssertEqual(banner.body.label, "Synthetic retained reply")
         XCTAssertTrue(banner.body.isHittable, banner.body.debugDescription)
+        guard banner.body.exists, banner.body.isHittable else { return }
         banner.body.tap()
         XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "rag-conversation-screen").exists)

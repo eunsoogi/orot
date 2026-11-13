@@ -116,7 +116,7 @@ function AssistantReplyAcceptanceApp() {
   }
   if (state === 'ready') return <App />;
   return (
-    <View>
+    <View style={{ paddingTop: 80 }}>
       <Text testID="assistant-reply-fixture-state">{state}</Text>
       {state === 'enable' ? (
         <Pressable
