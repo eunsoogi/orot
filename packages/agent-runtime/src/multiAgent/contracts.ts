@@ -130,6 +130,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
   readonly request: string;
+  readonly photoInput?: import('./evidenceContracts').PhotoModelInput;
   readonly context?: JsonValue;
   readonly task: TaskResponderContract<TResult>;
   readonly initialEvidence: EvidenceBatch;

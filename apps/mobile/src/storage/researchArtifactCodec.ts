@@ -3,6 +3,7 @@ import { retainedResearchMetadata } from '../aiFeatures/integration/retainedRese
 import type { ResearchArtifact } from './researchArtifactStorage';
 import type { SqlExecutor } from '@orot/storage';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
+import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
 
 export function researchArtifactRowId(id: string): number | null {
   const match = /^research-([1-9]\d*)$/u.exec(id);
@@ -142,7 +143,7 @@ export function decodeResearchArtifact(
       modelId: value.modelId,
       source: validated,
       generatedText: value.generatedText,
-      inputSources: validatedInputs.sources,
+      inputSources: requireNonPhotoSources(validatedInputs.sources),
     };
   } catch {
     return null;

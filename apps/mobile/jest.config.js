@@ -7,6 +7,7 @@ module.exports = {
     path.resolve(__dirname, 'test-support/appointmentReminderModuleMock.js'),
     path.resolve(__dirname, 'test-support/navigationGlassViewMock.js'),
     path.resolve(__dirname, 'test-support/navigationMotionMock.js'),
+    path.resolve(__dirname, 'test-support/assistantAppearanceFixture.js'),
   ],
   transformIgnorePatterns: [
     'node_modules/(?!(?:((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-chart-kit)/|\\.pnpm/(?:react-native@|@react-native(?:-community)?\\+|@react-navigation\\+|react-native-screens@|react-native-chart-kit@)[^/]+/node_modules/))',

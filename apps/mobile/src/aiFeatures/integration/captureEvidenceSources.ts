@@ -34,6 +34,10 @@ export async function captureEvidenceSources(
       );
     if (read.status !== 'available')
       throw new Error('The cited source changed before saving.');
+    if (read.document.sourceKind === 'conversation_photo')
+      throw new RetainedSourceInvalidError(
+        'Conversation photos require their request owner.',
+      );
     if (read.document.sourceKind === 'health_context_period') {
       // A restored tool-only filter has no original input; it cannot become an unfiltered answer citation.
       if (read.document.filterRedacted)

@@ -85,6 +85,14 @@ test('consumers without a preparation callback retain the existing behavior', as
   expect(callModel).toHaveBeenCalledTimes(1);
 });
 
+test('preparation still fences a call when no preview stream is exposed', async () => {
+  const f = fixture();
+  const barrier = jest.fn().mockRejectedValue(new Error('source unavailable'));
+  await callModelWithEvidenceFreshness({ ...f.context, beforeTaskStream: barrier }, f.request);
+  expect(barrier).toHaveBeenCalled();
+  expect(callModel).not.toHaveBeenCalled();
+});
+
 test('an input changed during preparation never reaches the provider', async () => {
   const f = fixture();
   const context = {

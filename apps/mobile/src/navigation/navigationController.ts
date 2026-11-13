@@ -26,6 +26,8 @@ export interface NavigationSnapshot<Name extends string> {
 export interface NavigationController<Name extends string> {
   getSnapshot: () => NavigationSnapshot<Name>;
   subscribe: (listener: () => void) => () => void;
+  subscribeEntryAvailability: (listener: () => void) => () => void;
+  setLeaveStateAvailability: (routeKey: string, available: boolean) => void;
   push: (name: Name) => NavigationRoute<Name> | null;
   replace: (name: Name) => NavigationRoute<Name> | null;
   registerLeaveGuard: (
@@ -67,6 +69,8 @@ export function createNavigationController<Name extends string>(
   initialRoute: Name,
 ): NavigationController<Name> {
   const listeners = new Set<() => void>();
+  const availabilityListeners = new Set<() => void>();
+  const leaveStateAvailability = new Map<string, boolean>();
   const leaveGuards = new Map<string, NavigationLeaveGuard<Name>>();
   let sequence = 1;
   let routes: readonly NavigationRoute<Name>[] = [
@@ -74,10 +78,29 @@ export function createNavigationController<Name extends string>(
   ];
   let isTransitioning = false;
   let snapshot = createSnapshot(routes, isTransitioning);
+  let availabilityKey = '';
+  let availabilityScheduled = false;
+
+  // Coalesce React cleanup/register pairs and signal only newly available owners.
+  function updateAvailability() {
+    if (availabilityScheduled) return;
+    availabilityScheduled = true;
+    Promise.resolve().then(() => {
+      availabilityScheduled = false;
+      const key = snapshot.currentRoute.key;
+      const ready =
+        leaveGuards.has(key) && leaveStateAvailability.get(key) === true;
+      const next = ready ? key : '';
+      const becameReady = !!next && next !== availabilityKey;
+      availabilityKey = next;
+      if (becameReady) availabilityListeners.forEach(listener => listener());
+    });
+  }
 
   function publish() {
     snapshot = createSnapshot(routes, isTransitioning);
     listeners.forEach(listener => listener());
+    updateAvailability();
   }
 
   function addRoute(name: Name, replaceCurrent: boolean) {
@@ -177,13 +200,27 @@ export function createNavigationController<Name extends string>(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    subscribeEntryAvailability: listener => {
+      availabilityListeners.add(listener);
+      return () => availabilityListeners.delete(listener);
+    },
+    setLeaveStateAvailability: (routeKey, available) => {
+      if (leaveStateAvailability.get(routeKey) === available) return;
+      leaveStateAvailability.set(routeKey, available);
+      if (!available && availabilityKey === routeKey) availabilityKey = '';
+      updateAvailability();
+    },
     push: name => addRoute(name, false),
     replace: name => addRoute(name, true),
     registerLeaveGuard: (routeKey, guard) => {
       if (!routes.some(route => route.key === routeKey)) return () => {};
       leaveGuards.set(routeKey, guard);
+      updateAvailability();
       return () => {
-        if (leaveGuards.get(routeKey) === guard) leaveGuards.delete(routeKey);
+        if (leaveGuards.get(routeKey) === guard) {
+          leaveGuards.delete(routeKey);
+          updateAvailability();
+        }
       };
     },
     // Called only for an already-completed, unguarded native pop; never dispatch a second pop.

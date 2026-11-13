@@ -22,7 +22,7 @@ import {
   isEvidenceIndependentConversation,
   requestsLiteratureExplanation,
 } from './literatureIntent';
-import { conversationEntryContext } from './conversationEntryContext';
+import { conversationTaskInput } from './conversationEntryContext';
 import { priorDialogue } from './priorDialogue';
 import { possibilityPrompt } from './possibilityPrompt';
 
@@ -97,12 +97,11 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       {
         role: 'user',
         content: JSON.stringify({
-          question: input.request,
-          entryContext: conversationEntryContext(
+          ...conversationTaskInput(
+            input.request,
             input.context,
             input.evidence.items,
           ),
-          displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           answerRequirements:
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
           temporalRequirements:

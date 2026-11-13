@@ -44,7 +44,12 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
-      if (sessions.get(id) !== entry || controller.signal.aborted) return;
+      if (
+        sessions.get(id) !== entry ||
+        entry.controller !== controller ||
+        controller.signal.aborted
+      )
+        return;
       const reports = turns.flatMap(turn =>
         turn.dailyReport ? [turn.dailyReport] : [],
       );
@@ -112,9 +117,19 @@ export function createConversationSessionRestoreState(input: {
         restoreFailed: false,
         restoring: false,
       });
-      sessions.delete(id);
+      // Publication listeners may synchronously abort and preserve this entry for retry.
+      if (
+        sessions.get(id) === entry &&
+        entry.controller === controller &&
+        !controller.signal.aborted
+      )
+        sessions.delete(id);
     } catch {
-      if (sessions.get(id) === entry && !controller.signal.aborted) {
+      if (
+        sessions.get(id) === entry &&
+        entry.controller === controller &&
+        !controller.signal.aborted
+      ) {
         // A failed sibling read must not keep restoring private data in the background.
         controller.abort();
         input.update(id, {
@@ -123,7 +138,7 @@ export function createConversationSessionRestoreState(input: {
         });
       }
     } finally {
-      if (sessions.get(id) === entry) {
+      if (sessions.get(id) === entry && entry.controller === controller) {
         entry.controller = undefined;
         input.update(id, { restoring: false });
       }
@@ -133,13 +148,30 @@ export function createConversationSessionRestoreState(input: {
     sessions.get(id)?.controller?.abort();
     sessions.delete(id);
   };
+  const runWhileCurrent = async (id: number, signal?: AbortSignal) => {
+    const entry = sessions.get(id);
+    if (!entry || signal?.aborted) return;
+    // Abort synchronously at observer cleanup; late protected reads must not publish into the store.
+    const cancel = () => {
+      if (sessions.get(id) !== entry || !entry.controller) return;
+      entry.controller.abort();
+      entry.controller = undefined;
+      input.update(id, { restoring: false, restoreFailed: true });
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
+    try {
+      await run(id);
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+    }
+  };
   return {
-    async start(id: number, durableId: string) {
+    async start(id: number, durableId: string, signal?: AbortSignal) {
       forget(id);
       sessions.set(id, { durableId });
-      await run(id);
+      await runWhileCurrent(id, signal);
     },
-    retry: run,
+    retry: runWhileCurrent,
     forget,
     dispose() {
       for (const id of sessions.keys()) forget(id);

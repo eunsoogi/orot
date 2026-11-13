@@ -14,6 +14,7 @@ import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { readResearchArtifact } from './researchArtifactCodec';
 import { assertSymptomPeriodAvailable } from './symptomSummaryQuarantine';
+import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
 
 interface Ancestry {
   readonly path: Set<string>;
@@ -76,7 +77,7 @@ async function assertGeneratedSummaryCurrent(
       );
     await assertRetainedEvidenceCurrent(
       tx,
-      parent.sources,
+      requireNonPhotoSources(parent.sources),
       manualHistory,
       false,
       ancestry,
@@ -128,7 +129,7 @@ async function assertGeneratedConversationCurrent(
       );
     await assertRetainedEvidenceCurrent(
       tx,
-      parent.sources,
+      requireNonPhotoSources(parent.sources),
       manualHistory,
       false,
       ancestry,

@@ -113,6 +113,8 @@ export function sendConversationMessage(
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const sendEntry = entryIntentSender(store, id, onSend);
   return store.send(id, (question, history, signal, observer) => {
+    if (observer?.photoInput)
+      return sendEntry(question, history, signal, observer);
     // An explicitly selected report owns this turn instead of an earlier visit entry.
     if (session?.dailyReport) {
       pendingVisits.get(store)?.delete(id);

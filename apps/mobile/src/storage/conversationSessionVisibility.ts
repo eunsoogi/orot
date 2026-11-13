@@ -109,17 +109,33 @@ export function createConversationSessionVisibility(
     },
     async finalizeHiddenSession(id: string, version: number) {
       await ensure();
+      let ids: string[] = [];
       await database.transaction(async tx => {
         const found = await tx.execute(
           'SELECT id FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
           [id, version],
         );
-        if (found.rows.length)
+        if (!found.rows.length) return;
+        const sources = await tx.execute(
+          'SELECT DISTINCT x.source_id FROM conversation_request_sources x JOIN conversation_requests r ON r.id = x.request_id WHERE r.session_id = ?',
+          [id],
+        );
+        ids = sources.rows.map(row => {
+          if (typeof row.source_id !== 'string')
+            throw new Error('Invalid photo source.');
+          return row.source_id;
+        });
+        for (const sourceId of ids)
           await tx.execute(
-            'DELETE FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
-            [id, version],
+            'INSERT OR IGNORE INTO conversation_request_removed_sources (id) VALUES (?)',
+            [sourceId],
           );
+        await tx.execute(
+          'DELETE FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
+          [id, version],
+        );
       });
+      return ids;
     },
   };
 }

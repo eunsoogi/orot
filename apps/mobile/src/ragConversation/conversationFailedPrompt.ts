@@ -1,4 +1,30 @@
-import type { ConversationSession } from './conversationSessionTypes';
+import type {
+  ConversationSession,
+  PendingTurn,
+} from './conversationSessionTypes';
+
+/** Preserve the existing partial and composer recovery for any request failure. */
+export function conversationFailureReporter(
+  find: (id: number) => ConversationSession,
+  update: (id: number, change: Partial<ConversationSession>) => void,
+  request: PendingTurn,
+  retain: (id: number, activity: string) => void,
+  id: number,
+) {
+  return (partialCopy: string, failureCopy = partialCopy) => {
+    retain(id, partialCopy);
+    restoreFailedPrompt(
+      find,
+      update,
+      id,
+      request.question,
+      request.userMessageId,
+      failureCopy,
+      false,
+      request.restorePromptToComposer,
+    );
+  };
+}
 
 /** A stopped stream remains visible as an incomplete draft, never validated history. */
 export function retainPartial(
