@@ -29,6 +29,7 @@
         }
 
         /// Correlate scene callbacks and the single supported request without recording screen content.
+        @available(iOS 16.0, *)
         func geometryCommand(session: String, mode: String) -> [String: Any] {
             guard UUID(uuidString: session) != nil else { return ["status": "invalid-session"] }
             if mode == "start" {
@@ -68,6 +69,7 @@
         }
 
         /// The delegate callback carries previous geometry; record the scene's current geometry instead.
+        @available(iOS 16.0, *)
         func geometryChanged(_ scene: UIWindowScene) {
             guard !geometrySession.isEmpty, geometryScene === scene, let window = scene.windows.first(where: { $0.isKeyWindow && !$0.isHidden }) else { return }
             let session = geometrySession
@@ -124,7 +126,10 @@
         /// The request is dispatched to UIKit's main thread and returns an allowlisted receipt.
         @objc(rotationGeometryCommand:mode:resolve:rejecter:)
         func rotationGeometryCommand(_ session: String, mode: String, resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
-            DispatchQueue.main.async { resolve(NavigationRotationProbe.shared.geometryCommand(session: session, mode: mode)) }
+            DispatchQueue.main.async {
+                guard #available(iOS 16.0, *) else { resolve(["status": "unavailable"]); return }
+                resolve(NavigationRotationProbe.shared.geometryCommand(session: session, mode: mode))
+            }
         }
     }
 #endif
