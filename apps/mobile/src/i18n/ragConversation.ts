@@ -3,6 +3,28 @@ export const ragConversationKo = {
   'ragConversation.title': '기록과 대화',
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
+  'ragConversation.photo.select': '사진 첨부',
+  'ragConversation.photo.selectHint': '한 번에 사진 한 장을 선택해요.',
+  'ragConversation.photo.remove': '첨부 사진 제거',
+  'ragConversation.photo.preview': '첨부할 사진 미리보기',
+  'ragConversation.photo.preparing': '사진을 준비하고 있어요.',
+  'ragConversation.photo.error':
+    '사진을 준비하지 못했어요. 다시 선택해 주세요.',
+  'ragConversation.photo.unavailable':
+    '사진을 보낼 준비가 되지 않았어요. 다시 시도하거나 사진을 제거해 주세요.',
+  'ragConversation.photo.unsupported':
+    '사진을 준비할 수 없어요. HEIC, JPEG 또는 PNG 사진을 다시 선택해 주세요.',
+  'ragConversation.photo.empty':
+    '사진에서 글자를 찾지 못했어요. 글자가 잘 보이는 사진을 선택해 주세요.',
+  'ragConversation.photo.protection':
+    '사진을 안전하게 보관할 수 없어요. 기기 상태를 확인하고 다시 시도해 주세요.',
+  'ragConversation.photo.pickerUnavailable':
+    '사진 선택기를 사용할 수 없어요. 잠시 후 다시 시도해 주세요.',
+  'ragConversation.photo.retryCleanup': '임시 사진 정리 다시 시도',
+  'ragConversation.photo.cleanupFailed':
+    '이전 임시 사진을 정리하지 못했어요. 다시 시도해 주세요.',
+  'ragConversation.photo.ocrDisclosure':
+    '사진에서 추출한 글자를 질문과 함께 보내요. 사진 자체는 보내지 않아요.',
   'ragConversation.sessions': '대화 목록',
   'ragConversation.newConversation': '새 대화',
   'ragConversation.transmissionNotice':
