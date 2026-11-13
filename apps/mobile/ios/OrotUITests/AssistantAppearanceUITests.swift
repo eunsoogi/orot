@@ -3,6 +3,71 @@ import XCTest
 /// Uses the real app gate and protected local store in an isolated test-owned container.
 @MainActor
 final class AssistantAppearanceUITests: OrotFailFastTestCase {
+    /// Uses real spoken output and a fresh store to check the neutral choice and invalid name boundary.
+    func testNeutralChoiceNameValidationAndVoiceOver() throws {
+        guard #available(iOS 27.0, *) else {
+            XCTFail("This test requires the iOS VoiceOver service")
+            return
+        }
+        let voiceOver = VoiceOverTestSession()
+        voiceOver.registerRestoration(in: self)
+        try voiceOver.prepareForStandardInteraction()
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "assistant-acceptance", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        let neutral = app.descendants(matching: .any).matching(identifier: "기본").firstMatch
+        XCTAssertTrue(UITestConditions.exists(neutral), app.debugDescription)
+        let save = app.buttons["assistant-appearance-save"]
+        XCTAssertFalse(save.isEnabled)
+        try voiceOver.assertSpeech(from: neutral, expected: "기본", forbiddenTerms: [], phase: "assistant-neutral", testCase: self)
+        try voiceOver.prepareForStandardInteraction()
+        neutral.tap()
+        XCTAssertTrue((neutral.value as? String)?.contains("checked") == true, neutral.debugDescription)
+        XCTAssertFalse((neutral.value as? String)?.contains("unchecked") == true, neutral.debugDescription)
+        XCTAssertTrue(save.isEnabled && save.isHittable)
+        save.tap()
+        let ai = UITestConditions.element(app, "navigation-tab-ai")
+        XCTAssertTrue(UITestConditions.exists(ai), app.debugDescription)
+        ai.tap()
+        let identity = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "비서 꾸미기")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)
+        XCTAssertEqual(identity.label, "비서, 비서 꾸미기")
+        identity.tap()
+        XCTAssertTrue(UITestConditions.exists(neutral), app.debugDescription)
+        XCTAssertTrue((neutral.value as? String)?.contains("checked") == true, neutral.debugDescription)
+        XCTAssertFalse((neutral.value as? String)?.contains("unchecked") == true, neutral.debugDescription)
+        let name = app.textFields["비서 이름"]
+        name.tap()
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
+        let tooLong = "1234567890123456789012345"
+        name.typeText(tooLong)
+        let observed = name.value as? String
+        XCTAssertEqual(observed, tooLong)
+        guard observed == tooLong else { return }
+        guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
+        XCTAssertTrue(save.isHittable)
+        save.tap()
+        let error = app.staticTexts["이름은 24글자 이내로 입력해 주세요."]
+        XCTAssertTrue(UITestConditions.exists(error), app.debugDescription)
+        XCTAssertTrue(neutral.exists)
+        let cancel = app.buttons["취소"]
+        guard FormUITestConditions.reveal(cancel, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
+        XCTAssertTrue(cancel.isHittable)
+        cancel.tap()
+        XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(ai), app.debugDescription)
+        ai.tap()
+        XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)
+        XCTAssertEqual(identity.label, "비서, 비서 꾸미기")
+        identity.tap()
+        XCTAssertTrue(UITestConditions.exists(neutral), app.debugDescription)
+        XCTAssertTrue((neutral.value as? String)?.contains("checked") == true, neutral.debugDescription)
+        XCTAssertFalse((neutral.value as? String)?.contains("unchecked") == true, neutral.debugDescription)
+    }
+
     /// Compare the same XCTest text injection across the appearance field and the conversation composer.
     func testAppearanceAndConversationKeyboardInputRemainComplete() {
         let app = XCUIApplication()

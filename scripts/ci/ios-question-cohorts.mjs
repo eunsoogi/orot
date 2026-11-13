@@ -12,6 +12,7 @@ export const questionCohorts = {
     // Keep native conversation journeys together with their own preparation and artifact budget.
     cases: [
       'AssistantAppearanceUITests/testAppearanceAndConversationKeyboardInputRemainComplete',
+      'AssistantAppearanceUITests/testNeutralChoiceNameValidationAndVoiceOver',
       'AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
       'AssistantReplyEntryUITests/testSavedReplyWaitsForAppearanceAndOpensAfterSave',
       'ReplyFocusGeometryUITests/testSavedReplyAndNewerGenerationRevealWithinRealViewport',
