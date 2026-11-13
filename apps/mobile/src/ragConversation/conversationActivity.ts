@@ -8,12 +8,30 @@ export type ConversationActivityStage =
   | 'literature'
   | 'streaming'
   | 'cancelling';
+export type ConversationActivityTracker = ReturnType<
+  typeof createConversationActivity
+>;
 
 export type ConversationActivitySnapshot = Readonly<{
   sessionId: number;
   requestId: number;
   stage: ConversationActivityStage;
 }>;
+
+/** Publish only while the owning request remains current. */
+export function activityNotifier(
+  current: () => boolean,
+  update: (
+    id: number,
+    change: { requestActivity: ConversationActivitySnapshot | null },
+  ) => void,
+  id: number,
+  activity: ReturnType<typeof createConversationActivity>,
+) {
+  return () => {
+    if (current()) update(id, { requestActivity: activity.getSnapshot() });
+  };
+}
 
 type ToolState = {
   readonly status: ConversationToolEvent['status'];

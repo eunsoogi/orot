@@ -41,3 +41,25 @@ test('activity follows the owning request across session selection and ignores s
   await sending;
   sessions.dispose();
 });
+
+test('failure settles activity and retry receives a new request identity', async () => {
+  const sessions = createConversationSessions();
+  sessions.setDraft(1, 'Synthetic question');
+  let firstRequest: number | undefined;
+  await sessions.send(1, async () => {
+    firstRequest =
+      sessions.getSnapshot().sessions[0]?.requestActivity?.requestId;
+    throw new Error('Synthetic failure');
+  });
+  expect(sessions.getSnapshot().sessions[0]?.requestActivity).toBeNull();
+  let retryRequest: number | undefined;
+  await sessions.send(1, async () => {
+    retryRequest =
+      sessions.getSnapshot().sessions[0]?.requestActivity?.requestId;
+    return { status: 'answer', answer: 'Synthetic answer', citations: [] };
+  });
+  expect(retryRequest).toBeDefined();
+  expect(retryRequest).not.toBe(firstRequest);
+  expect(sessions.getSnapshot().sessions[0]?.requestActivity).toBeNull();
+  sessions.dispose();
+});

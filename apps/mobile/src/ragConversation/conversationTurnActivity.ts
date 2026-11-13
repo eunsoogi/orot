@@ -9,6 +9,9 @@ import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import type { createConversationActivity } from './conversationActivity';
+export type ConversationTurnActivity = ReturnType<
+  typeof createConversationTurnActivity
+>;
 
 /** The response bubble and durable turn share one call map; content never enters tool metadata. */
 export function createConversationTurnActivity(input: {

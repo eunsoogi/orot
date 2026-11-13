@@ -1,6 +1,12 @@
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
-import { createConversationActivity } from './conversationActivity';
+import type { ConversationTurnActivity } from './conversationTurnActivity';
+import type { ConversationActivityTracker } from './conversationActivity';
+import {
+  activityNotifier,
+  createConversationActivity,
+} from './conversationActivity';
+import { createConversationRequestDisposal } from './conversationRequestDisposal';
 import {
   conversationHistoryPayload,
   retainedHistoryTurns,
@@ -42,14 +48,8 @@ export function createConversationSessionRequests(
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
-  const snapshots = new Map<
-    number,
-    ReturnType<typeof createConversationActivity>
-  >();
-  const activities = new Map<
-    number,
-    ReturnType<typeof createConversationTurnActivity>
-  >();
+  const snapshots = new Map<number, ConversationActivityTracker>();
+  const activities = new Map<number, ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
     interrupt: id => cancel(id, false, 'interrupted'),
@@ -73,34 +73,15 @@ export function createConversationSessionRequests(
   });
   return {
     cancel,
-    abandon(id: number) {
-      saveRecovery.suspend(id);
-      lifetime.interrupt(id, 'cancelled', true);
-      controllers.get(id)?.abort();
-      activities.get(id)?.finish('cancelled');
-      snapshots.get(id)?.settle();
-      snapshots.delete(id);
-      controllers.delete(id);
-      pendingTurns.delete(id);
-      update(id, {
-        busy: false,
-        pendingMessage: null,
-        artifactContinuation: null,
-        requestActivity: null,
-      });
-    },
-    dispose() {
-      saveRecovery.dispose();
-      controllers.forEach((controller, id) => {
-        lifetime.interrupt(id, 'interrupted');
-        controller.abort();
-      });
-      activities.forEach(activity => activity.finish('cancelled'));
-      snapshots.forEach(snapshot => snapshot.settle());
-      snapshots.clear();
-      controllers.clear();
-      pendingTurns.clear();
-    },
+    ...createConversationRequestDisposal({
+      controllers,
+      pendingTurns,
+      activities,
+      snapshots,
+      lifetime,
+      saveRecovery,
+      update,
+    }),
     async send(
       id: number,
       onSend: ConversationSender,
@@ -127,8 +108,7 @@ export function createConversationSessionRequests(
       update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
-      let activity:
-        ReturnType<typeof createConversationTurnActivity> | undefined;
+      let activity: ConversationTurnActivity | undefined;
       let retained:
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
@@ -170,10 +150,7 @@ export function createConversationSessionRequests(
           current,
           retained,
           activity: snapshot,
-          activityChanged: () => {
-            if (current())
-              update(id, { requestActivity: snapshot.getSnapshot() });
-          },
+          activityChanged: activityNotifier(current, update, id, snapshot),
         });
         activities.set(id, activity);
         const outcome = await onSend(question, history, controller.signal, {

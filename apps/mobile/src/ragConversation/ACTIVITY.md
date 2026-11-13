@@ -1,7 +1,7 @@
 # Conversation activity contract
 
-This contract is being integrated with the session request lifecycle. Until that
-integration lands, the tracker is not an activity source for the app.
+The session's `requestActivity` is the activity source for a live in-memory
+request. Consumers read it from the same conversation snapshot.
 
 Each running request owns one tracker and exposes its frozen snapshot through
 its session. Both visual consumers must read that same snapshot; one consumer
@@ -10,6 +10,9 @@ start a request, send data, or schedule a timer. A null snapshot means there is
 no live activity, including after process restoration unless a real request is
 resumed by its owner.
 
+The numeric request identity is the owning response message ID within this
+session owner. It is not the protected storage request ID or a durable
+completion identity; do not use it to look up stored answers or notifications.
 The snapshot contains only session and request identities and a stage. It does
 not contain prompts, model reasoning, tool arguments, results, or health text.
 Preparation is set when a request starts; waiting begins when preparation has
