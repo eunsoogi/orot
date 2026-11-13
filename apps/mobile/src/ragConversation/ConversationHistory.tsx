@@ -9,6 +9,10 @@ import type { ResolveConversationToolSource } from './ConversationToolEventSourc
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { ReplyMessageContainer } from './ReplyMessageContainer';
+import { ConversationActivityBubble } from './ConversationActivityBubble';
+import { conversationHistoryActivity } from './conversationHistoryActivity';
+import type { ConversationActivitySnapshot } from './conversationActivity';
+import type { ConversationSession } from './conversationSessionTypes';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
@@ -31,13 +35,11 @@ export function ConversationHistory({
   resolveToolSource,
   renderVisitQuestions,
   replyFocus,
+  requestSessionId,
+  requestActivity,
 }: {
   readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: {
-    id: number;
-    content: string;
-    activity: string;
-  } | null;
+  readonly pendingMessage: ConversationSession['pendingMessage'];
   readonly error: string;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
@@ -55,6 +57,8 @@ export function ConversationHistory({
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
   readonly replyFocus?: { messageId: string; done(): void };
+  readonly requestSessionId?: number;
+  readonly requestActivity?: ConversationActivitySnapshot | null;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -73,10 +77,12 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   });
-  // A single keyed list preserves the mounted answer across draft validation and cancellation.
-  const visibleMessages: readonly DisplayMessage[] = pendingMessage
-    ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
-    : messages;
+  const { visibleMessages, showActivityBubble } = conversationHistoryActivity(
+    messages,
+    pendingMessage,
+    requestSessionId,
+    requestActivity,
+  );
   const followLatest = () => {
     if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
     if (compact) {
@@ -221,6 +227,7 @@ export function ConversationHistory({
             />
           </ReplyMessageContainer>
         ))}
+        {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
           {...{
             error,
