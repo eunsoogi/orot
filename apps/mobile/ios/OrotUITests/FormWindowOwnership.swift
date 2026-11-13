@@ -13,7 +13,9 @@ enum FormWindowOwnership {
         // Without identifiers, ownership cannot be disambiguated across windows.
         if scrollID.isEmpty || (targetExists && targetID.isEmpty) {
             guard windows.count == 1 else {
-                if reportFailure { XCTFail("The form window owner is ambiguous: windows=\(windows.count)") }
+                if reportFailure {
+                    XCTFail("The form window owner is ambiguous: windows=\(windows.count)")
+                }
                 return nil
             }
             return windows[0]
