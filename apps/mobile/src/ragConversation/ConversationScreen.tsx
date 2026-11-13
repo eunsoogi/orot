@@ -3,6 +3,7 @@ import { AppText as Text } from '../layout/AppText';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
+import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -86,7 +87,6 @@ export function ConversationScreen({
   );
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
-  // App-owned sessions keep drafts and requests alive when this route is removed.
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
     {
@@ -109,7 +109,6 @@ export function ConversationScreen({
       )}
       <ConversationHeaderTitle
         title={copy.title}
-        session={session}
         historyLabel={copy.sessions}
         newLabel={copy.newConversation}
         showActions={showSessionActionsInHeader}
@@ -138,7 +137,6 @@ export function ConversationScreen({
       />
     </View>
   );
-
   return (
     <KeyboardAvoidingView
       behavior={
@@ -158,65 +156,67 @@ export function ConversationScreen({
               setContentHeight(event.nativeEvent.layout.height)
             }
           >
-            <ConversationHistory
-              replyFocus={focus}
-              sessionId={id}
-              requestSessionId={id}
-              requestActivity={session.requestActivity}
-              compact={composerLayout.compact}
-              header={header}
-              messages={messages}
-              pendingMessage={pendingMessage}
-              error={error}
-              unsavedCount={session.unsavedCount}
-              retryingSave={session.retryingSave || busy}
-              onRetrySave={() => {
-                store.retrySave(id);
-              }}
-              restoreFailed={session.restoreFailed}
-              onRetryRestore={() => {
-                store.retryRestore(id);
-              }}
-              onOpenSource={onOpenSource}
-              resolveToolSource={resolveToolSource}
-              renderVisitQuestions={
-                renderVisitQuestions
-                  ? message =>
-                      renderVisitQuestions(message, id, store, () =>
-                        regenerateVisitQuestions({
-                          store,
-                          sessionId: id,
-                          message,
-                          prepare: prepareVisitQuestions,
-                        }),
-                      )
-                  : undefined
-              }
-              toolSourceSessionId={toolSourceSessionId}
-              onLinkError={onLinkError}
-              beforeMessages={
-                <ManualVisitTargetPanels
-                  store={store}
-                  sessionId={id}
-                  durableSessionId={toolSourceSessionId}
-                  discover={discoverManualVisits}
-                  messages={messages}
-                  session={session}
-                  compact={composerLayout.compact}
-                  disclaimer={copy.disclaimer}
-                />
-              }
-              footer={
-                <ConversationStoredTaskCards
-                  store={store}
-                  session={session}
-                  onOpenSource={onOpenSource}
-                  routeKey={navigationRouteKey}
-                  durableSessionId={toolSourceSessionId}
-                  renderStoredReportTask={renderStoredReportTask}
-                />
-              }
-            />
+            <FloatingAssistantSurface session={session}>
+              <ConversationHistory
+                replyFocus={focus}
+                sessionId={id}
+                requestSessionId={id}
+                requestActivity={session.requestActivity}
+                compact={composerLayout.compact}
+                header={header}
+                messages={messages}
+                pendingMessage={pendingMessage}
+                error={error}
+                unsavedCount={session.unsavedCount}
+                retryingSave={session.retryingSave || busy}
+                onRetrySave={() => {
+                  store.retrySave(id);
+                }}
+                restoreFailed={session.restoreFailed}
+                onRetryRestore={() => {
+                  store.retryRestore(id);
+                }}
+                onOpenSource={onOpenSource}
+                resolveToolSource={resolveToolSource}
+                renderVisitQuestions={
+                  renderVisitQuestions
+                    ? message =>
+                        renderVisitQuestions(message, id, store, () =>
+                          regenerateVisitQuestions({
+                            store,
+                            sessionId: id,
+                            message,
+                            prepare: prepareVisitQuestions,
+                          }),
+                        )
+                    : undefined
+                }
+                toolSourceSessionId={toolSourceSessionId}
+                onLinkError={onLinkError}
+                beforeMessages={
+                  <ManualVisitTargetPanels
+                    store={store}
+                    sessionId={id}
+                    durableSessionId={toolSourceSessionId}
+                    discover={discoverManualVisits}
+                    messages={messages}
+                    session={session}
+                    compact={composerLayout.compact}
+                    disclaimer={copy.disclaimer}
+                  />
+                }
+                footer={
+                  <ConversationStoredTaskCards
+                    store={store}
+                    session={session}
+                    onOpenSource={onOpenSource}
+                    routeKey={navigationRouteKey}
+                    durableSessionId={toolSourceSessionId}
+                    renderStoredReportTask={renderStoredReportTask}
+                  />
+                }
+              />
+            </FloatingAssistantSurface>
             <ConversationComposer
               {...composer}
               photo={photo}

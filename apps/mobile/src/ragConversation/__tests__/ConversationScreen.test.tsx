@@ -40,7 +40,16 @@ test('keeps the composer outside the conversation scroll and bounds long drafts'
   const history = screen.getByTestId('rag-conversation-history');
   const composer = screen.getByTestId('rag-conversation-composer');
   expect(within(history).queryByTestId('rag-conversation-composer')).toBeNull();
-  expect(composer.parent).toBe(history.parent);
+  // The transcript now has a floating identity wrapper; composer must remain
+  // its sibling outside the scroll owner, not scroll with message content.
+  const floating = screen.getByTestId('assistant-floating-surface');
+  expect(within(floating).getByTestId('rag-conversation-history')).toBe(
+    history,
+  );
+  expect(
+    within(floating).queryByTestId('rag-conversation-composer'),
+  ).toBeNull();
+  expect(composer.parent).toBe(floating.parent);
   const input = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(input, '합성 질문\n'.repeat(80));
   expect(StyleSheet.flatten(input.props.style).maxHeight).toBeGreaterThan(44);
