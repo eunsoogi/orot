@@ -4,8 +4,9 @@ The session's `requestActivity` is the activity source for a live in-memory
 request. Consumers read it from the same conversation snapshot.
 
 Each running request owns one tracker and exposes its frozen snapshot through
-its session. Both visual consumers must read that same snapshot; one consumer
-owns accessibility announcements. Reading or rendering a snapshot must not
+its session. Both visual consumers must read that same snapshot; the activity
+header owns accessibility announcements, and the pending bubble must not
+announce the same change. Reading or rendering a snapshot must not
 start a request, send data, or schedule a timer. A null snapshot means there is
 no live activity, including after process restoration unless a real request is
 resumed by its owner.
@@ -26,6 +27,5 @@ specific stage. A terminal call cannot be reopened by a delayed start.
 The request owner must settle the tracker on completion, failure, interruption,
 or cancellation, and ignore callbacks from superseded requests. Navigation and
 backgrounding must retain the session-owned snapshot while its request really
-runs. A retry gets a new request identity. The announcement owner and localized
-copy are integration decisions for the two visual consumers, which must agree
-on one owner rather than announce independently.
+runs. A retry gets a new request identity. Consumers coordinate localized copy
+without independently announcing the same activity.
