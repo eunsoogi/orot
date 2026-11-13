@@ -1,7 +1,7 @@
 import type { ConversationSessions } from './conversationSessions';
 import { useReplyFocusForSession } from '../replyNotifications/replyFocus';
 import { useConversationPhotoControls } from './useConversationPhotoControls';
-import { createElement } from 'react';
+import { createElement, useCallback, useState } from 'react';
 import { ConversationVoiceEntry } from '../voiceConversation/ConversationVoiceEntry';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 
@@ -15,10 +15,22 @@ export function useConversationScreenControls(
   onSend?: ConversationScreenProps['onSend'],
 ) {
   const photo = useConversationPhotoControls(store, id);
+  const [voiceMessage, setVoiceMessage] = useState({
+    sessionId: id,
+    status: '',
+  });
+  const onVoiceStatusChange = useCallback(
+    (status: string) => setVoiceMessage({ sessionId: id, status }),
+    [id],
+  );
   return {
     photo,
+    status:
+      voiceSelection && onSend && voiceMessage.sessionId === id
+        ? voiceMessage.status
+        : '',
     focus: useReplyFocusForSession(id, isEntryCurrent),
-    voice:
+    trailingAction:
       voiceSelection && onSend
         ? createElement(ConversationVoiceEntry, {
             key: id,
@@ -31,6 +43,7 @@ export function useConversationScreenControls(
             selectionRevision: voiceSelection.revision,
             resolveSelectedAi: voiceSelection.resolve,
             onSend,
+            onStatusChange: onVoiceStatusChange,
           })
         : undefined,
   };

@@ -29,6 +29,7 @@ export function ConversationComposer({
   disabled = false,
   photo,
   trailingAction,
+  status = '',
 }: {
   readonly value: string;
   readonly busy: boolean;
@@ -41,6 +42,7 @@ export function ConversationComposer({
   readonly disabled?: boolean;
   /** A separately owned action may occupy the trailing composer slot. */
   readonly trailingAction?: ReactNode;
+  readonly status?: string;
   readonly photo?: {
     readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
     readonly previewData?: string;
@@ -145,6 +147,12 @@ export function ConversationComposer({
       testID="rag-conversation-composer"
       onLayout={onLayout}
     >
+      {/* Long voice and attachment warnings need the full row; inline status can consume the editor's width. */}
+      {status ? (
+        <Text accessibilityLiveRegion="polite" style={styles.composerStatus}>
+          {status}
+        </Text>
+      ) : null}
       <View style={styles.composer}>
         {photo ? (
           <ConversationPhotoAttachment {...photo} disabled={disabled || busy}>
