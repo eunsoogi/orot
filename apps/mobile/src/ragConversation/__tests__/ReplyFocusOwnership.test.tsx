@@ -176,3 +176,33 @@ test('a stale foreground callback cannot reveal a newer generation', async () =>
     subscription.mockRestore();
   }
 });
+
+test('rechecks laid out focus when route authority commits after the foreground event', async () => {
+  let resume: (state: AppStateStatus) => void = () => {};
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      resume = listener;
+      return { remove: jest.fn() };
+    });
+  let current = false;
+  const scroll = { scrollTo: jest.fn() };
+  const view = await renderHook(() => useTranscript(() => current, scroll));
+  try {
+    await act(() => replyFocus.set({ sessionId: 7, messageId: 'answer' }));
+    await act(() => {
+      view.result.current.layout.container(100);
+      view.result.current.layout.message(25);
+    });
+    await act(() => resume('active'));
+    expect(scroll.scrollTo).not.toHaveBeenCalled();
+    current = true;
+    await view.rerender();
+    expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+    expect(scroll.scrollTo).toHaveBeenCalledWith({ y: 125, animated: false });
+    expect(replyFocus.get()).toBeNull();
+  } finally {
+    view.unmount();
+    subscription.mockRestore();
+  }
+});

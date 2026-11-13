@@ -50,6 +50,8 @@ export function useReplyScroll(input: {
   ]);
   useEffect(() => {
     if (!input.focus) return;
+    // Route authority can become current in a commit after the foreground event.
+    reveal();
     // Layout may have arrived while the app was inactive; recheck live ownership on resume.
     const subscription = AppState.addEventListener('change', value => {
       if (value === 'active') reveal();
