@@ -126,6 +126,8 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
     },
     activeSessionVersion: async (id: string) => sessions.get(id) ?? null,
     append: async () => undefined,
+    startRequest: async () => undefined,
+    interruptRequest: async () => undefined,
     appendToolEvent: async () => undefined,
     recoverInterruptedToolEvents: async () => undefined,
     interruptRecoveredRequests: async () => undefined,
@@ -133,6 +135,7 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
     invalidatePreview: async () => 1,
     preparePreview: async () => false,
     writePreview: async () => false,
+    readInterruptedPreview: async () => null,
     readToolTurns: async () => [],
     hideSession: async (id: string) => {
       sessions.delete(id);

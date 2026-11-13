@@ -1,6 +1,6 @@
 import { createConversationTurnRetention } from '../conversationTurnRetention';
 
-test('cancellation during checkpoint marks the saved request cancelled before returning', async () => {
+test('an aborted checkpoint leaves its terminal status to the lifetime owner', async () => {
   let finish!: () => void;
   const startRequest = jest.fn(
     () =>
@@ -21,12 +21,8 @@ test('cancellation during checkpoint marks the saved request cancelled before re
   controller.abort();
   finish();
   await expect(pending).rejects.toThrow('cancelled');
-  expect(interruptRequest).toHaveBeenCalledWith(
-    'request',
-    'session',
-    2,
-    'cancelled',
-  );
+  // The owner applies the actual Stop or destructive-abandon status after the write.
+  expect(interruptRequest).not.toHaveBeenCalled();
 });
 
 test('missing protected checkpoint storage prevents starting', async () => {
