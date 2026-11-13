@@ -35,6 +35,11 @@ function errorMessage(error: unknown): string {
       return t('medicalDocument.error.staleDocument');
     case 'DUPLICATE_RECOVERY_FAILED':
       return t('medicalDocument.error.duplicateRecoveryFailed');
+    case 'ORIGINAL_MISSING':
+    case 'ORIGINAL_UNAVAILABLE':
+    case 'UNSUPPORTED_ORIGINAL':
+    case 'CORRUPT_ORIGINAL':
+      return t('medicalDocument.error.importFailed');
     case 'NATIVE_UNAVAILABLE':
     case 'IMPORT_FAILED':
       return t('medicalDocument.error.importFailed');

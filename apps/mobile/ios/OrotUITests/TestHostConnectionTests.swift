@@ -158,8 +158,8 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         app.launch()
         defer { app.terminate() }
 
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         try recordInitialObservationSnapshot(app)
     }
 

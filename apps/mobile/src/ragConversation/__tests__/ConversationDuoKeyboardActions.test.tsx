@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { ActionSheetIOS, Dimensions, Keyboard } from 'react-native';
+import { Dimensions, Keyboard } from 'react-native';
 import type { KeyboardEvent } from 'react-native';
 import { AiFeatureRoute } from '../../aiFeatures/integration/AiFeatureRoute';
 import {
@@ -68,26 +68,19 @@ test('keeps Duo actions contextual when its small window requires bottom navigat
   expect(
     within(dock).getByTestId('rag-conversation-sessions-toggle'),
   ).toBeTruthy();
-  expect(
-    within(dock).getByTestId('navigation-page-action-overflow'),
-  ).toBeTruthy();
+  expect(within(dock).getByTestId('rag-conversation-new-session')).toBeTruthy();
   expect(
     screen.getAllByTestId('rag-conversation-sessions-toggle'),
   ).toHaveLength(1);
-  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
+  expect(screen.getAllByTestId('rag-conversation-new-session')).toHaveLength(1);
   expect(screen.queryByTestId('rag-conversation-history-glass')).toBeNull();
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     'draft',
   );
-  const sheet = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions');
-  sheet.mockImplementation((options, callback) =>
-    callback(options.options.indexOf('새 대화')),
-  );
   await fireEvent.press(
-    within(dock).getByTestId('navigation-page-action-overflow'),
+    within(dock).getByTestId('rag-conversation-new-session'),
   );
-  sheet.mockRestore();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
 });
 

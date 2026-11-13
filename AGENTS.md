@@ -17,6 +17,7 @@ This file applies to the entire repository and all subdirectories. System, devel
 
 - Before starting work, confirm the current changes and requested scope (MUST). Edit only the files needed within the assigned scope and preserve other contributors' changes (MUST). Do not include unrelated changes (MUST NOT).
 - Test selection, required evidence, Simulator preflight and lifecycle, and result reuse MUST follow the canonical [testing policy](TEST.md).
+- Verification MUST maximize coverage through unit and integration tests wherever they can faithfully prove the required behavior. UI tests MUST be limited to requirements that can only be faithfully verified through the actual UI or operating-system surface.
 - Use [development documentation](docs/development.md) for environment setup, executable check and Simulator procedures, and source line checks. Use [code quality documentation](docs/code-quality.md) for quality-check scope, tools, and formatting follow-up. Use [iOS validation coverage](docs/ios-validation.md) for requirement mappings and revision-scoped evidence. Use [release documentation](docs/releasing.md) for release acceptance.
 
 ## Pull request requirements

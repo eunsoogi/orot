@@ -69,7 +69,7 @@ function RetainedSearchHarness({
   return (
     <NavigationRouteAdapter
       controller={controller}
-      showHome
+
       leaveState={{
         readState: () => ({
           hasUnsavedChanges: false,

@@ -19,14 +19,16 @@ enum ReminderJourneyForm {
             app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID"] = diagnosticRunID
         }
         app.launch()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        XCTAssertFalse(UITestConditions.element(app, "home-appointments-retry").exists)
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        XCTAssertFalse(UITestConditions.element(app, "overview-appointments-retry").exists)
         try openAppointments(app, fromHome: true)
     }
 
     static func openAppointments(_ app: XCUIApplication, fromHome: Bool = false) throws {
         if !fromHome {
-            try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+            for _ in 0 ..< 3 where !app.buttons["navigation-tab-schedule"].exists {
+                try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            }
         }
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         let manage = UITestConditions.element(app, "schedule-open-appointments")

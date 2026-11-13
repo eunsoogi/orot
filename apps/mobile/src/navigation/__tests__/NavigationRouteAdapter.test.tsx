@@ -161,7 +161,7 @@ describe('app navigation route adapter', () => {
     controller.push('editor');
 
     await render(
-      <NavigationRouteAdapter controller={controller} scrollable showHome>
+      <NavigationRouteAdapter controller={controller} scrollable>
         {({ route }) => <Text>{route.name}</Text>}
       </NavigationRouteAdapter>,
     );

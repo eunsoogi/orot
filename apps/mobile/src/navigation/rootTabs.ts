@@ -3,10 +3,19 @@ import { t } from '../i18n';
 /** Shared root destinations keep the native and fallback tab bars in sync. */
 export const rootTabItems = [
   {
-    id: 'home',
-    label: t('navigation.tabs.home'),
-    accessibilityLabel: t('navigation.tabs.homeAccessibility'),
-    testID: 'navigation-tab-home',
+    id: 'conversation',
+    label: t('navigation.tabs.conversation'),
+    accessibilityLabel: t('navigation.tabs.conversationAccessibility'),
+    testID: 'navigation-tab-conversation',
+    systemImageName: 'sparkle',
+    selectedSystemImageName: 'sparkle',
+    fallbackSymbol: '✧',
+  },
+  {
+    id: 'overview',
+    label: t('navigation.tabs.overview'),
+    accessibilityLabel: t('navigation.tabs.overviewAccessibility'),
+    testID: 'navigation-tab-overview',
     systemImageName: 'house',
     selectedSystemImageName: 'house.fill',
     fallbackSymbol: '⌂',
@@ -28,15 +37,6 @@ export const rootTabItems = [
     systemImageName: 'calendar',
     selectedSystemImageName: 'calendar',
     fallbackSymbol: '▦',
-  },
-  {
-    id: 'ai',
-    label: t('navigation.tabs.ai'),
-    accessibilityLabel: t('navigation.tabs.aiAccessibility'),
-    testID: 'navigation-tab-ai',
-    systemImageName: 'sparkle',
-    selectedSystemImageName: 'sparkle',
-    fallbackSymbol: '✧',
   },
   {
     id: 'settings',

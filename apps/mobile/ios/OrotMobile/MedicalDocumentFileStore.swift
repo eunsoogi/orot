@@ -1,16 +1,8 @@
 import Foundation
 
-enum MedicalDocumentFileStoreFailure: Error {
-    case directoryUnavailable
-    case invalidIdentifier
-    case fileProtectionUnavailable
-    case cleanupFailed
-    case originalUnavailable
-}
-
 /// Keeps imported originals under UUID-only names with device-lock protection and no backup copy.
 struct MedicalDocumentFileStore {
-    private static let supportedExtensions: Set<String> = ["pdf", "txt", "jpg", "heic", "png"]
+    static let supportedExtensions: Set<String> = ["pdf", "txt", "jpg", "heic", "png"]
     private static let pendingPrefix = ".pending-delete-"
     static let recoveryPrefix = ".recovery-"
     let fileManager: FileManager

@@ -21,7 +21,7 @@ const rootTab: NavigationGlassAction = {
   id: 'tab-home',
   label: 'Home',
   accessibilityLabel: 'Home',
-  testID: 'navigation-tab-home',
+  testID: 'navigation-tab-overview',
   rootTab: true,
 };
 

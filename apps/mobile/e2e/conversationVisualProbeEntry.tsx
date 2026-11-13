@@ -65,11 +65,7 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
   );
   return (
     <ConversationSessionsProvider options={visualSessionOptions}>
-      <NavigationRouteAdapter
-        controller={controller}
-        leaveState={leaveState}
-        showHome
-      >
+      <NavigationRouteAdapter controller={controller} leaveState={leaveState}>
         {navigation => {
           const onBack = () => {
             navigation.onBack();

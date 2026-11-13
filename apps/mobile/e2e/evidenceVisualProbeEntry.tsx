@@ -46,11 +46,7 @@ function EvidenceVisualProbe() {
     createNavigationController<Route>('picker'),
   );
   return (
-    <NavigationRouteAdapter
-      controller={controller}
-      leaveState={leaveState}
-      showHome
-    >
+    <NavigationRouteAdapter controller={controller} leaveState={leaveState}>
       {navigation =>
         navigation.route.name === 'picker' ? (
           <View style={styles.picker} testID="evidence-visual-picker">

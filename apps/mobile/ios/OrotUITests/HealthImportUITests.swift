@@ -74,7 +74,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
             app.launchArguments.append("-OROT_HEALTH_FIXTURE_UPDATED")
         }
         app.launch()
-        UITestConditions.value(node(app, "welcome-title"), equals: "오롯")
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         DebugUITestConditions.dismissWarningToast(app)
     }
 

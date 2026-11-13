@@ -39,8 +39,6 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly leaveState?: NavigationLeaveStateSource<Name>;
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
   readonly scrollable?: boolean | ((route: NavigationRoute<Name>) => boolean);
-  readonly showHome?: boolean;
-  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly contentSafeAreaHandledByChild?:
     boolean | ((route: NavigationRoute<Name>) => boolean);
@@ -57,8 +55,6 @@ export function NavigationRouteAdapter<Name extends string>({
   leaveState,
   children,
   scrollable = false,
-  showHome = false,
-  homeAction,
   primaryAction,
   contentSafeAreaHandledByChild = false,
   contentLayoutOwner = 'scene',
@@ -140,8 +136,6 @@ export function NavigationRouteAdapter<Name extends string>({
               <NavigationActionBar
                 controller={controller}
                 leaveDisabled={activeLeaveDisabled}
-                showHome={showHome}
-                homeAction={homeAction}
                 pageActions={primary.actions}
                 primaryAction={
                   primary.actions.length ? undefined : primaryAction
@@ -184,8 +178,6 @@ export function NavigationRouteAdapter<Name extends string>({
       scrollable,
       snapshot.currentRoute.key,
       activeLeaveDisabled,
-      showHome,
-      homeAction,
       primaryAction,
       surface,
     ],

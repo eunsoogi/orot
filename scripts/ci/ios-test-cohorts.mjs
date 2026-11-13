@@ -73,9 +73,9 @@ const cohorts = {
     minutes: 20,
     cases: [
       'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
-      'HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
-      'HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
-      'HomeDuoUITests/testHomeContentClearsBottomNavigation',
+      'OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',
+      'OverviewDuoUITests/testLargeTextOverviewActionsStayWithinContentWidth',
+      'OverviewDuoUITests/testOverviewContentClearsBottomNavigation',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

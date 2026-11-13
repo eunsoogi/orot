@@ -24,7 +24,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         ]
         app.launch()
 
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         let privacyEntry = UITestConditions.element(app, "settings-open-privacy")
         UITestConditions.scrollTo(privacyEntry, in: app)

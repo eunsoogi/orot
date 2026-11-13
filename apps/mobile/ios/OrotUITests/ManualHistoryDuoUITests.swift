@@ -144,7 +144,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
             "-OROT_TEST_PROFILE", "core", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + AppearanceUITestConditions.observationArguments + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
 
     @MainActor

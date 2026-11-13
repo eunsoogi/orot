@@ -43,7 +43,10 @@ enum NavigationRotationUITestConditions {
         let before = try XCTUnwrap(armed["before"] as? [String: Any])
         XCTAssertEqual(before["sceneOrientation"] as? Int, UIInterfaceOrientation.portrait.rawValue)
 
-        let expectedOrientation = landscape ? UIInterfaceOrientation.landscapeLeft.rawValue : UIInterfaceOrientation.portrait.rawValue
+        // UIKit maps a left-facing device orientation to landscapeRight in the app scene.
+        let expectedOrientation = landscape
+            ? UIInterfaceOrientation.landscapeRight.rawValue
+            : UIInterfaceOrientation.portrait.rawValue
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
         let requested = try command(landscape ? "request" : "portrait")
         XCTAssertEqual(requested["status"] as? String, "sampled")

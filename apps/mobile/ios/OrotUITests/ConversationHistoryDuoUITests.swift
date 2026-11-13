@@ -10,8 +10,7 @@ final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
 
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
 
@@ -92,7 +91,8 @@ final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
 
         let receipt = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true)
         XCTAssertEqual((receipt["before"] as? [String: Any])?["sceneOrientation"] as? Int, UIInterfaceOrientation.portrait.rawValue)
-        XCTAssertEqual((receipt["current"] as? [String: Any])?["sceneOrientation"] as? Int, UIInterfaceOrientation.landscapeLeft.rawValue)
+        // XCUIDevice landscapeLeft is observed by UIKit as interface landscapeRight.
+        XCTAssertEqual((receipt["current"] as? [String: Any])?["sceneOrientation"] as? Int, UIInterfaceOrientation.landscapeRight.rawValue)
         XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
 
         let title = node(app, "conversation-history-title")

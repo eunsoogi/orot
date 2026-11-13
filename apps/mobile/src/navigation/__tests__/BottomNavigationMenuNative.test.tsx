@@ -25,12 +25,11 @@ describe('callback route bottom navigation', () => {
     };
     metricsControl.__OROT_TEST_PAGE_METRICS__ = null;
     const onBack = jest.fn();
-    const onHome = jest.fn();
     const onPrimary = jest.fn();
     await render(
       <BottomNavigationMenu
         onBack={onBack}
-        onHome={onHome}
+
         testID="calendar-back"
         primaryAction={{
           label: '녹음',
@@ -54,8 +53,8 @@ describe('callback route bottom navigation', () => {
       measuring.props.onPageMetrics({
         nativeEvent: {
           revision: measuring.props.pageMetricsRequest.revision,
-          widths: [48, 64, 88, 52],
-          heights: [48, 48, 48, 48],
+          widths: [48, 88, 52],
+          heights: [48, 48, 48],
           width: 390,
         },
       }),
@@ -71,7 +70,6 @@ describe('callback route bottom navigation', () => {
     );
     expect(toolbar.props.actions).toEqual([
       expect.objectContaining({ id: 'back', testID: 'calendar-back' }),
-      expect.objectContaining({ id: 'home', testID: 'navigation-home' }),
     ]);
     const pageSurface = screen.getByTestId('navigation-page-action-surface');
     expect(pageSurface.props.actions).toEqual([
@@ -85,11 +83,9 @@ describe('callback route bottom navigation', () => {
 
     await act(async () => {
       toolbar.props.onAction({ nativeEvent: { id: 'back' } });
-      toolbar.props.onAction({ nativeEvent: { id: 'home' } });
       pageSurface.props.onAction({ nativeEvent: { id: 'page:primary' } });
     });
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(onHome).toHaveBeenCalledTimes(1);
     expect(onPrimary).toHaveBeenCalledTimes(1);
     delete metricsControl.__OROT_TEST_PAGE_METRICS__;
   });

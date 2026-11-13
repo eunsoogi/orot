@@ -59,7 +59,7 @@ it('retains the exact appointment tap while appearance setup closes during confi
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const guard = deferred<boolean>();
   const confirm = jest
     .fn()
@@ -119,7 +119,7 @@ it('retries a reminder tap after an already-pending navigation guard settles', a
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const home = controller.getSnapshot().currentRoute;
   const tabGuard = jest.fn(async () => true);
   controller.registerLeaveGuard(home.key, tabGuard);

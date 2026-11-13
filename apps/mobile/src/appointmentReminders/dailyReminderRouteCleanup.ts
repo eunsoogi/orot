@@ -7,7 +7,7 @@ export function pruneClosedReminderRoutes(
 ) {
   for (const targets of [
     runtime.targets,
-    runtime.homePreparationTargets,
+    runtime.overviewPreparationTargets,
     runtime.dailyReportFollowUps,
   ]) {
     for (const key of targets.keys()) {

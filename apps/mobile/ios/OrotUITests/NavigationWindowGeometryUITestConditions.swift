@@ -151,8 +151,6 @@ enum NavigationWindowGeometryUITestConditions {
         XCTAssertEqual(controls["truncated"] as? Bool, false)
         let frames = try XCTUnwrap(controls["frames"] as? [[String: Any]])
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
-        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
-        XCTAssertTrue(matches(back.toolbar.frame, home.toolbar.frame))
         // XCTest frames use screen points; the marker uses window points. Bind
         // the Back/Home toolbar to its app window before selecting its marker.
         // A separate primary-only toolbar is expected and must not be counted as a duplicate rail.

@@ -33,15 +33,16 @@ extension AppointmentsUITests {
         XCTAssertTrue(appointmentRow.exists && appointmentRow.isHittable, app.debugDescription)
         XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
-        NavigationUITestConditions.route(app, markers: ["home-next-appointment"])
-        let homeClinicMatches = app.staticTexts.matching(identifier: "home-next-appointment-clinic")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        NavigationUITestConditions.route(app, markers: ["overview-next-appointment"])
+        let homeClinicMatches = app.staticTexts.matching(identifier: "overview-next-appointment-clinic")
         let homeClinicMatchCount = homeClinicMatches.count
         let homeClinic = homeClinicMatchCount == 1 ? homeClinicMatches.element(boundBy: 0) : nil
         let homeClinicExists = homeClinic?.exists ?? false
         let homeClinicIsHittable = homeClinicExists && (homeClinic?.isHittable ?? false)
         let homeClinicLabel = homeClinic?.label
-        let homeAppointmentCard = UITestConditions.element(app, "home-next-appointment")
-        let prepareVisitAction = UITestConditions.element(app, "home-prepare-visit")
+        let homeAppointmentCard = UITestConditions.element(app, "overview-next-appointment")
+        let prepareVisitAction = UITestConditions.element(app, "overview-prepare-visit")
 
         // Capture both Home queries before assertions because this journey stops at its first failure.
         let recordLabelOnlyQuery = {
@@ -141,10 +142,10 @@ extension AppointmentsUITests {
         XCTAssertFalse(restartedRowLabel.contains("다음 진료"), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
         // Empty Home retains an appointment action without claiming an eligible visit.
-        NavigationUITestConditions.route(app, markers: ["home-open-schedule"])
+        NavigationUITestConditions.route(app, markers: ["overview-open-schedule"])
         // A cancelled appointment must not remain Home's next visit.
         let remainingHomeClinicMatches = app.staticTexts.matching(
-            identifier: "home-next-appointment-clinic",
+            identifier: "overview-next-appointment-clinic",
         )
         XCTAssertEqual(remainingHomeClinicMatches.count, 0, app.debugDescription)
     }

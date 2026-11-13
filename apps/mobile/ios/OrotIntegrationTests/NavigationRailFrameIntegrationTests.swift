@@ -53,11 +53,11 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
         // The production rail's fixed height belongs to exactly five 52pt tabs.
-        surface.actions = [("home", "house.fill"), ("records", "doc.text"),
-                           ("schedule", "calendar"), ("ai", "sparkles"), ("settings", "gearshape")].map { pair -> [String: Any] in
+        surface.actions = [("conversation", "sparkles"), ("overview", "house"), ("records", "doc.text"),
+                           ("schedule", "calendar"), ("settings", "gearshape")].map { pair -> [String: Any] in
             let (tab, symbol) = pair
             return ["id": "tab-\(tab)", "label": tab, "accessibilityLabel": "\(tab) tab",
-                    "testID": "navigation-tab-\(tab)", "rootTab": true, "selected": tab == "home",
+                    "testID": "navigation-tab-\(tab)", "rootTab": true, "selected": tab == "conversation",
                     "systemImageName": symbol]
         } as NSArray
         surface.layoutIfNeeded()

@@ -74,14 +74,14 @@ test.each(['review', 'saved'] as const)(
     expect(bar().queryByTestId(actionId)).toBeNull();
     expect(route.queryByTestId(actionId)).toBeNull();
     expect(bar().getByTestId('navigation-back')).toBeTruthy();
-    expect(bar().getByTestId('navigation-home')).toBeTruthy();
+    expect(bar().queryByTestId('navigation-home')).toBeNull();
     expect(
       route
         .getByTestId('navigation-bar-native-surface')
         .props.actions.map(
           (action: { readonly testID: string }) => action.testID,
         ),
-    ).toEqual(['navigation-back', 'navigation-home']);
+    ).toEqual(['navigation-back']);
     await fireEvent.press(bar().getByTestId('navigation-back'));
     await waitFor(() => expect(route.getByTestId(actionId)).toBeTruthy());
     if (phase === 'review') {

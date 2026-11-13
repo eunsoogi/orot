@@ -38,7 +38,7 @@ test('the app host hands a cold-start daily tap to the registered destination af
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const guard = jest.fn(async () => true);
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
@@ -80,7 +80,7 @@ test('the app host retains the tap when durable intent cannot be saved', async (
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,
@@ -104,7 +104,7 @@ test('the app host retains the tap when durable intent cannot be saved', async (
   await waitFor(() =>
     expect(dailyReminderIntentStore.write).toHaveBeenCalled(),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(acknowledgeDailyReminderTarget).not.toHaveBeenCalled();
   await view.unmount();
 });
@@ -123,7 +123,7 @@ test('retries an acknowledged durable intent after a busy navigation transition'
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   let release!: (allowed: boolean) => void;
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
@@ -144,7 +144,7 @@ test('retries an acknowledged durable intent after a busy navigation transition'
     </AppointmentReminderProvider>,
   );
   await waitFor(() => expect(dailyReminderIntentStore.read).toHaveBeenCalled());
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   await act(async () => {
     release(true);
     await transition;
@@ -167,7 +167,7 @@ test('a stalled daily intent store does not prevent the appointment inbox from d
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
       <AppointmentReminderDeliveryHost controller={controller} />
@@ -203,7 +203,7 @@ test('checks the current route only after the daily intent is durable', async ()
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const homeGuard = jest.fn(async () => true);
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,

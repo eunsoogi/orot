@@ -22,11 +22,12 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
     @MainActor
     func testMissingDuplicateDetachedAndTruncatedCandidatesCannotSelectHome() throws {
         // The separate dock sample must reject the same ambiguity and collection losses.
-        let valid = ["navigation-home": 1, "navigation-back": 1, "manual-history-save": 1]
+        let valid = ["navigation-back": 1, "manual-history-save": 1]
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: false, allValid: true), "available")
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 0, counts: valid, truncated: false, allValid: true), "unavailable")
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 2, counts: valid, truncated: false, allValid: true), "ambiguous")
-        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: ["navigation-home": 1, "navigation-back": 1], truncated: false, allValid: true), "unavailable")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: ["navigation-back": 1], truncated: false, allValid: true), "unavailable")
+        XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: ["manual-history-save": 1], truncated: false, allValid: true), "unavailable")
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid.merging(["manual-history-save": 2], uniquingKeysWith: { _, new in new }), truncated: false, allValid: true), "ambiguous")
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: true, allValid: true), "unavailable")
         XCTAssertEqual(NavigationControlGeometryObservation.correlationStatus(windowCount: 1, counts: valid, truncated: false, allValid: false), "unavailable")
@@ -134,7 +135,7 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         navigation.accessibilityIdentifier = "navigation-toolbar"
         window.addSubview(page)
         window.addSubview(navigation)
-        for (id, host) in [("manual-history-save", page), ("symptom-form-cancel", page), ("navigation-back", navigation), ("navigation-home", navigation)] {
+        for (id, host) in [("manual-history-save", page), ("symptom-form-cancel", page), ("navigation-back", navigation)] {
             let button = PrivateDockControl(frame: CGRect(x: 20, y: 20, width: 48, height: 48))
             button.accessibilityIdentifier = id
             host.addSubview(button)
@@ -143,7 +144,7 @@ final class NavigationFocusObservationTests: OrotFailFastTestCase {
         let sample = NavigationControlGeometryObservation.snapshot { $0 === window ? "key-window" : "anonymous" }
         XCTAssertEqual(sample["status"] as? String, "available")
         let records = try XCTUnwrap(sample["controls"] as? [[String: Any]])
-        XCTAssertEqual(records.count, 4)
+        XCTAssertEqual(records.count, 3)
         let cancel = try XCTUnwrap(records.first { $0["identifier"] as? String == "symptom-form-cancel" })
         XCTAssertNotNil(cancel["activationInWindow"])
         XCTAssertNotNil(cancel["hitRole"])

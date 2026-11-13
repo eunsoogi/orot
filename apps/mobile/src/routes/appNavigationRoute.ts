@@ -1,7 +1,7 @@
 /** Route identifiers kept by the guarded app navigation controller. */
 export type AppNavigationRoute =
   | AiFeatureRouteName
-  | 'home'
+  | 'root'
   | 'recording'
   | 'saved-recordings'
   | 'recording-review'

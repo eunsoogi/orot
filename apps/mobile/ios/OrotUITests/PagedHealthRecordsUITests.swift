@@ -13,7 +13,7 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         app.launchArguments = ["-OROT_TEST_SCENARIO", "paged-records", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         let library = UITestConditions.element(app, "records-open-health-library")
         XCTAssertTrue(library.waitForAppearance())

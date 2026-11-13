@@ -79,7 +79,7 @@ function geometry(width: number, divided: boolean): NavigationGeometryPayload {
 }
 
 test('renders the production health route across native regions and keeps its route guard', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const loadMedicationData = jest.fn(async () => ({
     definitions: [],
     doseEvents: [],
@@ -173,7 +173,7 @@ test('renders the production health route across native regions and keeps its ro
     allowed = await controller.requestBack();
   });
   expect(allowed).toBe(true);
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
 
   await act(async () => {
     controller.push('health-records');
