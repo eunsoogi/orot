@@ -26,7 +26,9 @@ final class AudioSessionOwnershipTests: OrotFailFastTestCase {
         enum Failure: Error { case failed }
         var fail = true
         let owner = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { active in
-            if !active && fail { throw Failure.failed }
+            if !active, fail {
+                throw Failure.failed
+            }
         })
         let token = try owner.reserve()
         try owner.activate(token, category: .record, mode: .default)
@@ -41,7 +43,9 @@ final class AudioSessionOwnershipTests: OrotFailFastTestCase {
         enum Failure: Error { case failed }
         var deactivateFails = true
         let owner = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { active in
-            if active || deactivateFails { throw Failure.failed }
+            if active || deactivateFails {
+                throw Failure.failed
+            }
         })
         let token = try owner.reserve()
         XCTAssertThrowsError(try owner.activate(token, category: .record, mode: .default))

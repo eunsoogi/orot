@@ -19,7 +19,8 @@ final class AudioSessionOwnership {
     }
 
     init(configure: @escaping (AVAudioSession.Category, AVAudioSession.Mode, AVAudioSession.CategoryOptions) throws -> Void,
-         setActive: @escaping (Bool) throws -> Void) {
+         setActive: @escaping (Bool) throws -> Void)
+    {
         self.configure = configure
         self.setActive = setActive
     }

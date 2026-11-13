@@ -50,7 +50,9 @@ extension RecordingModule {
     }
 
     func reserveCaptureAudio() throws -> AudioSessionOwnership.Token {
-        if captureAudioToken != nil { releaseCaptureAudio() }
+        if captureAudioToken != nil {
+            releaseCaptureAudio()
+        }
         guard captureAudioToken == nil else { throw AudioSessionOwnership.Failure.busy }
         let token = try AudioSessionOwnership.shared.reserve()
         captureAudioToken = token

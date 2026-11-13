@@ -1,4 +1,11 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import {
+  AccessibilityInfo,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -42,6 +49,11 @@ export function VoiceConversationControl({
   readonly onFinish: () => void;
   readonly onRecover: () => void;
 }) {
+  useEffect(() => {
+    // iOS does not implement accessibilityLiveRegion, so announce real state changes explicitly.
+    if (Platform.OS === 'ios' && status)
+      AccessibilityInfo.announceForAccessibility(status);
+  }, [status]);
   const active = [
     'authorizing',
     'listening',

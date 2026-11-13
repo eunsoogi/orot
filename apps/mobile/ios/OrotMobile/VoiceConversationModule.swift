@@ -12,21 +12,35 @@ final class VoiceConversationModule: RCTEventEmitter {
     private var token: AudioSessionOwnership.Token?
     private var turn: String?
     private var observers: [NSObjectProtocol] = []
+    private var pendingActivation: ((Bool) -> Void)?
+    private var activationEpoch = 0
 
-    override static func requiresMainQueueSetup() -> Bool { true }
-    override func supportedEvents() -> [String]! { ["VoiceConversationInterrupted", "VoiceConversationListening"] }
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func supportedEvents() -> [String]! {
+        ["VoiceConversationInterrupted", "VoiceConversationListening"]
+    }
 
     override init() {
         super.init()
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            activationEpoch += 1
+            guard let pending = pendingActivation else { return }
+            pendingActivation = nil
+            pending(true)
+        })
         for name in [UIApplication.didEnterBackgroundNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                guard let self, self.turn != nil else { return }
+                guard let self, turn != nil else { return }
                 if name == AVAudioSession.routeChangeNotification {
                     let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                     guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
                 }
-                self.sendEvent(withName: "VoiceConversationInterrupted", body: ["turnId": self.turn ?? ""])
-                self.stopOwned()
+                sendEvent(withName: "VoiceConversationInterrupted", body: ["turnId": turn ?? ""])
+                stopOwned()
             })
         }
     }
@@ -40,6 +54,8 @@ final class VoiceConversationModule: RCTEventEmitter {
             do { self.token = try AudioSessionOwnership.shared.reserve() }
             catch { reject("VOICE_AUDIO_BUSY", "Audio is in use by another activity.", nil); return }
             self.turn = identifier
+            let speechWasUndetermined = SFSpeechRecognizer.authorizationStatus() == .notDetermined
+            let epoch = self.activationEpoch
             SFSpeechRecognizer.requestAuthorization { speechStatus in
                 DispatchQueue.main.async {
                     guard self.turn == identifier else { reject("VOICE_CANCELLED", "Voice was stopped.", nil); return }
@@ -48,33 +64,49 @@ final class VoiceConversationModule: RCTEventEmitter {
                         reject("VOICE_PERMISSION", "Speech recognition permission is unavailable.", nil)
                         return
                     }
-                    AVAudioSession.sharedInstance().requestRecordPermission { allowed in
-                        DispatchQueue.main.async {
-                        guard self.turn == identifier, let token = self.token else { reject("VOICE_CANCELLED", "Voice was stopped.", nil); return }
-                        guard speechStatus == .authorized, allowed, UIApplication.shared.applicationState == .active else {
-                            self.stopOwned()
-                            reject("VOICE_PERMISSION", "Speech or microphone permission is unavailable.", nil)
-                            return
-                        }
-                        do {
-                            try AudioSessionOwnership.shared.activate(token, category: .record, mode: .measurement)
-                            let started = try self.capture.start(locale: Locale(identifier: language)) { result in
-                                guard self.turn == identifier else { return }
-                                self.releaseAudio()
-                                guard self.token == nil else { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil); return }
-                                switch result {
-                                case let .success(text): resolve(text)
-                                case .failure: reject("VOICE_CAPTURE_FAILED", "Speech recognition stopped.", nil)
-                                }
+                    self.afterPermission(epoch: epoch, requiresTransition: speechWasUndetermined) { active in
+                        guard active, self.turn == identifier else { reject("VOICE_CANCELLED", "Voice was stopped.", nil); return }
+                        self.requestMicrophone(identifier, language: language, resolve: resolve, reject: reject)
+                    }
+                }
+            }
+        }
+    }
+
+    private func afterPermission(epoch: Int, requiresTransition: Bool, completion: @escaping (Bool) -> Void) {
+        if UIApplication.shared.applicationState == .active, !requiresTransition || activationEpoch > epoch {
+            completion(true)
+        } else {
+            pendingActivation = completion
+        }
+    }
+
+    private func requestMicrophone(_ identifier: String, language: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let undetermined = AVAudioSession.sharedInstance().recordPermission == .undetermined
+        let epoch = activationEpoch
+        AVAudioSession.sharedInstance().requestRecordPermission { allowed in
+            DispatchQueue.main.async {
+                guard self.turn == identifier, let token = self.token else { reject("VOICE_CANCELLED", "Voice was stopped.", nil); return }
+                guard allowed else { self.stopOwned(); reject("VOICE_PERMISSION", "Microphone permission is unavailable.", nil); return }
+                self.afterPermission(epoch: epoch, requiresTransition: undetermined) { active in
+                    guard active, self.turn == identifier, self.token == token else { reject("VOICE_CANCELLED", "Voice was stopped.", nil); return }
+                    do {
+                        try AudioSessionOwnership.shared.activate(token, category: .record, mode: .measurement)
+                        let started = try self.capture.start(locale: Locale(identifier: language)) { result in
+                            guard self.turn == identifier else { return }
+                            self.releaseAudio()
+                            guard self.token == nil else { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil); return }
+                            switch result {
+                            case let .success(text): resolve(text)
+                            case .failure: reject("VOICE_CAPTURE_FAILED", "Speech recognition stopped.", nil)
                             }
-                            if started, self.turn == identifier {
-                                self.sendEvent(withName: "VoiceConversationListening", body: ["turnId": identifier])
-                            }
-                        } catch {
-                            self.stopOwned()
-                            reject("VOICE_CAPTURE_FAILED", "Speech recognition is unavailable.", nil)
                         }
+                        if started, self.turn == identifier {
+                            self.sendEvent(withName: "VoiceConversationListening", body: ["turnId": identifier])
                         }
+                    } catch {
+                        self.stopOwned()
+                        reject("VOICE_CAPTURE_FAILED", "Speech recognition is unavailable.", nil)
                     }
                 }
             }
@@ -82,7 +114,13 @@ final class VoiceConversationModule: RCTEventEmitter {
     }
 
     @objc(finishCapture:)
-    func finishCapture(_ identifier: String) { DispatchQueue.main.async { if self.turn == identifier { self.capture.completeTurn() } } }
+    func finishCapture(_ identifier: String) {
+        DispatchQueue.main.async {
+            if self.turn == identifier {
+                self.capture.completeTurn()
+            }
+        }
+    }
 
     @objc(speak:text:language:resolver:rejecter:)
     func speak(_ identifier: String, text: String, language: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
@@ -96,7 +134,11 @@ final class VoiceConversationModule: RCTEventEmitter {
                     guard self.turn == identifier else { return }
                     self.releaseAudio()
                     guard self.token == nil else { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil); return }
-                    if spoken { resolve(nil) } else { reject("VOICE_SPEECH_STOPPED", "Speech output stopped.", nil) }
+                    if spoken {
+                        resolve(nil)
+                    } else {
+                        reject("VOICE_SPEECH_STOPPED", "Speech output stopped.", nil)
+                    }
                 }) else { throw VoiceConversationCapture.Failure.unavailable }
             } catch {
                 self.releaseAudio()
@@ -110,15 +152,24 @@ final class VoiceConversationModule: RCTEventEmitter {
         DispatchQueue.main.async {
             guard self.turn == identifier else { resolve(nil); return }
             self.stopOwned()
-            if self.token == nil { resolve(nil) } else { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil) }
+            if self.token == nil {
+                resolve(nil)
+            } else {
+                reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil)
+            }
         }
     }
 
     private func stopOwned() {
+        let pending = pendingActivation
+        pendingActivation = nil
+        pending?(false)
         capture.cancel()
         guard speech.stop() else { return }
         releaseAudio()
-        if token == nil { turn = nil }
+        if token == nil {
+            turn = nil
+        }
     }
 
     private func releaseAudio() {

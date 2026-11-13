@@ -36,15 +36,15 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate {
 
     func speechSynthesizer(_: AVSpeechSynthesizer, didFinish value: AVSpeechUtterance) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.utterance === value else { return }
-            self.finish(!self.stopRequested)
+            guard let self, utterance === value else { return }
+            finish(!stopRequested)
         }
     }
 
     func speechSynthesizer(_: AVSpeechSynthesizer, didCancel value: AVSpeechUtterance) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.utterance === value else { return }
-            self.finish(false)
+            guard let self, utterance === value else { return }
+            finish(false)
         }
     }
 

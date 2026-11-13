@@ -90,7 +90,9 @@ public extension RecordingModule {
             }
 
             do {
-                if self.playbackAudioToken != nil { self.releasePlaybackAudio() }
+                if self.playbackAudioToken != nil {
+                    self.releasePlaybackAudio()
+                }
                 guard self.playbackAudioToken == nil else { throw AudioSessionOwnership.Failure.busy }
                 let token = try AudioSessionOwnership.shared.reserve()
                 self.playbackAudioToken = token

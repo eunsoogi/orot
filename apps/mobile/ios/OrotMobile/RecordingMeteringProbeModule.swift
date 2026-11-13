@@ -64,7 +64,9 @@
             deadline?.cancel()
             recorder?.stop()
             _ = file?.cleanup()
-            if let audioToken { try? AudioSessionOwnership.shared.release(audioToken) }
+            if let audioToken {
+                try? AudioSessionOwnership.shared.release(audioToken)
+            }
         }
 
         @objc(start:resolver:rejecter:)

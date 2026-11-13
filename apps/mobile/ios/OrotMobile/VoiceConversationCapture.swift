@@ -32,7 +32,7 @@ final class VoiceConversationCapture {
         let recognition = SFSpeechAudioBufferRecognitionRequest()
         recognition.requiresOnDeviceRecognition = true
         recognition.shouldReportPartialResults = false
-        self.request = recognition
+        request = recognition
         self.completion = completion
         let current = UUID()
         generation = current
