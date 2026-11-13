@@ -4,13 +4,10 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { styles } from './ConversationScreen.styles';
-import { AssistantHeader } from '../assistantAppearance/AssistantHeader';
-import type { ConversationSession } from './conversationSessionTypes';
 
 /** Keep the title and conversation controls together for the adaptive header. */
 export function ConversationHeaderTitle({
   title,
-  session,
   historyLabel,
   newLabel,
   showActions,
@@ -18,7 +15,6 @@ export function ConversationHeaderTitle({
   onNew,
 }: {
   title: string;
-  session: ConversationSession;
   historyLabel: string;
   newLabel: string;
   showActions: boolean;
@@ -60,7 +56,6 @@ export function ConversationHeaderTitle({
           </View>
         ) : null}
       </View>
-      <AssistantHeader session={session} />
     </>
   );
 }

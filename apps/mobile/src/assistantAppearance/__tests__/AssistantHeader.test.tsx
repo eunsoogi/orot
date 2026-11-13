@@ -1,20 +1,25 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, AppState } from 'react-native';
 import type { ConversationSession } from '../../ragConversation/conversationSessionTypes';
 import { AssistantHeader } from '../AssistantHeader';
 
 let mockFocused = true;
+let mockName: string | null = '오롯';
+const mockEdit = jest.fn();
+const mockAvatar = jest.fn((_props: unknown) => null);
 jest.mock('@react-navigation/native', () => ({
   useIsFocused: () => mockFocused,
 }));
 jest.mock('../AssistantAppearanceProvider', () => ({
   useAssistantAppearance: () => ({
-    value: { avatar: 'neutral', name: '오롯' },
+    value: { avatar: 'star', name: mockName },
     ready: true,
-    edit: jest.fn(),
+    edit: mockEdit,
   }),
 }));
-jest.mock('../AppearanceEditor', () => ({ AvatarSymbol: () => null }));
+jest.mock('../AppearanceEditor', () => ({
+  AvatarSymbol: (props: unknown) => mockAvatar(props),
+}));
 
 test('announces a visible current stage once and does not announce a hidden or stale session', async () => {
   mockFocused = true;
@@ -49,4 +54,34 @@ test('announces a visible current stage once and does not announce a hidden or s
   await view.rerender(<AssistantHeader session={{ ...session, id: 2 }} />);
   expect(announce).toHaveBeenCalledTimes(1);
   announce.mockRestore();
+});
+
+test('voice phase replaces request activity and clears on exit without a second identity', async () => {
+  mockFocused = true;
+  const session = {
+    id: 1,
+    pendingMessage: { id: 4 },
+    requestActivity: { sessionId: 1, requestId: 4, stage: 'waiting' },
+  } as ConversationSession;
+  const view = await render(
+    <AssistantHeader session={session} status="듣고 있어요" />,
+  );
+  expect(screen.getByRole('button').props.accessibilityLabel).toContain(
+    '듣고 있어요',
+  );
+  expect(screen.queryByText('응답을 기다리고 있어요')).toBeNull();
+  await view.rerender(<AssistantHeader session={session} status={null} />);
+  expect(screen.queryByText('듣고 있어요')).toBeNull();
+  expect(screen.getAllByTestId('assistant-floating-identity')).toHaveLength(1);
+});
+
+test('uses the persisted Unicode name and selected avatar and retains editing', async () => {
+  mockName = '내가 지은 이름 🌿';
+  await render(<AssistantHeader session={{ id: 1 } as ConversationSession} />);
+  expect(screen.getByText(mockName)).toBeTruthy();
+  expect(mockAvatar).toHaveBeenCalledWith({ avatar: 'star' });
+  expect(screen.getByText(mockName).props.numberOfLines).toBeUndefined();
+  await fireEvent.press(screen.getByRole('button'));
+  expect(mockEdit).toHaveBeenCalled();
+  mockName = '오롯';
 });

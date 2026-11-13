@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -33,10 +34,20 @@ export function activityLabel(session: ConversationSession): string | null {
     : null;
 }
 
-export function AssistantHeader({ session }: { session: ConversationSession }) {
+export function AssistantHeader({
+  session,
+  status,
+}: {
+  session: ConversationSession;
+  status?: string | null;
+}) {
   const appearance = useAssistantAppearance();
   return appearance ? (
-    <ActiveAssistantHeader session={session} appearance={appearance} />
+    <ActiveAssistantHeader
+      session={session}
+      appearance={appearance}
+      status={status}
+    />
   ) : null;
 }
 
@@ -44,8 +55,10 @@ export function AssistantHeader({ session }: { session: ConversationSession }) {
 function ActiveAssistantHeader({
   session,
   appearance,
+  status,
 }: {
   session: ConversationSession;
+  status?: string | null;
   appearance: NonNullable<ReturnType<typeof useAssistantAppearance>>;
 }) {
   const focused = useIsFocused();
@@ -59,17 +72,18 @@ function ActiveAssistantHeader({
     return () => subscription.remove();
   }, []);
   const activity = session.requestActivity;
-  const stage = activityLabel(session);
+  // An explicit voice phase owns this one subtitle instead of duplicating request progress.
+  const stage = status === undefined ? activityLabel(session) : status;
   const announced = useRef('');
   useEffect(() => {
     const identity =
-      stage && activity && appearance.ready && focused && foreground
-        ? `${activity.sessionId}:${activity.requestId}:${stage}`
+      stage && appearance.ready && focused && foreground
+        ? `${session.id}:${activity?.requestId ?? 'voice'}:${stage}`
         : '';
     if (identity && identity !== announced.current)
       AccessibilityInfo.announceForAccessibility(stage!);
     announced.current = identity;
-  }, [activity, stage, appearance.ready, focused, foreground]);
+  }, [activity, stage, session.id, appearance.ready, focused, foreground]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -82,10 +96,12 @@ function ActiveAssistantHeader({
         .join(', ')}
       onPress={appearance.edit}
       style={styles.container}
+      testID="assistant-floating-identity"
     >
+      <ComposerGlassBackground />
       <AvatarSymbol avatar={appearance.value.avatar} />
       <View style={styles.identity}>
-        <AppText numberOfLines={1} style={styles.name}>
+        <AppText style={styles.name}>
           {appearance.value.name ?? defaultAssistantName}
         </AppText>
         {stage ? <AppText style={styles.stage}>{stage}</AppText> : null}
@@ -98,7 +114,15 @@ const styles = StyleSheet.create({
     minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    maxWidth: 360,
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    overflow: 'hidden',
   },
   identity: { flex: 1, minWidth: 0 },
   name: { color: appColors.text, fontWeight: '700' },
