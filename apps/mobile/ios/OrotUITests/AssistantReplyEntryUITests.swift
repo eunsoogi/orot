@@ -1,6 +1,6 @@
 import XCTest
 
-/// A synthetic native inbox tap targets a real protected saved reply; no OS notification delivery is claimed.
+/// A real system notification opens the synthetic saved reply after the appearance gate.
 @MainActor
 final class AssistantReplyEntryUITests: OrotFailFastTestCase {
     func testSavedReplyWaitsForAppearanceAndOpensAfterSave() {
@@ -8,7 +8,25 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "assistant-reply-acceptance", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        let enable = app.buttons["assistant-reply-enable"]
+        XCTAssertTrue(UITestConditions.exists(enable), app.debugDescription)
+        XCTAssertTrue(enable.isHittable)
+        enable.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permission = springboard.alerts.firstMatch
+        XCTAssertTrue(UITestConditions.exists(permission), springboard.debugDescription)
+        let allow = permission.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "허용"])).firstMatch
+        XCTAssertTrue(allow.exists && allow.isHittable, permission.debugDescription)
+        allow.tap()
         let star = app.descendants(matching: .any).matching(identifier: "별").firstMatch
+        XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
+        XCUIDevice.shared.press(.home)
+        let banner = ReminderJourneyObservation.deliveredBanner(in: springboard, bodyText: "Synthetic retained reply")
+        XCTAssertTrue(UITestConditions.exists(banner.container), springboard.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(banner.body), springboard.debugDescription)
+        XCTAssertEqual(banner.body.label, "Synthetic retained reply")
+        XCTAssertTrue(banner.body.isHittable, banner.body.debugDescription)
+        banner.body.tap()
         XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "rag-conversation-screen").exists)
         XCTAssertTrue(star.isHittable)
