@@ -11,6 +11,14 @@ export function registerCapabilityTestEntry(
       // Mount the real app and its production appearance gate in the owned test container.
       require('./assistantAcceptanceEntry');
       break;
+    case 'assistant-reply-acceptance':
+      // The synthetic tap is queued through the native inbox before the real app gate mounts.
+      require('./assistantReplyAcceptanceEntry');
+      break;
+    case 'reply-focus-native':
+      // Inspect production transcript geometry using synthetic reply identities only.
+      require('./replyFocusNativeProbeEntry');
+      break;
     case 'backup':
       require('./backupProbeEntry');
       break;

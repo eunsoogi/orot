@@ -103,10 +103,13 @@
 		F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */; };
 		A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */; };
 		B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */; };
+		A989C53E0100000000000011 /* AssistantReplyEntryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */; };
+		A989C53E0100000000000021 /* ReplyFocusGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */; };
 		A989C53E0100000000000001 /* AssistantAppearanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */; };
 		A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */; };
 		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
 		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
+		A989C53E0100000000000031 /* TestControlReplyFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000032 /* TestControlReplyFixture.swift */; };
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
 		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
 		D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */; };
@@ -438,6 +441,7 @@
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
+		A989C53E0100000000000032 /* TestControlReplyFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControlReplyFixture.swift; path = OrotMobile/TestControlReplyFixture.swift; sourceTree = "<group>"; };
 		9422961FF39A9392CEC9AE63 /* TestControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControl.swift; path = OrotMobile/TestControl.swift; sourceTree = "<group>"; };
 		95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceUITestConditions.swift; sourceTree = "<group>"; };
 		9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupPersistenceUITests.swift; sourceTree = "<group>"; };
@@ -653,6 +657,8 @@
 		F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationRetentionUITests.swift; sourceTree = "<group>"; };
 		A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHealthSummaryUITests.swift; sourceTree = "<group>"; };
 		2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationVisitPreparationUITests.swift; sourceTree = "<group>"; };
+		A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistantReplyEntryUITests.swift; sourceTree = "<group>"; };
+		A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReplyFocusGeometryUITests.swift; sourceTree = "<group>"; };
 		A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistantAppearanceUITests.swift; sourceTree = "<group>"; };
 		A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationToolEventsUITests.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
@@ -823,6 +829,7 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				B11200000000000000000005 /* ReminderCopy.strings */,
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
+				A989C53E0100000000000032 /* TestControlReplyFixture.swift */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F94600000000000000000002 /* MenuPresentationTestObservation.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
@@ -1077,6 +1084,8 @@
 				F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */,
 				A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */,
 				2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */,
+				A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */,
+				A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */,
 				A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */,
 				A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */,
 				FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */,
@@ -1499,6 +1508,7 @@
 				E14B00000000000000000007 /* SpeechTranscriptionModule.m in Sources */,
 				E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */,
 				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
+				A989C53E0100000000000031 /* TestControlReplyFixture.swift in Sources */,
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
 				074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */,
 				A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */,
@@ -1595,6 +1605,8 @@
 				F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */,
 				A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */,
 				B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */,
+				A989C53E0100000000000011 /* AssistantReplyEntryUITests.swift in Sources */,
+				A989C53E0100000000000021 /* ReplyFocusGeometryUITests.swift in Sources */,
 				A989C53E0100000000000001 /* AssistantAppearanceUITests.swift in Sources */,
 				A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */,
 				8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */,
