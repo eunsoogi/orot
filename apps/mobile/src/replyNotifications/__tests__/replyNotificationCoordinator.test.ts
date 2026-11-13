@@ -11,17 +11,25 @@ function fixture() {
   let background = true;
   let valid = true;
   const claimed = new Set<string>();
-  const submit = jest.fn(async () => undefined);
+  const submit = jest.fn(
+    async (): Promise<'submitted' | 'suppressed' | 'failed'> => 'submitted',
+  );
   const coordinator = createReplyNotificationCoordinator({
     isBackground: () => background,
     isEnabled: async () => true,
     isAuthorized: async () => true,
+    lease: async () => ({ global: 0, session: 0 }),
     readAnswer: async () => (valid ? '합성 답변입니다.' : null),
-    claim: async key => {
+    claim: async (key, eligible) => {
       if (claimed.has(key)) return false;
       claimed.add(key);
-      return true;
+      return eligible;
     },
+    release: async key => {
+      claimed.delete(key);
+    },
+    start: async () => {},
+    finish: async () => {},
     submit,
   });
   return {
@@ -46,7 +54,10 @@ test('submits a current background completion only once', async () => {
     f.coordinator.consume(identity),
   ]);
   expect(f.submit).toHaveBeenCalledTimes(1);
-  expect(f.submit).toHaveBeenCalledWith(identity, '합성 답변입니다.');
+  expect(f.submit).toHaveBeenCalledWith(identity, '합성 답변입니다.', {
+    global: 0,
+    session: 0,
+  });
 });
 
 test('suppresses foreground or invalid answers', async () => {
@@ -80,8 +91,12 @@ test('rechecks authorization and freshness after asynchronous work', async () =>
     isBackground: () => true,
     isEnabled: async () => true,
     isAuthorized,
+    lease: async () => ({ global: 0, session: 0 }),
     readAnswer,
     claim: async () => true,
+    release: async () => {},
+    start: async () => {},
+    finish: async () => {},
     submit,
   });
   await coordinator.consume(identity);
@@ -90,4 +105,13 @@ test('rechecks authorization and freshness after asynchronous work', async () =>
   readAnswer.mockResolvedValueOnce('합성 답변').mockResolvedValueOnce(null);
   await coordinator.consume(identity);
   expect(submit).not.toHaveBeenCalled();
+});
+
+test('a definite submission failure can be retried without duplicating a successful submission', async () => {
+  const f = fixture();
+  f.submit.mockResolvedValueOnce('failed').mockResolvedValue('submitted');
+  await f.coordinator.consume(identity);
+  await f.coordinator.consume(identity);
+  await f.coordinator.consume(identity);
+  expect(f.submit).toHaveBeenCalledTimes(2);
 });

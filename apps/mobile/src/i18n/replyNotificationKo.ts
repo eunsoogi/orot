@@ -8,4 +8,7 @@ export const replyNotificationKo = {
     'iOS 설정에서 알림 권한을 확인해 주세요.',
   'settings.replyNotification.error':
     '알림 설정을 확인하지 못했어요. 다시 시도해 주세요.',
+  'replyNotification.missingTitle': '답변을 열 수 없어요',
+  'replyNotification.missingBody':
+    '대화나 답변이 삭제되었거나 더 이상 사용할 수 없어요.',
 } as const;

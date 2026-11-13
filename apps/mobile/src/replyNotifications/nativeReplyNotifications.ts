@@ -1,5 +1,8 @@
 import { NativeModules } from 'react-native';
-import type { ReplyIdentity } from './replyNotificationCoordinator';
+import type {
+  ReplyIdentity,
+  ReplyNotificationLease,
+} from './replyNotificationCoordinator';
 
 export type ReplyNotificationPreference = {
   enabled: boolean;
@@ -12,7 +15,10 @@ export interface ReplyNotificationNative {
     preference: ReplyNotificationPreference,
   ): Promise<'authorized' | 'denied' | 'disabled' | 'error'>;
   authorized(): Promise<boolean>;
-  submit(value: ReplyIdentity & { preview: string }): Promise<boolean>;
+  lease(sessionId: string): Promise<ReplyNotificationLease>;
+  submit(
+    value: ReplyIdentity & { preview: string; lease: ReplyNotificationLease },
+  ): Promise<'submitted' | 'suppressed' | 'failed'>;
   removeSession(sessionId: string): Promise<void>;
   removeAll(): Promise<void>;
   consumeTarget(): Promise<unknown>;

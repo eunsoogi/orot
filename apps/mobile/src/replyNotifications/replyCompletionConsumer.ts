@@ -6,6 +6,7 @@ import {
   type ReplyIdentity,
 } from './replyNotificationCoordinator';
 import { nativeReplyNotifications } from './nativeReplyNotifications';
+import { readCommittedReply } from './readCommittedReply';
 
 type Storage = ReturnType<typeof createConversationArtifactStorage>;
 
@@ -14,43 +15,33 @@ export function createReplyCompletionConsumer(
   storage: Storage,
   ledger: ReturnType<typeof createReplyNotificationLedger>,
 ) {
-  const coordinator = createReplyNotificationCoordinator({
-    isBackground: () => AppState.currentState === 'background',
-    isEnabled: async () => (await nativeReplyNotifications().read()).enabled,
-    isAuthorized: () => nativeReplyNotifications().authorized(),
-    claim: id => ledger.claim(id),
-    async readAnswer(identity: ReplyIdentity) {
-      const current = (await storage.listCompletionIdentities()).some(
-        value =>
-          value.requestId === identity.requestId &&
-          value.sessionId === identity.sessionId &&
-          value.messageId === identity.messageId &&
-          value.sessionVersion === identity.sessionVersion,
-      );
-      if (!current) return null;
-      const [answer] = await storage.readSessionMany(
-        identity.sessionId,
-        identity.sessionVersion,
-        [identity.messageId],
-      );
-      return answer?.status === 'complete' ? answer.answer : null;
-    },
-    async submit(identity, preview) {
-      await nativeReplyNotifications().submit({ ...identity, preview });
-    },
-  });
-  return async (requestId: string) => {
+  return async (requestId: string, valid: () => boolean = () => true) => {
+    const coordinator = createReplyNotificationCoordinator({
+      isBackground: () => valid() && AppState.currentState === 'background',
+      isEnabled: async () => (await nativeReplyNotifications().read()).enabled,
+      isAuthorized: () => nativeReplyNotifications().authorized(),
+      lease: identity => nativeReplyNotifications().lease(identity.sessionId),
+      claim: (id, eligible) => ledger.claim(id, eligible),
+      release: id => ledger.release(id),
+      start: id => ledger.start(id),
+      finish: id => ledger.finish(id),
+      async readAnswer(identity: ReplyIdentity) {
+        return (await readCommittedReply(storage, identity))?.answer ?? null;
+      },
+      submit: (identity, preview, lease) =>
+        nativeReplyNotifications().submit({ ...identity, preview, lease }),
+    });
     const identity = (await storage.listCompletionIdentities()).find(
       value => value.requestId === requestId,
     );
     if (identity) {
-      const { requestId, sessionId, messageId, sessionVersion } = identity;
+      const { sessionId, messageId, sessionVersion } = identity;
       await coordinator.consume({
         requestId,
         sessionId,
         messageId,
         sessionVersion,
       });
-    }
+    } else await ledger.finish(requestId);
   };
 }

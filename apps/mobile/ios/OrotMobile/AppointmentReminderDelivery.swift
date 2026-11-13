@@ -98,7 +98,9 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
             lock.lock()
             var targets = defaults.array(forKey: replyKey) as? [[String: String]] ?? []
             let handled = defaults.stringArray(forKey: replyHandledKey) ?? []
-            if !handled.contains(requestId), !targets.contains(where: { $0["requestId"] == requestId }) { targets.append(target); defaults.set(targets, forKey: replyKey) }
+            if !handled.contains(requestId), !targets.contains(where: { $0["requestId"] == requestId }) {
+                targets.append(target); defaults.set(targets, forKey: replyKey)
+            }
             lock.unlock()
             NotificationCenter.default.post(name: Self.changed, object: nil)
             return

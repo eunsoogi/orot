@@ -18,7 +18,9 @@ test('explains sensitive previews before explicit opt-in and supports suppressio
   await render(<SettingsReplyNotificationSection />);
   expect(screen.getByText(/민감한 건강 내용/)).toBeTruthy();
   const enabled = await screen.findByLabelText('답변 알림 받기');
-  await waitFor(() => expect(enabled.props.accessibilityState.disabled).toBe(false));
+  await waitFor(() =>
+    expect(enabled.props.accessibilityState.disabled).toBe(false),
+  );
   await fireEvent.press(enabled);
   await waitFor(() =>
     expect(save).toHaveBeenCalledWith({ enabled: true, preview: true }),

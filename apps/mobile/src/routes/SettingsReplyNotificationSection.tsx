@@ -30,9 +30,9 @@ export function SettingsReplyNotificationSection() {
         if (active) setStatus('error');
       }
     };
-    void refresh();
+    refresh().catch(() => undefined);
     const listener = AppState.addEventListener('change', value => {
-      if (value === 'active') void refresh();
+      if (value === 'active') refresh().catch(() => undefined);
     });
     return () => {
       active = false;
@@ -70,10 +70,12 @@ export function SettingsReplyNotificationSection() {
             label={t('settings.replyNotification.enabled')}
             disabled={busy || !preference}
             value={preference?.enabled ?? false}
-            onToggle={() =>
-              preference &&
-              void save({ ...preference, enabled: !preference.enabled })
-            }
+            onToggle={() => {
+              if (preference)
+                save({ ...preference, enabled: !preference.enabled }).catch(
+                  () => undefined,
+                );
+            }}
           />
         </View>
         <View style={styles.row}>
@@ -84,10 +86,12 @@ export function SettingsReplyNotificationSection() {
             label={t('settings.replyNotification.preview')}
             disabled={busy || !preference?.enabled}
             value={preference?.preview ?? true}
-            onToggle={() =>
-              preference &&
-              void save({ ...preference, preview: !preference.preview })
-            }
+            onToggle={() => {
+              if (preference)
+                save({ ...preference, preview: !preference.preview }).catch(
+                  () => undefined,
+                );
+            }}
           />
         </View>
         {status && (
@@ -117,6 +121,10 @@ function ReplySwitch({
   onToggle: () => void;
 }) {
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const padding = {
+    paddingHorizontal: size.width ? Math.max(0, (44 - size.width) / 2) : 0,
+    paddingVertical: size.height ? Math.max(0, (44 - size.height) / 2) : 0,
+  };
   return (
     <Pressable
       accessibilityRole="switch"
@@ -124,14 +132,7 @@ function ReplySwitch({
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}
       onPress={onToggle}
-      style={{
-        minWidth: 44,
-        minHeight: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: size.width ? Math.max(0, (44 - size.width) / 2) : 0,
-        paddingVertical: size.height ? Math.max(0, (44 - size.height) / 2) : 0,
-      }}
+      style={[styles.control, padding]}
     >
       <Switch
         accessible={false}
@@ -153,6 +154,12 @@ function ReplySwitch({
 }
 
 const styles = StyleSheet.create({
+  control: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   section: { gap: 8 },
   title: {
     color: appColors.secondary,

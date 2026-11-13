@@ -24,6 +24,15 @@ test('claims survive reopening and remain distinct across requests', async () =>
         await Promise.all([reopened.claim('third'), reopened.claim('third')])
       ).sort(),
     ).toEqual([false, true]);
+    await reopened.start('second');
+    await reopened.recover();
+    expect(await reopened.retries()).toEqual(
+      expect.arrayContaining(['first', 'third']),
+    );
+    expect(await reopened.claim('second')).toBe(false);
+    expect(await reopened.claim('third')).toBe(true);
+    expect(await reopened.claim('first', false)).toBe(false);
+    expect(await reopened.claim('first', true)).toBe(false);
   } finally {
     connection.close();
     rmSync(directory, { recursive: true, force: true });

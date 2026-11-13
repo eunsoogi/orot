@@ -1,0 +1,96 @@
+import { Alert, AppState } from 'react-native';
+import type { NavigationController } from '../navigation/navigationController';
+import type { AppNavigationRoute } from '../routes/appNavigationRoute';
+import type { ConversationSessions } from '../ragConversation/conversationSessions';
+import type { ConversationSessionOptions } from '../ragConversation/conversationSessionTypes';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import { subscribeAppointmentReminderOpened } from '../appointmentReminders/nativeReminderBridge';
+import { t } from '../i18n';
+import { nativeReplyNotifications } from './nativeReplyNotifications';
+import { readCommittedReply } from './readCommittedReply';
+import { createReplyDestination } from './replyDestination';
+import { createReplyOpen } from './replyOpen';
+
+/** Reuse the existing reminder wake signal and navigation decision queue for reply taps. */
+export function observeReplyDelivery(input: {
+  controller: NavigationController<AppNavigationRoute>;
+  sessions: ConversationSessions;
+  retention: ConversationSessionOptions['retention'];
+  loadLocalData?: () => Promise<AiFeatureLocalData>;
+  confirm(
+    routeKey: string,
+  ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
+  canEnter(): boolean;
+}) {
+  if (!input.retention) return () => {};
+  const open = createReplyOpen({
+    ...input,
+    async read(identity) {
+      const data = await (input.loadLocalData
+        ? input.loadLocalData()
+        : import('../aiFeatures/integration/localData').then(module =>
+            module.openAiFeatureLocalData(),
+          ));
+      if (!data.openConversationArtifactStorage)
+        throw new Error('Protected storage is unavailable.');
+      return readCommittedReply(
+        await data.openConversationArtifactStorage(),
+        identity,
+      );
+    },
+  });
+  const deliver = createReplyDestination({
+    consume: () => nativeReplyNotifications().consumeTarget(),
+    acknowledge: id => nativeReplyNotifications().acknowledgeTarget(id),
+    open,
+    unavailable: () =>
+      Alert.alert(
+        t('replyNotification.missingTitle'),
+        t('replyNotification.missingBody'),
+      ),
+  });
+  let active = true;
+  let pending = false;
+  let queue = Promise.resolve();
+  const drain = () => {
+    if (!active) return;
+    queue = queue
+      .then(async () => {
+        const result = await deliver();
+        pending = result === 'deferred';
+        if (result === 'opened' || result === 'missing') drain();
+      })
+      .catch(() => {
+        pending = true;
+      });
+  };
+  let unsubscribe = () => {};
+  try {
+    unsubscribe = subscribeAppointmentReminderOpened(drain);
+  } catch {
+    /* A later foreground entry can retry. */
+  }
+  const state = AppState.addEventListener('change', value => {
+    if (value === 'active') drain();
+  });
+  const navigation = input.controller.subscribe(() => {
+    if (pending && !input.controller.getSnapshot().isTransitioning) {
+      pending = false;
+      drain();
+    }
+  });
+  const sessions = input.sessions.subscribe(() => {
+    if (pending) {
+      pending = false;
+      drain();
+    }
+  });
+  drain();
+  return () => {
+    active = false;
+    unsubscribe();
+    state.remove();
+    navigation();
+    sessions();
+  };
+}
