@@ -3,18 +3,18 @@ import XCTest
 extension AppointmentsUITests {
     /// Verify the Add control after revealing it only when the route scroll owns it.
     @MainActor
-    func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect, toolbar: CGRect) throws {
+    func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect, toolbar: XCUIElement) throws {
         let matches = app.descendants(matching: .any).matching(identifier: "appointment-add")
         let inScroll = scroll.descendants(matching: .any).matching(identifier: "appointment-add").count
         func record(_ stage: String, window: XCUIElement) throws {
             let keyboard = app.keyboards.firstMatch
             let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "appointment-select-"))
             let observation: [String: Any] = ["atMs": Date().timeIntervalSince1970 * 1000, "matchCount": matches.count,
-                                              "scrollMatchCount": inScroll, "rowCount": rows.count,
+                                              "scrollMatchCount": scroll.descendants(matching: .any).matching(identifier: "appointment-add").count, "rowCount": rows.count,
                                               "addFrame": ViewportObservation.rect(add.frame), "addEnabled": add.isEnabled,
                                               "addHittable": add.isHittable, "scrollFrame": ViewportObservation.rect(scroll.frame),
                                               "windowFrame": ViewportObservation.rect(window.frame), "safeFrame": ViewportObservation.rect(safeFrame),
-                                              "toolbarFrame": ViewportObservation.rect(toolbar),
+                                              "toolbarFrame": ViewportObservation.rect(toolbar.frame),
                                               "keyboardFrame": keyboard.exists ? ViewportObservation.rect(keyboard.frame) as Any : NSNull()]
             let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
             attachment.name = "appointment-add-\(stage)"
@@ -32,11 +32,12 @@ extension AppointmentsUITests {
         let afterWindow = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: add))
         try record("after-reveal", window: afterWindow)
         XCTAssertEqual(afterWindow.frame, beforeFrame, "The owning window must remain stable during reveal")
+        XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointment-add").count, inScroll)
         let frame = add.frame
         XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(frame, hittable: add.isHittable), "Add must remain a hittable 44-point target")
         XCTAssertTrue(safeFrame.insetBy(dx: -0.5, dy: -0.5).contains(frame), "Add must remain inside the native safe area")
         if inScroll == 1 {
-            XCTAssertFalse(frame.intersects(toolbar), "The page Add control must clear navigation")
+            XCTAssertFalse(frame.intersects(toolbar.frame), "The page Add control must clear navigation")
         }
     }
 
