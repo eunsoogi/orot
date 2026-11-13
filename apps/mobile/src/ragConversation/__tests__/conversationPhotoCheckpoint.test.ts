@@ -3,6 +3,7 @@ import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests_
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { createConversationPhotoImport } from '../conversationPhotoImport';
 import { commitConversationPhotoCheckpoint } from '../conversationPhotoCheckpoint';
+import { createConversationPhotoRetirement } from '../conversationPhotoRetirement';
 import type { ConversationSubmittedInput } from '../conversationSubmittedInput';
 
 test('removal during protected handoff fences the request before native cleanup', async () => {
@@ -64,7 +65,10 @@ test('removal during protected handoff fences the request before native cleanup'
       lease,
       submitted,
       storage,
-      discard,
+      retire: createConversationPhotoRetirement({
+        fence: storage.invalidateRequestSource,
+        discard,
+      }).retire,
       start: async () => {
         await storage.startRequest({
           id: 'request',
@@ -143,10 +147,8 @@ test('an unconfirmed failed write keeps the original locked even when rejection 
     await commitConversationPhotoCheckpoint({
       lease,
       submitted,
-      storage: {
-        readRequestInput: async () => null,
-        invalidateRequestSource: async () => {},
-      },
+      storage: { readRequestInput: async () => null },
+      retire: async () => {},
       start: () => Promise.reject(undefined),
     });
   } catch {

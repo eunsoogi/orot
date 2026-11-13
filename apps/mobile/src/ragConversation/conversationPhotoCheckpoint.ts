@@ -1,7 +1,6 @@
 import type { createConversationPhotoImport } from './conversationPhotoImport';
 import type { ConversationSubmittedInput } from './conversationSubmittedInput';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import { medicalDocumentFileDeletion } from '../medicalDocuments/medicalDocumentNativeBridge';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
 type Lease = NonNullable<
@@ -9,7 +8,7 @@ type Lease = NonNullable<
 >;
 type Storage = Pick<
   ReturnType<typeof createConversationArtifactStorage>,
-  'readRequestInput' | 'invalidateRequestSource'
+  'readRequestInput'
 >;
 
 /** Resolve ownership only after a protected checkpoint is known to own the exact source. */
@@ -18,7 +17,8 @@ export async function commitConversationPhotoCheckpoint(input: {
   readonly submitted: ConversationSubmittedInput;
   readonly storage: Storage;
   readonly start: () => Promise<void>;
-  readonly discard?: (sourceId: string) => Promise<void>;
+  /** Retryable retirement owns both the database fence and native cleanup. */
+  readonly retire: (sourceId: string) => Promise<void>;
 }) {
   const { lease, submitted, storage } = input;
   const sourceId = lease.photo.id;
@@ -59,8 +59,7 @@ export async function commitConversationPhotoCheckpoint(input: {
   if (ownership.removed) {
     try {
       // Tombstone and dependent answers first, then retire the separately protected original.
-      await storage.invalidateRequestSource(sourceId);
-      await (input.discard ?? medicalDocumentFileDeletion.discard)(sourceId);
+      await input.retire(sourceId);
       ownership.acknowledgeRemoval({ ok: true });
     } catch (error) {
       ownership.acknowledgeRemoval({ ok: false, error });
