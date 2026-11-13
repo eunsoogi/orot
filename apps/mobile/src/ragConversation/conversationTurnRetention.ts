@@ -83,7 +83,11 @@ export function createConversationTurnRetention(input: {
   return {
     toolMessageId: input.turnId,
     /** The protected checkpoint must commit before any provider transmission starts. */
-    async startRequest(question: string, signal: AbortSignal) {
+    async startRequest(
+      question: string,
+      signal: AbortSignal,
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
+    ) {
       if (
         !input.storage.startRequest ||
         !input.storage.interruptRequest ||
@@ -96,6 +100,7 @@ export function createConversationTurnRetention(input: {
         sessionVersion: input.sessionVersion ?? 0,
         question,
         createdAt: input.createdAt,
+        ...(submittedInput ? { submittedInput } : {}),
       });
       if (signal.aborted) {
         await input.storage.interruptRequest(

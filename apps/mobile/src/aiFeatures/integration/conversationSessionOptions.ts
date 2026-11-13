@@ -1,6 +1,6 @@
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
-import { operationRunId } from './featureRunIdentity';
+import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationToolSources } from './captureConversationToolSources';
@@ -12,6 +12,8 @@ import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 import { restoreConversationTaskCards } from './restoreConversationTaskCards';
+import { validateInterruptedPhotoInputs } from './conversationInterruptedPhotoValidation';
+import { orderRestoredConversationTurns } from './conversationRestoredTurnOrder';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -49,7 +51,7 @@ export function createConversationSessionOptions(input: {
     resolveTreatmentSource: createTreatmentSourceResolver(input),
     retention: createConversationSessionRetention({
       openStorage,
-      createId: operationRunId,
+      createId: createConversationDurableIdentity,
       now: () => new Date().toISOString(),
       captureToolSources: async (event, sessionId) =>
         captureConversationToolSources(
@@ -104,6 +106,14 @@ export function createConversationSessionOptions(input: {
         sessionId,
         version,
       );
+      await validateInterruptedPhotoInputs({
+        requests: interrupted,
+        storage,
+        data,
+        sessionId,
+        version,
+        signal,
+      });
       const toolTurns = await restoreConversationToolTurns(
         savedToolTurns,
         input.registry,
@@ -139,6 +149,9 @@ export function createConversationSessionOptions(input: {
               : undefined;
           return {
             question: turn.question,
+            ...(turn.submittedInput
+              ? { submittedInput: turn.submittedInput }
+              : {}),
             answer: turn.answer,
             citations: turn.citations,
             healthSources: healthSourceDependencies(
@@ -191,6 +204,9 @@ export function createConversationSessionOptions(input: {
         if (!restored.some(item => item.toolMessageId === request.id))
           restored.push({
             question: request.question,
+            ...(request.submittedInput
+              ? { submittedInput: request.submittedInput }
+              : {}),
             answer: '',
             citations: [],
             healthSources: [],
@@ -214,18 +230,20 @@ export function createConversationSessionOptions(input: {
         ) !== fingerprint(interrupted)
       )
         throw new Error('Conversation content changed during restoration.');
+      await validateInterruptedPhotoInputs({
+        requests: interrupted,
+        storage,
+        data,
+        sessionId,
+        version,
+        signal,
+      });
       const times = new Map([
         ...turns.map(turn => [turn.id, turn.createdAt] as const),
         ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
         ...interrupted.map(request => [request.id, request.createdAt] as const),
       ]);
-      return restored.sort(
-        (a, b) =>
-          times
-            .get(a.toolMessageId)!
-            .localeCompare(times.get(b.toolMessageId)!) ||
-          a.toolMessageId.localeCompare(b.toolMessageId),
-      );
+      return orderRestoredConversationTurns(restored, times);
     },
   };
 }

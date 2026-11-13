@@ -45,6 +45,7 @@ export interface ConversationSessionOptions {
   ) => Promise<
     readonly {
       question: string;
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
       answer: string;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;

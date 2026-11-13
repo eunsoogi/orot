@@ -17,7 +17,7 @@ import {
   markerMatchesArtifactSource,
 } from './typedDeletionMarkers';
 import { setupConversationTaskCards } from './conversationTaskCards';
-import { setupConversationRequests } from './conversationRequestStorage';
+import { setupConversationRequests } from './conversationRequestSchema';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {

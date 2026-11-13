@@ -12,6 +12,7 @@ import { styles } from './ConversationScreen.styles';
 import type { RagConversationMessage } from './task';
 
 export interface DisplayMessage extends RagConversationMessage {
+  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly id: number;
   readonly dailyReport?: NonNullable<
     import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']

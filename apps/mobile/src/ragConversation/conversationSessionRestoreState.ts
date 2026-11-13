@@ -6,6 +6,7 @@ import { t } from '../i18n';
 
 type RestoredTurn = {
   readonly question: string;
+  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
   readonly citations: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
@@ -47,12 +48,15 @@ export function createConversationSessionRestoreState(input: {
       );
       // Each turn retains its own exact report; only the latest turn sets the next follow-up target.
       const messages = turns.flatMap((turn, index) => [
-        ...(turn.question
+        ...(turn.question || turn.submittedInput?.ocr
           ? [
               {
                 id: -(2 * index + 1),
                 role: 'user' as const,
                 content: turn.question,
+                ...(turn.submittedInput
+                  ? { submittedInput: turn.submittedInput }
+                  : {}),
                 ...(!turn.answer && turn.completion === 'partial'
                   ? { failed: true }
                   : {}),
