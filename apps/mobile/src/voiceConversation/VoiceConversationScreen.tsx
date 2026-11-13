@@ -31,8 +31,14 @@ export function VoiceConversationScreen({
 }) {
   const muted = phase === 'stopped' || phase === 'ended';
   const interruptible = phase === 'processing' || phase === 'speaking';
-  const action = (label: string, press: () => void, danger = false) => (
+  const action = (
+    label: string,
+    press: () => void,
+    testID: string,
+    danger = false,
+  ) => (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={press}
@@ -49,7 +55,10 @@ export function VoiceConversationScreen({
       onRequestClose={onEnd}
     >
       <SafeAreaLayout>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          testID="voice-call-screen"
+          contentContainerStyle={styles.content}
+        >
           <View style={styles.identity}>{identity}</View>
           <View style={styles.center}>
             <AppSymbol
@@ -68,15 +77,36 @@ export function VoiceConversationScreen({
           </View>
           <View style={styles.actions}>
             {phase === 'listening' &&
-              action(t('ragConversation.voice.finish'), onFinish)}
+              action(
+                t('ragConversation.voice.finish'),
+                onFinish,
+                'voice-call-finish',
+              )}
             {interruptible &&
-              action(t('ragConversation.voice.interrupt'), onInterrupt)}
+              action(
+                t('ragConversation.voice.interrupt'),
+                onInterrupt,
+                'voice-call-interrupt',
+              )}
             {muted
-              ? action(t('ragConversation.voice.resume'), onResume)
+              ? action(
+                  t('ragConversation.voice.resume'),
+                  onResume,
+                  'voice-call-resume',
+                )
               : phase !== 'cleaning' &&
                 phase !== 'error' &&
-                action(t('ragConversation.voice.mute'), onMute)}
-            {action(t('ragConversation.voice.endCall'), onEnd, true)}
+                action(
+                  t('ragConversation.voice.mute'),
+                  onMute,
+                  'voice-call-mute',
+                )}
+            {action(
+              t('ragConversation.voice.endCall'),
+              onEnd,
+              'voice-call-end',
+              true,
+            )}
           </View>
         </ScrollView>
       </SafeAreaLayout>

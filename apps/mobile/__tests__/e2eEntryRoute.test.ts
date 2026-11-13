@@ -1,6 +1,18 @@
 import { selectEntryRoute } from '../e2e/selectEntryRoute';
 
 describe('Test entry routing', () => {
+  it('selects synthetic voice only through its explicit test-only probe', () => {
+    expect(selectEntryRoute({ OROT_E2E_PROBE: 'voice-call' })).toBe(
+      'voice-call',
+    );
+    expect(() =>
+      selectEntryRoute({
+        OROT_E2E_PROBE: 'voice-call',
+        OROT_STORAGE_PROBE: true,
+      }),
+    ).toThrow();
+  });
+
   it('keeps the storage probe as the default route', () => {
     expect(selectEntryRoute({})).toBe('storage');
   });
