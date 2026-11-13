@@ -11,6 +11,7 @@ final class DailyReportEntryUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         let homeEntry = UITestConditions.element(app, "overview-open-daily-report")
         XCTAssertTrue(homeEntry.waitForAppearance(), app.debugDescription)
         attach(app, name: "daily-report-home-entry")

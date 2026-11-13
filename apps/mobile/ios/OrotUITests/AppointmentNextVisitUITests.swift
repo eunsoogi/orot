@@ -33,6 +33,7 @@ extension AppointmentsUITests {
         XCTAssertTrue(appointmentRow.exists && appointmentRow.isHittable, app.debugDescription)
         XCTAssertTrue(appointmentRow.label.contains("다음 진료"), app.debugDescription)
         try NavigationUITestConditions.tapNavigation(app, "appointments-back")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         NavigationUITestConditions.route(app, markers: ["overview-next-appointment"])
         let homeClinicMatches = app.staticTexts.matching(identifier: "overview-next-appointment-clinic")
         let homeClinicMatchCount = homeClinicMatches.count
