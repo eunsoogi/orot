@@ -63,3 +63,33 @@ test('failure settles activity and retry receives a new request identity', async
   expect(sessions.getSnapshot().sessions[0]?.requestActivity).toBeNull();
   sessions.dispose();
 });
+
+test('restoring an interrupted request does not create live activity or send it again', async () => {
+  const sessions = createConversationSessions({
+    retention: {
+      attachExisting: async () => {},
+      activeIdentity: () => 'saved',
+      activeLease: () => null,
+      beginTurn: async () => undefined,
+      invalidate: () => {},
+    } as never,
+    restoreSession: async () => [
+      {
+        question: 'Synthetic question',
+        answer: '',
+        citations: [],
+        completion: 'partial',
+        interrupted: true,
+        toolMessageId: 'request',
+      },
+    ],
+  });
+  const id = await sessions.attachExisting('saved', 0, '2026-11-13T00:00:00Z');
+  const restored = sessions
+    .getSnapshot()
+    .sessions.find(session => session.id === id)!;
+  expect(restored.busy).toBe(false);
+  expect(restored.requestActivity ?? null).toBeNull();
+  expect(restored.messages.length).toBeGreaterThan(0);
+  sessions.dispose();
+});
