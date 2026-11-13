@@ -184,7 +184,7 @@ export function ConversationHistory({
       >
         {visibleMessages.map(message => (
           <ReplyMessageContainer
-            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? 'focus' : 'ordinary'}`}
+            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
             focused={Boolean(
               replyFocus && message.retainedTurnId === replyFocus.messageId,
             )}

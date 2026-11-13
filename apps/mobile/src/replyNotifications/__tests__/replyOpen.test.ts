@@ -58,7 +58,11 @@ test('selects the matching existing session without attaching or sending another
   expect(select).toHaveBeenCalledWith(2);
   expect(attachExisting).not.toHaveBeenCalled();
   expect(push).toHaveBeenCalledWith('rag-conversation');
-  expect(replyFocus.get()).toEqual({ sessionId: 2, messageId: 'answer' });
+  expect(replyFocus.get()).toEqual({
+    sessionId: 2,
+    messageId: 'answer',
+    generation: expect.any(Number),
+  });
   expect(onReplyOpened).toHaveBeenCalledTimes(1);
   expect(passiveRestoreAllowed).toBe(false);
   replyFocus.clear(replyFocus.get()!);

@@ -6,9 +6,10 @@ import { useConversationPhotoControls } from './useConversationPhotoControls';
 export function useConversationScreenControls(
   store: ConversationSessions,
   id: number,
+  isEntryCurrent?: () => boolean,
 ) {
   return {
     photo: useConversationPhotoControls(store, id),
-    focus: useReplyFocusForSession(id),
+    focus: useReplyFocusForSession(id, isEntryCurrent),
   };
 }

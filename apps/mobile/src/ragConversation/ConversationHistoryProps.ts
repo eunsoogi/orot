@@ -4,6 +4,7 @@ import type { DisplayMessage } from './ConversationMessage';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import type { ConversationActivitySnapshot } from './conversationActivity';
 import type { ConversationSession } from './conversationSessionTypes';
+import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 
 /** Inputs shared by the transcript, activity indicator, and retained reply focus. */
 export interface ConversationHistoryProps {
@@ -25,7 +26,7 @@ export interface ConversationHistoryProps {
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
-  readonly replyFocus?: { messageId: string; done(): void };
+  readonly replyFocus?: ReplyFocusHandle;
   readonly requestSessionId?: number;
   readonly requestActivity?: ConversationActivitySnapshot | null;
 }

@@ -32,6 +32,7 @@ import {
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
+  isEntryCurrent,
   entryContext,
   navigationRouteKey,
   providerSelection,
@@ -65,7 +66,11 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const { photo, focus } = useConversationScreenControls(store, id);
+  const { photo, focus } = useConversationScreenControls(
+    store,
+    id,
+    isEntryCurrent,
+  );
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
