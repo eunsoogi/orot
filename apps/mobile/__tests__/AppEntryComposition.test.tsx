@@ -78,6 +78,16 @@ test('the production app forwards reply dependencies and a live shared gate to i
   expect(props.loadLocalData).toBe(mockLoadLocalData);
   expect(props.canEnterReply?.()).toBe(false);
   expect(await props.canRestoreEntry?.()).toBe(true);
+  const wake = jest.fn();
+  const unsubscribe = props.subscribeReplyEntryReady?.(wake);
+  const key = props.controller.getSnapshot().currentRoute.key;
+  props.controller.setLeaveStateAvailability(key, false);
+  props.controller.registerLeaveGuard(key, async () => true);
+  await Promise.resolve();
+  expect(wake).not.toHaveBeenCalled();
+  props.controller.setLeaveStateAvailability(key, true);
+  await waitFor(() => expect(wake).toHaveBeenCalledTimes(1));
+  unsubscribe?.();
   await props.executeReplyEntry?.(async () => {
     expect(props.canEnterReply?.()).toBe(true);
     props.onReplyOpened?.();
