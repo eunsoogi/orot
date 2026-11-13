@@ -123,7 +123,24 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         send(app, question: question)
         observe(app, "lease:active")
         if stop {
-            app.buttons["rag-conversation-cancel"].tap()
+            let action = app.buttons["rag-conversation-cancel"]
+            guard action.exists else {
+                XCTFail("Stop action is missing")
+                return
+            }
+            let keyboard = app.keyboards.firstMatch
+            let actionFrame = action.frame
+            let hittable = action.isHittable
+            let appFrame = app.frame
+            let keyboardFrame = keyboard.exists ? keyboard.frame : .null
+            XCTContext.runActivity(named: "Stop target: app=\(appFrame), action=\(actionFrame), keyboard=\(keyboardFrame), windows=\(app.windows.count), hittable=\(hittable)") { _ in }
+            // Reject a measured unreachable target before attempting to tap it.
+            guard hittable, actionFrame.width >= 44, actionFrame.height >= 44,
+                  appFrame.contains(actionFrame), !actionFrame.intersects(keyboardFrame) else {
+                XCTFail("Stop action is not reachable in the measured viewport")
+                return
+            }
+            action.tap()
         } else {
             app.buttons["retention-probe-release"].tap()
         }
