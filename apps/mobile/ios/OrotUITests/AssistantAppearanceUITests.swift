@@ -54,6 +54,13 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
             app.typeText(String(character))
         }
         guard waitForName(name, equals: "Momo Companion Long Name") else { return }
+        // The keyboard may cover Save; scroll only this observed modal-owned form.
+        let appearanceScroll = app.scrollViews["assistant-appearance-scroll"]
+        guard UITestConditions.exists(appearanceScroll) else { XCTFail("Appearance form is missing"); return }
+        for _ in 0 ..< 3 {
+            if save.isHittable { break }
+            appearanceScroll.swipeUp()
+        }
         guard save.isHittable, save.isEnabled else { XCTFail("Appearance save is not reachable"); return }
         save.tap()
         XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)
