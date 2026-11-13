@@ -22,6 +22,7 @@ import { createConversationTaskState } from './conversationTaskState';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTaskRefresh } from './conversationTaskRefresh';
+import { createConversationPhotoImport } from './conversationPhotoImport';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
@@ -36,6 +37,7 @@ export function createConversationSessions(
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
+  const photoDrafts = createConversationPhotoImport();
   const emit = listeners.emit;
   const apply = (next: ConversationSnapshot | null) => {
     if (next) {
@@ -117,6 +119,7 @@ export function createConversationSessions(
     lifecycle: () => lifecycle,
   });
   return {
+    photoDrafts,
     attachExisting,
     loadHistory,
     subscribe: listeners.subscribe,
@@ -175,6 +178,7 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
+      photoDrafts.clear().catch(() => {});
       lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
@@ -188,6 +192,7 @@ export function createConversationSessions(
     },
     // View subscribers never cancel on exit; only the app owner disposes requests.
     dispose() {
+      photoDrafts.clear().catch(() => {});
       disposed = true;
       lifecycle++;
       taskState.invalidate();

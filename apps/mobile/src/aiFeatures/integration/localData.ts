@@ -103,6 +103,18 @@ async function openDefault(): Promise<AiFeatureLocalData> {
         await import('../../storage/conversationArtifactStorage');
       return createConversationArtifactStorage(database);
     },
+    async validateConversationPhotoInput(input, signal) {
+      const [
+        { createConversationArtifactStorage },
+        { createConversationPhotoInputValidator },
+      ] = await Promise.all([
+        import('../../storage/conversationArtifactStorage'),
+        import('./conversationPhotoInputValidation'),
+      ]);
+      return createConversationPhotoInputValidator(
+        createConversationArtifactStorage(database),
+      )(input, signal);
+    },
     async openResearchArtifactStorage() {
       const { createResearchArtifactStorage } =
         await import('../../storage/researchArtifactStorage');

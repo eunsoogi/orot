@@ -28,6 +28,7 @@ import {
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
+import { useConversationPhotoControls } from './useConversationPhotoControls';
 import { t } from '../i18n';
 import {
   ConversationTaskHeader,
@@ -77,6 +78,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const photo = useConversationPhotoControls(store, id);
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
@@ -215,6 +217,7 @@ export function ConversationScreen({
               }
             />
             <ConversationComposer
+              photo={photo}
               value={draft}
               busy={busy}
               disabled={

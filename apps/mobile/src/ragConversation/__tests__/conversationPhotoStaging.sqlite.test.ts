@@ -30,6 +30,7 @@ test('selection and removal leave the real source-record database unchanged', as
     const before = await fixture.repository.list('source_record');
     const evidenceBefore = await fixture.repository.list('evidence_span');
     const service = createMedicalDocumentImportService({
+      retainedConversationSourceIds: async () => [],
       loadRepository: async () => fixture.repository,
       fileDeletion: files,
       pick: jest.fn().mockResolvedValue(document),
