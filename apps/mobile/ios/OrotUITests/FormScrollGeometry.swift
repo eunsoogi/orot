@@ -35,7 +35,9 @@ struct FormScrollGeometry {
             guard Self.valid(referenceSize), abs(target.width - referenceSize.width) <= Self.coordinateTolerance,
                   target.height + Self.coordinateTolerance >= referenceSize.height else { return false }
         }
-        return target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
+        // A control outside the measured horizontal lane is not reachable even when its vertical slice fits.
+        return target.minX >= viewport.minX - Self.coordinateTolerance && target.maxX <= viewport.maxX + Self.coordinateTolerance &&
+            target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
     }
 
     /// The keyboard AX frame can omit its prediction surface. A bottom-clipped input supplies a stricter observed edge for the scroll constraint.
