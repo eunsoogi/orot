@@ -10,6 +10,7 @@ export const iosAcceptanceDiagnosticTests = [
 
 /** Explicit single-case Duo acceptance journeys stay selectable outside routine Duo runs. */
 export const duoAcceptanceDiagnosticTests = [
+  'OrotUITests/TestHostConnectionTests/testAppointmentRotationGeometryObservation',
   'OrotUITests/ChartConsumerAcceptanceUITests/testBloodPressureValuesAndDiastolicVoiceOver',
   'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
   'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',

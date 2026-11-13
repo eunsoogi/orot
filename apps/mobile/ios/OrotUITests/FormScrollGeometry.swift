@@ -20,6 +20,21 @@ struct FormScrollGeometry {
         viewport = visible
     }
 
+    /// Only one window containing one identified scroll establishes ownership.
+    static func uniqueOwnerIndex(_ matchingCounts: [Int]) -> Int? {
+        let owners = matchingCounts.indices.filter { matchingCounts[$0] > 0 }
+        guard owners.count == 1, let index = owners.first, matchingCounts[index] == 1 else { return nil }
+        return index
+    }
+
+    /// An observed target must have the same unique window owner as the scroll.
+    static func matchingOwnerIndex(scrollCounts: [Int], targetCounts: [Int]?) -> Int? {
+        guard let owner = uniqueOwnerIndex(scrollCounts) else { return nil }
+        guard let targetCounts else { return owner }
+        guard targetCounts.count == scrollCounts.count, uniqueOwnerIndex(targetCounts) == owner else { return nil }
+        return owner
+    }
+
     /// Derive clipping from this evaluation while retaining an explicitly reserved frame.
     static func current(application: CGRect, scroll: CGRect, keyboard: CGRect?, input: CGRect?, referenceSize: CGSize?, reservedKeyboard: CGRect? = nil) -> Self? {
         guard let geometry = Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservedKeyboard) else { return nil }
@@ -35,7 +50,9 @@ struct FormScrollGeometry {
             guard Self.valid(referenceSize), abs(target.width - referenceSize.width) <= Self.coordinateTolerance,
                   target.height + Self.coordinateTolerance >= referenceSize.height else { return false }
         }
-        return target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
+        // A control outside the measured horizontal lane is not reachable even when its vertical slice fits.
+        return target.minX >= viewport.minX - Self.coordinateTolerance && target.maxX <= viewport.maxX + Self.coordinateTolerance &&
+            target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
     }
 
     /// The keyboard AX frame can omit its prediction surface. A bottom-clipped input supplies a stricter observed edge for the scroll constraint.

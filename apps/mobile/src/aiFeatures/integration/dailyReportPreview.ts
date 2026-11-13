@@ -5,6 +5,7 @@ import {
   currentDailyReportContextRequest,
 } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { readDailyReportSnapshot } from '../../healthEvidence/healthContext/dailyReportSnapshot';
+import { dailyReportCoverageCounts } from './dailyReportCoverageCounts';
 
 /** Preparation reads local records only; it never resolves a provider or invokes AI. */
 export async function previewDailyReport(input: {
@@ -38,9 +39,11 @@ export async function previewDailyReport(input: {
     return {
       status: 'ready' as const,
       cutoff: window.context.generationCutoff,
+      timeZone: window.context.identity.timeZone,
       partial: window.context.partial,
       count: snapshot.values.length,
       coverage: snapshot.sourceSnapshot.coverage,
+      sourceCounts: dailyReportCoverageCounts(snapshot.sourceSnapshot.records),
       latestSourceTime: snapshot.sourceSnapshot.records.reduce<string | null>(
         (latest, record) =>
           !latest ||

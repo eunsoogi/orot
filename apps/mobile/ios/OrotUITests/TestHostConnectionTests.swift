@@ -1,6 +1,65 @@
 import XCTest
 
 final class TestHostConnectionTests: OrotFailFastTestCase {
+    /// Capture separate native and AX geometry around one rotation request without waiting for a resize.
+    @MainActor
+    func testAppointmentRotationGeometryObservation() throws {
+        let app = XCUIApplication()
+        let session = UUID().uuidString
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_ROTATION_GEOMETRY_SESSION", session]
+        app.launch()
+        defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
+        XCTAssertTrue(UITestConditions.element(app, "appointments-title").waitForAppearance())
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "before", testCase: self)
+        let transition = UITestConditions.element(app, "rotation-transition-request")
+        XCTAssertTrue(transition.exists && transition.isHittable)
+        transition.tap()
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "armed", testCase: self)
+        let armed = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(transition.label.utf8)) as? [String: Any])
+        XCTAssertEqual(armed["session"] as? String, session)
+        XCTAssertEqual(armed["status"] as? String, "sampled")
+        XCTAssertEqual(armed["mode"] as? String, "start")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        transition.tap()
+        let requestAt = Date().timeIntervalSince1970 * 1000
+        let request = UITestConditions.element(app, "rotation-geometry-request")
+        XCTAssertTrue(request.exists && request.isHittable)
+        request.tap()
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-request", testCase: self)
+        transition.tap()
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-transition-read", testCase: self)
+        let transitionData = Data(transition.label.utf8)
+        let transitionReceipt = try XCTUnwrap(JSONSerialization.jsonObject(with: transitionData) as? [String: Any])
+        XCTAssertEqual(transitionReceipt["session"] as? String, session)
+        XCTAssertEqual(transitionReceipt["mode"] as? String, "read")
+        XCTAssertLessThanOrEqual(try XCTUnwrap(transitionReceipt["requestCount"] as? Int), 1)
+        let transitionAttachment = XCTAttachment(data: transitionData, uniformTypeIdentifier: "public.json")
+        transitionAttachment.name = "appointment-rotation-transition"
+        transitionAttachment.lifetime = .keepAlways
+        add(transitionAttachment)
+        let axSample: [String: Any] = ["atMs": Date().timeIntervalSince1970 * 1000, "frame": ViewportObservation.rect(transition.frame)]
+        let axAttachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: axSample), uniformTypeIdentifier: "public.json")
+        axAttachment.name = "rotation-control-ax-frame"
+        axAttachment.lifetime = .keepAlways
+        add(axAttachment)
+        // A terminal diagnostic must not report success when UIKit rejects or omits the scene change.
+        XCTAssertTrue((transitionReceipt["error"] as? [String: Any])?.isEmpty == true, "Scene geometry request failed")
+        XCTAssertFalse((transitionReceipt["events"] as? [[String: Any]] ?? []).isEmpty, "Scene geometry event was not observed")
+        let data = Data(request.label.utf8)
+        let receipt = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(receipt["requestId"] as? String, session)
+        let requestedAt = try XCTUnwrap(receipt["requestedAtMs"] as? Double)
+        let geometry = ViewportObservation.nativeGeometry(receipt)
+        let started = try XCTUnwrap(geometry["sampleStartedAtMs"] as? Double)
+        XCTAssertGreaterThanOrEqual(requestedAt, requestAt)
+        XCTAssertGreaterThanOrEqual(started, requestedAt)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "appointment-rotation-fresh-native"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     /// The exported geometry must not carry labels or other content from the native marker.
     @MainActor
     func testViewportObservationFiltersNativeMarker() {

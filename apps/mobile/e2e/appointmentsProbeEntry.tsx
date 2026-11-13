@@ -6,6 +6,7 @@ import App from '../App';
 import { name as appName } from '../app.json';
 import ManualAppointmentScreen from '../src/medicalAppointments/ManualAppointmentScreen';
 import { openLocalAppointmentRepository } from '../src/appointments/localRepository';
+import { observeAppointmentCreates } from './observeAppointmentCreates';
 
 function AppointmentsProbeEntry() {
   const [repository, setRepository] = useState<AppointmentRepository | null>(
@@ -13,12 +14,19 @@ function AppointmentsProbeEntry() {
   );
   const [failed, setFailed] = useState(false);
   const [showAppointments, setShowAppointments] = useState(true);
+  const [createdIdentity, setCreatedIdentity] = useState('');
 
   useEffect(() => {
     let mounted = true;
     openLocalAppointmentRepository().then(
       value => {
-        if (mounted) setRepository(value);
+        if (mounted) {
+          setRepository(
+            observeAppointmentCreates(value, id => {
+              if (mounted) setCreatedIdentity(id);
+            }),
+          );
+        }
       },
       error => {
         console.error(
@@ -36,10 +44,22 @@ function AppointmentsProbeEntry() {
   if (!showAppointments) return <App />;
   if (repository) {
     return (
-      <ManualAppointmentScreen
-        onBack={() => setShowAppointments(false)}
-        repository={repository}
-      />
+      <>
+        <ManualAppointmentScreen
+          onBack={() => setShowAppointments(false)}
+          repository={repository}
+        />
+        <View pointerEvents="none" style={styles.marker}>
+          <Text
+            accessible
+            accessibilityLabel={createdIdentity}
+            style={styles.markerText}
+            testID="appointment-created-identity"
+          >
+            Appointment identity observation
+          </Text>
+        </View>
+      </>
     );
   }
 
@@ -63,6 +83,8 @@ function AppointmentsProbeEntry() {
 }
 
 const styles = StyleSheet.create({
+  marker: { position: 'absolute', left: 0, top: 0 },
+  markerText: { fontSize: 1 },
   status: {
     flex: 1,
     alignItems: 'center',
