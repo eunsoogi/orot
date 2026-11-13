@@ -5,7 +5,7 @@ test('a retained predicate reads the latest route and overlay visibility', async
   let current = true;
   const isCurrent = () => current;
   const view = await renderHook(
-    ({ source, provider }) =>
+    ({ source, provider }: { source: boolean; provider: boolean }) =>
       useConversationVisibility(isCurrent, source, provider),
     { initialProps: { source: false, provider: false } },
   );
