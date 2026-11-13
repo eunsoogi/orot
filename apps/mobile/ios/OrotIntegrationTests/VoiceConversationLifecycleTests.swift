@@ -34,10 +34,34 @@ final class VoiceConversationLifecycleTests: OrotFailFastTestCase {
             XCTAssertFalse(spoken)
             cancelled.fulfill()
         })
+        // Cancel before system submission; the queued start must not revive a stopped utterance.
         XCTAssertTrue(speech.stop())
         XCTAssertTrue(speech.stop())
         await fulfillment(of: [cancelled], timeout: 5)
         XCTAssertEqual(count, 1)
+        let resumed = expectation(description: "A new system utterance completes after immediate cancellation")
+        resumed.assertForOverFulfill = true
+        XCTAssertTrue(speech.speak("다음 테스트입니다.", language: "ko-KR", volume: 0) { spoken in
+            XCTAssertTrue(spoken)
+            resumed.fulfill()
+        })
+        await fulfillment(of: [resumed], timeout: 20)
+        XCTAssertEqual(count, 1)
+        let submittedStop = expectation(description: "Stop after submission settles before releasing playback")
+        submittedStop.assertForOverFulfill = true
+        var submittedCount = 0
+        XCTAssertTrue(speech.speak(String(repeating: "제출 후 중지입니다. ", count: 40), language: "ko-KR", volume: 0) { spoken in
+            submittedCount += 1
+            XCTAssertFalse(spoken)
+            submittedStop.fulfill()
+        })
+        // FIFO main-queue order places Stop after submission, including the pending didStart boundary.
+        DispatchQueue.main.async {
+            speech.stop()
+            speech.stop()
+        }
+        await fulfillment(of: [submittedStop], timeout: 5)
+        XCTAssertEqual(submittedCount, 1)
         try owner.release(token)
         released = true
         let next = try owner.reserve()

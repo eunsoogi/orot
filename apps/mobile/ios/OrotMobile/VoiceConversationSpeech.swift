@@ -8,6 +8,7 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unc
     private var utterance: AVSpeechUtterance?
     private var completion: ((Bool) -> Void)?
     private var stopRequested = false
+    private var submitted = false
 
     override init() {
         super.init()
@@ -24,7 +25,13 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unc
         utterance = value
         stopRequested = false
         self.completion = completion
-        synthesizer.speak(value)
+        submitted = false
+        // A same-turn Stop must cancel before AVFoundation asynchronously accepts the utterance.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, utterance === value else { return }
+            submitted = true
+            synthesizer.speak(value)
+        }
         return true
     }
 
@@ -32,9 +39,20 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unc
         dispatchPrecondition(condition: .onQueue(.main))
         guard utterance != nil else { return true }
         stopRequested = true
-        guard synthesizer.stopSpeaking(at: .immediate) else { return false }
+        // False retains the caller's audio lease until the delegate confirms cancellation.
+        // AVFoundation may briefly reject Stop after submission but before didStart.
+        guard !submitted || synthesizer.stopSpeaking(at: .immediate) else { return false }
         finish(false)
         return true
+    }
+
+    func speechSynthesizer(_: AVSpeechSynthesizer, didStart value: AVSpeechUtterance) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, utterance === value, stopRequested else { return }
+            if synthesizer.stopSpeaking(at: .immediate) {
+                finish(false)
+            }
+        }
     }
 
     func speechSynthesizer(_: AVSpeechSynthesizer, didFinish value: AVSpeechUtterance) {
@@ -55,6 +73,7 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unc
         let callback = completion
         completion = nil
         utterance = nil
+        submitted = false
         callback?(spoken)
     }
 }
