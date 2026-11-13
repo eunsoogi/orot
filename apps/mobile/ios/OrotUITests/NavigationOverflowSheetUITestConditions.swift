@@ -19,11 +19,14 @@ enum NavigationOverflowSheetUITestConditions {
 @MainActor
 extension NavigationPageActionUITestConditions {
     static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
-        let direct = UITestConditions.element(app, id)
-        let overflow = UITestConditions.element(app, "navigation-page-action-overflow")
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in direct.exists || overflow.exists }, object: nil)
+        let direct = app.buttons.matching(identifier: id).firstMatch
+        let overflow = app.buttons["navigation-page-action-overflow"]
+        // Keyboard reflow can leave a stale accessibility node after the dock moves an action into More.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            (direct.exists && direct.isHittable) || (overflow.exists && overflow.isHittable)
+        }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-        if direct.exists {
+        if direct.exists, direct.isHittable {
             return direct
         }
         XCTAssertTrue(overflow.exists && overflow.isHittable, app.debugDescription)
