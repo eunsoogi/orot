@@ -89,7 +89,6 @@ export function ConversationScreen({
     copy,
     onOpenHistory,
   );
-  const cancel = () => store.cancel(id);
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
   // App-owned sessions keep drafts and requests alive when this route is removed.
@@ -115,6 +114,7 @@ export function ConversationScreen({
       )}
       <ConversationHeaderTitle
         title={copy.title}
+        session={session}
         historyLabel={copy.sessions}
         newLabel={copy.newConversation}
         showActions={showSessionActionsInHeader}
@@ -240,7 +240,7 @@ export function ConversationScreen({
                   prepareVisitQuestions,
                 ).catch(() => {});
               }}
-              onCancel={cancel}
+              onCancel={() => store.cancel(id)}
             />
           </View>
         }

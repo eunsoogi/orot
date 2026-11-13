@@ -8,6 +8,7 @@ import {
   createAppointmentReminderRuntime,
 } from '../AppointmentReminderContext';
 import { AppointmentReminderDeliveryHost } from '../AppointmentReminderDeliveryHost';
+import { ReminderGate } from '../../assistantAppearance/GatedReminderDeliveryHost';
 import {
   appointmentReminderPort,
   consumeAppointmentReminderTarget,
@@ -38,6 +39,62 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(appointmentReminderPort.readSelection).mockResolvedValue(null);
   jest.mocked(consumeAppointmentReminderTarget).mockResolvedValue(null);
+});
+
+it('retains the exact appointment tap while appearance setup closes during confirmation', async () => {
+  const store = createAppointmentStore([appointment]);
+  const runtime = createAppointmentReminderRuntime(
+    async () => store.repository,
+  );
+  const controller = createNavigationController<AppNavigationRoute>('home');
+  const guard = deferred<boolean>();
+  const confirm = jest
+    .fn()
+    .mockReturnValueOnce(guard.promise)
+    .mockResolvedValue(true);
+  controller.registerLeaveGuard(
+    controller.getSnapshot().currentRoute.key,
+    confirm,
+  );
+  const plan = buildAppointmentReminder(
+    [appointment],
+    { appointmentId: appointment.id, leadMinutes: 60 },
+    0,
+  )!;
+  const target = { appointmentId: appointment.id, timeKey: plan.timeKey };
+  jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce(target);
+  const view = await render(
+    <AppointmentReminderProvider runtime={runtime}>
+      <ReminderGate controller={controller} ready />
+    </AppointmentReminderProvider>,
+  );
+  await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+  await view.rerender(
+    <AppointmentReminderProvider runtime={runtime}>
+      <ReminderGate controller={controller} ready={false} />
+    </AppointmentReminderProvider>,
+  );
+  await act(async () => {
+    guard.resolve(true);
+    await guard.promise;
+  });
+  await waitFor(() =>
+    expect(controller.getSnapshot().isTransitioning).toBe(false),
+  );
+  expect(controller.getSnapshot().routes).toHaveLength(1);
+  await view.rerender(
+    <AppointmentReminderProvider runtime={runtime}>
+      <ReminderGate controller={controller} ready />
+    </AppointmentReminderProvider>,
+  );
+  await waitFor(() =>
+    expect(controller.getSnapshot().currentRoute.name).toBe(
+      'appointment-preparation',
+    ),
+  );
+  const snapshot = controller.getSnapshot();
+  expect(snapshot.routes).toHaveLength(2);
+  expect(runtime.targets.get(snapshot.currentRoute.key)).toEqual(target);
 });
 
 it('retries a reminder tap after an already-pending navigation guard settles', async () => {

@@ -70,7 +70,7 @@ export function ConversationMessage({
         : 'rag-conversation-answer-body';
   const activity = message.activity ? (
     <Text
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
       style={styles.activity}
       testID={
         message.streaming
