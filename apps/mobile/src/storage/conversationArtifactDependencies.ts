@@ -8,6 +8,7 @@ import {
   isGeneratedSummarySource,
   isGeneratedConversationSource,
   isGeneratedResearchSource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 
 /** Logical tombstones fence retained results even before a physical record is removed. */
@@ -16,6 +17,7 @@ export async function assertConversationSourcesNotRemoved(
   value: ConversationArtifact,
 ) {
   for (const source of value.sources) {
+    if (isConversationPhotoSource(source)) continue;
     if (
       isGeneratedSummarySource(source) ||
       isGeneratedConversationSource(source) ||

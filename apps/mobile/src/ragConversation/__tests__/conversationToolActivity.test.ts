@@ -128,3 +128,41 @@ test('a failure with tool metadata survives without streamed prose; a late cance
   ).toEqual(['cancelled', 'failed']);
   sessions.dispose();
 });
+
+test('ignores a new tool callback from a cancelled request', async () => {
+  const f = await healthContextFixture();
+  let next = 0;
+  const storage = createConversationArtifactStorage(f.database);
+  const retention = createConversationSessionRetention({
+    openStorage: async () => storage,
+    createId: () => `id-${++next}`,
+    now: () => '2026-11-06T00:00:00.000Z',
+  });
+  const sessions = createConversationSessions({ retention });
+  try {
+    sessions.setDraft(1, 'first');
+    let observer: import('../service').RagConversationObserver | undefined;
+    let finish!: () => void;
+    let started!: () => void;
+    const ready = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    const send = sessions.send(1, async (_q, _h, _signal, value) => {
+      observer = value;
+      started();
+      await new Promise<void>(resolve => {
+        finish = resolve;
+      });
+      return { status: 'failure', kind: 'cancelled' };
+    });
+    await ready;
+    sessions.cancel(1);
+    observer!.onToolEvent!({ ...event, callId: 'late' });
+    finish();
+    await send;
+    expect(await storage.readToolTurns('id-1')).toEqual([]);
+  } finally {
+    sessions.dispose();
+    f.close();
+  }
+});

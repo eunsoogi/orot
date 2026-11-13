@@ -22,6 +22,8 @@ export function getRagConversationCopy() {
     progressEvidenceFailed: t('ragConversation.progressEvidenceFailed'),
     progressEvidenceCancelled: t('ragConversation.progressEvidenceCancelled'),
     progressCancelled: t('ragConversation.progressCancelled'),
+    progressInterrupted: t('ragConversation.progressInterrupted'),
+    previewSaveFailed: t('ragConversation.previewSaveFailed'),
     noEvidence: t('ragConversation.noEvidence'),
     insufficient: t('ragConversation.insufficient'),
     unavailable: t('ragConversation.unavailable'),

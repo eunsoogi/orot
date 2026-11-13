@@ -18,6 +18,7 @@ export function createConversationSessionRetention(input: {
   openStorage: () => Promise<Storage>;
   createId: () => string;
   now: () => string;
+  retirePhoto?: (sourceId: string) => Promise<void>;
   captureToolSources?: (
     event: ConversationToolEvent,
     sessionId: string,
@@ -215,7 +216,13 @@ export function createConversationSessionRetention(input: {
     async finalize(handle: { id: string; version: number | null } | null) {
       if (handle?.version == null) return;
       const storage = await input.openStorage();
-      await storage.finalizeHiddenSession(handle.id, handle.version);
+      const sources = await storage.finalizeHiddenSession(
+        handle.id,
+        handle.version,
+      );
+      await Promise.allSettled(
+        sources.map(source => input.retirePhoto?.(source)),
+      );
     },
   };
 }

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
+import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
@@ -27,6 +28,8 @@ import {
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
+import { useConversationPhotoControls } from './useConversationPhotoControls';
+import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
 import {
   ConversationTaskHeader,
@@ -76,6 +79,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const photo = useConversationPhotoControls(store, id);
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
@@ -121,17 +125,11 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      {session.entryPrompt ? (
-        <Button
-          title={t('conversationIntent.useSuggestion', {
-            question: session.entryPrompt,
-          })}
-          testID="conversation-intent-use-suggestion"
-          disabled={Boolean(draft) || busy}
-          variant="secondary"
-          onPress={() => store.setDraft(id, session.entryPrompt!)}
-        />
-      ) : null}
+      <ConversationEntryAction
+        store={store}
+        session={session}
+        prepareVisitQuestions={prepareVisitQuestions}
+      />
       <ConversationTaskHeader
         store={store}
         session={session}
@@ -154,6 +152,7 @@ export function ConversationScreen({
       style={styles.screen}
       testID="rag-conversation-screen"
     >
+      <ConversationPhotoConsentSurface controller={store.photoConsent} />
       <AdaptiveColumns
         routeKey={navigationRouteKey}
         testID="rag-conversation-columns"
@@ -196,30 +195,31 @@ export function ConversationScreen({
               }
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
+              beforeMessages={
+                <ManualVisitTargetPanels
+                  store={store}
+                  sessionId={id}
+                  durableSessionId={toolSourceSessionId}
+                  discover={discoverManualVisits}
+                  messages={messages}
+                  session={session}
+                  compact={composerLayout.compact}
+                  disclaimer={copy.disclaimer}
+                />
+              }
               footer={
-                <>
-                  <ManualVisitTargetPanels
-                    store={store}
-                    sessionId={id}
-                    durableSessionId={toolSourceSessionId}
-                    discover={discoverManualVisits}
-                    messages={messages}
-                    session={session}
-                    compact={composerLayout.compact}
-                    disclaimer={copy.disclaimer}
-                  />
-                  <ConversationStoredTaskCards
-                    store={store}
-                    session={session}
-                    onOpenSource={onOpenSource}
-                    routeKey={navigationRouteKey}
-                    durableSessionId={toolSourceSessionId}
-                    renderStoredReportTask={renderStoredReportTask}
-                  />
-                </>
+                <ConversationStoredTaskCards
+                  store={store}
+                  session={session}
+                  onOpenSource={onOpenSource}
+                  routeKey={navigationRouteKey}
+                  durableSessionId={toolSourceSessionId}
+                  renderStoredReportTask={renderStoredReportTask}
+                />
               }
             />
             <ConversationComposer
+              photo={photo}
               value={draft}
               busy={busy}
               disabled={

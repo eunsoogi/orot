@@ -25,7 +25,8 @@ export async function listConversationSessionPage(
      JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
      JOIN (SELECT session_id, created_at FROM conversation_artifacts
        UNION ALL SELECT session_id, created_at FROM conversation_tool_events
-       UNION ALL SELECT session_id, created_at FROM conversation_task_cards) a ON a.session_id = s.id
+       UNION ALL SELECT session_id, created_at FROM conversation_task_cards
+       UNION ALL SELECT r.session_id, r.created_at FROM conversation_requests r JOIN conversation_artifact_sessions rs ON rs.id = r.session_id AND rs.version = r.session_version WHERE r.status IN ('active', 'interrupted')) a ON a.session_id = s.id
      WHERE s.hidden = 0 AND typeof(s.id) = 'text' AND length(s.id) > 0
        AND s.id NOT LIKE ?
        AND typeof(s.version) = 'integer' AND s.version BETWEEN 0 AND 9007199254740991

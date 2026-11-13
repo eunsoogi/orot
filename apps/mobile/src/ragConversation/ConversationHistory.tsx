@@ -10,7 +10,7 @@ import type { DisplayMessage } from './ConversationMessage';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 
-/** Owns the transcript viewport and keeps each answer's citations beside it. */
+/** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
   messages,
   pendingMessage,
@@ -19,6 +19,7 @@ export function ConversationHistory({
   onLinkError,
   bottomInset = 0,
   header,
+  beforeMessages,
   footer,
   compact = false,
   unsavedCount = 0,
@@ -41,6 +42,7 @@ export function ConversationHistory({
   readonly onLinkError: () => void;
   readonly bottomInset?: number;
   readonly header?: ReactNode;
+  readonly beforeMessages?: ReactNode;
   readonly footer?: ReactNode;
   readonly compact?: boolean;
   readonly unsavedCount?: number;
@@ -186,6 +188,7 @@ export function ConversationHistory({
       testID="rag-conversation-history"
     >
       {header}
+      {beforeMessages}
       <View style={styles.container}>
         {visibleMessages.map(message => (
           <ConversationMessage

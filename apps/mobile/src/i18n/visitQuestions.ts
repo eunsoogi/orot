@@ -75,6 +75,7 @@ export const visitQuestionsKo = {
   'visitQuestions.conversation.save.failed':
     '질문을 저장하지 못했어요. 예약과 근거를 확인하고 다시 시도해 주세요.',
   'visitQuestions.conversation.actions.regenerate': '질문 다시 만들기',
+  'visitQuestions.conversation.actions.prepare': '진료 질문 준비하기',
   'visitQuestions.conversation.regenerate.pendingMessage':
     '작성 중인 메시지를 보내거나 지운 뒤 질문을 다시 만들어 주세요.',
   'visitQuestions.conversation.answer.ready':
