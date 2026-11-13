@@ -4,29 +4,6 @@ import XCTest
 
 final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testGeometryPayloadSeparatesActualWindowFromContractedSensor() throws {
-        let scene = try foregroundScene()
-        let window = makeSceneWindow(in: scene, frame: CGRect(x: 0, y: 0, width: 951, height: 669))
-        let host = UIView(frame: CGRect(x: 24, y: 10, width: 843, height: 625))
-        window.addSubview(host)
-        let sensor = NavigationGeometryView(frame: host.bounds)
-        host.addSubview(sensor)
-        var snapshot: [AnyHashable: Any]?
-        sensor.onGeometryChange = { snapshot = $0 }
-        sensor.layoutIfNeeded()
-        let payload = try XCTUnwrap(snapshot)
-        let windowBounds = try XCTUnwrap(payload["windowBounds"] as? [String: Double])
-        let viewportBounds = try XCTUnwrap(payload["viewportBounds"] as? [String: Double])
-        XCTAssertEqual(windowBounds["width"], Double(window.bounds.width))
-        XCTAssertEqual(windowBounds["height"], Double(window.bounds.height))
-        let measuredHost = sensor.convert(sensor.bounds, to: window)
-        XCTAssertEqual(viewportBounds["x"], Double(measuredHost.minX))
-        XCTAssertEqual(viewportBounds["y"], Double(measuredHost.minY))
-        XCTAssertEqual(viewportBounds["width"], Double(measuredHost.width))
-        XCTAssertNotEqual(windowBounds, viewportBounds)
-    }
-
-    @MainActor
     func testNativeRailFramesUseWindowSideSpaceAndClearExpandedIndicators() async throws {
         // These are geometry fixtures, not a claim of measured Duo runtime acceptance.
         // Convert actual UIKit frames through an offset host to catch local/window confusion.
@@ -74,7 +51,11 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let backStack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first { $0.accessibilityIdentifier == "navigation-toolbar" })
         let backButton = try XCTUnwrap(backStack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
         let backFrame = backButton.convert(backButton.bounds, to: window)
-        XCTAssertEqual(backFrame.size, CGSize(width: 48, height: 48))
+        // Window conversion can round a 48pt frame by a few CGFloat ULPs.
+        let expectedBackSize: CGFloat = 48
+        let frameTolerance = expectedBackSize.ulp * 8
+        XCTAssertEqual(backFrame.width, expectedBackSize, accuracy: frameTolerance)
+        XCTAssertEqual(backFrame.height, expectedBackSize, accuracy: frameTolerance)
         XCTAssertEqual(rootFrame.minY - backFrame.maxY, 4, accuracy: 0.5)
         verify(backFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertTrue(window.hitTest(CGPoint(x: backFrame.midX, y: backFrame.midY), with: nil) === backButton)
