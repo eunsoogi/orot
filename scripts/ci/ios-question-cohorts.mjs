@@ -17,6 +17,9 @@ export const questionCohorts = {
       'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
       'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
       'ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     ],
   },
   'questions-accessibility': {
