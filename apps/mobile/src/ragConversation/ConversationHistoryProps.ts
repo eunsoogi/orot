@@ -23,6 +23,7 @@ export interface ConversationHistoryProps {
   readonly onRetrySave?: () => void;
   readonly restoreFailed?: boolean;
   readonly onRetryRestore?: () => void;
+  readonly sessionId?: number;
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;

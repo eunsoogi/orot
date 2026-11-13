@@ -160,6 +160,7 @@ export function ConversationScreen({
           >
             <ConversationHistory
               replyFocus={focus}
+              sessionId={id}
               requestSessionId={id}
               requestActivity={session.requestActivity}
               compact={composerLayout.compact}

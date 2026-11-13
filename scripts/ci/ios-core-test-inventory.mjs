@@ -21,6 +21,7 @@ export const coreTests = [
   'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testReconcileRefreshesOlderPendingTitleWithoutChangingReminder',
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
   'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
   'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',

@@ -88,8 +88,8 @@ export function createConversationSessionRequests(
       id: number,
       onSend: ConversationSender,
       explicitQuestion?: string,
-      onOwner?: (cancel: () => boolean) => void,
       hasPhoto = false,
+      onOwner?: (cancel: () => boolean) => void,
     ) {
       const session = find(id);
       const start = prepareConversationRequest(

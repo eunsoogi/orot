@@ -21,7 +21,6 @@ export function conversationDispatch(input: {
             id,
             sender,
             undefined,
-            undefined,
             input.photoDrafts.get(id).status !== 'empty',
           ),
     sendPrompt: (id: number, prompt: string, sender: ConversationSender) =>
@@ -33,7 +32,7 @@ export function conversationDispatch(input: {
         retention: input.disposed() ? undefined : input.retention,
         sender,
         start: (ownedSender, registerOwner) =>
-          input.requests.send(id, ownedSender, prompt, registerOwner),
+          input.requests.send(id, ownedSender, prompt, false, registerOwner),
       }),
   };
 }

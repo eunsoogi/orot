@@ -13,7 +13,7 @@ const page = (
   <ConversationHistory
     messages={messages}
     pendingMessage={pendingMessage}
-    requestSessionId={sessionId}
+    sessionId={sessionId}
     error=""
     onOpenSource={jest.fn()}
     onLinkError={jest.fn()}

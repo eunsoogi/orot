@@ -28,6 +28,7 @@ export function ConversationHistory({
   onRetrySave,
   restoreFailed = false,
   onRetryRestore,
+  sessionId,
   toolSourceSessionId,
   resolveToolSource,
   renderVisitQuestions,
@@ -46,12 +47,6 @@ export function ConversationHistory({
     offset: number;
   } | null>(null);
   const expectedOffset = useRef<number | null>(null);
-  useConversationHistoryUserTurnFollow(
-    requestSessionId ?? null,
-    messages,
-    followsBottom,
-    expectedOffset,
-  );
   const replyScroll = useReplyScroll({
     history: historyView,
     focus: replyFocus,
@@ -63,6 +58,12 @@ export function ConversationHistory({
     pendingMessage,
     requestSessionId,
     requestActivity,
+  );
+  useConversationHistoryUserTurnFollow(
+    sessionId ?? null,
+    messages,
+    followsBottom,
+    expectedOffset,
   );
   const followLatest = () => {
     if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
