@@ -17,9 +17,8 @@ import { createDailyReminderDrain } from './dailyReminderDrain';
 import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
 import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
 import { createReminderRouteCleanups } from './reminderRouteCleanups';
-import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
 import type { ReplyDeliverySettings } from '../replyNotifications/replyDeliverySettings';
-import { observeReplyDelivery } from '../replyNotifications/observeReplyDelivery';
+import { useReplyDeliveryFromHost } from '../replyNotifications/observeReplyFromHost';
 import {
   showDailyReminderUnavailable,
   showReminderUnavailable,
@@ -32,16 +31,14 @@ import {
 } from './nativeReminderBridge';
 
 /** One inbox drain lives outside retained navigation scenes. */
-export function AppointmentReminderDeliveryHost({
-  controller,
-  retention,
-  loadLocalData,
-  canEnterReply,
-}: {
-  readonly controller: NavigationController<AppNavigationRoute>;
-} & ReplyDeliverySettings) {
+export function AppointmentReminderDeliveryHost(
+  props: {
+    readonly controller: NavigationController<AppNavigationRoute>;
+  } & ReplyDeliverySettings,
+) {
+  const { controller } = props;
   const runtime = useAppointmentReminderRuntime();
-  const sessions = useConversationSessions();
+  useReplyDeliveryFromHost(props);
   useEffect(() => {
     if (!runtime) return;
     let retryWhenNavigationAvailable = false;
@@ -142,15 +139,6 @@ export function AppointmentReminderDeliveryHost({
       controller,
       dismiss: destination.dismiss,
     });
-    const stopReply = observeReplyDelivery({
-      controller,
-      sessions,
-      retention,
-      loadLocalData,
-      confirm: navigationDecisions.conversation,
-      canEnter: () =>
-        AppState.currentState === 'active' && canEnterReply?.() === true,
-    });
     const drainConversation = () => {
       conversationQueue = conversationQueue
         .then(async () => {
@@ -241,8 +229,7 @@ export function AppointmentReminderDeliveryHost({
       unsubscribe();
       subscription.remove();
       navigation();
-      stopReply();
     };
-  }, [controller, runtime, sessions, retention, loadLocalData, canEnterReply]);
+  }, [controller, runtime]);
   return null;
 }

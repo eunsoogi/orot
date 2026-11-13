@@ -10,6 +10,7 @@ import { nativeReplyNotifications } from './nativeReplyNotifications';
 import { readCommittedReply } from './readCommittedReply';
 import { createReplyDestination } from './replyDestination';
 import { createReplyOpen } from './replyOpen';
+import type { ReplyEntryExecutor } from './replyDeliverySettings';
 
 /** Reuse the existing reminder wake signal and navigation decision queue for reply taps. */
 export function observeReplyDelivery(input: {
@@ -21,8 +22,10 @@ export function observeReplyDelivery(input: {
     routeKey: string,
   ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
   canEnter(): boolean;
+  execute?: ReplyEntryExecutor;
 }) {
-  if (!input.retention) return () => {};
+  if (!input.retention || !input.execute) return () => {};
+  const execute = input.execute;
   const open = createReplyOpen({
     ...input,
     async read(identity) {
@@ -56,9 +59,12 @@ export function observeReplyDelivery(input: {
     if (!active) return;
     queue = queue
       .then(async () => {
-        const result = await deliver();
-        pending = result === 'deferred';
-        if (result === 'opened' || result === 'missing') drain();
+        await execute(async () => {
+          if (!active) return;
+          const result = await deliver();
+          pending = result === 'deferred';
+          if (result === 'opened' || result === 'missing') drain();
+        });
       })
       .catch(() => {
         pending = true;
