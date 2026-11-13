@@ -14,8 +14,8 @@ export function conversationStreamObservers(
       ? undefined
       : observer?.onTaskStreamEvent,
     beforeTaskStream:
-      hasRetainedInputs ||
-      (!observer?.beforeTaskStream &&
+      !observer?.beforeTaskStream &&
+      (hasRetainedInputs ||
         !(observer?.onPreviewBoundary && observer.onPreviewPrepared))
         ? undefined
         : async (
@@ -25,6 +25,7 @@ export function conversationStreamObservers(
             signal: AbortSignal,
           ) => {
             await observer?.beforeTaskStream?.(input, signal);
+            if (hasRetainedInputs) return;
             if (!observer?.onPreviewBoundary || !observer.onPreviewPrepared)
               return;
             const boundary = await observer.onPreviewBoundary();
@@ -77,8 +78,6 @@ export function conversationStreamObservers(
               sources: captured.sources,
             });
           },
-    beforeTaskInputChange: hasRetainedInputs
-      ? undefined
-      : observer?.beforeTaskInputChange,
+    beforeTaskInputChange: observer?.beforeTaskInputChange,
   };
 }

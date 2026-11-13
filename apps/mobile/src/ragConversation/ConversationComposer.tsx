@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   TextInput,
   View,
@@ -10,6 +11,8 @@ import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { ConversationGlassAction } from './ConversationGlassAction';
+import { ConversationPhotoAttachment } from './ConversationPhotoAttachment';
+import type { PhotoDraftFailure } from './conversationPhotoTypes';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
@@ -24,6 +27,8 @@ export function ConversationComposer({
   compact = false,
   maximumInputHeight,
   disabled = false,
+  photo,
+  trailingAction,
 }: {
   readonly value: string;
   readonly busy: boolean;
@@ -34,6 +39,22 @@ export function ConversationComposer({
   readonly compact?: boolean;
   readonly maximumInputHeight?: number;
   readonly disabled?: boolean;
+  /** A separately owned action may occupy the trailing composer slot. */
+  readonly trailingAction?: ReactNode;
+  readonly photo?: {
+    readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
+    readonly previewData?: string;
+    readonly hasPhoto?: boolean;
+    readonly errorReason?: PhotoDraftFailure;
+    readonly cleanupPending?: boolean;
+    readonly pickerDisabled?: boolean;
+    readonly onRetryCleanup?: () => void;
+    /** The session owner has bound the selected attachment to its actual sender. */
+    readonly deliveryReady?: boolean;
+    readonly deliveryMode?: 'ocr';
+    readonly onSelect: () => void;
+    readonly onRemove: () => void;
+  };
 }) {
   const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
   const copy = getRagConversationCopy();
@@ -48,6 +69,72 @@ export function ConversationComposer({
   );
   const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
   useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
+  const field = (
+    <View style={styles.composerField} testID="rag-conversation-composer-field">
+      <ComposerGlassBackground testID="rag-conversation-composer-glass" />
+      <Text
+        pointerEvents="none"
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[styles.input, styles.placeholderMeasurement]}
+        onLayout={event =>
+          setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
+        }
+        testID="rag-conversation-placeholder-measurement"
+      >
+        {copy.placeholder}
+      </Text>
+      <TextInput
+        accessibilityLabel={copy.placeholder}
+        // Keep the keyboard available so users can draft while a response runs.
+        editable
+        maxLength={1000}
+        multiline
+        scrollEnabled
+        onChangeText={onChangeText}
+        placeholder={copy.placeholder}
+        placeholderTextColor={appColors.secondary}
+        // A cleared multiline native editor can retain its previous intrinsic height.
+        // UITextView can retain the previous frame in an empty content-size event.
+        // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
+        // shrinks independently. Typed content remains intrinsic for Fabric layout.
+        style={[
+          styles.input,
+          { minHeight: minimumHeight, maxHeight: maximumHeight },
+          !value && {
+            height: Math.min(
+              maximumHeight,
+              Math.max(minimumHeight, placeholderHeight),
+            ),
+          },
+        ]}
+        testID="rag-conversation-input"
+        value={value}
+      />
+      <ConversationGlassAction
+        busy={busy}
+        label={busy ? copy.cancel : copy.send}
+        // A pending or failed attachment must not turn an intended photo send into text-only delivery.
+        disabled={
+          !busy &&
+          (disabled ||
+            (!value.trim() &&
+              !(
+                photo?.status === 'ready' &&
+                photo.deliveryReady &&
+                photo.deliveryMode === 'ocr'
+              )) ||
+            photo?.status === 'preparing' ||
+            photo?.status === 'transferring' ||
+            photo?.status === 'error' ||
+            (photo?.status === 'ready' &&
+              (!photo.deliveryReady || photo.deliveryMode !== 'ocr')))
+        }
+        onPress={busy ? onCancel : onSend}
+      />
+    </View>
+  );
   return (
     <View
       style={[
@@ -59,58 +146,14 @@ export function ConversationComposer({
       onLayout={onLayout}
     >
       <View style={styles.composer}>
-        <View
-          style={styles.composerField}
-          testID="rag-conversation-composer-field"
-        >
-          <ComposerGlassBackground testID="rag-conversation-composer-glass" />
-          <Text
-            pointerEvents="none"
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={[styles.input, styles.placeholderMeasurement]}
-            onLayout={event =>
-              setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
-            }
-            testID="rag-conversation-placeholder-measurement"
-          >
-            {copy.placeholder}
-          </Text>
-          <TextInput
-            accessibilityLabel={copy.placeholder}
-            // Keep the keyboard available so users can draft while a response runs.
-            editable
-            maxLength={1000}
-            multiline
-            scrollEnabled
-            onChangeText={onChangeText}
-            placeholder={copy.placeholder}
-            placeholderTextColor={appColors.secondary}
-            // A cleared multiline native editor can retain its previous intrinsic height.
-            // UITextView can retain the previous frame in an empty content-size event.
-            // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
-            // shrinks independently. Typed content remains intrinsic for Fabric layout.
-            style={[
-              styles.input,
-              { minHeight: minimumHeight, maxHeight: maximumHeight },
-              !value && {
-                height: Math.min(
-                  maximumHeight,
-                  Math.max(minimumHeight, placeholderHeight),
-                ),
-              },
-            ]}
-            testID="rag-conversation-input"
-            value={value}
-          />
-          <ConversationGlassAction
-            busy={busy}
-            label={busy ? copy.cancel : copy.send}
-            disabled={!busy && (disabled || !value.trim())}
-            onPress={busy ? onCancel : onSend}
-          />
-        </View>
+        {photo ? (
+          <ConversationPhotoAttachment {...photo} disabled={disabled || busy}>
+            {field}
+          </ConversationPhotoAttachment>
+        ) : (
+          field
+        )}
+        {trailingAction}
       </View>
       {!compact ? (
         <Text style={[styles.disclaimer, styles.composerDisclaimer]}>

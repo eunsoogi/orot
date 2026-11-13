@@ -14,9 +14,12 @@ export async function finishRagConversation(input: {
   signal: AbortSignal;
   continuation: boolean;
   reportIsCurrent?: () => Promise<boolean>;
+  skipPublicSearchNotice?: boolean;
 }): Promise<RagConversationOutcome> {
   const annotated =
-    input.outcome.status === 'answer' && input.publicSearch.status !== 'success'
+    input.outcome.status === 'answer' &&
+    !input.skipPublicSearchNotice &&
+    input.publicSearch.status !== 'success'
       ? {
           ...input.outcome,
           answer: `${input.outcome.answer}\n\n${publicSearchNotice(input.publicSearch.status)}`,

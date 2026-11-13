@@ -106,6 +106,7 @@ export function useConversationEntryIntent(
       context.dailyReport ||
       (request &&
         (active.draft ||
+          store.photoDrafts.get(active.id).status !== 'empty' ||
           active.messages.length ||
           active.busy ||
           changesOwnedEntry))

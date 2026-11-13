@@ -27,11 +27,16 @@ export function createConversationRequestLifetime(input: {
       controller: AbortController,
       turn: Turn,
       question: string,
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
     ) {
       const entry: Entry = { controller, turn };
       entries.set(id, entry);
       owners.set(controller, entry);
-      entry.start = turn.startRequest(question, controller.signal);
+      entry.start = turn.startRequest(
+        question,
+        controller.signal,
+        submittedInput,
+      );
       await entry.start;
       if (controller.signal.aborted) return;
       if (input.execution) {

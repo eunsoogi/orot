@@ -4,8 +4,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, AppState } from 'react-native';
 import App from '../App';
+import * as replyFocusModule from '../src/replyNotifications/replyFocus';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -23,6 +24,27 @@ jest.mock(
 );
 
 afterEach(() => jest.restoreAllMocks());
+
+test('the actual App passes live route and overlay visibility to reply focus', async () => {
+  Object.defineProperty(AppState, 'currentState', {
+    configurable: true,
+    value: 'active',
+  });
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  const hook = jest.spyOn(replyFocusModule, 'useReplyFocusForSession');
+  await render(<App />);
+  await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
+  await waitFor(() => expect(hook).toHaveBeenCalled());
+  const visible = hook.mock.calls.at(-1)?.[1];
+  expect(visible?.()).toBe(true);
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(visible?.()).toBe(false);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await waitFor(() => expect(visible?.()).toBe(true));
+});
 
 test('opens conversation immediately and returns from provider and history without losing its draft', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.

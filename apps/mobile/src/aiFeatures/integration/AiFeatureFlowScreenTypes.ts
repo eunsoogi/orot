@@ -40,6 +40,7 @@ export interface VisitQuestionsRouteState {
 }
 
 export interface AiFeatureFlowScreenProps {
+  readonly isEntryCurrent?: () => boolean;
   readonly articleOpenError?: boolean;
   readonly onOpenSavedAnalysis?: () => void;
   readonly onOpenSavedVisitQuestions?: () => void;

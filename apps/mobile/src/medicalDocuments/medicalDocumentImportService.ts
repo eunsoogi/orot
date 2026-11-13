@@ -51,6 +51,7 @@ export interface MedicalDocumentImportService {
 
 export interface MedicalDocumentImportDependencies {
   readonly loadRepository?: () => Promise<RecordRepository>;
+  readonly retainedConversationSourceIds?: () => Promise<readonly string[]>;
   readonly fileDeletion?: MedicalDocumentFileDeletion;
   readonly pick?: typeof medicalDocumentNativeBridge.pick;
   readonly now?: () => string;
@@ -61,6 +62,19 @@ async function loadRepository(): Promise<RecordRepository> {
   return openLocalStorage();
 }
 
+async function retainedConversationSourceIds(): Promise<readonly string[]> {
+  const [
+    { openLocalAgentMemoryDatabase },
+    { createConversationArtifactStorage },
+  ] = await Promise.all([
+    import('../storage/secureDatabase'),
+    import('../storage/conversationArtifactStorage'),
+  ]);
+  return createConversationArtifactStorage(
+    await openLocalAgentMemoryDatabase(),
+  ).retainedRequestSourceIds();
+}
+
 /** Commits source and excerpt rows together, while native cleanup owns any uncommitted original. */
 export function createMedicalDocumentImportService(
   dependencies: MedicalDocumentImportDependencies = {},
@@ -69,6 +83,8 @@ export function createMedicalDocumentImportService(
   const files = dependencies.fileDeletion ?? medicalDocumentFileDeletion;
   const pick = dependencies.pick ?? medicalDocumentNativeBridge.pick;
   const getTimestamp = dependencies.now ?? (() => new Date().toISOString());
+  const retainedConversationIds =
+    dependencies.retainedConversationSourceIds ?? retainedConversationSourceIds;
   // Only a transaction attempt or an already-persisted identity can make cancellation ambiguous.
   const possiblyCommitted = new Set<string>();
 
@@ -107,7 +123,12 @@ export function createMedicalDocumentImportService(
       const documentIds = sources
         .filter(source => source.sourceKind === 'medical_document')
         .map(source => source.id);
-      await files.reconcile(documentIds, generation);
+      // Request-owned originals include hidden sessions that can still be restored.
+      const conversationIds = await retainedConversationIds();
+      await files.reconcile(
+        [...new Set([...documentIds, ...conversationIds])],
+        generation,
+      );
       if (!canUseMedicalDocumentGeneration(generation)) {
         throw new MedicalDocumentImportError('IMPORT_FAILED');
       }

@@ -22,6 +22,7 @@ import type { AiFeatureFlowScreenProps } from './AiFeatureFlowScreenTypes';
 
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
+  isEntryCurrent,
   onOpenSavedAnalysis,
   onOpenSavedVisitQuestions,
   onOpenSummaryHistory,
@@ -60,6 +61,7 @@ export function AiFeatureFlowScreen({
   // Navigation prepares a request; only an explicit Send can start inference or consent.
   const conversation = (
     <ConversationScreen
+      isEntryCurrent={isEntryCurrent}
       entryContext={{
         intent: intent ?? 'conversation',
         entryKey: navigationRouteKey ?? route,
@@ -69,6 +71,10 @@ export function AiFeatureFlowScreen({
         ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
+      voiceSelection={{
+        revision: selectedAiRevision,
+        resolve: resolveSelectedAi,
+      }}
       renderStoredReportTask={(card, onChat, onTaskIdentity, onTaskResult) => (
         <ConversationReportTask
           card={card}

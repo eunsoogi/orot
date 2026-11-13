@@ -5,6 +5,7 @@ import type {
 import type { ToolLineage } from '../../storage/conversationToolLineage';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
+import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
 import { captureConversationSources } from './captureConversationSources';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 
@@ -59,6 +60,8 @@ export async function captureConversationToolSources(
     );
     const dependency = captured.sources[0];
     if (!dependency) throw new Error('Tool source is unavailable.');
+    if (isConversationPhotoSource(dependency))
+      throw new Error('Photo tool sources are unsupported.');
     // Resolve the private filter to a data-owned identity; never serialize its text.
     if (
       isPeriodSummarySource(dependency) &&

@@ -88,9 +88,11 @@ test('full integration execution preserves profile observations and every regist
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   // Current main includes conversation retention and visit preparation in the full schedule.
-  assert.equal(scheduled.length, 230);
+  // Nine host regressions run outside iOS; seven picker journeys still repeat across cohorts.
+  // Visit preparation adds one native accessibility fixture to the full schedule.
+  assert.equal(scheduled.length, 241);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 223);
+  assert.equal(identifiers.size, 234);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

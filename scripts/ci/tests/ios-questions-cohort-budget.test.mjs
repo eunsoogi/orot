@@ -16,6 +16,9 @@ const composer =
 test('Conversation methods have two independent 20-minute jobs in Full and selected graphs', () => {
   const expected = iosTestInventory('fixtures', 'questions').filter(
     (id) =>
+      id.includes('/AssistantAppearanceUITests/') ||
+      id.includes('/AssistantReplyEntryUITests/') ||
+      id.includes('/ReplyFocusGeometryUITests/') ||
       id.includes('/KeyboardSafeAreaUITests/') ||
       id.includes('/ConversationComposerDockUITests/') ||
       id.includes('/ConversationToolEventsUITests/') ||
@@ -23,7 +26,7 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
       id.includes('/ConversationHealthSummaryUITests/') ||
       id.includes('/ConversationVisitPreparationUITests/'),
   );
-  assert.equal(expected.length, 15);
+  assert.equal(expected.length, 18);
   const full = iosTestExecutionPlan();
   assert.equal(full.length, 28);
   const selected = iosTestExecutionPlan(cohorts);
@@ -43,12 +46,15 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     return tasks[0].identifiers;
   });
   assert.deepEqual(identifiers.slice().sort(), expected.slice().sort());
-  assert.equal(new Set(identifiers).size, 15);
+  assert.equal(new Set(identifiers).size, 18);
   // The conversation journeys share their existing budget; no method is cut into phases.
   assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [
     composer,
     dock,
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+    'OrotUITests/AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
+    'OrotUITests/AssistantReplyEntryUITests/testSavedReplyWaitsForAppearanceAndOpensAfterSave',
+    'OrotUITests/ReplyFocusGeometryUITests/testSavedReplyAndNewerGenerationRevealWithinRealViewport',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
     'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
@@ -60,8 +66,8 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 223);
-  assert.equal(new Set(actual).size, 223);
+  assert.equal(actual.length, 234);
+  assert.equal(new Set(actual).size, 234);
 
   const jobs = cohortJobs(workflow('.github/workflows/e2e-test.yml').jobs);
   for (const cohort of cohorts) {
@@ -116,6 +122,6 @@ test('Summary and Literature own separate complete methods and hosted budgets', 
   const all = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(all.length, 223);
-  assert.equal(new Set(all).size, 223);
+  assert.equal(all.length, 234);
+  assert.equal(new Set(all).size, 234);
 });

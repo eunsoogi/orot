@@ -1,16 +1,11 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEntryAction } from './ConversationEntryAction';
@@ -18,9 +13,8 @@ import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
-import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useConversationSessionActions } from './useConversationSessionActions';
-import { conversationComposerLayout } from './conversationComposerLayout';
+import { useConversationScreenLayout } from './useConversationScreenLayout';
 import {
   useConversationEntryIntent,
   conversationEntryForSession,
@@ -28,6 +22,8 @@ import {
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
+import { useConversationScreenControls } from './useConversationScreenControls';
+import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
 import {
   ConversationTaskHeader,
@@ -36,9 +32,11 @@ import {
 
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
+  isEntryCurrent,
   entryContext,
   navigationRouteKey,
   providerSelection,
+  voiceSelection,
   renderReportTask,
   renderSavedReport,
   renderStoredReportTask,
@@ -54,29 +52,29 @@ export function ConversationScreen({
   discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
-  const [contentHeight, setContentHeight] = useState(0);
-  const { fontScale } = useWindowDimensions();
-  const occlusion = useNavigationOcclusion();
-  const composerLayout = conversationComposerLayout(
-    contentHeight,
-    occlusion.scrollContentInsets.bottom,
-    fontScale,
-  );
+  const { setContentHeight, composerLayout } = useConversationScreenLayout();
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const hasReportTask = Boolean(renderReportTask);
   const reportOwner = useMemo(
     () =>
-      hasReportTask && navigationRouteKey
+      renderReportTask && navigationRouteKey
         ? store.reportTaskOwner(navigationRouteKey)
         : null,
-    [store, hasReportTask, navigationRouteKey],
+    [store, renderReportTask, navigationRouteKey],
   );
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const { photo, focus, voice } = useConversationScreenControls(
+    store,
+    id,
+    isEntryCurrent,
+    voiceSelection,
+    busy,
+    onSend,
+  );
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
@@ -86,7 +84,6 @@ export function ConversationScreen({
     copy,
     onOpenHistory,
   );
-  const cancel = () => store.cancel(id);
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
   // App-owned sessions keep drafts and requests alive when this route is removed.
@@ -112,6 +109,7 @@ export function ConversationScreen({
       )}
       <ConversationHeaderTitle
         title={copy.title}
+        session={session}
         historyLabel={copy.sessions}
         newLabel={copy.newConversation}
         showActions={showSessionActionsInHeader}
@@ -149,6 +147,7 @@ export function ConversationScreen({
       style={styles.screen}
       testID="rag-conversation-screen"
     >
+      <ConversationPhotoConsentSurface controller={store.photoConsent} />
       <AdaptiveColumns
         routeKey={navigationRouteKey}
         testID="rag-conversation-columns"
@@ -160,7 +159,10 @@ export function ConversationScreen({
             }
           >
             <ConversationHistory
+              replyFocus={focus}
               sessionId={id}
+              requestSessionId={id}
+              requestActivity={session.requestActivity}
               compact={composerLayout.compact}
               header={header}
               messages={messages}
@@ -216,6 +218,8 @@ export function ConversationScreen({
               }
             />
             <ConversationComposer
+              trailingAction={voice}
+              photo={photo}
               value={draft}
               busy={busy}
               disabled={
@@ -236,7 +240,7 @@ export function ConversationScreen({
                   prepareVisitQuestions,
                 ).catch(() => {});
               }}
-              onCancel={cancel}
+              onCancel={() => store.cancel(id)}
             />
           </View>
         }

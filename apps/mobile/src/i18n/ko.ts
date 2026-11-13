@@ -15,9 +15,13 @@ import { homeOverviewKo } from './homeOverview';
 import { appointmentActionsKo } from './appointmentActionsKo';
 import { medicalDocumentSaveErrorsKo } from './medicalDocumentSaveErrors';
 import { chartsKo } from './charts';
+import { assistantAppearanceKo } from './assistantAppearance';
+import { replyNotificationKo } from './replyNotificationKo';
 
 export const ko = {
+  ...assistantAppearanceKo,
   ...chartsKo,
+  ...replyNotificationKo,
   ...homeOverviewKo,
   ...probeKo,
   ...manualHistoryKo,

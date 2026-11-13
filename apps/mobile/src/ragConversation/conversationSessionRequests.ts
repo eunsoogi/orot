@@ -1,5 +1,12 @@
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
+import type { ConversationTurnActivity } from './conversationTurnActivity';
+import type { ConversationActivityTracker } from './conversationActivity';
+import {
+  activityNotifier,
+  createConversationActivity,
+} from './conversationActivity';
+import { createConversationRequestDisposal } from './conversationRequestDisposal';
 import {
   conversationHistoryPayload,
   retainedHistoryTurns,
@@ -11,24 +18,25 @@ import { bindRequestCancel } from './conversationRequestIdentity';
 import { requestIdentityObserver } from './conversationRequestIdentity';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
+import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import {
   createConversationRequestPreview,
   conversationPreviewObserver,
 } from './conversationRequestPreview';
+import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
   createRetainConversationPartial,
   createConversationStopHandler,
 } from './conversationStoppedTurn';
-import { restoreFailedPrompt } from './conversationFailedPrompt';
+import { conversationFailureReporter as failureReporter } from './conversationFailedPrompt';
 import type {
   ConversationSender,
   ConversationSession,
   ConversationSessionOptions,
   PendingTurn,
 } from './conversationSessionTypes';
-type Activity = ReturnType<typeof createConversationTurnActivity>;
 /** Owns composer and explicit-prompt lifetimes without letting late results clear a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
@@ -36,12 +44,14 @@ export function createConversationSessionRequests(
   conversationScope: (id: number) => string,
   retention?: ConversationSessionOptions['retention'],
   execution?: ConversationExecutionAdapter,
+  photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
-  const activities = new Map<number, Activity>();
+  const snapshots = new Map<number, ConversationActivityTracker>();
+  const activities = new Map<number, ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
     interrupt: id => cancel(id, false, 'interrupted'),
@@ -57,6 +67,7 @@ export function createConversationSessionRequests(
     controllers,
     pendingTurns,
     activities,
+    snapshots,
     lifetime,
     find,
     update,
@@ -64,33 +75,20 @@ export function createConversationSessionRequests(
   });
   return {
     cancel,
-    abandon(id: number) {
-      saveRecovery.suspend(id);
-      lifetime.interrupt(id, 'cancelled', true);
-      controllers.get(id)?.abort();
-      activities.get(id)?.finish('cancelled');
-      controllers.delete(id);
-      pendingTurns.delete(id);
-      update(id, {
-        busy: false,
-        pendingMessage: null,
-        artifactContinuation: null,
-      });
-    },
-    dispose() {
-      saveRecovery.dispose();
-      controllers.forEach((controller, id) => {
-        lifetime.interrupt(id, 'interrupted');
-        controller.abort();
-      });
-      activities.forEach(activity => activity.finish('cancelled'));
-      controllers.clear();
-      pendingTurns.clear();
-    },
+    ...createConversationRequestDisposal({
+      controllers,
+      pendingTurns,
+      activities,
+      snapshots,
+      lifetime,
+      saveRecovery,
+      update,
+    }),
     async send(
       id: number,
       onSend: ConversationSender,
       explicitQuestion?: string,
+      hasPhoto = false,
       onOwner?: (cancel: () => boolean) => void,
     ) {
       const session = find(id);
@@ -98,40 +96,56 @@ export function createConversationSessionRequests(
         session,
         () => ++messageId,
         explicitQuestion,
+        hasPhoto,
       );
       if (!start) return;
       const { request, responseId, change, copy } = start;
       const { question, userMessageId } = request;
+      const fail = failureReporter(find, update, request, retainPartial, id);
       const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
+      const snapshot = createConversationActivity(id, responseId);
+      snapshots.set(id, snapshot);
       controllers.set(id, controller);
       pendingTurns.set(id, request);
       onOwner?.(bindRequestCancel(controllers, id, controller, cancel));
-      update(id, change);
+      update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
-      let activity:
-        ReturnType<typeof createConversationTurnActivity> | undefined;
+      let activity: ConversationTurnActivity | undefined;
       let retained:
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
         ReturnType<typeof createConversationRequestPreview> | undefined;
+      let photoInput: Awaited<
+        ReturnType<typeof startConversationRetainedRequest>
+      >;
       try {
         retained = retention
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
-        if (retained) await lifetime.start(id, controller, retained, question);
-        if (!current()) return;
-        if (retained)
-          preview = createConversationRequestPreview({
+        if (retained || hasPhoto)
+          photoInput = await startConversationRetainedRequest({
+            id,
+            question,
+            controller,
             turn: retained,
-            current,
-            reportFailure: () => {
-              if (!find(id)?.error)
-                update(id, { error: copy.previewSaveFailed });
-            },
+            retention,
+            lifetime,
+            photo: photo ? { ...photo, requested: hasPhoto } : undefined,
           });
+        if (!current()) return;
+        snapshot.waiting();
+        update(id, { requestActivity: snapshot.getSnapshot() });
+        preview = conversationPreviewSetup({
+          id,
+          retained,
+          current,
+          find,
+          update,
+          error: copy.previewSaveFailed,
+        });
         activity = createConversationTurnActivity({
           id,
           responseId,
@@ -139,6 +153,8 @@ export function createConversationSessionRequests(
           update,
           current,
           retained,
+          activity: snapshot,
+          activityChanged: activityNotifier(current, update, id, snapshot),
         });
         activities.set(id, activity);
         const outcome = await onSend(question, history, controller.signal, {
@@ -146,6 +162,7 @@ export function createConversationSessionRequests(
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
           conversationScope: conversationScope(id),
+          ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
           ...requestIdentityObserver(retention, retained, id),
           artifactContinuation: session.artifactContinuation ?? null,
@@ -168,17 +185,7 @@ export function createConversationSessionRequests(
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
           const failureCopy = getRagConversationFailureCopy(kind);
-          retainPartial(id, failureCopy);
-          restoreFailedPrompt(
-            find,
-            update,
-            id,
-            question,
-            userMessageId,
-            failureCopy,
-            false,
-            request.restorePromptToComposer,
-          );
+          fail(failureCopy);
           return;
         }
         conversationCompletedAnswer({
@@ -200,19 +207,10 @@ export function createConversationSessionRequests(
         });
       } catch {
         if (current()) {
-          retainPartial(id, copy.unavailable);
-          restoreFailedPrompt(
-            find,
-            update,
-            id,
-            question,
-            userMessageId,
-            getRagConversationFailureCopy('unavailable'),
-            false,
-            request.restorePromptToComposer,
-          );
+          fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
         }
       } finally {
+        await photoInput?.settleUnsent?.().catch(() => {});
         activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
         await preview?.flush();
         await activity?.flush();
@@ -239,7 +237,9 @@ export function createConversationSessionRequests(
           }
           controllers.delete(id);
           pendingTurns.delete(id);
-          update(id, { busy: false });
+          snapshot.settle();
+          if (snapshots.get(id) === snapshot) snapshots.delete(id);
+          update(id, { busy: false, requestActivity: null });
         }
       }
     },

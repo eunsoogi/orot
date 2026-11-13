@@ -9,6 +9,11 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // Audio reservation tests use fake mutations and never activate the system session.
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testBusyAndStaleOwnersCannotMutateNewOwner',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedDeactivationRetainsReservationUntilRetry',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedActivationRequiresSuccessfulCleanupBeforeNextOwner',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testConcurrentReservationsHaveExactlyOneWinner',
   // Verify the appointment wrapper, page scroll, and section ownership on UIKit.
   'OrotIntegrationTests/AppointmentPageScrollOwnershipTests/testWrapperOwnerAndSectionsRejectNestedOrDetachedScrolls',
   // The test-only scene observer must reject duplicate and unrelated geometry phases.
@@ -16,6 +21,7 @@ export const coreTests = [
   'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testReconcileRefreshesOlderPendingTitleWithoutChangingReminder',
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
   'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
   'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
@@ -31,6 +37,10 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/ReplyNotificationInboxTests/testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets',
+  'OrotIntegrationTests/RootURLInboxTests/testValidDeliveriesSurviveReopenAndAcknowledgeOneAtATime',
+  'OrotIntegrationTests/RootURLInboxTests/testInvalidInputCannotOverwriteAValidDelivery',
+  'OrotIntegrationTests/RootURLInboxTests/testMalformedStoredHeadDoesNotBlockLaterValidDelivery',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
   'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',

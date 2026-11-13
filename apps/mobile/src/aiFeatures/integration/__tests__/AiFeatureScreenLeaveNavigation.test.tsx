@@ -79,7 +79,11 @@ test('finishes a RAG turn while history is active and shows it once on Back', as
   );
   await fireEvent.press(view.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
-  expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    view.getByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
 
   await fireEvent.press(view.getByTestId('rag-conversation-sessions-toggle'));
   await waitFor(() =>

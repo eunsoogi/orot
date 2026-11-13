@@ -62,7 +62,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(
         _ scene: UIScene,
         willConnectTo _: UISceneSession,
-        options _: UIScene.ConnectionOptions,
+        options: UIScene.ConnectionOptions,
     ) {
         guard
             let windowScene = scene as? UIWindowScene,
@@ -72,6 +72,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return
         }
 
+        // Capture cold URLs before React starts; the inbox stores validated root descriptors only.
+        options.urlContexts.forEach { RootURLInbox.shared.receive($0.url) }
         let window: UIWindow
         #if OROT_TESTS
             if let run = VisitQuestionInputGate.session() {
@@ -92,6 +94,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             in: window,
             launchOptions: appDelegate.launchOptions,
         )
+    }
+
+    func scene(_: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
+        contexts.forEach { RootURLInbox.shared.receive($0.url) }
     }
 }
 

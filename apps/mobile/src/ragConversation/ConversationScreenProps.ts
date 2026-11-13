@@ -13,9 +13,16 @@ import type { ConversationSessions } from './conversationSessions';
 
 /** Public screen inputs keep the transcript, source actions, and composer on their existing owners. */
 export interface ConversationScreenProps {
+  readonly isEntryCurrent?: () => boolean;
   readonly discoverManualVisits?: import('../aiFeatures/integration/featureServiceTypes').AiFeatureServices['conversationArtifacts'];
   readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
+  readonly voiceSelection?: {
+    readonly revision: number;
+    readonly resolve: () => Promise<
+      import('../aiFeatures/integration/provider').SelectedAiResolution
+    >;
+  };
   /** Structured task content is rendered inside the conversation viewport. */
   readonly renderReportTask?: (
     onChat: (

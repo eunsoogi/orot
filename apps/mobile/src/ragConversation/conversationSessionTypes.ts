@@ -16,6 +16,9 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly photoPreparation?: ReturnType<
+    typeof import('../aiFeatures/integration/conversationPhotoPreparation').createConversationPhotoPreparation
+  >;
   readonly execution?: import('./conversationExecutionLease').ConversationExecutionAdapter;
   readonly listSessions?: (cursor?: {
     readonly updatedAt: string;
@@ -40,12 +43,18 @@ export interface ConversationSessionOptions {
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
   readonly retention?: Omit<
     Retention,
-    'beginSession' | 'saveTaskCard' | 'readCommittedCompletion'
+    | 'beginSession'
+    | 'saveTaskCard'
+    | 'discardUnpublished'
+    | 'readCommittedCompletion'
   > &
     Partial<
       Pick<
         Retention,
-        'beginSession' | 'saveTaskCard' | 'readCommittedCompletion'
+        | 'beginSession'
+        | 'saveTaskCard'
+        | 'discardUnpublished'
+        | 'readCommittedCompletion'
       >
     >;
   readonly restoreSession?: (
@@ -106,6 +115,9 @@ export type ConversationSender = (
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
   readonly id: number;
+  /** Live request activity is memory-only and is never restored as running. */
+  readonly requestActivity?:
+    import('./conversationActivity').ConversationActivitySnapshot | null;
   readonly title: string;
   readonly createdAt: string;
   readonly draft: string;

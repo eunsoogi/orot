@@ -11,6 +11,13 @@ import type { ResearchArtifact } from '../../storage/researchArtifactStorage';
 /** Original rows and computed period sources have distinct storage and revalidation contracts. */
 export type EvidenceSourceDocument =
   | {
+      readonly sourceKind: 'conversation_photo';
+      readonly requestId: string;
+      readonly sourceId: string;
+      readonly contentHash: `sha256:${string}`;
+      readonly section: import('../../medicalDocuments/medicalDocumentNativeBridge').MedicalDocumentTextSection;
+    }
+  | {
       readonly sourceKind: 'health_context_period';
       readonly scope: HealthContextScope;
       readonly report: HealthContextReport;
