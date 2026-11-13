@@ -197,7 +197,7 @@ test('rechecks laid out focus when route authority commits after the foreground 
     await act(() => resume('active'));
     expect(scroll.scrollTo).not.toHaveBeenCalled();
     current = true;
-    await view.rerender();
+    await view.rerender(undefined);
     expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
     expect(scroll.scrollTo).toHaveBeenCalledWith({ y: 125, animated: false });
     expect(replyFocus.get()).toBeNull();
