@@ -1,4 +1,5 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
+import { startOwnedConversationRequest } from './conversationOwnedRequest';
 import type {
   ConversationSender,
   ConversationSession,
@@ -73,6 +74,7 @@ export function createConversationSessions(
     update,
     id => `${owner}:${id}`,
     options.retention,
+    options.execution,
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
@@ -200,6 +202,17 @@ export function createConversationSessions(
     },
     send: (id: number, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend),
+    /** Adds an explicit turn to the transcript without moving its prompt into the composer. */
+    sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
+      disposed ? Promise.resolve() : requests.send(id, onSend, prompt),
+    /** Binds cancellation and committed completion to one explicit request. */
+    sendOwnedPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
+      startOwnedConversationRequest({
+        retention: disposed ? undefined : options.retention,
+        sender: onSend,
+        start: (sender, registerOwner) =>
+          requests.send(id, sender, prompt, registerOwner),
+      }),
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),

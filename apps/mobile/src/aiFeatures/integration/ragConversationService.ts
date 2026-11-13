@@ -13,6 +13,7 @@ import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
 import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
+import { conversationStreamObservers } from './conversationStreamObservers';
 import { createResearchInputTracker } from './researchInputTracker';
 import { budgetAfterPublicSearch } from './defaultPublicSearch';
 import type { ConversationEntryContext } from './conversationIntent';
@@ -29,7 +30,6 @@ import {
   conversationExternalEvidence,
   conversationPublicSearch,
 } from './conversationExternalEvidence';
-
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
   consent,
@@ -213,11 +213,12 @@ export function createRagConversationService({
         {
           onProgress: observer?.onProgress,
           onToolEvent: observer?.onToolEvent,
-          // A changed history must not leak a draft before its lineage is rechecked.
-          onTaskStreamEvent:
-            history.references.length || report
-              ? undefined
-              : observer?.onTaskStreamEvent,
+          ...conversationStreamObservers(
+            observer,
+            Boolean(history.references.length || report),
+            registry,
+            { providerId: selected.provider.id, modelId: selected.modelId },
+          ),
           signal,
         },
       );

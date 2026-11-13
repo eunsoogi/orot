@@ -3,6 +3,7 @@ import type {
   JsonValue,
   LanguageModelMessage,
   LanguageModelProvider,
+  LanguageModelRequest,
   ProviderErrorCode,
 } from '@orot/model-runtime';
 import type { RunnableConfig } from '@langchain/core/runnables';
@@ -222,6 +223,13 @@ export interface MultiAgentInvocation {
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
   /** Receives task-projected display text only; structured output and citations stay private. */
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
+  /** Local preparation observes the exact provider request; it must not export its private content. */
+  readonly beforeTaskStream?: (
+    input: { readonly request: LanguageModelRequest; readonly evidence: EvidenceBatch },
+    signal: AbortSignal,
+  ) => Promise<void>;
+  /** Fence an earlier preview before a new tool input is dispatched. */
+  readonly beforeTaskInputChange?: (signal: AbortSignal) => Promise<void>;
 }
 
 export type MultiAgentProgressEvent =

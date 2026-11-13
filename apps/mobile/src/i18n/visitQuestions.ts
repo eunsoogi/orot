@@ -75,6 +75,7 @@ export const visitQuestionsKo = {
   'visitQuestions.conversation.save.failed':
     '질문을 저장하지 못했어요. 예약과 근거를 확인하고 다시 시도해 주세요.',
   'visitQuestions.conversation.actions.regenerate': '질문 다시 만들기',
+  'visitQuestions.conversation.actions.prepare': '진료 질문 준비하기',
   'visitQuestions.conversation.regenerate.pendingMessage':
     '작성 중인 메시지를 보내거나 지운 뒤 질문을 다시 만들어 주세요.',
   'visitQuestions.conversation.answer.ready':
@@ -110,7 +111,6 @@ export const visitQuestionsKo = {
     '실제로 물어본 질문만 확인해 주세요. 답변은 비워 둘 수 있어요.',
   'visitQuestions.manual.questionAtConfirmation': '확인 당시 질문: {question}',
   'visitQuestions.manual.source.stale': '원본이 변경된 기록',
-  'visitQuestions.manual.source.confirmed': '직접 확인',
   'visitQuestions.manual.source.recordingAnalysis': '녹음 분석 결과',
   'visitQuestions.manual.answer.userEdited': '사용자가 수정한 답변',
   'visitQuestions.manual.evidence.notFound':
@@ -122,6 +122,16 @@ export const visitQuestionsKo = {
   'visitQuestions.manual.answer.empty': '입력한 답변 없음',
   'visitQuestions.manual.actions.edit': '답변 수정',
   'visitQuestions.manual.actions.confirmAsked': '실제로 물어봤어요',
+  'visitQuestions.manual.actions.confirmAskedHint':
+    '질문을 물어본 뒤 답변을 저장해 확인을 남겨요. 답변은 비워 둘 수 있어요.',
+  'visitQuestions.manual.actions.saving': '저장 중',
+  'visitQuestions.manual.actions.retrySave': '다시 저장',
+  'visitQuestions.manual.status.pending':
+    '아직 저장되지 않았어요. 답변을 저장해야 질문 완료로 기록돼요.',
+  'visitQuestions.manual.status.saving': '질문 확인을 저장하고 있어요.',
+  'visitQuestions.manual.status.saveUnconfirmed':
+    '저장 결과를 확인하지 못했어요. 작성한 답변은 남아 있어요.',
+  'visitQuestions.manual.status.confirmed': '질문을 물어봤어요',
   'visitQuestions.manual.answer.label': '의료진 답변',
   'visitQuestions.manual.actions.save': '저장',
   'visitQuestions.manual.actions.cancel': '취소',

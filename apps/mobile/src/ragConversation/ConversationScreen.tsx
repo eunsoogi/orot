@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
+import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
@@ -121,17 +122,11 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      {session.entryPrompt ? (
-        <Button
-          title={t('conversationIntent.useSuggestion', {
-            question: session.entryPrompt,
-          })}
-          testID="conversation-intent-use-suggestion"
-          disabled={Boolean(draft) || busy}
-          variant="secondary"
-          onPress={() => store.setDraft(id, session.entryPrompt!)}
-        />
-      ) : null}
+      <ConversationEntryAction
+        store={store}
+        session={session}
+        prepareVisitQuestions={prepareVisitQuestions}
+      />
       <ConversationTaskHeader
         store={store}
         session={session}
@@ -165,6 +160,7 @@ export function ConversationScreen({
             }
           >
             <ConversationHistory
+              sessionId={id}
               compact={composerLayout.compact}
               header={header}
               messages={messages}
@@ -196,27 +192,27 @@ export function ConversationScreen({
               }
               toolSourceSessionId={toolSourceSessionId}
               onLinkError={onLinkError}
+              beforeMessages={
+                <ManualVisitTargetPanels
+                  store={store}
+                  sessionId={id}
+                  durableSessionId={toolSourceSessionId}
+                  discover={discoverManualVisits}
+                  messages={messages}
+                  session={session}
+                  compact={composerLayout.compact}
+                  disclaimer={copy.disclaimer}
+                />
+              }
               footer={
-                <>
-                  <ManualVisitTargetPanels
-                    store={store}
-                    sessionId={id}
-                    durableSessionId={toolSourceSessionId}
-                    discover={discoverManualVisits}
-                    messages={messages}
-                    session={session}
-                    compact={composerLayout.compact}
-                    disclaimer={copy.disclaimer}
-                  />
-                  <ConversationStoredTaskCards
-                    store={store}
-                    session={session}
-                    onOpenSource={onOpenSource}
-                    routeKey={navigationRouteKey}
-                    durableSessionId={toolSourceSessionId}
-                    renderStoredReportTask={renderStoredReportTask}
-                  />
-                </>
+                <ConversationStoredTaskCards
+                  store={store}
+                  session={session}
+                  onOpenSource={onOpenSource}
+                  routeKey={navigationRouteKey}
+                  durableSessionId={toolSourceSessionId}
+                  renderStoredReportTask={renderStoredReportTask}
+                />
               }
             />
             <ConversationComposer

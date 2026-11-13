@@ -1,36 +1,46 @@
 import {
+  startExplicitVisitPreparation,
   sendConversationMessage,
-  shouldPrepareVisitQuestions,
 } from '../conversationVisitDispatch';
 import { createConversationSessions } from '../conversationSessions';
 import { conversationEntryForSession } from '../useConversationEntryIntent';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
+import { conversationIntentRequests } from '../../aiFeatures/integration/conversationIntent';
 
 jest.mock('../useConversationEntryIntent', () => ({
   conversationEntryForSession: jest.fn(),
   consumeConversationEntryForSession: jest.fn(),
 }));
 
-test('visit entry prepares only its first turn, while follow-ups stay conversation turns', () => {
-  const entry = {
+test('a typed composer turn stays in conversation until the preparation action is pressed', async () => {
+  const context = {
     intent: 'visit-questions' as const,
     entryKey: 'entry',
     appointmentId: 'visit',
   };
-  expect(shouldPrepareVisitQuestions(entry, [])).toBe(true);
-  expect(
-    shouldPrepareVisitQuestions(entry, [
-      { role: 'user', content: '이전 요청' },
-    ]),
-  ).toBe(false);
-  expect(
-    shouldPrepareVisitQuestions(
-      { intent: 'conversation', entryKey: 'other' },
-      [],
-    ),
-  ).toBe(false);
+  jest.mocked(conversationEntryForSession).mockReturnValue(context);
+  const store = createConversationSessions();
+  store.setDraft(1, '직접 작성한 질문');
+  const prepare = jest.fn();
+  const send = jest.fn().mockResolvedValue({
+    status: 'answer',
+    answer: '대화 답변',
+    citations: [],
+  });
+
+  await sendConversationMessage(store, 1, send, prepare);
+
+  expect(prepare).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledWith(
+    '직접 작성한 질문',
+    [],
+    expect.any(AbortSignal),
+    expect.any(Object),
+    context,
+  );
+  store.dispose();
 });
 
 test('explicit report selection takes precedence over an earlier visit entry', async () => {
@@ -91,8 +101,8 @@ test('storage preflight failure retains visit intent for an edited retry', async
       .fn()
       .mockResolvedValue({ status: 'answer', answer: '준비', citations: [] });
     const onSend = jest.fn();
-    store.setDraft(1, '처음 요청');
-    await sendConversationMessage(store, 1, onSend, prepare);
+    store.setEntryPrompt(1, conversationIntentRequests['visit-questions']);
+    await startExplicitVisitPreparation(store, 1, prepare);
     expect(prepare).not.toHaveBeenCalled();
     store.setDraft(1, '수정 요청');
     await sendConversationMessage(store, 1, onSend, prepare);
@@ -124,8 +134,8 @@ test('edited initial failure retries preparation then allows an ordinary follow-
   const onSend = jest
     .fn()
     .mockResolvedValue({ status: 'answer', answer: '대화', citations: [] });
-  store.setDraft(1, '처음 요청');
-  await sendConversationMessage(store, 1, onSend, prepare);
+  store.setEntryPrompt(1, conversationIntentRequests['visit-questions']);
+  await startExplicitVisitPreparation(store, 1, prepare);
   store.setDraft(1, '수정 요청');
   await sendConversationMessage(store, 1, onSend, prepare);
   expect(prepare).toHaveBeenCalledTimes(2);

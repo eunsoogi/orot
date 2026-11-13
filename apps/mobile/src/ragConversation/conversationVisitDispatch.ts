@@ -1,10 +1,9 @@
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
-import type { RagConversationMessage } from './task';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
+import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
-import { conversationHistoryPayload } from './conversationHistoryPayload';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -61,12 +60,47 @@ export function visitPreparationSender(
   };
 }
 
-/** Entry intent starts one operation; later ordinary conversation turns do not regenerate questions. */
-export function shouldPrepareVisitQuestions(
+/** Disable the explicit entry action while the session cannot safely accept a turn. */
+export function canStartExplicitVisitPreparation(
+  session: ConversationSession,
   context: ConversationEntryContext | undefined,
-  history: readonly RagConversationMessage[],
+  prepare: ConversationScreenProps['prepareVisitQuestions'],
 ): boolean {
-  return context?.intent === 'visit-questions' && history.length === 0;
+  return Boolean(
+    prepare &&
+    context?.intent === 'visit-questions' &&
+    session.entryPrompt?.trim() &&
+    !session.busy &&
+    !session.restoring &&
+    !session.retryingSave &&
+    !(session.restoreAfterRetry && session.unsavedCount) &&
+    !session.restoreFailed &&
+    !session.quarantined &&
+    !session.dailyReport &&
+    !context.dailyReport,
+  );
+}
+
+/** Start preparation within the session that owns the selected visit context. */
+export function startExplicitVisitPreparation(
+  store: ConversationSessions,
+  id: number,
+  prepare: ConversationScreenProps['prepareVisitQuestions'],
+) {
+  const session = store.getSnapshot().sessions.find(item => item.id === id);
+  const context = conversationEntryForSession(store, id);
+  if (
+    !session ||
+    !context ||
+    !prepare ||
+    !canStartExplicitVisitPreparation(session, context, prepare)
+  )
+    return;
+  return store.sendPrompt(
+    id,
+    session.entryPrompt!,
+    visitPreparationSender(store, id, prepare, context),
+  );
 }
 
 /** Resolve entry intent at send time so a different session cannot inherit it. */
@@ -77,42 +111,16 @@ export function sendConversationMessage(
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const entry = conversationEntryForSession(store, id);
   const sendEntry = entryIntentSender(store, id, onSend);
-  if (
-    prepare &&
-    session?.draft.trim() &&
-    !session.busy &&
-    !session.restoring &&
-    !session.retryingSave &&
-    !session.restoreFailed &&
-    !session.quarantined &&
-    !session.dailyReport &&
-    !(session.restoreAfterRetry && session.unsavedCount) &&
-    entry &&
-    shouldPrepareVisitQuestions(
-      entry,
-      conversationHistoryPayload(session.messages, session.draft.trim()),
-    )
-  ) {
-    // Record ownership before storage preflight, which may fail before the sender is called.
-    visitPreparationSender(store, id, prepare, entry);
-  }
   return store.send(id, (question, history, signal, observer) => {
     // An explicitly selected report owns this turn instead of an earlier visit entry.
     if (session?.dailyReport) {
       pendingVisits.get(store)?.delete(id);
       return sendEntry(question, history, signal, observer);
     }
-    const context =
-      pendingVisits.get(store)?.get(id) ??
-      conversationEntryForSession(store, id);
-    if (
-      prepare &&
-      context &&
-      (pendingVisits.get(store)?.has(id) ||
-        shouldPrepareVisitQuestions(context, history))
-    )
+    const pending = pendingVisits.get(store);
+    const context = pending?.get(id) ?? conversationEntryForSession(store, id);
+    if (prepare && context && pending?.has(id))
       return visitPreparationSender(store, id, prepare, context)(
         question,
         history,

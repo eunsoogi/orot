@@ -18,6 +18,7 @@ import { assertConversationSummaryParent } from './conversationSummaryParent';
 import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from '../treatmentContext/attribution';
+import { assertConversationRequestSource } from './conversationRequestSources';
 
 /** Validate a bounded ancestry in one transaction, rejecting cycles and unavailable parents. */
 export async function assertConversationArtifactCurrent(
@@ -48,6 +49,7 @@ export async function assertConversationArtifactCurrent(
         'Conversation ancestry is cyclic or too large.',
       );
     path.add(current.id);
+    await assertConversationRequestSource(tx, current);
     await assertConversationSourcesNotRemoved(tx, current);
     for (const source of current.sources) {
       if (isGeneratedSummarySource(source)) {

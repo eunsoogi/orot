@@ -30,6 +30,15 @@ export async function restoreConversationArtifact(input: {
   const saved = await input.storage.read(input.id);
   if (!saved || saved.citations === undefined || input.signal.aborted)
     return null;
+  // A database row alone cannot prove a staged native original still exists unchanged.
+  if (
+    saved.submittedInput?.ocr &&
+    !(await input.data.validateConversationPhotoInput?.(
+      saved.submittedInput,
+      input.signal,
+    ))
+  )
+    return null;
   // Generic restoration cannot perform the closed treatment claim checks.
   // Keep treatment turns out of both visible history and model context until
   // the treatment-specific reopen path is integrated with this source binding.
@@ -76,7 +85,15 @@ export async function restoreConversationArtifact(input: {
     restored.mapping.get(stableJson(source.reference)),
   );
   if (sourceAliases.some(ref => !ref)) return null;
-  // Deletion or editing may commit while aliases are being rebuilt.
+  // Recheck the native original before the final database read, which fences concurrent deletion.
+  if (
+    saved.submittedInput?.ocr &&
+    !(await input.data.validateConversationPhotoInput?.(
+      saved.submittedInput,
+      input.signal,
+    ))
+  )
+    return null;
   const latest = await input.storage.read(input.id);
   if (
     !latest ||
@@ -114,6 +131,7 @@ export async function restoreConversationArtifact(input: {
     ...(saved.dailyReport ? { dailyReport: saved.dailyReport } : {}),
     status: saved.status,
     question: saved.question,
+    ...(saved.submittedInput ? { submittedInput: saved.submittedInput } : {}),
     answer: saved.answer,
     ...(saved.healthSummary ? { healthSummary: saved.healthSummary } : {}),
     ...(saved.visitQuestions

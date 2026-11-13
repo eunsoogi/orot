@@ -14,6 +14,12 @@ export const questionCohorts = {
       'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+      'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+      'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+      'ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     ],
   },
   'questions-accessibility': {
@@ -25,6 +31,7 @@ export const questionCohorts = {
       'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
       'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
       'ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+      'ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     ],
   },
   'questions-summary': {
