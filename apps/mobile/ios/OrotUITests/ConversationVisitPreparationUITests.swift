@@ -23,13 +23,117 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         let composer = UITestConditions.element(app, "rag-conversation-composer")
         let input = FormUITestConditions.multilineInput(app, identifier: "rag-conversation-input")
         let prepare = app.buttons.matching(identifier: "conversation-visit-prepare").firstMatch
-        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(input), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(prepare), app.debugDescription)
+        let observationStartedAt = Date().timeIntervalSince1970
+        let initialWindows = app.windows
+        let initialWindowCount = initialWindows.count
+        let initialHistoryOwnerWindows = initialWindows.containing(
+            .any,
+            identifier: "rag-conversation-history",
+        )
+        let initialHistoryOwnerWindowCount = initialHistoryOwnerWindows.count
+        let initialHistoryOwnerWindow = initialHistoryOwnerWindows.firstMatch
+        let initialHistoryOwnerWindowExists = initialHistoryOwnerWindowCount == 1
+            && initialHistoryOwnerWindow.exists
+        let initialHistoryOwnerWindowFrame = initialHistoryOwnerWindowExists
+            ? String(describing: initialHistoryOwnerWindow.frame)
+            : "unavailable"
+        let keyboard = app.keyboards.firstMatch
+        let historyExists = UITestConditions.exists(history)
+        let historyFrame = historyExists ? String(describing: history.frame) : "unavailable"
+        let composerExists = composer.exists
+        let composerFrame = composerExists ? String(describing: composer.frame) : "unavailable"
+        let inputExists = UITestConditions.exists(input)
+        let initialPrepareExists = prepare.exists
+        let initialPrepareFrame = initialPrepareExists ? String(describing: prepare.frame) : "unavailable"
+        let initialPrepareEnabledValue: Bool? = initialPrepareExists ? prepare.isEnabled : nil
+        let initialPrepareHittableValue: Bool? = initialPrepareExists ? prepare.isHittable : nil
+        let initialPrepareEnabled = initialPrepareEnabledValue.map { String($0) } ?? "unavailable"
+        let initialPrepareHittable = initialPrepareHittableValue.map { String($0) } ?? "unavailable"
+        let keyboardCount = app.keyboards.count
+        let keyboardExists = keyboard.exists
+        let keyboardFrame = keyboardExists ? String(describing: keyboard.frame) : "unavailable"
+        let observationFinishedAt = Date().timeIntervalSince1970
+        let screenshotStartedAt = Date().timeIntervalSince1970
+        let initialScreenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshotFinishedAt = Date().timeIntervalSince1970
+        let observation = """
+        observation startedAtUnixSeconds=\(observationStartedAt) finishedAtUnixSeconds=\(observationFinishedAt)
+        orientation=\(XCUIDevice.shared.orientation.rawValue)
+        window count=\(initialWindowCount) history-owner-window count=\(initialHistoryOwnerWindowCount) exists=\(initialHistoryOwnerWindowExists) frame=\(initialHistoryOwnerWindowFrame)
+        prepare exists=\(initialPrepareExists) enabled=\(initialPrepareEnabled) hittable=\(initialPrepareHittable) frame=\(initialPrepareFrame)
+        history exists=\(historyExists) frame=\(historyFrame)
+        composer exists=\(composerExists) frame=\(composerFrame)
+        input exists=\(inputExists)
+        keyboard count=\(keyboardCount) exists=\(keyboardExists) frame=\(keyboardFrame)
+        screenshot startedAtUnixSeconds=\(screenshotStartedAt) finishedAtUnixSeconds=\(screenshotFinishedAt)
+        """
+        // Preserve the launch-time window sample as diagnostic evidence; React Native may attach history after this snapshot.
+        XCTContext.runActivity(named: "Visit preparation initial native geometry") { activity in
+            let details = XCTAttachment(string: observation)
+            details.name = "visit-preparation-action-geometry"
+            details.lifetime = .keepAlways
+            activity.add(details)
+            initialScreenshot.name = "visit-preparation-action-screen"
+            initialScreenshot.lifetime = .keepAlways
+            activity.add(initialScreenshot)
+        }
+        XCTAssertTrue(historyExists && inputExists, observation)
+        // The action is registered after React Native mounts, so keep its canonical wait before asserting its properties.
+        let readyPrepareExists = UITestConditions.exists(prepare)
+        let readinessObservationStartedAt = Date().timeIntervalSince1970
+        let readyWindows = app.windows
+        let readyWindowCount = readyWindows.count
+        let readyHistoryOwnerWindows = readyWindows.containing(
+            .any,
+            identifier: "rag-conversation-history",
+        )
+        let readyHistoryOwnerWindowCount = readyHistoryOwnerWindows.count
+        let readyHistoryOwnerWindow = readyHistoryOwnerWindows.firstMatch
+        let readyHistoryOwnerWindowExists = readyHistoryOwnerWindowCount == 1
+            && readyHistoryOwnerWindow.exists
+        let readyHistoryOwnerWindowFrame = readyHistoryOwnerWindowExists
+            ? String(describing: readyHistoryOwnerWindow.frame)
+            : "unavailable"
+        let readyPrepareFrame = readyPrepareExists ? String(describing: prepare.frame) : "unavailable"
+        let readyPrepareEnabledValue: Bool? = readyPrepareExists ? prepare.isEnabled : nil
+        let readyPrepareHittableValue: Bool? = readyPrepareExists ? prepare.isHittable : nil
+        let readyPrepareEnabled = readyPrepareEnabledValue.map { String($0) } ?? "unavailable"
+        let readyPrepareHittable = readyPrepareHittableValue.map { String($0) } ?? "unavailable"
+        let readinessObservationFinishedAt = Date().timeIntervalSince1970
+        let readinessObservation = """
+        readiness startedAtUnixSeconds=\(readinessObservationStartedAt) finishedAtUnixSeconds=\(readinessObservationFinishedAt)
+        history exists=\(historyExists) input exists=\(inputExists)
+        window count=\(readyWindowCount) history-owner-window count=\(readyHistoryOwnerWindowCount) exists=\(readyHistoryOwnerWindowExists) frame=\(readyHistoryOwnerWindowFrame)
+        prepare exists=\(readyPrepareExists) enabled=\(readyPrepareEnabled) hittable=\(readyPrepareHittable) frame=\(readyPrepareFrame)
+        """
+        XCTContext.runActivity(named: "Visit preparation ready native geometry") { activity in
+            let details = XCTAttachment(string: readinessObservation)
+            details.name = "visit-preparation-ready-geometry"
+            details.lifetime = .keepAlways
+            activity.add(details)
+        }
+        XCTAssertEqual(readyHistoryOwnerWindowCount, 1, readinessObservation)
+        XCTAssertTrue(readyPrepareExists && readyPrepareEnabledValue == true, readinessObservation)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-action-before-scroll", testCase: self)
-        // Accessibility text can expand the scrollable conversation header beyond the current viewport.
+        // Accessibility text can expand the conversation header beyond the initial viewport.
         UITestConditions.scrollTo(prepare, in: history)
-        XCTAssertTrue(prepare.isHittable, app.debugDescription)
-        XCTAssertGreaterThanOrEqual(prepare.frame.height, 44, app.debugDescription)
+        let postScrollObservationStartedAt = Date().timeIntervalSince1970
+        let prepareExistsAfterScroll = prepare.exists
+        let prepareHittableAfterScroll: Bool? = prepareExistsAfterScroll ? prepare.isHittable : nil
+        let prepareFrameAfterScroll: CGRect? = prepareExistsAfterScroll ? prepare.frame : nil
+        let postScrollObservationFinishedAt = Date().timeIntervalSince1970
+        let postScrollHittableDescription = prepareHittableAfterScroll.map { String($0) } ?? "unavailable"
+        let postScrollFrameDescription = prepareFrameAfterScroll.map { String(describing: $0) } ?? "unavailable"
+        let postScrollObservation = """
+        observation startedAtUnixSeconds=\(postScrollObservationStartedAt) finishedAtUnixSeconds=\(postScrollObservationFinishedAt)
+        prepare exists=\(prepareExistsAfterScroll) hittable=\(postScrollHittableDescription) frame=\(postScrollFrameDescription)
+        """
+        XCTAssertTrue(prepareExistsAfterScroll && prepareHittableAfterScroll == true, postScrollObservation)
+        if let prepareFrameAfterScroll {
+            XCTAssertGreaterThanOrEqual(prepareFrameAfterScroll.height, 44, postScrollObservation)
+        } else {
+            XCTFail(postScrollObservation)
+        }
         XCTAssertFalse(UITestConditions.element(app, "inline-visit-review").exists)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-before-explicit-action", testCase: self)
 
