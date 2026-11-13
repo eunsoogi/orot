@@ -100,8 +100,6 @@ export const fixtureTests = [
   'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
   'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
   'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
-  'OrotUITests/AssistantAppearanceUITests/testAppearanceAndConversationKeyboardInputRemainComplete',
-  'OrotUITests/AssistantAppearanceUITests/testNeutralChoiceNameValidationAndVoiceOver',
   'OrotUITests/AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
   'OrotUITests/AssistantReplyEntryUITests/testSavedReplyWaitsForAppearanceAndOpensAfterSave',
   'OrotUITests/ReplyFocusGeometryUITests/testSavedReplyAndNewerGenerationRevealWithinRealViewport',
