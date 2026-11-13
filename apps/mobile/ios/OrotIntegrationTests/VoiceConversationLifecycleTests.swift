@@ -17,6 +17,23 @@ final class VoiceConversationLifecycleTests: OrotFailFastTestCase {
         XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(Int.max, adding: Int.max))
     }
 
+    func testDuplexCallbackBudgetSurvivesGenerationReset() {
+        let budget = VoiceDuplexPendingPCM()
+        let first = UUID(), second = UUID(), third = UUID()
+        let limit = 8 * 1024 * 1024
+        budget.reset(first)
+        XCTAssertEqual(budget.reserve(limit, generation: first), .accepted)
+        budget.reset(second)
+        XCTAssertEqual(budget.reserve(1, generation: second), .overflow)
+        XCTAssertEqual(budget.reserve(1, generation: first), .stale)
+        budget.release(limit)
+        budget.reset(third)
+        XCTAssertEqual(budget.reserve(limit, generation: third), .accepted)
+        budget.release(limit)
+        XCTAssertEqual(budget.reserve(1, generation: third), .accepted)
+        budget.release(1)
+    }
+
     @MainActor
     func testSystemSpeechCompletionAndStopReleasePlayback() async throws {
         let owner = AudioSessionOwnership.shared

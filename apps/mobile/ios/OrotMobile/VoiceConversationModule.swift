@@ -10,6 +10,7 @@ final class VoiceConversationModule: RCTEventEmitter {
     private lazy var duplex = VoiceDuplexCallCoordinator { [weak self] name, body in
         self?.sendEvent(withName: name, body: body)
     }
+
     private let capture = VoiceConversationCapture()
     private let speech = VoiceConversationSpeech()
     private var token: AudioSessionOwnership.Token?
@@ -43,7 +44,9 @@ final class VoiceConversationModule: RCTEventEmitter {
                     let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                     guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
                 }
-                if name != AVAudioSession.routeChangeNotification { duplex.systemInterrupted() }
+                if name != AVAudioSession.routeChangeNotification {
+                    duplex.systemInterrupted()
+                }
                 guard turn != nil else { return }
                 sendEvent(withName: "VoiceConversationInterrupted", body: ["turnId": turn ?? ""])
                 stopOwned()

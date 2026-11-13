@@ -16,12 +16,15 @@ final class VoiceDuplexCallCoordinator {
     private var generation = 0
     private var playbackGeneration = 0
     private var routeSignature = ""
-    var isActive: Bool { identifier != nil }
+    var isActive: Bool {
+        identifier != nil
+    }
 
     init(emit: @escaping (String, [String: Any]) -> Void) {
         self.emit = emit
         observer = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
-                                                          object: nil, queue: .main) { [weak self] _ in
+                                                          object: nil, queue: .main)
+        { [weak self] _ in
             guard let self else { return }
             let action = pending
             pending = nil
@@ -30,7 +33,9 @@ final class VoiceDuplexCallCoordinator {
     }
 
     deinit {
-        if let observer { NotificationCenter.default.removeObserver(observer) }
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
         // Capture resources, never self, so bridge disposal also releases the native graph.
         let audio = audio
         let recognition = recognition
@@ -38,7 +43,9 @@ final class VoiceDuplexCallCoordinator {
         DispatchQueue.main.async {
             audio.stop()
             recognition.stop()
-            if let ownedToken { try? AudioSessionOwnership.shared.release(ownedToken) }
+            if let ownedToken {
+                try? AudioSessionOwnership.shared.release(ownedToken)
+            }
         }
     }
 
@@ -63,8 +70,11 @@ final class VoiceDuplexCallCoordinator {
                         guard let self, self.identifier == id else { return }
                         guard allowed else { self.failOpen(self.failure("Microphone permission unavailable")); return }
                         let begin: () -> Void = { [weak self] in self?.begin(id, language: language) }
-                        if UIApplication.shared.applicationState == .active { begin() }
-                        else { self.pending = begin }
+                        if UIApplication.shared.applicationState == .active {
+                            begin()
+                        } else {
+                            self.pending = begin
+                        }
                     }
                 }
             }
@@ -102,7 +112,9 @@ final class VoiceDuplexCallCoordinator {
     private func failOpen(_ error: Error) {
         let callback = opening
         opening = nil
-        if let id = identifier { try? stop(id) }
+        if let id = identifier {
+            try? stop(id)
+        }
         callback?(.failure(error))
     }
 
@@ -134,7 +146,9 @@ final class VoiceDuplexCallCoordinator {
     }
 
     func finishCapture(_ id: String) {
-        if identifier == id { recognition.finishTurn() }
+        if identifier == id {
+            recognition.finishTurn()
+        }
     }
 
     /// Repeated stop is safe; a failed audio-session release retains the owner for retry.
@@ -147,7 +161,9 @@ final class VoiceDuplexCallCoordinator {
         audio.stop()
         recognition.stop()
         callback?(.failure(failure("Voice call stopped")))
-        if let token { try AudioSessionOwnership.shared.release(token); self.token = nil }
+        if let token {
+            try AudioSessionOwnership.shared.release(token); self.token = nil
+        }
         identifier = nil
     }
 
@@ -159,7 +175,9 @@ final class VoiceDuplexCallCoordinator {
 
     func routeChanged() {
         // Ignore our own startup category transition; an established graph cannot reuse a changed route.
-        if identifier != nil, opening == nil, routeSignature != currentRouteSignature() { systemInterrupted() }
+        if identifier != nil, opening == nil, routeSignature != currentRouteSignature() {
+            systemInterrupted()
+        }
     }
 
     func systemInterrupted() {

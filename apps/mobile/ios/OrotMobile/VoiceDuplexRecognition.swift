@@ -58,8 +58,8 @@ final class VoiceDuplexRecognition {
         turn.request.endAudio()
         let current = epoch
         let deadline = DispatchWorkItem { [weak self] in
-            guard let self, self.epoch == current, self.turns[active] != nil else { return }
-            self.fail(Failure.finalizationTimeout)
+            guard let self, epoch == current, turns[active] != nil else { return }
+            fail(Failure.finalizationTimeout)
         }
         turn.deadline = deadline
         DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: deadline)
@@ -121,15 +121,19 @@ final class VoiceDuplexRecognition {
             turn.endpoint?.cancel()
             turn.deadline?.cancel()
             turns.removeValue(forKey: id)
-            if active == id { beginTurn() }
-            if !text.isEmpty { transcript?(id, text) }
+            if active == id {
+                beginTurn()
+            }
+            if !text.isEmpty {
+                transcript?(id, text)
+            }
         } else if !text.isEmpty, text != turn.text, active == id {
             turn.text = text
             turn.endpoint?.cancel()
             let current = epoch
             let endpoint = DispatchWorkItem { [weak self] in
-                guard let self, self.epoch == current, self.active == id else { return }
-                self.finishTurn()
+                guard let self, epoch == current, active == id else { return }
+                finishTurn()
             }
             turn.endpoint = endpoint
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: endpoint)

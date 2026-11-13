@@ -16,11 +16,12 @@ final class VoiceDuplexAudioEngine {
     private var generation = UUID()
     private var pendingBuffers = 0
     private var pendingFrames = 0
-    static let maximumQueuedFrames = 24_000 * 60
+    static let maximumQueuedFrames = 24000 * 60
 
     static func acceptsQueuedFrames(_ queued: Int, adding: Int) -> Bool {
         queued >= 0 && adding > 0 && adding <= maximumQueuedFrames && queued <= maximumQueuedFrames - adding
     }
+
     private var synthesisEnded = false
     private var completion: ((Bool) -> Void)?
 
@@ -59,19 +60,27 @@ final class VoiceDuplexAudioEngine {
         synthesizer.write(utterance) { [weak self] buffer in
             guard let self else { return }
             guard let pcm = buffer as? AVAudioPCMBuffer else {
-                DispatchQueue.main.async { if self.generation == current { self.cancelPlayback() } }
+                DispatchQueue.main.async {
+                    if self.generation == current {
+                        self.cancelPlayback()
+                    }
+                }
                 return
             }
             let bytes = UnsafeMutableAudioBufferListPointer(pcm.mutableAudioBufferList).reduce(0) { $0 + Int($1.mDataByteSize) }
-            switch self.pendingPCM.reserve(bytes, generation: current) {
+            switch pendingPCM.reserve(bytes, generation: current) {
             case .stale: return
             case .overflow:
-                DispatchQueue.main.async { if self.generation == current { self.cancelPlayback() } }
+                DispatchQueue.main.async {
+                    if self.generation == current {
+                        self.cancelPlayback()
+                    }
+                }
                 return
             case .accepted: break
             }
             DispatchQueue.main.async {
-                defer { self.pendingPCM.release(bytes, generation: current) }
+                defer { self.pendingPCM.release(bytes) }
                 guard self.generation == current, self.completion != nil else { return }
                 if pcm.frameLength == 0 {
                     do { try self.drainConverter(generation: current) }
@@ -129,12 +138,16 @@ final class VoiceDuplexAudioEngine {
         var supplied = false
         var error: NSError?
         let status = converter.convert(to: converted, error: &error) { _, outStatus in
-            if supplied { outStatus.pointee = .noDataNow; return nil }
+            if supplied {
+                outStatus.pointee = .noDataNow; return nil
+            }
             supplied = true
             outStatus.pointee = .haveData
             return buffer
         }
-        if let error { throw error }
+        if let error {
+            throw error
+        }
         guard status != .error else { throw Failure.unavailableConversion }
         try schedule(converted, generation: current)
     }
@@ -146,7 +159,9 @@ final class VoiceDuplexAudioEngine {
             outStatus.pointee = .endOfStream
             return nil
         }
-        if let error { throw error }
+        if let error {
+            throw error
+        }
         guard status != .error else { throw Failure.unavailableConversion }
         try schedule(tail, generation: current)
     }
@@ -166,7 +181,9 @@ final class VoiceDuplexAudioEngine {
                 self.completeIfDrained()
             }
         }
-        if !player.isPlaying { player.play() }
+        if !player.isPlaying {
+            player.play()
+        }
     }
 
     private func completeIfDrained() {
@@ -180,8 +197,8 @@ final class VoiceDuplexAudioEngine {
 
 /// Bounds synthesized buffers retained by callbacks before the main queue can process them.
 /// This lock is never used by the microphone/render input callback.
-private final class VoiceDuplexPendingPCM {
-    enum Reservation { case accepted, stale, overflow }
+final class VoiceDuplexPendingPCM {
+    enum Reservation: Equatable { case accepted, stale, overflow }
     private let lock = NSLock()
     private var generation = UUID()
     private var bytes = 0
@@ -192,7 +209,7 @@ private final class VoiceDuplexPendingPCM {
         lock.lock()
         defer { lock.unlock() }
         generation = current
-        bytes = 0
+        // Outstanding accepted callbacks still retain their buffers across cancellation.
         closed = false
     }
 
@@ -208,9 +225,9 @@ private final class VoiceDuplexPendingPCM {
         return .accepted
     }
 
-    func release(_ count: Int, generation current: UUID) {
+    func release(_ count: Int) {
         lock.lock()
         defer { lock.unlock() }
-        if generation == current { bytes -= count }
+        bytes -= count
     }
 }

@@ -58,8 +58,8 @@ final class VoiceConversationCapture {
                         // A stable on-device partial ends this turn after a short pause. This is
                         // transcript endpointing, not simultaneous listening during TTS playback.
                         let end = DispatchWorkItem { [weak self] in
-                            guard let self, self.generation == current else { return }
-                            self.completeTurn()
+                            guard let self, generation == current else { return }
+                            completeTurn()
                         }
                         self.endOfTurn = end
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: end)
