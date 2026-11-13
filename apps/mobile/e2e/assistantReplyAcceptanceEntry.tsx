@@ -4,6 +4,7 @@ import {
   AppState,
   NativeModules,
   Pressable,
+  StyleSheet,
   Text,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +14,11 @@ import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { createConversationArtifactStorage } from '../src/storage/conversationArtifactStorage';
 import { createReplyNotificationStorage } from '../src/replyNotifications/replyNotificationStorage';
 import { nativeReplyNotifications } from '../src/replyNotifications/nativeReplyNotifications';
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  button: { minHeight: 44, justifyContent: 'center' },
+});
 
 /** Reserve a synthetic request; commit only after backgrounding so production eligibility is exercised. */
 async function prepare() {
@@ -117,14 +123,14 @@ function AssistantReplyAcceptanceApp() {
   if (state === 'ready') return <App />;
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.screen}>
         <Text testID="assistant-reply-fixture-state">{state}</Text>
         {state === 'enable' ? (
           <Pressable
             accessibilityRole="button"
             testID="assistant-reply-enable"
             onPress={enable}
-            style={{ minHeight: 44, justifyContent: 'center' }}
+            style={styles.button}
           >
             <Text>Enable synthetic reply notification</Text>
           </Pressable>
