@@ -14,12 +14,11 @@ export function FloatingAssistantSurface({
 }) {
   const [height, setHeight] = useState(0);
   const appearance = useAssistantAppearance();
+  const reservedHeight = appearance?.ready ? height : 0;
   return (
     <View style={styles.surface} testID="assistant-floating-surface">
       {/* Reserve only measured identity height so controls remain reachable under the overlay. */}
-      <View
-        style={[styles.surface, { paddingTop: appearance?.ready ? height : 0 }]}
-      >
+      <View style={[styles.surface, { paddingTop: reservedHeight }]}>
         {children}
       </View>
       {appearance?.ready ? (
