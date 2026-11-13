@@ -105,7 +105,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
     'OrotUITests/TestHostConnectionTests/testInitialNavigationObservationOnAIJourney',
     'OrotUITests/RootNavigationUITests/testRightRailKeepsAccessibleRootAndContextualNavigation',
-    'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
+    'OrotUITests/RootNavigationUITests/testContextualBackRemainsAboveKeyboardAndDismissesIt',
     'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
     'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
     homeSummary,

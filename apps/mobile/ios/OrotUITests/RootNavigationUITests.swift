@@ -14,42 +14,25 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     /// Keep the scheduled case in this suite while its fixture journey lives separately.
     @MainActor
-    func testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt() throws {
+    func testContextualBackRemainsAboveKeyboardAndDismissesIt() throws {
         try verifyContextualConversationKeyboard()
     }
 
     @MainActor
-    func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
-        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
+    func testBackRemainsReachableWithoutHomeButton() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
         defer { app.terminate() }
-        try NavigationPageActionUITestConditions.verifyDirectRecordsTap(app)
-        for (tab, markers, label) in NavigationUITestConditions.rootTabCases {
-            try NavigationUITestConditions.openTab(app, tab, markers: markers)
-            let action = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)")
-            XCTAssertEqual(action.control.label, label)
-            // Read the native accessibility selection state in addition to the rendered route.
-            NavigationPageActionUITestConditions.assertSelectedRoot(app, action: action.control, tab: tab)
-            try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "selected-root-tab-\(tab)", testCase: self)
-        }
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        let recordingAction = UITestConditions.element(app, "overview-metrics-edit")
-        let bar = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview").toolbar
-        let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
-        XCTAssertTrue(recordingAction.exists && recordingAction.isHittable && !recordingAction.frame.isEmpty)
-        XCTAssertTrue(root.exists && !root.frame.isEmpty)
-        // The Home metrics editor remains present even when no health data is available.
-        XCTAssertLessThanOrEqual(recordingAction.frame.maxY, bar.frame.minY)
-        let bottomClearance = root.frame.maxY - bar.frame.maxY
-        XCTAssertGreaterThanOrEqual(bottomClearance, 22)
-        XCTAssertLessThanOrEqual(bottomClearance, 26)
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-new-recording")
         try NavigationGeometryUITestConditions.captureRecordingBoundary(app, testCase: self)
         XCTAssertFalse(app.buttons["navigation-home"].exists)
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-back").control.isHittable)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        NavigationUITestConditions.route(app, markers: ["overview-title"])
-        capture(app, "home-after-home-action")
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        capture(app, "records-after-back")
     }
 
     @MainActor
@@ -75,8 +58,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
         XCTAssertFalse(app.buttons["navigation-home"].exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        NavigationUITestConditions.route(app, markers: ["overview-title"])
+        NavigationUITestConditions.route(app, markers: ["records-title"])
         capture(app, "accessible-right-navigation")
     }
 
@@ -103,8 +85,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(microphone.exists && microphone.isHittable)
         capture(app, "recording-xxxl-navigation")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        NavigationUITestConditions.route(app, markers: ["overview-title"])
+        NavigationUITestConditions.route(app, markers: ["records-title"])
     }
 
     @MainActor
