@@ -231,7 +231,7 @@ The cost column is historical run 38706863863, not a forecast: **C / L / A / I /
 | Requirement | Receiving test | Evidence boundary |
 | --- | --- | --- |
 | Keep the selection between two and four metrics, retain it after SQLite reopen, and reject duplicate or undersized input. | [OverviewMetrics.test.tsx](../apps/mobile/src/routes/overview/OverviewMetrics.test.tsx), [metricSelection.test.ts](../apps/mobile/src/routes/overview/metricSelection.test.ts) | Rendered component behavior and real SQLite repository persistence. |
-| Present each choice as a labeled checkbox with checked state, visible status, a comfortable full-row target, and paired actions that wrap when narrow. | [HomeMetricSelectionEditor.test.tsx](../apps/mobile/src/routes/overview/HomeMetricSelectionEditor.test.tsx) | React Native component contract; it does not prove UIKit geometry. |
+| Present each choice as a labeled checkbox with checked state, visible status, a comfortable full-row target, and paired actions that wrap when narrow. | [OverviewMetricSelectionEditor.test.tsx](../apps/mobile/src/routes/overview/OverviewMetricSelectionEditor.test.tsx) | React Native component contract; it does not prove UIKit geometry. |
 | Keep native checkbox targets reachable and at least 44 points high as Home reflows at larger text sizes. | [OverviewDuoUITests.swift](../apps/mobile/ios/OrotUITests/OverviewDuoUITests.swift) | Resolve each accessibility identifier, reveal the row in Home's scroll view, then check its accessibility value and measured target frame. The assertions remain in the existing Core/fixtures and Duo case; a current-candidate Simulator run remains pending allocation. |
 
 ### Setup, wrapper and current local observations

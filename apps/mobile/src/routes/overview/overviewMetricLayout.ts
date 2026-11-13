@@ -5,7 +5,7 @@ export const overviewMetricGridGap = 8;
 const minimumMetricCardWidth = 320;
 const minimumRecentChangeRowWidth = 280;
 
-export type HomeRecentChangeLayout = 'row' | 'header' | 'column';
+export type OverviewRecentChangeLayout = 'row' | 'header' | 'column';
 
 export interface OverviewMetricGridLayout {
   readonly columns: 1 | 2;
@@ -35,10 +35,10 @@ export function resolveOverviewMetricGridLayout(
 }
 
 /** Keeps previous and recent values together until the measured width or text scale needs stacking. */
-export function resolveHomeRecentChangeLayout(
+export function resolveOverviewRecentChangeLayout(
   measuredWidth: number,
   fontScale: number,
-): HomeRecentChangeLayout {
+): OverviewRecentChangeLayout {
   if (measuredWidth <= 0) return 'row';
 
   if (fontScale > 1.15 || measuredWidth < minimumRecentChangeRowWidth)

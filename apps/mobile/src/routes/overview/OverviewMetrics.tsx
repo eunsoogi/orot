@@ -14,7 +14,7 @@ import {
 } from './OverviewMetricCard';
 import {
   resolveOverviewMetricGridLayout,
-  resolveHomeRecentChangeLayout,
+  resolveOverviewRecentChangeLayout,
 } from './overviewMetricLayout';
 import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
@@ -63,7 +63,7 @@ export function OverviewMetrics() {
     data.selection.length,
     fontScale,
   );
-  const recentChangeLayout = resolveHomeRecentChangeLayout(
+  const recentChangeLayout = resolveOverviewRecentChangeLayout(
     gridWidth,
     fontScale,
   );

@@ -3,7 +3,7 @@ import { t } from '../../i18n';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
-import type { HomeRecentChangeLayout } from './overviewMetricLayout';
+import type { OverviewRecentChangeLayout } from './overviewMetricLayout';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import type { OverviewMetricProjection } from './metricProjection';
 
@@ -18,7 +18,7 @@ interface ComparisonPeriod {
 interface Props {
   readonly metric: OverviewMetricProjection;
   readonly title: string;
-  readonly layout?: HomeRecentChangeLayout;
+  readonly layout?: OverviewRecentChangeLayout;
   // Keep unit formatting in the Home route so the comparison block follows its metric-specific contract.
   readonly formatValue: (amount: number, unit: string) => string;
 }
