@@ -133,7 +133,10 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
             let hittable = action.isHittable
             let appFrame = app.frame
             let keyboardFrame = keyboard.exists ? keyboard.frame : .null
-            XCTContext.runActivity(named: "Stop target: app=\(appFrame), action=\(actionFrame), keyboard=\(keyboardFrame), windows=\(app.windows.count), hittable=\(hittable)") { _ in }
+            func observedFrame(_ element: XCUIElement) -> String {
+                element.exists ? String(describing: element.frame) : "unavailable"
+            }
+            XCTContext.runActivity(named: "Stop target: app=\(appFrame), action=\(actionFrame), keyboard=\(keyboardFrame), windows=\(app.windows.count), hittable=\(hittable), navigation=\(observedFrame(UITestConditions.element(app, "navigation-keyboard-avoiding-root"))), screen=\(observedFrame(UITestConditions.element(app, "rag-conversation-screen"))), composer=\(observedFrame(UITestConditions.element(app, "rag-conversation-composer"))), probe=\(observedFrame(app.staticTexts["retention-probe-status"]))") { _ in }
             // Reject a measured unreachable target before attempting to tap it.
             guard hittable, actionFrame.width >= 44, actionFrame.height >= 44,
                   appFrame.contains(actionFrame), !actionFrame.intersects(keyboardFrame)
