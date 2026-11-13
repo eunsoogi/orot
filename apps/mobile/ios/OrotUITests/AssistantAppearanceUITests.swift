@@ -58,7 +58,9 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         let appearanceScroll = app.scrollViews["assistant-appearance-scroll"]
         guard UITestConditions.exists(appearanceScroll) else { XCTFail("Appearance form is missing"); return }
         for _ in 0 ..< 3 {
-            if save.isHittable { break }
+            if save.isHittable {
+                break
+            }
             appearanceScroll.swipeUp()
         }
         guard save.isHittable, save.isEnabled else { XCTFail("Appearance save is not reachable"); return }
