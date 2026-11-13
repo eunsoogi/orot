@@ -46,23 +46,23 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         XCTAssertTrue(save.isHittable && save.isEnabled)
         save.tap()
 
-        let history = UITestConditions.element(app, "rag-conversation-history")
+        let histories = app.descendants(matching: .any).matching(identifier: "rag-conversation-history")
         let answers = app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", "Synthetic retained reply"))
-        var visibleAnswer: XCUIElement?
-        let answerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            visibleAnswer = answers.allElementsBoundByIndex.first { $0.isHittable }
-            return visibleAnswer != nil
-        }, object: nil)
-        let answerResult = UITestConditions.wait(for: [answerReady])
-        XCTAssertEqual(answerResult, .completed, app.debugDescription)
-        guard let answer = visibleAnswer, answerResult == .completed else { return }
-        XCTAssertTrue(UITestConditions.exists(history), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(answer), app.debugDescription)
-        XCTAssertTrue(answer.isHittable, answer.debugDescription)
-        XCTAssertTrue(history.frame.contains(answer.frame), answer.debugDescription)
+        /// Resolve the exact answer and its viewport together without retaining navigation-time indices.
+        func visibleReply() -> Bool {
+            let frames = histories.allElementsBoundByAccessibilityElement.compactMap { try? $0.snapshot().frame }
+            return answers.allElementsBoundByAccessibilityElement.contains { answer in
+                guard let frame = try? answer.snapshot().frame, !frame.isEmpty, answer.isHittable else { return false }
+                return frames.contains { $0.contains(frame) }
+            }
+        }
+        let initialReply = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in visibleReply() }, object: nil)
+        let initialResult = UITestConditions.wait(for: [initialReply])
+        XCTAssertEqual(initialResult, .completed, app.debugDescription)
+        guard initialResult == .completed else { return }
         XCUIDevice.shared.press(.home)
         app.activate()
-        XCTAssertTrue(UITestConditions.exists(answer), app.debugDescription)
-        XCTAssertTrue(answer.isHittable, answer.debugDescription)
+        let returnedReply = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in visibleReply() }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [returnedReply]), .completed, app.debugDescription)
     }
 }
