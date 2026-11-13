@@ -51,6 +51,16 @@ test('a request cannot reuse an existing or deleted answer identity', async () =
     await expect(
       store.startRequest({ ...request, id: 'tool-only' }),
     ).rejects.toThrow();
+    await store.startRequest({ ...request, id: 'active-request' });
+    await store.deleteSession('session');
+    await store.createSession('new-session', await store.currentGeneration());
+    await expect(
+      store.startRequest({
+        ...request,
+        id: 'active-request',
+        sessionId: 'new-session',
+      }),
+    ).rejects.toThrow();
     expect(await store.listCompletionIdentities()).toEqual([]);
   } finally {
     connection.close();

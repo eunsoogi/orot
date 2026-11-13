@@ -9,6 +9,13 @@ export async function setupConversationRequests(tx: SqlExecutor) {
   await tx.execute(
     "CREATE TABLE IF NOT EXISTS conversation_requests (id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, session_version INTEGER NOT NULL, question TEXT NOT NULL, created_at TEXT NOT NULL, status TEXT NOT NULL CHECK (status IN ('active', 'interrupted', 'cancelled', 'completed'))) ",
   );
+  // Opaque identity fences outlive session deletion so late work cannot claim a new conversation.
+  await tx.execute(
+    'CREATE TABLE IF NOT EXISTS conversation_request_identities (id TEXT PRIMARY KEY NOT NULL)',
+  );
+  await tx.execute(
+    'INSERT OR IGNORE INTO conversation_request_identities (id) SELECT id FROM conversation_requests',
+  );
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_completions (request_id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, message_id TEXT NOT NULL)',
   );
@@ -108,6 +115,10 @@ export function createConversationRequestStorage(
         );
         if (occupied.rows.length)
           throw new Error('Conversation request identity is unavailable.');
+        await tx.execute(
+          'INSERT INTO conversation_request_identities (id) VALUES (?)',
+          [input.id],
+        );
         await tx.execute(
           'INSERT INTO conversation_requests (id, session_id, session_version, question, created_at, status) VALUES (?, ?, ?, ?, ?, ?)',
           [
