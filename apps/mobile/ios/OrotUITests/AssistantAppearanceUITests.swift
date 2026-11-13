@@ -61,7 +61,11 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
 
     /// Require the native field's observed value without retrying or repairing a failed edit.
     private func waitForName(_ field: XCUIElement, equals value: String) -> Bool {
-        let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: field)
+        // UIKit exposes an empty text field's placeholder as its accessibility value.
+        let predicate = value.isEmpty
+            ? NSPredicate(format: "value == %@ OR value == %@", "", field.placeholderValue ?? "")
+            : NSPredicate(format: "value == %@", value)
+        let match = XCTNSPredicateExpectation(predicate: predicate, object: field)
         let passed = XCTWaiter.wait(for: [match], timeout: 3) == .completed
         XCTAssertTrue(passed, "Expected name \(value), observed \(String(describing: field.value))")
         return passed
