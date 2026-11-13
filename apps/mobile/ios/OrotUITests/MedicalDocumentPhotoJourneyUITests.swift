@@ -46,10 +46,9 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
 
         // The host seeds one synthetic image in the owned Simulator; selection remains in PHPicker.
         XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
-        // The Duo system extension exposes photo assets as images, not app-owned cells.
-        let photo = isDuoPhotoValidation
-            ? XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker").images.matching(identifier: "PXGGridLayout-Info").firstMatch
-            : app.collectionViews.cells.firstMatch
+        // PHPicker exposes assets through its system extension on both ordinary iPhone and Duo.
+        let photo = XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker")
+            .images.matching(identifier: "PXGGridLayout-Info").firstMatch
         XCTAssertTrue(photo.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(photo.isHittable, app.debugDescription)
         photo.tap()
