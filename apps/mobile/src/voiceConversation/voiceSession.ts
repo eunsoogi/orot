@@ -1,3 +1,4 @@
+import { createDuplexVoiceSession } from './duplexVoiceSession';
 import { createVoiceController } from './voiceController';
 import {
   createVoicePorts,
@@ -11,6 +12,12 @@ export function createVoiceSession(
   dependencies: VoiceConversationDependencies,
   changed: (state: VoiceState) => void,
 ) {
+  if (dependencies.native.duplex)
+    return createDuplexVoiceSession(
+      dependencies,
+      dependencies.native.duplex,
+      changed,
+    );
   let continuous = false;
   let generation = 0;
   let sequence = 0;

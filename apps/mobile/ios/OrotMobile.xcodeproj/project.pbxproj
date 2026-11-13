@@ -341,6 +341,9 @@
 		BBD39ED4CA5C1F73E2C05D80 /* EncounterInputObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */; };
 		09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */; };
 		D09B8C3B135C4759A63CC2390808EC9B /* VisitQuestionInputObservationWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB1C9E3891B420B996B02B6D9613670 /* VisitQuestionInputObservationWindow.swift */; };
+		A741AA00000000000000000B /* VoiceDuplexAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */; };
+		A741AA00000000000000000C /* VoiceDuplexRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000C /* VoiceDuplexRecognition.swift */; };
+		A741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -701,6 +704,9 @@
 		4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputObservation.swift; path = EncounterInputObservation.swift; sourceTree = "<group>"; };
 		48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VisitQuestionInputGate.swift; path = OrotMobile/VisitQuestionInputGate.swift; sourceTree = "<group>"; };
 		2FB1C9E3891B420B996B02B6D9613670 /* VisitQuestionInputObservationWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VisitQuestionInputObservationWindow.swift; path = OrotMobile/VisitQuestionInputObservationWindow.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexAudioEngine.swift; path = OrotMobile/VoiceDuplexAudioEngine.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000C /* VoiceDuplexRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexRecognition.swift; path = OrotMobile/VoiceDuplexRecognition.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexCallCoordinator.swift; path = OrotMobile/VoiceDuplexCallCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -777,6 +783,9 @@
 				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B741AA000000000000000001 /* AudioSessionOwnership.swift */,
+				B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */,
+				B741AA00000000000000000C /* VoiceDuplexRecognition.swift */,
+				B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */,
 				B741AA000000000000000002 /* VoiceConversationCapture.swift */,
 				B741AA000000000000000003 /* VoiceConversationSpeech.swift */,
 				B68FAB000000000000000004 /* VoiceConversationModule.swift */,
@@ -1476,6 +1485,9 @@
 				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */,
+				A741AA00000000000000000B /* VoiceDuplexAudioEngine.swift in Sources */,
+				A741AA00000000000000000C /* VoiceDuplexRecognition.swift in Sources */,
+				A741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift in Sources */,
 				A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */,
 				A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */,
 				A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */,

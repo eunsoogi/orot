@@ -7,6 +7,9 @@ import UIKit
 /// Bridges one explicitly started ephemeral turn; it never sends or stores captured audio.
 @objc(VoiceConversationModule)
 final class VoiceConversationModule: RCTEventEmitter {
+    private lazy var duplex = VoiceDuplexCallCoordinator { [weak self] name, body in
+        self?.sendEvent(withName: name, body: body)
+    }
     private let capture = VoiceConversationCapture()
     private let speech = VoiceConversationSpeech()
     private var token: AudioSessionOwnership.Token?
@@ -20,7 +23,7 @@ final class VoiceConversationModule: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceConversationInterrupted", "VoiceConversationListening"]
+        ["VoiceConversationInterrupted", "VoiceConversationListening", "VoiceCallSpeechStarted", "VoiceCallTranscript", "VoiceCallInterrupted"]
     }
 
     override init() {
@@ -34,11 +37,14 @@ final class VoiceConversationModule: RCTEventEmitter {
         })
         for name in [UIApplication.didEnterBackgroundNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                guard let self, turn != nil else { return }
+                guard let self else { return }
                 if name == AVAudioSession.routeChangeNotification {
+                    duplex.routeChanged()
                     let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                     guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
                 }
+                if name != AVAudioSession.routeChangeNotification { duplex.systemInterrupted() }
+                guard turn != nil else { return }
                 sendEvent(withName: "VoiceConversationInterrupted", body: ["turnId": turn ?? ""])
                 stopOwned()
             })
@@ -46,6 +52,14 @@ final class VoiceConversationModule: RCTEventEmitter {
     }
 
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+    override func invalidate() {
+        DispatchQueue.main.async {
+            self.duplex.systemInterrupted()
+            self.stopOwned()
+        }
+        super.invalidate()
+    }
 
     @objc(start:language:resolver:rejecter:)
     func start(_ identifier: String, language: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
@@ -156,6 +170,48 @@ final class VoiceConversationModule: RCTEventEmitter {
                 resolve(nil)
             } else {
                 reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil)
+            }
+        }
+    }
+
+    @objc(openCall:language:resolver:rejecter:)
+    func openCall(_ id: String, language: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            self.duplex.open(id, language: language) { result in
+                switch result {
+                case .success: resolve(nil)
+                case let .failure(error): reject("VOICE_CALL_FAILED", "Voice call unavailable.", error)
+                }
+            }
+        }
+    }
+
+    @objc(stopCall:resolver:rejecter:)
+    func stopCall(_ id: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            do { try self.duplex.stop(id); resolve(nil) }
+            catch { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", error) }
+        }
+    }
+
+    @objc(interruptOutput:resolver:rejecter:)
+    func interruptOutput(_ id: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async { self.duplex.interruptOutput(id); resolve(nil) }
+    }
+
+    @objc(finishCallCapture:)
+    func finishCallCapture(_ id: String) {
+        DispatchQueue.main.async { self.duplex.finishCapture(id) }
+    }
+
+    @objc(speakCall:generation:text:language:resolver:rejecter:)
+    func speakCall(_ id: String, generation: Int, text: String, language: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            self.duplex.speak(id, sequence: generation, text: text, language: language) { result in
+                switch result {
+                case let .success(spoken): resolve(spoken)
+                case let .failure(error): reject("VOICE_SPEECH_STOPPED", "Voice output interrupted.", error)
+                }
             }
         }
     }

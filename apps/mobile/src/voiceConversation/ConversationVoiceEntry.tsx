@@ -83,6 +83,7 @@ export function ConversationVoiceEntry(
     const voice = session.current;
     if (
       props.busy &&
+      !owned.current &&
       voice &&
       ['authorizing', 'listening', 'speaking'].includes(voice.getState().phase)
     )

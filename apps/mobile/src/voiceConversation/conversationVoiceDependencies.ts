@@ -111,8 +111,12 @@ export function conversationVoiceDependencies(input: {
       return result.answer;
     },
     async cancel(identity) {
-      if (owned.current?.turnId === identity.turnId)
-        owned.current.handle.cancel();
+      if (owned.current?.turnId !== identity.turnId) return;
+      const handle = owned.current.handle;
+      handle.cancel();
+      // New voice turns must not replace the owned handle while cancellation is still settling.
+      await handle.completion;
+      if (owned.current?.handle === handle) owned.current = null;
     },
   };
 }

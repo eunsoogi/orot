@@ -14,7 +14,7 @@ Voice input does not consume the text draft or staged photos. The caller reports
 
 This observation never opens a microphone, requests permissions, or calls a model provider. It does not establish audible output quality or microphone start/stop. The current capture adapter reads the real `AVAudioEngine.inputNode`; it has no verified synthetic-input routing contract. Do not authorize a host microphone or capture ambient user audio just to complete acceptance. Capture remains unverified until an isolated synthetic-input route is established, or the owner explicitly authorizes a specific live-input test. On-device recognition and the selected provider's real response remain separate evidence boundaries.
 
-## Continuous-session foundation (not full-duplex completion)
+## Earlier sequential-session foundation (legacy adapter)
 
 Explicit consent now opens a full-screen voice surface. End and mute cancel the owned operation;
 resume reuses the same approved session/provider, with point-of-use revalidation. A completed
@@ -23,7 +23,7 @@ by end, mute, interruption or route/selection invalidation. Partial on-device tr
 remain unchanged for 1.2 seconds request end-of-audio; manual completion remains a fallback.
 This is transcript endpointing, not an acoustic voice-activity detector.
 
-The current pipeline still waits for the selected text provider's complete answer and uses
+The legacy pipeline still waits for the selected text provider's complete answer and uses
 local synthesis. The explicit interrupt control cancels processing/playback before listening;
 it is not spoken barge-in while playback continues. True simultaneous microphone/playback
 needs a supported duplex audio-session/echo-cancellation contract and native evidence. External
@@ -32,3 +32,23 @@ or authorized by this foundation. Keep #741 open until its full requirements are
 
 The full-screen surface has not yet received native geometry/accessibility or live-input
 validation. The 2d978816 safety test's silent synthesis pass does not establish these new paths.
+
+## Local duplex implementation (native validation pending)
+
+The capability-selected call adapter retains one audio owner for the foreground call.
+Its `.playAndRecord` / `.voiceChat` session drives one voice-processing `AVAudioEngine`,
+with on-device recognition consuming its input and synthesized PCM scheduled into its output.
+Recognized speech advances a generation, cancels pending provider output and playback,
+and leaves capture running. Intentional playback cancellation is not a call failure.
+Mute, end, background, interruption, route loss and bridge invalidation close the call.
+No raw microphone buffers are persisted or sent to a provider. Consent explicitly describes
+continued listening during replies. The selected text model and existing text-transmission
+consent remain unchanged; complete-answer latency still applies before synthesis.
+
+Recognition hands input to a fresh on-device request before finalizing the old request.
+The recognizer's overlapping-finalization behavior, echo suppression on supported routes,
+spoken interruption latency and full-screen accessibility require native evidence.
+A 1.2-second stable partial transcript is an endpoint heuristic, not acoustic VAD;
+missing finals fail closed after five seconds. Compilation and mocked event tests do not
+prove these device behaviors. Do not open an ambient microphone or use a physical device
+without separately authorized, scoped validation. Keep #741 open pending its full criteria.

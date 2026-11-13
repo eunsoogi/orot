@@ -24,7 +24,7 @@ export const voiceConversationKo = {
     '첨부 사진을 제거하거나 먼저 보낸 뒤 음성 대화를 시작해 주세요.',
   'ragConversation.voice.consentTitle': '음성으로 대화할까요?',
   'ragConversation.voice.consentMessage':
-    '음성은 기기에서 글자로 변환해요. 변환된 질문과 필요한 기록은 {recipient}에서 처리할 수 있어요. 사진과 녹음 파일은 보내지 않아요. 종료하거나 마이크를 끌 때까지 답변 뒤에 다시 듣기를 시작해요.',
+    '음성은 기기에서 글자로 변환해요. 변환된 질문과 필요한 기록은 {recipient}에서 처리할 수 있어요. 사진과 녹음 파일은 보내지 않아요. 종료하거나 마이크를 끌 때까지 답변 중에도 마이크로 계속 들어요.',
   'ragConversation.voice.consentAccept': '동의하고 시작',
   'ragConversation.voice.consentCancel': '취소',
 } as const;
