@@ -1,6 +1,27 @@
 import XCTest
 
 extension AppointmentsUITests {
+    /// Binds each displayed clinic to the repository identity after its save succeeds.
+    @MainActor
+    func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String, previous: String = "") -> String {
+        tap(app, "appointment-add")
+        fill(app, clinic: clinic, date: date, time: time, note: "")
+        let identity = UITestConditions.appointmentIdentity(app, previous: previous)
+        let selection = UITestConditions.element(app, "appointment-select-\(identity)")
+        if !selection.isSelected {
+            tap(app, "appointment-select-\(identity)")
+        }
+        XCTAssertTrue(selection.isSelected)
+        let clinics = app.staticTexts.matching(identifier: "appointment-clinic-\(identity)")
+        let savedClinic = clinics.firstMatch
+        XCTAssertTrue(savedClinic.waitForAppearance())
+        XCTAssertEqual(clinics.count, 1)
+        FormUITestConditions.reveal(savedClinic, in: app, scrollID: "appointments-scroll", towardTop: true)
+        XCTAssertTrue(savedClinic.isHittable)
+        XCTAssertEqual(UITestConditions.text(savedClinic), clinic)
+        return identity
+    }
+
     /// Verifies the saved second identity and continuous page without requiring a posture change.
     @MainActor
     func testSavedAppointmentIdentitySurvivesAppearanceEditAndRestart() throws {
