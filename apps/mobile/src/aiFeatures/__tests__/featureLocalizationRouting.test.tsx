@@ -112,6 +112,8 @@ const featureScreens = [
       'ragConversation.title',
       'aiActivity.cancel',
       'ragConversation.placeholder',
+      'ragConversation.photo.select',
+      'ragConversation.photo.selectHint',
       'ragConversation.send',
       'ragConversation.sessions',
       'ragConversation.newConversation',
