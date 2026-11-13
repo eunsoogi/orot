@@ -1,16 +1,11 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEntryAction } from './ConversationEntryAction';
@@ -18,9 +13,8 @@ import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
-import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { useConversationSessionActions } from './useConversationSessionActions';
-import { conversationComposerLayout } from './conversationComposerLayout';
+import { useConversationScreenLayout } from './useConversationScreenLayout';
 import {
   useConversationEntryIntent,
   conversationEntryForSession,
@@ -56,14 +50,8 @@ export function ConversationScreen({
   discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
-  const [contentHeight, setContentHeight] = useState(0);
-  const { fontScale } = useWindowDimensions();
-  const occlusion = useNavigationOcclusion();
-  const composerLayout = conversationComposerLayout(
-    contentHeight,
-    occlusion.scrollContentInsets.bottom,
-    fontScale,
-  );
+  const { setContentHeight, occlusion, composerLayout } =
+    useConversationScreenLayout();
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);

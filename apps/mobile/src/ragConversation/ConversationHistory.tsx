@@ -1,18 +1,14 @@
 import { useRef } from 'react';
-import type { ComponentRef, ReactNode } from 'react';
+import type { ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
-import type { DisplayMessage } from './ConversationMessage';
-import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { ReplyMessageContainer } from './ReplyMessageContainer';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
-import type { ConversationActivitySnapshot } from './conversationActivity';
-import type { ConversationSession } from './conversationSessionTypes';
+import type { ConversationHistoryProps } from './ConversationHistoryProps';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
@@ -37,29 +33,7 @@ export function ConversationHistory({
   replyFocus,
   requestSessionId,
   requestActivity,
-}: {
-  readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: ConversationSession['pendingMessage'];
-  readonly error: string;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-  readonly onLinkError: () => void;
-  readonly bottomInset?: number;
-  readonly header?: ReactNode;
-  readonly beforeMessages?: ReactNode;
-  readonly footer?: ReactNode;
-  readonly compact?: boolean;
-  readonly unsavedCount?: number;
-  readonly retryingSave?: boolean;
-  readonly onRetrySave?: () => void;
-  readonly restoreFailed?: boolean;
-  readonly onRetryRestore?: () => void;
-  readonly toolSourceSessionId?: string | null;
-  readonly resolveToolSource?: ResolveConversationToolSource;
-  readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
-  readonly replyFocus?: { messageId: string; done(): void };
-  readonly requestSessionId?: number;
-  readonly requestActivity?: ConversationActivitySnapshot | null;
-}) {
+}: ConversationHistoryProps) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
   const userScrolling = useRef(false);

@@ -68,7 +68,7 @@ test('a committed leave-state readiness change resumes a deferred root entry onc
   const controller = createNavigationController<AppNavigationRoute>('home');
   const decision = jest.spyOn(controller, 'requestTabSwitchDecision');
   const selectTab = jest.fn();
-  await render(
+  const view = await render(
     <>
       <NavigationRouteAdapter controller={controller}>
         {() => <Route />}
@@ -91,4 +91,11 @@ test('a committed leave-state readiness change resumes a deferred root entry onc
   await waitFor(() => expect(selectTab).toHaveBeenCalledTimes(1));
   expect(selectTab).toHaveBeenCalledWith('records');
   expect(rootURLBridge.acknowledge).toHaveBeenCalledWith('entry');
+  const wake = jest.fn();
+  controller.subscribeEntryAvailability(wake);
+  await view.unmount();
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(wake).not.toHaveBeenCalled();
 });

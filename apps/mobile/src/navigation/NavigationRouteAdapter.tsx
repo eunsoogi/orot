@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationViewport } from './NavigationViewport';
@@ -21,6 +21,7 @@ import type { NavigationPrimaryAction } from './NavigationActionBar';
 import type { NavigationRootTabs } from './rootTabs';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
 import { useNavigationEntryAvailability } from './useNavigationEntryAvailability';
+import { useRegisteredLeaveStates } from './useRegisteredLeaveStates';
 import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
@@ -33,10 +34,6 @@ import {
 } from './NavigationMotionContext';
 import type { NavigationRouteLayoutPolicy } from './appContentLayoutPolicy';
 
-interface RegisteredLeaveState<Name extends string> {
-  readonly token: symbol;
-  readonly source: NavigationLeaveStateSource<Name>;
-}
 export interface NavigationRouteAdapterProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveState?: NavigationLeaveStateSource<Name>;
@@ -72,40 +69,9 @@ export function NavigationRouteAdapter<Name extends string>({
   const snapshot = useNavigationSnapshot(controller);
   const reduceMotion = useNavigationReduceMotion();
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
-  const [, setLeaveStateVersion] = useState(0);
-  const leaveStateRef = useRef(leaveState);
-  const registeredLeaveStates = useRef(
-    new Map<string, RegisteredLeaveState<Name>>(),
-  );
-  leaveStateRef.current = leaveState;
-  const getLeaveStateSource = useCallback((routeKey: string) => {
-    return (
-      registeredLeaveStates.current.get(routeKey)?.source ??
-      leaveStateRef.current
-    );
-  }, []);
-  const registerLeaveState = useCallback(
-    (routeKey: string, source: NavigationLeaveStateSource<Name>) => {
-      const registration = { token: Symbol('navigation-leave-state'), source };
-      registeredLeaveStates.current.set(routeKey, registration);
-      observeNavigationTest('leave-state-register', { routeKey });
-      setLeaveStateVersion(version => version + 1);
-      return () => {
-        if (
-          registeredLeaveStates.current.get(routeKey)?.token !==
-          registration.token
-        ) {
-          return;
-        }
-        registeredLeaveStates.current.delete(routeKey);
-        observeNavigationTest('leave-state-cleanup', {
-          routeKey,
-          logicalKeys: controller.getSnapshot().routes.map(item => item.key),
-        });
-        setLeaveStateVersion(version => version + 1);
-      };
-    },
-    [controller],
+  const { getLeaveStateSource, registerLeaveState } = useRegisteredLeaveStates(
+    controller,
+    leaveState,
   );
   useNavigationEntryAvailability(
     controller,
