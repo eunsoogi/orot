@@ -74,7 +74,8 @@ enum UITestConditions {
         var current = CGRect.zero
         let boundsChanged = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in
-                current = app.frame
+                guard app.windows.count == 1, app.windows.firstMatch.exists else { return false }
+                current = app.windows.firstMatch.frame
                 return abs(current.width - previous.width) > 0.5 ||
                     abs(current.height - previous.height) > 0.5
             },
@@ -105,7 +106,10 @@ enum UITestConditions {
             }
             return receipt
         }
-        let initial = app.frame
+        let window = app.windows.firstMatch
+        XCTAssertEqual(app.windows.count, 1)
+        XCTAssertTrue(window.exists)
+        let initial = window.frame
         let armed = try command("start")
         XCTAssertEqual(armed["status"] as? String, "sampled")
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
@@ -131,8 +135,10 @@ enum UITestConditions {
                 (landscape ? width > height : height > width)
         }, "No correlated current scene geometry event: \(receipt)")
         let bounds = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let frame = app.frame
+            guard app.windows.count == 1, window.exists else { return false }
+            let frame = window.frame
             return (abs(frame.width - initial.width) > 0.5 || abs(frame.height - initial.height) > 0.5) &&
+                abs(frame.width - (current["width"] ?? 0)) <= 0.5 && abs(frame.height - (current["height"] ?? 0)) <= 0.5 &&
                 (landscape ? frame.width > frame.height : frame.height > frame.width)
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [bounds], timeout: 15), .completed, "AX window did not reflow")

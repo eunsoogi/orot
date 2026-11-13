@@ -125,7 +125,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         keepAppointment.tap()
         XCTAssertFalse(confirmation.exists, app.debugDescription)
 
-        let portraitBounds = app.frame
+        let portraitBounds = app.windows.firstMatch.frame
         XCUIDevice.shared.orientation = .landscapeLeft
         UITestConditions.waitForWindowBoundsChange(in: app, from: portraitBounds)
         let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
