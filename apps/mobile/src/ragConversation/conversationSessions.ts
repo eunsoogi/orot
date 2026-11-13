@@ -117,6 +117,9 @@ export function createConversationSessions(
     restoration,
     disposed: () => disposed,
     lifecycle: () => lifecycle,
+    finalizeDraft: id => {
+      photoDrafts.retireSession(id).catch(() => {});
+    },
   });
   return {
     photoDrafts,

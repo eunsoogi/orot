@@ -8,6 +8,14 @@ export function useConversationPhotoControls(
 ) {
   const drafts = store.photoDrafts;
   const photo = useSyncExternalStore(drafts.subscribe, () => drafts.get(id));
+  const pickerDisabled = useSyncExternalStore(
+    drafts.subscribe,
+    drafts.isPicking,
+  );
+  const cleanupPending = useSyncExternalStore(
+    drafts.subscribe,
+    () => drafts.failedCleanupSessionIds().length > 0,
+  );
   return {
     status: photo.status,
     ...('photo' in photo && photo.photo?.previewData
@@ -15,10 +23,12 @@ export function useConversationPhotoControls(
       : {}),
     hasPhoto: 'photo' in photo && Boolean(photo.photo),
     ...('reason' in photo && photo.reason ? { errorReason: photo.reason } : {}),
-    pickerDisabled: drafts.isPicking(),
-    cleanupPending: drafts.cleanupPending(id),
+    pickerDisabled,
+    cleanupPending,
     onRetryCleanup: () => {
-      drafts.retryCleanup(id).catch(() => {});
+      Promise.allSettled(
+        drafts.failedCleanupSessionIds().map(drafts.retryCleanup),
+      ).catch(() => {});
     },
     onSelect: () => {
       drafts.select(id).catch(() => {});

@@ -1,10 +1,12 @@
 import { createConversationPhotoCleanup } from './conversationPhotoCleanup';
 import { createConversationPhotoHandoffs } from './conversationPhotoHandoff';
-import { notifyPhotoListeners } from './conversationPhotoNotifications';
+import { createPhotoNotifications } from './conversationPhotoNotifications';
+import { previousConversationPhoto as previousPhoto } from './conversationPhotoTypes';
 import type { PhotoRequestIdentity } from './conversationPhotoHandoff';
 import type {
   ConversationPhotoState as State,
   PhotoDraftFailure,
+  PhotoValidity,
 } from './conversationPhotoTypes';
 
 /** Owns selected originals until the session explicitly removes or transfers them. */
@@ -18,13 +20,9 @@ export function createConversationPhotoDrafts<T>(operations: {
 }) {
   const states = new Map<number, State<T>>();
   const empty: State<T> = { status: 'empty' };
-  const listeners = new Set<() => void>();
-  const notify = () => notifyPhotoListeners(listeners);
+  const { notify, subscribe } = createPhotoNotifications();
   const revisions = new Map<number, number>();
-  const validity = new Map<
-    number,
-    { valid: () => boolean; generation?: number }
-  >();
+  const validity = new Map<number, PhotoValidity>();
   const cleanup = createConversationPhotoCleanup(operations.discard, notify);
   const removing = new Map<number, Promise<void>>();
   let picking = false;
@@ -35,8 +33,6 @@ export function createConversationPhotoDrafts<T>(operations: {
     states.set(id, state);
     notify();
   };
-  const previousPhoto = (state: State<T>): T | undefined =>
-    'photo' in state ? state.photo : undefined;
   const advance = (id: number) => {
     const revision = (revisions.get(id) ?? 0) + 1;
     revisions.set(id, revision);
@@ -93,16 +89,19 @@ export function createConversationPhotoDrafts<T>(operations: {
   return {
     get,
     isPicking: () => picking,
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe,
     cleanupPending: cleanup.hasFailure,
     failedCleanupSessionIds: cleanup.failedIds,
     retryCleanup,
     remove,
+    retireSession(id: number) {
+      const handoff = handoffs.detach(id);
+      const photo = previousPhoto(get(id));
+      advance(id);
+      validity.delete(id);
+      update(id, empty);
+      return handoff ?? (photo ? retire(id, photo) : Promise.resolve());
+    },
     beginHandoff(id: number, identity: PhotoRequestIdentity) {
       const state = get(id);
       if (clearing || picking || removing.has(id) || state.status !== 'ready')

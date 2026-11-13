@@ -1,5 +1,6 @@
 export type PhotoDraftFailure =
   'unsupported' | 'empty' | 'protection' | 'unavailable';
+export type PhotoValidity = { valid: () => boolean; generation?: number };
 
 /** The draft remains non-sendable while its protected original changes owners. */
 export type ConversationPhotoState<T> =
@@ -12,3 +13,9 @@ export type ConversationPhotoState<T> =
       readonly photo?: T;
       readonly reason?: PhotoDraftFailure;
     };
+
+export function previousConversationPhoto<T>(
+  state: ConversationPhotoState<T>,
+): T | undefined {
+  return 'photo' in state ? state.photo : undefined;
+}
