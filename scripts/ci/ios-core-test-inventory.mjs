@@ -9,6 +9,11 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // Audio reservation tests use fake mutations and never activate the system session.
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testBusyAndStaleOwnersCannotMutateNewOwner',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedDeactivationRetainsReservationUntilRetry',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedActivationRequiresSuccessfulCleanupBeforeNextOwner',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testConcurrentReservationsHaveExactlyOneWinner',
   // Verify the appointment wrapper, page scroll, and section ownership on UIKit.
   'OrotIntegrationTests/AppointmentPageScrollOwnershipTests/testWrapperOwnerAndSectionsRejectNestedOrDetachedScrolls',
   // The test-only scene observer must reject duplicate and unrelated geometry phases.

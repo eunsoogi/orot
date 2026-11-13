@@ -9,6 +9,7 @@
     final class RecordingMeteringProbeModule: RCTEventEmitter, AVAudioRecorderDelegate {
         private let queue = DispatchQueue(label: "com.orot.mobile.metering-probe")
         private var recorder: AVAudioRecorder?
+        private var audioToken: AudioSessionOwnership.Token?
         private var file: RecordingMeteringProbeFile?
         private var timer: DispatchSourceTimer?
         private var deadline: DispatchWorkItem?
@@ -63,6 +64,9 @@
             deadline?.cancel()
             recorder?.stop()
             _ = file?.cleanup()
+            if let audioToken {
+                try? AudioSessionOwnership.shared.release(audioToken)
+            }
         }
 
         @objc(start:resolver:rejecter:)
@@ -70,13 +74,16 @@
             queue.async {
                 guard consent else { reject("METERING_CONSENT_REQUIRED", "Acknowledge real microphone capture first.", nil); return }
                 guard self.status == "idle" else { reject("METERING_ALREADY_STARTED", "This bounded probe can run once per launch.", nil); return }
+                do { self.audioToken = try AudioSessionOwnership.shared.reserve() }
+                catch { reject("METERING_AUDIO_BUSY", "Audio is in use by another activity.", nil); return }
+                guard let token = self.audioToken else { return }
                 self.status = "permission"
                 DispatchQueue.main.async {
                     let permission = RecordingMeteringPermission()
                     self.permission = permission
                     permission.request { granted in
                         self.queue.async {
-                            guard self.status == "permission" else {
+                            guard self.status == "permission", self.audioToken == token else {
                                 reject("METERING_CANCELED", "The microphone probe was stopped before permission returned.", nil)
                                 return
                             }
@@ -104,10 +111,9 @@
             let ownedFile = try RecordingMeteringProbeFile()
             file = ownedFile
             cleanupComplete = false
-            let session = AVAudioSession.sharedInstance()
             stage = "audio-session"
-            try session.setCategory(.record, mode: .default, options: [])
-            try session.setActive(true)
+            guard let token = audioToken else { throw AudioSessionOwnership.Failure.stale }
+            try AudioSessionOwnership.shared.activate(token, category: .record, mode: .default)
             stage = "recorder-initialization"
             let capture = try AVAudioRecorder(url: ownedFile.url, settings: [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC), AVSampleRateKey: 44100,
@@ -208,7 +214,10 @@
             cleanupComplete = file?.cleanup() ?? true
             status = "completed"
             self.reason = cleanupComplete ? reason : "cleanup-failed"
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            if let token = audioToken {
+                do { try AudioSessionOwnership.shared.release(token); audioToken = nil }
+                catch { cleanupComplete = false; self.reason = "cleanup-failed" }
+            }
             emit()
         }
 

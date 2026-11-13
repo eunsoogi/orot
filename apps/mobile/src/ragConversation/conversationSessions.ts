@@ -1,5 +1,5 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
-import { startOwnedConversationRequest } from './conversationOwnedRequest';
+import { conversationDispatch } from './conversationDispatch';
 import type {
   ConversationSender,
   ConversationSession,
@@ -223,25 +223,12 @@ export function createConversationSessions(
       if (snapshot.deleted?.handle !== undefined)
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
     },
-    send: (id: number, onSend: ConversationSender) =>
-      disposed
-        ? Promise.resolve()
-        : requests.send(
-            id,
-            onSend,
-            undefined,
-            photoDrafts.get(id).status !== 'empty',
-          ),
-    sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
-      disposed ? Promise.resolve() : requests.send(id, onSend, prompt),
-    /** Binds cancellation and committed completion to one explicit request. */
-    sendOwnedPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
-      startOwnedConversationRequest({
-        retention: disposed ? undefined : options.retention,
-        sender: onSend,
-        start: (sender, registerOwner) =>
-          requests.send(id, sender, prompt, false, registerOwner),
-      }),
+    ...conversationDispatch({
+      requests,
+      photoDrafts,
+      retention: options.retention,
+      disposed: () => disposed,
+    }),
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),

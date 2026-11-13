@@ -71,6 +71,13 @@ public extension RecordingModule {
                 reject("RECORDING_ALREADY_ACTIVE", "A recording start is already in progress.", nil)
                 return
             }
+            let token: AudioSessionOwnership.Token
+            do {
+                token = try self.reserveCaptureAudio()
+            } catch {
+                reject("RECORDING_BUSY", "Audio is in use by another activity.", error as NSError)
+                return
+            }
             self.startInProgress = true
             self.consentAcknowledged = true
             #if DEBUG && targetEnvironment(simulator)
@@ -86,9 +93,14 @@ public extension RecordingModule {
             #endif
             self.requestMicrophonePermission { granted in
                 self.workQueue.async {
+                    guard self.startInProgress, self.captureAudioToken == token else {
+                        reject("RECORDING_START_CANCELLED", "Recording start was cancelled.", nil)
+                        return
+                    }
                     guard granted else {
                         self.startInProgress = false
                         self.consentAcknowledged = false
+                        self.releaseCaptureAudio()
                         self.emitState()
                         reject("RECORDING_MICROPHONE_PERMISSION_DENIED", "Microphone permission was not granted.", nil)
                         return
@@ -100,30 +112,6 @@ public extension RecordingModule {
                     }
                 }
             }
-        }
-    }
-
-    @objc(pauseRecording:rejecter:)
-    func pauseRecording(
-        _ resolve: @escaping RCTPromiseResolveBlock,
-        rejecter reject: @escaping RCTPromiseRejectBlock,
-    ) {
-        workQueue.async {
-            guard self.consentAcknowledged else {
-                reject("RECORDING_CONSENT_REQUIRED", "Recording consent is required.", nil)
-                return
-            }
-            guard self.status == .recording else {
-                reject("RECORDING_NOT_ACTIVE", "Only an active recording can be paused.", nil)
-                return
-            }
-            self.recorder?.pause()
-            RecordingCaptureDiagnostics.emit(.paused, clockMs: self.currentDurationMs())
-            self.deactivateAudioSession()
-            self.status = .paused
-            self.stopTimer()
-            self.emitState()
-            resolve(self.snapshot())
         }
     }
 
@@ -151,7 +139,8 @@ public extension RecordingModule {
                 }
             #endif
             do {
-                try AVAudioSession.sharedInstance().setActive(true)
+                guard let token = self.captureAudioToken else { throw AudioSessionOwnership.Failure.stale }
+                try AudioSessionOwnership.shared.activate(token, category: .record, mode: .default)
             } catch {
                 reject("RECORDING_AUDIO_SESSION_FAILED", error.localizedDescription, error as NSError)
                 return
@@ -237,7 +226,7 @@ public extension RecordingModule {
             self.consentAcknowledged = false
             self.wasInterrupted = false
             self.emitState()
-            self.deactivateAudioSession()
+            self.releaseCaptureAudio()
             resolve(result as NSDictionary)
         }
     }

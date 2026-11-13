@@ -1,6 +1,6 @@
 import XCTest
 
-/// Verifies the rendered saved-result routes on the current Duo window without requesting rotation.
+/// Verifies saved-result routes and Duo history layout, including a native landscape transition.
 final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
     /// Checks actual titles, button hit targets, and saved-route navigation without starting a provider or rotating.
     @MainActor

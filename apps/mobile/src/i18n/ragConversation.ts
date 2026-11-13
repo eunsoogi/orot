@@ -1,5 +1,8 @@
+import { voiceConversationKo } from './voiceConversationKo';
+
 /** Korean catalog entries for the grounded local-record conversation screen. */
 export const ragConversationKo = {
+  ...voiceConversationKo,
   'ragConversation.title': '기록과 대화',
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',

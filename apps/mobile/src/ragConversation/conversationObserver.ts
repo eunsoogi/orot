@@ -34,6 +34,11 @@ export type RagConversationObserver = Pick<
   };
   /** Durable request identity, distinct from a transient UI response number. */
   readonly retentionRequestId?: string;
+  /** Voice binds its transcript to the exact selection approved before capture. */
+  readonly expectedVoiceSelection?: {
+    readonly providerId: string;
+    readonly modelId: string;
+  };
   readonly retainedHistory?: readonly {
     readonly id: string;
     readonly question: string;

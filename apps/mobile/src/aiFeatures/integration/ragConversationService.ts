@@ -23,6 +23,11 @@ import { conversationEarlyResponse } from './conversationEarlyResponse';
 import { loadConversationHistory } from './conversationHistorySources';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
 import {
+  conversationTargetFailure,
+  resolveConversationSelection,
+  validConversationInput,
+} from './conversationVoiceSelection';
+import {
   bindConversationPhotoExecution,
   prepareConversationPhoto,
 } from './conversationPhotoService';
@@ -55,11 +60,7 @@ export function createRagConversationService({
   ): Promise<RagConversationOutcome> {
     const normalizedQuestion = question.trim();
     const photo = observer?.photoInput;
-    if (
-      (!normalizedQuestion &&
-        !photo?.submitted.ocr?.sections.some(section => section.text.trim())) ||
-      normalizedQuestion.length > 1000
-    ) {
+    if (!validConversationInput(normalizedQuestion, photo)) {
       return { status: 'failure', kind: 'validation_failed' };
     }
     const linked = createLinkedAbortController(parentSignal);
@@ -75,10 +76,7 @@ export function createRagConversationService({
         signal,
       });
       if (target.failure)
-        return {
-          status: 'failure',
-          kind: signal.aborted ? 'cancelled' : target.failure,
-        };
+        return conversationTargetFailure(signal, target.failure);
       const report = target.report;
       stage = 'selection';
       const early =
@@ -97,7 +95,8 @@ export function createRagConversationService({
         }));
       if (early) return early;
       stage = 'selection';
-      const selected = await withProviderStage('rag', 'selection', selectedAi);
+      const selected = await resolveConversationSelection(observer, selectedAi);
+      if (!selected) return { status: 'failure', kind: 'consent_required' };
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));

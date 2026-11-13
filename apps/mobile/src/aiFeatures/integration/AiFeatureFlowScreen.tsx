@@ -71,6 +71,10 @@ export function AiFeatureFlowScreen({
         ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
+      voiceSelection={{
+        revision: selectedAiRevision,
+        resolve: resolveSelectedAi,
+      }}
       renderStoredReportTask={(card, onChat, onTaskIdentity, onTaskResult) => (
         <ConversationReportTask
           card={card}

@@ -20,7 +20,7 @@ public extension RecordingModule {
         let observedEnd = completed ? min(player?.duration ?? 0, Double(playbackEndMs ?? 0) / 1000) : (player?.currentTime ?? 0)
         player?.stop()
         playbackPlayer = nil
-        deactivateAudioSession()
+        releasePlaybackAudio()
 
         let resolve = playbackResolve
         let reject = playbackReject
