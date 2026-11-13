@@ -29,7 +29,7 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
             app.terminate()
         }
 
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         saveSyntheticSelection(app)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
@@ -64,7 +64,7 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         XCTAssertEqual(Array(largeTextArguments.suffix(4)), AppearanceUITestConditions.observationArguments)
         app.launchArguments = largeTextArguments
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         openSyncStatus(app)
         XCTAssertGreaterThan(

@@ -22,7 +22,7 @@ test('retries the same preparation target without opening another visit', async 
   const runtime = {
     list,
     targets: new Map(),
-    homePreparationTargets: new Map(),
+    overviewPreparationTargets: new Map(),
   };
   const load = jest.fn();
   function Fixture() {

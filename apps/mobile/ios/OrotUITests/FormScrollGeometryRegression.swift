@@ -62,16 +62,16 @@ enum FormScrollGeometryRegression {
         let application = CGRect(x: 0, y: 0, width: 402, height: 874)
         let route = CGRect(x: 0, y: 62, width: 402, height: 778)
         let navigation = CGRect(x: 25, y: 766, width: 353, height: 84)
-        let viewport = try XCTUnwrap(HomeMetricScrollGeometry.unobscuredViewport(
+        let viewport = try XCTUnwrap(OverviewMetricScrollGeometry.unobscuredViewport(
             application: application, window: application, route: route, scroll: route,
             navigationOcclusion: navigation,
         ))
         XCTAssertEqual(viewport, CGRect(x: 0, y: 62, width: 402, height: 704))
         let geometry = try XCTUnwrap(FormScrollGeometry(application: application, scroll: viewport, keyboard: nil))
         let target = CGRect(x: 20, y: 739.333333, width: 362, height: 619.666667)
-        XCTAssertFalse(HomeMetricScrollGeometry.contains(target, in: geometry.viewport))
+        XCTAssertFalse(OverviewMetricScrollGeometry.contains(target, in: geometry.viewport))
         XCTAssertFalse(
-            HomeMetricScrollGeometry.contains(CGRect(x: 50, y: 80, width: 362, height: 40), in: geometry.viewport),
+            OverviewMetricScrollGeometry.contains(CGRect(x: 50, y: 80, width: 362, height: 40), in: geometry.viewport),
         )
         let corridor = try XCTUnwrap(geometry.horizontalPosition(outside: target))
         let drag = try XCTUnwrap(geometry.gesture(target: target, towardTop: false, horizontalPosition: corridor))

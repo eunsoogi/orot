@@ -32,7 +32,7 @@ extension RootNavigationUITests {
             XCUIDevice.shared.orientation = initialOrientation.isPortrait || initialOrientation.isLandscape ? initialOrientation : .portrait
         }
 
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         // The Settings route emits the adaptive geometry used as the rotation baseline.
         let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
@@ -84,7 +84,7 @@ extension RootNavigationUITests {
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         XCTAssertGreaterThan(
             UITestConditions.element(app, "settings-title").frame.height,

@@ -29,8 +29,8 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     private func verifyHomeAndHealthImport(_ app: XCUIApplication) throws {
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try inset(app, "welcome-title")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        try inset(app, "overview-title")
         try inset(app, "navigation-route-scroll")
         capture(app, "home-top-safe-area")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])

@@ -28,7 +28,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 60))
         surface.actions = [
             [
-                "id": "tab-home", "label": "Home", "testID": "navigation-tab-home",
+                "id": "tab-overview", "label": "Home", "testID": "navigation-tab-overview",
                 "accessibilityLabel": "Home tab", "systemImageName": "house.fill",
                 "rootTab": true, "selected": true, "disabled": true,
             ],
@@ -112,7 +112,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let result = try await TestOperationBroker.shared.request("render-application")
         XCTAssertEqual(result["requested"] as? Bool, true)
         let routes = [
-            ("home", ["welcome-title"]),
+            ("home", ["overview-title"]),
             ("records", ["records-title"]),
             ("schedule", ["calendar-title", "schedule-retry"]),
             ("ai", ["rag-conversation-screen"]),

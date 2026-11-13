@@ -64,7 +64,7 @@ function setup() {
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const guard = jest.fn(
     async (_transition?: unknown, _onExplicitDecline?: () => void) => true,
   );
@@ -189,7 +189,7 @@ it('rejects a tap cancelled while the navigation confirmation is open', async ()
     </AppointmentReminderProvider>,
   );
   await waitFor(() => expect(alert).toHaveBeenCalled());
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   alert.mockRestore();
 });
 

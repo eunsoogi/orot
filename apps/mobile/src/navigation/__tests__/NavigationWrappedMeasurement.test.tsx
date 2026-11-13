@@ -20,7 +20,7 @@ test('waits for matching constrained native height and keeps the full primary la
     await render(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         safeAreaHandledByParent
         pageActions={[
           {
@@ -44,23 +44,23 @@ test('waits for matching constrained native height and keeps the full primary la
         nativeEvent: {
           revision: naturalRevision,
           width: 386,
-          widths: [76, 64, 250, 140],
-          heights: [80, 80, 80, 80],
+          widths: [76, 320, 140],
+          heights: [80, 80, 80],
           category: 'xxxl',
         },
       }),
     );
     const request = surface().props.pageMetricsRequest;
     expect(request.revision).not.toBe(naturalRevision);
-    expect(request.actions[2].layoutWidth).toBeLessThan(250);
+    expect(request.actions[1].layoutWidth).toBeLessThan(320);
     expect(screen.getByRole('progressbar')).toBeTruthy();
     await act(async () =>
       surface().props.onPageMetrics({
         nativeEvent: {
           revision: naturalRevision,
           width: 386,
-          widths: [76, 64, 250, 140],
-          heights: [80, 80, 80, 80],
+          widths: [76, 320, 140],
+          heights: [80, 80, 80],
           category: 'xxxl',
         },
       }),
@@ -73,11 +73,10 @@ test('waits for matching constrained native height and keeps the full primary la
           width: 386,
           widths: [
             76,
-            64,
-            request.actions[2].layoutWidth,
-            request.actions[3].layoutWidth ?? 140,
+            request.actions[1].layoutWidth,
+            request.actions[2].layoutWidth ?? 140,
           ],
-          heights: [80, 80, 160, 120],
+          heights: [80, 160, 120],
           category: 'changed',
         },
       }),
@@ -88,8 +87,8 @@ test('waits for matching constrained native height and keeps the full primary la
         nativeEvent: {
           revision: naturalRevision,
           width: 386,
-          widths: [76, 64, 250, 140],
-          heights: [80, 80, 80, 80],
+          widths: [76, 320, 140],
+          heights: [80, 80, 80],
           category: 'changed',
         },
       }),
@@ -103,11 +102,10 @@ test('waits for matching constrained native height and keeps the full primary la
           width: 386,
           widths: [
             76,
-            64,
-            updatedRequest.actions[2].layoutWidth,
-            updatedRequest.actions[3].layoutWidth ?? 140,
+            updatedRequest.actions[1].layoutWidth,
+            updatedRequest.actions[2].layoutWidth ?? 140,
           ],
-          heights: [80, 80, 160, 120],
+          heights: [80, 160, 120],
           category: 'changed',
         },
       }),

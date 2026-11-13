@@ -38,16 +38,16 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        // A previous reminder tap can restore this conversation; return home without resetting saved reminder state.
+        // A previous reminder tap can restore a detail; unwind it without resetting saved state.
         let settingsTab = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
-        let homeAction = app.buttons.matching(identifier: "navigation-home").firstMatch
+        let backAction = app.buttons.matching(identifier: "navigation-back").firstMatch
         let navigationReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            settingsTab.exists || homeAction.exists
+            settingsTab.exists || backAction.exists
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [navigationReady]), .completed, app.debugDescription)
-        if !settingsTab.exists {
-            XCTAssertTrue(homeAction.exists && homeAction.isHittable, app.debugDescription)
-            try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        for _ in 0 ..< 3 where !settingsTab.exists {
+            XCTAssertTrue(backAction.exists && backAction.isHittable, app.debugDescription)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         }
         let settingsAction = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(settingsAction.control.exists && settingsAction.control.isHittable, app.debugDescription)

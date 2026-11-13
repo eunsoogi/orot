@@ -18,8 +18,8 @@ extension RootNavigationUITests {
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         tap(app, "ai-feature-select-provider")
         NavigationUITestConditions.route(app, markers: ["provider-selection-screen"])
         try verifyProviderSelectionLayout(app)
@@ -37,7 +37,7 @@ extension RootNavigationUITests {
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
-        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").control.isSelected)
+        XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").control.isSelected)
     }
 
     /// Keeps both provider groups and the disabled action inside the native content region.

@@ -8,8 +8,8 @@ extension RootNavigationUITests {
         app.launchArguments = ["-OROT_E2E_PROBE", "medical-appointment-app-navigation", "-OROT_HOME_CONVERSATION_VISIT", "YES", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { app.terminate() }
-        XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
-        let prepare = UITestConditions.element(app, "home-prepare-visit")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        let prepare = UITestConditions.element(app, "overview-prepare-visit")
         XCTAssertTrue(prepare.waitForAppearance(), app.debugDescription)
         FormUITestConditions.reveal(prepare, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(prepare.isHittable, prepare.debugDescription)
@@ -24,16 +24,16 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
         XCTAssertGreaterThan(keyboard.frame.height, 100)
         try NavigationUITestConditions.assertSharedViewport(app, keyboard: keyboard, testCase: self)
-        for identifier in ["navigation-back", "navigation-home"] {
+        for identifier in ["navigation-back"] {
             let action = try NavigationUITestConditions.navigationAction(app, identifier)
             XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
         }
         try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: "conversation-keyboard-native-navigation", testCase: self, requireCurrentNavigation: true)
-        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["overview-title"])
         let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
         try NavigationUITestConditions.assertSharedViewport(app, testCase: self)
-        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-home", name: "home-after-keyboard-navigation", testCase: self)
+        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-overview", name: "home-after-keyboard-navigation", testCase: self)
     }
 }

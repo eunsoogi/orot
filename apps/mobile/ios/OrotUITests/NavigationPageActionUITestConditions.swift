@@ -14,7 +14,7 @@ enum NavigationPageActionUITestConditions {
             NavigationUITestConditions.route(app, markers: markers)
             XCTAssertTrue(control.isSelected, "Direct tap must select \(tab)")
             if tab == "schedule" {
-                try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+                try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
             }
         }
     }
@@ -31,7 +31,7 @@ enum NavigationPageActionUITestConditions {
         guard more.exists else { throw NSError(domain: "NavigationUITests", code: 4, userInfo: [NSLocalizedDescriptionKey: "Neither tab nor More exists: \(tab)"]) }
         XCTAssertTrue(more.isHittable, app.debugDescription)
         more.tap()
-        let labels = ["home": "홈 탭", "records": "기록 탭", "schedule": "일정 탭", "ai": "AI 탭", "settings": "설정 탭"]
+        let labels = ["overview": "한눈에 탭", "records": "기록 탭", "schedule": "일정 탭", "conversation": "대화 탭", "settings": "설정 탭"]
         let item = try app.buttons[XCTUnwrap(labels[tab])]
         XCTAssertTrue(item.exists && item.isHittable, app.debugDescription)
         item.tap()
@@ -135,7 +135,6 @@ enum NavigationPageActionUITestConditions {
             XCTAssertTrue(UITestConditions.element(app, "manual-history-save").exists && UITestConditions.element(app, "manual-history-form-close").exists, app.debugDescription)
         }
         let back = UITestConditions.element(app, "navigation-back")
-        let home = UITestConditions.element(app, "navigation-home")
         let keyboard = app.keyboards.firstMatch
         let content = UITestConditions.element(app, "navigation-content-region")
         let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
@@ -166,7 +165,7 @@ enum NavigationPageActionUITestConditions {
         try assertSameRect(rect(geometry["windowBounds"]), window)
         let axReadStart = Date().timeIntervalSince1970 * 1000
         XCTAssertLessThanOrEqual(sampleEnd, axReadStart)
-        for target in buttons + [back, home] {
+        for target in buttons + [back] {
             let matches = controls.filter { $0["identifier"] as? String == target.identifier }
             XCTAssertEqual(matches.count, 1, app.debugDescription)
             let control = try XCTUnwrap(matches.first)
@@ -194,7 +193,7 @@ enum NavigationPageActionUITestConditions {
         }
         XCTAssertGreaterThanOrEqual(Date().timeIntervalSince1970 * 1000, axReadStart)
         XCTAssertFalse(buttons.isEmpty, app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(back) && back.isHittable && UITestConditions.exists(home) && home.isHittable, app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(back) && back.isHittable, app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(content) && !content.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(root.exists && !window.isEmpty, app.debugDescription)
         XCTAssertEqual(root.frame.minX, window.minX, accuracy: 0.5)
@@ -205,7 +204,7 @@ enum NavigationPageActionUITestConditions {
         for button in buttons {
             XCTAssertTrue(button.isHittable && window.contains(button.frame), app.debugDescription)
             XCTAssertFalse(button.frame.intersects(content.frame), app.debugDescription)
-            XCTAssertTrue(back.frame.maxY <= button.frame.minY && button.frame.maxY <= home.frame.minY, "Back, page actions, and Home must remain vertically ordered: \(app.debugDescription)")
+            XCTAssertTrue(back.frame.maxY <= button.frame.minY, "Back and page actions must remain vertically ordered: \(app.debugDescription)")
             XCTAssertLessThanOrEqual(button.frame.maxY, keyboard.frame.minY, app.debugDescription)
         }
         for (index, button) in buttons.enumerated() {

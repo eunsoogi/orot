@@ -19,10 +19,6 @@ export const navigationText = {
   },
   save: '저장',
   saving: '저장 중',
-  home: {
-    label: '홈',
-    accessibilityLabel: '홈 화면으로 이동',
-  },
   recording: {
     label: '녹음',
     accessibilityLabel: '녹음 화면으로 이동',

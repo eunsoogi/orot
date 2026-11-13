@@ -54,11 +54,11 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'disease-hypotheses' ||
     route.name === 'saved-analysis' ||
     route.name === 'source-detail' ||
-    (route.name === 'home' &&
-      (rootTabs?.activeTab === 'home' ||
+    (route.name === 'root' &&
+      (rootTabs?.activeTab === 'overview' ||
         rootTabs?.activeTab === 'records' ||
         rootTabs?.activeTab === 'schedule' ||
-        rootTabs?.activeTab === 'ai' ||
+        rootTabs?.activeTab === 'conversation' ||
         rootTabs?.activeTab === 'settings'))
     ? 'screen'
     : 'scene';

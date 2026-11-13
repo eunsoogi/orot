@@ -56,7 +56,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         defer { app.terminate() }
         launch(app, probe: "medical-appointment-app-navigation", observeGeometry: true)
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance())
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance())
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         tap(app, "open-medical-appointments")
         XCTAssertTrue(app.staticTexts["기기 안에서 분류해요."].waitForAppearance())
@@ -70,7 +70,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["medical-appointment-review-scroll"], name: "appointment-classification-return-boundary", testCase: self)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(node(app, "calendar-title").waitForAppearance())
-        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         NavigationGeometryUITestConditions.captureScreen(app, name: "manual-classification-schedule-home", testCase: self)
     }
 

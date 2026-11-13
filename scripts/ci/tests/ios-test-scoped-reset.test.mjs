@@ -103,9 +103,9 @@ test('fresh creation, visit preparation, migration, document import, backup and 
   assert.deepEqual(full, [
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
-    'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
-    'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
-    'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation',
+    'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',
+    'OrotUITests/OverviewDuoUITests/testLargeTextOverviewActionsStayWithinContentWidth',
+    'OrotUITests/OverviewDuoUITests/testOverviewContentClearsBottomNavigation',
     'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
     'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
     'OrotUITests/RecordingDeletionLatencyUITests/testSyntheticRecordingDeletionTimingDistribution',

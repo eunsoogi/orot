@@ -78,7 +78,7 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   expect(screen.getByTestId('schedule-open-appointments')).toBeDisabled();
   expect(screen.getByTestId('open-medical-appointments')).toBeDisabled();
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-home'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
   await pressAlertButton(alert, 0);
@@ -87,8 +87,10 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
   expect(await screen.findByText('다음 외래 방문을 저장했어요.')).toBeTruthy();
   expect(screen.getByTestId('schedule-open-appointments')).toBeEnabled();
-  await fireEvent.press(screen.getByTestId('navigation-tab-home'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+  await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
+  await waitFor(() =>
+    expect(screen.getByTestId('overview-title')).toBeTruthy(),
+  );
   expect(alert).toHaveBeenCalledTimes(1);
 });
 

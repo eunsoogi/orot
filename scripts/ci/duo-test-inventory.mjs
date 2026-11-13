@@ -14,9 +14,9 @@ export const duoTests = [
   'OrotUITests/RootNavigationUITests/testVoiceOverReadsAndActivatesRightRailNavigation',
   // Child boundary measurements share the read-only Core journey without a rotation prerequisite.
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
-  'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
-  'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
-  'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation',
+  'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',
+  'OrotUITests/OverviewDuoUITests/testLargeTextOverviewActionsStayWithinContentWidth',
+  'OrotUITests/OverviewDuoUITests/testOverviewContentClearsBottomNavigation',
   'OrotUITests/RootNavigationUITests/testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText',
   'OrotUITests/RootNavigationUITests/testSettingsPortraitLayoutAndLargeText',
   'OrotUITests/RootNavigationUITests/testSettingsLargeTextTargetsRemainReachableBesideDuoRail',

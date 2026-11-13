@@ -107,7 +107,7 @@ afterEach(() => {
 });
 
 test('uses native privacy regions and retains confirmation, progress, and cleared state through reflow', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const reset = jest.mocked(resetInferenceConsentReceipts);
   const alert = jest.spyOn(Alert, 'alert');
   let finishClear: (() => void) | undefined;

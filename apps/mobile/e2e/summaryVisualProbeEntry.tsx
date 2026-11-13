@@ -111,11 +111,7 @@ function Routes({ services }: { services: Services }) {
     [services],
   );
   return (
-    <NavigationRouteAdapter
-      controller={controller}
-      leaveState={leaveState}
-      showHome
-    >
+    <NavigationRouteAdapter controller={controller} leaveState={leaveState}>
       {navigation => {
         const onBack = () => {
           navigation.onBack();

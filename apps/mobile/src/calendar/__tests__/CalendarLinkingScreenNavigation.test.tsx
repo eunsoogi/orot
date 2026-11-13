@@ -26,16 +26,15 @@ const bridge: CalendarBridge = {
   addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
 };
 
-test('places shared Back, Home, and recording actions in the bottom menu', async () => {
+test('places Back and recording actions in the bottom menu', async () => {
   const onBack = jest.fn();
-  const onHome = jest.fn();
   const onOpenRecording = jest.fn();
   await render(
     <CalendarLinkingScreen
       repository={repository}
       bridge={bridge}
       onBack={onBack}
-      onHome={onHome}
+
       onOpenRecording={onOpenRecording}
     />,
   );
@@ -49,11 +48,7 @@ test('places shared Back, Home, and recording actions in the bottom menu', async
       name: navigationText.back.accessibilityLabel,
     }),
   );
-  await fireEvent.press(
-    screen.getByRole('button', {
-      name: navigationText.home.accessibilityLabel,
-    }),
-  );
+  expect(screen.queryByTestId('navigation-home')).toBeNull();
   await fireEvent.press(
     screen.getByRole('button', {
       name: navigationText.recording.accessibilityLabel,
@@ -61,6 +56,5 @@ test('places shared Back, Home, and recording actions in the bottom menu', async
   );
 
   expect(onBack).toHaveBeenCalledTimes(1);
-  expect(onHome).toHaveBeenCalledTimes(1);
   expect(onOpenRecording).toHaveBeenCalledTimes(1);
 });

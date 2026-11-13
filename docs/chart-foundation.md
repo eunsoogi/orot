@@ -4,7 +4,7 @@
 
 ## 기존 화면과 데이터 소유권
 
-- Home의 `HomeMetrics`는 수면, 심박수, 체중, 걸음 카드를 `HomeMetricCard`로 표시합니다. `metricProjection`은 일별 값과 부분 상태를 소유합니다. 화면 이전은 #699가 담당합니다.
+- 한눈에의 `OverviewMetrics`는 수면, 심박수, 체중, 걸음 카드를 `OverviewMetricCard`로 표시합니다. `metricProjection`은 일별 값과 부분 상태를 소유합니다. 화면 이전은 #699가 담당합니다.
 - 건강 기록의 `HealthRecordsCategoryCard`는 `HealthRecordsCategoryCharts`를 통해 혈압, 심박수, 걸음, 체중 차트를 표시합니다. `healthRecordsChartModel`은 관측값을 계열로 분류하고, `HealthRecordsCategoryCharts`는 단위별 차트를 분리합니다. 화면 이전은 #700이 담당합니다.
 - 상세 기록은 목록과 기간 선택을 제공하며 현재 차트가 없습니다. 녹음 파형, 진행 표시, 일정과 사건 중심 요약은 통계 차트 이전 범위가 아닙니다.
 

@@ -34,7 +34,6 @@ extension NavigationGeometryUITestConditions {
         let state = try observedNavigationSide(app, testCase: testCase)
         XCTAssertTrue(state.keyboardVisible)
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
-        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
         if state.side == "right" {
             XCTAssertLessThan(save.frame.maxX, back.toolbar.frame.minX)
             return
@@ -43,7 +42,7 @@ extension NavigationGeometryUITestConditions {
         let pageBar = UITestConditions.element(app, "navigation-page-action-toolbar")
         let cancel = UITestConditions.element(app, "next-visit-review-cancel")
         let content = UITestConditions.element(app, "navigation-content-region")
-        let buttons = [back.control, save, cancel, home.control]
+        let buttons = [back.control, save, cancel]
         XCTAssertTrue(pageBar.exists && pageBar.isHittable && content.exists)
         for (index, button) in buttons.enumerated() {
             let frame = button.frame
@@ -76,7 +75,7 @@ extension NavigationGeometryUITestConditions {
         XCTAssertEqual(dock["truncated"] as? Bool, false)
         let windowID = try XCTUnwrap(dock["windowID"] as? String)
         let controls = try XCTUnwrap(dock["controls"] as? [[String: Any]])
-        for target in [back.control, save, home.control] {
+        for target in [back.control, save] {
             let matches = controls.filter { $0["identifier"] as? String == target.identifier }
             XCTAssertEqual(matches.count, 1)
             let control = try XCTUnwrap(matches.first)
@@ -120,13 +119,13 @@ extension NavigationGeometryUITestConditions {
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(keyboard.exists && !keyboard.frame.isEmpty, app.debugDescription)
         XCTAssertLessThanOrEqual(returned.maxY, keyboard.frame.minY + 0.5, "The bottom navigation must clear the actual keyboard")
-        for id in ["navigation-tab-ai", "navigation-tab-home"] {
+        for id in ["navigation-tab-conversation", "navigation-tab-overview"] {
             let target = try NavigationUITestConditions.navigationAction(app, id).control
             XCTAssertTrue(target.exists && target.isHittable && target.isEnabled, app.debugDescription)
             XCTAssertGreaterThanOrEqual(target.frame.width, 44)
             XCTAssertGreaterThanOrEqual(target.frame.height, 44)
             XCTAssertTrue(returned.insetBy(dx: -1, dy: -1).contains(target.frame))
-            if id == "navigation-tab-ai" {
+            if id == "navigation-tab-conversation" {
                 XCTAssertTrue(target.isSelected)
             }
         }

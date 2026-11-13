@@ -38,6 +38,7 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
   'OrotIntegrationTests/ReplyNotificationInboxTests/testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets',
   'OrotIntegrationTests/RootURLInboxTests/testValidDeliveriesSurviveReopenAndAcknowledgeOneAtATime',
+  'OrotIntegrationTests/RootURLInboxTests/testLegacyDestinationsNormalizeAcrossReopen',
   'OrotIntegrationTests/RootURLInboxTests/testInvalidInputCannotOverwriteAValidDelivery',
   'OrotIntegrationTests/RootURLInboxTests/testMalformedStoredHeadDoesNotBlockLaterValidDelivery',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',

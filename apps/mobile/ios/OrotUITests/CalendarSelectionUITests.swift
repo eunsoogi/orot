@@ -13,7 +13,7 @@ final class CalendarSelectionUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         app.launchArguments = ["-OROT_TEST_SCENARIO", "calendar", "-OROT_CALENDAR_PROBE", "synthetic", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        UITestConditions.value(UITestConditions.element(app, "welcome-title"), equals: "오롯")
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertFalse(UITestConditions.element(app, "calendar-connect").exists)
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         UITestConditions.value(UITestConditions.element(app, "calendar-title"), equals: "일정")

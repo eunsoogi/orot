@@ -65,7 +65,7 @@ const serviceDependencies: AiFeatureServiceDependencies = {
 // Host the real Settings provider route under the production adapter and geometry policy.
 function SettingsProviderLayoutProbe() {
   const controller = useMemo(
-    () => createNavigationController<AppNavigationRoute>('home'),
+    () => createNavigationController<AppNavigationRoute>('root'),
     [],
   );
   const [selectedProvider, setSelectedProvider] = useState(
@@ -86,12 +86,11 @@ function SettingsProviderLayoutProbe() {
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
       rootTabs={route =>
-        route.name === 'home'
+        route.name === 'root'
           ? { activeTab: 'settings', onSelect: () => undefined }
           : undefined
       }
-      scrollable={route => route.name === 'home'}
-      showHome
+      scrollable={route => route.name === 'root'}
     >
       {actions => renderRoute(actions, selectedProvider, onSelectionCommitted)}
     </NavigationRouteAdapter>
@@ -115,7 +114,7 @@ function renderRoute(
       />
     );
   }
-  if (actions.route.name !== 'home') return null;
+  if (actions.route.name !== 'root') return null;
 
   return (
     <SettingsRoute

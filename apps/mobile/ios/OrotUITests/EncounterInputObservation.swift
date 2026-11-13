@@ -104,7 +104,7 @@ final class EncounterInputObservation {
     @MainActor extension EncounterInputObservation {
         /// Retain the live keyboard, controls and native navigation receipt before evaluating their placement.
         static func captureSaveNavigationState(_ app: XCUIApplication, input: XCUIElement, testCase: XCTestCase) {
-            let ids = ["next-visit-review-save", "navigation-back", "navigation-home", "navigation-toolbar", "navigation-page-action-toolbar", "navigation-content-region"]
+            let ids = ["next-visit-review-save", "navigation-back", "navigation-toolbar", "navigation-page-action-toolbar", "navigation-content-region"]
             let states = ids.map { id in
                 let matches = app.descendants(matching: .any).matching(identifier: id)
                 let item = matches.firstMatch

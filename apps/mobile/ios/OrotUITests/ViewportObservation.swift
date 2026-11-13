@@ -6,7 +6,7 @@ enum ViewportObservation {
     static let identifiers = ["safe-area-root", "appointments-keyboard-root", "appointments-scroll", "appointments-title",
                               "appointments-columns-frame-host", "appointments-columns-primary", "appointments-columns-secondary",
                               "appointments-back", "navigation-toolbar", "navigation-tab-settings", "navigation-route-scroll",
-                              "welcome-title", "settings-title", "navigation-keyboard-avoiding-root", "navigation-content-region",
+                              "overview-title", "settings-title", "navigation-keyboard-avoiding-root", "navigation-content-region",
                               "navigation-root-tabs-glass-backdrop"]
 
     static var enabled: Bool {

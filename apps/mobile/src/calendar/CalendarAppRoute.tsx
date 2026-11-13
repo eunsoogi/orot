@@ -5,7 +5,7 @@ import { AppButton } from '../layout/AppButton';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
 import { navigationText } from '../i18n/navigation';
-import { appRouteStyles } from '../routes/WelcomeRoute';
+import { appRouteStyles } from '../routes/OverviewRoute';
 import CalendarLinkingScreen from './CalendarLinkingScreen';
 import type { CalendarBridge } from './types';
 
@@ -36,7 +36,6 @@ export function CalendarAppRoute({
           repository={appointmentRepository}
           bridge={bridge}
           onBack={onBack}
-          onHome={onBack}
           onOpenRecording={onOpenRecording}
         />
       </SafeAreaLayout>
@@ -67,7 +66,6 @@ export function CalendarAppRoute({
         </ScrollView>
         <BottomNavigationMenu
           onBack={onBack}
-          onHome={onBack}
           primaryAction={{
             label: navigationText.recording.label,
             accessibilityLabel: navigationText.recording.accessibilityLabel,

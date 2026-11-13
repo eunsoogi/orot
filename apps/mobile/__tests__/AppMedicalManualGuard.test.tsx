@@ -87,7 +87,7 @@ test('uses one guarded toolbar for manual entry and blocks exit during save', as
   const save = fireEvent.press(screen.getByTestId('appointment-save'));
   await waitFor(() => expect(store.repository.create).toHaveBeenCalledTimes(1));
   expect(screen.getByTestId('navigation-back')).toBeDisabled();
-  expect(screen.getByTestId('navigation-home')).toBeDisabled();
+  expect(screen.queryByTestId('navigation-home')).toBeNull();
   await act(async () => {
     finishSave();
     await save;

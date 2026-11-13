@@ -124,6 +124,6 @@ test('keeps the health library in its own scroller beside shared navigation', as
   expect(routeContents.getByTestId('health-records-scroll')).toBeVisible();
   expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();
   expect(screen.getByTestId('navigation-back')).toBeVisible();
-  expect(screen.getByTestId('navigation-home')).toBeVisible();
+  expect(screen.queryByTestId('navigation-home')).toBeNull();
   expect(screen.queryByTestId('blood-pressure-import')).toBeNull();
 });

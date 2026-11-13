@@ -2,22 +2,20 @@ import { navigationText } from '../navigation';
 import { ko } from '../ko';
 
 describe('navigation Korean terms', () => {
-  it('uses distinct visible labels and accessible names for back, cancel, close, and home', () => {
+  it('uses distinct visible labels and accessible names for back, cancel, and close', () => {
     const visibleLabels = [
       navigationText.back.label,
       navigationText.cancel.label,
       navigationText.close.label,
-      navigationText.home.label,
     ];
     const accessibleNames = [
       navigationText.back.accessibilityLabel,
       navigationText.cancel.accessibilityLabel,
       navigationText.close.accessibilityLabel,
-      navigationText.home.accessibilityLabel,
     ];
 
-    expect(new Set(visibleLabels).size).toBe(4);
-    expect(new Set(accessibleNames).size).toBe(4);
+    expect(new Set(visibleLabels).size).toBe(3);
+    expect(new Set(accessibleNames).size).toBe(3);
   });
 
   it('describes close as closing the current screen', () => {

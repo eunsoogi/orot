@@ -195,7 +195,7 @@ enum NavigationGeometryUITestConditions {
     @discardableResult
     static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
-        return try captureBoundary(app, navigationID: "navigation-home", name: "recording-content-boundary", testCase: testCase)
+        return try captureBoundary(app, navigationID: "navigation-back", name: "recording-content-boundary", testCase: testCase)
     }
 
     /// Measure child viewports independently; scrollable content may extend vertically but never into the rail.
@@ -226,8 +226,8 @@ enum NavigationGeometryUITestConditions {
     /// Verifies each root and returns Home's measured UIWindow frame for contextual comparison.
     static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
         _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
-        let roots = [("home", ["welcome-title"]), ("records", ["records-title"]),
-                     ("schedule", ["calendar-title", "schedule-retry"]), ("ai", ["rag-conversation-screen"]),
+        let roots = [("conversation", ["rag-conversation-screen"]), ("overview", ["overview-title"]),
+                     ("records", ["records-title"]), ("schedule", ["calendar-title", "schedule-retry"]),
                      ("settings", ["settings-title"])]
         var homeFrame: CGRect?
         for (tab, markers) in roots {
@@ -240,11 +240,11 @@ enum NavigationGeometryUITestConditions {
             XCTAssertEqual(indicator.midY, selected.frame.midY, accuracy: 0.5)
             try NavigationUITestConditions.panelSnapshot(app, frames: ["selection": indicator, "selectedControl": selected.frame], testCase: testCase)
             let measuredFrame = try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
-            if tab == "home" {
+            if tab == "overview" {
                 homeFrame = measuredFrame
             }
         }
-        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         return try XCTUnwrap(homeFrame)
     }
 }

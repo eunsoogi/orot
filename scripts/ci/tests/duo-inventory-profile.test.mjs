@@ -18,9 +18,10 @@ test('Duo remains opt-in with its exact native test inventory', () => {
   const manualHistoryOpenActions =
     'OrotUITests/ManualHistoryDuoUITests/testOpenDuoPageActionsPreserveDraftAndSave';
   const homeSummary =
-    'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable';
-  const homeLargeText = 'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth';
-  const homeBottom = 'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation';
+    'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable';
+  const homeLargeText =
+    'OrotUITests/OverviewDuoUITests/testLargeTextOverviewActionsStayWithinContentWidth';
+  const homeBottom = 'OrotUITests/OverviewDuoUITests/testOverviewContentClearsBottomNavigation';
   const aiFeatureEntry =
     'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange';
   const settingsHome =

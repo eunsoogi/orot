@@ -21,7 +21,7 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
         XCTAssertTrue(save.isHittable && save.isEnabled)
         save.tap()
-        let ai = UITestConditions.element(app, "navigation-tab-ai")
+        let ai = UITestConditions.element(app, "navigation-tab-conversation")
         XCTAssertTrue(UITestConditions.exists(ai), app.debugDescription)
         app.terminate()
         app.launch()

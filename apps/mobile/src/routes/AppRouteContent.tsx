@@ -1,14 +1,14 @@
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
-import { canGenerateHomeVisit } from './HomeVisitQuestionsRoute';
+import { canGenerateOverviewVisit } from './OverviewVisitQuestionsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import { t } from '../i18n';
 import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
-import WelcomeRoute from './WelcomeRoute';
+import OverviewRoute from './OverviewRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
@@ -51,29 +51,32 @@ export function AppRouteContent({
 }: AppRouteContentProps) {
   const active = useIsFocused();
   const reminderRuntime = useAppointmentReminderRuntime();
-  function openHomePreparation() {
+  function openOverviewPreparation() {
     if (!nextAppointment || !reminderRuntime) return;
     // Eligible visits retain the existing generator. Other visits keep exact-ID saved preparation and an explicit next action.
     const route = actions.push(
-      canGenerateHomeVisit(nextAppointment)
+      canGenerateOverviewVisit(nextAppointment)
         ? 'visit-questions'
         : 'appointment-preparation',
     );
     if (route)
-      reminderRuntime.homePreparationTargets.set(route.key, nextAppointment.id);
+      reminderRuntime.overviewPreparationTargets.set(
+        route.key,
+        nextAppointment.id,
+      );
   }
-  if (actions.route.name === 'home') {
+  if (actions.route.name === 'root') {
     switch (activeTab) {
-      case 'home':
+      case 'overview':
         return (
-          <WelcomeRoute
+          <OverviewRoute
             appointment={nextAppointment}
             appointmentState={appointmentState}
             recentRecording={recordings[0] ?? null}
             recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
             onRetryRecordings={() => refreshRecordings()}
-            onPrepareVisit={openHomePreparation}
+            onPrepareVisit={openOverviewPreparation}
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
@@ -107,8 +110,8 @@ export function AppRouteContent({
             onAppointmentsChanged={() => refreshAppointments()}
           />
         );
-      case 'ai':
-        // AppAiFeatureScene owns the root AI conversation and its app-lifetime sessions.
+      case 'conversation':
+        // AppConversationScene owns the root AI conversation and its app-lifetime sessions.
         return null;
       case 'settings':
         // Share the persisted selection and account services used by provider settings.

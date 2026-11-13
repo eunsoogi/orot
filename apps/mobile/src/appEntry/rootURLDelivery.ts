@@ -1,7 +1,10 @@
 import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import type { AppRootTab } from '../navigation/rootTabs';
-import { rootDestinations, rootDestinationTab } from './rootDestination';
+import {
+  normalizeRootDestination,
+  rootDestinationTab,
+} from './rootDestination';
 import type { RootDestination } from './rootDestination';
 import type { createEntryArbiter } from './entryArbiter';
 
@@ -28,9 +31,8 @@ export function createRootURLDelivery(input: {
       if (!value || typeof value !== 'object') return 'deferred';
       const entry = value as Partial<Delivery>;
       if (typeof entry.id !== 'string' || !entry.id) return 'deferred';
-      if (
-        !rootDestinations.some(destination => destination === entry.destination)
-      ) {
+      const destination = normalizeRootDestination(entry.destination);
+      if (!destination) {
         await input.acknowledge(entry.id);
         return 'deferred';
       }
@@ -49,7 +51,7 @@ export function createRootURLDelivery(input: {
       if (
         before.isTransitioning ||
         before.routes.length !== 1 ||
-        before.currentRoute.name !== 'home'
+        before.currentRoute.name !== 'root'
       )
         return 'deferred';
       input.onGuardChange?.(true);
@@ -79,7 +81,7 @@ export function createRootURLDelivery(input: {
       )
         return 'deferred';
       cancelled = null;
-      input.selectTab(rootDestinationTab(entry.destination as RootDestination));
+      input.selectTab(rootDestinationTab(destination));
       applied = entry.id;
       await input.acknowledge(entry.id);
       applied = null;

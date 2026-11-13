@@ -72,7 +72,7 @@ export function ReminderOriginControl({
         throw new Error('Synthetic control has no repository');
       },
       targets: new Map(),
-      homePreparationTargets: new Map(),
+      overviewPreparationTargets: new Map(),
       dailyReportTargets: new Map(),
       dailyReportSelection: { selectReminder: null },
       dailyConversationTargets: new Map(),
