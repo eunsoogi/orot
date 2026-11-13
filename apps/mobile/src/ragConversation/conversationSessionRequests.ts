@@ -1,5 +1,6 @@
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
+import { createConversationActivity } from './conversationActivity';
 import {
   conversationHistoryPayload,
   retainedHistoryTurns,
@@ -41,6 +42,10 @@ export function createConversationSessionRequests(
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
+  const snapshots = new Map<
+    number,
+    ReturnType<typeof createConversationActivity>
+  >();
   const activities = new Map<
     number,
     ReturnType<typeof createConversationTurnActivity>
@@ -60,6 +65,7 @@ export function createConversationSessionRequests(
     controllers,
     pendingTurns,
     activities,
+    snapshots,
     lifetime,
     find,
     update,
@@ -72,12 +78,15 @@ export function createConversationSessionRequests(
       lifetime.interrupt(id, 'cancelled', true);
       controllers.get(id)?.abort();
       activities.get(id)?.finish('cancelled');
+      snapshots.get(id)?.settle();
+      snapshots.delete(id);
       controllers.delete(id);
       pendingTurns.delete(id);
       update(id, {
         busy: false,
         pendingMessage: null,
         artifactContinuation: null,
+        requestActivity: null,
       });
     },
     dispose() {
@@ -87,6 +96,8 @@ export function createConversationSessionRequests(
         controller.abort();
       });
       activities.forEach(activity => activity.finish('cancelled'));
+      snapshots.forEach(snapshot => snapshot.settle());
+      snapshots.clear();
       controllers.clear();
       pendingTurns.clear();
     },
@@ -109,9 +120,11 @@ export function createConversationSessionRequests(
       const fail = failureReporter(find, update, request, retainPartial, id);
       const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
+      const snapshot = createConversationActivity(id, responseId);
+      snapshots.set(id, snapshot);
       controllers.set(id, controller);
       pendingTurns.set(id, request);
-      update(id, change);
+      update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
       let activity:
@@ -139,6 +152,8 @@ export function createConversationSessionRequests(
             photo: photo ? { ...photo, requested: hasPhoto } : undefined,
           });
         if (!current()) return;
+        snapshot.waiting();
+        update(id, { requestActivity: snapshot.getSnapshot() });
         preview = conversationPreviewSetup({
           id,
           retained,
@@ -154,6 +169,11 @@ export function createConversationSessionRequests(
           update,
           current,
           retained,
+          activity: snapshot,
+          activityChanged: () => {
+            if (current())
+              update(id, { requestActivity: snapshot.getSnapshot() });
+          },
         });
         activities.set(id, activity);
         const outcome = await onSend(question, history, controller.signal, {
@@ -238,7 +258,9 @@ export function createConversationSessionRequests(
           }
           controllers.delete(id);
           pendingTurns.delete(id);
-          update(id, { busy: false });
+          snapshot.settle();
+          if (snapshots.get(id) === snapshot) snapshots.delete(id);
+          update(id, { busy: false, requestActivity: null });
         }
       }
     },

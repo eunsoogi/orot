@@ -101,6 +101,9 @@ export type ConversationSender = (
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
   readonly id: number;
+  /** Live request activity is memory-only and is never restored as running. */
+  readonly requestActivity?:
+    import('./conversationActivity').ConversationActivitySnapshot | null;
   readonly title: string;
   readonly createdAt: string;
   readonly draft: string;
