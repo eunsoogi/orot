@@ -64,14 +64,17 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testLargeTextKeepsRootTabsAndRecordingActionsReachable() throws {
-        let normal = launch()
+        // Reuse the opt-in synthetic appearance prerequisite, never a production bypass.
+        let fixture = ["-OROT_E2E_PROBE", "medical-document-import", "-OROT_TEST_ASSISTANT_APPEARANCE", "synthetic", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        let normal = launch(fixture)
         let normalTitleHeight = UITestConditions.element(normal, "overview-title").frame.height
         normal.terminate()
-        let app = launch(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        let app = launch(fixture + ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
         defer { app.terminate() }
         // Observe the actual rendered enlargement, rather than treating the launch argument as proof of large text.
         XCTAssertGreaterThan(UITestConditions.element(app, "overview-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
+        try NavigationBottomGapUITestConditions.assertLongHomeBottom(app, testCase: self)
         // At large text the metrics editor is above the scrolled viewport; confirm Home using its visible lower section.
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-recent-changes"])
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview")
