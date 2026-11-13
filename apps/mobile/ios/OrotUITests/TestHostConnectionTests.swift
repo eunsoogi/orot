@@ -3,16 +3,33 @@ import XCTest
 final class TestHostConnectionTests: OrotFailFastTestCase {
     /// Capture separate native and AX geometry around one rotation request without waiting for a resize.
     @MainActor
-    func testAppointmentRotationGeometryObservation() {
+    func testAppointmentRotationGeometryObservation() throws {
         let app = XCUIApplication()
+        let session = UUID().uuidString
         XCUIDevice.shared.orientation = .portrait
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_ROTATION_GEOMETRY_SESSION", session]
         app.launch()
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(UITestConditions.element(app, "appointments-title").waitForAppearance())
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "before", testCase: self)
         XCUIDevice.shared.orientation = .landscapeLeft
+        let requestAt = Date().timeIntervalSince1970 * 1000
+        let request = UITestConditions.element(app, "rotation-geometry-request")
+        XCTAssertTrue(request.exists && request.isHittable)
+        request.tap()
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-request", testCase: self)
+        let data = Data(request.label.utf8)
+        let receipt = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(receipt["requestId"] as? String, session)
+        let requestedAt = try XCTUnwrap(receipt["requestedAtMs"] as? Double)
+        let geometry = ViewportObservation.nativeGeometry(receipt)
+        let started = try XCTUnwrap(geometry["sampleStartedAtMs"] as? Double)
+        XCTAssertGreaterThanOrEqual(requestedAt, requestAt)
+        XCTAssertGreaterThanOrEqual(started, requestedAt)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "appointment-rotation-fresh-native"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     /// The exported geometry must not carry labels or other content from the native marker.
