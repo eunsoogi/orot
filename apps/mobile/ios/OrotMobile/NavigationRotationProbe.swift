@@ -48,10 +48,10 @@
                 (event["sceneOrientation"] as? Int) != initialSceneOrientation ||
                     (event["width"] as? CGFloat) != initialBounds.width || (event["height"] as? CGFloat) != initialBounds.height
             }
-            if mode == "request", !changed, geometryRequestCount == 0 {
+            if mode == "request" || mode == "portrait", !changed, geometryRequestCount == 0 {
                 geometryRequestCount = 1
                 geometryRequestedAt = Date().timeIntervalSince1970 * 1000
-                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape)) { [weak self] error in
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: mode == "portrait" ? .portrait : .landscape)) { [weak self] error in
                     DispatchQueue.main.async {
                         guard self?.geometrySession == session else { return }
                         let value = error as NSError

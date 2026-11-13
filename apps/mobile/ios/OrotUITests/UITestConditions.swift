@@ -87,6 +87,49 @@ enum UITestConditions {
         )
     }
 
+    /// Requests real scene geometry and requires a correlated callback before checking AX reflow.
+    static func rotateAppointmentScene(_ app: XCUIApplication, session: String, landscape: Bool) throws {
+        let control = element(app, "rotation-transition-request")
+        func command(_ mode: String) throws -> [String: Any] {
+            XCTAssertTrue(control.exists && control.isHittable, "Rotation control frame: \(control.frame)")
+            control.tap()
+            var receipt: [String: Any] = [:]
+            let updated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                guard let value = try? JSONSerialization.jsonObject(with: Data(control.label.utf8)) as? [String: Any],
+                      value["session"] as? String == session, value["mode"] as? String == mode else { return false }
+                receipt = value
+                return true
+            }, object: nil)
+            guard XCTWaiter.wait(for: [updated], timeout: 15) == .completed else {
+                throw NSError(domain: "RotationReceiptUnavailable", code: 1)
+            }
+            return receipt
+        }
+        let initial = app.frame
+        let armed = try command("start")
+        XCTAssertEqual(armed["status"] as? String, "sampled")
+        XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
+        let requested = try command(landscape ? "request" : "portrait")
+        XCTAssertEqual(requested["status"] as? String, "sampled")
+        let receipt = try command("read")
+        XCTAssertEqual(receipt["status"] as? String, "sampled")
+        XCTAssertTrue((receipt["error"] as? [String: Any])?.isEmpty == true)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(receipt["requestCount"] as? Int), 1)
+        let current = try XCTUnwrap(receipt["windowBounds"] as? [String: Double])
+        let events = try XCTUnwrap(receipt["events"] as? [[String: Any]])
+        XCTAssertTrue(events.contains { event in
+            guard let width = event["width"] as? Double, let height = event["height"] as? Double else { return false }
+            return width == current["width"] && height == current["height"] &&
+                (landscape ? width > height : height > width)
+        }, "No correlated current scene geometry event: \(receipt)")
+        let bounds = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.frame
+            return (abs(frame.width - initial.width) > 0.5 || abs(frame.height - initial.height) > 0.5) &&
+                (landscape ? frame.width > frame.height : frame.height > frame.width)
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [bounds], timeout: 15), .completed, "AX window did not reflow")
+    }
+
     /// React Native exposes a checkbox's VoiceOver state through its localized accessibility value.
     static func checkboxIsChecked(_ element: XCUIElement) -> Bool {
         let value = (element.value as? String)?.lowercased() ?? ""

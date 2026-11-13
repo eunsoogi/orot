@@ -91,9 +91,15 @@ export function RotationGeometryRequest({ session }: { session: unknown }) {
             accessible
             accessibilityLabel={transitionReceipt}
             onPress={() => {
-              const mode = ['start', 'request', 'read'][
-                Math.min(transitionStep, 2)
+              const modes = [
+                'start',
+                'request',
+                'read',
+                'start',
+                'portrait',
+                'read',
               ];
+              const mode = modes[Math.min(transitionStep, modes.length - 1)];
               NativeModules.OrotTestControl.rotationGeometryCommand(
                 session,
                 mode,
@@ -116,7 +122,8 @@ export function RotationGeometryRequest({ session }: { session: unknown }) {
 const styles = StyleSheet.create({
   request: {
     position: 'absolute',
-    left: 0,
+    left: '50%',
+    marginLeft: -44,
     top: 0,
     width: 44,
     height: 44,
@@ -124,7 +131,7 @@ const styles = StyleSheet.create({
   },
   transitionRequest: {
     position: 'absolute',
-    left: 44,
+    left: '50%',
     top: 0,
     width: 44,
     height: 44,

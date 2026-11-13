@@ -24,7 +24,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
         }
-        try launch(app, extra: AppearanceUITestConditions.observationArguments)
+        let rotationSession = UUID().uuidString
+        try launch(app, extra: AppearanceUITestConditions.observationArguments + ["-OROT_TEST_ROTATION_GEOMETRY_SESSION", rotationSession])
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
         let firstIdentity = UITestConditions.appointmentIdentity(app)
@@ -40,9 +41,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(clinic.waitForAppearance(), app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
 
-        let portraitBounds = app.frame
-        XCUIDevice.shared.orientation = .landscapeLeft
-        UITestConditions.waitForWindowBoundsChange(in: app, from: portraitBounds)
+        try UITestConditions.rotateAppointmentScene(app, session: rotationSession, landscape: true)
         let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app)
         XCTAssertTrue(expandedUsesTwoColumns, "Expanded Duo geometry should place the list and details side by side")
         XCTAssertTrue(selection.isSelected, app.debugDescription)
@@ -51,9 +50,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         capture(app, "appointments-duo-dark-expanded-selection")
 
-        let landscapeBounds = app.frame
-        XCUIDevice.shared.orientation = .portrait
-        UITestConditions.waitForWindowBoundsChange(in: app, from: landscapeBounds)
+        try UITestConditions.rotateAppointmentScene(app, session: rotationSession, landscape: false)
         let compactUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
         XCTAssertFalse(compactUsesTwoColumns)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
