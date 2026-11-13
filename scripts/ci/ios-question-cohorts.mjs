@@ -14,6 +14,8 @@ export const questionCohorts = {
       'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+      'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+      'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
     ],
   },
   'questions-accessibility': {

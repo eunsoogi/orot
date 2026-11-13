@@ -27,8 +27,10 @@ final class ConversationExecutionModule: RCTEventEmitter {
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
-            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.publish(["kind": "protectedData", "available": UIApplication.shared.isProtectedDataAvailable])
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                // The will-unavailable notification precedes the getter changing to false.
+                let available = notification.name == UIApplication.protectedDataDidBecomeAvailableNotification
+                self?.publish(["kind": "protectedData", "available": available])
             })
         }
     }

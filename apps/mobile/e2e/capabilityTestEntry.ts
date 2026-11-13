@@ -60,6 +60,9 @@ export function registerCapabilityTestEntry(
         false,
       );
       break;
+    case 'conversation-retention':
+      require('./conversationRetentionProbeEntry');
+      break;
     case 'conversation-failure-visual':
       require('./conversationVisualProbeEntry').registerConversationVisualProbe(
         true,
