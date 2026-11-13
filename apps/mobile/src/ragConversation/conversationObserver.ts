@@ -16,6 +16,8 @@ export type RagConversationObserver = Pick<
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
+  /** Durable request identity, distinct from a transient UI response number. */
+  readonly retentionRequestId?: string;
   readonly retainedHistory?: readonly {
     readonly id: string;
     readonly question: string;

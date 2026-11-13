@@ -11,6 +11,7 @@ import {
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createConversationArtifactReader } from './conversationArtifactRead';
+import { createConversationCompletionReader } from './conversationCompletionReader';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
@@ -62,6 +63,10 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
     ...createFilteredToolPeriodStorage(database, ensure),
     ...createConversationSessionVisibility(database, ensure),
     ...createConversationArtifactReader(database, ensure),
+    readCommittedCompletion: createConversationCompletionReader(
+      database,
+      ensure,
+    ),
     async currentGeneration() {
       await ensure();
       return generation(database);

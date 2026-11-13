@@ -25,7 +25,17 @@ test('deleting a source removes its completed answer, request prompt, and comple
       answer: 'Synthetic answer',
       sources: f.saved.sources,
     });
+    const identity = {
+      requestId: request.id,
+      sessionId: request.sessionId,
+      messageId: request.id,
+      sessionVersion: 0,
+    };
+    expect(await store.readCommittedCompletion(identity)).toBe(
+      'Synthetic answer',
+    );
     await f.repository.delete('health_observation', f.inside.id);
+    expect(await store.readCommittedCompletion(identity)).toBeNull();
     expect(await store.read(request.id)).toBeNull();
     expect(await store.listCompletionIdentities()).toEqual([]);
     expect(

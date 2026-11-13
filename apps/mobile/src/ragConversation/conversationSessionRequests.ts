@@ -7,6 +7,8 @@ import {
 import { conversationCompletedAnswer } from './conversationCompletedAnswer';
 import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
+import { bindRequestCancel } from './conversationRequestIdentity';
+import { requestIdentityObserver } from './conversationRequestIdentity';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
@@ -26,6 +28,7 @@ import type {
   ConversationSessionOptions,
   PendingTurn,
 } from './conversationSessionTypes';
+type Activity = ReturnType<typeof createConversationTurnActivity>;
 /** Owns composer and explicit-prompt lifetimes without letting late results clear a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
@@ -38,10 +41,7 @@ export function createConversationSessionRequests(
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
-  const activities = new Map<
-    number,
-    ReturnType<typeof createConversationTurnActivity>
-  >();
+  const activities = new Map<number, Activity>();
   const lifetime = createConversationRequestLifetime({
     execution,
     interrupt: id => cancel(id, false, 'interrupted'),
@@ -91,6 +91,7 @@ export function createConversationSessionRequests(
       id: number,
       onSend: ConversationSender,
       explicitQuestion?: string,
+      onOwner?: (cancel: () => boolean) => void,
     ) {
       const session = find(id);
       const start = prepareConversationRequest(
@@ -105,6 +106,7 @@ export function createConversationSessionRequests(
       const controller = new AbortController();
       controllers.set(id, controller);
       pendingTurns.set(id, request);
+      onOwner?.(bindRequestCancel(controllers, id, controller, cancel));
       update(id, change);
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
@@ -145,9 +147,7 @@ export function createConversationSessionRequests(
             : {}),
           conversationScope: conversationScope(id),
           retainedHistory: retainedHistoryTurns(session.messages, question),
-          ...(retention?.activeLease(id)
-            ? { retentionSession: retention.activeLease(id)! }
-            : {}),
+          ...requestIdentityObserver(retention, retained, id),
           artifactContinuation: session.artifactContinuation ?? null,
           onArtifactContinuation(value) {
             if (current()) update(id, { artifactContinuation: value });
