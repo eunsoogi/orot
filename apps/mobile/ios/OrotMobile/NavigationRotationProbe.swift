@@ -11,6 +11,7 @@
         private var lastAtMs: Double?
         private var lastOrientation: Int?
         private var geometrySession = ""
+        private var geometryGeneration = 0
         private var geometryStartedAt: Double = 0
         private var geometryEvents: [[String: Any]] = []
         private var geometryRequestCount = 0
@@ -33,6 +34,7 @@
         func geometryCommand(session: String, mode: String) -> [String: Any] {
             guard UUID(uuidString: session) != nil else { return ["status": "invalid-session"] }
             if mode == "start" {
+                geometryGeneration += 1
                 geometrySession = session; geometryStartedAt = Date().timeIntervalSince1970 * 1000
                 geometryEvents = []; geometryRequestCount = 0; geometryRequestedAt = nil; geometryError = [:]
             }
@@ -51,9 +53,10 @@
             if mode == "request" || mode == "portrait", !changed, geometryRequestCount == 0 {
                 geometryRequestCount = 1
                 geometryRequestedAt = Date().timeIntervalSince1970 * 1000
+                let generation = geometryGeneration
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: mode == "portrait" ? .portrait : .landscape)) { [weak self] error in
                     DispatchQueue.main.async {
-                        guard self?.geometrySession == session else { return }
+                        guard self?.geometrySession == session, self?.geometryGeneration == generation else { return }
                         let value = error as NSError
                         self?.geometryError = ["code": value.code, "atMs": Date().timeIntervalSince1970 * 1000]
                     }
@@ -73,6 +76,7 @@
         func geometryChanged(_ scene: UIWindowScene) {
             guard !geometrySession.isEmpty, geometryScene === scene, let window = scene.windows.first(where: { $0.isKeyWindow && !$0.isHidden }) else { return }
             let session = geometrySession
+            let generation = geometryGeneration
             let at = Date().timeIntervalSince1970 * 1000
             var event: [String: Any] = ["atMs": at, "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
                                         "width": window.bounds.width, "height": window.bounds.height, "transition": "unavailable",
@@ -80,7 +84,7 @@
             if let coordinator = window.rootViewController?.transitionCoordinator {
                 event["transition"] = "pending"
                 let registered = coordinator.animate(alongsideTransition: nil) { [weak self, weak scene, weak window] context in
-                    guard let self, geometrySession == session, let scene, let window else { return }
+                    guard let self, geometrySession == session, geometryGeneration == generation, let scene, let window else { return }
                     geometryEvents.append(["atMs": Date().timeIntervalSince1970 * 1000, "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
                                            "width": window.bounds.width, "height": window.bounds.height, "transition": "completed", "cancelled": context.isCancelled,
                                            "safeAreaInsets": ["top": window.safeAreaInsets.top, "right": window.safeAreaInsets.right, "bottom": window.safeAreaInsets.bottom, "left": window.safeAreaInsets.left]])
