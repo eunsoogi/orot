@@ -1,4 +1,5 @@
 export const capabilityScenarios = [
+  'assistant-acceptance',
   'backup',
   'healthkit',
   'blood-pressure',

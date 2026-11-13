@@ -7,6 +7,10 @@ export function registerCapabilityTestEntry(
   settings: Readonly<Record<string, unknown>> = {},
 ): boolean {
   switch (route) {
+    case 'assistant-acceptance':
+      // Mount the real app and its production appearance gate in the owned test container.
+      require('./assistantAcceptanceEntry');
+      break;
     case 'backup':
       require('./backupProbeEntry');
       break;

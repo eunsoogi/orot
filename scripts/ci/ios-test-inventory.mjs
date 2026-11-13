@@ -100,6 +100,7 @@ export const fixtureTests = [
   'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
   'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
   'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+  'OrotUITests/AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
   'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
   'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
   'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',

@@ -11,6 +11,7 @@ export const questionCohorts = {
     ...questionFixture,
     // Keep native conversation journeys together with their own preparation and artifact budget.
     cases: [
+      'AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
       'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
