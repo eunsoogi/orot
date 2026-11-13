@@ -1,7 +1,6 @@
 import { createConversationPreviewReader } from './conversationPreviewRead';
 import { eligibleConversationPreviewSources } from './conversationPreviewSources';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import type { ConversationArtifact } from './conversationArtifactTypes';
 import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';

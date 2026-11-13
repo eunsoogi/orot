@@ -90,7 +90,7 @@ test('photo-only input remains distinct from its answer and a source invalidatio
           ...input.ocr!,
           source: {
             ...input.ocr!.source,
-            contentHash: `sha256:${'b'.repeat(64)}`,
+            contentHash: `sha256:${'b'.repeat(64)}` as const,
           },
         },
       },

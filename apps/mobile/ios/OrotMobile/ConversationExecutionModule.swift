@@ -9,15 +9,24 @@ final class ConversationExecutionModule: RCTEventEmitter {
     private var observers: [NSObjectProtocol] = []
     private var listening = false
 
-    override static func requiresMainQueueSetup() -> Bool { true }
-    @objc var methodQueue: DispatchQueue! { DispatchQueue.main }
-    override func supportedEvents() -> [String]! { ["ConversationExecutionChanged"] }
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    @objc var methodQueue: DispatchQueue! {
+        DispatchQueue.main
+    }
+
+    override func supportedEvents() -> [String]! {
+        ["ConversationExecutionChanged"]
+    }
 
     override func startObserving() {
         listening = true
         let center = NotificationCenter.default
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
-                     UIApplication.protectedDataDidBecomeAvailableNotification] {
+                     UIApplication.protectedDataDidBecomeAvailableNotification]
+        {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 self?.publish(["kind": "protectedData", "available": UIApplication.shared.isProtectedDataAvailable])
             })
@@ -31,7 +40,9 @@ final class ConversationExecutionModule: RCTEventEmitter {
     }
 
     private func publish(_ body: [String: Any]) {
-        if listening { sendEvent(withName: "ConversationExecutionChanged", body: body) }
+        if listening {
+            sendEvent(withName: "ConversationExecutionChanged", body: body)
+        }
     }
 
     @objc(begin:resolver:rejecter:)
@@ -39,8 +50,8 @@ final class ConversationExecutionModule: RCTEventEmitter {
         guard !requestId.isEmpty, leases[requestId] == nil else { resolve(false); return }
         let task = UIApplication.shared.beginBackgroundTask(withName: "Conversation request") { [weak self] in
             guard let self else { return }
-            self.endLease(requestId)
-            self.publish(["kind": "expired", "requestId": requestId])
+            endLease(requestId)
+            publish(["kind": "expired", "requestId": requestId])
         }
         guard task != .invalid else { resolve(false); return }
         leases[requestId] = task
@@ -48,7 +59,9 @@ final class ConversationExecutionModule: RCTEventEmitter {
     }
 
     @objc(end:)
-    func end(_ requestId: String) { endLease(requestId) }
+    func end(_ requestId: String) {
+        endLease(requestId)
+    }
 
     @objc(isActive:resolver:rejecter:)
     func isActive(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
@@ -67,7 +80,9 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     override func invalidate() {
         stopObserving()
-        for requestId in Array(leases.keys) { endLease(requestId) }
+        for requestId in Array(leases.keys) {
+            endLease(requestId)
+        }
         super.invalidate()
     }
 }

@@ -33,7 +33,22 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
     subscribe(listener) {
       const subscription = emitter.addListener(
         'ConversationExecutionChanged',
-        (event: ConversationExecutionEvent) => listener(event),
+        (value: object) => {
+          // Native events are untrusted across the bridge; ignore malformed payloads.
+          if (!value || typeof value !== 'object') return;
+          const event = value as Partial<ConversationExecutionEvent>;
+          if (event.kind === 'foreground') listener({ kind: 'foreground' });
+          else if (
+            event.kind === 'expired' &&
+            typeof event.requestId === 'string'
+          )
+            listener({ kind: 'expired', requestId: event.requestId });
+          else if (
+            event.kind === 'protectedData' &&
+            typeof event.available === 'boolean'
+          )
+            listener({ kind: 'protectedData', available: event.available });
+        },
       );
       const state = AppState.addEventListener('change', value => {
         if (value === 'active') listener({ kind: 'foreground' });
