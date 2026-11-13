@@ -14,19 +14,24 @@ export function FloatingAssistantSurface({
 }) {
   const [height, setHeight] = useState(0);
   const appearance = useAssistantAppearance();
-  if (!appearance?.ready) return <>{children}</>;
   return (
     <View style={styles.surface} testID="assistant-floating-surface">
       {/* Reserve only measured identity height so controls remain reachable under the overlay. */}
-      <View style={[styles.surface, { paddingTop: height }]}>{children}</View>
       <View
-        pointerEvents="box-none"
-        style={styles.overlay}
-        testID="assistant-floating-overlay"
-        onLayout={event => setHeight(event.nativeEvent.layout.height)}
+        style={[styles.surface, { paddingTop: appearance?.ready ? height : 0 }]}
       >
-        <AssistantHeader session={session} />
+        {children}
       </View>
+      {appearance?.ready ? (
+        <View
+          pointerEvents="box-none"
+          style={styles.overlay}
+          testID="assistant-floating-overlay"
+          onLayout={event => setHeight(event.nativeEvent.layout.height)}
+        >
+          <AssistantHeader session={session} />
+        </View>
+      ) : null}
     </View>
   );
 }
