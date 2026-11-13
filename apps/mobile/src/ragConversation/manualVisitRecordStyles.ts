@@ -12,8 +12,10 @@ export const styles = StyleSheet.create({
     gap: 10,
   },
   confirmationButton: { alignSelf: 'flex-start' },
+  // Keep enlarged Korean status labels inside the card instead of widening the row.
   confirmedStatus: {
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
@@ -25,7 +27,11 @@ export const styles = StyleSheet.create({
     borderColor: appColors.border,
     backgroundColor: appColors.primarySoft,
   },
-  confirmedStatusText: { color: appColors.primaryText, fontWeight: '600' },
+  confirmedStatusText: {
+    color: appColors.primaryText,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
   confirmationStatus: { color: appColors.secondary },
   editor: { gap: 8 },
   input: {

@@ -107,10 +107,19 @@ test('shows a busy save state once and restores the checked completion after rea
   await waitFor(() =>
     expect(screen.getByText('질문을 물어봤어요')).toBeTruthy(),
   );
+  const complete = screen.getByRole('checkbox', {
+    name: '질문을 물어봤어요',
+  });
+  expect(complete.props.accessibilityState).toMatchObject({
+    checked: true,
+    disabled: true,
+  });
+  expect(StyleSheet.flatten(complete.props.style)).toMatchObject({
+    maxWidth: '100%',
+  });
   expect(
-    screen.getByRole('checkbox', { name: '질문을 물어봤어요' }).props
-      .accessibilityState,
-  ).toMatchObject({ checked: true, disabled: true });
+    StyleSheet.flatten(screen.getByText('질문을 물어봤어요').props.style),
+  ).toMatchObject({ flexShrink: 1 });
   expect(
     screen.queryByRole('button', { name: '실제로 물어봤어요' }),
   ).toBeNull();
