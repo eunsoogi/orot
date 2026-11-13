@@ -9,7 +9,7 @@ jest.mock('../../appointmentReminders/nativeReminderBridge', () => ({
   subscribeAppointmentReminderOpened: () => () => {},
 }));
 
-test.each(['navigation', 'session'] as const)(
+test.each(['navigation', 'late-navigation', 'session'] as const)(
   'retries when external %s readiness arrives before the deferred executor returns',
   async blockedBy => {
     const previous = NativeModules.ReplyNotificationModule;
@@ -56,6 +56,15 @@ test.each(['navigation', 'session'] as const)(
     const retention = {
       activeLease: () => ({ id: 'retained', version: 2 }),
     } as unknown as ConversationSessionOptions['retention'];
+    let signalSecondRead = () => {};
+    const secondRead = new Promise<void>(resolve => {
+      signalSecondRead = resolve;
+    });
+    let releaseRead = () => {};
+    const holdRead = new Promise<void>(resolve => {
+      releaseRead = resolve;
+    });
+    let reads = 0;
     const storage = {
       listCompletionIdentities: async () => [
         {
@@ -66,9 +75,14 @@ test.each(['navigation', 'session'] as const)(
           status: 'completed',
         },
       ],
-      readSessionMany: async () => [
-        { status: 'complete', createdAt: '2026-11-13T00:00:00.000Z' },
-      ],
+      readSessionMany: async () => {
+        reads += 1;
+        if (blockedBy === 'late-navigation' && reads === 2) {
+          signalSecondRead();
+          await holdRead;
+        }
+        return [{ status: 'complete', createdAt: '2026-11-13T00:00:00.000Z' }];
+      },
     };
     let deferred = () => {};
     const firstFinished = new Promise<void>(resolve => {
@@ -100,17 +114,24 @@ test.each(['navigation', 'session'] as const)(
       },
     });
     try {
+      if (blockedBy === 'late-navigation') {
+        await secondRead;
+        transitioning = true;
+        navigationListener();
+        releaseRead();
+      }
       await firstFinished;
       expect(acknowledgeTarget).not.toHaveBeenCalled();
       transitioning = false;
       busy = false;
-      if (blockedBy === 'navigation') navigationListener();
+      if (blockedBy !== 'session') navigationListener();
       else sessionListener();
       release();
       for (let i = 0; i < 100; i += 1) await Promise.resolve();
       expect(acknowledgeTarget).toHaveBeenCalledWith(`wake-${blockedBy}`);
       expect(acknowledgeTarget).toHaveBeenCalledTimes(1);
     } finally {
+      releaseRead();
       release();
       stop();
       NativeModules.ReplyNotificationModule = previous;
