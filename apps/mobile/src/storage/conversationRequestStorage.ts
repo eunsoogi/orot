@@ -130,6 +130,14 @@ export function createConversationRequestStorage(
         );
         if (!session.rows.length)
           throw new Error('Conversation is unavailable.');
+        if (submitted?.ocr) {
+          const removed = await tx.execute(
+            'SELECT id FROM conversation_request_removed_sources WHERE id = ?',
+            [submitted.ocr.source.id],
+          );
+          if (removed.rows.length)
+            throw new Error('Conversation attachment is unavailable.');
+        }
         // A turn identity already associated with an answer or its tombstone cannot be repurposed.
         const occupied = await tx.execute(
           'SELECT id FROM conversation_artifacts WHERE id = ? UNION ALL SELECT id FROM conversation_deleted_artifacts WHERE id = ? UNION ALL SELECT message_id FROM conversation_tool_events WHERE message_id = ? LIMIT 1',

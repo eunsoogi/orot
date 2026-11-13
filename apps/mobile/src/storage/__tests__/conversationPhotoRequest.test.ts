@@ -136,6 +136,14 @@ test('invalidating a pending source erases its input and rejects a late completi
       { question: '', input_json: null, status: 'cancelled' },
     ]);
     await expect(store.append(answer)).rejects.toThrow();
+    const nextInput = { ...input, requestId: 'next-request' };
+    await expect(
+      store.startRequest({
+        ...request,
+        id: 'next-request',
+        submittedInput: nextInput,
+      }),
+    ).rejects.toThrow();
   } finally {
     connection.close();
   }

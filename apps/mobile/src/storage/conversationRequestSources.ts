@@ -1,5 +1,8 @@
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import { decodeConversationSubmittedInput } from '../ragConversation/conversationSubmittedInput';
+import {
+  decodeConversationSubmittedInput,
+  isConversationPhotoSourceId,
+} from '../ragConversation/conversationSubmittedInput';
 import type { ConversationArtifact } from './conversationArtifactTypes';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
@@ -24,6 +27,9 @@ export async function assertConversationRequestSource(
 export async function setupConversationRequestSources(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_request_sources (request_id TEXT PRIMARY KEY NOT NULL, source_id TEXT NOT NULL)',
+  );
+  await tx.execute(
+    'CREATE TABLE IF NOT EXISTS conversation_request_removed_sources (id TEXT PRIMARY KEY NOT NULL)',
   );
   await tx.execute(
     'CREATE TRIGGER IF NOT EXISTS conversation_request_source_removed AFTER DELETE ON conversation_requests BEGIN DELETE FROM conversation_request_sources WHERE request_id = OLD.id; END',
@@ -81,8 +87,15 @@ export function createConversationRequestSources(
     },
     /** Fence database ownership before the native owner removes or replaces an original. */
     async invalidateRequestSource(sourceId: string) {
+      if (!isConversationPhotoSourceId(sourceId))
+        throw new Error('Invalid conversation attachment source.');
       await ensure();
       await database.transaction(async tx => {
+        // Fence the opaque original before any native deletion; this survives request removal.
+        await tx.execute(
+          'INSERT OR IGNORE INTO conversation_request_removed_sources (id) VALUES (?)',
+          [sourceId],
+        );
         await tx.execute(
           'DELETE FROM conversation_artifacts WHERE id IN (SELECT request_id FROM conversation_request_sources WHERE source_id = ?)',
           [sourceId],

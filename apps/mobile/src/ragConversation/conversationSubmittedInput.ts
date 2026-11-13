@@ -35,6 +35,14 @@ function keys(value: Record<string, unknown>, allowed: readonly string[]) {
   return Object.keys(value).every(key => allowed.includes(key));
 }
 
+/** Matches the canonical file key returned by the native medical-document store. */
+export function isConversationPhotoSourceId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value)
+  );
+}
+
 /** Persisted inputs are untrusted; accepting this shape does not replace consent or source checks. */
 export function decodeConversationSubmittedInput(
   value: unknown,
@@ -86,10 +94,7 @@ export function decodeConversationSubmittedInput(
     ]) ||
     !record(ocr.source) ||
     !keys(ocr.source, ['id', 'contentHash']) ||
-    typeof ocr.source.id !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
-      ocr.source.id,
-    ) ||
+    !isConversationPhotoSourceId(ocr.source.id) ||
     typeof ocr.source.contentHash !== 'string' ||
     !/^sha256:[a-f0-9]{64}$/.test(ocr.source.contentHash) ||
     !Number.isSafeInteger(ocr.deletionGeneration) ||
