@@ -100,7 +100,7 @@ test('read errors retry without writing and edit cancellation preserves the save
   expect(store.save).not.toHaveBeenCalled();
 });
 
-test('seeds the opted-in synthetic appearance and keeps clear/reconfigure behind the gate', async () => {
+test('ignores synthetic flags in the production gate', async () => {
   nativeModules.SettingsManager = {
     settings: {
       OROT_TEST_PROFILE: 'core',
@@ -108,9 +108,19 @@ test('seeds the opted-in synthetic appearance and keeps clear/reconfigure behind
       OROT_TEST_ASSISTANT_APPEARANCE: 'synthetic',
     },
   };
-  store.load
-    .mockResolvedValueOnce(null)
-    .mockResolvedValueOnce({ avatar: 'neutral', name: null });
+  store.load.mockResolvedValue(null);
+  await render(
+    <AssistantAppearanceProvider>
+      <Content />
+    </AssistantAppearanceProvider>,
+  );
+  await screen.findByText('비서 꾸미기');
+  expect(screen.queryByText('일반 화면')).toBeNull();
+  expect(store.save).not.toHaveBeenCalled();
+});
+
+test('keeps clear/reconfigure behind the gate after loading a saved appearance', async () => {
+  store.load.mockResolvedValue({ avatar: 'neutral', name: null });
   store.clear.mockResolvedValue();
   store.save.mockResolvedValue({ avatar: 'star', name: null });
   const unmounted = jest.fn();
@@ -124,11 +134,7 @@ test('seeds the opted-in synthetic appearance and keeps clear/reconfigure behind
     </AssistantAppearanceProvider>,
   );
   await screen.findByText('일반 화면');
-  expect(store.save).toHaveBeenNthCalledWith(1, {
-    avatar: 'neutral',
-    name: null,
-  });
-  expect(store.load).toHaveBeenCalledTimes(2);
+  expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
   await screen.findByText('비서 꾸미기');
@@ -142,7 +148,7 @@ test('seeds the opted-in synthetic appearance and keeps clear/reconfigure behind
   await waitFor(() =>
     expect(store.save).toHaveBeenCalledWith({ avatar: 'star', name: null }),
   );
-  expect(store.save).toHaveBeenCalledTimes(2);
+  expect(store.save).toHaveBeenCalledTimes(1);
   expect(unmounted).not.toHaveBeenCalled();
 });
 

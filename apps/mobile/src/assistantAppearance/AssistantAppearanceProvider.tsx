@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
-import { ActivityIndicator, NativeModules, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
@@ -20,27 +20,6 @@ type ContextValue = {
 };
 const Context = createContext<ContextValue | null>(null);
 export const useAssistantAppearance = () => useContext(Context);
-
-function syntheticPhotoAppearanceFixture(): AssistantAppearance | null {
-  const settingsManager = (
-    NativeModules as unknown as {
-      SettingsManager?: {
-        settings?: Record<string, unknown>;
-        getConstants?: () => { settings?: Record<string, unknown> };
-      };
-    }
-  ).SettingsManager;
-  const settings =
-    settingsManager?.settings ?? settingsManager?.getConstants?.().settings;
-  if (
-    settings?.OROT_TEST_PROFILE !== 'core' ||
-    settings.OROT_E2E_PROBE !== 'medical-document-import' ||
-    settings.OROT_TEST_ASSISTANT_APPEARANCE !== 'synthetic'
-  ) {
-    return null;
-  }
-  return { avatar: 'neutral', name: null };
-}
 
 export function withAssistantAppearance<P extends object>(
   Component: ComponentType<P>,
@@ -69,17 +48,8 @@ export function AssistantAppearanceProvider({
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let current = true;
-    const loadAppearance = async () => {
-      const saved = await appearanceStore.load();
-      if (saved) return saved;
-      const fixture = syntheticPhotoAppearanceFixture();
-      if (!fixture) return null;
-
-      // Keep the entry gate on its real encrypted-store path for this opted-in synthetic journey.
-      await appearanceStore.save(fixture);
-      return appearanceStore.load();
-    };
-    loadAppearance()
+    appearanceStore
+      .load()
       .then(value => {
         if (current) {
           readyRef.current = value != null;
