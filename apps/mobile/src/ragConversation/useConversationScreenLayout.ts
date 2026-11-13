@@ -13,5 +13,5 @@ export function useConversationScreenLayout() {
     occlusion.scrollContentInsets.bottom,
     fontScale,
   );
-  return { setContentHeight, occlusion, composerLayout };
+  return { setContentHeight, composerLayout };
 }

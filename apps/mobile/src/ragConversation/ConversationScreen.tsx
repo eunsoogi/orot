@@ -50,8 +50,7 @@ export function ConversationScreen({
   discoverManualVisits,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
-  const { setContentHeight, occlusion, composerLayout } =
-    useConversationScreenLayout();
+  const { setContentHeight, composerLayout } = useConversationScreenLayout();
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
