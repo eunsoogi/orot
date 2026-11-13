@@ -26,6 +26,27 @@ enum ReminderJourneyObservation {
         let contrastStrategy: String
     }
 
+    struct DeliveredBanner {
+        let container: XCUIElement
+        let title: XCUIElement
+        let body: XCUIElement
+        let appIcon: XCUIElement
+    }
+
+    /// Scope the content title and body to one SpringBoard banner, apart from the installed app icon label.
+    static func deliveredBanner(in springboard: XCUIApplication, bodyText: String) -> DeliveredBanner {
+        let container = springboard.descendants(matching: .any)
+            .matching(identifier: "NotificationShortLookView")
+            .matching(NSPredicate(format: "label CONTAINS %@", bodyText))
+            .firstMatch
+        return DeliveredBanner(
+            container: container,
+            title: container.staticTexts.matching(identifier: "NotificationTitle").firstMatch,
+            body: container.staticTexts.matching(identifier: "TextContent.Primary").firstMatch,
+            appIcon: springboard.icons["오롯"]
+        )
+    }
+
     static func fresh(_ app: XCUIApplication, after: Date = Date(), stage: String, testCase: XCTestCase,
                       matching: (Receipt) -> Bool = { _ in true }) throws -> Receipt
     {
@@ -93,18 +114,21 @@ enum ReminderJourneyObservation {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == expected }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let body = springboard.staticTexts["준비할 내용을 확인해 보세요."]
-        let title = springboard.staticTexts["오롯"]
+        let banner = deliveredBanner(in: springboard, bodyText: "준비할 내용을 확인해 보세요.")
+        let body = banner.body
+        let title = banner.title
         // Await the actual OS banner, not a sleep or an injected notification response.
+        XCTAssertTrue(UITestConditions.exists(banner.container))
         XCTAssertTrue(UITestConditions.exists(body))
-        // Check the visible notification title separately from the pending-request receipt.
-        // This short readiness bound covers the banner animation before any tap.
+        // SpringBoard exposes the notification's content title separately from the app icon label.
         let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            title.exists && title.isHittable && body.exists && body.isHittable
+            banner.container.exists && title.exists && title.label == "오롯" && title.isHittable &&
+                body.exists && body.label == "준비할 내용을 확인해 보세요." && body.isHittable
         }, object: nil)
         let readiness = XCTWaiter.wait(for: [bannerReady], timeout: 5.0)
         XCTAssertEqual(readiness, .completed)
         guard readiness == .completed else { return }
+        XCTAssertTrue(banner.appIcon.exists && banner.appIcon.label == "오롯", springboard.debugDescription)
         XCTAssertTrue(body.isHittable)
         capture(springboard, cold ? "cold-os-notification" : "running-os-notification", testCase: testCase)
         body.tap()

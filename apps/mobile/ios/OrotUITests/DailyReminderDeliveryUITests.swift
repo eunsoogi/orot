@@ -70,19 +70,27 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [background]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let notification = springboard.staticTexts["오늘의 기록을 확인해 보세요."]
+        let banner = ReminderJourneyObservation.deliveredBanner(
+            in: springboard,
+            bodyText: "오늘의 기록을 확인해 보세요."
+        )
+        let notification = banner.body
         // Wait for the actual delivered UI and its hit target; no clock change or injected tap is used.
         let delivered = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            notification.exists && notification.isHittable
+            banner.container.exists && banner.container.isHittable && notification.exists &&
+                notification.label == "오늘의 기록을 확인해 보세요." && notification.isHittable
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [delivered]), .completed)
         guard notification.exists, notification.isHittable else { return }
-        let title = springboard.staticTexts["오롯"]
-        // Check the banner title separately from its pending-request receipt before tapping the delivered target.
-        let titleReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in title.exists && title.isHittable }, object: nil)
+        let title = banner.title
+        // The content-title node is scoped to the delivered banner, separate from the app icon name.
+        let titleReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            title.exists && title.label == "오롯" && title.isHittable
+        }, object: nil)
         let titleReadiness = XCTWaiter.wait(for: [titleReady], timeout: 5.0)
         XCTAssertEqual(titleReadiness, .completed, springboard.debugDescription)
         guard titleReadiness == .completed else { return }
+        XCTAssertTrue(banner.appIcon.exists && banner.appIcon.label == "오롯", springboard.debugDescription)
         attach(springboard, name: "daily-reminder-system-banner")
         notification.tap()
         let foreground = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == .runningForeground }, object: nil)
