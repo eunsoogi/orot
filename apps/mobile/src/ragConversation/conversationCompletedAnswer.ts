@@ -11,6 +11,7 @@ export function conversationCompletedAnswer(input: {
   id: number;
   messageId: number;
   userMessageId: number;
+  restorePromptToComposer: boolean;
   retainedTurnId?: string;
   dailyReport?: ConversationSession['dailyReport'];
   copy: { noEvidence: string; insufficient: string };
@@ -43,6 +44,8 @@ export function conversationCompletedAnswer(input: {
         prompt.content,
         prompt.id,
         getRagConversationFailureCopy('stale_evidence'),
+        false,
+        input.restorePromptToComposer,
       );
     return;
   }

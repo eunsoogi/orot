@@ -200,6 +200,9 @@ export function createConversationSessions(
     },
     send: (id: number, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend),
+    /** Adds an explicit turn to the transcript without moving its prompt into the composer. */
+    sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
+      disposed ? Promise.resolve() : requests.send(id, onSend, prompt),
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),

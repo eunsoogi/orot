@@ -31,7 +31,7 @@ export function retainPartial(
   });
 }
 
-/** A failed prompt remains visible while its draft is restored without overwriting newer input. */
+/** Keep a failed prompt visible and restore it to the composer only when it came from there. */
 export function restoreFailedPrompt(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
@@ -40,13 +40,16 @@ export function restoreFailedPrompt(
   userMessageId: number,
   error?: string,
   idle = false,
+  restorePromptToComposer = true,
 ) {
   const session = find(id);
   const hasDifferentDraft =
     session.draft.trim().length > 0 && session.draft.trim() !== question;
   update(id, {
     pendingMessage: null,
-    draft: hasDifferentDraft ? session.draft : question,
+    ...(restorePromptToComposer
+      ? { draft: hasDifferentDraft ? session.draft : question }
+      : {}),
     messages: session.messages.map(message =>
       message.id === userMessageId ? { ...message, failed: true } : message,
     ),
