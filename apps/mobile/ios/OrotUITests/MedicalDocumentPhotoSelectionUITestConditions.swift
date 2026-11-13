@@ -22,7 +22,9 @@ enum MedicalDocumentPhotoSelectionUITestConditions {
         screenshot.lifetime = .keepAlways
         testCase.add(screenshot)
         let visible = candidates.filter { $0.hittable && !$0.frame.isEmpty }.sorted {
-            if $0.frame.minY != $1.frame.minY { return $0.frame.minY < $1.frame.minY }
+            if $0.frame.minY != $1.frame.minY {
+                return $0.frame.minY < $1.frame.minY
+            }
             return $0.frame.minX < $1.frame.minX
         }
         let selected = try XCTUnwrap(visible.first, "No visible Photos asset: \(report)")
