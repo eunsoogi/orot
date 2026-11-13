@@ -150,11 +150,27 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(review) && UITestConditions.exists(question))
         XCTAssertTrue(UITestConditions.exists(selection) && UITestConditions.exists(details) && UITestConditions.exists(priority))
         XCTAssertEqual(question.value as? String, "진료 전에 지난 한 달 동안 증상이 처음 시작된 날짜와 강도를 기록한 시점, 복용 중인 약의 변경 시기, 수면과 활동량의 변화가 서로 어떤 순서로 나타났는지 의사에게 어떻게 설명하면 좋을까요?")
+        // Reveal the long preparation section inside its transcript before checking its geometry.
+        for _ in 1 ... 8 where !question.isHittable {
+            history.swipeDown()
+        }
+        // Record one post-action native sample so an invalid AX frame is distinct from real row placement.
+        let (selectionFrame, questionFrame) = (selection.frame, question.frame)
+        let (detailsFrame, priorityFrame) = (details.frame, priority.frame)
+        let historyOwnerWindows = app.windows.containing(.any, identifier: "rag-conversation-history")
+        let geometry = """
+        post-reveal history-owner-window count=\(historyOwnerWindows.count) exists=\(historyOwnerWindows.firstMatch.exists) frame=\(historyOwnerWindows.firstMatch.frame)
+        history viewport=\(history.frame)
+        question exists=\(question.exists) frame=\(questionFrame) null=\(questionFrame.isNull) infinite=\(questionFrame.isInfinite) hittable=\(question.isHittable)
+        details exists=\(details.exists) frame=\(detailsFrame)
+        priority exists=\(priority.exists) frame=\(priorityFrame)
+        """
+        RecordingFixtureUITestConditions.capture(app, "visit-preparation-post-action-before-frame-order", testCase: self)
+        XCTAssertTrue(question.isHittable, geometry)
         XCTAssertLessThanOrEqual(answer.frame.maxY, review.frame.minY + 1)
-        XCTAssertLessThanOrEqual(selection.frame.minY, question.frame.minY + 1)
-        XCTAssertLessThan(question.frame.minX, details.frame.minX)
-        XCTAssertLessThan(details.frame.minX, priority.frame.minX)
-        XCTAssertTrue(question.isHittable)
+        XCTAssertLessThanOrEqual(selectionFrame.minY, questionFrame.minY + 1)
+        XCTAssertLessThan(questionFrame.minX, detailsFrame.minX, geometry)
+        XCTAssertLessThan(detailsFrame.minX, priorityFrame.minX)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-question-at-accessibility-xxxl", testCase: self)
 
         selection.tap()
@@ -191,7 +207,9 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
             let containerFrameBefore = container.frame
             let hittableBefore = existsBefore ? element.isHittable : false
             let orientationBefore = XCUIDevice.shared.orientation.rawValue
-            if existsBefore && hittableBefore { return }
+            if existsBefore && hittableBefore {
+                return
+            }
 
             let swipeDown = frameBefore.map { $0.midY < containerFrameBefore.midY } ?? false
             let direction = swipeDown ? "down" : "up"
