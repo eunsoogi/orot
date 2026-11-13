@@ -42,7 +42,16 @@ export async function commitConversationRequest(
     [value.id],
   );
   const row = result.rows[0];
-  if (!row) return; // Older turns do not have a request checkpoint.
+  if (!row) {
+    // Legacy turns have no checkpoint; an identity fence instead denotes removed work.
+    const identity = await tx.execute(
+      'SELECT id FROM conversation_request_identities WHERE id = ?',
+      [value.id],
+    );
+    if (identity.rows.length)
+      throw new Error('Conversation request is no longer active.');
+    return;
+  }
   if (
     row.session_id !== value.sessionId ||
     row.session_version !== version ||

@@ -61,6 +61,19 @@ test('a request cannot reuse an existing or deleted answer identity', async () =
         sessionId: 'new-session',
       }),
     ).rejects.toThrow();
+    await expect(
+      store.append({
+        id: 'active-request',
+        sessionId: 'new-session',
+        question: request.question,
+        createdAt: request.createdAt,
+        providerId: 'provider',
+        modelId: 'model',
+        status: 'complete',
+        answer: 'Stale answer',
+        sources: [],
+      }),
+    ).rejects.toThrow();
     expect(await store.listCompletionIdentities()).toEqual([]);
   } finally {
     connection.close();
