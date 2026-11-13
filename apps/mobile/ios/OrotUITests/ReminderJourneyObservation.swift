@@ -1,6 +1,6 @@
 import XCTest
 
-/// Native OS receipts accompany UI actions; no fake delivery or request mutation is available.
+/// Native OS receipts verify shared reminder copy and safe payloads during real delivery and tap flows.
 @MainActor
 enum ReminderJourneyObservation {
     struct Request: Decodable {
@@ -62,7 +62,7 @@ enum ReminderJourneyObservation {
         XCTAssertEqual(request.timeKey, "instant:\(Int64(start.timeIntervalSince1970 * 1000))")
         XCTAssertEqual(try XCTUnwrap(request.nextTriggerAtMs), start.addingTimeInterval(-3600).timeIntervalSince1970 * 1000, accuracy: 1)
         XCTAssertEqual(request.userInfoKeys, ["appointmentId", "timeKey"])
-        XCTAssertEqual(request.title, "Orot")
+        XCTAssertEqual(request.title, "오롯")
         XCTAssertEqual(request.body, "준비할 내용을 확인해 보세요.")
     }
 
