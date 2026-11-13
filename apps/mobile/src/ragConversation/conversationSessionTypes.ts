@@ -43,10 +43,19 @@ export interface ConversationSessionOptions {
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
   readonly retention?: Omit<
     Retention,
-    'beginSession' | 'saveTaskCard' | 'discardUnpublished'
+    | 'beginSession'
+    | 'saveTaskCard'
+    | 'discardUnpublished'
+    | 'readCommittedCompletion'
   > &
     Partial<
-      Pick<Retention, 'beginSession' | 'saveTaskCard' | 'discardUnpublished'>
+      Pick<
+        Retention,
+        | 'beginSession'
+        | 'saveTaskCard'
+        | 'discardUnpublished'
+        | 'readCommittedCompletion'
+      >
     >;
   readonly restoreSession?: (
     id: string,

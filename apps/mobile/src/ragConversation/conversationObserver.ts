@@ -32,6 +32,8 @@ export type RagConversationObserver = Pick<
       signal: AbortSignal,
     ) => Promise<boolean>;
   };
+  /** Durable request identity, distinct from a transient UI response number. */
+  readonly retentionRequestId?: string;
   readonly retainedHistory?: readonly {
     readonly id: string;
     readonly question: string;

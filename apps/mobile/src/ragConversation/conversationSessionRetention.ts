@@ -92,6 +92,11 @@ export function createConversationSessionRetention(input: {
         ? { id: slot.id, version: slot.version }
         : null;
     },
+    async readCommittedCompletion(
+      identity: import('../storage/conversationCompletionReader').ConversationCompletionIdentity,
+    ) {
+      return (await input.openStorage()).readCommittedCompletion(identity);
+    },
     prepareRemoval(id: number) {
       const slot = slots.get(id);
       if (!slot) return;
