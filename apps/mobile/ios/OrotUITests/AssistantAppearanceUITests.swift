@@ -70,7 +70,8 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         input.tap()
         ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
         input.typeText("What health records are available?")
-        let send = UITestConditions.element(app, "rag-conversation-send")
+        // The native material host shares this ID; only its button sends the request.
+        let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(send.isHittable)
         XCTAssertGreaterThanOrEqual(send.frame.width, 44)
         XCTAssertGreaterThanOrEqual(send.frame.height, 44)
