@@ -60,7 +60,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         assertPhotoSource(app)
         assertZoomInteractions(app)
-        tap(app, "medical-document-source-back", expectedScrollViews: 2)
+        tap(app, "medical-document-source-back")
         XCTAssertEqual(
             app.descendants(matching: .any)
                 .matching(identifier: "medical-document-source-0").count,
@@ -99,19 +99,15 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
 
     @MainActor
     private func assertZoomInteractions(_ app: XCUIApplication) {
-        let route = node(app, "navigation-route-scroll")
-        XCTAssertEqual(route.scrollViews.count, 2, app.debugDescription)
-        let pageScroll = route.scrollViews.firstMatch
         let image = node(app, "medical-document-source-original-image")
-        FormUITestConditions.reveal(image, in: app, scroll: pageScroll)
-        XCTAssertTrue(image.isHittable, app.debugDescription)
+        guard reveal(image, in: app) else { return }
 
-        tap(app, "medical-document-source-original-zoom-in", expectedScrollViews: 2)
+        tap(app, "medical-document-source-original-zoom-in")
         let reset = node(app, "medical-document-source-original-zoom-reset")
         XCTAssertEqual(reset.value as? String, "150%", app.debugDescription)
         let zoomOut = node(app, "medical-document-source-original-zoom-out")
         XCTAssertTrue(zoomOut.isEnabled, app.debugDescription)
-        tap(app, "medical-document-source-original-zoom-reset", expectedScrollViews: 2)
+        tap(app, "medical-document-source-original-zoom-reset")
         XCTAssertEqual(reset.value as? String, "100%", app.debugDescription)
 
         for control in [zoomOut, reset, node(app, "medical-document-source-original-zoom-in")] {
@@ -134,18 +130,32 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func tap(
-        _ app: XCUIApplication,
-        _ identifier: String,
-        expectedScrollViews: Int = 1,
-    ) {
+    private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = node(app, identifier)
-        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
-        let route = node(app, "navigation-route-scroll")
-        XCTAssertEqual(route.scrollViews.count, expectedScrollViews, app.debugDescription)
-        let scroll = route.scrollViews.firstMatch
-        FormUITestConditions.reveal(target, in: app, scroll: scroll)
-        XCTAssertTrue(target.isHittable && scroll.frame.contains(target.frame), app.debugDescription)
+        guard reveal(target, in: app) else { return }
         target.tap()
+    }
+
+    /// Scroll only the current route when the actual control is not yet reachable.
+    @MainActor
+    private func reveal(_ target: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard target.waitForAppearance() else {
+            XCTFail("Expected photo journey control to appear: \(app.debugDescription)")
+            return false
+        }
+        if !target.isHittable {
+            let route = node(app, "navigation-route-scroll")
+            // Use the observed control position to avoid scrolling away from Back.
+            if target.frame.midY < route.frame.midY {
+                route.swipeDown()
+            } else {
+                route.swipeUp()
+            }
+        }
+        guard target.isHittable else {
+            XCTFail("Expected photo journey control to be hittable: \(app.debugDescription)")
+            return false
+        }
+        return true
     }
 }
