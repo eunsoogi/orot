@@ -32,6 +32,7 @@ export function VoiceConversationControl({
   finishLabel,
   recoverLabel,
   status,
+  statusExternallyRendered = false,
   onStart,
   onStop,
   onFinish,
@@ -44,6 +45,7 @@ export function VoiceConversationControl({
   readonly finishLabel: string;
   readonly recoverLabel: string;
   readonly status: string;
+  readonly statusExternallyRendered?: boolean;
   readonly onStart: () => void;
   readonly onStop: () => void;
   readonly onFinish: () => void;
@@ -66,7 +68,7 @@ export function VoiceConversationControl({
     phase === 'error' ? recoverLabel : active ? stopLabel : startLabel;
   return (
     <View style={styles.container}>
-      {status ? (
+      {status && !statusExternallyRendered ? (
         <AppText accessibilityLiveRegion="polite" style={styles.status}>
           {status}
         </AppText>
