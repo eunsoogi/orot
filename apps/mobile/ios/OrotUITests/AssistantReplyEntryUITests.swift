@@ -27,8 +27,12 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(banner.container), springboard.debugDescription)
         XCTAssertTrue(UITestConditions.exists(banner.body), springboard.debugDescription)
         XCTAssertEqual(banner.body.label, "Synthetic retained reply")
-        XCTAssertTrue(banner.body.isHittable, banner.body.debugDescription)
-        guard banner.body.exists, banner.body.isHittable else { return }
+        let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            banner.body.exists && banner.body.isHittable
+        }, object: nil)
+        let bannerResult = UITestConditions.wait(for: [bannerReady])
+        XCTAssertEqual(bannerResult, .completed, banner.body.debugDescription)
+        guard bannerResult == .completed else { return }
         banner.body.tap()
         XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "rag-conversation-screen").exists)
@@ -43,7 +47,8 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         save.tap()
 
         let history = UITestConditions.element(app, "rag-conversation-history")
-        let answer = app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", "Synthetic retained reply")).firstMatch
+        let answers = app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", "Synthetic retained reply"))
+        let answer = answers.matching(NSPredicate(format: "hittable == YES")).firstMatch
         XCTAssertTrue(UITestConditions.exists(history), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(answer), app.debugDescription)
         XCTAssertTrue(answer.isHittable, answer.debugDescription)
