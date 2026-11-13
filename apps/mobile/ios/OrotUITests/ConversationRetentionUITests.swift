@@ -145,11 +145,16 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
             app.state == .notRunning || statusElement.label.contains("lease:released") || statusElement.label.contains("lease-observation-failed")
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [leaseResult]), .completed)
-        guard app.state != .notRunning else { XCTFail("Application terminated before lease release"); return }
+        guard app.state != .notRunning else {
+            XCTFail("Application terminated before lease release")
+            return
+        }
         let status = statusElement.label
         XCTAssertTrue(status.contains("lease:released"), status)
         XCTAssertTrue(status.contains("dispatches:1 completions:\(completionCount)"), status)
-        if stop { XCTAssertTrue(status.contains("interrupted:1"), status) }
+        if stop {
+            XCTAssertTrue(status.contains("interrupted:1"), status)
+        }
     }
 
     func testNativeLeaseEndsAfterCommittedCompletion() {
