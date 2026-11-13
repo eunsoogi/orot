@@ -6,6 +6,17 @@ import XCTest
 /// Uses the production speech adapter and real audio session with synthetic, silent speech.
 /// This proves system callbacks and release, not audible quality, microphone input or a provider response.
 final class VoiceConversationLifecycleTests: OrotFailFastTestCase {
+    func testDuplexOutputQueueHasFiniteBudget() {
+        let limit = VoiceDuplexAudioEngine.maximumQueuedFrames
+        XCTAssertTrue(VoiceDuplexAudioEngine.acceptsQueuedFrames(0, adding: limit))
+        XCTAssertTrue(VoiceDuplexAudioEngine.acceptsQueuedFrames(limit - 1, adding: 1))
+        XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(limit, adding: 1))
+        XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(0, adding: limit + 1))
+        XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(-1, adding: 1))
+        XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(0, adding: 0))
+        XCTAssertFalse(VoiceDuplexAudioEngine.acceptsQueuedFrames(Int.max, adding: Int.max))
+    }
+
     @MainActor
     func testSystemSpeechCompletionAndStopReleasePlayback() async throws {
         let owner = AudioSessionOwnership.shared

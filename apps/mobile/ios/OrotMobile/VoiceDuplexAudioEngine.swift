@@ -10,10 +10,17 @@ final class VoiceDuplexAudioEngine {
     private let synthesizer = AVSpeechSynthesizer()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)!
     private var converter: AVAudioConverter?
+    private let pendingPCM = VoiceDuplexPendingPCM()
     private var tapInstalled = false
     private var playerAttached = false
     private var generation = UUID()
     private var pendingBuffers = 0
+    private var pendingFrames = 0
+    static let maximumQueuedFrames = 24_000 * 60
+
+    static func acceptsQueuedFrames(_ queued: Int, adding: Int) -> Bool {
+        queued >= 0 && adding > 0 && adding <= maximumQueuedFrames && queued <= maximumQueuedFrames - adding
+    }
     private var synthesisEnded = false
     private var completion: ((Bool) -> Void)?
 
@@ -50,9 +57,22 @@ final class VoiceDuplexAudioEngine {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: language)
         synthesizer.write(utterance) { [weak self] buffer in
+            guard let self else { return }
+            guard let pcm = buffer as? AVAudioPCMBuffer else {
+                DispatchQueue.main.async { if self.generation == current { self.cancelPlayback() } }
+                return
+            }
+            let bytes = UnsafeMutableAudioBufferListPointer(pcm.mutableAudioBufferList).reduce(0) { $0 + Int($1.mDataByteSize) }
+            switch self.pendingPCM.reserve(bytes, generation: current) {
+            case .stale: return
+            case .overflow:
+                DispatchQueue.main.async { if self.generation == current { self.cancelPlayback() } }
+                return
+            case .accepted: break
+            }
             DispatchQueue.main.async {
-                guard let self, self.generation == current, self.completion != nil else { return }
-                guard let pcm = buffer as? AVAudioPCMBuffer else { self.cancelPlayback(); return }
+                defer { self.pendingPCM.release(bytes, generation: current) }
+                guard self.generation == current, self.completion != nil else { return }
                 if pcm.frameLength == 0 {
                     do { try self.drainConverter(generation: current) }
                     catch { self.cancelPlayback(); return }
@@ -70,9 +90,11 @@ final class VoiceDuplexAudioEngine {
     func cancelPlayback() {
         dispatchPrecondition(condition: .onQueue(.main))
         generation = UUID()
+        pendingPCM.reset(generation)
         player.stop()
         synthesizer.stopSpeaking(at: .immediate)
         pendingBuffers = 0
+        pendingFrames = 0
         synthesisEnded = false
         converter = nil
         let callback = completion
@@ -100,7 +122,9 @@ final class VoiceDuplexAudioEngine {
             converter = AVAudioConverter(from: buffer.format, to: format)
         }
         guard let converter else { throw Failure.unavailableConversion }
-        let capacity = AVAudioFrameCount(ceil(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 32)
+        let frames = ceil(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 32
+        guard frames.isFinite, frames > 0, frames <= Double(Self.maximumQueuedFrames) else { throw Failure.unavailableConversion }
+        let capacity = AVAudioFrameCount(frames)
         guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { throw Failure.unavailableConversion }
         var supplied = false
         var error: NSError?
@@ -112,7 +136,7 @@ final class VoiceDuplexAudioEngine {
         }
         if let error { throw error }
         guard status != .error else { throw Failure.unavailableConversion }
-        schedule(converted, generation: current)
+        try schedule(converted, generation: current)
     }
 
     private func drainConverter(generation current: UUID) throws {
@@ -124,17 +148,21 @@ final class VoiceDuplexAudioEngine {
         }
         if let error { throw error }
         guard status != .error else { throw Failure.unavailableConversion }
-        schedule(tail, generation: current)
+        try schedule(tail, generation: current)
     }
 
-    private func schedule(_ converted: AVAudioPCMBuffer, generation current: UUID) {
+    private func schedule(_ converted: AVAudioPCMBuffer, generation current: UUID) throws {
         guard converted.frameLength > 0 else { return }
+        let frames = Int(converted.frameLength)
+        guard pendingBuffers < 256, Self.acceptsQueuedFrames(pendingFrames, adding: frames) else { throw Failure.unavailableConversion }
+        pendingFrames += frames
         pendingBuffers += 1
         player.scheduleBuffer(converted, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
             // Player callbacks must never stop the node on its render thread.
             DispatchQueue.main.async {
                 guard let self, self.generation == current else { return }
                 self.pendingBuffers -= 1
+                self.pendingFrames -= frames
                 self.completeIfDrained()
             }
         }
@@ -147,5 +175,42 @@ final class VoiceDuplexAudioEngine {
         completion = nil
         converter = nil
         callback?(true)
+    }
+}
+
+/// Bounds synthesized buffers retained by callbacks before the main queue can process them.
+/// This lock is never used by the microphone/render input callback.
+private final class VoiceDuplexPendingPCM {
+    enum Reservation { case accepted, stale, overflow }
+    private let lock = NSLock()
+    private var generation = UUID()
+    private var bytes = 0
+    private var closed = false
+    private let limit = 8 * 1024 * 1024
+
+    func reset(_ current: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        generation = current
+        bytes = 0
+        closed = false
+    }
+
+    func reserve(_ count: Int, generation current: UUID) -> Reservation {
+        lock.lock()
+        defer { lock.unlock() }
+        guard generation == current, !closed else { return .stale }
+        guard count >= 0, count <= limit, bytes <= limit - count else {
+            closed = true
+            return .overflow
+        }
+        bytes += count
+        return .accepted
+    }
+
+    func release(_ count: Int, generation current: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        if generation == current { bytes -= count }
     }
 }
