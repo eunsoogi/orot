@@ -23,7 +23,15 @@ test('routes the medical document journey through the production App', () => {
   );
   assert.ok(router.includes("case 'medical-document-import':"));
   assert.ok(router.includes("require('./medicalDocumentImportProbeEntry')"));
-  assert.match(probeEntry, /return <App \/>;/u);
+  assert.match(probeEntry, /import App from '\.\.\/App';/u);
+  // The real App must wait for its encrypted synthetic prerequisite, not bypass the gate.
+  assert.match(probeEntry, /useState<'loading' \| 'ready' \| 'error'>\('loading'\)/u);
+  assert.match(
+    probeEntry,
+    /prepareMedicalDocumentPhotoAppearance\(settings, appearanceStore\)\.then\(\s*\(\) => \{\s*if \(active\) setState\('ready'\);\s*\},\s*\(\) => \{\s*if \(active\) setState\('error'\);/u,
+  );
+  assert.match(probeEntry, /if \(state === 'error'\)\s*return <Text>/u);
+  assert.match(probeEntry, /return state === 'ready' \? <App \/> : null;/u);
 });
 
 test('selects the isolated picker recovery entry only when requested', () => {
