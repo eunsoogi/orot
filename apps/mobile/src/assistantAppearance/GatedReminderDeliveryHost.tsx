@@ -82,7 +82,7 @@ export function ReminderGate({
     () => () => listeners.forEach(listener => listener()),
     [listeners],
   );
-  const onRootApplied = useMemo(
+  const markExplicitEntry = useMemo(
     () => () => {
       explicitEntryWon.current = true;
     },
@@ -142,7 +142,7 @@ export function ReminderGate({
         ready={ready}
         canEnter={allowed}
         selectTab={selectTab}
-        onApplied={onRootApplied}
+        onApplied={markExplicitEntry}
         onSettled={onSettled}
       />
       <AppointmentReminderDeliveryHost
@@ -153,7 +153,7 @@ export function ReminderGate({
         executeReplyEntry={execute}
         executeReminderEntry={execute}
         canRestoreEntry={canRestoreEntry}
-        onExplicitReminderOpened={onRootApplied}
+        onExplicitReminderOpened={markExplicitEntry}
       />
     </>
   );
