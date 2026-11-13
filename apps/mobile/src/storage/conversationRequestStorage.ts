@@ -60,7 +60,9 @@ export async function commitConversationRequest(
   );
 }
 
-/** Checkpoints cannot resurrect a hidden, removed, or replaced session lease. */
+/** Text-only checkpoint: attachment and transmitted OCR references require a separate input contract.
+ * Checkpoints cannot resurrect a hidden, removed, or replaced session lease.
+ */
 export function createConversationRequestStorage(
   database: SqlDatabase,
   ensure: () => Promise<void>,
