@@ -28,6 +28,7 @@ export const questionCohorts = {
       'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
       'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
       'ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+      'ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     ],
   },
   'questions-summary': {
