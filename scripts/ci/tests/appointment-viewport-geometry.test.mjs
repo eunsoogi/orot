@@ -13,6 +13,20 @@ test('appointment viewport rejects unsafe edges, clipped title and undersized hi
       main,
       `import Foundation
 typealias G = AppointmentViewportGeometry
+let openWindow = CGRect(x: 0, y: 0, width: 951, height: 669)
+let applicationEnvelope = CGRect(x: 0, y: 0, width: 669, height: 951)
+precondition(applicationEnvelope != openWindow)
+precondition(G.matchesOwningWindow(openWindow, screen: openWindow, nativeBounds: openWindow))
+precondition(!G.matchesOwningWindow(openWindow, screen: openWindow.offsetBy(dx: 1, dy: 0), nativeBounds: openWindow))
+precondition(!G.matchesOwningWindow(openWindow, screen: openWindow, nativeBounds: applicationEnvelope))
+let openInsets = G.Insets(top: 0, right: 84, bottom: 34, left: 0)
+let openScroll = CGRect(x: 0, y: 0, width: 867, height: 579)
+let openTitle = CGRect(x: 20, y: 20, width: 827, height: 24)
+let openToolbar = CGRect(x: 44, y: 587, width: 779, height: 48)
+precondition(G.accepts(window: openWindow, insets: openInsets, scroll: openScroll, title: openTitle, toolbar: openToolbar, minimumTitleHeight: 20))
+precondition(!G.accepts(window: openWindow, insets: openInsets, scroll: CGRect(x: 0, y: 0, width: 868, height: 579), title: openTitle, toolbar: openToolbar, minimumTitleHeight: 20))
+precondition(!G.accepts(window: openWindow, insets: openInsets, scroll: openScroll, title: openTitle, toolbar: openToolbar.offsetBy(dx: 0, dy: 1), minimumTitleHeight: 20))
+precondition(!G.accepts(window: openWindow, insets: openInsets, scroll: openScroll, title: openTitle, toolbar: openToolbar.offsetBy(dx: 0, dy: -10), minimumTitleHeight: 20))
 let window = CGRect(x: 0, y: 0, width: 466, height: 678)
 let insets = G.Insets(top: 0, right: 84, bottom: 34, left: 0)
 let scroll = CGRect(x: 0, y: 0, width: 382, height: 588)

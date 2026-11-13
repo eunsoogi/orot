@@ -100,7 +100,7 @@ enum ViewportObservation {
         let toolbarFrame = action.toolbar.frame, addFrame = add.frame, backFrame = action.control.frame
         let addHittable = add.isHittable, backHittable = action.control.isHittable
         let after = try sample()
-        let receipt: [String: Any] = ["before": before, "after": after, "coordinateUnits": "points", "sampling": "non-atomic"]
+        let receipt: [String: Any] = ["before": before, "after": after, "applicationFrame": rect(application), "coordinateUnits": "points", "sampling": "non-atomic"]
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys]), uniformTypeIdentifier: "public.json")
         attachment.name = "appointment-safe-area-samples"
         attachment.lifetime = .keepAlways
@@ -129,13 +129,14 @@ enum ViewportObservation {
         XCTAssertEqual(beforeBounds, afterBounds)
         XCTAssertEqual(beforeInsets, afterInsets)
         XCTAssertEqual(before["sceneOrientation"] as? Int, after["sceneOrientation"] as? Int)
-        XCTAssertEqual(windowFrame, application)
-        XCTAssertEqual(windowFrame.minX, try XCTUnwrap(screenFrame["x"]), accuracy: 0.5)
-        XCTAssertEqual(windowFrame.minY, try XCTUnwrap(screenFrame["y"]), accuracy: 0.5)
-        XCTAssertEqual(windowFrame.width, try XCTUnwrap(screenFrame["width"]), accuracy: 0.5)
-        XCTAssertEqual(windowFrame.height, try XCTUnwrap(screenFrame["height"]), accuracy: 0.5)
-        XCTAssertEqual(windowFrame.width, try XCTUnwrap(beforeBounds["width"]), accuracy: 0.5)
-        XCTAssertEqual(windowFrame.height, try XCTUnwrap(beforeBounds["height"]), accuracy: 0.5)
+        // XCUIApplication's envelope can use another coordinate space; the owned AX window is the viewport.
+        XCTAssertEqual(window.descendants(matching: .any).matching(identifier: action.control.identifier).count, 1)
+        let nativeScreen = try CGRect(x: XCTUnwrap(screenFrame["x"]), y: XCTUnwrap(screenFrame["y"]),
+                                      width: XCTUnwrap(screenFrame["width"]), height: XCTUnwrap(screenFrame["height"]))
+        let nativeBounds = try CGRect(x: XCTUnwrap(beforeBounds["x"]), y: XCTUnwrap(beforeBounds["y"]),
+                                      width: XCTUnwrap(beforeBounds["width"]), height: XCTUnwrap(beforeBounds["height"]))
+        XCTAssertTrue(AppointmentViewportGeometry.matchesOwningWindow(windowFrame, screen: nativeScreen, nativeBounds: nativeBounds),
+                      "The AX window must match the same native window in screen coordinates")
         let insets = try AppointmentViewportGeometry.Insets(top: XCTUnwrap(beforeInsets["top"]), right: XCTUnwrap(beforeInsets["right"]),
                                                             bottom: XCTUnwrap(beforeInsets["bottom"]), left: XCTUnwrap(beforeInsets["left"]))
         XCTAssertTrue(AppointmentViewportGeometry.accepts(window: windowFrame, insets: insets, scroll: scrollFrame, title: titleFrame, toolbar: toolbarFrame, minimumTitleHeight: bodyLineHeight),
