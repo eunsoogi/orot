@@ -111,12 +111,14 @@ export function createConversationSessionRetention(input: {
       id: number,
       durableId: string,
       expectedVersion: number,
+      isCurrent: () => boolean = () => true,
     ) {
       if (
         slots.has(id) ||
         !durableId ||
         !Number.isSafeInteger(expectedVersion) ||
-        expectedVersion < 0
+        expectedVersion < 0 ||
+        !isCurrent()
       )
         throw new Error('Conversation session state is invalid.');
       // A read started before a local-data clear must never attach its old result.
@@ -124,6 +126,7 @@ export function createConversationSessionRetention(input: {
       const storage = await input.openStorage();
       if (
         (await storage.activeSessionVersion(durableId)) !== expectedVersion ||
+        !isCurrent() ||
         started !== lifecycle ||
         slots.has(id) ||
         [...slots.values()].some(slot => slot.id === durableId)
@@ -136,6 +139,16 @@ export function createConversationSessionRetention(input: {
         ready: Promise.resolve(),
         turns: new Set(),
       });
+    },
+    /** Drop an unpublished attachment without deleting its protected conversation. */
+    discardUnpublished(id: number, durableId: string, version: number) {
+      const slot = slots.get(id);
+      if (
+        slot?.id === durableId &&
+        slot.version === version &&
+        slot.turns.size === 0
+      )
+        slots.delete(id);
     },
     async beginSession(id: number, signal: AbortSignal) {
       const { current, version } = await ensureSession(id, signal);

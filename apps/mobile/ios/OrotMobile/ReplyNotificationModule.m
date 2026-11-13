@@ -16,6 +16,8 @@ RCT_EXTERN_METHOD(removeAll : (RCTPromiseResolveBlock)resolve rejecter : (RCTPro
                       reject)
 RCT_EXTERN_METHOD(consumeTarget : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)
                       reject)
+RCT_EXTERN_METHOD(discardInvalidTarget : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(acknowledgeTarget : (NSString *)value resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end

@@ -17,6 +17,9 @@ final class ReplyNotificationInboxTests: OrotFailFastTestCase {
         content.userInfo = ["requestId": "request", "sessionId": "session", "messageId": "message", "sessionVersion": 2]
         let request = UNNotificationRequest(identifier: ReplyNotificationService.prefix + "request", content: content, trigger: nil)
         inbox.receive(request, actionIdentifier: UNNotificationDefaultActionIdentifier)
+        let pending = try XCTUnwrap(defaults.array(forKey: "com.orot.reply.delivery-inbox"))
+        let unsafeVersion = ["requestId": "unsafe", "sessionId": "session", "messageId": "message", "sessionVersion": "9007199254740992"]
+        defaults.set(["malformed" as Any, unsafeVersion] + pending, forKey: "com.orot.reply.delivery-inbox")
         let restarted = AppointmentReminderDelivery(defaults: defaults)
         XCTAssertEqual(restarted.consumeReplyTarget(), ["requestId": "request", "sessionId": "session", "messageId": "message", "sessionVersion": "2"])
         XCTAssertEqual(inbox.consumeTarget(), ["appointmentId": "appointment", "timeKey": "time"])

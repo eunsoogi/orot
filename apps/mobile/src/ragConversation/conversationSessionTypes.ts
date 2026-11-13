@@ -38,8 +38,13 @@ export interface ConversationSessionOptions {
     readonly import('./conversationTaskState').RetainedConversationTask[]
   >;
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
-  readonly retention?: Omit<Retention, 'beginSession' | 'saveTaskCard'> &
-    Partial<Pick<Retention, 'beginSession' | 'saveTaskCard'>>;
+  readonly retention?: Omit<
+    Retention,
+    'beginSession' | 'saveTaskCard' | 'discardUnpublished'
+  > &
+    Partial<
+      Pick<Retention, 'beginSession' | 'saveTaskCard' | 'discardUnpublished'>
+    >;
   readonly restoreSession?: (
     id: string,
     signal: AbortSignal,

@@ -12,20 +12,28 @@ export function createReplyOpen(input: {
   retention: ConversationSessionOptions['retention'];
   read(identity: ReplyIdentity): Promise<{ createdAt: string } | null>;
   canEnter(): boolean;
+  isCurrent?(): boolean;
+  signal?: AbortSignal;
+  onReplyOpened?: () => void;
   confirm(
     routeKey: string,
   ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
 }) {
   return async (
     identity: ReplyIdentity,
-  ): Promise<'opened' | 'missing' | 'deferred'> => {
-    if (!input.canEnter() || !input.retention) return 'deferred';
+  ): Promise<'opened' | 'missing' | 'deferred' | 'cancelled'> => {
+    const currentOwner = input.isCurrent ?? (() => true);
+    if (!currentOwner() || !input.canEnter() || !input.retention)
+      return 'deferred';
     try {
       const answer = await input.read(identity);
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
       if (!answer) return 'missing';
       const before = input.controller.getSnapshot();
       const decision = await input.confirm(before.currentRoute.key);
-      if (decision !== 'approved' || !input.canEnter()) return 'deferred';
+      if (decision === 'declined') return 'cancelled';
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
+      if (decision !== 'approved') return 'deferred';
       const existing = input.sessions.getSnapshot().sessions.find(session => {
         const lease = input.retention?.activeLease(session.id);
         return (
@@ -40,10 +48,20 @@ export function createReplyOpen(input: {
           identity.sessionVersion,
           answer.createdAt,
           false,
+          currentOwner,
+          input.signal,
         ));
-      const session = input.sessions
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
+      let session = input.sessions
         .getSnapshot()
         .sessions.find(value => value.id === sessionId);
+      if (session?.restoreFailed) {
+        await input.sessions.retryRestore(sessionId, input.signal);
+        if (!currentOwner() || !input.canEnter()) return 'deferred';
+        session = input.sessions
+          .getSnapshot()
+          .sessions.find(value => value.id === sessionId);
+      }
       if (session?.busy || session?.restoring || session?.restoreFailed)
         return 'deferred';
       if (
@@ -54,9 +72,12 @@ export function createReplyOpen(input: {
         )
       )
         return 'missing';
-      if (!(await input.read(identity))) return 'missing';
+      const latest = await input.read(identity);
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
+      if (!latest) return 'missing';
       const current = input.controller.getSnapshot();
       if (
+        !currentOwner() ||
         !input.canEnter() ||
         current.isTransitioning ||
         current.currentRoute.key !== before.currentRoute.key
@@ -67,8 +88,13 @@ export function createReplyOpen(input: {
         !input.controller.push('rag-conversation')
       )
         return 'deferred';
+      // Navigation and selection publish synchronously and can replace this observer.
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
       input.sessions.select(sessionId);
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
       replyFocus.set({ sessionId, messageId: identity.messageId });
+      if (!currentOwner() || !input.canEnter()) return 'deferred';
+      input.onReplyOpened?.();
       return 'opened';
     } catch {
       // Protected data and transient restoration failures leave the durable inbox untouched.

@@ -44,20 +44,43 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     func hasPendingTarget() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return pending != nil || !((dailyState["pending"] as? [[String: String]]) ?? []).isEmpty || !(defaults.array(forKey: replyKey) ?? []).isEmpty
+        return pending != nil || !((dailyState["pending"] as? [[String: String]]) ?? []).isEmpty || !replyTargets().isEmpty
+    }
+
+    /// Retire malformed persisted entries without allowing one bad head to block later taps.
+    private func replyTargets() -> [[String: String]] {
+        let raw = defaults.array(forKey: replyKey) ?? []
+        let valid = raw.compactMap { value -> [String: String]? in
+            guard let target = value as? [String: String],
+                  let request = target["requestId"], let session = target["sessionId"],
+                  let message = target["messageId"], let text = target["sessionVersion"],
+                  let version = Int(text), (0 ... 9_007_199_254_740_991).contains(version),
+                  [request, session, message].allSatisfy({ !$0.isEmpty && $0.count <= 200 }) else { return nil }
+            return ["requestId": request, "sessionId": session, "messageId": message, "sessionVersion": String(version)]
+        }
+        if (raw as? [[String: String]]) != valid {
+            defaults.set(valid, forKey: replyKey)
+        }
+        return valid
     }
 
     /// The inbox survives cold entry and contains only opaque IDs, never the preview.
     func consumeReplyTarget() -> [String: String]? {
         lock.lock()
         defer { lock.unlock() }
-        return (defaults.array(forKey: replyKey) as? [[String: String]])?.first
+        return replyTargets().first
+    }
+
+    func discardInvalidReplyTarget() {
+        lock.lock()
+        defer { lock.unlock() }
+        _ = replyTargets()
     }
 
     func acknowledgeReplyTarget(_ requestId: String) {
         lock.lock()
         defer { lock.unlock() }
-        var targets = defaults.array(forKey: replyKey) as? [[String: String]] ?? []
+        var targets = replyTargets()
         guard targets.first?["requestId"] == requestId else { return }
         targets.removeFirst()
         var handled = defaults.stringArray(forKey: replyHandledKey) ?? []
@@ -92,11 +115,11 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
            let sessionId = request.content.userInfo["sessionId"] as? String,
            let messageId = request.content.userInfo["messageId"] as? String,
            let version = request.content.userInfo["sessionVersion"] as? Int,
-           version >= 0, [requestId, sessionId, messageId].allSatisfy({ !$0.isEmpty && $0.count <= 200 })
+           (0 ... 9_007_199_254_740_991).contains(version), [requestId, sessionId, messageId].allSatisfy({ !$0.isEmpty && $0.count <= 200 })
         {
             let target = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": String(version)]
             lock.lock()
-            var targets = defaults.array(forKey: replyKey) as? [[String: String]] ?? []
+            var targets = replyTargets()
             let handled = defaults.stringArray(forKey: replyHandledKey) ?? []
             if !handled.contains(requestId), !targets.contains(where: { $0["requestId"] == requestId }) {
                 targets.append(target); defaults.set(targets, forKey: replyKey)

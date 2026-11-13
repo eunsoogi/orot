@@ -56,6 +56,12 @@ final class ReplyNotificationModule: NSObject {
         resolve(AppointmentReminderDelivery.shared.consumeReplyTarget())
     }
 
+    @objc(discardInvalidTarget:rejecter:)
+    func discardInvalidTarget(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
+        AppointmentReminderDelivery.shared.discardInvalidReplyTarget()
+        resolve(nil)
+    }
+
     @objc(acknowledgeTarget:resolver:rejecter:)
     func acknowledgeTarget(_ requestId: String, resolver resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
         AppointmentReminderDelivery.shared.acknowledgeReplyTarget(requestId)

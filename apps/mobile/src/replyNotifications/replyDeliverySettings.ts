@@ -10,4 +10,6 @@ export interface ReplyDeliverySettings {
   readonly loadLocalData?: () => Promise<AiFeatureLocalData>;
   readonly canEnterReply?: () => boolean;
   readonly executeReplyEntry?: ReplyEntryExecutor;
+  readonly subscribeReplyEntryReady?: (listener: () => void) => () => void;
+  readonly onReplyOpened?: () => void;
 }
