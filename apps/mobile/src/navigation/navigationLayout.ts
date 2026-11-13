@@ -71,8 +71,11 @@ export function resolveNavigationOcclusion({
       right: 0,
       bottom:
         measuredBottomActionOcclusion ??
-        BOTTOM_NAVIGATION_CONTENT_INSET +
-          (hasRightRail ? 0 : systemInsets.bottom),
+        // A side rail reserves its own lane, not a hypothetical bottom bar.
+        // Still honor a measured bottom action when one actually occupies it.
+        (hasRightRail
+          ? 0
+          : BOTTOM_NAVIGATION_CONTENT_INSET + systemInsets.bottom),
       left: 0,
     },
   };
