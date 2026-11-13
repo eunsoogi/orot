@@ -27,6 +27,19 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
     }
 
+    /// The keyboard can move the real conversation header above its scroll viewport.
+    private func conversationAction(_ app: XCUIApplication, id: String, label: String) {
+        let target = UITestConditions.element(app, id)
+        if target.exists {
+            XCTAssertNotNil(FormUITestConditions.reveal(target, in: app, scrollID: "rag-conversation-history", towardTop: true))
+        }
+        let action = NavigationPageActionUITestConditions.pageAction(app, id: id, label: label)
+        XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+        action.tap()
+    }
+
     /// Background and restart use real iOS lifecycle transitions, without a real model.
     func testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart() {
         let app = launch()
@@ -37,7 +50,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "retention-probe-other-tab")))
         app.buttons["retention-probe-tab"].tap()
         XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        conversationAction(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "conversation-history-screen")))
         app.buttons["navigation-back"].tap()
         XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
@@ -48,7 +61,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         app.terminate()
         app.launch()
         observe(app, "dispatches:1 completions:0 previews:1 interrupted:1")
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        conversationAction(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         let row = UITestConditions.element(app, "conversation-history-session-2")
         XCTAssertTrue(UITestConditions.exists(row))
         row.tap()
@@ -64,11 +77,11 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         defer { UITestConditions.terminateStandaloneApp(app) }
         send(app)
         observe(app, "dispatches:1 completions:0 previews:1 interrupted:0")
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
+        conversationAction(app, id: "rag-conversation-new-session", label: "새 대화")
         app.buttons["retention-probe-release"].tap()
         observe(app, "dispatches:1 completions:1 previews:0 interrupted:0")
         XCTAssertFalse(app.staticTexts["Synthetic committed response"].exists)
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        conversationAction(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         let original = UITestConditions.element(app, "conversation-history-session-1")
         XCTAssertTrue(UITestConditions.exists(original))
         original.tap()

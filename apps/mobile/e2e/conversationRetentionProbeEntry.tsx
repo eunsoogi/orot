@@ -96,25 +96,33 @@ function Probe() {
       <ConversationSessionsProvider options={options}>
         <View style={styles.root}>
           <SafeAreaView edges={['top']}>
-            <Button
-              testID="retention-probe-tab"
-              title={otherTab ? 'Return to conversation tab' : 'Open other tab'}
-              onPress={() => setOtherTab(value => !value)}
-            />
-            <Button
-              testID="retention-probe-release"
-              title="Release synthetic response"
-              onPress={() => release?.()}
-            />
-            <Button
-              testID="retention-probe-refresh"
-              title="Read protected checkpoint"
-              onPress={() => {
-                readProbe()
-                  .then(setStatus)
-                  .catch(() => setStatus('unavailable'));
-              }}
-            />
+            <View style={styles.controls}>
+              <View style={styles.control}>
+                <Button
+                  testID="retention-probe-tab"
+                  title={otherTab ? 'Return' : 'Tab'}
+                  onPress={() => setOtherTab(value => !value)}
+                />
+              </View>
+              <View style={styles.control}>
+                <Button
+                  testID="retention-probe-release"
+                  title="Finish"
+                  onPress={() => release?.()}
+                />
+              </View>
+              <View style={styles.control}>
+                <Button
+                  testID="retention-probe-refresh"
+                  title="Read"
+                  onPress={() => {
+                    readProbe()
+                      .then(setStatus)
+                      .catch(() => setStatus('unavailable'));
+                  }}
+                />
+              </View>
+            </View>
             <Text testID="retention-probe-status">{status}</Text>
           </SafeAreaView>
           {otherTab ? (
@@ -156,4 +164,8 @@ function Probe() {
 
 AppRegistry.registerComponent(appName, () => Probe);
 
-const styles = StyleSheet.create({ root: { flex: 1 } });
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  controls: { flexDirection: 'row', justifyContent: 'space-around' },
+  control: { minWidth: 44, minHeight: 44, justifyContent: 'center' },
+});
