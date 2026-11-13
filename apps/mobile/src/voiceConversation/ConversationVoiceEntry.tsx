@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { t } from '../i18n';
+import { AssistantHeader } from '../assistantAppearance/AssistantHeader';
 import type { ConversationSessions } from '../ragConversation/conversationSessionTypes';
 import {
   conversationVoiceDependencies,
@@ -8,6 +9,7 @@ import {
   type SelectionBinding,
 } from './conversationVoiceDependencies';
 import { VoiceConversationControl } from './VoiceConversationControl';
+import { VoiceConversationScreen } from './VoiceConversationScreen';
 import { nativeVoiceConversation } from './nativeVoiceConversation';
 import { createVoiceSession } from './voiceSession';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
@@ -25,6 +27,7 @@ export function ConversationVoiceEntry(
   const [state, setState] = useState<VoiceState>(initialVoiceState);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [available, setAvailable] = useState(false);
   const selected = useRef<SelectionBinding | null>(null);
   const owned = useRef<{
@@ -146,6 +149,7 @@ export function ConversationVoiceEntry(
                 revision: live.selectionRevision,
                 sessionId: live.sessionId,
               };
+              setVisible(true);
               session.current?.start({
                 sessionId: live.sessionId,
                 providerId: result.provider.id,
@@ -193,25 +197,48 @@ export function ConversationVoiceEntry(
     // A removed session must not leave its transient voice message in the next composer.
     return () => onStatusChange?.('');
   }, [displayStatus, onStatusChange]);
+  const currentSession = props.store
+    .getSnapshot()
+    .sessions.find(item => item.id === props.sessionId);
   return (
-    <VoiceConversationControl
-      phase={state.phase}
-      disabled={!available || props.busy || props.photoPending || preparing}
-      startLabel={t('ragConversation.voice.start')}
-      stopLabel={t('ragConversation.voice.stop')}
-      finishLabel={t('ragConversation.voice.finish')}
-      recoverLabel={t('ragConversation.voice.retry')}
-      status={displayStatus}
-      statusExternallyRendered={Boolean(onStatusChange)}
-      onStart={() => {
-        start().catch(() => setError(true));
-      }}
-      onStop={() => session.current?.stop()}
-      onFinish={() => session.current?.finish()}
-      onRecover={() => {
-        setError(false);
-        session.current?.dismissError();
-      }}
-    />
+    <>
+      <VoiceConversationScreen
+        visible={visible}
+        phase={state.phase}
+        status={displayStatus}
+        identity={
+          currentSession ? <AssistantHeader session={currentSession} /> : null
+        }
+        onEnd={() => {
+          session.current?.stop();
+          setVisible(false);
+        }}
+        onMute={() => session.current?.stop()}
+        onResume={() => session.current?.resume()}
+        onInterrupt={() => session.current?.interrupt()}
+        onFinish={() => session.current?.finish()}
+      />
+      {!visible && (
+        <VoiceConversationControl
+          phase={state.phase}
+          disabled={!available || props.busy || props.photoPending || preparing}
+          startLabel={t('ragConversation.voice.start')}
+          stopLabel={t('ragConversation.voice.stop')}
+          finishLabel={t('ragConversation.voice.finish')}
+          recoverLabel={t('ragConversation.voice.retry')}
+          status={displayStatus}
+          statusExternallyRendered={Boolean(onStatusChange)}
+          onStart={() => {
+            start().catch(() => setError(true));
+          }}
+          onStop={() => session.current?.stop()}
+          onFinish={() => session.current?.finish()}
+          onRecover={() => {
+            setError(false);
+            session.current?.dismissError();
+          }}
+        />
+      )}
+    </>
   );
 }

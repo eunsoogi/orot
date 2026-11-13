@@ -10,6 +10,11 @@ import { ConversationVoiceEntry } from '../ConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
 import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 let listening: (id: string) => void = () => {};
 let finishCapture: (text: string) => void = () => {};
 const mockNative = {
@@ -99,6 +104,9 @@ test('explicit consent binds one voice turn while preserving the text draft', as
   await waitFor(() =>
     expect(mockNative.speak).toHaveBeenCalledWith(turn, '합성 답변', 'ko-KR'),
   );
+  await waitFor(() => expect(mockNative.start).toHaveBeenCalledTimes(2));
+  await fireEvent.press(screen.getByRole('button', { name: '음성 대화 종료' }));
+  await waitFor(() => expect(mockNative.stop).toHaveBeenCalled());
   expect(sendOwnedPrompt).toHaveBeenCalledTimes(1);
   expect(snapshot.sessions[0].draft).toBe('보존할 초안');
   alert.mockRestore();

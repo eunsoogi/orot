@@ -11,11 +11,43 @@ export function createVoiceSession(
   dependencies: VoiceConversationDependencies,
   changed: (state: VoiceState) => void,
 ) {
+  let continuous = false;
+  let generation = 0;
+  let sequence = 0;
+  let origin: VoiceIdentity | null = null;
+  const next = () => {
+    if (
+      !continuous ||
+      !origin ||
+      !dependencies.isCurrent(origin) ||
+      dependencies.photoPending(origin.sessionId)
+    )
+      return;
+    controller.dispatch({
+      type: 'start',
+      identity: {
+        ...origin,
+        turnId: `${origin.turnId}-turn-${++sequence}`,
+      },
+    });
+  };
   const controller = createVoiceController(
     createVoicePorts(dependencies),
-    changed,
+    state => {
+      changed(state);
+      if (state.phase === 'error') continuous = false;
+      if (state.phase === 'stopped' && continuous) {
+        const expected = generation;
+        // Cleanup must settle before acquiring the next turn; end/mute invalidates this continuation.
+        queueMicrotask(() => {
+          if (expected === generation) next();
+        });
+      }
+    },
   );
   const stop = () => {
+    continuous = false;
+    generation++;
     const identity = controller.getState().identity;
     if (identity) controller.dispatch({ type: 'stop', identity });
   };
@@ -26,7 +58,23 @@ export function createVoiceSession(
   return {
     getState: controller.getState,
     start(identity: VoiceIdentity) {
+      origin = identity;
+      continuous = true;
+      generation++;
       controller.dispatch({ type: 'start', identity });
+    },
+    resume() {
+      if (!['stopped', 'ended'].includes(controller.getState().phase)) return;
+      continuous = true;
+      generation++;
+      next();
+    },
+    interrupt() {
+      const state = controller.getState();
+      if (!state.identity || !['processing', 'speaking'].includes(state.phase))
+        return;
+      continuous = true;
+      controller.dispatch({ type: 'stop', identity: state.identity });
     },
     finish() {
       const state = controller.getState();
