@@ -168,7 +168,7 @@ test('does not select or focus after synchronous navigation replaces the observe
   } as unknown as ConversationSessions;
   const retention = {
     activeLease: () => ({ id: 'saved', version: 2 }),
-  } as ConversationSessionOptions['retention'];
+  } as unknown as ConversationSessionOptions['retention'];
   const controller = {
     getSnapshot: () => ({
       currentRoute: { key: 'home', name: 'home' },
