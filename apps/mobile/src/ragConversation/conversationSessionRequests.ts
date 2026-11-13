@@ -19,7 +19,7 @@ import type {
   PendingTurn,
 } from './conversationSessionTypes';
 
-/** Owns request lifetime and prevents late results from clearing a newer retry. */
+/** Owns composer and explicit-prompt lifetimes without letting late results clear a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
@@ -71,6 +71,7 @@ export function createConversationSessionRequests(
         turn.userMessageId,
         undefined,
         true,
+        turn.restorePromptToComposer,
       );
     else update(id, { busy: false });
   };
@@ -96,9 +97,17 @@ export function createConversationSessionRequests(
       controllers.clear();
       pendingTurns.clear();
     },
-    async send(id: number, onSend: ConversationSender) {
+    async send(
+      id: number,
+      onSend: ConversationSender,
+      explicitQuestion?: string,
+    ) {
       const session = find(id);
-      const start = prepareConversationRequest(session, () => ++messageId);
+      const start = prepareConversationRequest(
+        session,
+        () => ++messageId,
+        explicitQuestion,
+      );
       if (!start) return;
       const { request, responseId, change, copy } = start;
       const { question, userMessageId } = request;
@@ -162,6 +171,8 @@ export function createConversationSessionRequests(
             question,
             userMessageId,
             failureCopy,
+            false,
+            request.restorePromptToComposer,
           );
           return;
         }
@@ -175,6 +186,7 @@ export function createConversationSessionRequests(
           activity,
           retainedTurnId:
             request.committed && retained ? retained.toolMessageId : undefined,
+          restorePromptToComposer: request.restorePromptToComposer,
           find,
           update,
         });
@@ -188,6 +200,8 @@ export function createConversationSessionRequests(
             question,
             userMessageId,
             getRagConversationFailureCopy('unavailable'),
+            false,
+            request.restorePromptToComposer,
           );
         }
       } finally {

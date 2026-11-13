@@ -76,6 +76,8 @@ export interface ConversationSnapshot {
 export type PendingTurn = {
   readonly question: string;
   readonly userMessageId: number;
+  // Only composer-originated prompts return to the editable input after failure.
+  readonly restorePromptToComposer: boolean;
   saving: boolean;
   committed: boolean;
   summarySaving: boolean;
