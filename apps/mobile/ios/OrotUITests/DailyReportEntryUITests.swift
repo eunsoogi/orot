@@ -162,7 +162,8 @@ final class DailyReportEntryUITests: XCTestCase {
         XCTAssertTrue(scroll.frame.intersects(observation.frame))
         XCTAssertTrue(scroll.frame.insetBy(dx: -1, dy: -1).contains(observation.frame), observation.debugDescription)
         XCTAssertLessThanOrEqual(observation.frame.maxX, rail.frame.minX + 0.5)
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "건강 측정: 일부만 포함")).firstMatch))
+        let coverageStatus = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "건강 측정. 일부만 포함")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(coverageStatus), app.debugDescription)
     }
 
     /// Follow the saved report into the synthetic conversation and exercise its input.
