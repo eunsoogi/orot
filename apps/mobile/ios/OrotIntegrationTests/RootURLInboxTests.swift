@@ -4,19 +4,6 @@ import XCTest
 
 /// Synthetic URL deliveries exercise persistence without opening external content.
 final class RootURLInboxTests: OrotFailFastTestCase {
-    func testLegacyDestinationsNormalizeAcrossReopen() throws {
-        let suite = "root-url-test-\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let id = UUID().uuidString
-        defaults.set([["id": id, "destination": "home"]], forKey: "com.orot.mobile.root-url-inbox.v1")
-        let inbox = RootURLInbox(defaults: defaults)
-        XCTAssertEqual(inbox.peek(), ["id": id, "destination": "overview"])
-        inbox.acknowledge(id)
-        try inbox.receive(XCTUnwrap(URL(string: "orot://open/v1/ai")))
-        XCTAssertEqual(RootURLInbox(defaults: defaults).peek()?["destination"], "conversation")
-    }
-
     func testValidDeliveriesSurviveReopenAndAcknowledgeOneAtATime() throws {
         let suite = "root-url-test-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -35,6 +22,13 @@ final class RootURLInboxTests: OrotFailFastTestCase {
         XCTAssertNotEqual(first["id"], second["id"])
         try inbox.acknowledge(XCTUnwrap(second["id"]))
         XCTAssertNil(inbox.peek())
+        // The previous serialized destination and legacy link retain their original targets.
+        let legacyID = UUID().uuidString
+        defaults.set([["id": legacyID, "destination": "home"]], forKey: "com.orot.mobile.root-url-inbox.v1")
+        XCTAssertEqual(RootURLInbox(defaults: defaults).peek(), ["id": legacyID, "destination": "overview"])
+        inbox.acknowledge(legacyID)
+        try inbox.receive(XCTUnwrap(URL(string: "orot://open/v1/ai")))
+        XCTAssertEqual(RootURLInbox(defaults: defaults).peek()?["destination"], "conversation")
     }
 
     func testInvalidInputCannotOverwriteAValidDelivery() throws {

@@ -35,7 +35,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   // Root navigation runs in Core; blood-pressure speech stays explicitly selectable on Duo.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 92, 15],
+    ['core', 91, 15],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
