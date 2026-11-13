@@ -13,7 +13,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         true
     }
 
-    @objc var methodQueue: DispatchQueue! {
+    override var methodQueue: DispatchQueue! {
         DispatchQueue.main
     }
 
