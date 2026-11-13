@@ -15,7 +15,6 @@ import { createVoiceSession } from './voiceSession';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
 
 let nextTurn = 0;
-
 /** Binds explicit voice consent and request ownership to the currently visible conversation. */
 export function ConversationVoiceEntry(
   props: ConversationVoiceProps & {
