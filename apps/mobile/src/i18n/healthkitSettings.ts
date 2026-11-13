@@ -1,4 +1,5 @@
 import { dailyReportFailuresKo } from './dailyReportFailuresKo';
+import { dailyReportCoverageKo } from './dailyReportCoverageKo';
 
 export const healthkitSettingsKo = {
   'settings.integrations': '연동',
@@ -92,7 +93,6 @@ export const healthkitSettingsKo = {
     '오늘이 끝나기 전까지의 기록이에요. 이후 기록은 포함되지 않아요.',
   'dailyReport.coverage':
     '자료의 동기화 상태와 누락 여부는 확인되지 않았어요. 확인된 기록만 사용해요.',
-  'dailyReport.coverageLine': '{source}: {status}',
   'dailyReport.source.health': '건강 측정',
   'dailyReport.source.symptom': '증상',
   'dailyReport.source.dose': '복약',
@@ -106,6 +106,7 @@ export const healthkitSettingsKo = {
   'dailyReport.status.stale': '최신 상태 확인 필요',
   'dailyReport.status.failed': '확인 실패',
   'dailyReport.status.unknown': '동기화 상태 미확인',
+  ...dailyReportCoverageKo,
   'dailyReport.limit.partial':
     '자료가 많거나 범위가 제한되어 일부 기록만 포함됐을 수 있어요.',
   'dailyReport.limit.sync': '원본 자료가 최신인지 확인되지 않았어요.',

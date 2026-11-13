@@ -92,6 +92,11 @@
             } else {
                 NSNull()
             }
+            let appointmentPage: [String: Any] = if UserDefaults.standard.string(forKey: "OROT_E2E_PROBE") == "appointments" {
+                AppointmentPageScrollObservation.snapshot(window: window, identity: identity)
+            } else {
+                ["status": "not-requested"]
+            }
             return ["status": status, "visibleKeyWindowCount": windows.count, "truncated": truncated, "visited": visited,
                     "windowID": identity(window), "sceneID": identity(scene), "screenID": identity(window.screen),
                     "orientation": orientation,
@@ -102,7 +107,8 @@
                     "windowFrameInScene": NavigationGeometryTestObservation.finiteRect(windowSceneFrame),
                     "windowFrameInScreen": NavigationGeometryTestObservation.finiteRect(windowScreenFrame),
                     "screenCoordinateSpace": "UIKit-screen-base", "sceneCoordinateSpace": "UIWindowScene.coordinateSpace",
-                    "controls": records, "sampleStartedAtMs": started, "sampleEndedAtMs": Date().timeIntervalSince1970 * 1000]
+                    "controls": records, "appointmentPage": appointmentPage,
+                    "sampleStartedAtMs": started, "sampleEndedAtMs": Date().timeIntervalSince1970 * 1000]
         }
 
         private static func finite(_ rect: CGRect) -> Bool {
