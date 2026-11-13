@@ -210,8 +210,8 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
             if !target.isHittable || !windowViewport.frame.intersection(route.frame).contains(target.frame) {
                 route.swipeUp()
             }
-            guard target.isHittable &&
-                windowViewport.frame.intersection(route.frame).contains(target.frame)
+            guard target.isHittable,
+                  windowViewport.frame.intersection(route.frame).contains(target.frame)
             else {
                 XCTFail("Expected photo journey control inside the measured Duo viewport: \(app.debugDescription)")
                 return false
