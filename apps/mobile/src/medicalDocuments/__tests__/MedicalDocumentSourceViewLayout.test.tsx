@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
+import { medicalDocumentNativeBridge } from '../medicalDocumentNativeBridge';
 import { MedicalDocumentSourceView } from '../MedicalDocumentSourceView';
+import type { StoredMedicalDocumentPhoto } from '../medicalDocumentNativeBridge';
+import type { SavedMedicalDocument } from '../medicalDocumentImportService';
 import {
   savedSourceDocument,
   sourceDetailCompactGeometry,
@@ -26,6 +29,16 @@ const measurableView = View as unknown as {
 };
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
+const savedPhotoDocument: SavedMedicalDocument = {
+  ...savedSourceDocument(),
+  title: 'Synthetic saved photo.png',
+  contentHash: 'sha256:synthetic-saved-photo',
+};
+const syntheticPhoto: StoredMedicalDocumentPhoto = {
+  sourceId: savedPhotoDocument.id,
+  mimeType: 'image/png',
+  base64Data: 'c3ludGhldGlj',
+};
 const viewport = (width: number, fontScale = 1) => ({
   ...originalWindow,
   width,
@@ -43,15 +56,14 @@ function ParentViewport({ children }: { readonly children: ReactNode }) {
   );
 }
 
-async function renderMeasuredSource() {
+async function renderMeasuredSource(
+  document: SavedMedicalDocument = savedSourceDocument(),
+) {
   await render(
     <SafeAreaInsetsContext.Provider value={noInsets}>
       <NavigationGeometryProvider>
         <ParentViewport>
-          <MedicalDocumentSourceView
-            document={savedSourceDocument()}
-            onBack={jest.fn()}
-          />
+          <MedicalDocumentSourceView document={document} onBack={jest.fn()} />
         </ParentViewport>
       </NavigationGeometryProvider>
     </SafeAreaInsetsContext.Provider>,
@@ -143,4 +155,64 @@ test('uses measured Duo regions and preserves the detail while narrow and large-
   expect(direction()).toBe('column');
   expect(panelWidth('primary')).toBeLessThanOrEqual(320);
   await fireEvent.press(screen.getByTestId('medical-document-source-back'));
+});
+
+test('keeps saved-photo inspection and accessible controls in measured narrow layouts', async () => {
+  jest
+    .spyOn(medicalDocumentNativeBridge, 'loadOriginalPhoto')
+    .mockResolvedValue(syntheticPhoto);
+  Dimensions.set({ window: viewport(1000), screen: viewport(1000) });
+  await renderMeasuredSource(savedPhotoDocument);
+
+  const layout = () =>
+    screen.getByTestId('medical-document-source-detail-layout');
+  const panelWidth = () =>
+    StyleSheet.flatten(
+      screen.getByTestId('medical-document-source-detail-layout-primary').props
+        .style,
+    )?.width as number;
+  const viewer = () =>
+    screen.getByTestId('medical-document-source-original-photo');
+
+  await screen.findByTestId('medical-document-source-original-zoom-view');
+  await fireEvent(
+    screen.getByTestId('navigation-window-geometry-sensor'),
+    'geometryChange',
+    { nativeEvent: sourceDetailDuoGeometry },
+  );
+  expect(panelWidth()).toBeLessThanOrEqual(450);
+  expect(viewer()).toBeTruthy();
+  expect(layout()).toBeTruthy();
+
+  await act(async () => {
+    Dimensions.set({ window: viewport(620), screen: viewport(620) });
+    await fireEvent(
+      screen.getByTestId('navigation-window-geometry-sensor'),
+      'geometryChange',
+      { nativeEvent: sourceDetailNarrowSplitGeometry },
+    );
+  });
+  expect(panelWidth()).toBeLessThanOrEqual(280);
+  expect(viewer()).toBeTruthy();
+
+  await act(async () => {
+    Dimensions.set({ window: viewport(320), screen: viewport(320) });
+    await fireEvent(
+      screen.getByTestId('navigation-window-geometry-sensor'),
+      'geometryChange',
+      { nativeEvent: sourceDetailCompactGeometry },
+    );
+  });
+  expect(panelWidth()).toBeLessThanOrEqual(320);
+  expect(viewer()).toBeTruthy();
+  for (const testID of [
+    'medical-document-source-original-zoom-out',
+    'medical-document-source-original-zoom-reset',
+    'medical-document-source-original-zoom-in',
+  ]) {
+    const control = screen.getByTestId(testID);
+    const style = StyleSheet.flatten(control.props.style);
+    expect(style?.minWidth).toBeGreaterThanOrEqual(44);
+    expect(style?.minHeight).toBeGreaterThanOrEqual(44);
+  }
 });

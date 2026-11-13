@@ -3,6 +3,7 @@ import { bloodPressureKo } from './healthkitBloodPressure';
 import { healthkitUnifiedImportKo } from './healthkitUnifiedImport';
 import { aiFeatureCatalogsKo } from './aiFeatureCatalogs';
 import { medicalAppointmentsKo } from './medicalAppointments';
+import { medicalDocumentOriginalPhotoKo } from './medicalDocumentOriginalPhoto';
 import { backupKo } from './backupKo';
 import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
@@ -20,6 +21,7 @@ export const ko = {
   ...homeOverviewKo,
   ...probeKo,
   ...manualHistoryKo,
+  ...medicalDocumentOriginalPhotoKo,
   ...backupKo,
   'app.welcome.title': '오롯',
   'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',

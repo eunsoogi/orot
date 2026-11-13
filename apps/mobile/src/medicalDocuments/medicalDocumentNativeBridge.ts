@@ -1,5 +1,11 @@
 /** Keeps local document extraction and protected-file lifecycle behind one typed native boundary. */
 import { NativeModules } from 'react-native';
+import { medicalDocumentOriginalPhotoErrorCodes } from './medicalDocumentOriginalPhotoTypes';
+import type {
+  MedicalDocumentOriginalPhotoErrorCode,
+  StoredMedicalDocumentPhoto,
+} from './medicalDocumentOriginalPhotoTypes';
+export type { StoredMedicalDocumentPhoto } from './medicalDocumentOriginalPhotoTypes';
 import {
   canUseMedicalDocumentGeneration,
   confirmMedicalDocumentReconciliation,
@@ -38,6 +44,7 @@ export type MedicalDocumentImportErrorCode =
   | 'STALE_DOCUMENT'
   | 'DUPLICATE_RECOVERY_FAILED'
   | 'NATIVE_UNAVAILABLE'
+  | MedicalDocumentOriginalPhotoErrorCode
   | 'IMPORT_FAILED';
 
 export class MedicalDocumentImportError extends Error {
@@ -67,6 +74,10 @@ export interface MedicalDocumentFileDeletion {
 interface MedicalDocumentNativeModule {
   pickMedicalDocument(): Promise<StagedMedicalDocument | null>;
   pickMedicalDocumentPhoto(): Promise<StagedMedicalDocument | null>;
+  loadMedicalDocumentOriginalPhoto(
+    sourceId: string,
+    expectedContentHash: string | null,
+  ): Promise<StoredMedicalDocumentPhoto>;
   discardMedicalDocument(sourceId: string): Promise<void>;
   ensureMedicalDocumentOriginal(
     retainedSourceId: string,
@@ -86,6 +97,7 @@ const nativeCodes = new Set<MedicalDocumentImportErrorCode>([
   'EMPTY_DOCUMENT',
   'FILE_PROTECTION_UNAVAILABLE',
   'CLEANUP_FAILED',
+  ...medicalDocumentOriginalPhotoErrorCodes,
   'NATIVE_UNAVAILABLE',
   'IMPORT_FAILED',
 ]);
@@ -165,6 +177,25 @@ export const medicalDocumentNativeBridge = {
     serializeFileOperation(async () => {
       await callNative(module => module.discardMedicalDocument(sourceId));
       discardMedicalDocumentFromLifecycle(sourceId);
+    }),
+  loadOriginalPhoto: (sourceId: string, expectedContentHash: string | null) =>
+    serializeFileOperation(async () => {
+      const photo = await callNative(module =>
+        module.loadMedicalDocumentOriginalPhoto(sourceId, expectedContentHash),
+      );
+      const allowedMimeTypes = new Set([
+        'image/jpeg',
+        'image/heic',
+        'image/png',
+      ]);
+      if (
+        photo.sourceId !== sourceId ||
+        !allowedMimeTypes.has(photo.mimeType) ||
+        photo.base64Data.length === 0
+      ) {
+        throw new MedicalDocumentImportError('CORRUPT_ORIGINAL');
+      }
+      return photo;
     }),
 };
 

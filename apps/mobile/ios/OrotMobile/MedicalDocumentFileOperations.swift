@@ -74,6 +74,69 @@ enum MedicalDocumentScopedFileReader {
 }
 
 extension MedicalDocumentFileStore {
+    /// Resolves one image by its persisted source UUID and verifies its saved byte identity.
+    /// The bridge returns image bytes only; the protected directory path never leaves native code.
+    func originalPhoto(sourceID: String, expectedContentHash: String?) throws -> [String: String] {
+        let id: String
+        do {
+            id = try normalizedIdentifier(sourceID)
+        } catch {
+            // A malformed persisted identity cannot safely select any protected original.
+            throw MedicalDocumentFileStoreFailure.corruptOriginal
+        }
+        let root: URL
+        do {
+            root = try directory()
+        } catch {
+            // A locked or otherwise inaccessible protected directory is recoverable on a later open.
+            throw MedicalDocumentFileStoreFailure.originalUnavailable
+        }
+
+        let names: [String]
+        do {
+            names = try fileManager.contentsOfDirectory(atPath: root.path)
+        } catch {
+            throw MedicalDocumentFileStoreFailure.originalUnavailable
+        }
+        let expectedNames = Set(Self.supportedExtensions.map { "\(id).\($0)" })
+        let matchingNames = names.filter(expectedNames.contains)
+        guard !matchingNames.isEmpty else {
+            throw MedicalDocumentFileStoreFailure.originalMissing
+        }
+        guard matchingNames.count == 1, let name = matchingNames.first else {
+            // Multiple files under one source identity are ambiguous, not a retryable lock state.
+            throw MedicalDocumentFileStoreFailure.corruptOriginal
+        }
+
+        let fileExtension = URL(fileURLWithPath: name).pathExtension.lowercased()
+        let mimeType: String
+        switch fileExtension {
+        case "jpg": mimeType = "image/jpeg"
+        case "heic": mimeType = "image/heic"
+        case "png": mimeType = "image/png"
+        case "pdf", "txt": throw MedicalDocumentFileStoreFailure.unsupportedOriginal
+        default: throw MedicalDocumentFileStoreFailure.unsupportedOriginal
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: root.appendingPathComponent(name), options: .mappedIfSafe)
+        } catch {
+            throw MedicalDocumentFileStoreFailure.originalUnavailable
+        }
+        guard let expectedContentHash,
+              Self.contentHash(data) == expectedContentHash
+        else {
+            throw MedicalDocumentFileStoreFailure.corruptOriginal
+        }
+
+        return [
+            "sourceId": id,
+            "mimeType": mimeType,
+            "base64Data": data.base64EncodedString(),
+        ]
+    }
+
     /// Repairs database restores where the provenance row survived but its excluded original did not.
     func ensureOriginal(
         retainedSourceID: String,
