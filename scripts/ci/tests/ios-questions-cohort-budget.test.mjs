@@ -22,7 +22,7 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
       id.includes('/ConversationRetentionUITests/') ||
       id.includes('/ConversationHealthSummaryUITests/'),
   );
-  assert.equal(expected.length, 10);
+  assert.equal(expected.length, 11);
   const full = iosTestExecutionPlan();
   assert.equal(full.length, 28);
   const selected = iosTestExecutionPlan(cohorts);
@@ -42,21 +42,22 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     return tasks[0].identifiers;
   });
   assert.deepEqual(identifiers.slice().sort(), expected.slice().sort());
-  assert.equal(new Set(identifiers).size, 10);
+  assert.equal(new Set(identifiers).size, 11);
   // The conversation journeys share their existing budget; no method is cut into phases.
   assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [
     composer,
     dock,
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+    'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
     toolEvents,
   ]);
   assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 5);
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 210);
-  assert.equal(new Set(actual).size, 210);
+  assert.equal(actual.length, 211);
+  assert.equal(new Set(actual).size, 211);
 
   const jobs = cohortJobs(workflow('.github/workflows/e2e-test.yml').jobs);
   for (const cohort of cohorts) {
@@ -111,6 +112,6 @@ test('Summary and Literature own separate complete methods and hosted budgets', 
   const all = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(all.length, 210);
-  assert.equal(new Set(all).size, 210);
+  assert.equal(all.length, 211);
+  assert.equal(new Set(all).size, 211);
 });

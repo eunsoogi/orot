@@ -16,6 +16,7 @@ export const questionCohorts = {
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
       'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
       'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+      'ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
     ],
   },
   'questions-accessibility': {

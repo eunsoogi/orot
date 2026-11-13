@@ -1,4 +1,27 @@
+import CoreFoundation
 import XCTest
+
+/// Darwin notifications only wake the host; protected database readback remains the oracle.
+private final class BackgroundCommitSignal {
+    private let lock = NSLock()
+    private var value = false
+    private var finished = false
+    func receive(_ success: Bool) {
+        lock.lock()
+        guard !finished else { lock.unlock(); return }
+        finished = true
+        value = success
+        lock.unlock()
+    }
+
+    var succeeded: Bool {
+        lock.lock(); defer { lock.unlock() }; return value
+    }
+
+    var received: Bool {
+        lock.lock(); defer { lock.unlock() }; return finished
+    }
+}
 
 /// The sender is synthetic; navigation, protected storage and app lifecycle are real.
 @MainActor
@@ -17,14 +40,16 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, label.debugDescription)
     }
 
-    private func send(_ app: XCUIApplication) {
+    private func send(_ app: XCUIApplication, question: String = "Synthetic retention question", waitForPartial: Bool = true) {
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         input.tap()
-        input.typeText("Synthetic retention question")
-        XCTAssertEqual(input.value as? String, "Synthetic retention question")
+        input.typeText(question)
+        XCTAssertEqual(input.value as? String, question)
         app.buttons["rag-conversation-send"].tap()
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
+        if waitForPartial {
+            XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic partial response"]))
+        }
     }
 
     /// The keyboard can move the real conversation header above its scroll viewport.
@@ -87,5 +112,62 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         original.tap()
         XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic committed response"]))
         observe(app, "dispatches:1 completions:1 previews:0 interrupted:0")
+    }
+
+    /// A test-only wakeup arrives only after the protected commit and UIKit lease check.
+    func testCompletionCommitsWhileBackgroundLeaseIsActive() {
+        let token = UUID().uuidString
+        let success = "com.orot.tests.conversation-background.\(token)" as CFString
+        let failure = "com.orot.tests.conversation-background-failure.\(token)" as CFString
+        let center = CFNotificationCenterGetDarwinNotifyCenter()
+        let signal = BackgroundCommitSignal()
+        let observer = Unmanaged.passRetained(signal).toOpaque()
+        CFNotificationCenterAddObserver(center, observer, { _, pointer, _, _, _ in
+            guard let pointer else { return }
+            Unmanaged<BackgroundCommitSignal>.fromOpaque(pointer).takeUnretainedValue().receive(true)
+        }, success, nil, .deliverImmediately)
+        CFNotificationCenterAddObserver(center, observer, { _, pointer, _, _, _ in
+            guard let pointer else { return }
+            Unmanaged<BackgroundCommitSignal>.fromOpaque(pointer).takeUnretainedValue().receive(false)
+        }, failure, nil, .deliverImmediately)
+        defer {
+            CFNotificationCenterRemoveObserver(center, observer, CFNotificationName(success), nil)
+            CFNotificationCenterRemoveObserver(center, observer, CFNotificationName(failure), nil)
+            Unmanaged<BackgroundCommitSignal>.fromOpaque(observer).release()
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-background-retention", "-OROT_TEST_BACKGROUND_TOKEN", token]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        send(app, question: "Synthetic background question", waitForPartial: false)
+        let status = app.staticTexts["retention-probe-status"]
+        let errorElement = UITestConditions.element(app, "rag-conversation-error")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            signal.received || app.state == .notRunning || errorElement.exists || status.label.contains("ready:1") || status.label.contains("background-preflight-or-send-failed")
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        guard !signal.received, app.state != .notRunning, !errorElement.exists, status.label.contains("ready:1"), app.staticTexts["Synthetic partial response"].exists else {
+            XCTFail("Background bridge or lease preflight failed")
+            return
+        }
+        guard status.label.contains("dispatches:1 completions:0 previews:1 interrupted:0 background:0") else {
+            XCTFail("The protected request or initial preview was unavailable before backgrounding")
+            return
+        }
+        XCUIDevice.shared.press(.home)
+        let terminal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            signal.received || app.state == .notRunning
+        }, object: nil)
+        let outcome = UITestConditions.wait(for: [terminal])
+        guard app.state != .notRunning else {
+            XCTFail("Application terminated before background completion")
+            return
+        }
+        app.activate()
+        XCTAssertEqual(outcome, .completed, "Background completion observation was cancelled")
+        XCTAssertTrue(signal.succeeded, "Background lease expired or the protected commit failed")
+        observe(app, "dispatches:1 completions:1 previews:0 interrupted:0 background:1")
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic committed response"]))
+        observe(app, "dispatches:1 completions:1 previews:0 interrupted:0 background:1")
     }
 }

@@ -101,6 +101,7 @@ export const fixtureTests = [
   'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
   'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
   'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+  'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
   'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
   'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
   'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
