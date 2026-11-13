@@ -16,6 +16,7 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly execution?: import('./conversationExecutionLease').ConversationExecutionAdapter;
   readonly listSessions?: (cursor?: {
     readonly updatedAt: string;
     readonly id: string;
@@ -37,15 +38,26 @@ export interface ConversationSessionOptions {
     readonly import('./conversationTaskState').RetainedConversationTask[]
   >;
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
-  readonly retention?: Omit<Retention, 'beginSession' | 'saveTaskCard'> &
-    Partial<Pick<Retention, 'beginSession' | 'saveTaskCard'>>;
+  readonly retention?: Omit<
+    Retention,
+    'beginSession' | 'saveTaskCard' | 'readCommittedCompletion'
+  > &
+    Partial<
+      Pick<
+        Retention,
+        'beginSession' | 'saveTaskCard' | 'readCommittedCompletion'
+      >
+    >;
   readonly restoreSession?: (
     id: string,
     signal: AbortSignal,
   ) => Promise<
     readonly {
       question: string;
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
       answer: string;
+      preview?: string;
+      interrupted?: true;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';
@@ -76,6 +88,8 @@ export interface ConversationSnapshot {
 export type PendingTurn = {
   readonly question: string;
   readonly userMessageId: number;
+  // Only composer-originated prompts return to the editable input after failure.
+  readonly restorePromptToComposer: boolean;
   saving: boolean;
   committed: boolean;
   summarySaving: boolean;

@@ -15,5 +15,7 @@ RCT_EXTERN_METHOD(refreshAppearance : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(navigationSnapshot : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(rotationGeometryCommand : (NSString *)session mode : (NSString *)mode resolve : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
 #endif

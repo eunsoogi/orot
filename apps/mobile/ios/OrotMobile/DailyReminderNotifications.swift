@@ -1,6 +1,17 @@
 import Foundation
 import UserNotifications
 
+enum ReminderNotificationCopy {
+    /// Notification titles are explicit copy; iOS does not infer them from CFBundleDisplayName.
+    static var title: String {
+        NSLocalizedString(
+            "reminderNotification.title",
+            tableName: "ReminderCopy",
+            comment: "Shared name shown as the title of reminder notifications",
+        )
+    }
+}
+
 /// A preference contains only an explicit opt-in and a wall-clock time, never health data.
 struct DailyReminderPreference {
     let enabled: Bool
@@ -23,7 +34,7 @@ struct DailyReminderPreference {
 
     func request() -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        content.title = "Orot"
+        content.title = ReminderNotificationCopy.title
         // Native reconciliation can run before the React Native catalog is available.
         content.body = NSLocalizedString(
             "dailyReportReminder.body",

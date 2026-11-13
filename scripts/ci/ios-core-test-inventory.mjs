@@ -9,12 +9,17 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // Verify the appointment wrapper, page scroll, and section ownership on UIKit.
+  'OrotIntegrationTests/AppointmentPageScrollOwnershipTests/testWrapperOwnerAndSectionsRejectNestedOrDetachedScrolls',
+  // The test-only scene observer must reject duplicate and unrelated geometry phases.
+  'OrotIntegrationTests/RotationGeometryGuardTests/testDuplicateRequestsAndForeignPhasesAreRejected',
   'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
   'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
   'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testReconcileRefreshesOlderPendingTitleWithoutChangingReminder',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testOriginCarrierSurvivesActualRNSerializationWithoutOriginalNSError',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
