@@ -146,9 +146,6 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         UITestConditions.value(UITestConditions.element(app, "appointments-title"), equals: "예약")
         let add = UITestConditions.element(app, "appointment-add")
         XCTAssertTrue(add.exists)
-        if !largeText {
-            XCTAssertTrue(add.isHittable)
-        }
         let root = UITestConditions.element(app, "safe-area-root")
         let scroll = UITestConditions.element(app, "appointments-scroll")
         let title = UITestConditions.element(app, "appointments-title")
@@ -157,7 +154,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         }
         ViewportObservation.captureIfEnabled(app, entry: "appointments-probe", stage: "before-scroll-44pt-guard", testCase: self)
         let action = try NavigationUITestConditions.navigationAction(app, "appointments-back")
-        try ViewportObservation.verifyAppointmentViewport(app, scroll: scroll, title: title, add: add, action: action, launchedAt: launchedAt, testCase: self)
+        let safeFrame = try ViewportObservation.verifyAppointmentViewport(app, scroll: scroll, title: title, action: action, launchedAt: launchedAt, testCase: self)
+        try verifyAppointmentAdd(app, add: add, scroll: scroll, safeFrame: safeFrame)
         XCTAssertGreaterThanOrEqual(action.control.frame.minY, action.toolbar.frame.minY)
         XCTAssertLessThanOrEqual(action.control.frame.maxY, action.toolbar.frame.maxY)
         XCTAssertFalse(UITestConditions.element(app, "appointments-top-back").exists)

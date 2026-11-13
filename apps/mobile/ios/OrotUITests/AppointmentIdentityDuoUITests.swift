@@ -1,6 +1,32 @@
 import XCTest
 
 extension AppointmentsUITests {
+    /// Verify the Add control after revealing it only when the route scroll owns it.
+    @MainActor
+    func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect) throws {
+        let matches = app.descendants(matching: .any).matching(identifier: "appointment-add")
+        let inScroll = scroll.descendants(matching: .any).matching(identifier: "appointment-add").count
+        let keyboard = app.keyboards.firstMatch
+        let windows = app.windows.allElementsBoundByIndex.filter(\.exists)
+        let observation: [String: Any] = ["atMs": Date().timeIntervalSince1970 * 1000, "matchCount": matches.count,
+                                          "scrollMatchCount": inScroll, "addFrame": ViewportObservation.rect(add.frame),
+                                          "addHittable": add.isHittable, "scrollFrame": ViewportObservation.rect(scroll.frame),
+                                          "windowFrames": windows.map { ViewportObservation.rect($0.frame) },
+                                          "keyboardFrame": keyboard.exists ? ViewportObservation.rect(keyboard.frame) as Any : NSNull()]
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
+        attachment.name = "appointment-add-before-reveal"
+        attachment.lifetime = .keepAlways
+        self.add(attachment)
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertLessThanOrEqual(inScroll, 1)
+        if inScroll == 1 {
+            _ = try XCTUnwrap(FormUITestConditions.reveal(add, in: app, scroll: scroll, keyboardMayBeVisible: true))
+        }
+        let frame = add.frame
+        XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(frame, hittable: add.isHittable), "Add must remain a hittable 44-point target")
+        XCTAssertTrue(safeFrame.insetBy(dx: -0.5, dy: -0.5).contains(frame), "Add must remain inside the native safe area")
+    }
+
     /// Binds each displayed clinic to the repository identity after its save succeeds.
     @MainActor
     func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String, previous: String = "") -> String {

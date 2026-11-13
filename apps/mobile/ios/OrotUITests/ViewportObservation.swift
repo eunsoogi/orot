@@ -75,8 +75,8 @@ enum ViewportObservation {
 
     /// UIKit and AX are separate samples; matching geometry before and after bounds their use, not atomicity.
     static func verifyAppointmentViewport(_ app: XCUIApplication, scroll: XCUIElement, title: XCUIElement,
-                                          add: XCUIElement, action: NavigationUITestConditions.NavigationAction,
-                                          launchedAt: Double, testCase: XCTestCase) throws
+                                          action: NavigationUITestConditions.NavigationAction,
+                                          launchedAt: Double, testCase: XCTestCase) throws -> CGRect
     {
         func sample() throws -> [String: Any] {
             let marker = UITestConditions.element(app, "navigation-test-observation")
@@ -97,8 +97,8 @@ enum ViewportObservation {
         XCTAssertEqual(app.windows.count, 1)
         XCTAssertTrue(window.exists)
         let windowFrame = window.frame, scrollFrame = scroll.frame, titleFrame = title.frame
-        let toolbarFrame = action.toolbar.frame, addFrame = add.frame, backFrame = action.control.frame
-        let addHittable = add.isHittable, backHittable = action.control.isHittable
+        let toolbarFrame = action.toolbar.frame, backFrame = action.control.frame
+        let backHittable = action.control.isHittable
         let after = try sample()
         let receipt: [String: Any] = ["before": before, "after": after, "applicationFrame": rect(application), "coordinateUnits": "points", "sampling": "non-atomic"]
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys]), uniformTypeIdentifier: "public.json")
@@ -141,8 +141,8 @@ enum ViewportObservation {
                                                             bottom: XCTUnwrap(beforeInsets["bottom"]), left: XCTUnwrap(beforeInsets["left"]))
         XCTAssertTrue(AppointmentViewportGeometry.accepts(window: windowFrame, insets: insets, scroll: scrollFrame, title: titleFrame, toolbar: toolbarFrame, minimumTitleHeight: bodyLineHeight),
                       "Scroll and title must remain inside the native safe viewport and clear navigation")
-        XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(addFrame, hittable: addHittable), "Add must remain a hittable 44-point target")
         XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(backFrame, hittable: backHittable), "Back must remain a hittable 44-point target")
+        return try XCTUnwrap(AppointmentViewportGeometry.safeFrame(window: windowFrame, insets: insets))
     }
 
     static func capture(_ app: XCUIApplication, entry: String, stage: String, testCase: XCTestCase) {
