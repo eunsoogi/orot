@@ -38,7 +38,7 @@ final class DailyReminderSystemCenterTests: XCTestCase {
         let pending = await center.pendingNotificationRequests().filter { $0.identifier == identifier }
         XCTAssertEqual(pending.count, 1)
         let request = try XCTUnwrap(pending.first)
-        XCTAssertEqual(request.content.title, "Orot")
+        XCTAssertEqual(request.content.title, "오롯")
         XCTAssertEqual(request.content.body, "오늘의 기록을 확인해 보세요.")
         XCTAssertEqual(request.content.userInfo as? [String: String], ["kind": "daily_report"])
         let trigger = try XCTUnwrap(request.trigger as? UNCalendarNotificationTrigger)
