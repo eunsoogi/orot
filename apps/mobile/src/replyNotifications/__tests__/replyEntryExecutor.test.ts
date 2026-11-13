@@ -126,3 +126,96 @@ test('a readiness wake drains a previously deferred inbox through the same execu
     NativeModules.ReplyNotificationModule = prior;
   }
 });
+
+test.each(['navigation', 'session'] as const)(
+  '%s publications during an unavailable guard do not retry until an external wake',
+  async source => {
+    const prior = NativeModules.ReplyNotificationModule;
+    NativeModules.ReplyNotificationModule = {
+      consumeTarget: jest
+        .fn()
+        .mockResolvedValue({
+          requestId: 'r',
+          sessionId: 's',
+          messageId: 'm',
+          sessionVersion: '0',
+        }),
+    };
+    let navigationChanged = () => {};
+    let sessionChanged = () => {};
+    let wake = () => {};
+    let notifyFirst = () => {};
+    let notifySecond = () => {};
+    const first = new Promise<void>(resolve => {
+      notifyFirst = resolve;
+    });
+    const second = new Promise<void>(resolve => {
+      notifySecond = resolve;
+    });
+    let calls = 0;
+    const confirm = jest.fn(async () => {
+      calls += 1;
+      if (source === 'navigation') navigationChanged();
+      else sessionChanged();
+      if (calls === 1) notifyFirst();
+      if (calls === 2) notifySecond();
+      return 'unavailable' as const;
+    });
+    const controller = {
+      subscribe: (listener: () => void) => {
+        navigationChanged = listener;
+        return () => {};
+      },
+      getSnapshot: () => ({
+        isTransitioning: false,
+        currentRoute: { key: 'home' },
+      }),
+    } as unknown as NavigationController<AppNavigationRoute>;
+    const sessions = {
+      subscribe: (listener: () => void) => {
+        sessionChanged = listener;
+        return () => {};
+      },
+    } as unknown as ConversationSessions;
+    const storage = {
+      listCompletionIdentities: async () => [
+        {
+          requestId: 'r',
+          sessionId: 's',
+          messageId: 'm',
+          sessionVersion: 0,
+          status: 'completed',
+        },
+      ],
+      readSessionMany: async () => [
+        { status: 'complete', createdAt: '2026-11-13T00:00:00.000Z' },
+      ],
+    };
+    const stop = observeReplyDelivery({
+      controller,
+      sessions,
+      retention: {} as ConversationSessionOptions['retention'],
+      loadLocalData: async () =>
+        ({ openConversationArtifactStorage: async () => storage }) as never,
+      canEnter: () => true,
+      confirm,
+      execute: async work => work(),
+      subscribeReady: listener => {
+        wake = listener;
+        return () => {};
+      },
+    });
+    try {
+      await first;
+      for (let i = 0; i < 100; i += 1) await Promise.resolve();
+      expect(confirm).toHaveBeenCalledTimes(1);
+      wake();
+      await second;
+      for (let i = 0; i < 100; i += 1) await Promise.resolve();
+      expect(confirm).toHaveBeenCalledTimes(2);
+    } finally {
+      stop();
+      NativeModules.ReplyNotificationModule = prior;
+    }
+  },
+);

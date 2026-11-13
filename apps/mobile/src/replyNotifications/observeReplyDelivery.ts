@@ -61,6 +61,7 @@ export function observeReplyDelivery(input: {
       ),
   });
   let pending = false;
+  let running = false;
   let queue = Promise.resolve();
   const drain = () => {
     if (!active) return;
@@ -69,19 +70,24 @@ export function observeReplyDelivery(input: {
         if (!active) return;
         // An entry owner may defer without invoking the callback while its gate is closed.
         pending = true;
-        await execute(async () => {
-          if (!active) return;
-          const result = await deliver();
-          if (!active) return;
-          pending = result === 'deferred';
-          if (
-            result === 'opened' ||
-            result === 'missing' ||
-            result === 'cancelled' ||
-            result === 'invalid'
-          )
-            drain();
-        });
+        running = true;
+        try {
+          await execute(async () => {
+            if (!active) return;
+            const result = await deliver();
+            if (!active) return;
+            pending = result === 'deferred';
+            if (
+              result === 'opened' ||
+              result === 'missing' ||
+              result === 'cancelled' ||
+              result === 'invalid'
+            )
+              drain();
+          });
+        } finally {
+          running = false;
+        }
       })
       .catch(() => {
         pending = true;
@@ -97,13 +103,17 @@ export function observeReplyDelivery(input: {
     if (value === 'active') drain();
   });
   const navigation = input.controller.subscribe(() => {
-    if (pending && !input.controller.getSnapshot().isTransitioning) {
+    if (
+      pending &&
+      !running &&
+      !input.controller.getSnapshot().isTransitioning
+    ) {
       pending = false;
       drain();
     }
   });
   const sessions = input.sessions.subscribe(() => {
-    if (pending) {
+    if (pending && !running) {
       pending = false;
       drain();
     }

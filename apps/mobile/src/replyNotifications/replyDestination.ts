@@ -60,6 +60,8 @@ export function createReplyDestination(ports: Ports) {
         sessionVersion: version,
       });
       if (result === 'deferred') return result;
+      // A stale owner cannot turn a late cancellation or missing result into an acknowledgement.
+      if (!current() && result !== 'opened') return 'deferred';
       entry = { result, explained: false };
       applied.set(requestId, entry);
     }

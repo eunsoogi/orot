@@ -104,3 +104,28 @@ test('retires an invalid head so the next valid delivery can open', async () => 
   expect(discardInvalid).toHaveBeenCalledTimes(1);
   expect(open).toHaveBeenCalledTimes(1);
 });
+
+test('a stale cancellation does not acknowledge or suppress the next owner', async () => {
+  let current = true;
+  const acknowledge = jest.fn().mockResolvedValue(undefined);
+  const open = jest
+    .fn()
+    .mockImplementationOnce(async () => {
+      current = false;
+      return 'cancelled';
+    })
+    .mockResolvedValueOnce('opened');
+  const destination = createReplyDestination({
+    consume: async () => ({ ...target, requestId: 'stale-cancel' }),
+    acknowledge,
+    open,
+    unavailable: jest.fn(),
+    isCurrent: () => current,
+  });
+  expect(await destination()).toBe('deferred');
+  expect(acknowledge).not.toHaveBeenCalled();
+  current = true;
+  expect(await destination()).toBe('opened');
+  expect(open).toHaveBeenCalledTimes(2);
+  expect(acknowledge).toHaveBeenCalledTimes(1);
+});
