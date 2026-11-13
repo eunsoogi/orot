@@ -5,7 +5,7 @@ enum NavigationGlassButton {
     /// Back uses its own text size; the taller root-tab surface must not inflate the contextual target.
     static func setHeight(_ height: CGFloat, for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool) {
         let target = if usesRightRail {
-            action.rootTab ? 52 : 48
+            action.rootTab ? CGFloat(52) : CGFloat(48)
         } else if action.id == "back" {
             NavigationTextMetrics.height(for: action, traits: button.traitCollection)
         } else {

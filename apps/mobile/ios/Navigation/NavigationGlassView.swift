@@ -223,7 +223,6 @@ final class NavigationGlassSurfaceView: UIView {
             NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: usesRightRail)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }
-        let showsRailBack = usesRightRail && hasRootTabs && renderedActions.contains(where: { $0.id == "back" })
         let showsContextualBack = hasRootTabs && backAction != nil
         rootBar.isHidden = !hasRootTabs
         innerActions.isHidden = !showsContextualBack && rootBar.isHidden == false
