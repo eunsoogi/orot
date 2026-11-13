@@ -131,14 +131,11 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
-        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home")
-        // Keep the native rail's VoiceOver names while proving Home does not bypass the route's discard guard.
+        // Keep the native rail's VoiceOver name and the route's discard guard.
         XCTAssertEqual(back.toolbar.frame.width, 48, accuracy: 0.5)
-        XCTAssertEqual(home.toolbar.frame.width, 48, accuracy: 0.5)
         XCTAssertGreaterThan(back.toolbar.frame.midX, app.frame.midX)
-        XCTAssertLessThan(back.control.frame.midY, home.control.frame.midY)
         XCTAssertEqual(back.control.label, "이전 화면으로 돌아가기")
-        XCTAssertEqual(home.control.label, "홈 화면으로 이동")
+        XCTAssertFalse(app.buttons["navigation-home"].exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         let leavePrompt = app.alerts["저장하지 않은 내용이 있어요"]
         XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
@@ -146,11 +143,11 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertEqual(UITestConditions.element(app, "manual-history-title-input").value as? String, "Synthetic rail draft")
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["manual-history-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
 
-        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(confirmLeave), app.debugDescription)
         confirmLeave.tap()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["records-title"])
         XCTAssertFalse(UITestConditions.element(app, "manual-history-title-input").exists)
     }
 

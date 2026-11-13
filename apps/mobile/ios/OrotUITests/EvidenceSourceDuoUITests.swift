@@ -20,14 +20,14 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         ]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-entry-content-boundary", testCase: self, navigationID: "navigation-tab-ai")
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-entry-content-boundary", testCase: self, navigationID: "navigation-tab-conversation")
         // The opt-in fixture reads reserved synthetic rows and returns a fixed answer without model dispatch.
         submitSourceQuestion(app)
         let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
         XCTAssertTrue(UITestConditions.exists(citation) && citation.isHittable)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-result-content-boundary", testCase: self, navigationID: "navigation-tab-ai")
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-result-content-boundary", testCase: self, navigationID: "navigation-tab-conversation")
         citation.tap()
         NavigationUITestConditions.route(app, markers: ["ai-feature-source-detail"])
         XCTAssertTrue(app.staticTexts["합성 원문 기록: 측정 결과를 저장할 때 남긴 설명입니다."].exists)
@@ -41,7 +41,7 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertTrue(citation.exists && citation.isHittable)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-source-return-boundary", testCase: self, navigationID: "navigation-tab-ai")
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["rag-conversation-screen"], name: "conversation-source-return-boundary", testCase: self, navigationID: "navigation-tab-conversation")
     }
 
     @MainActor
@@ -58,8 +58,8 @@ final class EvidenceSourceDuoUITests: OrotFailFastTestCase {
             UITestConditions.terminateStandaloneApp(app)
         }
 
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         submitSourceQuestion(app)
         let citation = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "원문 근거 열기"),

@@ -107,7 +107,7 @@ function NavigationFixture({ showPrimary }: { readonly showPrimary: boolean }) {
                   }
                 : undefined
             }
-            rootTabs={{ activeTab: 'home', onSelect: () => undefined }}
+            rootTabs={{ activeTab: 'overview', onSelect: () => undefined }}
             surface={TrackingSurface}
           />
         }

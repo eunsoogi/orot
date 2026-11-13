@@ -88,7 +88,7 @@ test('the real conversation flow restores the explicitly selected day after rest
   const selected = start.mock.calls[0][0];
   await view.unmount();
   runtime.dailyConversationTargets.clear();
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   expect(
     await restoreDailyReportConversation({
       controller,

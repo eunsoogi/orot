@@ -72,9 +72,9 @@ afterEach(() => {
 
 test('uses the production route policy and retains literature selection through reflow', async () => {
   const controller = createNavigationController<AppNavigationRoute | 'article'>(
-    'home',
+    'root',
   );
-  const rootTabs = { activeTab: 'ai' as const, onSelect: jest.fn() };
+  const rootTabs = { activeTab: 'conversation' as const, onSelect: jest.fn() };
   const onNavigationStateChange = jest.fn();
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({
@@ -97,7 +97,7 @@ test('uses the production route policy and retains literature selection through 
           inputRevision: 0,
         }),
       }}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+      rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
     >
       {actions =>
         actions.route.name === 'external-evidence' ? (
@@ -116,7 +116,7 @@ test('uses the production route policy and retains literature selection through 
             }
             service={service}
           />
-        ) : actions.route.name === 'home' ? (
+        ) : actions.route.name === 'root' ? (
           <FeatureEntryScreen
             onOpenVisitQuestions={jest.fn()}
             onOpenDiseaseHypotheses={jest.fn()}

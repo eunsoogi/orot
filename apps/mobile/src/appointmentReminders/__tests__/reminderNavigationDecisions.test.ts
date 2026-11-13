@@ -4,7 +4,7 @@ import { createAppointmentReminderRuntime } from '../AppointmentReminderContext'
 import { createReminderNavigationDecisions } from '../reminderNavigationDecisions';
 
 test('retains the daily tap if the originating route changed or its guard is not ready', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
@@ -22,7 +22,7 @@ test('retains the daily tap if the originating route changed or its guard is not
 });
 
 test('appointment delivery defers an unavailable guard and rejects an outdated approval', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });

@@ -73,9 +73,9 @@ export const fixtureTests = [
   'OrotUITests/AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
   'OrotUITests/AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
   // Home reflow runs on the ordinary iPhone fixture and the opt-in Duo destination.
-  'OrotUITests/HomeDuoUITests/testHomeSummariesReflowAndVisitPreparationRemainsReachable',
-  'OrotUITests/HomeDuoUITests/testLargeTextHomeActionsStayWithinContentWidth',
-  'OrotUITests/HomeDuoUITests/testHomeContentClearsBottomNavigation',
+  'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',
+  'OrotUITests/OverviewDuoUITests/testLargeTextOverviewActionsStayWithinContentWidth',
+  'OrotUITests/OverviewDuoUITests/testOverviewContentClearsBottomNavigation',
   'OrotUITests/WindowGeometryUITests/testIPhoneGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',

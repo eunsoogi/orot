@@ -84,17 +84,19 @@ test('keeps Home compact and groups calendar and appointment management under Sc
   const loadAppointments = jest.fn(async () => store.repository);
   await renderApp({ loadAppointments, calendarBridge: bridge });
 
-  expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  await selectTab('overview');
+  expect(screen.getByTestId('overview-title')).toHaveTextContent('한눈에');
   // Home's own adaptive panels need the full usable lane to choose their columns.
-  expect(screen.getByTestId('home-overview-sections')).toBeTruthy();
+  expect(screen.getByTestId('overview-overview-sections')).toBeTruthy();
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('settings-open-provider')).toBeNull();
   expect(
-    screen.getByTestId('navigation-tab-home').props.accessibilityState,
+    screen.getByTestId('navigation-tab-overview').props.accessibilityState,
   ).toEqual(expect.objectContaining({ selected: true }));
-  await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(2));
 
   await selectTab('schedule');
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();

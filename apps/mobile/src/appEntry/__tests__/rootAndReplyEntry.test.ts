@@ -24,7 +24,7 @@ test('a reply tap waits for the complete root URL operation and keeps its exact 
   const guard = new Promise<boolean>(resolve => {
     release = resolve;
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     () => guard,

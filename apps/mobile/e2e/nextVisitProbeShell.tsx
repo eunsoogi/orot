@@ -44,7 +44,7 @@ export function NextVisitProbeShell({
   return (
     <NavigationRouteAdapter
       controller={controller}
-      showHome
+
       leaveState={{
         readState: () => ({
           canLeave: !state.isSaving,

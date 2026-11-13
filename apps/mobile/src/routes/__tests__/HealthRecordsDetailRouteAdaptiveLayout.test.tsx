@@ -86,7 +86,7 @@ function geometry(width: number, divided: boolean): NavigationGeometryPayload {
 // The real adapter and detail route expose an outer scene-width constraint.
 test('gives the production health detail route the full lane for its panels', async () => {
   jest.useFakeTimers({ now: Date.parse(healthRecordReferenceTime) });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const observations = mapBloodPressureCorrelation(
     correlation('detail-route-adaptive'),
     healthRecordReferenceTime,

@@ -121,7 +121,7 @@
                 return "ambiguous"
             }
             let pageCount = ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow", "next-visit-review-save"].reduce(0) { $0 + (counts[$1] ?? 0) }
-            guard windowCount == 1, !truncated, allValid, counts["navigation-home"] == 1, counts["navigation-back"] == 1, pageCount > 0 else { return "unavailable" }
+            guard windowCount == 1, !truncated, allValid, counts["navigation-back"] == 1, pageCount > 0 else { return "unavailable" }
             return "available"
         }
     }

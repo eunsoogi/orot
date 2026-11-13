@@ -55,7 +55,7 @@ test.each(['foreground', 'host restart'] as const)(
     const runtime = createAppointmentReminderRuntime(
       async () => store.repository,
     );
-    const controller = createNavigationController<AppNavigationRoute>('home');
+    const controller = createNavigationController<AppNavigationRoute>('root');
     controller.registerLeaveGuard(
       controller.getSnapshot().currentRoute.key,
       async () => true,
@@ -92,7 +92,7 @@ test.each(['foreground', 'host restart'] as const)(
     }
     await waitFor(() => expect(saved.active).toBe(false));
     expect(runtime.dailyReportTargets.has(route.key)).toBe(false);
-    expect(controller.getSnapshot().currentRoute.name).toBe('home');
+    expect(controller.getSnapshot().currentRoute.name).toBe('root');
     await view.unmount();
     jest.mocked(dailyReminderIntentStore.read).mockClear();
     const restarted = await render(
@@ -103,7 +103,7 @@ test.each(['foreground', 'host restart'] as const)(
     await waitFor(() =>
       expect(dailyReminderIntentStore.read).toHaveBeenCalled(),
     );
-    expect(controller.getSnapshot().currentRoute.name).toBe('home');
+    expect(controller.getSnapshot().currentRoute.name).toBe('root');
     await restarted.unmount();
     listener.mockRestore();
   },

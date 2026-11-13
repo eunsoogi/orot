@@ -41,7 +41,7 @@ export function RetainedVisitModuleHarness({
       <NavigationRouteAdapter
         controller={controller}
         contentLayoutOwner={appContentLayoutOwner}
-        showHome
+
         leaveState={{
           readState: () => ({
             hasUnsavedChanges: false,

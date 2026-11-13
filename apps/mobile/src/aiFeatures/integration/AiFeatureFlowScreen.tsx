@@ -65,7 +65,7 @@ export function AiFeatureFlowScreen({
       entryContext={{
         intent: intent ?? 'conversation',
         entryKey: navigationRouteKey ?? route,
-        appointmentId: reminderRuntime?.homePreparationTargets.get(
+        appointmentId: reminderRuntime?.overviewPreparationTargets.get(
           navigationRouteKey ?? '',
         ),
         ...(followUp ? { dailyReport: followUp } : {}),

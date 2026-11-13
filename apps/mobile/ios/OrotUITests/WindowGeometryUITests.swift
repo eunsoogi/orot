@@ -45,16 +45,16 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         app.launch()
         defer { app.terminate() }
 
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         // The selected tab and visible screen marker identify this screen-owned root without a scene adaptive event.
-        let rootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
+        let rootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation")
         XCTAssertTrue(rootTab.control.isSelected)
         let root = try waitForGeometry(app, requiresAdaptiveLayout: false)
         NavigationWindowGeometryUITestConditions.assertGeometry(root)
         let rootRouteKey = root.routeKey
         let rootFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
+            app, navigationID: "navigation-tab-conversation", name: "ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
         let rootState = try NavigationGeometryUITestConditions.observedNavigationSide(app, testCase: self)
         let question = UITestConditions.element(app, "rag-conversation-input")
@@ -138,19 +138,19 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         let finalQuestion = try waitForGeometry(app, routeKey: rootRouteKey)
         NavigationWindowGeometryUITestConditions.assertGeometry(finalQuestion)
         let conversationFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "question-content-and-rail", testCase: self, requireCurrentNavigation: true,
+            app, navigationID: "navigation-tab-conversation", name: "question-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
         NavigationGeometryUITestConditions.assertSameRailCenter(rootFrame, contextualFrames: [contextualFrame])
         try NavigationGeometryUITestConditions.assertReturnNavigation(app, root: rootFrame, rootState: rootState, returned: conversationFrame, citation: source, testCase: self)
         try NavigationWindowGeometryUITestConditions.verifyObservedSplit(app, testCase: self)
         XCTAssertTrue((question.value as? String) == draft, "The edited question must survive the source-detail route")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
-        let returnedRootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
+        let returnedRootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation")
         XCTAssertTrue(returnedRootTab.control.isSelected)
         let returnedRoot = try waitForGeometry(app, routeKey: rootRouteKey, requiresAdaptiveLayout: false)
         NavigationWindowGeometryUITestConditions.assertGeometry(returnedRoot)
         let returnedRootFrame = try NavigationGeometryUITestConditions.captureBoundary(
-            app, navigationID: "navigation-tab-ai", name: "returned-ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
+            app, navigationID: "navigation-tab-conversation", name: "returned-ai-root-content-and-rail", testCase: self, requireCurrentNavigation: true,
         )
         try NavigationGeometryUITestConditions.assertReturnNavigation(app, root: rootFrame, rootState: rootState, returned: returnedRootFrame, citation: source, testCase: self)
     }

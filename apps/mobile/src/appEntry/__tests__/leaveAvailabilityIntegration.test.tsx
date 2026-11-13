@@ -65,7 +65,7 @@ test('a committed leave-state readiness change resumes a deferred root entry onc
   jest.mocked(rootURLBridge.acknowledge).mockImplementation(async () => {
     pending = null;
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const decision = jest.spyOn(controller, 'requestTabSwitchDecision');
   const selectTab = jest.fn();
   const view = await render(

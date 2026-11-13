@@ -11,8 +11,35 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+test.each([
+  ['home', 'overview'],
+  ['ai', 'conversation'],
+] as const)(
+  'delivers queued legacy %s as %s after the guard',
+  async (legacy, canonical) => {
+    const controller = createNavigationController<AppNavigationRoute>('root');
+    controller.registerLeaveGuard(
+      controller.getSnapshot().currentRoute.key,
+      async () => true,
+    );
+    const selectTab = jest.fn();
+    const acknowledge = jest.fn();
+    const deliver = createRootURLDelivery({
+      arbiter: createEntryArbiter(),
+      controller,
+      peek: async () => ({ id: 'legacy', destination: legacy }),
+      acknowledge,
+      canEnter: () => true,
+      selectTab,
+    });
+    expect(await deliver()).toBe('opened');
+    expect(selectTab).toHaveBeenCalledWith(canonical);
+    expect(acknowledge).toHaveBeenCalledWith('legacy');
+  },
+);
+
 test('defers exact root through a closed gate and retries acknowledgement without navigating twice', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,
@@ -42,7 +69,7 @@ test('defers exact root through a closed gate and retries acknowledgement withou
 });
 
 test('rechecks the gate after a delayed guard and serializes another source', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const decision = deferred<boolean>();
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
@@ -73,7 +100,7 @@ test('rechecks the gate after a delayed guard and serializes another source', as
 });
 
 test('does not discard a detail route to satisfy a root URL', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.push('saved-recordings');
   const arbiter = createEntryArbiter();
   const selectTab = jest.fn();
@@ -93,7 +120,7 @@ test('does not discard a detail route to satisfy a root URL', async () => {
 });
 
 test('an invalidated owner cannot apply or acknowledge a delayed delivery', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const pending = deferred<unknown>();
   const arbiter = createEntryArbiter();
   const selectTab = jest.fn();
@@ -116,7 +143,7 @@ test('an invalidated owner cannot apply or acknowledge a delayed delivery', asyn
 });
 
 test('an explicit decline is acknowledged without repeatedly prompting on acknowledgement failure', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const confirm = jest.fn((_transition: unknown, decline?: () => void) => {
     decline?.();
     return false;
@@ -145,7 +172,7 @@ test('an explicit decline is acknowledged without repeatedly prompting on acknow
 });
 
 test('a decline is remembered when the appearance gate closes during confirmation', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const result = deferred<boolean>();
   let decline: (() => void) | undefined;
   const confirm = jest.fn((_transition: unknown, cancel?: () => void) => {

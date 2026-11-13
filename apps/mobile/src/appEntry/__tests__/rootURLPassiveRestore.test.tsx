@@ -56,7 +56,7 @@ test('a cold root URL wins over a saved passive daily restore without losing the
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,
@@ -69,7 +69,7 @@ test('a cold root URL wins over a saved passive daily restore without losing the
   );
   await waitFor(() => expect(selectTab).toHaveBeenCalledWith('records'));
   await waitFor(() => expect(consumeDailyReminderTarget).toHaveBeenCalled());
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(controller.getSnapshot().routes).toHaveLength(1);
   expect(selectTab).toHaveBeenCalledTimes(1);
   expect(dailyReminderIntentStore.write).not.toHaveBeenCalled();

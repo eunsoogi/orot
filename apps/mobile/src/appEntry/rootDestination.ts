@@ -9,18 +9,25 @@ export const rootDestinations = [
 ] as const;
 export type RootDestination = (typeof rootDestinations)[number];
 
+/** Normalize legacy destination identifiers only at an external input boundary. */
+export function normalizeRootDestination(
+  value: unknown,
+): RootDestination | null {
+  if (value === 'ai') return 'conversation';
+  if (value === 'home') return 'overview';
+  return rootDestinations.find(destination => destination === value) ?? null;
+}
+
 /** Public URLs are a narrow allowlist; never retain the raw URL or interpret it as a prompt. */
 export function decodeRootURL(raw: string): RootDestination | null {
   const match =
-    /^orot:\/\/open\/v1\/(conversation|overview|records|schedule|settings)$/.exec(
+    /^orot:\/\/open\/v1\/(conversation|overview|records|schedule|settings|ai|home)$/.exec(
       raw,
     );
-  return match?.[0] === raw ? (match[1] as RootDestination) : null;
+  return match?.[0] === raw ? normalizeRootDestination(match[1]) : null;
 }
 
-/** The public descriptor stays stable when internal root tab names change. */
+/** Public destinations and the current tab model share one canonical identity. */
 export function rootDestinationTab(destination: RootDestination): AppRootTab {
-  if (destination === 'conversation') return 'ai';
-  if (destination === 'overview') return 'home';
   return destination;
 }

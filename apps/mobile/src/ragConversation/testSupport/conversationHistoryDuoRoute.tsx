@@ -11,7 +11,7 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import { AppAiFeatureScene } from '../../routes/AppAiFeatureScene';
+import { AppConversationScene } from '../../routes/AppConversationScene';
 import { createConversationSessions } from '../conversationSessions';
 
 export const originalWindow = Dimensions.get('window');
@@ -125,7 +125,7 @@ export function ProductionHistoryRoute({
         controller={controller}
       >
         {actions => (
-          <AppAiFeatureScene
+          <AppConversationScene
             actions={actions}
             consent={consent}
             services={services}

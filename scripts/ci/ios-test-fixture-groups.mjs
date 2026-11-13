@@ -3,7 +3,7 @@ export const iosFixtureGroups = Object.freeze({
   navigation: [
     'AiFeatureNavigationUITests',
     'SafeAreaNavigationUITests',
-    'HomeDuoUITests',
+    'OverviewDuoUITests',
     'RootNavigationUITests',
     'WindowGeometryUITests',
     'OrientationPresentationAnchorUITests',

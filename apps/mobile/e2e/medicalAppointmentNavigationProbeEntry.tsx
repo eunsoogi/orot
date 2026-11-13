@@ -20,10 +20,7 @@ import type { ProviderSelectionStore } from '../src/providers/selection/types';
 import type { SelectedAiResolverOptions } from '../src/aiFeatures/integration/provider';
 import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
 import { homeConversationVisitFixture } from './homeConversationVisitFixture';
-import {
-  homeOverviewRecordings,
-  seedHomeOverviewHealth,
-} from './homeOverviewFixture';
+import { overviewRecordings, seedOverviewHealth } from './overviewFixture';
 
 const settingsManager = NativeModules?.SettingsManager;
 const launchSettings =
@@ -148,7 +145,7 @@ function MedicalAppointmentNavigationProbeEntry() {
     let active = true;
     import('../src/storage/secureDatabase')
       .then(storage => storage.openLocalStorage())
-      .then(records => seedHomeOverviewHealth(records, new Date()))
+      .then(records => seedOverviewHealth(records, new Date()))
       .then(() => {
         if (active) setSeedState('ready');
       })
@@ -167,7 +164,7 @@ function MedicalAppointmentNavigationProbeEntry() {
       calendarBridge={calendarBridge}
       loadAppointments={async () => appointmentRepository}
       loadRecordings={
-        homeAppointments.length ? async () => homeOverviewRecordings : undefined
+        homeAppointments.length ? async () => overviewRecordings : undefined
       }
     />
   );

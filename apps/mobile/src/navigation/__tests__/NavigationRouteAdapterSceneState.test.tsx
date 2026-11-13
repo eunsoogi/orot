@@ -57,7 +57,7 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-type TestRoute = 'home' | 'editor' | 'recording' | 'visit-questions';
+type TestRoute = 'root' | 'editor' | 'recording' | 'visit-questions';
 
 function RegisterLeaveState({
   register,
@@ -94,7 +94,7 @@ function StatefulHomeRoute({
 
 // Retained native stack scenes keep drafts intact across a forward/back transition.
 test('preserves the previous route scene state while opening and leaving a child route', async () => {
-  const controller = createNavigationController<TestRoute>('home');
+  const controller = createNavigationController<TestRoute>('root');
   const onStartRequest = jest.fn();
   const rootRouteKey = controller.getSnapshot().currentRoute.key;
   const source: NavigationLeaveStateSource<TestRoute> = {
@@ -112,7 +112,7 @@ test('preserves the previous route scene state while opening and leaving a child
       {({ route, registerLeaveState }) => (
         <>
           <RegisterLeaveState register={registerLeaveState} source={source} />
-          {route.name === 'home' ? (
+          {route.name === 'root' ? (
             <StatefulHomeRoute onStartRequest={onStartRequest} />
           ) : (
             <Text>editor</Text>
@@ -144,7 +144,7 @@ test('preserves the previous route scene state while opening and leaving a child
     screen.getByRole('button', { name: '이전 화면으로 돌아가기' }),
   );
 
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(controller.getSnapshot().currentRoute.key).toBe(rootRouteKey);
   expect(onStartRequest).toHaveBeenCalledTimes(1);
   expect(
@@ -153,7 +153,7 @@ test('preserves the previous route scene state while opening and leaving a child
 });
 
 test('Schedule, Recording and Visit Questions bypass scene-owned columns', async () => {
-  const controller = createNavigationController<TestRoute>('home');
+  const controller = createNavigationController<TestRoute>('root');
   const rootTabs = { activeTab: 'schedule' as const, onSelect: jest.fn() };
   const homeKey = controller.getSnapshot().currentRoute.key;
 
@@ -161,7 +161,7 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+      rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
     >
       {({ route }) => <Text testID={`route-${route.name}`}>{route.name}</Text>}
     </NavigationRouteAdapter>,
@@ -197,10 +197,10 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
   ).toBeNull();
 });
 
-test.each(['home', 'records', 'ai', 'settings'] as const)(
+test.each(['overview', 'records', 'conversation', 'settings'] as const)(
   'lets the %s root tab own the full usable lane',
   async activeTab => {
-    const controller = createNavigationController<TestRoute>('home');
+    const controller = createNavigationController<TestRoute>('root');
     const rootTabs = { activeTab, onSelect: jest.fn() };
     const homeKey = controller.getSnapshot().currentRoute.key;
 
@@ -208,10 +208,10 @@ test.each(['home', 'records', 'ai', 'settings'] as const)(
       <NavigationRouteAdapter
         contentLayoutOwner={appContentLayoutOwner}
         controller={controller}
-        rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+        rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
       >
         {({ route }) =>
-          route.name === 'home' && activeTab === 'ai' ? (
+          route.name === 'root' && activeTab === 'conversation' ? (
             <FeatureEntryScreen
               onOpenDiseaseHypotheses={jest.fn()}
               onOpenRagConversation={jest.fn()}
@@ -227,10 +227,10 @@ test.each(['home', 'records', 'ai', 'settings'] as const)(
     // Root tabs share the `home` route name while the screen owns its continuous content.
     expect(
       screen.getByTestId(
-        activeTab === 'ai' ? 'ai-features-screen' : 'route-home',
+        activeTab === 'conversation' ? 'ai-features-screen' : 'route-root',
       ),
     ).toBeTruthy();
-    if (activeTab === 'ai') {
+    if (activeTab === 'conversation') {
       expect(screen.getByTestId('ai-feature-columns')).toBeTruthy();
       expect(screen.queryByTestId('ai-feature-columns-primary')).toBeNull();
       expect(screen.queryByTestId('ai-feature-columns-secondary')).toBeNull();

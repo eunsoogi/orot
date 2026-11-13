@@ -150,7 +150,7 @@ function routeProps(): Omit<AppRouteContentProps, 'actions'> {
 
 // This follows the same app adapter, route policy, and AppRouteContent switch as production.
 test('adapts the production Settings sync route to native usable regions and text scale', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const rootTabs = { activeTab: 'settings' as const, onSelect: jest.fn() };
   const props = routeProps();
   const payload = geometry(900, true);
@@ -159,8 +159,8 @@ test('adapts the production Settings sync route to native usable regions and tex
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
-      scrollable={route => route.name === 'home'}
+      rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
+      scrollable={route => route.name === 'root'}
     >
       {actions => <AppRouteContent {...props} actions={actions} />}
     </NavigationRouteAdapter>,
@@ -227,6 +227,6 @@ test('adapts the production Settings sync route to native usable regions and tex
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(screen.getByTestId('settings-open-sync-status')).toBeTruthy();
 });

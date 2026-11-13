@@ -119,7 +119,7 @@ const contentProps: Omit<
 };
 
 test('production backup route reflows by usable region and retains recovery actions and state', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const retry = jest.fn(async () => {});
   let backupPreparationState: AppRouteContentProps['backupPreparationState'] =
     'checking';
@@ -128,7 +128,7 @@ test('production backup route reflows by usable region and retains recovery acti
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+      rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
     >
       {actions => (
         <AppRouteContent
@@ -233,6 +233,6 @@ test('production backup route reflows by usable region and retains recovery acti
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
 });

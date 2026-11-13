@@ -12,8 +12,8 @@ enum FeatureEntryDuoActionConditions {
         }
         app.launch()
         defer { app.terminate() }
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.exists && input.isHittable)
         input.tap()
@@ -25,7 +25,7 @@ enum FeatureEntryDuoActionConditions {
         input.typeText("open duo draft")
         XCTAssertTrue(app.keyboards.firstMatch.exists)
         let report = try snapshot(app, name: "duo-open-functional", testCase: testCase)
-        let state = XCTAttachment(string: "app=\(app.frame), windows=\(app.windows.allElementsBoundByIndex.map(\.frame)), home=\(UITestConditions.element(app, "navigation-tab-home").frame), input=\(input.frame), keyboard=\(app.keyboards.firstMatch.frame)")
+        let state = XCTAttachment(string: "app=\(app.frame), windows=\(app.windows.allElementsBoundByIndex.map(\.frame)), home=\(UITestConditions.element(app, "navigation-tab-overview").frame), input=\(input.frame), keyboard=\(app.keyboards.firstMatch.frame)")
         state.name = "duo-open-functional-frames"
         state.lifetime = .keepAlways
         testCase.add(state)
@@ -33,7 +33,7 @@ enum FeatureEntryDuoActionConditions {
         let controls = try XCTUnwrap(geometry["navigationControls"] as? [String: Any])
         let homeNative = try XCTUnwrap(controls["homeFocus"] as? [String: Any])
         XCTAssertEqual(homeNative["status"] as? String, "available")
-        let home = UITestConditions.element(app, "navigation-tab-home")
+        let home = UITestConditions.element(app, "navigation-tab-overview")
         let tree = try app.snapshot()
         let matches = snapshotWindows(tree, ancestors: [])
         XCTAssertEqual(matches.count, 1, app.debugDescription)
@@ -64,7 +64,7 @@ enum FeatureEntryDuoActionConditions {
             }
         }
         let activeDivisions = try divisions.filter { $0["isActive"] as? Bool == true }.map { try rect($0["frame"]) }
-        for id in ["navigation-tab-home", "rag-conversation-input"] {
+        for id in ["navigation-tab-overview", "rag-conversation-input"] {
             let target = UITestConditions.element(app, id)
             XCTAssertTrue(target.exists && target.isHittable)
             XCTAssertGreaterThanOrEqual(target.frame.width, 44)
@@ -98,7 +98,7 @@ enum FeatureEntryDuoActionConditions {
 
     private static func snapshotWindows(_ node: XCUIElementSnapshot, ancestors: [XCUIElementSnapshot]) -> [(XCUIElementSnapshot, [XCUIElementSnapshot])] {
         var matches: [(XCUIElementSnapshot, [XCUIElementSnapshot])] = []
-        if node.identifier == "navigation-tab-home" {
+        if node.identifier == "navigation-tab-overview" {
             let windows = ancestors.filter { $0.elementType == .window }
             matches.append((node, windows))
         }
@@ -159,8 +159,8 @@ enum FeatureEntryDuoActionConditions {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { app.terminate() }
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.exists && input.isHittable)
         input.tap()
@@ -175,7 +175,7 @@ enum FeatureEntryDuoActionConditions {
         let observer = try XCTUnwrap(baseline["observerID"] as? String)
         let baselineData = try JSONSerialization.data(withJSONObject: baseline, options: [.sortedKeys])
         print("OROT_EXTERNAL_DUO_BASELINE \(String(decoding: baselineData, as: UTF8.self))")
-        try print("OROT_EXTERNAL_DUO_AX input=\(input.frame) screen=\(UITestConditions.element(app, "rag-conversation-screen").frame) toolbar=\(NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar.frame)")
+        try print("OROT_EXTERNAL_DUO_AX input=\(input.frame) screen=\(UITestConditions.element(app, "rag-conversation-screen").frame) toolbar=\(NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").toolbar.frame)")
         print("OROT_EXTERNAL_DUO_READY atMs=\(Date().timeIntervalSince1970 * 1000) window=\(initialWindow) scene=\(initialScene) frame=\(app.frame)")
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard let report = currentSnapshot(app), let key = try? geometryKey(report) else { return false }

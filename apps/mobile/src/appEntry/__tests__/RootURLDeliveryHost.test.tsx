@@ -29,7 +29,7 @@ test('peeks at mount and applies a cold URL after readiness', async () => {
   bridge.acknowledge.mockImplementation(async () => {
     pending = null;
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,
@@ -67,7 +67,7 @@ test('unmount prevents a delayed leave decision from selecting or acknowledging'
     release = resolve;
   });
   bridge.peek.mockResolvedValue({ id: 'delivery', destination: 'records' });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const confirm = jest.fn(() => guard);
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
@@ -107,7 +107,7 @@ test('a competing transition that settles during an inbox read wakes the pending
   bridge.acknowledge.mockImplementation(async () => {
     pending = null;
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const confirm = jest.fn().mockReturnValueOnce(guard).mockResolvedValue(true);
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,

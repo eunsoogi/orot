@@ -13,7 +13,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-import-medical-photo")
 
@@ -71,7 +71,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         assertPhotoSource(app)
         app.terminate()
         app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "medical-document-source-0")
         assertPhotoSource(app)

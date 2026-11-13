@@ -56,7 +56,7 @@ export function AppointmentPreparationRoute({
       const target = runtime.targets.get(routeKey);
       const resolve = async () => {
         const appointments = await runtime.list();
-        const homeId = runtime.homePreparationTargets.get(routeKey);
+        const homeId = runtime.overviewPreparationTargets.get(routeKey);
         // Home accepts the displayed active visit until its known end. Notification taps retain their strict future/time-key validation.
         if (homeId)
           return selectNextAppointment(
@@ -158,9 +158,9 @@ export function AppointmentPreparationRoute({
             <AppText>
               최근 증상 변화, 복용 정보와 확인할 기록을 준비해 주세요.
             </AppText>
-            {runtime?.homePreparationTargets.has(routeKey) ? (
+            {runtime?.overviewPreparationTargets.has(routeKey) ? (
               <>
-                <AppText testID="home-preparation-unsupported">
+                <AppText testID="overview-preparation-unsupported">
                   이 예약의 AI 질문 생성은 지원하지 않아요. AI 질문은 시작 전인
                   Calendar 연결 예약에서 준비할 수 있어요. 일정에서 예약을
                   확인하고 기록한 증상과 저장 질문을 진료에 활용해 주세요.
@@ -169,7 +169,7 @@ export function AppointmentPreparationRoute({
                   <AppButton
                     title="일정에서 예약 확인"
                     onPress={onOpenSchedule}
-                    testID="home-preparation-open-schedule"
+                    testID="overview-preparation-open-schedule"
                   />
                 ) : null}
               </>

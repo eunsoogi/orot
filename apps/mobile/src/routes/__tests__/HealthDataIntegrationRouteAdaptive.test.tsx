@@ -141,7 +141,7 @@ test('uses native usable regions and retains a category through compact, narrow,
       : appContentLayoutOwner,
   ).toBe('screen');
 
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const rootTabs = { activeTab: 'settings' as const, onSelect: jest.fn() };
   await render(
     <NavigationRouteAdapter

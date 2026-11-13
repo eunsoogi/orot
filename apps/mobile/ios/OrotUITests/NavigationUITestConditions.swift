@@ -3,8 +3,8 @@ import XCTest
 @MainActor
 enum NavigationUITestConditions {
     static let rootTabCases = [
-        ("home", ["welcome-title"], "홈 탭"), ("records", ["records-title"], "기록 탭"),
-        ("schedule", ["calendar-title", "schedule-retry"], "일정 탭"), ("ai", ["rag-conversation-screen"], "AI 탭"),
+        ("conversation", ["rag-conversation-screen"], "대화 탭"), ("overview", ["overview-title"], "한눈에 탭"),
+        ("records", ["records-title"], "기록 탭"), ("schedule", ["calendar-title", "schedule-retry"], "일정 탭"),
         ("settings", ["settings-title"], "설정 탭"),
     ]
     struct NavigationAction {

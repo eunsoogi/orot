@@ -27,7 +27,7 @@ test('restores the exact previous date without running inference and dismisses o
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   expect(
     await restoreDailyReportConversation({
       controller,
@@ -68,7 +68,7 @@ test('does not restore over a guarded route or automatically retry a decline', a
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   expect(
     await restoreDailyReportConversation({
       controller,
@@ -77,7 +77,7 @@ test('does not restore over a guarded route or automatically retry a decline', a
       confirm: async () => 'declined',
     }),
   ).toBe('done');
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect((await store.read())?.active).toBe(false);
 });
 
@@ -107,7 +107,7 @@ test('an abandoned intent with a failed dismissal stays pending until retry succ
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   expect(
     await restoreDailyReportConversation({
       controller,
@@ -141,7 +141,7 @@ test('an unavailable navigation guard preserves the saved request for a later fo
   const runtime = createAppointmentReminderRuntime(async () => {
     throw new Error('unused');
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   expect(
     await restoreDailyReportConversation({
       controller,
@@ -151,5 +151,5 @@ test('an unavailable navigation guard preserves the saved request for a later fo
     }),
   ).toBe('deferred');
   expect(saved.active).toBe(true);
-  expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
 });

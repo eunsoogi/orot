@@ -80,7 +80,7 @@ afterEach(() => {
 });
 
 test('preserves the selected summary as usable geometry changes under production route policy', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const service = createLibraryService();
 
   await render(

@@ -38,8 +38,6 @@ export interface NavigationPrimaryAction {
 export interface NavigationActionBarProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveDisabled?: boolean;
-  readonly showHome?: boolean;
-  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly pageActions?: readonly NavigationRouteAction[];
   readonly routeKey?: string;
@@ -54,8 +52,6 @@ export interface NavigationActionBarProps<Name extends string> {
 export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
-  showHome = false,
-  homeAction,
   primaryAction,
   pageActions = [],
   routeKey = snapshotRouteFallback,
@@ -83,10 +79,8 @@ export function NavigationActionBar<Name extends string>({
   }, []);
 
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
-  const canGoHome = showHome && snapshot.routes.length > 1;
   if (
     !snapshot.canGoBack &&
-    !canGoHome &&
     !primaryAction &&
     !pageActions.length &&
     !rootTabs
@@ -98,8 +92,6 @@ export function NavigationActionBar<Name extends string>({
     controller,
     snapshot,
     backDisabled,
-    canGoHome,
-    homeAction,
     rootTabs,
   });
 
@@ -123,20 +115,6 @@ export function NavigationActionBar<Name extends string>({
           label={navigationText.back.label}
           onPress={() => settleNavigationRequest(controller.requestBack())}
           testID="navigation-back"
-        />
-      ) : null}
-      {canGoHome && !rootTabs ? (
-        <NavigationActionButton
-          accessibilityLabel={navigationText.home.accessibilityLabel}
-          disabled={backDisabled}
-          isDarkAppearance={isDarkAppearance}
-          label={navigationText.home.label}
-          onPress={() =>
-            settleNavigationRequest(
-              Promise.resolve(homeAction?.() ?? controller.requestHome()),
-            )
-          }
-          testID="navigation-home"
         />
       ) : null}
     </View>

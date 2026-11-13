@@ -17,7 +17,7 @@ test('preserves an explicit decline when the gate closes while confirmation is o
     configurable: true,
     value: 'active',
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   let release!: (value: boolean) => void;
   let decline: (() => void) | undefined;
   const guard = new Promise<boolean>(resolve => {

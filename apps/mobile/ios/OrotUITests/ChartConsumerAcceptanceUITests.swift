@@ -15,30 +15,30 @@ final class ChartConsumerAcceptanceUITests: OrotFailFastTestCase {
             "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
         ]
         app.launch()
-        XCTAssertTrue(UITestConditions.element(app, "welcome-title").waitForAppearance())
-        let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview")
         let homeScroll = UITestConditions.element(app, "navigation-route-scroll")
-        let card = UITestConditions.element(app, "home-metric-sleep")
+        let card = UITestConditions.element(app, "overview-metric-sleep")
         XCTAssertTrue(card.waitForAppearance())
-        HomeMetricScrollUITestConditions.revealCard(
+        OverviewMetricScrollUITestConditions.revealCard(
             card, in: app, homeScroll: homeScroll, navigationOcclusion: navigation.toolbar,
         )
         XCTAssertTrue(card.exists && card.isHittable, card.debugDescription)
-        HomeMetricGeometryConditions.captureCard(card, in: app, testCase: self)
-        let chart = UITestConditions.element(app, "home-metric-chart-sleep")
+        OverviewMetricGeometryConditions.captureCard(card, in: app, testCase: self)
+        let chart = UITestConditions.element(app, "overview-metric-chart-sleep")
         XCTAssertTrue(chart.exists, app.debugDescription)
         XCTAssertGreaterThan(chart.frame.height, 250, "Large text must retain space for the native plot")
         XCTAssertFalse(app.staticTexts["큰 글자에서는 아래 목록으로 값을 확인하세요."].exists)
         let scroll = homeScroll.scrollViews.firstMatch
         XCTAssertTrue(scroll.exists)
-        let selected = UITestConditions.element(app, "home-metric-chart-sleep-selected-point")
+        let selected = UITestConditions.element(app, "overview-metric-chart-sleep-selected-point")
         UITestConditions.scrollTo(selected, in: scroll)
         XCTAssertTrue(selected.exists && selected.isHittable, selected.debugDescription)
         XCTAssertTrue(selected.label.contains("출처: 건강 기록"), selected.label)
         let dateCount = (try? NSRegularExpression(pattern: #"\d{4}-\d{2}-\d{2}"#))?
             .numberOfMatches(in: selected.label, range: NSRange(selected.label.startIndex..., in: selected.label)) ?? 0
         XCTAssertEqual(dateCount, 1, selected.label)
-        let previous = UITestConditions.element(app, "home-metric-chart-sleep-selected-point-previous")
+        let previous = UITestConditions.element(app, "overview-metric-chart-sleep-selected-point-previous")
         XCTAssertTrue(previous.exists && previous.isHittable, previous.debugDescription)
         let initialLabel = selected.label
         previous.tap()
