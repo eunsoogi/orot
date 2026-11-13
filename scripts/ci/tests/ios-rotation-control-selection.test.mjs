@@ -120,3 +120,49 @@ test('Duo speech diagnostics stay out of the default inventory', () => {
     /Duo acceptance/,
   );
 });
+
+test('medical document journeys are explicit single-case Duo diagnostics', () => {
+  const documentTests = [
+    'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
+    'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
+  ];
+  for (const identifier of documentTests) {
+    assert.ok(!iosTestInventory('duo').includes(identifier));
+    assert.deepEqual(resolveIosTestProfileSelection('duo', [identifier]), {
+      fixtureSelection: null,
+      hostPreparation: false,
+      isFixtureProfile: false,
+    });
+    for (const profile of ['fixtures', 'health-import']) {
+      assert.ok(iosTestInventory(profile).includes(identifier));
+      assert.deepEqual(resolveIosTestProfileSelection(profile, [identifier]), {
+        fixtureSelection: profile,
+        hostPreparation: false,
+        isFixtureProfile: true,
+      });
+      const fixtureRun = fixture(0, profile, 'all', [identifier]);
+      try {
+        assert.equal(fixtureRun.outcome.status, 0, fixtureRun.outcome.stderr);
+        const testRun = fixtureRun.calls.find((call) => call.name === 'xcodebuild');
+        assert.ok(testRun);
+        assert.ok(testRun.args.includes('-only-testing:' + identifier));
+      } finally {
+        rmSync(fixtureRun.directory, { recursive: true, force: true });
+      }
+    }
+    const run = fixture(0, 'duo', 'all', [identifier]);
+    try {
+      assert.equal(run.outcome.status, 0, run.outcome.stderr);
+      const testRun = run.calls.find((call) => call.name === 'xcodebuild');
+      assert.ok(testRun);
+      assert.ok(testRun.args.includes('-only-testing:' + identifier));
+    } finally {
+      rmSync(run.directory, { recursive: true, force: true });
+    }
+    assert.throws(() => resolveIosTestProfileSelection('core', [identifier]), /Duo acceptance/);
+    assert.throws(
+      () => resolveIosTestProfileSelection('duo', [identifier, hostConnectionTest]),
+      /Duo acceptance/,
+    );
+  }
+});

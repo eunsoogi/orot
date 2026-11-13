@@ -83,7 +83,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
 
         let saved = node(app, "medical-document-source-0")
         XCTAssertTrue(saved.waitForAppearance(), app.debugDescription)
-        tap(app, "medical-document-source-0")
+        tap(app, "medical-document-source-0", usesDuoViewport: isDuoPhotoValidation)
         try assertPhotoSource(app)
         let documentBack = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let documentBackFrame = documentBack.control.frame
@@ -94,26 +94,28 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         XCTAssertEqual(documentBackFrame.height, referenceBackFrame.height, accuracy: 0.5, app.debugDescription)
         if isDuoPhotoValidation {
             // Compare the measured rail lane and visible Back target against the same native control.
-            let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
+            let firstRootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
             XCTAssertEqual(referenceToolbarFrame.width, 48, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBack.toolbar.frame.width, referenceToolbarFrame.width, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.width, 48, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.height, referenceBackFrame.height, accuracy: 0.5, app.debugDescription)
             XCTAssertEqual(documentBackFrame.midX, referenceBackFrame.midX, accuracy: 1, app.debugDescription)
-            XCTAssertEqual(records.toolbar.frame.minY - documentBackFrame.maxY, 4, accuracy: 1, app.debugDescription)
+            // The shared toolbar contains Back and tabs, so use the first tab to measure their actual gap.
+            XCTAssertEqual(firstRootTab.control.frame.minY - documentBackFrame.maxY, 4, accuracy: 1, app.debugDescription)
         } else {
             // Root tabs reclaim part of the bottom safe area, so compare vertical placement with their row.
             let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
+            let firstRootTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
             XCTAssertEqual(documentBackFrame.minX, referenceBackFrame.minX, accuracy: 1, app.debugDescription)
             XCTAssertEqual(documentBackFrame.midY, records.control.frame.midY, accuracy: 1, app.debugDescription)
-            XCTAssertEqual(records.toolbar.frame.minX - documentBackFrame.maxX, 12, accuracy: 1, app.debugDescription)
+            XCTAssertEqual(firstRootTab.control.frame.minX - documentBackFrame.maxX, 12, accuracy: 1, app.debugDescription)
             XCTAssertTrue(records.control.isHittable, app.debugDescription)
         }
         app.terminate()
         app.launch()
         XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "medical-document-source-0")
+        tap(app, "medical-document-source-0", usesDuoViewport: isDuoPhotoValidation)
         try assertPhotoSource(app)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(node(app, "medical-document-source-0").isHittable, app.debugDescription)
@@ -137,14 +139,27 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func tap(_ app: XCUIApplication, _ identifier: String) {
+    private func tap(_ app: XCUIApplication, _ identifier: String, usesDuoViewport: Bool = false) {
         let target = node(app, identifier)
         XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         let route = node(app, "navigation-route-scroll")
         XCTAssertEqual(route.scrollViews.count, 1, app.debugDescription)
         let scroll = route.scrollViews.firstMatch
-        FormUITestConditions.reveal(target, in: app, scroll: scroll)
-        XCTAssertTrue(target.isHittable && scroll.frame.contains(target.frame), app.debugDescription)
+        if usesDuoViewport {
+            // After Duo rotates, XCUIApplication.frame keeps portrait bounds while UIKit reports landscape.
+            let windowViewport = node(app, "navigation-visible-viewport")
+            XCTAssertTrue(windowViewport.exists, app.debugDescription)
+            if !target.isHittable || !windowViewport.frame.intersection(scroll.frame).contains(target.frame) {
+                scroll.swipeUp()
+            }
+            XCTAssertTrue(
+                target.isHittable && windowViewport.frame.intersection(scroll.frame).contains(target.frame),
+                app.debugDescription,
+            )
+        } else {
+            FormUITestConditions.reveal(target, in: app, scroll: scroll)
+            XCTAssertTrue(target.isHittable && scroll.frame.contains(target.frame), app.debugDescription)
+        }
         target.tap()
     }
 }
