@@ -63,6 +63,7 @@
 		4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */; };
 		5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */; };
 		0CEE70841F2C4CD7AD262796 /* AppointmentNextVisitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89FDE65A9F504246A94295CB /* AppointmentNextVisitUITests.swift */; };
+		A77400000000000000000003 /* AppointmentIdentityDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000004 /* AppointmentIdentityDuoUITests.swift */; };
 		D6165760823C41C2B78A1A55 /* AppointmentTextSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */; };
 		5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */; };
 		62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */; };
@@ -371,6 +372,7 @@
 		AFE1D3A1B2C3406F9A8D1234 /* RecordingDeletionRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingDeletionRecoveryUITests.swift; sourceTree = "<group>"; };
 		2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentsUITests.swift; sourceTree = "<group>"; };
 		89FDE65A9F504246A94295CB /* AppointmentNextVisitUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentNextVisitUITests.swift; sourceTree = "<group>"; };
+		A77400000000000000000004 /* AppointmentIdentityDuoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentIdentityDuoUITests.swift; sourceTree = "<group>"; };
 		1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentTextSelectionUITests.swift; sourceTree = "<group>"; };
 		2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelIntegrationTests.swift; sourceTree = "<group>"; };
 		2D0CC908B80A06121230581D /* TestSpeechObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestSpeechObservation.swift; path = OrotMobile/TestSpeechObservation.swift; sourceTree = "<group>"; };
@@ -1008,6 +1010,7 @@
 				F9ABA0000000000000000002 /* ViewportObservation.swift */,
 				F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */,
 				89FDE65A9F504246A94295CB /* AppointmentNextVisitUITests.swift */,
+				A77400000000000000000004 /* AppointmentIdentityDuoUITests.swift */,
 				1301B59D3E934BD880022DA0 /* AppointmentTextSelectionUITests.swift */,
 				22C4D96D78004869B419F636 /* NavigationPageActionUITestConditions.swift */,
 				A49300000000000000000002 /* ConversationHitUITestObservation.swift */,
@@ -1512,6 +1515,7 @@
 				F9ABA0000000000000000001 /* ViewportObservation.swift in Sources */,
 				F9ABB0000000000000000001 /* AppointmentViewportGeometry.swift in Sources */,
 				0CEE70841F2C4CD7AD262796 /* AppointmentNextVisitUITests.swift in Sources */,
+				A77400000000000000000003 /* AppointmentIdentityDuoUITests.swift in Sources */,
 				D6165760823C41C2B78A1A55 /* AppointmentTextSelectionUITests.swift in Sources */,
 				29A171C6D1C04EA899B098E2 /* NavigationPageActionUITestConditions.swift in Sources */,
 				A49300000000000000000001 /* ConversationHitUITestObservation.swift in Sources */,

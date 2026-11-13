@@ -168,14 +168,14 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String) {
+    func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String) {
         tap(app, "appointment-add")
         fill(app, clinic: clinic, date: date, time: time, note: "")
         visible(app, clinic)
     }
 
     @MainActor
-    private func assertAppointmentPanelsFollowGeometry(_ app: XCUIApplication, expectsStacked: Bool? = nil) throws -> Bool {
+    func assertAppointmentPanelsFollowGeometry(_ app: XCUIApplication, expectsStacked: Bool? = nil) throws -> Bool {
         let primary = UITestConditions.element(app, "appointments-columns-primary")
         let secondary = UITestConditions.element(app, "appointments-columns-secondary")
         XCTAssertTrue(primary.exists && !primary.frame.isEmpty, app.debugDescription)
