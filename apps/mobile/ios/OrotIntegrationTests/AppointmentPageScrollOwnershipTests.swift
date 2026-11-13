@@ -74,7 +74,7 @@ final class AppointmentPageScrollOwnershipTests: XCTestCase {
             UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .first { $0.activationState == .foregroundActive },
-            "The integration host must have a foreground window scene."
+            "The integration host must have a foreground window scene.",
         )
         let window = UIWindow(windowScene: scene)
         window.frame = frame
