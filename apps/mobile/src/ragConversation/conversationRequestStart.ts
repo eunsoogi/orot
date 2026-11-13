@@ -4,12 +4,14 @@ import type {
   PendingTurn,
 } from './conversationSessionTypes';
 
-/** Consumes a sendable draft and replaces only a failed prompt being retried. */
+/** Starts a composer turn or an explicit turn without exposing its prompt as a draft. */
 export function prepareConversationRequest(
   session: ConversationSession,
   nextId: () => number,
+  explicitQuestion?: string,
 ) {
-  const question = session.draft.trim();
+  const restorePromptToComposer = explicitQuestion === undefined;
+  const question = (explicitQuestion ?? session.draft).trim();
   if (
     !question ||
     session.busy ||
@@ -25,6 +27,7 @@ export function prepareConversationRequest(
   const request: PendingTurn = {
     question,
     userMessageId: nextId(),
+    restorePromptToComposer,
     saving: false,
     committed: false,
     summarySaving: false,
@@ -32,7 +35,7 @@ export function prepareConversationRequest(
   };
   const responseId = nextId();
   const change: Partial<ConversationSession> = {
-    draft: '',
+    ...(restorePromptToComposer ? { draft: '' } : {}),
     title: session.messages.length ? session.title : question.slice(0, 36),
     messages: [
       ...session.messages.filter(

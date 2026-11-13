@@ -8,7 +8,6 @@ const featureServices =
   require('../src/aiFeatures/integration/featureServices') as typeof import('../src/aiFeatures/integration/featureServices');
 import type { AiFeatureServices } from '../src/aiFeatures/integration/featureServices';
 import type { RagConversationOutcome } from '../src/ragConversation/service';
-import { conversationIntentRequests } from '../src/aiFeatures/integration/conversationIntent';
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -40,12 +39,7 @@ async function enterHomeConversation() {
   await fireEvent.press(await screen.findByTestId('home-prepare-visit'));
   expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
-  await fireEvent.press(
-    screen.getByTestId('conversation-intent-use-suggestion'),
-  );
-  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
-    conversationIntentRequests['visit-questions'],
-  );
+  expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
 }
 
 test('provider and history detours retain Home A while a new Home B request keeps its exact visit identity', async () => {
@@ -114,6 +108,10 @@ test('a late Home A answer stays in its conversation when a separate Home B entr
   const b = futureHomeVisit('Home B');
   const { store, query, generate } = await renderHomeGenerator([a, b]);
   await enterHomeConversation();
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'A의 진료 질문 준비 요청',
+  );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
   const signal = send.mock.calls[0]?.[2];
@@ -132,9 +130,7 @@ test('a late Home A answer stays in its conversation when a separate Home B entr
     }),
   );
   expect(screen.queryByText('A에게만 속한 늦은 답변')).toBeNull();
-  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
-    conversationIntentRequests['visit-questions'],
-  );
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
   await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
   await fireEvent(
     screen.getByTestId('conversation-history-list'),

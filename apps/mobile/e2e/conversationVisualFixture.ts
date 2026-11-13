@@ -71,6 +71,17 @@ const visualSessionRetention: NonNullable<
     if (signal.aborted) throw new Error('Conversation is unavailable.');
     return {
       toolMessageId: 'conversation-visual-tool-message',
+      async startRequest() {},
+      async interruptRequest() {},
+      async invalidatePreview() {
+        return 0;
+      },
+      async preparePreview() {
+        return false;
+      },
+      async writePreview() {
+        return false;
+      },
       async recordToolEvent() {},
       async save() {},
       defer() {},

@@ -6,6 +6,7 @@ import type {
   MultiAgentProgressEvent,
   MultiAgentResponderStreamEvent,
   MultiAgentWorkflowOptions,
+  MultiAgentInvocation,
   ProviderStopObservation,
 } from './contracts';
 
@@ -43,6 +44,8 @@ export interface RuntimeContext<TResult> {
   activeToolEvent?: import('./toolEvents').ConversationToolEvent;
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
+  readonly beforeTaskStream?: MultiAgentInvocation['beforeTaskStream'];
+  readonly beforeTaskInputChange?: MultiAgentInvocation['beforeTaskInputChange'];
   currentEvidence: EvidenceBatch;
   /** Keeps the active source category so stop/cancel can close an in-flight search safely. */
   activeEvidenceSearchSourceKind?: Extract<

@@ -20,6 +20,7 @@ import {
   resolveConversationVisualToolSource,
   sendSyntheticConversation,
 } from './conversationVisualFixture';
+import { conversationVisitPreparationVisualProps } from './conversationVisitPreparationVisualFixture';
 
 const settingsManager = (
   NativeModules as unknown as {
@@ -36,6 +37,10 @@ const visualSessionOptions =
   launchSettings.OROT_TEST_CONVERSATION_TOOL_SOURCE === 'YES'
     ? conversationVisualToolSourceSessionOptions
     : conversationVisualSessionOptions;
+const visitPreparationProps =
+  launchSettings.OROT_TEST_CONVERSATION_VISIT_PREPARATION === 'YES'
+    ? conversationVisitPreparationVisualProps
+    : {};
 
 type Route = 'conversation' | 'history' | 'evidence';
 const leaveState = {
@@ -86,6 +91,7 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
             );
           return (
             <ConversationScreen
+              {...visitPreparationProps}
               navigationRouteKey={navigation.route.key}
               providerSelection={
                 <SelectedModelControl name="합성 UI 검사 제공자" local />

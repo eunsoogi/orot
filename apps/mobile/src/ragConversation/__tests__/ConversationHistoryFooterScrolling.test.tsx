@@ -1,5 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { ScrollView, Text } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 
 test('keeps a reader at the evidence footer when content grows', async () => {
@@ -38,4 +43,22 @@ test('keeps a reader at the evidence footer when content grows', async () => {
   await fireEvent(end, 'layout', { nativeEvent: { layout: { y: 1020 } } });
   expect(scrollTo).not.toHaveBeenCalled();
   scrollTo.mockRestore();
+});
+
+test('places prepared questions before conversation messages in scroll order', async () => {
+  await render(
+    <ConversationHistory
+      messages={[{ id: 1, role: 'user', content: 'Conversation message' }]}
+      pendingMessage={null}
+      error=""
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+      beforeMessages={<Text>Prepared questions</Text>}
+    />,
+  );
+  const history = screen.getByTestId('rag-conversation-history');
+  const content = within(history)
+    .getAllByText(/Prepared questions|Conversation message/)
+    .map(node => node.props.children);
+  expect(content).toEqual(['Prepared questions', 'Conversation message']);
 });

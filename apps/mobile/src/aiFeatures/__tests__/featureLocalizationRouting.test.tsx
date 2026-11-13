@@ -127,6 +127,8 @@ const featureScreens = [
       'ragConversation.progressEvidenceFailed',
       'ragConversation.progressEvidenceCancelled',
       'ragConversation.progressCancelled',
+      'ragConversation.progressInterrupted',
+      'ragConversation.previewSaveFailed',
       'ragConversation.noEvidence',
       'ragConversation.insufficient',
       'ragConversation.unavailable',
