@@ -66,7 +66,7 @@ export function observeReplyDelivery(input: {
   });
   let pending = false;
   let running = false;
-  let navigationWasBusy = input.controller.getSnapshot().isTransitioning;
+  let navigationSnapshot = input.controller.getSnapshot();
   let busySessions = new Set<number>();
   let navigationReady = false;
   const readySessions = new Set<number>();
@@ -133,9 +133,15 @@ export function observeReplyDelivery(input: {
     if (value === 'active') drain();
   });
   const navigation = input.controller.subscribe(() => {
-    const busy = input.controller.getSnapshot().isTransitioning;
-    if (running && navigationWasBusy && !busy) navigationReady = true;
-    navigationWasBusy = busy;
+    const next = input.controller.getSnapshot();
+    if (
+      running &&
+      !next.isTransitioning &&
+      (navigationSnapshot.isTransitioning ||
+        navigationSnapshot.currentRoute?.key !== next.currentRoute?.key)
+    )
+      navigationReady = true;
+    navigationSnapshot = next;
     if (
       pending &&
       !running &&

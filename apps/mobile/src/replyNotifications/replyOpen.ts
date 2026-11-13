@@ -81,7 +81,11 @@ export function createReplyOpen(input: {
       if (!currentOwner() || !input.canEnter()) return 'deferred';
       if (!latest) return 'missing';
       const current = input.controller.getSnapshot();
-      if (current.isTransitioning) input.onBlocked?.('navigation');
+      if (
+        current.isTransitioning ||
+        current.currentRoute.key !== before.currentRoute.key
+      )
+        input.onBlocked?.('navigation');
       if (
         !currentOwner() ||
         !input.canEnter() ||
