@@ -85,3 +85,16 @@ test('uses the persisted Unicode name and selected avatar and retains editing', 
   expect(mockEdit).toHaveBeenCalled();
   mockName = '오롯';
 });
+
+test('prevents editing while the full-screen voice owner retains the session', async () => {
+  mockEdit.mockClear();
+  await render(
+    <AssistantHeader
+      session={{ id: 1 } as ConversationSession}
+      editable={false}
+    />,
+  );
+  expect(screen.getByRole('button')).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button'));
+  expect(mockEdit).not.toHaveBeenCalled();
+});

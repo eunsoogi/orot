@@ -42,8 +42,8 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         XCTAssertTrue((star.value as? String)?.contains("checked") == true, star.debugDescription)
         XCTAssertFalse((star.value as? String)?.contains("unchecked") == true, star.debugDescription)
         XCTAssertEqual(name.value as? String, "Momo")
-        name.tap()
-        name.typeText(" Companion Long Name")
+        // Replace explicitly: the native field may select its current value on focus, so appending is not a valid fixture assumption.
+        guard FormUITestConditions.replace(name, with: "Momo Companion Long Name", in: app, scrollID: "assistant-appearance-scroll") else { return }
         guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
         save.tap()
         XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)

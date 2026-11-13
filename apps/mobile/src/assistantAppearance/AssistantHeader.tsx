@@ -37,9 +37,11 @@ export function activityLabel(session: ConversationSession): string | null {
 export function AssistantHeader({
   session,
   status,
+  editable = true,
 }: {
   session: ConversationSession;
   status?: string | null;
+  editable?: boolean;
 }) {
   const appearance = useAssistantAppearance();
   return appearance ? (
@@ -47,6 +49,7 @@ export function AssistantHeader({
       session={session}
       appearance={appearance}
       status={status}
+      editable={editable}
     />
   ) : null;
 }
@@ -56,9 +59,11 @@ function ActiveAssistantHeader({
   session,
   appearance,
   status,
+  editable,
 }: {
   session: ConversationSession;
   status?: string | null;
+  editable: boolean;
   appearance: NonNullable<ReturnType<typeof useAssistantAppearance>>;
 }) {
   const focused = useIsFocused();
@@ -94,6 +99,9 @@ function ActiveAssistantHeader({
       ]
         .filter(Boolean)
         .join(', ')}
+      // Full-screen voice must end before opening identity settings.
+      disabled={!editable}
+      accessibilityState={{ disabled: !editable }}
       onPress={appearance.edit}
       style={styles.container}
       testID="assistant-floating-identity"
