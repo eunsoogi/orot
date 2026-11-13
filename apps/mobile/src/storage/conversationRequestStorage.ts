@@ -28,6 +28,7 @@ export async function commitConversationRequest(
   tx: SqlExecutor,
   value: ConversationArtifact,
   version: number,
+  alreadyStored = false,
 ) {
   const result = await tx.execute(
     'SELECT session_id, session_version, question, created_at, status FROM conversation_requests WHERE id = ?',
@@ -40,9 +41,17 @@ export async function commitConversationRequest(
     row.session_version !== version ||
     row.question !== value.question ||
     row.created_at !== value.createdAt ||
-    !['active', 'completed'].includes(String(row.status))
+    !(
+      row.status === 'active' ||
+      row.status === 'completed' ||
+      (alreadyStored &&
+        value.status === 'partial' &&
+        row.status === 'interrupted')
+    )
   )
     throw new Error('Conversation request is no longer active.');
+  // Only a byte-identical retained partial can be retried after interruption.
+  if (row.status === 'interrupted') return;
   if (value.status !== 'complete') {
     await tx.execute(
       "UPDATE conversation_requests SET status = 'interrupted' WHERE id = ? AND status = 'active'",

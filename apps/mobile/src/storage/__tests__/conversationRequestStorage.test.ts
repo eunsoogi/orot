@@ -97,6 +97,19 @@ test('recovery interrupts active requests and rejects a late answer without emit
         sources: [],
       }),
     ).rejects.toThrow('no longer active');
+    await expect(
+      store.append({
+        id: request.id,
+        sessionId: request.sessionId,
+        question: request.question,
+        createdAt: request.createdAt,
+        providerId: 'provider',
+        modelId: 'model',
+        status: 'partial',
+        answer: 'Late partial',
+        sources: [],
+      }),
+    ).rejects.toThrow('no longer active');
     expect(await store.read('request')).toBeNull();
     expect(await store.listCompletionIdentities()).toEqual([]);
   } finally {
@@ -131,6 +144,20 @@ test('partial output does not produce a completion', async () => {
     });
     expect(await store.listCompletionIdentities()).toEqual([]);
     expect(await store.listInterruptedRequests('session', 0)).toHaveLength(1);
+    // An uncertain response after a committed partial write must be safe to retry.
+    await expect(
+      store.append({
+        id: request.id,
+        sessionId: request.sessionId,
+        question: request.question,
+        createdAt: request.createdAt,
+        providerId: 'provider',
+        modelId: 'model',
+        status: 'partial',
+        answer: 'Partial answer',
+        sources: [],
+      }),
+    ).resolves.toBeUndefined();
   } finally {
     connection.close();
   }

@@ -153,7 +153,12 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different output already owns this identity.');
           assertConversationNotCancelled(signal);
-          await commitConversationRequest(tx, decoded, expectedSessionVersion);
+          await commitConversationRequest(
+            tx,
+            decoded,
+            expectedSessionVersion,
+            true,
+          );
           return;
         }
         await tx.execute(
