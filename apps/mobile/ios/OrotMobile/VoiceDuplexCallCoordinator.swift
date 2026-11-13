@@ -56,15 +56,15 @@ final class VoiceDuplexCallCoordinator {
         opening = completion
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
-                guard let self, identifier == id else { return }
-                guard status == .authorized else { failOpen(failure("Speech permission unavailable")); return }
+                guard let self, self.identifier == id else { return }
+                guard status == .authorized else { self.failOpen(self.failure("Speech permission unavailable")); return }
                 AVAudioSession.sharedInstance().requestRecordPermission { [weak self] allowed in
                     DispatchQueue.main.async {
-                        guard let self, identifier == id else { return }
-                        guard allowed else { failOpen(failure("Microphone permission unavailable")); return }
+                        guard let self, self.identifier == id else { return }
+                        guard allowed else { self.failOpen(self.failure("Microphone permission unavailable")); return }
                         let begin: () -> Void = { [weak self] in self?.begin(id, language: language) }
                         if UIApplication.shared.applicationState == .active { begin() }
-                        else { pending = begin }
+                        else { self.pending = begin }
                     }
                 }
             }
