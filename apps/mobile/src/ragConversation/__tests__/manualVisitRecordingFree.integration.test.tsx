@@ -53,6 +53,7 @@ test('confirms an asked question and answer without a recording and reopens them
     );
     await fireEvent.press(screen.getByText('저장'));
     await screen.findByText('합성 답변을 확인했어요.');
+    await screen.findByText('질문을 물어봤어요');
     const [saved] = (await service.load('visit-synthetic'))[0]!.records;
     expect(saved).toMatchObject({
       appointmentId: 'visit-synthetic',
@@ -81,6 +82,7 @@ test('confirms an asked question and answer without a recording and reopens them
     );
     await screen.findByText('합성 질문을 어떻게 확인할까요?');
     await screen.findByText('합성 답변을 확인했어요.');
+    await screen.findByText('질문을 물어봤어요');
     expect(screen.queryByText('실제로 물어봤어요')).toBeNull();
     expect(screen.getByText('답변 수정')).toBeTruthy();
     reopenedView.unmount();

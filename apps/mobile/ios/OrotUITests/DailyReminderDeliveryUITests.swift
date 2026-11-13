@@ -10,25 +10,14 @@ private enum DailyReminderWheelText {
         value.contains("분") || value.lowercased().contains("minute")
     }
 
-    static func replacingNumber(_ value: String, with number: Int) throws -> String {
+    /// XCTest selects numeric options even when the visible wheel value includes a localized unit.
+    static func optionValue(for value: String, number: Int) throws -> String {
         let expression = try NSRegularExpression(pattern: "[0-9]+")
         let matches = expression.matches(in: value, range: NSRange(value.startIndex..., in: value))
-        guard matches.count == 1, let digits = Range(matches[0].range, in: value) else {
+        guard matches.count == 1 else {
             throw NSError(domain: "DailyReminderSetup", code: 4, userInfo: [NSLocalizedDescriptionKey: "Unrecognized time wheel: \(value)"])
         }
-        let original = value[digits]
-        let width = original.count > 1 && original.first == "0" ? original.count : 1
-        let replacement = String(format: "%0*d", width, number)
-        var result = value.replacingCharacters(in: digits, with: replacement)
-        // English accessibility values distinguish one minute from other minute values.
-        if result.hasSuffix(" minutes") {
-            result.removeLast(" minutes".count)
-            result += number == 1 ? " minute" : " minutes"
-        } else if result.hasSuffix(" minute") {
-            result.removeLast(" minute".count)
-            result += number == 1 ? " minute" : " minutes"
-        }
-        return result
+        return String(number)
     }
 }
 
@@ -49,6 +38,17 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        // A previous reminder tap can restore this conversation; return home without resetting saved reminder state.
+        let settingsTab = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
+        let homeAction = app.buttons.matching(identifier: "navigation-home").firstMatch
+        let navigationReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            settingsTab.exists || homeAction.exists
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [navigationReady]), .completed, app.debugDescription)
+        if !settingsTab.exists {
+            XCTAssertTrue(homeAction.exists && homeAction.isHittable, app.debugDescription)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        }
         let settingsAction = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(settingsAction.control.exists && settingsAction.control.isHittable, app.debugDescription)
         attach(app, name: "daily-reminder-home")
@@ -70,19 +70,34 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [background]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let notification = springboard.staticTexts["오늘의 기록을 확인해 보세요."]
+        let banner = ReminderJourneyObservation.deliveredBanner(
+            in: springboard,
+            bodyText: "오늘의 기록을 확인해 보세요.",
+        )
+        let notification = banner.body
         // Wait for the actual delivered UI and its hit target; no clock change or injected tap is used.
         let delivered = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            notification.exists && notification.isHittable
+            banner.container.exists && banner.container.isHittable && notification.exists &&
+                notification.label == "오늘의 기록을 확인해 보세요." && notification.isHittable
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [delivered]), .completed)
         guard notification.exists, notification.isHittable else { return }
+        let title = banner.title
+        // The content-title node is scoped to the delivered banner, separate from the app icon name.
+        let titleReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            title.exists && title.label == "오롯" && title.isHittable
+        }, object: nil)
+        let titleReadiness = XCTWaiter.wait(for: [titleReady], timeout: 5.0)
+        XCTAssertEqual(titleReadiness, .completed, springboard.debugDescription)
+        guard titleReadiness == .completed else { return }
+        XCTAssertTrue(banner.appIcon.exists && banner.appIcon.label == "오롯", springboard.debugDescription)
         attach(springboard, name: "daily-reminder-system-banner")
         notification.tap()
         let foreground = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == .runningForeground }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [foreground]), .completed)
-        let report = UITestConditions.element(app, "daily-report-screen")
-        XCTAssertTrue(UITestConditions.exists(report), app.debugDescription)
+        // Reminder taps open the report task inside the AI conversation; its date is visible before explicit generation.
+        let reportDate = UITestConditions.element(app, "daily-report-date")
+        XCTAssertTrue(UITestConditions.exists(reportDate), app.debugDescription)
         attach(app, name: "daily-reminder-preparation")
     }
 
@@ -176,10 +191,10 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         XCTAssertTrue(UITestConditions.text(status).contains(successText), status.debugDescription)
     }
 
-    /// Preserve the observed wheel's suffix and padding when selecting the requested value.
+    /// Map the observed localized value to the numeric option accepted by XCTest.
     private func adjust(_ wheel: XCUIElement, number: Int) throws {
         let value = try XCTUnwrap(wheel.value as? String)
-        try wheel.adjust(toPickerWheelValue: DailyReminderWheelText.replacingNumber(value, with: number))
+        try wheel.adjust(toPickerWheelValue: DailyReminderWheelText.optionValue(for: value, number: number))
     }
 
     private func attach(_ app: XCUIApplication, name: String) {

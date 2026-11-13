@@ -3,6 +3,8 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>reminderNotification.title</key>
+	<string>오롯</string>
 	<key>appointmentReminder.body</key>
 	<string>준비할 내용을 확인해 보세요.</string>
 	<key>dailyReportReminder.body</key>
