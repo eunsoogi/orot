@@ -15,10 +15,21 @@ function featureFor(code: string) {
     preview: jest.fn(async () => ({
       status: 'ready' as const,
       cutoff: '2035-01-01T12:00:00Z',
+      timeZone: 'Asia/Seoul',
       count: 1,
       partial: false,
-      coverage: [],
-      latestSourceTime: null,
+      coverage: [
+        {
+          source: 'health_observation',
+          status: 'available' as const,
+          syncStatus: 'complete' as const,
+          lastSuccessfulAt: '2035-01-01T11:00:00Z',
+          availableThrough: '2035-01-01T11:30:00Z',
+          limitationCodes: [],
+        },
+      ],
+      sourceCounts: new Map([['health_observation', 1]]),
+      latestSourceTime: '2035-01-01T11:30:00Z',
     })),
     start: jest.fn(() => ({
       status: 'started' as const,
@@ -80,6 +91,13 @@ test.each([
     await fireEvent.press(await screen.findByText('오늘 요약하기'));
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.getByText('오늘 요약하기')).toBeTruthy();
+    expect(screen.getByText('불러온 원본 기록 1건')).toBeTruthy();
+    expect(
+      screen.getByText('2035년 1월 1일 21:00까지 확인한 기록 1건'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('가장 최근 기록 시각: 2035년 1월 1일 20:30'),
+    ).toBeTruthy();
   },
 );
 

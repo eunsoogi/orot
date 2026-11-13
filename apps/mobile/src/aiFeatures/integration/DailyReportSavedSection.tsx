@@ -5,6 +5,7 @@ import { AppText } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { formatDateTime, t } from '../../i18n';
 import { DailyReportCoverage } from './DailyReportCoverage';
+import { dailyReportCoverageCounts } from './dailyReportCoverageCounts';
 import { DailyReportSourceLinks } from './DailyReportSourceLinks';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import type { AiFeatureServices } from './featureServices';
@@ -42,6 +43,9 @@ export function DailyReportSavedSection({
     };
   }, [saved.runId, saved.revision]);
   const { timeZone } = saved.context.identity;
+  const sourceCounts = dailyReportCoverageCounts(
+    saved.context.sourceSnapshot?.records,
+  );
   return (
     <View style={styles.group}>
       <AppText>
@@ -76,7 +80,11 @@ export function DailyReportSavedSection({
           ))}
         </>
       ) : null}
-      <DailyReportCoverage coverage={saved.report.coverage} />
+      <DailyReportCoverage
+        coverage={saved.report.coverage}
+        sourceCounts={sourceCounts}
+        timeZone={timeZone}
+      />
       {onOpenSource ? (
         <DailyReportSourceLinks
           identity={saved.context.identity}
