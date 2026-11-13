@@ -112,10 +112,10 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let result = try await TestOperationBroker.shared.request("render-application")
         XCTAssertEqual(result["requested"] as? Bool, true)
         let routes = [
-            ("home", ["overview-title"]),
+            ("conversation", ["rag-conversation-screen"]),
+            ("overview", ["overview-title"]),
             ("records", ["records-title"]),
             ("schedule", ["calendar-title", "schedule-retry"]),
-            ("ai", ["rag-conversation-screen"]),
             ("settings", ["settings-title"]),
         ]
         for (tab, markers) in routes {
