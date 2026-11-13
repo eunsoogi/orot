@@ -100,9 +100,6 @@ export function RotationGeometryRequest({ session }: { session: unknown }) {
                 'read',
               ];
               const mode = modes[Math.min(transitionStep, modes.length - 1)];
-              setTransitionReceipt(
-                JSON.stringify({ session, mode, status: 'pending' }),
-              );
               NativeModules.OrotTestControl.rotationGeometryCommand(
                 session,
                 mode,
@@ -115,30 +112,6 @@ export function RotationGeometryRequest({ session }: { session: unknown }) {
             testID="rotation-transition-request"
           >
             Transition request
-          </Text>
-          <Text
-            accessible
-            accessibilityLabel={transitionReceipt}
-            onPress={() => {
-              // Read-only samples do not advance the two-orientation probe phase.
-              setTransitionReceipt(
-                JSON.stringify({
-                  session,
-                  mode: 'read',
-                  status: 'pending',
-                }),
-              );
-              NativeModules.OrotTestControl.rotationGeometryCommand(
-                session,
-                'read',
-              ).then((receipt: unknown) => {
-                setTransitionReceipt(JSON.stringify(receipt));
-              });
-            }}
-            style={styles.sample}
-            testID="rotation-transition-sample"
-          >
-            Sample transition
           </Text>
         </>
       ) : null}
@@ -159,15 +132,6 @@ const styles = StyleSheet.create({
   transitionRequest: {
     position: 'absolute',
     left: '50%',
-    top: 0,
-    width: 44,
-    height: 44,
-    fontSize: 1,
-  },
-  sample: {
-    position: 'absolute',
-    left: '50%',
-    marginLeft: 44,
     top: 0,
     width: 44,
     height: 44,

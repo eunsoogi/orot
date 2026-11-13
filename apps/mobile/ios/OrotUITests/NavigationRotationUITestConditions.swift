@@ -8,19 +8,17 @@ enum NavigationRotationUITestConditions {
     static func rotateObservedScene(_ app: XCUIApplication, session: String, landscape: Bool) throws -> [String: Any] {
         let scroll = UITestConditions.element(app, "conversation-history-page")
         let control = UITestConditions.element(app, "rotation-transition-request")
-        let sampleControl = UITestConditions.element(app, "rotation-transition-sample")
 
-        func command(_ mode: String, sampleOnly: Bool = false, timeout: TimeInterval = 15) throws -> [String: Any] {
-            let target = sampleOnly ? sampleControl : control
-            guard let owner = owningWindow(app, scroll: scroll, target: target) else {
+        func command(_ mode: String, timeout: TimeInterval = 15) throws -> [String: Any] {
+            guard let owner = owningWindow(app, scroll: scroll, target: control) else {
                 throw NSError(domain: "RotationWindowUnavailable", code: 1)
             }
-            XCTAssertTrue(target.isHittable, "Rotation control is not hittable in its owning window: \(owner.frame)")
-            let previousSampleAt = (try? JSONSerialization.jsonObject(with: Data(target.label.utf8)) as? [String: Any])?["sampledAtMs"] as? Double
-            target.tap()
+            XCTAssertTrue(control.isHittable, "Rotation control is not hittable in its owning window: \(owner.frame)")
+            let previousSampleAt = (try? JSONSerialization.jsonObject(with: Data(control.label.utf8)) as? [String: Any])?["sampledAtMs"] as? Double
+            control.tap()
             var receipt: [String: Any] = [:]
             let updated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                guard let value = try? JSONSerialization.jsonObject(with: Data(target.label.utf8)) as? [String: Any],
+                guard let value = try? JSONSerialization.jsonObject(with: Data(control.label.utf8)) as? [String: Any],
                       value["session"] as? String == session,
                       value["mode"] as? String == mode,
                       value["status"] as? String == "sampled",
@@ -45,10 +43,25 @@ enum NavigationRotationUITestConditions {
         let before = try XCTUnwrap(armed["before"] as? [String: Any])
         XCTAssertEqual(before["sceneOrientation"] as? Int, UIInterfaceOrientation.portrait.rawValue)
 
+        let expectedOrientation = landscape ? UIInterfaceOrientation.landscapeLeft.rawValue : UIInterfaceOrientation.portrait.rawValue
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
         let requested = try command(landscape ? "request" : "portrait")
         XCTAssertEqual(requested["status"] as? String, "sampled")
-        let expectedOrientation = landscape ? UIInterfaceOrientation.landscapeLeft.rawValue : UIInterfaceOrientation.portrait.rawValue
+
+        // Wait for the actual history window to reflow before the probe's single read command.
+        let reflowed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard scroll.exists, control.exists,
+                  let owner = owningWindow(app, scroll: scroll, target: control, reportFailure: false) else { return false }
+            let frame = owner.frame
+            return (abs(frame.width - initial.width) > 0.5 || abs(frame.height - initial.height) > 0.5) &&
+                (landscape ? frame.width > frame.height : frame.height > frame.width)
+        }, object: nil)
+        guard XCTWaiter.wait(for: [reflowed], timeout: 15) == .completed else {
+            throw NSError(domain: "HistoryWindowReflowUnavailable", code: 1)
+        }
+
+        // The shared probe advances on each press, so one post-reflow read preserves this generation.
+        let receipt = try command("read")
         func hasCorrelatedGeometry(_ value: [String: Any]) -> Bool {
             guard value["status"] as? String == "sampled",
                   value["session"] as? String == session,
@@ -69,13 +82,6 @@ enum NavigationRotationUITestConditions {
                     abs(width - (bounds["width"] ?? 0)) <= 0.5 && abs(height - (bounds["height"] ?? 0)) <= 0.5 &&
                     (landscape ? width > height : height > width)
             }
-        }
-        let receiptDeadline = Date().addingTimeInterval(15)
-        var receipt = try command("read", timeout: max(0.001, receiptDeadline.timeIntervalSinceNow))
-        while !hasCorrelatedGeometry(receipt) {
-            let remaining = receiptDeadline.timeIntervalSinceNow
-            guard remaining > 0 else { break }
-            receipt = try command("read", sampleOnly: true, timeout: remaining)
         }
         XCTAssertTrue(hasCorrelatedGeometry(receipt), "No settled native scene geometry receipt: \(receipt)")
         let receiptData = try JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys)

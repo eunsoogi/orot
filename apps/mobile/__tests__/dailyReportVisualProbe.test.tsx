@@ -37,7 +37,7 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
 test('synthetic saved report enters the production conversation with its exact identity', async () => {
   const view = await render(<DailyReportVisualProbe />);
   expect(await screen.findByText('합성 심박수 기록은 72회예요.')).toBeTruthy();
-  expect(screen.getByText(/건강 측정: 일부만 포함/)).toBeTruthy();
+  expect(screen.getByLabelText(/건강 측정\. 일부만 포함/)).toBeTruthy();
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
   expect(await screen.findByText(/선택한 보고서: 2035-01-01/)).toBeTruthy();
   await fireEvent.changeText(
