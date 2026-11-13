@@ -16,6 +16,11 @@ test('requests a fresh sample and emits only the allowed geometry fields', async
       sceneOrientation: 1,
       sampleStartedAtMs: 123,
       sampleEndedAtMs: 124,
+      orientationPolicy: {
+        rootSupportedMask: 30,
+        sceneLocked: false,
+        privateContent: 'must not appear',
+      },
       privateContent: 'must not appear',
     },
     privateContent: 'must not appear',
@@ -30,6 +35,10 @@ test('requests a fresh sample and emits only the allowed geometry fields', async
     expect(receipt.requestId).toBe('sample-session');
     expect(receipt.windowGeometry.windowBounds.width).toBe(466);
     expect(receipt.windowGeometry.privateContent).toBeUndefined();
+    expect(receipt.windowGeometry.orientationPolicy).toEqual({
+      rootSupportedMask: 30,
+      sceneLocked: false,
+    });
     expect(receipt.privateContent).toBeUndefined();
   });
   expect(navigationSnapshot).toHaveBeenCalledTimes(1);
