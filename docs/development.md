@@ -138,7 +138,7 @@ TEST_RUNNER_OROT_DUO_PHOTO_VALIDATION=YES \
   build/ios-duo-owner.json \
   build/ios-duo-photo.xcresult \
   OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch
-node scripts/ci/ios-test-results.mjs duo build/ios-duo-photo.xcresult build/ios-duo-photo-results.json
+node scripts/ci/ios-test-results.mjs duo build/ios-duo-photo.xcresult build/ios-duo-photo-results.json OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch
 node scripts/ci/ios-test-simulator.mjs cleanup duo build/ios-duo-owner.json
 ```
 
