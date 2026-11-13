@@ -16,6 +16,8 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
     let workQueue = DispatchQueue(label: "com.orot.mobile.recording")
     var status = Status.idle
     var startInProgress = false
+    var captureAudioToken: AudioSessionOwnership.Token?
+    var playbackAudioToken: AudioSessionOwnership.Token?
     var consentAcknowledged = false
     var recorder: AVAudioRecorder?
     lazy var captureDelegate = RecordingCaptureDelegate(queue: workQueue) { [weak self] recorder in
@@ -71,6 +73,13 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         ) { [weak self] _ in
             self?.workQueue.async { [weak self] in self?.pauseForBackgrounding() }
         })
+        observers.append(NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: nil,
+        ) { [weak self] _ in
+            self?.workQueue.async { [weak self] in self?.cancelPendingStart() }
+        })
         observePlaybackRouteChanges()
     }
 
@@ -79,11 +88,15 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         timer?.cancel()
         playbackTimer?.cancel()
         playbackPlayer?.stop()
+        recorder?.stop()
+        releasePlaybackAudio()
+        releaseCaptureAudio()
     }
 
     func handle(_ interruption: AVAudioSession.InterruptionType) {
         switch interruption {
         case .began:
+            cancelPendingStart()
             // An interruption has no reliable resume point, so release playback and offer an explicit retry.
             if playbackPlayer != nil {
                 stopPlayback(
@@ -157,10 +170,6 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         timer = nil
     }
 
-    func deactivateAudioSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
     func currentDurationMs() -> Int {
         #if DEBUG && targetEnvironment(simulator)
             if let syntheticCapture {
@@ -212,7 +221,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
             status = .idle
         }
         emitState()
-        deactivateAudioSession()
+        releaseCaptureAudio()
         reject("RECORDING_START_FAILED", error.localizedDescription, error as NSError)
     }
 
@@ -227,7 +236,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         lastDurationMs = 0
         wasInterrupted = false
         stopTimer()
-        deactivateAudioSession()
+        releaseCaptureAudio()
         emitState()
     }
 

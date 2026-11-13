@@ -36,6 +36,7 @@ export function ConversationScreen({
   entryContext,
   navigationRouteKey,
   providerSelection,
+  voiceSelection,
   renderReportTask,
   renderSavedReport,
   renderStoredReportTask,
@@ -66,10 +67,13 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const { photo, focus } = useConversationScreenControls(
+  const { photo, focus, voice } = useConversationScreenControls(
     store,
     id,
     isEntryCurrent,
+    voiceSelection,
+    busy,
+    onSend,
   );
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
@@ -156,9 +160,9 @@ export function ConversationScreen({
           >
             <ConversationHistory
               replyFocus={focus}
+              sessionId={id}
               requestSessionId={id}
               requestActivity={session.requestActivity}
-              sessionId={id}
               compact={composerLayout.compact}
               header={header}
               messages={messages}
@@ -214,6 +218,7 @@ export function ConversationScreen({
               }
             />
             <ConversationComposer
+              trailingAction={voice}
               photo={photo}
               value={draft}
               busy={busy}

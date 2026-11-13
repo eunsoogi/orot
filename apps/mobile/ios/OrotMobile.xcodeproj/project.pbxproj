@@ -197,6 +197,12 @@
 		A64F00000000000000000002 /* RecordingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000002 /* RecordingModule.m */; };
 		A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000003 /* RecordingModule+Commands.swift */; };
 		A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */; };
+		A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000001 /* AudioSessionOwnership.swift */; };
+		A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000002 /* VoiceConversationCapture.swift */; };
+		A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000003 /* VoiceConversationSpeech.swift */; };
+		A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000004 /* VoiceConversationModule.swift */; };
+		A68FAB000000000000000005 /* VoiceConversationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000005 /* VoiceConversationModule.m */; };
+		A68FAB000000000000000007 /* RecordingAudioOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000007 /* RecordingAudioOwnership.swift */; };
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
@@ -230,6 +236,7 @@
 		A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */; };
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */; };
+		A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
@@ -562,6 +569,12 @@
 		B64F00000000000000000002 /* RecordingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingModule.m; path = OrotMobile/RecordingModule.m; sourceTree = "<group>"; };
 		B64F00000000000000000003 /* RecordingModule+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordingModule+Commands.swift"; path = "OrotMobile/RecordingModule+Commands.swift"; sourceTree = "<group>"; };
 		B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureLifecycle.swift; path = OrotMobile/RecordingCaptureLifecycle.swift; sourceTree = "<group>"; };
+		B741AA000000000000000001 /* AudioSessionOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioSessionOwnership.swift; path = OrotMobile/AudioSessionOwnership.swift; sourceTree = "<group>"; };
+		B741AA000000000000000002 /* VoiceConversationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationCapture.swift; path = OrotMobile/VoiceConversationCapture.swift; sourceTree = "<group>"; };
+		B741AA000000000000000003 /* VoiceConversationSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationSpeech.swift; path = OrotMobile/VoiceConversationSpeech.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000004 /* VoiceConversationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationModule.swift; path = OrotMobile/VoiceConversationModule.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000005 /* VoiceConversationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceConversationModule.m; path = OrotMobile/VoiceConversationModule.m; sourceTree = "<group>"; };
+		B68FAB000000000000000007 /* RecordingAudioOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingAudioOwnership.swift; path = OrotMobile/RecordingAudioOwnership.swift; sourceTree = "<group>"; };
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
@@ -595,6 +608,7 @@
 		B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootURLInboxTests.swift; sourceTree = "<group>"; };
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotificationInboxTests.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionOwnershipTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -750,6 +764,12 @@
 				B64F00000000000000000002 /* RecordingModule.m */,
 				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
+				B741AA000000000000000001 /* AudioSessionOwnership.swift */,
+				B741AA000000000000000002 /* VoiceConversationCapture.swift */,
+				B741AA000000000000000003 /* VoiceConversationSpeech.swift */,
+				B68FAB000000000000000004 /* VoiceConversationModule.swift */,
+				B68FAB000000000000000005 /* VoiceConversationModule.m */,
+				B68FAB000000000000000007 /* RecordingAudioOwnership.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
@@ -916,6 +936,7 @@
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */,
 				BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */,
+				B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
@@ -1436,6 +1457,12 @@
 				A64F00000000000000000002 /* RecordingModule.m in Sources */,
 				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
+				A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */,
+				A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */,
+				A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */,
+				A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */,
+				A68FAB000000000000000005 /* VoiceConversationModule.m in Sources */,
+				A68FAB000000000000000007 /* RecordingAudioOwnership.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
@@ -1665,6 +1692,7 @@
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */,
 				AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */,
+				A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
