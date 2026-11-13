@@ -57,6 +57,20 @@ async function prepare() {
       sessionVersion: number;
     }): Promise<void>;
   };
+  let rejected = false;
+  try {
+    await bridge.enqueueSyntheticReply({
+      requestId,
+      sessionId: 'not-the-reserved-session',
+      messageId: requestId,
+      sessionVersion,
+    });
+  } catch (error) {
+    if ((error as { code?: unknown }).code !== 'INVALID_FIXTURE') throw error;
+    rejected = true;
+  }
+  if (!rejected) throw new Error('The invalid synthetic reply was admitted.');
+  // The valid call verifies the real inbox head, so an invalid enqueue cannot hide ahead of it.
   await bridge.enqueueSyntheticReply({
     requestId,
     sessionId,
