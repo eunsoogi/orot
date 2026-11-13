@@ -1,6 +1,6 @@
 import XCTest
 
-/// Native OS receipts accompany UI actions; no fake delivery or request mutation is available.
+/// Native OS receipts verify shared reminder copy and safe payloads during real delivery and tap flows.
 @MainActor
 enum ReminderJourneyObservation {
     struct Request: Decodable {
@@ -24,6 +24,27 @@ enum ReminderJourneyObservation {
         let systemDarkerColors: Bool
         let reduceTransparency: Bool
         let contrastStrategy: String
+    }
+
+    struct DeliveredBanner {
+        let container: XCUIElement
+        let title: XCUIElement
+        let body: XCUIElement
+        let appIcon: XCUIElement
+    }
+
+    /// Scope the content title and body to one SpringBoard banner, apart from the installed app icon label.
+    static func deliveredBanner(in springboard: XCUIApplication, bodyText: String) -> DeliveredBanner {
+        let container = springboard.descendants(matching: .any)
+            .matching(identifier: "NotificationShortLookView")
+            .matching(NSPredicate(format: "label CONTAINS %@", bodyText))
+            .firstMatch
+        return DeliveredBanner(
+            container: container,
+            title: container.staticTexts.matching(identifier: "NotificationTitle").firstMatch,
+            body: container.staticTexts.matching(identifier: "TextContent.Primary").firstMatch,
+            appIcon: springboard.icons["오롯"],
+        )
     }
 
     static func fresh(_ app: XCUIApplication, after: Date = Date(), stage: String, testCase: XCTestCase,
@@ -62,7 +83,7 @@ enum ReminderJourneyObservation {
         XCTAssertEqual(request.timeKey, "instant:\(Int64(start.timeIntervalSince1970 * 1000))")
         XCTAssertEqual(try XCTUnwrap(request.nextTriggerAtMs), start.addingTimeInterval(-3600).timeIntervalSince1970 * 1000, accuracy: 1)
         XCTAssertEqual(request.userInfoKeys, ["appointmentId", "timeKey"])
-        XCTAssertEqual(request.title, "Orot")
+        XCTAssertEqual(request.title, "오롯")
         XCTAssertEqual(request.body, "준비할 내용을 확인해 보세요.")
     }
 
@@ -93,15 +114,21 @@ enum ReminderJourneyObservation {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == expected }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let body = springboard.staticTexts["준비할 내용을 확인해 보세요."]
+        let banner = deliveredBanner(in: springboard, bodyText: "준비할 내용을 확인해 보세요.")
+        let body = banner.body
+        let title = banner.title
         // Await the actual OS banner, not a sleep or an injected notification response.
+        XCTAssertTrue(UITestConditions.exists(banner.container))
         XCTAssertTrue(UITestConditions.exists(body))
-        // The banner can enter AX before its arrival animation completes. This provisional five-second
-        // readiness bound fails a missing or non-hittable delivered notification before any tap.
-        let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in body.exists && body.isHittable }, object: nil)
+        // SpringBoard exposes the notification's content title separately from the app icon label.
+        let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            banner.container.exists && title.exists && title.label == "오롯" && title.isHittable &&
+                body.exists && body.label == "준비할 내용을 확인해 보세요." && body.isHittable
+        }, object: nil)
         let readiness = XCTWaiter.wait(for: [bannerReady], timeout: 5.0)
         XCTAssertEqual(readiness, .completed)
         guard readiness == .completed else { return }
+        XCTAssertTrue(banner.appIcon.exists && banner.appIcon.label == "오롯", springboard.debugDescription)
         XCTAssertTrue(body.isHittable)
         capture(springboard, cold ? "cold-os-notification" : "running-os-notification", testCase: testCase)
         body.tap()
