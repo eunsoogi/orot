@@ -1,3 +1,5 @@
+import { replyNotificationInvalidation } from '../replyNotifications/replyNotificationInvalidation';
+
 type Listener = () => void;
 export type LocalSourceDeletionOrigin = 'local' | 'healthkit';
 export type SourceDeletionEvent = Parameters<typeof notifyLocalSourceDeleted>;
@@ -18,6 +20,7 @@ export function subscribeLocalDataClear(listener: Listener) {
 
 /** One failing observer must not turn an already committed deletion into a reported rollback. */
 export function notifyLocalDataCleared() {
+  replyNotificationInvalidation.invalidate();
   for (const listener of listeners) {
     try {
       listener();
@@ -45,6 +48,7 @@ export function notifyLocalSourceDeleted(
   origin: LocalSourceDeletionOrigin = 'local',
   deletedRecordIds?: ReadonlySet<string>,
 ) {
+  replyNotificationInvalidation.invalidate();
   for (const listener of sourceListeners) {
     try {
       listener(origin, deletedRecordIds);

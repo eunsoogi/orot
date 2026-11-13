@@ -1,16 +1,16 @@
 import { useRef } from 'react';
-import type { ComponentRef, ReactNode } from 'react';
+import type { ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
-import { AppText as Text } from '../layout/AppText';
-import { AppButton as Button } from '../layout/AppButton';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
-import type { DisplayMessage } from './ConversationMessage';
-import type { ResolveConversationToolSource } from './ConversationToolEventSources';
-import { t } from '../i18n';
+import { ConversationHistoryStatus } from './ConversationHistoryStatus';
+import { useReplyScroll } from './useReplyScroll';
+import { ReplyMessageContainer } from './ReplyMessageContainer';
+import { ConversationActivityBubble } from './ConversationActivityBubble';
+import { conversationHistoryActivity } from './conversationHistoryActivity';
+import type { ConversationHistoryProps } from './ConversationHistoryProps';
 
-/** Owns the transcript viewport and keeps each answer's citations beside it. */
+/** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
   messages,
   pendingMessage,
@@ -19,6 +19,7 @@ export function ConversationHistory({
   onLinkError,
   bottomInset = 0,
   header,
+  beforeMessages,
   footer,
   compact = false,
   unsavedCount = 0,
@@ -29,29 +30,10 @@ export function ConversationHistory({
   toolSourceSessionId,
   resolveToolSource,
   renderVisitQuestions,
-}: {
-  readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: {
-    id: number;
-    content: string;
-    activity: string;
-  } | null;
-  readonly error: string;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-  readonly onLinkError: () => void;
-  readonly bottomInset?: number;
-  readonly header?: ReactNode;
-  readonly footer?: ReactNode;
-  readonly compact?: boolean;
-  readonly unsavedCount?: number;
-  readonly retryingSave?: boolean;
-  readonly onRetrySave?: () => void;
-  readonly restoreFailed?: boolean;
-  readonly onRetryRestore?: () => void;
-  readonly toolSourceSessionId?: string | null;
-  readonly resolveToolSource?: ResolveConversationToolSource;
-  readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
-}) {
+  replyFocus,
+  requestSessionId,
+  requestActivity,
+}: ConversationHistoryProps) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
   const userScrolling = useRef(false);
@@ -63,12 +45,20 @@ export function ConversationHistory({
     offset: number;
   } | null>(null);
   const expectedOffset = useRef<number | null>(null);
-  // A single keyed list preserves the mounted answer across draft validation and cancellation.
-  const visibleMessages: readonly DisplayMessage[] = pendingMessage
-    ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
-    : messages;
+  const replyScroll = useReplyScroll({
+    history: historyView,
+    focus: replyFocus,
+    followsBottom,
+    expectedOffset,
+  });
+  const { visibleMessages, showActivityBubble } = conversationHistoryActivity(
+    messages,
+    pendingMessage,
+    requestSessionId,
+    requestActivity,
+  );
   const followLatest = () => {
-    if (!visibleMessages.length || !followsBottom.current) return;
+    if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
     if (compact) {
       if (messageEnd.current !== null && viewportHeight.current > 0) {
         expectedOffset.current = Math.max(
@@ -186,41 +176,42 @@ export function ConversationHistory({
       testID="rag-conversation-history"
     >
       {header}
-      <View style={styles.container}>
+      {beforeMessages}
+      <View
+        style={styles.container}
+        testID="conversation-message-container"
+        onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
+      >
         {visibleMessages.map(message => (
-          <ConversationMessage
-            key={message.id}
-            message={message}
-            onOpenSource={onOpenSource}
-            onLinkError={onLinkError}
-            compact={compact}
-            toolSourceSessionId={toolSourceSessionId}
-            resolveToolSource={resolveToolSource}
-            renderVisitQuestions={renderVisitQuestions}
-          />
-        ))}
-        {error ? (
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="rag-conversation-error"
+          <ReplyMessageContainer
+            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+            focused={Boolean(
+              replyFocus && message.retainedTurnId === replyFocus.messageId,
+            )}
+            onLayout={replyScroll.message}
           >
-            {error}
-          </Text>
-        ) : null}
-        {unsavedCount > 0 && onRetrySave ? (
-          <Button
-            title={t('ragConversation.conversation.retrySave')}
-            onPress={onRetrySave}
-            disabled={retryingSave}
-          />
-        ) : null}
-        {restoreFailed && onRetryRestore ? (
-          <Button
-            title={t('ragConversation.history.retryRestore')}
-            onPress={onRetryRestore}
-          />
-        ) : null}
+            <ConversationMessage
+              message={message}
+              onOpenSource={onOpenSource}
+              onLinkError={onLinkError}
+              compact={compact}
+              toolSourceSessionId={toolSourceSessionId}
+              resolveToolSource={resolveToolSource}
+              renderVisitQuestions={renderVisitQuestions}
+            />
+          </ReplyMessageContainer>
+        ))}
+        {showActivityBubble ? <ConversationActivityBubble /> : null}
+        <ConversationHistoryStatus
+          {...{
+            error,
+            unsavedCount,
+            retryingSave,
+            onRetrySave,
+            restoreFailed,
+            onRetryRestore,
+          }}
+        />
       </View>
       {/* The footer stays in place while compact follow targets the end of messages. */}
       <View

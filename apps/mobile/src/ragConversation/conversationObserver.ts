@@ -8,10 +8,30 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent' | 'onToolEvent'
+  | 'onProgress'
+  | 'onTaskStreamEvent'
+  | 'onToolEvent'
+  | 'beforeTaskStream'
+  | 'beforeTaskInputChange'
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
+  /** The checkpoint and explicit photo consent are owned by this specific turn. */
+  readonly photoInput?: {
+    readonly submitted: import('./conversationSubmittedInput').ConversationSubmittedInput;
+    readonly stagingGeneration: number;
+    readonly previewData?: string;
+    readonly settleUnsent?: () => Promise<void>;
+    readonly confirm: (
+      details: {
+        readonly providerName: string;
+        readonly modelId: string;
+        readonly recipient: string;
+        readonly remoteProcessing: boolean;
+      },
+      signal: AbortSignal,
+    ) => Promise<boolean>;
+  };
   readonly retainedHistory?: readonly {
     readonly id: string;
     readonly question: string;
@@ -31,4 +51,14 @@ export type RagConversationObserver = Pick<
   readonly onRetentionFailure?: (
     retryPreparation?: PrepareConversationRetention,
   ) => void;
+  /** Private preview preparation is separate from validated answer retention. */
+  readonly onPreviewBoundary?: () => Promise<number>;
+  readonly onPreviewPrepared?: (
+    boundary: number,
+    template: {
+      providerId: string;
+      modelId: string;
+      sources: readonly import('./conversationArtifactSources').ConversationArtifactSource[];
+    },
+  ) => Promise<void>;
 };

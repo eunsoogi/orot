@@ -6,6 +6,7 @@ import type { HealthSummaryReference } from './healthSummary';
 /** Private candidate: persistent identities remain on-device and never enter a model request. */
 export interface ConversationRetentionCandidate {
   readonly question: string;
+  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
   readonly providerId: string;
   readonly modelId: string;

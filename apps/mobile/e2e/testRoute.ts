@@ -1,4 +1,7 @@
 export const capabilityScenarios = [
+  'assistant-acceptance',
+  'assistant-reply-acceptance',
+  'reply-focus-native',
   'backup',
   'healthkit',
   'blood-pressure',
@@ -15,6 +18,9 @@ export const capabilityScenarios = [
   'ai-feature-visit-questions',
   'evidence-visual',
   'conversation-visual',
+  'conversation-retention',
+  'conversation-background-retention',
+  'conversation-lease-release',
   'conversation-failure-visual',
   'summary-visual',
   'daily-report-visual',

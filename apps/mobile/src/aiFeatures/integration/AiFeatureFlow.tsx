@@ -25,6 +25,7 @@ import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationSt
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
+import { useConversationVisibility } from './useConversationVisibility';
 
 export interface AiFeatureFlowProps {
   readonly isEntryCurrent?: () => boolean;
@@ -77,6 +78,11 @@ export function AiFeatureFlow({
     sourceDetailOpen,
     sourceReference,
   } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
+  const isConversationVisible = useConversationVisibility(
+    isEntryCurrent,
+    sourceDetailOpen,
+    providerSelectionOpen,
+  );
   const selectedAiDependencies = serviceDependencies?.selectedAi;
   // Provider refreshes follow the explicit selection revision, not render churn.
   const resolveSelectedAiForRoute = useCallback(
@@ -110,6 +116,7 @@ export function AiFeatureFlow({
             }
           >
             <AiFeatureFlowScreen
+              isEntryCurrent={isConversationVisible}
               route={screenRoute}
               reportOwnsOperation={!sourceDetailOpen && !providerSelectionOpen}
               onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}

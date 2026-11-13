@@ -6,15 +6,15 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('fixture groups partition appointment, document-import, and orientation journeys', () => {
+test('fixture groups partition conversation, appointment, document-import, and orientation journeys', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [13, 11, 15, 25],
+    [13, 11, 25, 25],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 64);
+  assert.equal(original.length, 74);
   assert.equal(
     iosTestInventory('fixtures', 'questions').filter(
       (identifier) =>

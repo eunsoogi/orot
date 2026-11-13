@@ -91,6 +91,11 @@ export function createConversationSessionVisibility(
           'UPDATE conversation_artifact_sessions SET hidden = 0, version = version + 1 WHERE id = ?',
           [id],
         );
+        // Undo may restore protected inputs, but never resumes an earlier provider request.
+        await tx.execute(
+          "UPDATE conversation_requests SET session_version = ?, status = CASE WHEN status = 'active' THEN 'interrupted' ELSE status END WHERE session_id = ? AND session_version = ?",
+          [expectedVersion + 1, id, expectedVersion - 1],
+        );
       });
       return expectedVersion + 1;
     },
@@ -104,17 +109,33 @@ export function createConversationSessionVisibility(
     },
     async finalizeHiddenSession(id: string, version: number) {
       await ensure();
+      let ids: string[] = [];
       await database.transaction(async tx => {
         const found = await tx.execute(
           'SELECT id FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
           [id, version],
         );
-        if (found.rows.length)
+        if (!found.rows.length) return;
+        const sources = await tx.execute(
+          'SELECT DISTINCT x.source_id FROM conversation_request_sources x JOIN conversation_requests r ON r.id = x.request_id WHERE r.session_id = ?',
+          [id],
+        );
+        ids = sources.rows.map(row => {
+          if (typeof row.source_id !== 'string')
+            throw new Error('Invalid photo source.');
+          return row.source_id;
+        });
+        for (const sourceId of ids)
           await tx.execute(
-            'DELETE FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
-            [id, version],
+            'INSERT OR IGNORE INTO conversation_request_removed_sources (id) VALUES (?)',
+            [sourceId],
           );
+        await tx.execute(
+          'DELETE FROM conversation_artifact_sessions WHERE id = ? AND hidden = 1 AND version = ?',
+          [id, version],
+        );
       });
+      return ids;
     },
   };
 }

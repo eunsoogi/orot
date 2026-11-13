@@ -39,6 +39,7 @@ export function createConversationSummaryIntegration(input: {
       createConversationSessionOptions({
         loadLocalData: input.loadData,
         registry: input.registry,
+        selectedAi: input.selectedAi,
         loadSavedVisitQuestions: input.loadSavedVisitQuestions,
         restoreHealthSummary: async reference =>
           restoreHealthSummary({
@@ -54,7 +55,7 @@ export function createConversationSummaryIntegration(input: {
       ...args: Parameters<ReturnType<typeof createRagConversationService>>
     ) => {
       const [question, , signal, observer, context] = args;
-      return context?.intent === 'health-summary'
+      return context?.intent === 'health-summary' && !observer?.photoInput
         ? summarize(
             { question },
             signal ?? new AbortController().signal,

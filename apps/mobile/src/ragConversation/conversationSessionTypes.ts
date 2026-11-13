@@ -16,6 +16,10 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly photoPreparation?: ReturnType<
+    typeof import('../aiFeatures/integration/conversationPhotoPreparation').createConversationPhotoPreparation
+  >;
+  readonly execution?: import('./conversationExecutionLease').ConversationExecutionAdapter;
   readonly listSessions?: (cursor?: {
     readonly updatedAt: string;
     readonly id: string;
@@ -37,15 +41,23 @@ export interface ConversationSessionOptions {
     readonly import('./conversationTaskState').RetainedConversationTask[]
   >;
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
-  readonly retention?: Omit<Retention, 'beginSession' | 'saveTaskCard'> &
-    Partial<Pick<Retention, 'beginSession' | 'saveTaskCard'>>;
+  readonly retention?: Omit<
+    Retention,
+    'beginSession' | 'saveTaskCard' | 'discardUnpublished'
+  > &
+    Partial<
+      Pick<Retention, 'beginSession' | 'saveTaskCard' | 'discardUnpublished'>
+    >;
   readonly restoreSession?: (
     id: string,
     signal: AbortSignal,
   ) => Promise<
     readonly {
       question: string;
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
       answer: string;
+      preview?: string;
+      interrupted?: true;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';
@@ -76,6 +88,8 @@ export interface ConversationSnapshot {
 export type PendingTurn = {
   readonly question: string;
   readonly userMessageId: number;
+  // Only composer-originated prompts return to the editable input after failure.
+  readonly restorePromptToComposer: boolean;
   saving: boolean;
   committed: boolean;
   summarySaving: boolean;
@@ -92,6 +106,9 @@ export type ConversationSender = (
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
   readonly id: number;
+  /** Live request activity is memory-only and is never restored as running. */
+  readonly requestActivity?:
+    import('./conversationActivity').ConversationActivitySnapshot | null;
   readonly title: string;
   readonly createdAt: string;
   readonly draft: string;

@@ -11,9 +11,18 @@ export const questionCohorts = {
     ...questionFixture,
     // Keep native conversation journeys together with their own preparation and artifact budget.
     cases: [
+      'AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
+      'AssistantReplyEntryUITests/testSavedReplyWaitsForAppearanceAndOpensAfterSave',
+      'ReplyFocusGeometryUITests/testSavedReplyAndNewerGenerationRevealWithinRealViewport',
       'KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
+      'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+      'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+      'ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+      'ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     ],
   },
   'questions-accessibility': {
@@ -25,6 +34,7 @@ export const questionCohorts = {
       'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
       'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
       'ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+      'ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     ],
   },
   'questions-summary': {

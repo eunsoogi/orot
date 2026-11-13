@@ -1,4 +1,30 @@
-import type { ConversationSession } from './conversationSessionTypes';
+import type {
+  ConversationSession,
+  PendingTurn,
+} from './conversationSessionTypes';
+
+/** Preserve the existing partial and composer recovery for any request failure. */
+export function conversationFailureReporter(
+  find: (id: number) => ConversationSession,
+  update: (id: number, change: Partial<ConversationSession>) => void,
+  request: PendingTurn,
+  retain: (id: number, activity: string) => void,
+  id: number,
+) {
+  return (partialCopy: string, failureCopy = partialCopy) => {
+    retain(id, partialCopy);
+    restoreFailedPrompt(
+      find,
+      update,
+      id,
+      request.question,
+      request.userMessageId,
+      failureCopy,
+      false,
+      request.restorePromptToComposer,
+    );
+  };
+}
 
 /** A stopped stream remains visible as an incomplete draft, never validated history. */
 export function retainPartial(
@@ -31,7 +57,7 @@ export function retainPartial(
   });
 }
 
-/** A failed prompt remains visible while its draft is restored without overwriting newer input. */
+/** Keep a failed prompt visible and restore it to the composer only when it came from there. */
 export function restoreFailedPrompt(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
@@ -40,13 +66,16 @@ export function restoreFailedPrompt(
   userMessageId: number,
   error?: string,
   idle = false,
+  restorePromptToComposer = true,
 ) {
   const session = find(id);
   const hasDifferentDraft =
     session.draft.trim().length > 0 && session.draft.trim() !== question;
   update(id, {
     pendingMessage: null,
-    draft: hasDifferentDraft ? session.draft : question,
+    ...(restorePromptToComposer
+      ? { draft: hasDifferentDraft ? session.draft : question }
+      : {}),
     messages: session.messages.map(message =>
       message.id === userMessageId ? { ...message, failed: true } : message,
     ),

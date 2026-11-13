@@ -43,6 +43,10 @@ test('shows safe answer text and separate evidence activity while generating', a
     '혈압 기록은?',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  const bubble = await screen.findByTestId('rag-conversation-activity-bubble', {
+    includeHiddenElements: true,
+  });
+  expect(bubble.props.accessibilityElementsHidden).toBe(true);
 
   await act(async () => {
     observer?.onProgress?.({
@@ -51,9 +55,7 @@ test('shows safe answer text and separate evidence activity while generating', a
       sourceKind: 'personal_record',
     });
   });
-  expect(screen.getByTestId('rag-conversation-progress').props.children).toBe(
-    '기록에서 근거를 찾고 있어요.',
-  );
+  expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
   await act(async () => {
     observer?.onProgress?.({
       type: 'evidence_search',
@@ -66,9 +68,7 @@ test('shows safe answer text and separate evidence activity while generating', a
     });
     observer?.onTaskStreamEvent?.({ type: 'started' });
   });
-  expect(screen.getByTestId('rag-conversation-progress').props.children).toBe(
-    '답변을 다듬고 있어요.',
-  );
+  expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
   await act(async () => {
     observer?.onTaskStreamEvent?.({
       type: 'text_delta',
@@ -78,6 +78,11 @@ test('shows safe answer text and separate evidence activity while generating', a
   expect(screen.getByTestId('rag-conversation-stream')).toHaveTextContent(
     '기록에는 혈압이 남아 있어요.',
   );
+  expect(
+    screen.queryByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   expect(screen.queryByText(/citations|evidenceId|"value"/i)).toBeNull();
 
   finish({

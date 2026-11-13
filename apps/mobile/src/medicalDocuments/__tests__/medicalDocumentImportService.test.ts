@@ -68,6 +68,7 @@ function setup(overrides: Partial<MedicalDocumentImportDependencies> = {}) {
     discard: jest.fn().mockResolvedValue(undefined),
   };
   const service = createMedicalDocumentImportService({
+    retainedConversationSourceIds: async () => [],
     loadRepository: async () => repository,
     fileDeletion: files,
     pick: jest.fn().mockResolvedValue(document),

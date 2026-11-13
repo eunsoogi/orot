@@ -6,7 +6,10 @@ import { t } from '../i18n';
 
 type RestoredTurn = {
   readonly question: string;
+  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly preview?: string;
+  readonly interrupted?: true;
   readonly citations: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly completion?: 'complete' | 'partial';
@@ -41,29 +44,40 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
-      if (sessions.get(id) !== entry || controller.signal.aborted) return;
+      if (
+        sessions.get(id) !== entry ||
+        entry.controller !== controller ||
+        controller.signal.aborted
+      )
+        return;
       const reports = turns.flatMap(turn =>
         turn.dailyReport ? [turn.dailyReport] : [],
       );
       // Each turn retains its own exact report; only the latest turn sets the next follow-up target.
       const messages = turns.flatMap((turn, index) => [
-        ...(turn.question
+        ...(turn.question || turn.submittedInput?.ocr
           ? [
               {
                 id: -(2 * index + 1),
                 role: 'user' as const,
                 content: turn.question,
+                ...(turn.submittedInput
+                  ? { submittedInput: turn.submittedInput }
+                  : {}),
+                ...(!turn.answer && turn.completion === 'partial'
+                  ? { failed: true }
+                  : {}),
               },
             ]
           : []),
         {
           id: -(2 * index + 2),
           role: 'assistant' as const,
-          content: turn.answer,
+          content: turn.preview ?? turn.answer,
           citations: turn.citations,
           healthSources: turn.healthSources,
           toolMessageId: turn.toolMessageId,
-          ...(turn.question && turn.toolMessageId
+          ...(turn.question && turn.toolMessageId && !turn.interrupted
             ? { retainedTurnId: turn.toolMessageId }
             : {}),
           toolEvents: turn.toolEvents,
@@ -73,7 +87,13 @@ export function createConversationSessionRestoreState(input: {
           visitQuestions: turn.visitQuestions,
           visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
           ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
-          ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
+          ...(turn.interrupted ||
+          (!turn.answer && turn.completion === 'partial')
+            ? {
+                incomplete: true,
+                activity: t('ragConversation.progressInterrupted'),
+              }
+            : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },
       ]);
@@ -97,9 +117,19 @@ export function createConversationSessionRestoreState(input: {
         restoreFailed: false,
         restoring: false,
       });
-      sessions.delete(id);
+      // Publication listeners may synchronously abort and preserve this entry for retry.
+      if (
+        sessions.get(id) === entry &&
+        entry.controller === controller &&
+        !controller.signal.aborted
+      )
+        sessions.delete(id);
     } catch {
-      if (sessions.get(id) === entry && !controller.signal.aborted) {
+      if (
+        sessions.get(id) === entry &&
+        entry.controller === controller &&
+        !controller.signal.aborted
+      ) {
         // A failed sibling read must not keep restoring private data in the background.
         controller.abort();
         input.update(id, {
@@ -108,7 +138,7 @@ export function createConversationSessionRestoreState(input: {
         });
       }
     } finally {
-      if (sessions.get(id) === entry) {
+      if (sessions.get(id) === entry && entry.controller === controller) {
         entry.controller = undefined;
         input.update(id, { restoring: false });
       }
@@ -118,13 +148,30 @@ export function createConversationSessionRestoreState(input: {
     sessions.get(id)?.controller?.abort();
     sessions.delete(id);
   };
+  const runWhileCurrent = async (id: number, signal?: AbortSignal) => {
+    const entry = sessions.get(id);
+    if (!entry || signal?.aborted) return;
+    // Abort synchronously at observer cleanup; late protected reads must not publish into the store.
+    const cancel = () => {
+      if (sessions.get(id) !== entry || !entry.controller) return;
+      entry.controller.abort();
+      entry.controller = undefined;
+      input.update(id, { restoring: false, restoreFailed: true });
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
+    try {
+      await run(id);
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+    }
+  };
   return {
-    async start(id: number, durableId: string) {
+    async start(id: number, durableId: string, signal?: AbortSignal) {
       forget(id);
       sessions.set(id, { durableId });
-      await run(id);
+      await runWhileCurrent(id, signal);
     },
-    retry: run,
+    retry: runWhileCurrent,
     forget,
     dispose() {
       for (const id of sessions.keys()) forget(id);

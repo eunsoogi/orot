@@ -25,6 +25,7 @@ export function createConversationSessionRemoval(input: {
   restoration: ReturnType<typeof createConversationSessionRestoreState>;
   disposed: () => boolean;
   lifecycle: () => number;
+  finalizeDraft: (id: number) => void;
 }) {
   let deleting = false;
   const drafts = new Map<number, string>();
@@ -48,6 +49,7 @@ export function createConversationSessionRemoval(input: {
       if (prior?.handle !== undefined) {
         await options.retention!.finalize(prior.handle);
         if (input.lifecycle() !== started) return;
+        input.finalizeDraft(prior.session.id);
         input.apply({ ...input.snapshot(), deleted: null });
       }
       const handle = await options.retention!.hide(id);
@@ -133,6 +135,8 @@ export function createConversationSessionRemoval(input: {
       if (input.disposed()) return;
       if (input.options.retention) return removeRetained(id);
       if (!input.snapshot().sessions.some(session => session.id === id)) return;
+      const previous = input.snapshot().deleted;
+      if (previous) input.finalizeDraft(previous.session.id);
       input.requests.cancel(id);
       input.requests.forgetSaves(id);
       input.apply(removeConversation(input.snapshot(), id, input.empty));

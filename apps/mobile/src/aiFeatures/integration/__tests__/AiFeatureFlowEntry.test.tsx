@@ -28,19 +28,15 @@ test('exposes provider selection from the default conversation', async () => {
   expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
 });
 
-test('visit-question legacy links prepare conversation without requiring the retired generator', async () => {
+test('visit-question links show an explicit preparation action without running it on entry', async () => {
   await render(
     <AiFeatureRoute initialRoute="visit-questions" onBack={jest.fn()} />,
   );
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
+  expect(screen.queryByTestId('conversation-intent-use-suggestion')).toBeNull();
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
-  await fireEvent.press(
-    screen.getByTestId('conversation-intent-use-suggestion'),
-  );
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-    'value',
-    expect.stringContaining('다음 진료'),
-  );
+  expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
   expect(screen.queryByTestId('visit-questions-unavailable')).toBeNull();
   await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
   expect(screen.queryByTestId('conversation-saved-visit-questions')).toBeNull();

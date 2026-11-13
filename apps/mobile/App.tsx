@@ -2,7 +2,7 @@ import {
   defaultReminderAppointmentLoader,
   withAppointmentReminderApp,
 } from './src/appointmentReminders/AppointmentReminderContext';
-import { AppointmentReminderDeliveryHost } from './src/appointmentReminders/AppointmentReminderDeliveryHost';
+import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
@@ -36,6 +36,7 @@ import { listLocalHealthObservationPage } from './src/healthkit/healthObservatio
 import { healthObservationFixturePages } from './src/healthkit/healthObservationFixturePages';
 import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
+import { withAssistantAppearance } from './src/assistantAppearance/AssistantAppearanceProvider';
 
 function App({
   loadAppointments = defaultReminderAppointmentLoader,
@@ -229,7 +230,12 @@ function App({
               )
             }
           </NavigationRouteAdapter>
-          <AppointmentReminderDeliveryHost controller={appNavigation} />
+          <GatedReminderDeliveryHost
+            controller={appNavigation}
+            retention={conversationSessionOptions.retention}
+            loadLocalData={aiFeatureServiceDependencies?.loadLocalData}
+            selectTab={selectActiveTab}
+          />
           {ai.disclosureSheet}
         </AiFeatureSharedNavigationStateProvider>
       </RecordingSelectionProvider>
@@ -240,4 +246,4 @@ function App({
 const styles = StyleSheet.create({
   appShell: { flex: 1, backgroundColor: appColors.background },
 });
-export default withAppointmentReminderApp(App);
+export default withAssistantAppearance(withAppointmentReminderApp(App));

@@ -123,6 +123,12 @@ export interface ExecutionConsentPort {
   authorize(request: OutboundProcessingRequest): Promise<ConsentDecision>;
 }
 
+/** Explicit photo approval covers the exact model payload, including on-device processing. */
+export interface PhotoModelInput {
+  readonly evidenceIds: readonly string[];
+  readonly consent: ExecutionConsentPort;
+}
+
 export type EvidenceSearchOutcome = EvidenceBatch | { readonly status: 'consent_required' };
 
 export interface ExternalMedicalQueryConsentRequest {
