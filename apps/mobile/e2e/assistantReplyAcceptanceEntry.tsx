@@ -5,8 +5,8 @@ import {
   NativeModules,
   Pressable,
   Text,
-  View,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import App from '../App';
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
@@ -116,18 +116,21 @@ function AssistantReplyAcceptanceApp() {
   }
   if (state === 'ready') return <App />;
   return (
-    <View style={{ paddingTop: 80 }}>
-      <Text testID="assistant-reply-fixture-state">{state}</Text>
-      {state === 'enable' ? (
-        <Pressable
-          accessibilityRole="button"
-          testID="assistant-reply-enable"
-          onPress={enable}
-        >
-          <Text>Enable synthetic reply notification</Text>
-        </Pressable>
-      ) : null}
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Text testID="assistant-reply-fixture-state">{state}</Text>
+        {state === 'enable' ? (
+          <Pressable
+            accessibilityRole="button"
+            testID="assistant-reply-enable"
+            onPress={enable}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text>Enable synthetic reply notification</Text>
+          </Pressable>
+        ) : null}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
