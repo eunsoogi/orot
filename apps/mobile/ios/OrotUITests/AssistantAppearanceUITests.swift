@@ -44,9 +44,11 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         XCTAssertEqual(name.value as? String, "Momo")
         // This already-visible modal field needs no cross-window form scrolling or inferred window owner.
         guard name.isHittable else { XCTFail("Appearance name is not reachable"); return }
+        let existingName = name.value as? String ?? ""
         name.tap()
-        app.typeKey("a", modifierFlags: .command)
-        app.typeText(XCUIKeyboardKey.delete.rawValue)
+        // Hardware Command-A is not reliable in this modal. Delete the observed text length;
+        // an existing full selection clears on the first delete and subsequent deletes are harmless.
+        app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existingName.count))
         guard waitForName(name, equals: "") else { return }
         for character in "Momo Companion Long Name" {
             app.typeText(String(character))
