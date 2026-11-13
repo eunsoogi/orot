@@ -36,12 +36,14 @@ export async function commitConversationPhotoCheckpoint(input: {
     throw new Error('Conversation attachment does not match the request.');
   }
   let startError: unknown;
+  let startFailed = false;
   try {
     await input.start();
   } catch (error) {
+    startFailed = true;
     startError = error;
   }
-  if (startError) {
+  if (startFailed) {
     // A failed acknowledgement may follow a committed write; null can also mean a hidden session.
     const current = await storage.readRequestInput(
       submitted.requestId,
@@ -66,5 +68,5 @@ export async function commitConversationPhotoCheckpoint(input: {
     }
     throw new Error('Conversation attachment was removed.');
   }
-  if (startError) throw startError;
+  if (startFailed) throw startError;
 }

@@ -96,3 +96,62 @@ test('removal during protected handoff fences the request before native cleanup'
     db.close();
   }
 });
+
+test('an unconfirmed failed write keeps the original locked even when rejection has no value', async () => {
+  const doc = {
+    id: '12345678-1234-4234-8234-123456789abc',
+    displayName: 'synthetic.jpg',
+    contentHash: `sha256:${'a'.repeat(64)}` as const,
+    sections: [
+      { id: 'section', text: 'synthetic', startOffset: 0, endOffset: 9 },
+    ],
+  };
+  const drafts = createConversationPhotoImport({
+    selectDocument: async () => doc,
+    discardDocument: async () => {},
+  });
+  await drafts.select(1);
+  const lease = drafts.beginHandoff(1, {
+    sessionId: 'session',
+    sessionVersion: 0,
+    requestId: 'request',
+    inputRevision: 1,
+  })!;
+  const submitted: ConversationSubmittedInput = {
+    schemaVersion: 1,
+    inputRevision: 1,
+    sessionId: 'session',
+    requestId: 'request',
+    question: '',
+    ocr: {
+      providerId: 'provider',
+      modelId: 'model',
+      recipient: 'recipient',
+      remoteProcessing: false,
+      consentScope: {
+        purpose: 'conversation',
+        policyVersion: 'v1',
+        dataCategories: ['ocr'],
+      },
+      source: { id: doc.id, contentHash: doc.contentHash },
+      deletionGeneration: 0,
+      sections: doc.sections,
+    },
+  };
+  let failed = false;
+  try {
+    await commitConversationPhotoCheckpoint({
+      lease,
+      submitted,
+      storage: {
+        readRequestInput: async () => null,
+        invalidateRequestSource: async () => {},
+      },
+      start: () => Promise.reject(undefined),
+    });
+  } catch {
+    failed = true;
+  }
+  expect(failed).toBe(true);
+  expect(drafts.get(1).status).toBe('transferring');
+});
