@@ -90,15 +90,18 @@ public extension RecordingModule {
             }
 
             do {
-                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-                try AVAudioSession.sharedInstance().setActive(true)
+                if self.playbackAudioToken != nil { self.releasePlaybackAudio() }
+                guard self.playbackAudioToken == nil else { throw AudioSessionOwnership.Failure.busy }
+                let token = try AudioSessionOwnership.shared.reserve()
+                self.playbackAudioToken = token
+                try AudioSessionOwnership.shared.activate(token, category: .playback, mode: .spokenAudio)
             } catch {
-                self.deactivateAudioSession()
+                self.releasePlaybackAudio()
                 reject("RECORDING_AUDIO_SESSION_FAILED", error.localizedDescription, error as NSError)
                 return
             }
             guard player.prepareToPlay() else {
-                self.deactivateAudioSession()
+                self.releasePlaybackAudio()
                 reject(
                     "RECORDING_FILE_INVALID",
                     "The saved audio file could not be prepared for playback.",

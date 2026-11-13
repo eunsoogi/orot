@@ -1,0 +1,98 @@
+import AVFoundation
+import Foundation
+import Speech
+
+/// Captures one explicitly authorized turn in memory; audio never becomes a recording file.
+/// The owner must hold the shared audio lease and configure the session before starting.
+final class VoiceConversationCapture {
+    private let engine = AVAudioEngine()
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private var completion: ((Result<String, Error>) -> Void)?
+    private var tapInstalled = false
+    private var generation: UUID?
+
+    enum Failure: Error {
+        case unavailable
+        case alreadyStarted
+        case cancelled
+        case emptyTranscript
+    }
+
+    /// On-device support is checked before acquiring the microphone; server speech fallback is forbidden.
+    func start(locale: Locale, completion: @escaping (Result<String, Error>) -> Void) throws -> Bool {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard self.completion == nil else { throw Failure.alreadyStarted }
+        guard SFSpeechRecognizer.authorizationStatus() == .authorized,
+              let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable,
+              recognizer.supportsOnDeviceRecognition else { throw Failure.unavailable }
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else { throw Failure.unavailable }
+        let recognition = SFSpeechAudioBufferRecognitionRequest()
+        recognition.requiresOnDeviceRecognition = true
+        recognition.shouldReportPartialResults = false
+        self.request = recognition
+        self.completion = completion
+        let current = UUID()
+        generation = current
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            recognition.append(buffer)
+        }
+        tapInstalled = true
+        task = recognizer.recognitionTask(with: recognition) { [weak self] result, error in
+            DispatchQueue.main.async {
+                guard let self, self.generation == current, self.completion != nil else { return }
+                if let result, result.isFinal {
+                    let text = result.bestTranscription.formattedString
+                    self.finish(text.isEmpty ? .failure(Failure.emptyTranscript) : .success(text))
+                } else if let error {
+                    self.finish(.failure(error))
+                }
+            }
+        }
+        do {
+            engine.prepare()
+            try engine.start()
+            return true
+        } catch {
+            finish(.failure(error))
+            return false
+        }
+    }
+
+    /// End the input stream explicitly so recognition can emit a final transcript.
+    func completeTurn() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard completion != nil else { return }
+        engine.stop()
+        removeTap()
+        request?.endAudio()
+    }
+
+    func cancel() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard completion != nil else { return }
+        finish(.failure(Failure.cancelled))
+    }
+
+    private func finish(_ result: Result<String, Error>) {
+        let callback = completion
+        completion = nil
+        generation = nil
+        engine.stop()
+        removeTap()
+        request?.endAudio()
+        task?.cancel()
+        task = nil
+        request = nil
+        callback?(result)
+    }
+
+    private func removeTap() {
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+    }
+}

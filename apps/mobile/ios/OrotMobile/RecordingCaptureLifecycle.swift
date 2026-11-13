@@ -25,11 +25,12 @@ extension RecordingModule {
             try RecordingFileSecurity.fileURL(id: identifier, extension: "m4a")
         }
         pendingRecordingURL = url
-        let session = AVAudioSession.sharedInstance()
+        guard let token = captureAudioToken else { throw AudioSessionOwnership.Failure.stale }
         try RecordingStartDiagnostic.run(.sessionCategory) {
-            try session.setCategory(.record, mode: .default, options: [])
+            try RecordingStartDiagnostic.run(.sessionActivation) {
+                try AudioSessionOwnership.shared.activate(token, category: .record, mode: .default)
+            }
         }
-        try RecordingStartDiagnostic.run(.sessionActivation) { try session.setActive(true) }
         let recorder = try RecordingStartDiagnostic.run(.recorderInitialization) {
             try AVAudioRecorder(url: url, settings: [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
