@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 @testable import Orot
+import Speech
 import XCTest
 
 /// Uses the production speech adapter and real audio session with synthetic, silent speech.
@@ -32,6 +33,55 @@ final class VoiceConversationLifecycleTests: OrotFailFastTestCase {
         budget.release(limit)
         XCTAssertEqual(budget.reserve(1, generation: third), .accepted)
         budget.release(1)
+    }
+
+    /// Feed checked-in synthetic PCM directly to the production recognizer, never an input node.
+    /// This observes Apple recognition and request handoff, not microphone capture or acoustic AEC.
+    @MainActor
+    func testSyntheticPCMRecognitionContinuesAcrossTurns() async throws {
+        guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
+            XCTFail("Existing Speech permission is required; this diagnostic never requests permission")
+            return
+        }
+        let fixture = try SpeechFixture.item("number", bundle: Bundle(for: Self.self))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+        try XCTUnwrap(Data(base64Encoded: fixture.audio.base64)).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let recognition = VoiceDuplexRecognition()
+        defer { recognition.stop() }
+        var starts: [Int] = []
+        var transcripts: [(Int, String)] = []
+        var failure: Error?
+        try recognition.start(locale: Locale(identifier: "ko-KR"), onSpeechStarted: { starts.append($0) },
+                              onTranscript: { transcripts.append(($0, $1)) }, onFailure: { failure = $0 })
+        for index in 0 ..< 2 {
+            let file = try AVAudioFile(forReading: url)
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 1024))
+            while file.framePosition < file.length {
+                try file.read(into: buffer)
+                recognition.append(buffer)
+                // Match source time so finalization can overlap the next live request realistically.
+                let nanos = UInt64(Double(buffer.frameLength) / buffer.format.sampleRate * 1_000_000_000)
+                try await Task.sleep(nanoseconds: nanos)
+                if let failure {
+                    throw failure
+                }
+            }
+            let deadline = Date().addingTimeInterval(10)
+            while transcripts.count <= index, failure == nil, Date() < deadline {
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            if let failure {
+                throw failure
+            }
+            XCTAssertEqual(transcripts.count, index + 1, "Production recognition must emit each completed fixture turn")
+            guard transcripts.count == index + 1 else { return }
+            XCTAssertFalse(transcripts[index].1.isEmpty)
+            XCTAssertTrue(starts.contains(transcripts[index].0))
+        }
+        XCTAssertGreaterThan(transcripts[1].0, transcripts[0].0)
+        XCTAssertEqual(Set(starts).count, starts.count, "Each speech-start generation is emitted once")
+        NSLog("OROT_DUPLEX_SYNTHETIC turns=%d syntheticPCM=true microphone=false networkAudio=false", transcripts.count)
     }
 
     @MainActor
