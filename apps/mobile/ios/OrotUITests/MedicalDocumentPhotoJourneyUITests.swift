@@ -102,9 +102,9 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
             XCTAssertEqual(documentBackFrame.midX, referenceBackFrame.midX, accuracy: 1, app.debugDescription)
             XCTAssertEqual(records.toolbar.frame.minY - documentBackFrame.maxY, 4, accuracy: 1, app.debugDescription)
         } else {
-            // Bottom Back shares the tab row; the Duo rail instead anchors it above the tab material.
+            // Root tabs reclaim part of the bottom safe area, so compare vertical placement with their row.
             let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
-            XCTAssertEqual(documentBackFrame.midY, referenceBackFrame.midY, accuracy: 1, app.debugDescription)
+            XCTAssertEqual(documentBackFrame.minX, referenceBackFrame.minX, accuracy: 1, app.debugDescription)
             XCTAssertEqual(documentBackFrame.midY, records.control.frame.midY, accuracy: 1, app.debugDescription)
             XCTAssertEqual(records.toolbar.frame.minX - documentBackFrame.maxX, 12, accuracy: 1, app.debugDescription)
             XCTAssertTrue(records.control.isHittable, app.debugDescription)
