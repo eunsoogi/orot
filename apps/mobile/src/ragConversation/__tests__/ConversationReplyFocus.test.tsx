@@ -29,7 +29,15 @@ test('reveals the requested saved reply instead of following a later message', a
       error=""
       onOpenSource={jest.fn()}
       onLinkError={jest.fn()}
-      replyFocus={{ messageId: 'first', done }}
+      replyFocus={{
+        generation: 1,
+        messageId: 'first',
+        canReveal: () => true,
+        complete: () => {
+          done();
+          return true;
+        },
+      }}
     />,
   );
   await fireEvent(
@@ -71,7 +79,15 @@ test('uses the existing container position when a warm reply tap arrives later',
   await view.rerender(
     <ConversationHistory
       {...props}
-      replyFocus={{ messageId: 'answer', done }}
+      replyFocus={{
+        generation: 2,
+        messageId: 'answer',
+        canReveal: () => true,
+        complete: () => {
+          done();
+          return true;
+        },
+      }}
     />,
   );
   await fireEvent(screen.getByTestId('conversation-reply-focus'), 'layout', {

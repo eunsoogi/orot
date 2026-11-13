@@ -9,6 +9,7 @@ import type { ResolveConversationToolSource } from './ConversationToolEventSourc
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { ReplyMessageContainer } from './ReplyMessageContainer';
+import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
@@ -54,7 +55,7 @@ export function ConversationHistory({
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
-  readonly replyFocus?: { messageId: string; done(): void };
+  readonly replyFocus?: ReplyFocusHandle;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -204,7 +205,7 @@ export function ConversationHistory({
       >
         {visibleMessages.map(message => (
           <ReplyMessageContainer
-            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? 'focus' : 'ordinary'}`}
+            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
             focused={Boolean(
               replyFocus && message.retainedTurnId === replyFocus.messageId,
             )}
