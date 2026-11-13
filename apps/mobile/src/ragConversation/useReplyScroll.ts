@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { ComponentRef, RefObject } from 'react';
+import { AppState } from 'react-native';
 import type { ScrollView } from 'react-native';
 import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 
@@ -22,7 +23,7 @@ export function useReplyScroll(input: {
       generation,
       container: state.current.container,
     };
-  const reveal = () => {
+  const reveal = useCallback(() => {
     const current = state.current;
     if (
       !input.focus ||
@@ -40,7 +41,21 @@ export function useReplyScroll(input: {
     input.expectedOffset.current = y;
     input.history.current.scrollTo({ y, animated: false });
     input.focus.complete();
-  };
+  }, [
+    generation,
+    input.focus,
+    input.history,
+    input.followsBottom,
+    input.expectedOffset,
+  ]);
+  useEffect(() => {
+    if (!input.focus) return;
+    // Layout may have arrived while the app was inactive; recheck live ownership on resume.
+    const subscription = AppState.addEventListener('change', value => {
+      if (value === 'active') reveal();
+    });
+    return () => subscription.remove();
+  }, [reveal, input.focus]);
   return {
     container(y: number) {
       if (state.current.generation !== generation) return;
