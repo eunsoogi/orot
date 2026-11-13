@@ -18,6 +18,12 @@
         private var geometryRequestedAt: Double?
         private var geometryError: [String: Any] = [:]
         private weak var geometryScene: UIWindowScene?
+        private weak var geometryWindow: UIWindow?
+        private var geometrySceneID = ""
+        private var geometryWindowID = ""
+        private var geometryMask = 0
+        private var geometryBefore: [String: Any] = [:]
+        private var geometryAtRequest: [String: Any] = [:]
         private var initialBounds = CGRect.zero
         private var initialSceneOrientation = 0
 
@@ -42,29 +48,47 @@
             let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).filter { $0.isKeyWindow && !$0.isHidden }
             guard windows.count == 1, let window = windows.first, let scene = window.windowScene else { return ["status": "unavailable", "session": session] }
             if mode == "start" {
-                geometryScene = scene; initialBounds = window.bounds
+                geometryScene = scene; geometryWindow = window
+                geometrySceneID = UUID().uuidString; geometryWindowID = UUID().uuidString
+                geometryMask = 0; geometryAtRequest = [:]
+                geometryBefore = sceneGeometry(window, scene: scene)
+                initialBounds = window.bounds
                 initialSceneOrientation = scene.effectiveGeometry.interfaceOrientation.rawValue
             }
             guard geometryScene === scene else { return ["status": "scene-changed", "session": session] }
+            guard Self.matchesBinding(currentScene: geometryScene, currentWindow: geometryWindow, scene: scene, window: window) else { return ["status": "window-changed", "session": session] }
             let changed = geometryEvents.contains { event in
                 (event["sceneOrientation"] as? Int) != initialSceneOrientation ||
                     (event["width"] as? CGFloat) != initialBounds.width || (event["height"] as? CGFloat) != initialBounds.height
             }
-            if mode == "request" || mode == "portrait", !changed, geometryRequestCount == 0 {
+            if mode == "request" || mode == "portrait", Self.allowsRequest(changed: changed, count: geometryRequestCount) {
                 geometryRequestCount = 1
+                geometryMask = Int((mode == "portrait" ? UIInterfaceOrientationMask.portrait : .landscape).rawValue)
+                geometryAtRequest = sceneGeometry(window, scene: scene)
                 geometryRequestedAt = Date().timeIntervalSince1970 * 1000
                 let generation = geometryGeneration
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: mode == "portrait" ? .portrait : .landscape)) { [weak self] error in
                     DispatchQueue.main.async {
-                        guard self?.geometrySession == session, self?.geometryGeneration == generation else { return }
+                        guard let self, Self.matchesPhase(currentSession: geometrySession, currentGeneration: geometryGeneration, session: session, generation: generation) else { return }
                         let value = error as NSError
-                        self?.geometryError = ["code": value.code, "atMs": Date().timeIntervalSince1970 * 1000]
+                        var details: [String: Any] = ["domain": value.domain, "code": value.code, "atMs": Date().timeIntervalSince1970 * 1000]
+                        if value.domain == UISceneErrorDomain {
+                            details["description"] = value.localizedDescription
+                            details["failureReason"] = value.localizedFailureReason as Any? ?? NSNull()
+                        }
+                        if let underlying = value.userInfo[NSUnderlyingErrorKey] as? NSError {
+                            details["underlyingDomain"] = underlying.domain; details["underlyingCode"] = underlying.code
+                        }
+                        geometryError = details
                     }
                 }
             }
             return ["status": "sampled", "mode": mode, "session": session, "startedAtMs": geometryStartedAt,
                     "requestedAtMs": geometryRequestedAt as Any? ?? NSNull(), "sampledAtMs": Date().timeIntervalSince1970 * 1000,
-                    "requestCount": geometryRequestCount, "error": geometryError, "events": geometryEvents,
+                    "requestCount": geometryRequestCount, "requestedMask": geometryMask, "generation": geometryGeneration,
+                    "sceneID": geometrySceneID, "windowID": geometryWindowID, "candidateWindowCount": windows.count,
+                    "before": geometryBefore, "atRequest": geometryAtRequest, "current": sceneGeometry(window, scene: scene),
+                    "error": geometryError, "events": geometryEvents,
                     "windowBounds": ["x": window.bounds.minX, "y": window.bounds.minY, "width": window.bounds.width, "height": window.bounds.height],
                     "safeAreaInsets": ["top": window.safeAreaInsets.top, "right": window.safeAreaInsets.right, "bottom": window.safeAreaInsets.bottom, "left": window.safeAreaInsets.left],
                     "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
@@ -74,19 +98,19 @@
         /// The delegate callback carries previous geometry; record the scene's current geometry instead.
         @available(iOS 16.0, *)
         func geometryChanged(_ scene: UIWindowScene) {
-            guard !geometrySession.isEmpty, geometryScene === scene, let window = scene.windows.first(where: { $0.isKeyWindow && !$0.isHidden }) else { return }
+            guard !geometrySession.isEmpty, geometryScene === scene, let window = geometryWindow, window.windowScene === scene, window.isKeyWindow, !window.isHidden else { return }
             let session = geometrySession
             let generation = geometryGeneration
             let at = Date().timeIntervalSince1970 * 1000
             var event: [String: Any] = ["atMs": at, "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
-                                        "width": window.bounds.width, "height": window.bounds.height, "transition": "unavailable",
+                                        "width": window.bounds.width, "height": window.bounds.height, "sceneID": geometrySceneID, "windowID": geometryWindowID, "transition": "unavailable",
                                         "safeAreaInsets": ["top": window.safeAreaInsets.top, "right": window.safeAreaInsets.right, "bottom": window.safeAreaInsets.bottom, "left": window.safeAreaInsets.left]]
             if let coordinator = window.rootViewController?.transitionCoordinator {
                 event["transition"] = "pending"
                 let registered = coordinator.animate(alongsideTransition: nil) { [weak self, weak scene, weak window] context in
-                    guard let self, geometrySession == session, geometryGeneration == generation, let scene, let window else { return }
+                    guard let self, Self.matchesPhase(currentSession: geometrySession, currentGeneration: geometryGeneration, session: session, generation: generation), let scene, let window, geometryScene === scene, geometryWindow === window else { return }
                     geometryEvents.append(["atMs": Date().timeIntervalSince1970 * 1000, "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
-                                           "width": window.bounds.width, "height": window.bounds.height, "transition": "completed", "cancelled": context.isCancelled,
+                                           "width": window.bounds.width, "height": window.bounds.height, "sceneID": geometrySceneID, "windowID": geometryWindowID, "transition": "completed", "cancelled": context.isCancelled,
                                            "safeAreaInsets": ["top": window.safeAreaInsets.top, "right": window.safeAreaInsets.right, "bottom": window.safeAreaInsets.bottom, "left": window.safeAreaInsets.left]])
                 }
                 if !registered {
@@ -94,6 +118,58 @@
                 }
             }
             geometryEvents.append(event)
+        }
+
+        /// A phase cannot dispatch twice or accept callbacks from a previous session or generation.
+        static func allowsRequest(changed: Bool, count: Int) -> Bool {
+            !changed && count == 0
+        }
+
+        static func matchesPhase(currentSession: String, currentGeneration: Int, session: String, generation: Int) -> Bool {
+            currentSession == session && currentGeneration == generation
+        }
+
+        /// A changed key window must not be attributed to the armed scene and window.
+        static func matchesBinding(currentScene: AnyObject?, currentWindow: AnyObject?, scene: AnyObject, window: AnyObject) -> Bool {
+            currentScene === scene && currentWindow === window
+        }
+
+        /// These coordinates and policy values are sampled from the retained window only.
+        @available(iOS 16.0, *)
+        private func sceneGeometry(_ window: UIWindow, scene: UIWindowScene) -> [String: Any] {
+            func rect(_ value: CGRect) -> [String: Double] {
+                ["x": value.minX, "y": value.minY, "width": value.width, "height": value.height]
+            }
+            let transform = window.transform
+            var active = window.rootViewController
+            while let presented = active?.presentedViewController {
+                active = presented
+            }
+            var result: [String: Any] = ["atMs": Date().timeIntervalSince1970 * 1000,
+                                         "sceneID": geometrySceneID, "windowID": geometryWindowID,
+                                         "bounds": rect(window.bounds), "frame": rect(window.frame),
+                                         "rootBounds": rect(window.rootViewController?.viewIfLoaded?.bounds ?? .zero),
+                                         "sceneBounds": rect(scene.coordinateSpace.bounds), "screenBounds": rect(scene.screen.coordinateSpace.bounds),
+                                         "transform": ["a": transform.a, "b": transform.b, "c": transform.c, "d": transform.d, "tx": transform.tx, "ty": transform.ty],
+                                         "activation": scene.activationState.rawValue,
+                                         "rootMask": window.rootViewController?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
+                                         "activeMask": active?.supportedInterfaceOrientations.rawValue as Any? ?? NSNull(),
+                                         "applicationMask": UIApplication.shared.supportedInterfaceOrientations(for: window).rawValue,
+                                         "sceneOrientation": scene.effectiveGeometry.interfaceOrientation.rawValue,
+                                         "safeAreaInsets": ["top": window.safeAreaInsets.top, "right": window.safeAreaInsets.right, "bottom": window.safeAreaInsets.bottom, "left": window.safeAreaInsets.left]]
+            var matches: [UIView] = []
+            func visit(_ view: UIView) {
+                if view.accessibilityIdentifier == "rotation-transition-request" {
+                    matches.append(view)
+                }
+                view.subviews.forEach(visit)
+            }
+            visit(window)
+            result["controlCount"] = matches.count
+            if matches.count == 1, let control = matches.first {
+                result["controlScreenFrame"] = rect(control.convert(control.bounds, to: scene.screen.coordinateSpace))
+            }
+            return result
         }
 
         /// Capture the prior generation state; each start is paired with a background or termination stop.
