@@ -15,6 +15,7 @@ export function createReplyOpen(input: {
   isCurrent?(): boolean;
   signal?: AbortSignal;
   onReplyOpened?: () => void;
+  onBlocked?(reason: 'navigation' | number): void;
   confirm(
     routeKey: string,
   ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
@@ -34,6 +35,7 @@ export function createReplyOpen(input: {
       if (!currentOwner()) return 'deferred';
       if (decision === 'declined') return 'cancelled';
       if (!input.canEnter()) return 'deferred';
+      if (decision === 'busy') input.onBlocked?.('navigation');
       if (decision !== 'approved') return 'deferred';
       const existing = input.sessions.getSnapshot().sessions.find(session => {
         const lease = input.retention?.activeLease(session.id);
@@ -63,8 +65,10 @@ export function createReplyOpen(input: {
           .getSnapshot()
           .sessions.find(value => value.id === sessionId);
       }
-      if (session?.busy || session?.restoring || session?.restoreFailed)
+      if (session?.busy || session?.restoring || session?.restoreFailed) {
+        input.onBlocked?.(sessionId);
         return 'deferred';
+      }
       if (
         !session?.messages.some(
           message =>
