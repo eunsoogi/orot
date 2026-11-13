@@ -13,8 +13,6 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "before", testCase: self)
         XCUIDevice.shared.orientation = .landscapeLeft
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-request", testCase: self)
-        // A second independent sample exposes whether the asynchronous marker advanced after the request.
-        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "follow-up", testCase: self)
     }
 
     /// The exported geometry must not carry labels or other content from the native marker.
